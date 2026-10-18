@@ -23841,6 +23841,40 @@
       "authorization_changed": false,
       "cross_request_cache_added": false,
       "runtime_changed": false
+    },
+    {
+      "feature": "native-r5-api-cpu-qualification-result",
+      "source_commit": "d4d434387e2e7ed60e1effbbbdf0b862c6be5bf1",
+      "files": [
+        {
+          "path": "docs/API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md",
+          "before_sha256": "431d66a46de6c24af15b13f8506072d590e3c4a36092481f13ee2c62dcae77ce",
+          "sha256": "b9ef272ee22b84038a6636b15ba76869ac30e0b684e7253fcdcd8ff932d145db"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "25544086675165f1ede0422d90125725dd7c557e57baf11949f9b3f8a17e9a57",
+          "sha256": "345fea21f3dd50408af70b93bc7762446e4c88f05b92181bfaba71e24de40956"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "bd38952561b804d88bef6075cc729aaf9eed1f9b2f449a30fc936a83a2cc36e9",
+          "sha256": "88c557d3c71c9c46855704724f1ae3f23f55c188569d15765b6ec201f48d5909"
+        }
+      ],
+      "application_code_changed": false,
+      "native_windows": true,
+      "native_job_proof_canary_passed": true,
+      "native_api_tests_passed": 132,
+      "native_a0_journal_tests_passed": 3,
+      "native_invitation_checks_passed": 5,
+      "native_cpu_tests_passed": 20,
+      "independent_result_readback_verified": true,
+      "postflight_task_bindings_preserved": 9,
+      "postflight_file_pins_preserved": 15,
+      "production_database_opened": false,
+      "api_or_installed_cpu_worker_switched": false,
+      "candidate_requires_current_search_overlay_rebase_before_rollout": true
     }
   ]
 }
