@@ -23737,6 +23737,53 @@
       "upstream_main_preserved": true,
       "upload_socketpair_regression_preserved": true,
       "application_code_changed_by_resolution": false
+    },
+    {
+      "feature": "windows-upload-lock-contention-status-and-native-r4-evidence",
+      "source_commit": "939b673cfa38ba2a16ca75b4bd82f9785e109e56",
+      "files": [
+        {
+          "path": "docs/API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md",
+          "before_sha256": "8ecc225c1b9a53587a27254205fae4d028257b7e8c16cf5a04f264fb051092d8",
+          "sha256": "431d66a46de6c24af15b13f8506072d590e3c4a36092481f13ee2c62dcae77ce"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "cc41bc2eb0c454f13a63224ea722cabdbb4ae1529a73e2597e1a6e1c35856b3b",
+          "sha256": "25544086675165f1ede0422d90125725dd7c557e57baf11949f9b3f8a17e9a57"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "2b106c1ecaa34097a34355e0f48887eebec5cf70f354c0b412d60fe39991a422",
+          "sha256": "bd38952561b804d88bef6075cc729aaf9eed1f9b2f449a30fc936a83a2cc36e9"
+        },
+        {
+          "path": "server/backend/app/access/resumable.py",
+          "before_sha256": "891bcf8499a7727a07d23df36f7013109b24b26fbf9b1a98ba6f25255f0fe37a",
+          "sha256": "e16d0974c9aa0c3be1cc3847f71312c74e88704b7a71f92b173be81fc33c4ee9"
+        },
+        {
+          "path": "server/tests/security/test_resumable_upload.py",
+          "before_sha256": "3655a4ecc176d7912018f612f3f3d717cfa727c1dbb68d86abc96b6581347169",
+          "sha256": "1427282d822206fc8ffb2c8c8d088d5f9ac26a4df73da239cd6836dc4c84cbc5"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "eeac81264e90cd58834d8c237749ff964a5061a66e7f6317a709a809f171111e",
+          "sha256": "5ecac7f9d35db4a06e9a35a40b69277187562dc58bad08ea8a9a58f2f7c774b1"
+        }
+      ],
+      "application_code_changed": true,
+      "schema_migration_required": false,
+      "native_r4_api_tests_run": 130,
+      "native_r4_api_failures": 1,
+      "native_r4_cpu_phase_reached": false,
+      "portable_upload_tests_passed": 67,
+      "portable_cpu_profile_tests_passed": 118,
+      "portable_cpu_profile_subtests_passed": 66,
+      "check_profile_tests_passed": 13,
+      "native_repaired_candidate_qualified": false,
+      "api_or_installed_cpu_worker_switched": false
     }
   ]
 }
