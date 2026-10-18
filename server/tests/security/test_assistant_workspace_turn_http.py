@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 import uuid
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
@@ -116,6 +116,49 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
                 id TEXT PRIMARY KEY, asset_id INTEGER, library_id TEXT, author_id TEXT,
                 revision INTEGER, title TEXT, text TEXT, updated_at INTEGER, deleted INTEGER)''')
         return self.auth | {'X-PhotoHouse-Search-Version': '2'}
+
+    def test_bilingual_year_ranges_use_capture_dates_in_owned_recoverable_turns(self):
+        self.enable_search()
+        self.update("UPDATE assets SET mime='video/mp4',taken_at='2019-01-01 00:00:00.000000' WHERE id=101")
+        self.update("UPDATE assets SET mime='video/mp4',taken_at='2020-12-31 23:59:59.999999' WHERE id=103")
+        self.update("UPDATE assets SET mime='video/mp4',taken_at='2019-06-01' WHERE id IN (201,999)")
+        self.update("UPDATE assets SET status='active',taken_at=NULL WHERE id=102")
+        with closing(sqlite3.connect(self.database)) as connection:
+            connection.execute('PRAGMA foreign_keys=ON')
+            index = reviewed(AccessService(connection, clock=lambda: NOW))
+        self.discovery = DiscoveryRuntime(self.access, MemoryIndexProvider((index,)), d.ReadBudget())
+        self._make_client()
+        planner = Mock()
+        planner.propose.side_effect = AssertionError('Explicit date ranges need no inference')
+        self.app.state.assistant_intent_planner = planner
+        for version in ('2', '3'):
+            headers = self.auth | {'X-PhotoHouse-Search-Version': version}
+            for words in ('查找2019年到2020年的视频', 'find videos from 2019 to 2020',
+                          'find 2019年到2020年的videos'):
+                with self.subTest(version=version, words=words):
+                    tid = self.thread()['thread_id']
+                    rid = new_id()
+                    response = self.turn(tid, rid, text=words, headers=headers)
+                    self.assertEqual(response.status_code, 200, response.text)
+                    result = response.json()['result']
+                    self.assertEqual(result['kind'], 'results', result)
+                    self.assertEqual(result['filters'], {'media': ['video'],
+                        'date': {'from': '2019-01-01', 'to': '2020-12-31'}})
+                    self.assertEqual([item['id'] for item in result['items']], ['103', '101'])
+                    self.assertEqual([item['match_reasons'] for item in result['items']], [
+                        [{'source': 'capture_date', 'value': '2020-12-31'}],
+                        [{'source': 'capture_date', 'value': '2019-01-01'}]])
+                    self.assertIsNone(result['effect'])
+                    recovered = self.request('GET',
+                        f'/threads/{tid}/requests/{rid}?library_id=family-a', headers=headers)
+                    self.assertEqual(recovered.status_code, 200, recovered.text)
+                    self.assertEqual(recovered.json()['result'], result)
+                    refined = self.turn(tid, revision=1, text='2019年到2019年', headers=headers)
+                    self.assertEqual(refined.status_code, 200, refined.text)
+                    self.assertEqual(refined.json()['result']['filters'], {'media': ['video'],
+                        'date': {'from': '2019-01-01', 'to': '2019-12-31'}})
+                    self.assertEqual([item['id'] for item in refined.json()['result']['items']], ['101'])
+        planner.propose.assert_not_called()
 
     def test_bare_reviewed_people_answer_is_saved_recoverable_and_thread_scoped(self):
         headers = self.enable_search()

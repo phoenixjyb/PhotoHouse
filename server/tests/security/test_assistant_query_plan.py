@@ -304,6 +304,68 @@ class AssistantQueryPlanTests(unittest.TestCase):
         self.assert_ready('find photos containing "from March to June 2024"', {
             'media': ['image'], 'text': 'from March to June 2024'})
 
+    def test_whole_year_ranges_are_inclusive_in_chinese_english_and_mixed_input(self):
+        for words in (
+            '查找2019年到2020年的视频',
+            '找从2019年至2020年的视频',
+            'find videos from 2019 to 2020',
+            'find videos between 2019 and 2020',
+            'find videos from 2019 through 2020.',
+            '查找2019到2020的videos',
+            'find 2019年 through 2020年的视频',
+            '找2019-2020的视频',
+            'find videos 2019–2020',
+            'find videos 2019—2020',
+        ):
+            with self.subTest(words=words):
+                self.assert_ready(words, {'media': ['video'],
+                                         'date': {'from': '2019-01-01', 'to': '2020-12-31'}})
+        self.assert_ready('find photos between 1999 and 2000', {
+            'media': ['image'], 'date': {'from': '1999-01-01', 'to': '2000-12-31'}})
+        self.assert_ready('找2020年到2020年的视频', {
+            'media': ['video'], 'date': {'from': '2020-01-01', 'to': '2020-12-31'}})
+        self.assert_ready('find photos of Sample Child from 2019 to 2020 at the beach', {
+            'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+            'date': {'from': '2019-01-01', 'to': '2020-12-31'}, 'text': 'beach'})
+
+    def test_year_range_refinements_preserve_other_filters(self):
+        previous = {'media': ['video'], 'people': {'ids': ['301'], 'match': 'all'},
+                    'date': {'from': '2018-01-01', 'to': '2018-12-31'}, 'text': 'beach'}
+        for words in ('2019年到2020年', '2019-2020', 'from 2019 to 2020',
+                      'between 2019 and 2020', '2019年到2020年的视频', '2019–2020 videos'):
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words), 'refine')
+                self.assert_ready(words, {**previous,
+                    'date': {'from': '2019-01-01', 'to': '2020-12-31'}},
+                    previous=previous, refine=True)
+        self.assert_clarifies('2019年到2020年', 'refine_without_context', refine=True)
+
+    def test_invalid_year_ranges_do_not_drop_endpoints_or_other_conditions(self):
+        for words in (
+            '找2020年到2019年的视频', 'find videos between 2020 and 2019',
+            'find videos from 2019 to', 'find videos between 2019 and',
+            '找2019年到的视频', 'find videos from 1899 to 2020',
+            'find videos from 2019 to 2100', '找12019年到2020年的视频',
+            'find videos 2019-2020-2021',
+            'find videos from 2019 to 2020-02-30',
+            '找2019年到2020年13月的视频', '找2019年到2020年九月的视频',
+            'find videos from 2019 to 2020 and 2021',
+            '找2019年到2020年和2021年的视频',
+            'find videos from 2019 to 2020 without dates',
+            'find videos from 2019 to 2020 in unknown place',
+        ):
+            with self.subTest(words=words):
+                self.assert_clarifies(words)
+        for literal in ('2019年到2020年', 'from 2019 to 2020'):
+            with self.subTest(literal=literal):
+                self.assert_ready('find videos containing "' + literal + '"',
+                                  {'media': ['video'], 'text': literal})
+        entities = {**ENTITIES, 'groups': {'people': ['301'], 'tags': [], 'locations': []},
+                    'labels': ['2019年到2020年']}
+        self.assert_clarifies('查找2019年到2020年的视频', 'ambiguous_date_entity', entities=entities)
+        no_date = {**ENTITIES, 'enabled': ['people', 'tags', 'locations', 'media', 'text']}
+        self.assert_clarifies('find videos from 2019 to 2020', 'date_unavailable', entities=no_date)
+
     def test_relative_calendar_ranges_use_supplied_civil_date(self):
         cases = {
             'find photos today': {'media': ['image'], 'date': {'from': '2032-09-14', 'to': '2032-09-14'}},
