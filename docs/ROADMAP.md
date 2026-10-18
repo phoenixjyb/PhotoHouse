@@ -1,5 +1,12 @@
 # Product roadmap
 
+**October 18 follow-through:** [the selected batch's captions are complete](CAPTION_PROVIDER_RECOVERY_2026-10-18.md):
+17 generated results and completion receipts, unchanged original hashes and 34
+decoded previews independently verified. Next prepare the general API/CPU fixes
+for reviewed rollout, then persistent provider/scoped processing and visible
+per-asset preparation evidence. Family UI and caption-quality review remain
+separate from the completed backend operation.
+
 **October 17 upload recovery update:** [Phone v72 is published](../clients/android/docs/PHONE_V72_RELEASE_2026-10-17.md)
 with bounded foreground recovery, same-batch continuation and clearer receipt
 confirmation. Full Windows and independent trusted HTTPS package checks passed;
@@ -93,12 +100,15 @@ save/reopen and large-text usability. Keep search relevance, physical
 interaction and family acceptance separate from CI, APK and HTTPS evidence. Do
 not infer family acceptance from publication or emulator journeys.
 
-## Finish receipt-selected caption preparation
+## Follow the receipt-selected caption trial
 
 The [new caption lane](../server/docs/security/RELEASED_CAPTION_WORKER.md) has
 transaction, provider and shared-policy source with generated-media/HTTP checks.
-Next qualify its extracted package natively, prepare a reviewed recovery of the
-existing model service, then process only the pending released caption selection.
+Its extracted package [passed native qualification](NATIVE_CAPTION_QUALIFICATION_2026-10-18.md),
+including an explicit Job proof and ten generated-data cases. A subsequent bounded
+existing-provider trial [finished all 17 selected captions](CAPTION_PROVIDER_RECOVERY_2026-10-18.md).
+Prepare persistent startup and scoped processing of future released batches with
+separate resource/lifecycle qualification and operation authority.
 The generic legacy worker remains incompatible with the current parallel lanes.
 Do not reset completed work or use downloaded comparison models implicitly.
 

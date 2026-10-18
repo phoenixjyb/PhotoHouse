@@ -1,6 +1,6 @@
 # Receipt-selected upload captions
 
-This is an **offline source candidate**, separate from the legacy broad caption
+This is an **explicit operator-run worker**, separate from the legacy broad caption
 launcher. It does not register a scheduled task, start the model service, migrate
 any database, enable a route or select unfinished work from the global queue.
 
@@ -44,6 +44,14 @@ loopback HTTP address/port, disables environment proxies and redirects, and
 requires a healthy loaded Qwen3-VL provider before admission. Each caption and
 translation response must also match `expected_model_id`; provider/model drift
 invalidates admission. Health alone does not verify checkpoint bytes or quality.
+
+An installed provider launched with a local checkpoint directory returns that
+directory string as its model identity. In that deployment, pin the exact reviewed
+string in `expected_model_id`, rather than copying the example Hugging Face ID.
+Also inspect `/model-info`: require the intended model class, CUDA device and
+quantization. A service can report healthy after its startup loader failed, and
+the older provider can fall back from requested NF4 to BF16. Checkpoint-file hashes
+and runtime metadata are separate checks; the returned path is not a weight hash.
 
 The client reuses the shared bilingual prompt and caption policy, neutral wording,
 truncation and correction rules. At most two corrections follow an initial visual
@@ -108,6 +116,14 @@ selected Job under an SSH/launcher job hierarchy. No query handle is inherited
 during Python startup. The separately operated
 model server's GPU/RAM are **not** covered by the CPU client's Job.
 
+Qualify provider supervision separately. A one-time recovery must own its server
+process tree, bound loading and inference, force offline checkpoint use and verify
+teardown. Keep resource sampling in a context where it has passed a native check:
+on the tested Windows host, `nvidia-smi` worked in the outer supervisor but failed
+inside the restricted Job. A monitoring refusal must stop processing and cannot
+be reported as a successful run. Neither client cancellation nor an HTTP timeout
+proves that the provider's GPU inference has stopped.
+
 A stop file prevents new calls/claims and result publication. It cannot cancel a
 model request that has already reached the service. An unavailable provider fails
 admission before consuming a task attempt. Transient generation failures schedule
@@ -144,7 +160,14 @@ The first Windows attempt staged and verified the source closure but refused
 before creating its synthetic database: its implicit Job lookup observed a
 different Job with no configured memory/process limit. A bounded metadata-only
 diagnostic reproduced the refusal. The following explicit-handle source fix
-requires a newly pinned native qualification; the failed attempt is not a pass.
+was subsequently qualified with a new pinned package; the failed attempt is not a pass.
 The existing candidate and one-shot claims remain retained evidence. See
 [Microsoft's Job query contract](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-queryinformationjobobject)
 and [nested Job rules](https://learn.microsoft.com/en-us/windows/win32/procthread/nested-jobs).
+
+The [native offline record](../../../docs/NATIVE_CAPTION_QUALIFICATION_2026-10-18.md)
+documents the Job proof and ten generated cases. The subsequent
+[provider and live-batch record](../../../docs/CAPTION_PROVIDER_RECOVERY_2026-10-18.md)
+documents actual NF4 inference, all 17 selected captions, independent original/
+preview/receipt readback and owned-process teardown. Permanent startup and future
+batch scheduling remain separate deployment work.

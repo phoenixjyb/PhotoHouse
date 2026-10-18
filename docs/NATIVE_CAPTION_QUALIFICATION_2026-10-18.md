@@ -67,3 +67,7 @@ separate delivery and acceptance steps; keep the legacy broad worker stopped.
 
 See the [worker contract](../server/docs/security/RELEASED_CAPTION_WORKER.md) and
 [upload journal context](UPLOAD_REVIEW_JOURNAL_CONTEXT.md).
+
+A later, separately authorized [provider and live-batch operation](CAPTION_PROVIDER_RECOVERY_2026-10-18.md)
+passed the actual model canary and completed all 17 selected captions. That record
+contains its distinct resource, original/preview and completion-receipt evidence.

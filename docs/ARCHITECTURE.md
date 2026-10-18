@@ -741,3 +741,10 @@ claim are revalidated before one atomic caption/completion write. Concurrent fam
 edits are retained. Its bounded CPU client and separately operated GPU model
 service have distinct resource and delivery gates. This source path adds no API
 route or startup hook and does not make the legacy broad worker compatible.
+
+The [native provider/batch follow-through](CAPTION_PROVIDER_RECOVERY_2026-10-18.md)
+also separates model startup demand from steady model footprint: the admitted
+provider reported about 6.26 GB of model memory, while startup Job commit peaked
+near 30 GiB. Pin the local checkpoint identity and actual class/device/quantization;
+keep GPU sampling in the qualified outer supervisor. A successful one-time batch
+and verified process teardown do not install persistent provider/worker startup.

@@ -1,5 +1,15 @@
 # Current project status
 
+**October 18 caption follow-through:** the bounded
+[provider recovery and released-batch trial](CAPTION_PROVIDER_RECOVERY_2026-10-18.md)
+passed. All 17 selected captions were generated and committed with 17 completion
+receipts and zero task retries. Independent readback verified all original hashes,
+all 34 JPEG previews and the preserved earlier results/failed thumbnail record.
+The temporary model process trees exited; API and OTA bindings were unchanged.
+This completes this batch's captions. Persistent processing, the general API/CPU
+worker rollout and family UI/quality acceptance remain outstanding. Earlier dated
+pending-caption statements below describe the state before this trial.
+
 **October 17 upload recovery update:** [Phone v72 is published](../clients/android/docs/PHONE_V72_RELEASE_2026-10-17.md)
 with bounded foreground recovery, same-batch continuation and clearer receipt
 confirmation. Full Windows and independent trusted HTTPS package checks passed;

@@ -191,3 +191,19 @@ source CI passed five jobs. [The native qualification record](NATIVE_CAPTION_QUA
 separates that result from model-service recovery and real caption processing,
 which this operation did not perform. API/configuration and OTA pointer readbacks
 were unchanged.
+
+### One-time provider and released-batch follow-through — October 18
+
+The [existing-provider recovery](CAPTION_PROVIDER_RECOVERY_2026-10-18.md) passed
+an actual generated-image canary, then generated all 17 receipt-selected captions.
+Independent readback verified 17 finished tasks without task retries, 17 caption
+rows and digest-verified completion receipts, unchanged original hashes and all
+34 decoded previews. The older failed thumbnail row and previous completed work
+were preserved. The owned provider/session Jobs drained after the batch.
+
+Model-path identity, actual NF4/class/device metadata, checkpoint hashes and
+provider resource supervision were checked separately from the CPU client. GPU
+sampling runs outside the restricted Job; the successful server budget was
+32 GiB with a 44 GiB available-RAM admission requirement and 8 GiB running floor.
+The general API and installed CPU-worker payloads were not replaced. Persistent
+processing of future uploads and family UI/quality acceptance remain open.
