@@ -821,6 +821,24 @@
     $('assistant-receipt').hidden=true;$('assistant-receipt-status').textContent='';$('assistant-receipt-id').value='';
     syncAssistantControls();$('assistant-text').focus();
   }
+  Object.assign(words.zh,{assistantAsrAwaitingReceipt:'正在发送录音并等待识别结果；可查询服务器回执。',assistantAsrReceiptRecovered:'已确认这次录音的处理状态；已停止等待原响应，麦克风已关闭。请重新录音或输入文字，不会自动重发。'});
+  Object.assign(words.en,{assistantAsrAwaitingReceipt:'Sending the recording and waiting for recognition. You can check its server receipt.',assistantAsrReceiptRecovered:'Receipt confirmed. Stopped waiting for the original response; microphone off. Record again or type your request. Nothing was resent.'});
+  function releaseAssistantTranscriptionReceipt(receipt){
+    const attempt=assistantState.transcriptionAttempt;
+    if(receipt.operation!=='transcribe'||!['succeeded','failed','interrupted'].includes(receipt.status)||
+      !attempt||attempt.receipt!==receipt||!assistantBindingCurrent(attempt.binding))return;
+    // Fence before aborting: even a response that ignores cancellation cannot
+    // restore a transcript, submit a turn, or clear a newer recording's state.
+    assistantState.transcriptionAttempt=null;assistantState.transcribing=false;assistantState.pendingTranscriptRequestId=null;
+    if(assistantState.transcriptionController===attempt.controller)assistantState.transcriptionController=null;
+    state.controllers.delete(attempt.controller);attempt.controller?.abort();
+    const session=assistantState.voiceSession;
+    if(Number.isSafeInteger(attempt.voiceToken)&&sameAssistantVoiceBinding(session.binding,attempt.binding)){
+      pauseAssistantVoice('assistantAsrReceiptRecovered');
+      if(session.phase==='paused')session.reason='assistantAsrReceiptRecovered';
+    }
+    $('assistant-status').textContent=t('assistantAsrReceiptRecovered');
+  }
   async function checkAssistantReceipt(){
     if(privateAssistant?.state().pendingTurn){await recoverPrivateAssistant();return;}
     const receipt=assistantState.receipt;
@@ -834,6 +852,7 @@
       if(!data||data.version!==1||data.request_id!==receipt.id||!['turn','transcribe','speech'].includes(data.operation)||data.operation!==receipt.operation||!['received','succeeded','failed','interrupted'].includes(data.status))throw new Error('Invalid assistant receipt');
       if(assistantState.receipt!==receipt)return;
       receipt.tracking='enabled';receipt.status=data.status;receipt.checkFailed=false;
+      releaseAssistantTranscriptionReceipt(receipt);
       if(data.status!=='received')clearAssistantRecoveryPointer(receipt.id);
       if(receipt.recovered&&data.status!=='received')receipt.recoveryCleared=true;
       showAssistantReceipt(receipt,receipt.recovered?recoveryStatusKey(data.status):assistantReceiptLabel(data.status));syncAssistantControls();
@@ -968,13 +987,13 @@
     if(assistantState.pendingTurn||assistantRecoveryPending()||assistantState.busy||!currentAssistantTranscription(attempt))throw new DOMException('Assistant turn is pending','AbortError');
     if(!await assistantWavValid(file))throw new Error('Invalid assistant recording');
     if(assistantState.pendingTurn||assistantRecoveryPending()||assistantState.busy||!currentAssistantTranscription(attempt))throw new DOMException('Assistant turn is pending','AbortError');
-    const requestId=assistantRequestId();const receipt={id:requestId,operation:'transcribe',tracking:'unknown',status:null,binding:{...binding}};assistantState.pendingTranscriptRequestId=null;assistantState.transcriptReviewBinding=null;assistantState.transcriptReviewPending=false;assistantState.transcriptLanguage=null;assistantState.receipt=receipt;showAssistantReceipt(receipt,'assistantReceiptUnknown');
-    const controller=new AbortController();assistantState.transcriptionController=controller;state.controllers.add(controller);
+    const requestId=assistantRequestId();const receipt={id:requestId,operation:'transcribe',tracking:'unknown',status:null,binding:{...binding}};assistantState.pendingTranscriptRequestId=null;assistantState.transcriptReviewBinding=null;assistantState.transcriptReviewPending=false;assistantState.transcriptLanguage=null;assistantState.receipt=receipt;attempt.receipt=receipt;showAssistantReceipt(receipt,'assistantAsrAwaitingReceipt');
+    const controller=new AbortController();attempt.controller=controller;assistantState.transcriptionController=controller;state.controllers.add(controller);
     const headers={'Content-Type':'audio/wav','X-PhotoHouse-Library-Id':binding.library,'X-PhotoHouse-Request-Id':requestId};if(state.csrf)headers['X-CSRF-Token']=state.csrf;
     try {
       const response=await fetch('/assistant/v1/transcribe',{method:'POST',headers,body:file,credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal});
-      recordAssistantResponse(response,receipt);
       if(!currentAssistantTranscription(attempt))throw new DOMException('Stale request','AbortError');
+      recordAssistantResponse(response,receipt);
       if(!response.ok){const error=new Error('Transcription request failed');error.status=response.status;error.code=await assistantAsrResponseError(response,attempt);if(!currentAssistantTranscription(attempt))throw new DOMException('Stale request','AbortError');throw error;}
       const result=await response.json();
       if(!currentAssistantTranscription(attempt))throw new DOMException('Stale request','AbortError');

@@ -78,6 +78,26 @@ Existing drafts remain available. The request journal records the code and stage
 for 30 days. Audio remains transient. These categories do not retroactively
 identify the cause of an older generic error.
 
+## Web transcription receipt recovery
+
+While a recording POST is pending, Web says it is waiting for recognition;
+an unconfirmed receipt alone is not evidence of a network failure. Checking
+the receipt remains a read-only action and never resends audio or a turn.
+
+A validated `succeeded`, `failed` or `interrupted` receipt for the current
+transcription ends the browser's wait for that original response. Web fences
+and aborts the matching attempt, preserves typed text, and pauses continuous
+voice with the microphone off. A `received` receipt continues waiting.
+Unrelated, malformed and mismatched receipts cannot release another attempt.
+Delayed responses cannot restore an abandoned transcript or alter a newer
+recording. The receipt status remains visible. This recovery uses status only;
+it does not insert recognized text from the receipt or submit a search. Starting
+another recording or ending voice to type remains a user action.
+
+Generated browser fixtures cover held ASR requests and terminal receipt recovery
+in manual and continuous voice modes. They do not qualify a live ASR model,
+dialect recognition quality, microphone permission or physical device behavior.
+
 ## Separate playback reporting
 
 Successful speech responses can advertise
