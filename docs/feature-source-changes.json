@@ -25089,6 +25089,31 @@
         }
       ],
       "notes": "Combines page-local gallery stacks with current owner visual review and upload-history harness guards; closed route inventory174. Three generated browser journeys passed. No live operation."
+    },
+    {
+      "feature": "visual-review-preserving-gallery-qualification-record",
+      "source_commit": "1e66f0f8df7abd45fdfe0676c39fee6a9c8b3a6c",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "1dc3c20ec67b160fdb3f4d9a5341851bb9a41aef8e43b493b9418e1b272e0df4",
+          "sha256": "d8b67f2694a597a8badbe22700b1868099ba064a3c163dd09b6931521773264d"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": "f69cf9cfb0f60be9663401a0287f1c48874a8ad2028aa0019c41b81c8e32b3c1",
+          "sha256": "fb793b660df94a24e7db243b063d6264967dc697aef26b9d0af0ac546a4bb9ee"
+        }
+      ],
+      "qualified_api_source_commit": "f2041c1c2cb554350112c9a163de39f4c8c0af91",
+      "api_tests_passed": 2508,
+      "api_subtests_passed": 2510,
+      "staging_package_tests_passed": 7,
+      "generated_demo_passed": true,
+      "affected_web_journeys_passed": 3,
+      "native_execution_qualified": false,
+      "deployed_or_published": false,
+      "notes": "Read-only runtime reconciliation found newer visual-review source; prior966candidate is not the forward cutover source. Local generated qualification and native syntax parsing remain separate from Windows execution."
     }
   ]
 }
