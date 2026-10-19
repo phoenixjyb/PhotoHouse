@@ -1,5 +1,11 @@
 # Similar-photo stacks
 
+**Delivery — October 19:** API/Web source `f2041c1` is live and phone v73 is
+published on HTTPS OTA. See the [phone release and test steps](../clients/android/docs/PHONE_V73_RELEASE_2026-10-19.md).
+The dated qualification records below describe their original gates; the later
+delivery closes the API rollout and phone publication gates, while family
+similarity quality, physical device acceptance and persistent curation remain open.
+
 ## Purpose
 
 A sequence of near-identical photos should occupy one gallery position until a
@@ -198,3 +204,23 @@ publishing OTA. These results qualify this package on Windows; they do not show
 that photo stacks are served by the live API or installed on a phone. API/Web
 cutover, responsive-emulator UI acceptance and phone signing/publication remain
 separate delivery gates.
+
+### API/Web and phone delivery — October 19
+
+PR #94 merged with all five hosted checks green. The API-only guarded rollout
+preserved incumbent configuration, playback, reviewed people and relationship
+artifacts, and schema `a0c9d2e4f817`. Four databases were backed up at the stopped
+writer boundary and each copy passed an on-disk restore rehearsal. Independent
+postflight verified all 245 source files, exact API listener identity, restored
+nine runtime states, API settings and the other 78 task definitions. Independent
+Mac trusted HTTPS checks matched the three changed static files and confirmed
+anonymous gallery/preparation reads remain denied.
+
+Phone v73 uses the same reviewed Android tree with production settings and the
+original certificate/icon. Release lint/build, embedded profile checks and the
+complete native/HTTPS APK readbacks passed. On the explicit emulator, the stack
+controls at enlarged Chinese/English text, page-scope reset and independent
+full-screen viewer checks passed. A direct stack-member-to-viewer traversal is
+not part of that native test set; the generated Web journey covers its full
+viewer sequence. Synthetic screenshots do not establish family-photo grouping
+quality. No physical phone was installed or exercised by this rollout.

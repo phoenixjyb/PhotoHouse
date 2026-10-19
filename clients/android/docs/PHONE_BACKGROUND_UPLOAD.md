@@ -1,5 +1,10 @@
 # Phone batch uploads while the screen is locked
 
+**Delivery — October 19:** [phone v73](PHONE_V73_RELEASE_2026-10-19.md) is published
+on Windows HTTPS OTA. Production build/profile, signature/icon and complete APK
+readbacks passed. Physical Samsung lock-screen transfer acceptance remains open.
+The implementation and historical test details below retain their original scope.
+
 ## October 19 source candidate (v73)
 
 The released v72 app deliberately pauses the batch queue from
