@@ -24689,6 +24689,23 @@
         }
       ],
       "notes": "Preserves both upload-lock regression cohorts, the current search/deletion guards and the new gallery/preparation API. No runtime or publication change."
+    },
+    {
+      "feature": "photo-stack-and-preparation-api-package-closure",
+      "source_commit": "048f9d5a8e2d4f208a8f2a03df8234a72b27a3f9",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "7c56687a1e2f5fa40d769a050fb8aca12e05497d73bbd37fa137c78e4f1049c3",
+          "sha256": "69dcba0ff27beef27911994c84730a1463fb146ead12d7c8edf8462b614398b6"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "e65c734f2d744456ce2889e3d144a8a5ddabfbfd95674f0b7d1f667df1a21120",
+          "sha256": "95fb26c3d6b9d0fd29a2785d634822330a5c549f16aa01d6c5c9c10bf741823b"
+        }
+      ],
+      "notes": "Immutable API source package includes both new imported modules; extracted isolated API import regression checks their symbols and source roots. No Windows staging or publication."
     }
   ]
 }
