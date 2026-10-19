@@ -173,6 +173,14 @@ replacement reader's conversation-selection hint.
 | Workers | Bounded derived media and model processing; explicit queue state and resource limits |
 | Operator tools | Backups, migration, qualification, release and recovery; separate from product flows |
 
+The phone's [background batch-upload candidate](../clients/android/docs/PHONE_BACKGROUND_UPLOAD.md)
+separates a process-owned store and an explicitly started `dataSync` foreground
+service from the covered Activity. Its memory-only account/credential lease
+authorizes only the upload queue; locking the screen still clears private UI and
+stops voice interaction. Pause, logout, expiry or access changes fence the runner.
+Encrypted metadata and server-offset reconciliation support explicit recovery
+after process death without restoring permission to run automatically.
+
 ## Schema and release boundaries
 
 An installed source head does not establish the live Alembic revision. Optional

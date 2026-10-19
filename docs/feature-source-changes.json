@@ -23938,6 +23938,104 @@
       "private_frozen_projection_native_children": 120,
       "windows_services_changed": false,
       "production_tasks_retried": false
+    },
+    {
+      "feature": "phone-explicit-background-batch-uploads",
+      "source_commit": "eb6e9537971d04efc198b550402ec2c7e8cd6b61",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "4ea415cdcae787b3dfc50d7f871082637c4d08f0dbf40b93b88cafb6c1b790f1",
+          "sha256": "daf2b422b44cf701424134e2043a558831540b58441d90f6bf68b68967549a95"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/BackgroundUploadForegroundTest.kt",
+          "before_sha256": null,
+          "sha256": "4bdff6b34a08fb5455e91b2a8c4f070b43eabf5893c24c9e5a342760c12a646e"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/BatchUploadBackgroundNoticeTest.kt",
+          "before_sha256": null,
+          "sha256": "534f36d867ee98c336fcb1be07d8a4685e0dc79ee8c8607fc30445d79857b608"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/AndroidManifest.xml",
+          "before_sha256": "5c7362901b6a63533e7e4a9d8c958dd0a8b6a42ab1a713599d5963c448ac32c1",
+          "sha256": "6daa8cd2a6a872bf0491f348d3b1704f478452b5d27d30beade70d70669c2651"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchPickerSelectionEffect.kt",
+          "before_sha256": "5dcca19589bdf521cc33754dd95f7008a467965535b23aa381e9ce9568acb4f3",
+          "sha256": "9eb42c35cf6399e85403aade9225a4b1a5749e0b9e84ce44d9664bcc58c5e95d"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchUploadBackgroundNotice.kt",
+          "before_sha256": null,
+          "sha256": "fc994f758bfd4fd137901059d6a040db6dbf9714dc11c24f42fe8d99a75f4c3f"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchUploadForegroundService.kt",
+          "before_sha256": null,
+          "sha256": "5b515d46bd2ee22938a713ac1a5a39c994a7778a0fff16ddcf24fb78a8cbeb41"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "072f23bc16e954ca4983a2e93a639ab5f3d325e930803e715c4721a70823c9ec",
+          "sha256": "13c1155cc87186918957881f94ebf053a9942df8053f3b70564306a72a093266"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/MainActivity.kt",
+          "before_sha256": "d683a1239244192a3b59d85ed88cd4dccdf8da6af07e435b2544bb2ec74108e3",
+          "sha256": "8464ef51c58633e16cd4e133c81df1875ba992fb863a950e92f5a733775b7f3f"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/res/drawable/ic_upload_notification.xml",
+          "before_sha256": null,
+          "sha256": "ff7b0879bff2a95eb355ffe6626b87b55c1c759c26694840e5f92530d1de6ac6"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/BatchUploadQueue.kt",
+          "before_sha256": "d6b45199454972d5020bbc79cb5d7f05c3d83a250f34e376d914305b118a6fe0",
+          "sha256": "ea92ead9a0caa3087b84612b6a8d235f713b2e7d04081f61d290aa3a70bfd5fe"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "f6c5465c087c5bb3d8d73e829ea07a0e7725ea8680c8c14340b66791a7c6839b",
+          "sha256": "17f6474a490d728dfd49e574e35667859aab00fdc2f99fd0e564d77d2ec8fdfa"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedStoreTest.kt",
+          "before_sha256": "baea8fc1102b04f4f8c7c46277a3b3ec9f6f30c540e228819dde29a8ef1cf0e6",
+          "sha256": "ce76e3d4b2ae86d7cbf1f22be99ad8c499063b11748e255a9a05ba5459c4ecde"
+        },
+        {
+          "path": "clients/android/android/verify-connected-boundaries.py",
+          "before_sha256": "8402d029439c3f7a6c75c804c5f2255652636c2095dacf750721377b59dd73cb",
+          "sha256": "56a2a779ae602714ad9f881543f72e94b11bfeb0f8da3523cfce90d101734a6a"
+        },
+        {
+          "path": "clients/android/docs/PHONE_BACKGROUND_UPLOAD.md",
+          "before_sha256": null,
+          "sha256": "45c3e56e085b8b8599a07be2a2d292ac0c1b5883befdd6741d5c19094d7735e8"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "20f08474eae5fff72ce686829a08d00f462571df21b43f4e8c2ebfe47e1b7942",
+          "sha256": "b09b0dfa85dc9533909a5973211db4c0891287db15532da532d37d717f4cd34c"
+        }
+      ],
+      "core_store_tests_passed": 115,
+      "permissions_added": [
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
+        "android.permission.WAKE_LOCK",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "background_consent_persisted": false,
+      "service_restart_policy": "START_NOT_STICKY",
+      "max_session_hours": 2,
+      "production_api_changed": false,
+      "signed_or_published": false
     }
   ]
 }

@@ -18,8 +18,10 @@ class ConnectedViewModel(api: PhotoHouseApi?, persistence: SessionPersistence? =
                          savedStoryReaderPositionPersistence: SavedStoryReaderPositionPersistence? = null,
                          memoryBookReaderPositionPersistence: MemoryBookReaderPositionPersistence? = null,
                          assistantWorkspaceApi: AssistantWorkspaceApi? = null,
-                         localStoryDraftPersistence: StoryDraftPersistence? = null) : ViewModel() {
-    val store = api?.let { ConnectedStore(it, viewModelScope, persistence, uploadNetwork = uploadNetwork,
+                         localStoryDraftPersistence: StoryDraftPersistence? = null,
+                         retainAcrossActivities: Boolean = false) : ViewModel() {
+    val store = (if (retainAcrossActivities) PhoneUploadRuntime.qaStore() else null) ?: api?.let { supplied ->
+        val create: (kotlinx.coroutines.CoroutineScope) -> ConnectedStore = { runtimeScope -> ConnectedStore(supplied, runtimeScope, persistence, uploadNetwork = uploadNetwork,
         batchPersistence = batchPersistence, batchSource = batchSource, memoryCommunityApi = memoryCommunityApi,
         memoryCommunityEnabled = memoryCommunityEnabled, memoryGroupsApi = memoryGroupsApi,
         memoryGroupsEnabled = memoryGroupsEnabled,
@@ -27,12 +29,15 @@ class ConnectedViewModel(api: PhotoHouseApi?, persistence: SessionPersistence? =
         memoryBookReaderPositionPersistence = memoryBookReaderPositionPersistence,
         assistantWorkspaceApi = assistantWorkspaceApi,
         localStoryDraftPersistence = localStoryDraftPersistence).also { store -> store.restoreSession() } }
+        if (retainAcrossActivities) PhoneUploadRuntime.store(create) else create(viewModelScope)
+    }
 }
 class MainActivity : ComponentActivity() {
     private val model by viewModels<ConnectedViewModel> {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val appContext = applicationContext
                 val origin = runCatching { TrustedOrigin.parse(BuildConfig.PHOTOHOUSE_ORIGIN) }.getOrNull()
                 return ConnectedViewModel(origin?.let { HttpsPhotoHouseApi(it,
                     detailPreviewSize = if (BuildConfig.PHOTOHOUSE_PROTECTED_NATIVE_V2_ENABLED) 1024 else 256,
@@ -46,23 +51,24 @@ class MainActivity : ComponentActivity() {
                     preparedBrowseEnabled = BuildConfig.PHOTOHOUSE_PREPARED_BROWSE_ENABLED,
                     uploadEnabled = BuildConfig.PHOTOHOUSE_UPLOAD_ENABLED,
                     assistantEnabled = BuildConfig.PHOTOHOUSE_ASSISTANT_ENABLED) },
-                    origin?.let { KeystoreSessionPersistence(applicationContext, BuildConfig.PHOTOHOUSE_ORIGIN) },
-                    uploadNetwork = { uploadNetwork(applicationContext) },
-                    batchPersistence = origin?.let { KeystoreUploadQueuePersistence(applicationContext, BuildConfig.PHOTOHOUSE_ORIGIN) },
-                    batchSource = { record -> record.locator?.let { batchUploadSource(applicationContext, Uri.parse(it)) } },
+                    origin?.let { KeystoreSessionPersistence(appContext, BuildConfig.PHOTOHOUSE_ORIGIN) },
+                    uploadNetwork = { uploadNetwork(appContext) },
+                    batchPersistence = origin?.let { KeystoreUploadQueuePersistence(appContext, BuildConfig.PHOTOHOUSE_ORIGIN) },
+                    batchSource = { record -> record.locator?.let { batchUploadSource(appContext, Uri.parse(it)) } },
                     memoryCommunityApi = origin?.takeIf { BuildConfig.PHOTOHOUSE_MEMORY_COMMUNITY_ENABLED }?.let(::HttpsMemoryCommunityApi),
                     memoryCommunityEnabled = BuildConfig.PHOTOHOUSE_MEMORY_COMMUNITY_ENABLED,
                     memoryGroupsApi = origin?.takeIf { BuildConfig.PHOTOHOUSE_MEMORY_GROUPS_ENABLED }?.let {
                         HttpsMemoryGroupsApi(it, memoryGroupsEnabled = true)
                     }, memoryGroupsEnabled = BuildConfig.PHOTOHOUSE_MEMORY_GROUPS_ENABLED,
                     savedStoryReaderPositionPersistence = origin?.let {
-                        KeystoreSavedStoryReaderPositionPersistence(applicationContext, BuildConfig.PHOTOHOUSE_ORIGIN)
+                        KeystoreSavedStoryReaderPositionPersistence(appContext, BuildConfig.PHOTOHOUSE_ORIGIN)
                     },
                     memoryBookReaderPositionPersistence = origin?.let {
-                        KeystoreMemoryBookReaderPositionPersistence(applicationContext, BuildConfig.PHOTOHOUSE_ORIGIN)
+                        KeystoreMemoryBookReaderPositionPersistence(appContext, BuildConfig.PHOTOHOUSE_ORIGIN)
                     },
+                    retainAcrossActivities = true,
                     localStoryDraftPersistence = origin?.let {
-                        KeystoreStoryDraftPersistence(applicationContext, BuildConfig.PHOTOHOUSE_ORIGIN)
+                        KeystoreStoryDraftPersistence(appContext, BuildConfig.PHOTOHOUSE_ORIGIN)
                     },
                     assistantWorkspaceApi = origin?.takeIf { BuildConfig.PHOTOHOUSE_ASSISTANT_ENABLED }?.let {
                         HttpsAssistantWorkspaceApi(it,
