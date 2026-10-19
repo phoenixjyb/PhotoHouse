@@ -23789,6 +23789,124 @@
       "provider_calls_added": false,
       "production_data_written": false,
       "operator_only": true
+    },
+    {
+      "feature": "private-owner-visual-people-review-and-bilingual-date-followup",
+      "source_commit": "159a5234373c2192fe3b165437b5f3755171bab1",
+      "files": [
+        {
+          "path": "docs/PRIVATE_PEOPLE_VISUAL_REVIEW.md",
+          "before_sha256": null,
+          "sha256": "4cb9503b570e9c65437af3eaf754689c031e04ef43ae209d063e10823f10f4b9"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": "036c94272b768edc3748b72dab30e3acf274c82ebb5936e2860aed2f851c1346",
+          "sha256": "b0301526343020724e6a94be4915cf5adab12d10a70571ad7e4b1c36bd1e2d44"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "b39a6adc4019bba6e212ed5db4352d05e46b003fc7e32a0e522fcdcb9cd249b7",
+          "sha256": "29783ed46d6e7423db0213cfc417867d102fa3af3be8f918b8043e9df026b58f"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "1e949651c515b3180c43d3423370d4f830d90895e94c99e61ef2d07cedd19246",
+          "sha256": "252fd60f7696f736a5f3a7372490bf5da74fd8d5f1ca5dab4d6fdf4fca23ed83"
+        },
+        {
+          "path": "server/backend/app/access/people_review.py",
+          "before_sha256": null,
+          "sha256": "cf77435f66b1d9957914c48581b2cc4f363b3df755cc972e4e36cab864f8393e"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "a9c90ccc6aa39b0a8f325593e8df049c637e5a99b19a0c02d2f1be0d8b2a07b5",
+          "sha256": "4fa1ff43cbabba54e30de8151fd4389f0ef403b3d7b9e26fb13fac9815869df9"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "394b42274f7042179dff0251248bf3bf84d72ff8119c3ad16161922047675e76",
+          "sha256": "05ac853330564c3d77d8d43cdb017bf9f51f6b66d0130f8b70b5b97816824905"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "a2397ca8c70f4c49015cd4c12860f0d6dd5e8c53aa1afd97d70d271513c0f4ef",
+          "sha256": "b4b80f9bf80dcca932062559b35d48fc89fd2f79c1b5557284c127c325f51445"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "654b7a33553cd0bf5b013c6f0d38d3f2e5ad6672062367cea840a16f692bc633",
+          "sha256": "626fcc69a98abd086b66b9a28210d2373bb794f90d39967ff68078103bd3d376"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "ecf2f279d3b40c0cf6d86e8b2f9e0b1394f0d20e609f6a30e6a4463ae0fcc8f7",
+          "sha256": "1255bdf0d0a46c345dfd5fae0fc9f43f08563c302007e1358bf63c404b1bb2bf"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "797bb8f9966ae4a257ebb820fb356f66c99f8f5a13f3afae9d077a62aeae312a",
+          "sha256": "b592b4b326165cd31d3d0224168e98d38dd437dab313b83f2551116678d2bec3"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "c031fdf5c913e1767bcabcb70d2e7500c2d12f6cdf5a682e26eb0f24caf17b61",
+          "sha256": "f2aca9500892e4ca175d149bfd762865aaf25b1e856d134fe7436705fd77c6dc"
+        },
+        {
+          "path": "server/scripts/export_visual_people_review.py",
+          "before_sha256": null,
+          "sha256": "d91557bc1a103d06d296dbf530249bb557ac302e956731a99b7bd3a22c8bdb12"
+        },
+        {
+          "path": "server/tests/security/people_review_browser_bridge.py",
+          "before_sha256": null,
+          "sha256": "603e2e663eb3ff33d506a3132d37ed4f21dce5a443828c19dd79a16ad9c2a7b5"
+        },
+        {
+          "path": "server/tests/security/test_assistant_bilingual_review_journeys.py",
+          "before_sha256": null,
+          "sha256": "3ef1c46afdf36cda9381b5c102362cf871566eda9e81bde050100b6535982237"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "f072249651264113fca750d639c8b439c91a988201f798157fd97243fb86d90e",
+          "sha256": "0da0b7a2cba06285e12977ba1c7871163fb6e364d70a6fbf98b28c04a8c2c3ca"
+        },
+        {
+          "path": "server/tests/security/test_people_review_browser.cjs",
+          "before_sha256": null,
+          "sha256": "140b41048d1fd9ab2b6da3fecd6fd9e35ae30038ce2ee0690eaedc3ae569a446"
+        },
+        {
+          "path": "server/tests/security/test_people_visual_review.py",
+          "before_sha256": null,
+          "sha256": "3f74055f1e62d221389de0b5eb67dffb8742f473054fa4d56780e46973d6566e"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "e65c734f2d744456ce2889e3d144a8a5ddabfbfd95674f0b7d1f667df1a21120",
+          "sha256": "ad80efb3f7227c4283060e3d2fabfe2fc69a719b34d15eb860d9882c3fdb9c59"
+        },
+        {
+          "path": "server/tests/security/test_visual_people_review_export.py",
+          "before_sha256": null,
+          "sha256": "60cc2e5c2de5545f8fdf2a57b8c02307ca96e431a6d799819326548f9e91424f"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "b0a8b4ee28c86114a8a76b8b2ec6273781806baba2b9aa76ab99bfe8187d1ca0",
+          "sha256": "dcdab43031cb8b202a124f1920ef3b0c353b6412ff0fd0ff946d147355b362a4"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": true,
+      "provider_calls_added": false,
+      "client_contract_changed": true,
+      "production_data_written": false
     }
   ]
 }

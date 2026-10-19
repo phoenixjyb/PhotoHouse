@@ -251,3 +251,11 @@ do not use the legacy face routes. An explicit visual confirmation covers only
 the selected face. Recheck current source and deletion history through the
 existing two-pass index preparation workflow before proposing activation. This
 export neither changes catalog assignments nor installs an expanded index.
+
+## Owner visual confirmation
+
+The [private visual review screen](PRIVATE_PEOPLE_VISUAL_REVIEW.md) records
+explicit, revision-bound confirmations separately from catalog assignments.
+It excludes existing approved faces and never activates the search index.
+Owner permission, current frozen identity checks and the two-pass preparation
+and activation boundaries still apply.

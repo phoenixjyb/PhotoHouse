@@ -850,6 +850,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'people_reference_unavailable':
                 reply = ('当前查找条件还没有明确人物，无法判断指的是谁。请提供已登记的姓名。' if lang == 'zh' else
                          'The current search has no selected people to refer to. Use a reviewed name first.')
+            elif plan.reason == 'ambiguous_relative_date':
+                reply = ('“再早一点”没有指定具体日期。请提供明确的年份、月份或日期；当前人物、媒体和文字条件会保留。' if lang == 'zh' else
+                         '“Earlier” does not specify a capture date. Give a year, month, or date; the current people, media, and text filters will stay in place.')
             elif plan.reason == 'ambiguous_people_reference':
                 reply = ('这个人物指代与当前选定的人数不一致。请提供完整姓名，或明确要沿用哪些人物。' if lang == 'zh' else
                          'That reference does not match the number of selected people. Use full names or clarify who you mean.')
