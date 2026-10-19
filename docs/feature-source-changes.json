@@ -23907,6 +23907,23 @@
       "provider_calls_added": false,
       "client_contract_changed": true,
       "production_data_written": false
+    },
+    {
+      "feature": "wait-for-owner-controls-in-visual-review-journey",
+      "source_commit": "973d45db8b35af22e727a4f44badef0ea213b90e",
+      "files": [
+        {
+          "path": "server/tests/security/test_people_review_browser.cjs",
+          "before_sha256": "140b41048d1fd9ab2b6da3fecd6fd9e35ae30038ce2ee0690eaedc3ae569a446",
+          "sha256": "8192a1d5f8f2b14bb5430d3c9b5c34f36c18875743b21f115186581a748b77f7"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": false,
+      "provider_calls_added": false,
+      "client_contract_changed": false
     }
   ]
 }

@@ -41,7 +41,7 @@ function holdNextReviewGet(){let release,arrive;const gate=new Promise(r=>releas
   await page.goto('https://photohouse.test/ui');
   await page.locator('#phone').fill('+12025550100');await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();
   await page.locator('#library').waitFor({state:'visible',timeout:10000}).catch(async error=>{throw new Error(`${error.message}; status=${await page.locator('#status').textContent()}; auth=${await page.locator('#auth-feedback').textContent()}; requests=${JSON.stringify(requests)}`);});
-  assert.equal(await page.locator('#people-panel').isVisible(),true,`owner people panel unavailable: ${await page.locator('#status').textContent()}`);
+  await page.locator('#people-panel').waitFor({state:'visible',timeout:10000});
   await page.locator('#people-panel > summary').click();
   const person=page.locator('.person-card[data-person-id="1"]');await person.waitFor();
   await person.getByRole('button',{name:'复核系统建议的人脸'}).click();
