@@ -24253,6 +24253,442 @@
         "unique_tests": 87
       },
       "phone_emulator_ui_passed": false
+    },
+    {
+      "feature": "refreshing-reviewed-people-and-capability-aware-guidance",
+      "source_commit": "d020a868ebe7d568b71778fc420851b8003c7111",
+      "files": [
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "8762b8557e4cd119f0cd53a910a9ecb758935e4c7d16af8965acb72a6b78debc",
+          "sha256": "aa2fd75fb77ffaf2d67bf8e2c2c7da093710952b68785bc9406e32a3169bd0f7"
+        },
+        {
+          "path": "server/backend/app/access/discovery_index.py",
+          "before_sha256": "71433b51b464ed8526ba011a82264408ef40ff0aeb7c8c0fac52284a9638ca84",
+          "sha256": "cd686470992cc8559a483b712b33f3c63d8e1f9d896469fb9a7ecc1a9460c0f3"
+        },
+        {
+          "path": "server/backend/app/access/discovery_provider.py",
+          "before_sha256": "6486f518116c60f6d3e91ac5782c7bc143a7cd228cd2d069d90ae1466d31f6df",
+          "sha256": "bbf410a39b1d61ccc09913898633dcf7c651a3c85eff925d30b1fea9bc476a11"
+        },
+        {
+          "path": "server/scripts/prepare_reviewed_people_index.py",
+          "before_sha256": null,
+          "sha256": "11e794987f2dc1fcfff680188b7927aaf3575bf40700c8ba359ab67f2ec58bfb"
+        },
+        {
+          "path": "server/tests/security/test_refreshing_people.py",
+          "before_sha256": null,
+          "sha256": "c19007799bd5b84700093248b540ad4cd82a29088d9a5860f243c66dbad22a6b"
+        },
+        {
+          "path": "server/tests/security/test_refreshing_people_http.py",
+          "before_sha256": null,
+          "sha256": "efaa4f543227e1d45e2a473e4e4ca17a01468e26420a1bed30fbd684692ae25a"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": null,
+          "sha256": "96b5d2ae35eb994628ca13eab3218f9e182009c24d79a2d2c88e3112ef662fad"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "d3e4ad3aee7524bb412209d4bb2af4c6c585ccb9f960456476375ed21a2c3bc7",
+          "sha256": "36b456b6c4348e1279b4605d378953dbcb61e553ec41a5f91ec64c546bd89fcf"
+        },
+        {
+          "path": "server/tests/security/test_assistant_capability_guidance.py",
+          "before_sha256": null,
+          "sha256": "89a8372d2b862ea9560777f008bb5d37649823259c5eff41bf330db47192cc9a"
+        },
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "0779c8b0b6acf002877f1dc0d3938799bdb01297e574abc20d56f9c227451e5f",
+          "sha256": "7e6b69cfb3262ccdfc8b8d2d9c4c83c3931bcbc2109d3f2e0d7b3e463be14e4a"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "1a8790e7911a8a27146cb2036ae196bbb502beb9082200199518dafd2d9f5f98",
+          "sha256": "36a7b98953570226a50d3a3c01d073c9e93116442d70af7c7ed0e0909dca385a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false,
+      "people_index_enabled": false,
+      "kinship_graph_enabled": false,
+      "integration_replay": {
+        "from_commit": "a38caf59e4cf67df69cf6fc80c1f732d45c3466c",
+        "rebased_before_hashes": [
+          {
+            "path": "tools/check.py",
+            "original_before_sha256": "6d433efc7c874a10b2b3c3a13ccbcce9337e4697d07817ee850031a9edd480b1"
+          }
+        ],
+        "notes": "Before hashes follow the merged ledger sequence; original source after hashes are preserved. Final resolution is recorded separately."
+      }
+    },
+    {
+      "feature": "disabled-people-kinship-ambiguity-guidance",
+      "source_commit": "cb8994177235db1a6e309ff94bd6f573028be486",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "36b456b6c4348e1279b4605d378953dbcb61e553ec41a5f91ec64c546bd89fcf",
+          "sha256": "0976e726a848e451df906dcf1760df6bc19f94b53296d9bd7c119cce13adb74b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_capability_guidance.py",
+          "before_sha256": "89a8372d2b862ea9560777f008bb5d37649823259c5eff41bf330db47192cc9a",
+          "sha256": "47fc15e1b6385a9e658e4e005b20fbc7c25197c70d61874279e7db481accc15b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "runtime_changed": false
+    },
+    {
+      "feature": "reviewed-people-identity-readiness-inspection",
+      "source_commit": "da9f6b950514cb3c34759de84987c4a197b17a53",
+      "files": [
+        {
+          "path": "server/scripts/inspect_reviewed_people_readiness.py",
+          "before_sha256": null,
+          "sha256": "2466cbf9c8339c0274aad7ad5896ad8747d7bd622036d08d6a3f37b6e0e27838"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_people_readiness.py",
+          "before_sha256": null,
+          "sha256": "79945b99c0ea11ab17f7ffdf1e513d6c5ceb49c57a6037be7a5598dbbe9aca5c"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": "96b5d2ae35eb994628ca13eab3218f9e182009c24d79a2d2c88e3112ef662fad",
+          "sha256": "8cf4f76c8677b92cbbd2926700c6aa269349718063084a758d21194d76411e78"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "36a7b98953570226a50d3a3c01d073c9e93116442d70af7c7ed0e0909dca385a",
+          "sha256": "f4fcc3df670ccc7529e6159bf251ff76bbc6027e03bf3ad021197f1233df9a29"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false,
+      "people_index_enabled": false,
+      "kinship_graph_enabled": false
+    },
+    {
+      "feature": "journal-guarded-suppressed-person-ownership-repair",
+      "source_commit": "120cf17a6c5b6a95afebcbdf517620346bf72922",
+      "files": [
+        {
+          "path": "server/backend/app/access/provisioning_apply.py",
+          "before_sha256": "9f082a6b5ef26244fbb15f9de6699a261e60e02b61a56daa6223ec6842775a84",
+          "sha256": "deb74cf82c809651bec4f1a29fd036a067d5fd547523aaf12035921bcfc6df08"
+        },
+        {
+          "path": "server/scripts/provision_access.py",
+          "before_sha256": "26c4e80f50ff993b9e2d98a9610bbc51455e2d9f25f4e94c867d3043d1d68161",
+          "sha256": "e2bdee76111a1a19d538900a417bfd61f121d9d4a16599ab8ffaa33bf95aa71d"
+        },
+        {
+          "path": "server/tests/security/test_library_reads.py",
+          "before_sha256": "3f57b36deac5194039051c4b76d4419609c5a0c16ac86d75f670b9843c47237a",
+          "sha256": "02591d0c068fb20ce5ceca92900a62ec775f7c4eea079c7bf4ce0673dbc0d94f"
+        },
+        {
+          "path": "server/tests/security/test_suppressed_ownership_repair.py",
+          "before_sha256": "d553e1393d656a83c60c54d33212d7d001b338b91e9776adae5dc1fccfc7571f",
+          "sha256": "7f6bd57678e8e7bf2cc1077228df132d8dc6ee95acb79b0b8c215b264b80d8fe"
+        },
+        {
+          "path": "server/tests/security/test_operator_deletion_guard.py",
+          "before_sha256": null,
+          "sha256": "295bf9a54d9f4ded1452752090086935d3b416fe2fe408b4d69c474111648e70"
+        },
+        {
+          "path": "server/tests/security/test_provisioning_deletion_guard.py",
+          "before_sha256": null,
+          "sha256": "7a963f8323241b54a177cfe195a45a0cabf31b4092735cf08b7ba2ce59de4478"
+        },
+        {
+          "path": "docs/OWNERSHIP_REPAIR_JOURNAL_GUARD.md",
+          "before_sha256": null,
+          "sha256": "4ea18c83caed02cff9d4f9799919cb09ad404184f70ab5bd00303bdaa7b92cc6"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "1990ecb2c70fe8aab910ffe689d8b177ee8f582c0105eabf986adcac900aab91",
+          "sha256": "5c736820b3407f58854b42dbc256554dbfc4b94f30b14d8967cd4aadd197299b"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "f4fcc3df670ccc7529e6159bf251ff76bbc6027e03bf3ad021197f1233df9a29",
+          "sha256": "fea5dfae93952b2187fb80e616f3a32fd6ea29f47a44d2f69324c15d59670a55"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false,
+      "operator_tool_changed": true,
+      "people_index_enabled": false,
+      "kinship_graph_enabled": false
+    },
+    {
+      "feature": "journal-guarded-reviewed-family-search-preparation",
+      "source_commit": "bebc8df465eeeb537e9151730b122484598c4a74",
+      "files": [
+        {
+          "path": "server/scripts/inspect_reviewed_people_readiness.py",
+          "before_sha256": "2466cbf9c8339c0274aad7ad5896ad8747d7bd622036d08d6a3f37b6e0e27838",
+          "sha256": "df1c3a08625de499893a447496424e956eccc665361e9c9b1f8f69409949b1f9"
+        },
+        {
+          "path": "server/scripts/prepare_reviewed_people_index.py",
+          "before_sha256": "11e794987f2dc1fcfff680188b7927aaf3575bf40700c8ba359ab67f2ec58bfb",
+          "sha256": "ffecf752b7099f04d2a91153b5a5c585b65b38865c88e48c1d01c500136bc468"
+        },
+        {
+          "path": "server/scripts/reviewed_people_source.py",
+          "before_sha256": null,
+          "sha256": "789ede683cbd7e56e5c0825ab0f6987da1dadc17acb8e65ea90c7f3915a3d896"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_family_search_journeys.py",
+          "before_sha256": null,
+          "sha256": "9c3b7f86e7448707474ec94cf7691be3cb0f0b0da1299e28126d0b850c56d993"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_people_deletion_guard.py",
+          "before_sha256": null,
+          "sha256": "69a3215e8513b1081e53befe85822ed22b290444f662a494e43647eaf40d9919"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": "8cf4f76c8677b92cbbd2926700c6aa269349718063084a758d21194d76411e78",
+          "sha256": "6228dfc4a0f4f3727986a99941894e1572bb6bba15fcf580ea79e2e9889961f8"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "5c736820b3407f58854b42dbc256554dbfc4b94f30b14d8967cd4aadd197299b",
+          "sha256": "74fd5db2437ed1a6473aec158895110adc388468c78e95d7c6f85e8ce9571769"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "fea5dfae93952b2187fb80e616f3a32fd6ea29f47a44d2f69324c15d59670a55",
+          "sha256": "7dd7a638255c8537df219348bb1e52da38fc22e4b5f598f1b580d5e2ff78a577"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false,
+      "operator_tool_changed": true,
+      "people_index_enabled": false,
+      "kinship_graph_enabled": false
+    },
+    {
+      "feature": "deterministic-descriptive-search-functional-fixture-clock",
+      "source_commit": "1dbd220dfd676f0ea32cb4d3c8cd4b9cd81a92c0",
+      "files": [
+        {
+          "path": "server/tests/security/test_descriptive_search.py",
+          "before_sha256": "4706aeee4644639d7b01b8208721babbccd61e4b136106678d0d9503904dd371",
+          "sha256": "a8b4b4e8733d1b064492fe24e75cd302f9a438b13e7024957cee4824bbcf303d"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false,
+      "test_fixture_only": true
+    },
+    {
+      "feature": "explicit-named-parent-companion-search",
+      "source_commit": "bb74f1311785bc37278e91ee5798c8e55eff9c49",
+      "files": [
+        {
+          "path": "server/backend/app/access/kinship.py",
+          "before_sha256": "e6e8b8df323e2204193e6ac4651c3f0ac4abcbf618e518aaf99f1c8c75eeebab",
+          "sha256": "2d5371c7feb0eab3dfb9df5bd77d91a013c9a18b773bf5faed60e8e0ff1030ce"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "e1dccaa45e94a0ed2e9a08c20aefb0ab9e7be2ac8483f95964f052bd46e9135f",
+          "sha256": "9f9e2d3e57055fea23072bacd2037dbade07f2a6e5deb43f0a8dd4b56dae9eeb"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "c1de3a24dcfb609d998aaa2fb9b3089c919233a8ea833ea936bd6476be9cb997",
+          "sha256": "a9c90ccc6aa39b0a8f325593e8df049c637e5a99b19a0c02d2f1be0d8b2a07b5"
+        },
+        {
+          "path": "server/tests/security/test_named_kinship_companion.py",
+          "before_sha256": null,
+          "sha256": "c979746ec7a9be2f15cce7a625331708978cab1bd3808fe5ee94e31ae9e87d1a"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": "6228dfc4a0f4f3727986a99941894e1572bb6bba15fcf580ea79e2e9889961f8",
+          "sha256": "02a18a91e66cb4cbe5c0928926d411f67269841ed80776de6abfff0d02143fe5"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "7dd7a638255c8537df219348bb1e52da38fc22e4b5f598f1b580d5e2ff78a577",
+          "sha256": "77a8f6a637416fea3a5aca8a09e03f534e0d4a6bfebeb9eef7691fc0bd00abad"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": true,
+      "people_index_enabled": false,
+      "kinship_graph_enabled": false
+    },
+    {
+      "feature": "preserve-incumbent-upload-journal-and-windows-lock-contracts",
+      "source_commit": "a7e845f1111f73c6c020347170210cc356814421",
+      "files": [
+        {
+          "path": "server/backend/app/access/promotion.py",
+          "before_sha256": "475357df3f1182e63b0f1bc4724294571ad58696a8759f2d8b07e839d9c53a65",
+          "sha256": "08222956812a9452b797ded5d81d32c8dd8390b0a9844239c14dcbb5820c91ef"
+        },
+        {
+          "path": "server/backend/app/access/upload_review.py",
+          "before_sha256": "14316208689de2bbeec8f0a84d650b2acec9a1b8c4638900482007268e718cb5",
+          "sha256": "14316208689de2bbeec8f0a84d650b2acec9a1b8c4638900482007268e718cb5"
+        },
+        {
+          "path": "server/backend/app/access/library_organization.py",
+          "before_sha256": "215fb1c3bb4e04b8f28acbbc2b0ce8eedef1d5c8779eccc8e49f47a5f155ac98",
+          "sha256": "215fb1c3bb4e04b8f28acbbc2b0ce8eedef1d5c8779eccc8e49f47a5f155ac98"
+        },
+        {
+          "path": "server/backend/app/access/resumable.py",
+          "before_sha256": "e16d0974c9aa0c3be1cc3847f71312c74e88704b7a71f92b173be81fc33c4ee9",
+          "sha256": "4616738e7a65dae6c3eeb23031800d7703cce256cadb4053e0cf93ebfeffffe0"
+        },
+        {
+          "path": "server/tests/security/test_promotion.py",
+          "before_sha256": "1032e59768d5d0fb4c83f335ef4c69f97f707c4411443a30fc8c2e6ad838c2b8",
+          "sha256": "1b1b340616b436de6148a903603fa926de25f735d88b1faabcf1a7b71737d344"
+        },
+        {
+          "path": "server/tests/security/test_upload_review.py",
+          "before_sha256": "322b88b7356bb362132c5bcc8dabd1cbb735443962f17c6fc59dea596bef9cdc",
+          "sha256": "f18009767f76a3ce19e279cac4208a45226f53e2bb9a9caee38c865e6d7c56cb"
+        },
+        {
+          "path": "server/tests/security/test_library_organization.py",
+          "before_sha256": "74d21b15e452273c365dd14ea11ccc368762abf4825e614ea21c7aa6b64dc3e0",
+          "sha256": "1f10ecd69ca29cabeb67fb652dc0bb5481fbc00eba46b22ae8b853c60565a297"
+        },
+        {
+          "path": "server/tests/security/test_resumable_upload.py",
+          "before_sha256": "1427282d822206fc8ffb2c8c8d088d5f9ac26a4df73da239cd6836dc4c84cbc5",
+          "sha256": "fad30709d70458b3c3deb99ad1e90e8384f188936e07be50e0da189c1ba94ee3"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": true,
+      "incumbent_behavior_preserved": true,
+      "integration_replay": {
+        "from_commit": "a38caf59e4cf67df69cf6fc80c1f732d45c3466c",
+        "rebased_before_hashes": [
+          {
+            "path": "server/backend/app/access/promotion.py",
+            "original_before_sha256": "6c5eeb2f01c76a0005138daae709138e2a8c33355bca2fa890675666983a6bf4"
+          },
+          {
+            "path": "server/backend/app/access/upload_review.py",
+            "original_before_sha256": "3e477d9bec041b9ed28db38a3d593eb2ce26d4ebb982cc205995424d4ce9ae8e"
+          },
+          {
+            "path": "server/backend/app/access/library_organization.py",
+            "original_before_sha256": "9cd387945ae2047da9bdbb862f99eb9b7eb16dde6f8170cc19b7eda7b330eaf7"
+          },
+          {
+            "path": "server/backend/app/access/resumable.py",
+            "original_before_sha256": "891bcf8499a7727a07d23df36f7013109b24b26fbf9b1a98ba6f25255f0fe37a"
+          },
+          {
+            "path": "server/tests/security/test_promotion.py",
+            "original_before_sha256": "b3a2655466dbd036839bb58c278419090ec63a45b8d3e61e18cf75c82bdb4f86"
+          },
+          {
+            "path": "server/tests/security/test_resumable_upload.py",
+            "original_before_sha256": "3655a4ecc176d7912018f612f3f3d717cfa727c1dbb68d86abc96b6581347169"
+          }
+        ],
+        "notes": "Before hashes follow the merged ledger sequence; original source after hashes are preserved. Final resolution is recorded separately."
+      }
+    },
+    {
+      "feature": "preserve-narrow-lock-contention-error-scope",
+      "source_commit": "95adfd6f1df339dc2d2b949cc2da3f5171a86f38",
+      "files": [
+        {
+          "path": "server/backend/app/access/resumable.py",
+          "before_sha256": "4616738e7a65dae6c3eeb23031800d7703cce256cadb4053e0cf93ebfeffffe0",
+          "sha256": "b18366c6a079316522af2cab719d15dccd77e0018bc180d959bc92e1dee0bd6f"
+        },
+        {
+          "path": "server/tests/security/test_resumable_upload.py",
+          "before_sha256": "fad30709d70458b3c3deb99ad1e90e8384f188936e07be50e0da189c1ba94ee3",
+          "sha256": "c4aa646f9313d95cc4a61243ef997fd400ebabaa023727e9958c37d69b884415"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": true,
+      "incumbent_behavior_preserved": true
+    },
+    {
+      "feature": "integrate-deployed-reviewed-search-with-photo-stacks",
+      "source_base_commit": "3bdea1b46f0930cb67005774b3456fd2703a098b",
+      "merged_source_commit": "a38caf59e4cf67df69cf6fc80c1f732d45c3466c",
+      "files": [
+        {
+          "path": "server/backend/app/access/promotion.py",
+          "before_sha256": "08222956812a9452b797ded5d81d32c8dd8390b0a9844239c14dcbb5820c91ef",
+          "sha256": "475357df3f1182e63b0f1bc4724294571ad58696a8759f2d8b07e839d9c53a65"
+        },
+        {
+          "path": "server/tests/security/test_promotion.py",
+          "before_sha256": "1b1b340616b436de6148a903603fa926de25f735d88b1faabcf1a7b71737d344",
+          "sha256": "68baeaf651b8d702004b517a21c1aa942baee1965c52ca3ed41b08bc7559d5e4"
+        },
+        {
+          "path": "server/tests/security/test_resumable_upload.py",
+          "before_sha256": "c4aa646f9313d95cc4a61243ef997fd400ebabaa023727e9958c37d69b884415",
+          "sha256": "47a6d6e6ec27a25a965021114f4a3a887c239ddff04459c6bd23f07c12e3a3d2"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "77a8f6a637416fea3a5aca8a09e03f534e0d4a6bfebeb9eef7691fc0bd00abad",
+          "sha256": "2dfd7504fa03b65c24ac05f8e98a7f720d1f86c1e7cc1b7273a049ee1f21c5ee"
+        }
+      ],
+      "notes": "Preserves both upload-lock regression cohorts, the current search/deletion guards and the new gallery/preparation API. No runtime or publication change."
     }
   ]
 }

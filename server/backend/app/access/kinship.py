@@ -278,8 +278,66 @@ class KinshipGraph:
         pattern = re.compile(r'(?:(?:' + anchors + connector + r'|my\s+|our\s+|我的?|我们的?))?'
                              + relative + '(?:' + connector + relative + '){0,5}', re.IGNORECASE)
         direct = re.compile(anchors, re.IGNORECASE)
-        spans = []; targets = set(); ambiguous = False; previous_end = 0; parent = None
+        targets = set(); ambiguous = False; previous_end = 0; parent = None
+        spans = []; companion_matches = []
+
+        # A named antecedent gives the relative phrase its own explicit
+        # perspective. Selector-only nicknames such as "Dad" cannot serve as
+        # proper-name anchors, and a missing edge never falls back to the
+        # graph's configured perspective.
+        proper_names = {name for name in self._names if folded(name) not in SELECTORS}
+        parent_names = {name for name, (paths, plural) in SELECTORS.items()
+                        if not plural and len(paths) == 1 and len(paths[0]) == 1
+                        and paths[0][0] in ('mother', 'father')}
+        if proper_names and parent_names:
+            named = atom(proper_names)
+            parent_selector = atom(parent_names)
+            companion = re.compile(
+                r'(?P<anchor>' + named + r')\s*'
+                r'(?P<join>(?:(?a:\b)(?:with|and)(?a:\b)|和|跟|与))\s*'
+                r'(?P<pronoun>(?:(?a:\b)(?:her|his)(?a:\b)|她|他))'
+                r'\s*(?:的\s*)?(?P<parent>' + parent_selector + r')', re.IGNORECASE)
+            direct_proper = re.compile(named, re.IGNORECASE)
+            companion_matches = list(companion.finditer(words))
+            companion_anchor_ids = set()
+            for match in companion_matches:
+                anchor_ids = set(self._names.get(folded(match.group('anchor')), ()))
+                companion_anchor_ids.update(anchor_ids)
+                targets.update(anchor_ids)
+                if len(anchor_ids) != 1:
+                    ambiguous = True
+                    parent_ids = set()
+                else:
+                    paths = SELECTORS[folded(match.group('parent'))][0]
+                    parent_ids = self._apply(anchor_ids, paths)
+                    if len(parent_ids) != 1:
+                        ambiguous = True
+                targets.update(parent_ids)
+                # Keep the connector in the residue for the ordinary query
+                # planner; removing only the identity-bearing spans preserves
+                # its all-people conjunction semantics and other conditions.
+                spans.extend((
+                    match.span('anchor'),
+                    (match.start('pronoun'), match.end('parent')),
+                ))
+            if companion_matches:
+                # A companion phrase is scoped to one explicitly named
+                # antecedent. Even if every relative path is individually
+                # valid, two named anchors do not have a safe joint reading.
+                if len(companion_anchor_ids) != 1:
+                    ambiguous = True
+                named_spans = [match.span('anchor') for match in companion_matches]
+                for match in direct_proper.finditer(words):
+                    if not any(start <= match.start() and match.end() <= end
+                               for start, end in named_spans):
+                        ambiguous = True
         for match in pattern.finditer(words):
+            if any(start < match.end() and match.start() < end for start, end in spans): continue
+            # A second kinship mention after a named companion needs an
+            # explicit scoped chain rule. Do not silently resolve it from the
+            # configured graph center (or inherit through an unmodeled join).
+            if companion_matches:
+                ambiguous = True
             phrase = match.group(0)
             inherited = parent if re.fullmatch(r'\s*(?:and|or|和|与|及|或|、|，|,)\s*',
                                                words[previous_end:match.start()], re.IGNORECASE) else None
@@ -295,7 +353,8 @@ class KinshipGraph:
             result = self._names.get(folded(match.group(0)), set())
             ambiguous |= len(result) != 1; targets.update(result)
             spans.append((match.start(), match.end()))
-        return targets, [words[start:end] for start, end in sorted(spans)], bool(ambiguous)
+        ordered_phrases = [words[start:end] for start, end in sorted(spans)]
+        return targets, ordered_phrases, bool(ambiguous)
 
 
 def load_private_graph(path, source_root):

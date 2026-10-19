@@ -166,6 +166,56 @@ class PromotionTests(unittest.TestCase):
         # The incoming copy is gone, so nothing is left behind to be reviewed twice.
         self.assertEqual(list(self.incoming.rglob('*.png')), [])
 
+    def test_promotion_carries_deletion_guard_and_can_defer_starter_release(self):
+        uploaded = self.upload()
+        asset_id = int(uploaded['asset_id'])
+        envelope = self.planned('promote', library_id='family-a',
+                                operator_account_id=self.owner_id, asset_ids=[asset_id])
+        namespace = '00000000-0000-4000-8000-000000000001'
+        marker = (namespace, 0, '0' * 64)
+        self.mutate('INSERT INTO access_original_deletion_state VALUES (1,?,?,?)', marker)
+
+        class Guard:
+            calls = 0
+            def assert_current(self, connection):
+                if tuple(connection.execute('''SELECT namespace,applied_seq,applied_digest
+                        FROM access_original_deletion_state WHERE id=1''').fetchone()) != marker:
+                    raise RuntimeError('synthetic deletion marker mismatch')
+                self.calls += 1
+
+        guard = Guard()
+        receipt = promote_and_assign(envelope,
+            review=self.review(envelope, original_deletions=guard), clock=lambda: NOW,
+            release_starters=False)
+        self.assertGreater(guard.calls, 0)
+        self.assertTrue(receipt['processing_deferred'])
+        self.assertEqual(self.rows("SELECT count(*) FROM tasks WHERE state='awaiting_review'")[0][0], 5)
+        self.assertEqual(self.rows("SELECT count(*) FROM tasks WHERE state='pending'")[0][0], 0)
+
+    def test_reassignment_carries_deletion_guard(self):
+        self.mutate("INSERT INTO access_libraries(id,state,bootstrap_operator) VALUES ('documents','active',?)",
+                    (self.owner_id,))
+        self.mutate('''INSERT INTO access_memberships
+            (account_id,library_id,status,role,revision,expires_at,originals,approved_by)
+            VALUES (?,'documents','approved','owner',1,NULL,0,?)''', (self.owner_id, self.owner_id))
+        envelope = self.planned('reassign', library_id='documents',
+                                operator_account_id=self.owner_id, asset_ids=[900])
+        namespace = '00000000-0000-4000-8000-000000000001'
+        marker = (namespace, 0, '0' * 64)
+        self.mutate('INSERT INTO access_original_deletion_state VALUES (1,?,?,?)', marker)
+        class Guard:
+            calls = 0
+            def assert_current(self, connection):
+                if tuple(connection.execute('''SELECT namespace,applied_seq,applied_digest
+                        FROM access_original_deletion_state WHERE id=1''').fetchone()) != marker:
+                    raise RuntimeError('synthetic deletion marker mismatch')
+                self.calls += 1
+        guard = Guard()
+        result = reassign_assets(envelope,
+            review=self.review(envelope, original_deletions=guard), clock=lambda: NOW)
+        self.assertGreater(guard.calls, 0)
+        self.assertEqual(result['asset_count'], 1)
+
     def test_expired_promotion_after_move_restores_file_and_rows(self):
         uploaded = self.upload()
         asset_id = int(uploaded['asset_id'])

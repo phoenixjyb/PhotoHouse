@@ -75,6 +75,18 @@ class RefreshingPlaceIndex(ProjectedIndex):
     refresh_policy: str = 'current-library-regions-v1'
 
 
+@dataclass(frozen=True)
+class RefreshingPeopleIndex(ProjectedIndex):
+    """Current scope/regions with a frozen, explicitly reviewed identity layer.
+
+    Faces are never discovered or promoted at request time. Identity changes and
+    withdrawn assignments require a new review; uploads alone need no rebuild.
+    """
+    region_rules: tuple[RegionRule, ...] = ()
+    refresh_policy: str = 'current-library-reviewed-people-v1'
+    catalog_digest: str = ''
+
+
 class IndexProvider(Protocol):
     def get(self, library_id: str) -> ReviewedIndex | None: ...
 
@@ -82,7 +94,7 @@ class IndexProvider(Protocol):
 class MemoryIndexProvider:
     """Construction supplies already-reviewed internal inputs; no automatic discovery."""
     def __init__(self, indexes: tuple[ReviewedIndex, ...]):
-        if type(indexes) is not tuple or any(type(i) not in (ReviewedIndex, ProjectedIndex, RefreshingPlaceIndex) for i in indexes):
+        if type(indexes) is not tuple or any(type(i) not in (ReviewedIndex, ProjectedIndex, RefreshingPlaceIndex, RefreshingPeopleIndex) for i in indexes):
             raise ValueError('Explicit reviewed indexes required')
         if len(indexes) > 32 or len({i.library_id for i in indexes}) != len(indexes):
             raise ValueError('Bounded unique library indexes required')

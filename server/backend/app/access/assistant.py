@@ -52,6 +52,36 @@ BARE_FOLLOWUP = re.compile(
     r'(?:last year|this year))(?:呢)?[。！？.!?]*', re.IGNORECASE)
 
 
+def _search_clarification_guidance(enabled, lang):
+    """Describe only capabilities in the current authorized search snapshot."""
+    if {'people', 'date', 'tags', 'locations', 'text'} <= set(enabled):
+        return ('有些细节还无法匹配。请发送完整查找句，例如：找包含“红风筝”的照片。'
+                '如需限定人物、拍摄日期、标签或地点，也请在完整句中写明；未匹配的条件不会被忽略。'
+                if lang == 'zh' else
+                'Some details could not be matched. Send the complete query, for example: find photos '
+                'containing "red kite". Add any reviewed person, capture date, tag, or place you need; '
+                'unmatched conditions are not dropped.')
+    labels = (
+        ('people', '已登记人物', 'reviewed people'),
+        ('date', '已记录的拍摄日期', 'recorded capture dates'),
+        ('locations', '已登记地点', 'reviewed places'),
+        ('tags', '已登记标签', 'reviewed tags'),
+        ('media', '照片或视频类型', 'photo or video type'),
+        ('text', '已有说明或照片留言中的引号文字', 'quoted caption or photo-memory text'),
+        ('descriptive', '场景描述线索', 'scene description clues'),
+    )
+    available = [zh if lang == 'zh' else en for key, zh, en in labels if key in enabled]
+    reply = ('有些条件还未匹配，本次未执行新的查找；这些条件没有被忽略。' if lang == 'zh' else
+             'Some requested details could not be matched. No new search was run, and no conditions were dropped.')
+    if 'people' not in enabled:
+        reply += (' 当前相册库尚未启用人物检索。按姓名或亲属关系查找前，需要相册库主人确认人物资料并启用检索。' if lang == 'zh' else
+                  ' People search is not enabled in this library. Its owner must review and enable people data before names or family relationships can filter results.')
+    if available:
+        reply += (' 当前可用条件：' + '、'.join(available) + '。' if lang == 'zh' else
+                  ' Available search conditions: ' + ', '.join(available) + '.')
+    return reply
+
+
 class AssistantInvalid(ValueError):
     pass
 
@@ -791,13 +821,17 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 plan = QueryPlan(plan.version, 'ready',
                                  dict(plan.filters, date=continuation['date']))
         if plan.status != 'ready':
-            reply = ('有些细节还无法匹配。请发送完整查找句，例如：找包含“红风筝”的照片。'
-                     '如需限定人物、拍摄日期、标签或地点，也请在完整句中写明；未匹配的条件不会被忽略。'
-                     if lang == 'zh' else
-                     'Some details could not be matched. Send the complete query, for example: find photos '
-                     'containing "red kite". Add any reviewed person, capture date, tag, or place you need; '
-                     'unmatched conditions are not dropped.')
-            if plan.reason in ('ambiguous_date_entity', 'ambiguous_media_entity'):
+            reply = _search_clarification_guidance(enabled, lang)
+            if 'people' not in enabled and plan.reason in (
+                    'ambiguous_date_entity', 'ambiguous_media_entity',
+                    'ambiguous_entities', 'ambiguous_people', 'ambiguous',
+                    'people_reference_unavailable', 'ambiguous_people_reference',
+                    'ambiguous_people_answer', 'conflicting_people_reference'):
+                # A private relationship graph can recognize a mention even
+                # while its reviewed people index is unavailable. Asking for
+                # another name cannot make that disabled facet usable.
+                reply = _search_clarification_guidance(enabled, lang)
+            elif plan.reason in ('ambiguous_date_entity', 'ambiguous_media_entity'):
                 reply = ('有个词既可能是已登记的名称，也可能是日期或媒体类型。请补充完整名称，或明确日期和类型。'
                          if lang == 'zh' else
                          'A word could mean a reviewed name or a date/media type. Use the full name or specify the date and type.')
@@ -874,6 +908,17 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'text_too_long':
                 reply = ('要匹配的文字太长，请缩短引号内的内容后再查找。' if lang == 'zh' else
                          'The quoted text is too long. Shorten it and search again.')
+            elif plan.reason in ('people_unavailable', 'tags_unavailable', 'locations_unavailable', 'text_unavailable'):
+                unavailable = {
+                    'people_unavailable': ('人物', 'People'),
+                    'tags_unavailable': ('标签', 'Tag'),
+                    'locations_unavailable': ('地点', 'Place'),
+                    'text_unavailable': ('文字', 'Text'),
+                }[plan.reason]
+                reply = _search_clarification_guidance(enabled, lang)
+                if plan.reason != 'people_unavailable':
+                    reply = (f'当前相册库尚未启用{unavailable[0]}检索。' if lang == 'zh' else
+                             f'{unavailable[1]} search is not enabled in this library.') + ' ' + reply
             elif plan.reason in ('intent_date', 'intent_person', 'intent_description', 'intent_scope'):
                 replies = {
                     'intent_date': ('大概是哪一年或哪几个月？请在这次查找中补充时间。',
@@ -885,17 +930,31 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                     'intent_scope': ('这次要继续缩小当前结果，还是开始一次新的查找？',
                                      'Would you like to refine these results or start a new search?'),
                 }
-                reply = replies[plan.reason][0 if lang == 'zh' else 1]
+                if plan.reason == 'intent_person' and 'people' not in enabled:
+                    reply = _search_clarification_guidance(enabled, lang)
+                elif plan.reason == 'intent_date' and 'date' not in enabled:
+                    reply = ('当前相册库尚未启用日期检索。' if lang == 'zh' else
+                             'Date search is not enabled in this library.') + ' ' + _search_clarification_guidance(enabled, lang)
+                elif plan.reason == 'intent_description' and not {'people', 'date', 'tags', 'locations'} <= enabled:
+                    if 'descriptive' in enabled:
+                        reply = ('当时在做什么？有什么醒目的物品？请补充场景线索。' if lang == 'zh' else
+                                 'What was happening, and what distinctive object should I look for? Add a scene clue.')
+                    else:
+                        reply = ('请用引号提供需要匹配的说明或照片留言原文。' if lang == 'zh' else
+                                 'Quote the caption or photo-memory words you want to match.')
+                    reply += ' ' + _search_clarification_guidance(enabled, lang)
+                else:
+                    reply = replies[plan.reason][0 if lang == 'zh' else 1]
             elif plan.reason == 'intent_unavailable':
-                reply = ('可以按相册库已登记姓名、拍摄日期或带引号的照片说明原文查找，例如：找包含“红风筝”的照片。' if lang == 'zh' else
-                         'Try searching by a reviewed person, capture date, or quoted caption text, for example: '
-                         'find photos containing "red kite".')
+                if {'people', 'date', 'text'} <= enabled:
+                    reply = ('可以按相册库已登记姓名、拍摄日期或带引号的照片说明原文查找，例如：找包含“红风筝”的照片。' if lang == 'zh' else
+                             'Try searching by a reviewed person, capture date, or quoted caption text, for example: '
+                             'find photos containing "red kite".')
+                else:
+                    reply = _search_clarification_guidance(enabled, lang)
             elif plan.reason in ('unsupported_action', 'intent_unsupported_action'):
                 reply = ('这里可以查找已有照片和视频。请把修改、分享或拍摄请求分开处理。' if lang == 'zh' else
                          'This search finds existing photos and videos. Handle changes, sharing or capture separately.')
-            elif 'people' not in enabled:
-                reply += (' 当前相册库尚未启用人物检索；未识别的条件不会被忽略。' if lang == 'zh' else
-                          ' People search is not enabled in this library. Unmatched details were not ignored.')
             return {'version': 1, 'kind': 'unsupported' if plan.status == 'unsupported' else 'clarification', 'reply': reply,
                     'context': previous, 'filters': previous['filters'] if previous else None,
                     'items': existing['items'] if existing else [], 'total': existing['total'] if existing else 0,

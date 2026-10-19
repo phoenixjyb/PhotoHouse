@@ -2739,3 +2739,39 @@ illustrations and text. Desktop, 390 px and 320 px Edge journeys with synthetic
 original quotes and explicit demo confirmation; zero external requests/page
 errors. Normal/enlarged renders were inspected. The prototype is outside the
 frozen source/archive/APK and does not implement or activate an app workflow.
+
+## Journal-guarded ownership repair
+
+The offline person ownership repair can explicitly select the primary database's
+existing original-deletion journal and namespace. The selected journal is opened
+read-only, and its file identity, verified head and primary marker are retained
+through backup review, fresh disk restore and transactional application. The
+opaque cross-command review digest binds that context. This does not initialize
+or replay history, change the supported production schema, stop services, or
+activate people/kinship search. See
+[the operator contract](OWNERSHIP_REPAIR_JOURNAL_GUARD.md) for the exact scope and
+separate provenance, audience and maintenance decisions.
+
+Run the focused source checks from the repository root:
+
+```sh
+PYTHONPATH=server:server/backend:server/tests/security python3 -B -m unittest \
+  test_provisioning_deletion_guard test_operator_deletion_guard \
+  test_suppressed_ownership_repair test_operator_cli \
+  test_original_deletions test_owner_recovery
+python3 tools/verify_current_source.py
+```
+
+Repair fixtures migrate to the operation's exact supported revision using the
+actual Alembic chain. The ordinary gallery fixture still defaults to the current
+head. Synthetic success does not establish a native repair or family search
+acceptance; a private-copy rehearsal does not authorize a live apply.
+
+
+### Reviewed family-search preparation boundary
+
+The API profile includes the generated three-person bilingual search journeys
+and both reviewed-people operator CLIs' deletion-history refusal checks. See
+[reviewed people refresh](REFRESHING_REVIEWED_PEOPLE_SEARCH.md#deletion-history-during-offline-preparation)
+for paired journal arguments and source-bound preparation. Candidate generation
+does not activate a runtime, enlarge reviewed face coverage or reactivate media.

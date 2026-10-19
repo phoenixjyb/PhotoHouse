@@ -16,14 +16,16 @@ sys.path.insert(0, str(Path(__file__).parent))
 import test_library_reads as fixtures
 from app.access.provisioning import PlanRejected, ProvisioningPlanner, LIFETIME
 from app.access.provisioning_apply import apply_reviewed, plan_digest, review_backup
-from app.access.runtime import ExistingDatabase, RuntimeUnavailable
+from app.access.runtime import ExistingDatabase, RuntimeUnavailable, REQUIRED_REVISION
 from test_access_foundation import NOW
 
 
 class SuppressedOwnershipRepairTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        fixtures.LibraryReadTests.setUpClass()
+        # Rehearse the exact supported schema with real migrations, rather than
+        # relabeling a newer schema whose ownership contract was not reviewed.
+        fixtures.LibraryReadTests.setUpClass(migration_target=REQUIRED_REVISION)
 
     @classmethod
     def tearDownClass(cls):

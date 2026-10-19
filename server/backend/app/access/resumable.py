@@ -28,15 +28,21 @@ HEX32 = re.compile('[0-9a-f]{32}')
 HEX64 = re.compile('[0-9a-f]{64}')
 
 
+def _is_windows():
+    return os.name == 'nt'
+
+
 def _acquire_windows_byte_lock(fd, msvcrt):
-    if os.fstat(fd).st_size == 0: os.write(fd, b'0')
+    if os.fstat(fd).st_size == 0:
+        os.write(fd, b'0')
     os.lseek(fd, 0, 0)
     try:
         msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
     except OSError as exc:
-        # The Windows CRT documents EACCES for LK_NBLCK when another process
-        # owns the byte. Limit that translation to the locking call itself.
-        if exc.errno == errno.EACCES: raise BlockingIOError() from None
+        # The Windows CRT reports EACCES when LK_NBLCK finds another owner.
+        # Normalize only that lock call; unrelated filesystem errors stay visible.
+        if exc.errno == errno.EACCES:
+            raise BlockingIOError() from None
         raise
 
 
@@ -203,22 +209,24 @@ class Transfers:
         locked=False
         try:
             if not stat.S_ISREG(os.fstat(fd).st_mode) or path.resolve()!=path: raise OSError('Invalid lock')
-            if os.name=='nt':
+            if _is_windows():
                 import msvcrt
                 try:
                     _acquire_windows_byte_lock(fd, msvcrt)
-                except BlockingIOError: raise TransportError(429,'Upload busy') from None
+                except BlockingIOError:
+                    raise TransportError(429,'Upload busy') from None
             else:
                 import fcntl
                 try:
                     fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
-                except BlockingIOError: raise TransportError(429,'Upload busy') from None
+                except BlockingIOError:
+                    raise TransportError(429,'Upload busy') from None
             locked=True
             yield root/(identifier+'.part')
         finally:
             try:
                 if locked:
-                    if os.name=='nt':
+                    if _is_windows():
                         os.lseek(fd,0,0);msvcrt.locking(fd,msvcrt.LK_UNLCK,1)
                     else: fcntl.flock(fd,fcntl.LOCK_UN)
             finally:

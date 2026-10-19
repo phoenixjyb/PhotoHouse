@@ -15,6 +15,13 @@ else:
 ROOT = Path(__file__).resolve().parents[1]
 API_TESTS = (
     "test_discovery_text_validation.py",
+    "test_refreshing_people.py", "test_refreshing_people_http.py",
+    "test_reviewed_people_readiness.py",
+    "test_reviewed_people_deletion_guard.py", "test_reviewed_family_search_journeys.py",
+    "test_named_kinship_companion.py",
+    "test_provisioning_deletion_guard.py", "test_operator_deletion_guard.py",
+    "test_suppressed_ownership_repair.py",
+    "test_assistant_capability_guidance.py",
     "test_search_readiness.py", "test_search_evaluation.py", "test_private_search_cli.py",
     "test_assistant_query_plan.py", "test_search_text.py", "test_search_turn_projection.py", "test_search_refinement.py", "test_search_explanation.py",
     "test_search_description.py", "test_descriptive_search.py", "test_search_intent.py", "test_search_intent_clue_addition.py", "test_search_intent_local.py", "test_assistant_intent_search.py", "test_assistant_description_clarification.py", "test_search_intent_canary.py",

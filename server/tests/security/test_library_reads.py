@@ -26,13 +26,13 @@ from test_access_foundation import OWNER, OTHER_OWNER, MEMBER, PASSWORD, NOW
 
 class LibraryReadTests(unittest.TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls, migration_target='head'):
         cls.directory = tempfile.TemporaryDirectory(prefix='photohouse-gallery-template-')
         path = Path(cls.directory.name) / 'synthetic.sqlite'
         engine = create_engine('sqlite:///' + str(path))
         with engine.begin() as connection:
             cfg = config(); cfg.attributes['connection'] = connection
-            command.upgrade(cfg, 'head')
+            command.upgrade(cfg, migration_target)
         engine.dispose()
         cls.template = sqlite3.connect(path)
         cls.template.execute('PRAGMA foreign_keys=ON')

@@ -6,7 +6,8 @@ person or deleting data, and never reset another constraint implicitly.
 import re
 
 from . import discovery as d
-from .assistant_query_plan import QueryPlan, plan_query as _plan_query, query_mode as _query_mode
+from .assistant_query_plan import (QueryPlan, plan_query as _plan_query,
+                                   query_mode as _query_mode, _SEARCH_OPEN, _MEDIA)
 from .assistant_query_plan import _QUOTE, _consumed_label, _remove_occurrences
 
 
@@ -47,6 +48,10 @@ _PEOPLE_REFERENCES = re.compile('|'.join(
 _JOIN = r'(?:and(?![a-z0-9_])|和)'
 _PEOPLE_ANSWER_RELATIONS = re.compile(
     r'(?<![a-z0-9_])(?:and|or|both|together)(?![a-z0-9_])|和|与|及|或者|或|一起|同时', re.I)
+_NAMED_PARENT_COMPANION = re.compile(
+    r'(?P<anchor>.+?)\s*(?P<join>(?:(?a:\b)(?:with|and)(?a:\b)|和|跟|与))\s*'
+    r'(?P<pronoun>(?:(?a:\b)(?:her|his)(?a:\b)|她|他))\s*(?:的\s*)?'
+    r'(?P<parent>(?:(?a:\b)(?:mom|mother|dad|father)(?a:\b)|妈妈|爸爸))', re.I)
 
 _CORRECTION_INTRO = re.compile(
     r'^(?:(?:no(?:\s*[,，:：]\s*|\s+))?i\s+meant(?a:\b)|'
@@ -215,6 +220,8 @@ def query_mode(words):
         return 'refine'
     operations = _operations(words)
     if operations[3]:
+        if _named_parent_companion_search(words, operations):
+            return 'search'
         return 'refine'
     mode = _query_mode(words)
     if mode is not None:
@@ -222,6 +229,40 @@ def query_mode(words):
     # An explicit removal is a read-only refinement. Unknown residue is still
     # validated by plan_query; detecting a command does not authorize a guess.
     return 'refine' if operations[2] else None
+
+
+def _named_parent_companion_search(words, operations):
+    """Classify only explicit fresh searches with named possessive parents.
+
+    This routing exception never resolves an identity. The request-time graph
+    resolver still requires one exact proper-name anchor and reviewed parent;
+    query planning still validates every remaining source span.
+    """
+    if _query_mode(words) != 'search' or operations[2]:
+        return False
+    surface, _, _, references = operations
+    if not references or any(kind != 'singular' for _, _, kind in references):
+        return False
+    outside_quotes = _QUOTE.sub(lambda match: ' ' * len(match.group(0)), surface)
+    matches = list(_NAMED_PARENT_COMPANION.finditer(outside_quotes))
+    if not matches:
+        return False
+    for start, end, kind in references:
+        if not any(kind == 'singular' and match.span('pronoun') == (start, end)
+                   for match in matches):
+            return False
+    for match in matches:
+        anchor = _SEARCH_OPEN.sub(lambda opening: ' ' * len(opening.group(0)),
+                                  match.group('anchor'), count=1)
+        for _, media in _MEDIA:
+            anchor = media.sub(lambda item: ' ' * len(item.group(0)), anchor)
+        anchor = re.sub(
+            r'(?a:\b)(?:the|a|an|of|in|on|at|by|from|during|taken|please|me|for)(?a:\b)|'
+            r'请|麻烦|帮忙|帮我|替我|我想|一下|的|那些|一些|里面|有关|关于|在|于|呢|吗|'
+            r'[\s。！？.!?、，,：:]+', ' ', anchor, flags=re.I)
+        if not anchor.strip():
+            return False
+    return True
 
 
 def plan_query(words, *, now, entities, previous_filters, refine):
@@ -233,6 +274,12 @@ def plan_query(words, *, now, entities, previous_filters, refine):
         return _plan_correction(words, correction, now=now, entities=entities,
                                 previous_filters=previous_filters, refine=refine)
     surface, residue, removed, references = _operations(words)
+    if _named_parent_companion_search(words, (surface, residue, removed, references)):
+        # The pronoun is part of this explicit named-parent condition, not a
+        # continuation reference. Keep the original spans intact and let the
+        # ordinary hard-condition planner validate the complete query.
+        return _plan_query(words, now=now, entities=entities,
+                           previous_filters=previous_filters, refine=refine)
     if not removed and not references:
         return _plan_query(words, now=now, entities=entities,
                            previous_filters=previous_filters, refine=refine)
