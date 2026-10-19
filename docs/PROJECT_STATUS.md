@@ -2,8 +2,8 @@
 
 ## October 19 development candidate
 
-[Similar-photo stacks](SIMILAR_PHOTO_STACKS.md) are being qualified in source for
-the protected gallery, Web and phone. Grouping is page-local and reversible;
+[Similar-photo stacks](SIMILAR_PHOTO_STACKS.md) passed local backend, generated
+Web and 60 focused Android JVM checks for the protected gallery. Grouping is page-local and reversible;
 search/story result views and originals are unchanged. This is distinct from
 editorial shared-memory groups and does not enable those groups or any model.
 The companion account-owned upload-preparation endpoint is source work; client

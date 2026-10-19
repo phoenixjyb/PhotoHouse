@@ -115,6 +115,10 @@ including keyboard focus after rerender, lowest-ID member separation,
 cover selection, full viewer navigation, invalid/unsupported metadata and
 late library responses. Chinese/English phone and desktop screenshots were
 inspected, including enlarged phone text and a generated valid cover image.
+The focused Android cohort passed 60 JVM tests: four parser, eight gallery-store,
+40 HTTPS and eight existing recovery cases, with zero failures/errors/skips.
+The connected-app TLS/persistence boundary verifier also passed. These are
+focused source checks rather than the complete Android/hosted CI profiles.
 
 These results use temporary generated data. They do not establish family-photo
 similarity quality, hosted CI, a Windows rollout or a signed phone release.
