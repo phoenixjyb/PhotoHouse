@@ -47,6 +47,14 @@ class AssistantDescriptionClarificationTests(unittest.TestCase):
         for phrase in required:
             self.assertIn(phrase, reply.casefold())
 
+    def assert_continuation_guidance(self, reply, chinese=False):
+        required = (('醒目的物品或地点', '只回复一条带引号', '当前人物、日期和媒体条件会保留')
+                    if chinese else
+                    ('distinctive object or place', 'one quoted scene or caption clue',
+                     'current person, date, and media filters will stay in place'))
+        for phrase in required:
+            self.assertIn(phrase, reply.casefold())
+
     def assert_complete_query_example(self, reply, chinese=False):
         required = (('完整查找句', '找包含“红风筝”的照片', '人物、拍摄日期、标签或地点',
                      '未匹配的条件不会被忽略')
@@ -92,7 +100,7 @@ class AssistantDescriptionClarificationTests(unittest.TestCase):
                 result = envelope['result']
                 self.assertEqual(set(result), expected_result_keys)
                 self.assertEqual((result['version'], result['kind']), (3, 'clarification'))
-                self.assert_description_guidance(result['reply'], chinese)
+                self.assert_continuation_guidance(result['reply'], chinese)
                 self.assertEqual(result['context'], initial['context'])
                 self.assertEqual(result['filters'], initial['filters'])
                 self.assertEqual(result['items'], initial['items'])

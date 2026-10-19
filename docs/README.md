@@ -87,3 +87,9 @@ these documents. Use the exact current operation scope and preserved rollback pl
   bounded section/receipt contract and remaining withdrawal/transport gates.
 
 - [Private story draft save/resume contract](STORY_DRAFT_RESUME.md): encrypted device-local creation drafts, fresh access/evidence and exact uncertain-save recovery.
+
+Search quality and runtime preparation:
+
+- [Private quality scorecard](SEARCH_QUALITY_SCORECARD.md): language cohorts, relevance labels and measurement limits.
+- [Description clarification continuations](SEARCH_DESCRIPTION_CONTINUATIONS.md): retained search conditions and bounded answers.
+- [Semantic runtime configuration](SEMANTIC_RUNTIME_CONFIGURATION.md): explicit opt-in, private credentials and qualification boundaries.

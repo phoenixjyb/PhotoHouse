@@ -32,6 +32,7 @@ OPTIONAL_FIELDS = {'incoming_root', 'discovery_indexes', 'upload_review_enabled'
                    'assistant_kinship_path',
                    'assistant_intent_url', 'assistant_intent_model',
                    'assistant_intent_timeout_seconds',
+                   'semantic_configuration_path', 'assistant_semantic_search_enabled',
                    'assistant_reply_speech_enabled',
                    'assistant_saved_memory_cards_enabled',
                    'assistant_asr_timeout_seconds', 'assistant_tts_timeout_seconds',
@@ -107,6 +108,8 @@ class StagingConfiguration:
     assistant_intent_url: str | None = None
     assistant_intent_model: str | None = None
     assistant_intent_timeout_seconds: float = 20
+    semantic_configuration_path: Path | None = None
+    assistant_semantic_search_enabled: bool = False
 
     def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
         """Project private provider settings explicitly without constructing the app."""
@@ -272,6 +275,15 @@ class StagingConfiguration:
                 raise InvalidConfiguration()
             if type(self.assistant_saved_memory_cards_enabled) is not bool:
                 raise InvalidConfiguration()
+            if type(self.assistant_semantic_search_enabled) is not bool:
+                raise InvalidConfiguration()
+            if (self.semantic_configuration_path is not None and
+                    not self.assistant_semantic_search_enabled):
+                raise InvalidConfiguration()
+            if self.assistant_semantic_search_enabled and (
+                    not self.assistant_enabled or self.assistant_workspace_path is None or
+                    not self.discovery_indexes or self.semantic_configuration_path is None):
+                raise InvalidConfiguration()
             for timeout in (self.assistant_asr_timeout_seconds, self.assistant_tts_timeout_seconds):
                 if type(timeout) not in (int, float) or not 0 < timeout <= 60:
                     raise InvalidConfiguration()
@@ -416,6 +428,8 @@ class StagingConfiguration:
             assistant_intent_url=self.assistant_intent_url,
             assistant_intent_model=self.assistant_intent_model,
             assistant_intent_timeout_seconds=self.assistant_intent_timeout_seconds,
+            semantic_configuration_path=self.semantic_configuration_path,
+            assistant_semantic_search_enabled=self.assistant_semantic_search_enabled,
             update_root=self.update_root,
             memory_groups_enabled=self.memory_groups_enabled,
             memory_group_vectors=memory_group_vectors)
@@ -490,6 +504,8 @@ def parse_configuration(value):
             assistant_intent_url=value.get('assistant_intent_url'),
             assistant_intent_model=value.get('assistant_intent_model'),
             assistant_intent_timeout_seconds=value.get('assistant_intent_timeout_seconds', 20),
+            semantic_configuration_path=_path(value['semantic_configuration_path']) if value.get('semantic_configuration_path') is not None else None,
+            assistant_semantic_search_enabled=value.get('assistant_semantic_search_enabled', False),
             update_root=None if value.get('update_root') is None else _path(value['update_root']),
             memory_groups_enabled=value.get('memory_groups_enabled', False),
             memory_group_vector_root=None if vector_root_value is None else _path(vector_root_value),
@@ -525,13 +541,19 @@ def load_configuration(path):
                     *config.discovery_indexes, *((config.assistant_workspace_path,)
                                                    if config.assistant_workspace_path else ()),
                     *((config.assistant_kinship_path,)
-                      if config.assistant_kinship_path else ())):
+                      if config.assistant_kinship_path else ()),
+                    *((config.semantic_configuration_path,)
+                      if config.semantic_configuration_path else ())):
             raise InvalidConfiguration()
         if config.update_root is not None and path.is_relative_to(config.update_root):
             raise InvalidConfiguration()
         if (config.assistant_workspace_path is not None and
                 (path.is_relative_to(config.assistant_workspace_path) or
                  config.assistant_workspace_path.is_relative_to(path))):
+            raise InvalidConfiguration()
+        if (config.semantic_configuration_path is not None and config.assistant_workspace_path is not None and
+                (config.semantic_configuration_path.is_relative_to(config.assistant_workspace_path)
+                 or config.assistant_workspace_path.is_relative_to(config.semantic_configuration_path))):
             raise InvalidConfiguration()
         if (config.assistant_kinship_path is not None and
                 (path.is_relative_to(config.assistant_kinship_path) or

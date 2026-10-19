@@ -843,7 +843,8 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
     from .assistant_search import SearchRuntime
     from .search_intent import intent_mode, _strong_content_cue_before
     from .search_refinement import plan_query as plan_deterministic, query_mode
-    from .search_pending import (current_pending, find_date_slot, make_pending,
+    from .search_pending import (current_pending, description_context_digest,
+                                 find_date_slot, make_description_pending, make_pending,
                                  resolve_date_answer)
 
     if (type(previous) is dict and previous.get('search_version') == 4 and
@@ -881,8 +882,56 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
                 'context': None, 'filters': None, 'items': [], 'total': 0,
                 'has_more': False, 'effect': None, 'interpretation': interpretation}
 
+    def description_question(state, *, expired=False, keep_context=True):
+        if keep_context and previous is not None:
+            existing = assistant_engine._context_result(engine, token, library, previous)
+            binding = previous['binding']
+        else:
+            existing = None
+            binding = state['binding'] if state else None
+        presentation = engine.call('presentation', token, library, lambda: False,
+                                   {'binding': binding} if binding else {})
+        interpretation = {key: value for key, value in presentation.items() if key != 'version'}
+        interpretation.update(people=[], tags=[], locations=[])
+        if expired:
+            reply = ('这次补充场景线索的等待已过期，请重新发送完整查找条件。' if lang == 'zh' else
+                     'The scene-clue question has expired. Please send the complete search again.')
+        else:
+            reply = ('请只回复一条带引号的场景或说明线索；当前人物、日期和媒体条件会保留。' if lang == 'zh' else
+                     'Reply with one quoted scene or caption clue; the current person, date, and media filters will stay in place.')
+        context = previous if existing is not None else None
+        return {'version': 3, 'kind': 'clarification', 'reply': reply,
+                'context': context,
+                'filters': context['filters'] if context else None,
+                'items': existing['items'] if existing else [],
+                'total': existing['total'] if existing else 0,
+                'has_more': existing['has_more'] if existing else False,
+                'effect': None, 'interpretation': interpretation}
+
     if pending_intent is not None and not new_search:
         state = current_pending(pending_intent, stamp)
+        if pending_intent.get('question') == 'description':
+            if state is None:
+                return description_question(pending_intent, expired=True,
+                                            keep_context=previous is not None), None
+            if (previous is None or previous.get('search_version') != 3 or
+                    previous.get('binding') != state['binding']):
+                raise assistant_engine.AssistantChanged()
+            try:
+                context_matches = description_context_digest(previous) == state['context_digest']
+            except ValueError:
+                context_matches = False
+            if not context_matches:
+                raise assistant_engine.AssistantChanged()
+            clue = _quoted_description_answer(words)
+            if clue is None:
+                return description_question(state), state
+            synthetic = f'also add {clue} clue'
+            result = assistant_engine._turn(engine, token, library, synthetic, previous,
+                clock, language=language,
+                continuation={'binding': state['binding'],
+                              'context_digest': state['context_digest']})
+            return result, state if result['kind'] != 'results' else None
         if state is None:
             return question(None, expired=True), None
         entities = engine.call('entities', token, library, lambda: False,
@@ -930,8 +979,41 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
         if slot is not None:
             state = make_pending(words, slot, entities['binding'], stamp)
             return question(state), state
-    return assistant_engine._turn(engine, token, library, words, previous, clock,
-                                   language=language), None
+    planner_outcome = {}
+    result = assistant_engine._turn(engine, token, library, words, previous, clock,
+                                    language=language, planner_outcome=planner_outcome)
+    if (engine.search_version == 3 and previous is not None and
+            previous.get('search_version') == 3 and intent_mode(words) != 'search' and
+            planner_outcome.get('status') == 'clarification' and
+            planner_outcome.get('reason') == 'intent_description' and
+            result['kind'] == 'clarification' and result['context'] == previous):
+        pending = make_description_pending(words, planner_outcome['binding'], previous, stamp)
+        return result, pending
+    return result, None
+
+
+def _quoted_description_answer(value):
+    """Accept one bounded, quote-only clue, with no surrounding instruction."""
+    if type(value) is not str:
+        return None
+    text = value.strip()
+    try:
+        if len(text.encode('utf-8', errors='strict')) > 256:
+            return None
+    except UnicodeError:
+        return None
+    if len(text) < 3 or any(ord(char) < 32 and char not in '\t' for char in text):
+        return None
+    if text[0] == '"' and text[-1] == '"':
+        clue = text[1:-1]
+    elif text[0] == '“' and text[-1] == '”':
+        clue = text[1:-1]
+    else:
+        return None
+    if (not clue.strip() or any(mark in clue for mark in '"“”\r\n') or
+            any(ord(char) < 32 for char in clue)):
+        return None
+    return clue.strip()
 
 
 @router.post('/assistant/workspace/v1/threads/{thread_id}/turns')

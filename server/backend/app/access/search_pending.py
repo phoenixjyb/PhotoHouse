@@ -1,11 +1,14 @@
-"""Deterministic support for one narrow pending-date clarification.
+"""Strict private state for bounded date and description clarifications.
 
 This module recognizes a closed set of literal age/vague-time phrases and
 resolves only a date answer. It does not inspect people, captions, or media,
 call a model, or rewrite the original query. A caller must independently bind
 the pending object to its authenticated thread and fresh source snapshot.
+Description continuations bind the exact prior v3 result context by digest.
 """
 from datetime import date, datetime
+import hashlib
+import json
 import re
 
 from . import discovery as d
@@ -130,8 +133,68 @@ def make_pending(query, slot, binding, created_at):
     })
 
 
+def description_context_digest(context):
+    """Hash the exact private v3 result context used by a description question."""
+    if (type(context) is not dict or
+            set(context) not in ({'library_id', 'binding', 'fingerprint', 'filters',
+                                 'visible_ids', 'total', 'search_version'},
+                                {'library_id', 'binding', 'fingerprint', 'filters',
+                                 'visible_ids', 'total'})):
+        raise _invalid()
+    if (type(context.get('library_id')) is not str or not context['library_id'] or
+            type(context.get('binding')) is not str or
+            _BINDING.fullmatch(context['binding']) is None or
+            type(context.get('fingerprint')) is not str or
+            _BINDING.fullmatch(context['fingerprint']) is None or
+            type(context.get('filters')) is not dict or
+            type(context.get('visible_ids')) is not list or
+            any(type(ident) is not str for ident in context['visible_ids']) or
+            type(context.get('total')) is not int or context['total'] < 0 or
+            ('search_version' in context and context['search_version'] != 3)):
+        raise _invalid()
+    try:
+        encoded = json.dumps(context, ensure_ascii=False, sort_keys=True,
+                             separators=(',', ':'), allow_nan=False).encode('utf-8')
+    except (TypeError, ValueError, UnicodeError):
+        raise _invalid() from None
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def make_description_pending(query, binding, context, created_at):
+    """Create a private pending description question bound to one v3 result."""
+    if (type(binding) is not str or _BINDING.fullmatch(binding) is None or
+            type(created_at) is not int or created_at < 0):
+        raise _invalid()
+    if (type(context) is not dict or context.get('search_version') != 3 or
+            context.get('binding') != binding):
+        raise _invalid()
+    return validate_pending({
+        'version': 1,
+        'question': 'description',
+        'query': query,
+        'binding': binding,
+        'context_digest': description_context_digest(context),
+        'created_at': created_at,
+    })
+
+
 def validate_pending(value):
     """Validate private pending structure without applying its expiry."""
+    if type(value) is dict and value.get('question') == 'description':
+        fields = {'version', 'question', 'query', 'binding', 'context_digest', 'created_at'}
+        if (set(value) != fields or type(value['version']) is not int or
+                value['version'] != 1 or type(value['question']) is not str or
+                type(value['query']) is not str or type(value['created_at']) is not int or
+                value['created_at'] < 0 or type(value['binding']) is not str or
+                _BINDING.fullmatch(value['binding']) is None or
+                type(value['context_digest']) is not str or
+                _BINDING.fullmatch(value['context_digest']) is None):
+            raise _invalid()
+        try:
+            _query(value['query'])
+        except ValueError:
+            raise _invalid() from None
+        return dict(value)
     fields = {'version', 'question', 'query', 'start', 'end', 'binding', 'created_at'}
     if type(value) is not dict or set(value) != fields:
         raise _invalid()

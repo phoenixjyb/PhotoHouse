@@ -158,7 +158,8 @@ class StagingPackageTests(unittest.TestCase):
             'backend/alembic.ini',
             'scripts/staging_app.py',
         }
-        required.update({'backend/app/access/people_review.py',
+        required.update({'backend/app/access/semantic_configuration.py',
+                         'backend/app/access/people_review.py',
                          'scripts/export_visual_people_review.py',
                          'scripts/inspect_reviewed_people_readiness.py',
                          'scripts/reviewed_people_source.py'})
@@ -195,6 +196,7 @@ class StagingPackageTests(unittest.TestCase):
                 'import check_private_search\n'
                 'import export_visual_people_review, inspect_reviewed_people_readiness, reviewed_people_source\n'
                 'from app.access.search_evaluation import evaluate_cases\n'
+                'from app.access.semantic_configuration import load_semantic_runtime\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'
                 'from app.access.photo_stacks import build_photo_stacks\n'
