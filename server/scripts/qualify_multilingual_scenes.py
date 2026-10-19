@@ -205,7 +205,9 @@ def load_model(directory, pins, packages):
         if (tokenizer_config.get('tokenizer_class') != 'GemmaTokenizer'
                 or tokenizer_config.get('do_lower_case') is not True
                 or tokenizer_config.get('add_bos_token') is not False
-                or tokenizer_config.get('add_eos_token') is not True):
+                or tokenizer_config.get('add_eos_token') is not True
+                or tokenizer_config.get('model_input_names') != ['input_ids']
+                or tokenizer_config.get('padding_side') != 'right'):
             raise Refused()
         torch = importlib.import_module('torch')
         transformers = importlib.import_module('transformers')
@@ -240,8 +242,14 @@ def load_model(directory, pins, packages):
                 or list(getattr(image_processor, 'image_std', ())) != preprocessor['image_std']
                 or not isinstance(getattr(tokenizer, 'init_kwargs', None), dict)
                 or tokenizer.init_kwargs.get('do_lower_case') is not True
+                or getattr(tokenizer, 'model_input_names', None) != ['input_ids']
                 or getattr(tokenizer, 'add_bos_token', None) is not False
-                or getattr(tokenizer, 'add_eos_token', None) is not True):
+                or getattr(tokenizer, 'add_eos_token', None) is not True
+                or getattr(tokenizer, 'padding_side', None) != 'right'
+                or getattr(tokenizer, 'pad_token', None) != tokenizer_config.get('pad_token')
+                or getattr(tokenizer, 'bos_token', None) != tokenizer_config.get('bos_token')
+                or getattr(tokenizer, 'eos_token', None) != tokenizer_config.get('eos_token')
+                or getattr(tokenizer, 'unk_token', None) != tokenizer_config.get('unk_token')):
             raise Refused()
         model = model.to(device='cpu', dtype=torch.float32)
         model.eval()
@@ -343,13 +351,14 @@ def measure(model_handle, dataset, image_pins, model_pins, package_versions, dea
             key, query = case['id'] + ':' + language, case['queries'][language]
             model_input, token_count = _query_tokens(processor, query)
             inputs = processor(text=[model_input], padding='max_length', max_length=TEXT_MAX_LENGTH,
-                               truncation=False, return_tensors='pt')
-            ids, mask = inputs['input_ids'], inputs['attention_mask']
-            if tuple(ids.shape) != (1, TEXT_MAX_LENGTH) or int(mask.sum().item()) != token_count:
+                               truncation=False, return_attention_mask=False, return_tensors='pt')
+            if set(inputs) != {'input_ids'}:
+                raise Refused()
+            ids = inputs['input_ids']
+            if tuple(ids.shape) != (1, TEXT_MAX_LENGTH):
                 raise Refused()
             with torch.inference_mode():
-                output = model.get_text_features(input_ids=ids.to('cpu'),
-                    attention_mask=mask.to('cpu'))
+                output = model.get_text_features(input_ids=ids.to('cpu'))
             vector = _normalise(output, torch)
             text_vectors[key] = vector
             query_receipts[key] = {'original_query_sha256': hashlib.sha256(query.encode('utf-8')).hexdigest(),
@@ -372,7 +381,11 @@ def measure(model_handle, dataset, image_pins, model_pins, package_versions, dea
                     'add_bos_token': model_handle['tokenizer_config']['add_bos_token'],
                     'add_eos_token': model_handle['tokenizer_config']['add_eos_token'],
                     'max_sequence_length': TEXT_MAX_LENGTH,
-                    'padding': 'max_length', 'truncation': False,
+                    'model_input_names': model_handle['tokenizer_config']['model_input_names'],
+                    'configured_model_max_length': model_handle['tokenizer_config']['model_max_length'],
+                    'padding': 'max_length', 'padding_side': 'right', 'truncation': False,
+                    'max_length': TEXT_MAX_LENGTH,
+                    'attention_mask': 'not_supplied',
                     'tokenizer_config_sha256': model_pins['tokenizer_config.json'].sha256},
                   'artifact_pins': {name: {'sha256': p.sha256, 'bytes': p.stat_identity[3]}
                                     for name, p in sorted(model_pins.items())}},

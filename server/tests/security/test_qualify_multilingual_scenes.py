@@ -160,6 +160,8 @@ def test_vector_normalization_requires_finite_nonzero_768_components():
 
 
 class FakeTokenizer:
+    model_input_names = ['input_ids']
+
     def __init__(self):
         self.seen = []
 
@@ -190,16 +192,17 @@ def test_measure_uses_fake_cpu_model_and_records_only_query_receipts(monkeypatch
         def __call__(self, *, images=None, text=None, **_kwargs):
             if images is not None:
                 return {'pixel_values': FakeTensor([0.0] * 768, (1, 3, 256, 256))}
+            assert _kwargs['return_attention_mask'] is False
             model_input, token_count = runner._query_tokens(self, text[0])
             assert model_input == text[0]
-            return {'input_ids': FakeTensor([1] * 64, (1, 64)),
-                    'attention_mask': FakeTensor([1] * token_count + [0] * (64-token_count), (1, 64))}
+            return {'input_ids': FakeTensor([1] * 64, (1, 64))}
 
     class FakeModel:
         def get_image_features(self, **_kwargs):
             return FakeTensor([1.0] + [0.0] * 767)
 
         def get_text_features(self, **_kwargs):
+            assert set(_kwargs) == {'input_ids'}
             return FakeTensor([0.0, 1.0] + [0.0] * 766)
 
     class FakeImage:
@@ -228,11 +231,16 @@ def test_measure_uses_fake_cpu_model_and_records_only_query_receipts(monkeypatch
     report = runner.measure({'torch': FakeTorch, 'model': FakeModel(),
         'processor': FakeProcessor(), 'preprocessor_config': {'resample': 2},
         'tokenizer_config': {'tokenizer_class': 'GemmaTokenizer', 'do_lower_case': True,
-                             'add_bos_token': False, 'add_eos_token': True},
+                             'add_bos_token': False, 'add_eos_token': True,
+                             'model_input_names': ['input_ids'],
+                             'model_max_length': 1000000000000000019884624838656},
         'source_pins': {'fake': FakePin()}}, dataset, image_pins, model_pins, packages,
         float('inf'))
     assert report['device'] == 'cpu'
     assert report['model']['dimension'] == 768
+    assert report['model']['tokenizer']['model_input_names'] == ['input_ids']
+    assert report['model']['tokenizer']['configured_model_max_length'] > 10**20
+    assert report['model']['tokenizer']['attention_mask'] == 'not_supplied'
     assert len(report['images']) == 4
     assert len(report['queries']) == 6
     assert all('original_query_sha256' in receipt and 'model_input_sha256' in receipt

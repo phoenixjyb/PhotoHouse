@@ -29,7 +29,10 @@ code disabled. It records source/model/image hashes, original-query hashes,
 token counts, preprocessing, normalized vector checksums and ranking metrics.
 It saves neither feature arrays nor query text in the measurement. Original
 Chinese, English and mixed queries reach the candidate without translation.
-Overlength text is rejected before fixed-length padding; truncation is disabled.
+The model input is explicitly lowercased, with both original and model-input
+hashes retained. The pinned tokenizer declares only input IDs, so no attention
+mask is supplied. Overlength text is rejected before fixed-length padding;
+truncation is disabled.
 
 The parent operator must enforce hard resource limits and offline networking.
 The CLI deadline cannot interrupt a hung native model call. For the first native

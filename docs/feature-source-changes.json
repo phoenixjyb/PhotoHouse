@@ -25500,6 +25500,30 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Pinned CPU-only SigLIP2 public-scene qualifier with original multilingual text, explicit 768-dimensional evaluation and no activation. Translation v2 preserves source/output provenance and requires hash-bound declared review with conservative quantity, state, relation and negation guards. Public and family relevance, serving latency, vector coverage and device acceptance remain separate gates."
+    },
+    {
+      "feature": "siglip2-pinned-input-ids-only-recipe",
+      "files": [
+        {
+          "path": "docs/MULTILINGUAL_ENCODER_QUALIFICATION.md",
+          "sha256": "5b57606201dc03fd78fde711dfa33b76a399eff6ccecc17a581a5259f1878377",
+          "before_sha256": "71766ac3c5f1a20af97370c38480980e671cf8ed7119855a8837abde06570752"
+        },
+        {
+          "path": "server/scripts/qualify_multilingual_scenes.py",
+          "sha256": "1eb0d7db528d655c30cc351f1ad5f1d6c12911e74adbac484df028c6b598a046",
+          "before_sha256": "73bebc2b238ec91f2076dbac2c5a563bc092444b031fc7b7ee499e64fd5798a9"
+        },
+        {
+          "path": "server/tests/security/test_qualify_multilingual_scenes.py",
+          "sha256": "80382ca76ddd882decb813c69d29268d54942f75cbeb62e188889d1e84478f79",
+          "before_sha256": "34afb4881459011e292faec44712c846237e0fb3f28ee91af5e60d755b8b794c"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Match the official tokenizer input names: omit attention mask, preserve explicit lowercase and 64-token no-truncation recipe, and validate special tokens and right padding. Native inference remains a separate qualification."
     }
   ]
 }
