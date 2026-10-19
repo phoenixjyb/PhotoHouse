@@ -22,6 +22,7 @@ import warnings
 from .credentials import hash_password, verify_password
 from .provisioning import PlanRejected, _PlanState, _json
 from .runtime import ExistingDatabase
+from .original_deletions import OriginalDeletionError, OriginalDeletionJournal
 
 
 def plan_digest(envelope):
@@ -61,6 +62,84 @@ def _reference(value):
     return value
 
 
+class _ReadOnlyDeletionJournal(OriginalDeletionJournal):
+    """Verify the selected ledger without granting an offline tool append access."""
+
+    def _connect(self, *, validate=True):
+        if validate:
+            self._validate_file()
+        db = None
+        try:
+            db = sqlite3.connect(self.path.as_uri() + '?mode=ro', uri=True,
+                                 timeout=3, isolation_level=None)
+            db.row_factory = sqlite3.Row
+            db.execute('PRAGMA query_only=ON')
+            db.execute('PRAGMA trusted_schema=OFF')
+            db.execute('PRAGMA foreign_keys=ON')
+            if db.execute('PRAGMA journal_mode').fetchone()[0].lower() != 'delete':
+                raise OriginalDeletionError('Offline deletion ledger required')
+            return db
+        except (sqlite3.Error, OriginalDeletionError):
+            if db is not None:
+                db.close()
+            raise OriginalDeletionError('Deletion history unavailable') from None
+
+
+@dataclass(frozen=True)
+class DeletionHistoryReview:
+    journal: Path
+    journal_identity: tuple[int, int]
+    namespace: str
+    head: tuple[str, int, str]
+
+
+def capture_deletion_history(journal_path=None, namespace=None):
+    """Capture an explicitly selected current ledger; never bind or replay it."""
+    if journal_path is None and namespace is None:
+        return None
+    if journal_path is None or namespace is None:
+        raise PlanRejected('Both deletion history options are required')
+    try:
+        before = _identity(journal_path)
+        journal = _ReadOnlyDeletionJournal(journal_path, namespace)
+        head = journal.head()
+        if _identity(journal_path) != before:
+            raise PlanRejected('Deletion history changed during review')
+        return DeletionHistoryReview(journal_path, before, journal.namespace, head)
+    except (OSError, ValueError, OriginalDeletionError):
+        raise PlanRejected('Deletion history review unavailable') from None
+
+
+def _reviewed_journal(context):
+    if context is None:
+        return None
+    if type(context) is not DeletionHistoryReview:
+        raise PlanRejected('Explicit deletion history review required')
+    try:
+        if _identity(context.journal) != context.journal_identity:
+            raise PlanRejected('Deletion history file changed')
+        journal = _ReadOnlyDeletionJournal(context.journal, context.namespace)
+        if journal.head() != context.head or _identity(context.journal) != context.journal_identity:
+            raise PlanRejected('Deletion history changed; repeat explicit review')
+        return journal
+    except (OSError, ValueError, OriginalDeletionError):
+        raise PlanRejected('Deletion history review unavailable') from None
+
+
+def assert_deletion_history(context, connection=None):
+    journal = _reviewed_journal(context)
+    if journal is not None and connection is not None:
+        try:
+            journal.assert_current(connection)
+        except (OriginalDeletionError, sqlite3.Error):
+            raise PlanRejected('Database deletion history is not current') from None
+
+
+def guarded_database(path, *, read_only=False, deletion_history=None):
+    return ExistingDatabase(path, read_only=read_only,
+                            original_deletions=_reviewed_journal(deletion_history))
+
+
 @dataclass(frozen=True)
 class ApplyReview:
     database: Path
@@ -71,20 +150,28 @@ class ApplyReview:
     plan_digest: str
     authority_reference: str
     restore_reference: str
+    deletion_history: DeletionHistoryReview | None = None
 
 
 def review_backup(*, database, backup, envelope, reviewed_plan_digest,
-                  authority_reference, restore_reference, clock=time.time, restore_out=None):
+                  authority_reference, restore_reference, clock=time.time, restore_out=None,
+                  deletion_history=None):
     """Verify a separate backup and restore in memory or a fresh explicit disk file.
 
     The references attest to independently reviewed authority and the operational
     restore procedure. This rehearsal verifies SQLite content, not disaster recovery.
     Returns a local in-process review; do not deserialize reviews from untrusted input.
     """
+    if deletion_history is not None:
+        if (not isinstance(envelope, dict) or not isinstance(envelope.get('plan'), dict)
+                or envelope['plan'].get('operation') != 'repair_suppressed_person_ownership'):
+            raise PlanRejected('Deletion history option requires person ownership repair')
+        if restore_out is None:
+            raise PlanRejected('Deletion history review requires a fresh disk restore')
     return _review_backup(database=database, backup=backup, envelope=envelope,
         reviewed_plan_digest=reviewed_plan_digest, authority_reference=authority_reference,
         restore_reference=restore_reference, clock=clock, state_type=_PlanState,
-        restore_out=restore_out)
+        restore_out=restore_out, deletion_history=deletion_history)
 
 
 @contextmanager
@@ -127,7 +214,8 @@ def _offline_restore_source(path, db):
 
 
 def _review_backup(*, database, backup, envelope, reviewed_plan_digest,
-                   authority_reference, restore_reference, clock, state_type, restore_out=None):
+                   authority_reference, restore_reference, clock, state_type, restore_out=None,
+                   deletion_history=None):
     """Shared internal backup verification; public callers fix the plan validator."""
     authority_reference = _reference(authority_reference)
     restore_reference = _reference(restore_reference)
@@ -140,14 +228,15 @@ def _review_backup(*, database, backup, envelope, reviewed_plan_digest,
     target_id, backup_id = _identity(database), _identity(backup)
     if target_id == backup_id:
         raise PlanRejected('A separate backup is required')
-    with ExistingDatabase(database, read_only=True)() as db:
+    with guarded_database(database, read_only=True, deletion_history=deletion_history)() as db:
         if restore_out is not None or envelope['plan']['operation'] in ('import_management_ownership', 'enqueue_face_assignment', 'repair_suppressed_person_ownership'):
             _offline_restore_source(database, db)
         state = state_type(db, clock=clock)
         with state.access._transaction():
             state._validate_in_transaction(envelope)
             snapshot = _snapshot(db)
-    with ExistingDatabase(backup, read_only=True)() as source:
+            assert_deletion_history(deletion_history, db)
+    with guarded_database(backup, read_only=True, deletion_history=deletion_history)() as source:
         if restore_out is not None or envelope['plan']['operation'] in ('import_management_ownership', 'enqueue_face_assignment', 'repair_suppressed_person_ownership'):
             _offline_restore_source(backup, source)
         source.execute('BEGIN')
@@ -155,10 +244,13 @@ def _review_backup(*, database, backup, envelope, reviewed_plan_digest,
             source.backup(restored)
             if _snapshot(source) != snapshot or _snapshot(restored) != snapshot:
                 raise PlanRejected('Backup does not match the reviewed database')
+            assert_deletion_history(deletion_history, restored)
+            assert_deletion_history(deletion_history, source)
     if _identity(database) != target_id or _identity(backup) != backup_id:
         raise PlanRejected('Database target changed')
+    assert_deletion_history(deletion_history)
     return ApplyReview(database, target_id, backup, backup_id, snapshot, digest,
-                       authority_reference, restore_reference)
+                       authority_reference, restore_reference, deletion_history)
 
 
 def _owner_password():
@@ -187,6 +279,8 @@ def apply_reviewed(envelope, *, review, clock=time.time, all_writers_stopped=Fal
     management = envelope['plan']['operation']=='import_management_ownership'
     face_job = envelope['plan']['operation']=='enqueue_face_assignment'
     repair = envelope['plan']['operation']=='repair_suppressed_person_ownership'
+    if review.deletion_history is not None and not repair:
+        raise PlanRejected('Deletion history option requires person ownership repair')
     offline = management or face_job or repair
     if offline and all_writers_stopped is not True:
         raise PlanRejected('Independent all-writer shutdown confirmation required')
@@ -195,7 +289,7 @@ def apply_reviewed(envelope, *, review, clock=time.time, all_writers_stopped=Fal
     if _identity(review.database) != review.database_identity or _identity(review.backup) != review.backup_identity:
         raise PlanRejected('Database target changed')
     # Preflight before prompting; this result is deliberately not trusted for writes.
-    with ExistingDatabase(review.database, read_only=True)() as db:
+    with guarded_database(review.database, read_only=True, deletion_history=review.deletion_history)() as db:
         if offline: _offline_restore_source(review.database, db)
         state = _PlanState(db, clock=clock)
         with state.access._transaction():
@@ -213,7 +307,7 @@ def apply_reviewed(envelope, *, review, clock=time.time, all_writers_stopped=Fal
         if not authenticated:
             raise PlanRejected('Owner authentication failed')
     try:
-        with ExistingDatabase(review.database)() as db:
+        with guarded_database(review.database, deletion_history=review.deletion_history)() as db:
             if offline: _offline_restore_source(review.database, db)
             state = _PlanState(db, clock=clock)
             with state.access._transaction(write=True):
@@ -226,7 +320,7 @@ def apply_reviewed(envelope, *, review, clock=time.time, all_writers_stopped=Fal
                 state._validate_in_transaction(envelope)
                 if _snapshot(db) != review.snapshot_digest:
                     raise PlanRejected('Database changed; review a fresh backup')
-                with ExistingDatabase(review.backup, read_only=True)() as backup:
+                with guarded_database(review.backup, read_only=True, deletion_history=review.deletion_history)() as backup:
                     if offline: _offline_restore_source(review.backup, backup)
                     backup.execute('BEGIN')
                     if _snapshot(backup) != review.snapshot_digest:
@@ -304,6 +398,7 @@ def apply_reviewed(envelope, *, review, clock=time.time, all_writers_stopped=Fal
                     raise PlanRejected('Database target changed')
                 if not plan['created_at'] <= state.access._now() < plan['expires_at']:
                     raise PlanRejected('Plan expired during application')
+                assert_deletion_history(review.deletion_history, db)
             return receipt
     except sqlite3.Error:
         raise PlanRejected('Offline apply failed; no partial operation committed') from None

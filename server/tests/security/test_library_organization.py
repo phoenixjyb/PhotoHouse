@@ -113,6 +113,36 @@ class LibraryOrganizationTests(unittest.TestCase):
         self.assertEqual(len(self.rows("SELECT asset_id FROM access_asset_libraries WHERE library_id='documents'")),50)
         self.assertEqual(self.move_review(list(range(1000,1051))).status_code,400)
 
+    def test_library_move_review_and_confirm_reuse_primary_deletion_guard(self):
+        from dataclasses import replace
+        from app.access.runtime import ExistingDatabase
+        self.add_destination()
+
+        class Guard:
+            calls = 0
+            def assert_current(self, connection):
+                if tuple(connection.execute('''SELECT namespace,applied_seq,applied_digest
+                        FROM access_original_deletion_state WHERE id=1''').fetchone()) != marker:
+                    raise RuntimeError('synthetic deletion marker mismatch')
+                self.calls += 1
+
+        guard = Guard()
+        marker = ('00000000-0000-4000-8000-000000000001', 0, '0' * 64)
+        self.mutate('INSERT INTO access_original_deletion_state VALUES (1,?,?,?)', marker)
+        self.fixture.access = replace(self.fixture.access, connection_factory=ExistingDatabase(
+            self.path.resolve(), original_deletions=guard))
+        self.client.close()
+        self.client = self._app_client()
+        reviewed = self.move_review([900])
+        self.assertEqual(reviewed.status_code, 200, reviewed.text)
+        after_review = guard.calls
+        self.assertGreater(after_review, 0)
+
+        confirmed = self.client.post('/admin/library-transfers/confirm?library=family-a',
+            headers=self.headers(), json={'plan': reviewed.json()['plan']})
+        self.assertEqual(confirmed.status_code, 200, confirmed.text)
+        self.assertGreater(guard.calls, after_review)
+
     def test_revoked_session_cannot_replay_confirm(self):
         self.add_destination()
         response=self.move_review([900])

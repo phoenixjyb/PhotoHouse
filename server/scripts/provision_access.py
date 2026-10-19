@@ -23,6 +23,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_JSON = 2_000_000
+DELETION_GUARD_COMMANDS = frozenset({'plan-person-repair', 'validate', 'review', 'apply', 'receipt'})
 
 
 class OperatorError(ValueError):
@@ -105,6 +106,9 @@ def parser():
                  'plan-recovery', 'validate-recovery', 'review-recovery', 'apply-recovery'):
         command = commands.add_parser(name)
         command.add_argument('--database', required=True, type=Path)
+        if name in DELETION_GUARD_COMMANDS:
+            command.add_argument('--original-deletion-journal', type=Path)
+            command.add_argument('--original-deletion-namespace')
         if name.startswith('plan-'):
             command.add_argument('--request', required=True, type=Path)
             command.add_argument('--out', required=True, type=Path)
@@ -147,7 +151,8 @@ def execute(args, *, clock=time.time):
     sys.path.insert(0, str(ROOT/'backend'))
     from app.access.runtime import ExistingDatabase
     from app.access.provisioning import ProvisioningPlanner
-    from app.access.provisioning_apply import plan_digest, review_backup, apply_reviewed
+    from app.access.provisioning_apply import (plan_digest, review_backup, apply_reviewed,
+        capture_deletion_history, guarded_database)
     from app.access.owner_recovery import (OwnerRecoveryPlanner, review_owner_recovery_backup,
                                            recover_owner_library)
     from app.access.promotion import (PROMOTE_OPERATION, PromotionPlanner, PromotionReview,
@@ -169,6 +174,15 @@ def execute(args, *, clock=time.time):
     reviewer = review_owner_recovery_backup if recovery else review_backup
     application = recover_owner_library if recovery else apply_reviewed
     database = selected_path(args.database)
+    deletion_history = None
+    journal_path = getattr(args, 'original_deletion_journal', None)
+    journal_namespace = getattr(args, 'original_deletion_namespace', None)
+    if journal_path is not None or journal_namespace is not None:
+        deletion_history = capture_deletion_history(
+            selected_path(journal_path) if journal_path is not None else None,
+            journal_namespace)
+    if deletion_history is not None and args.command not in DELETION_GUARD_COMMANDS:
+        raise OperatorError('Deletion history options require a person repair command')
     if args.command.startswith('plan-'):
         request = read_json(args.request)
         expected = ({'phone_login', 'library_id'} if args.command == 'plan-owner'
@@ -189,7 +203,10 @@ def execute(args, *, clock=time.time):
             expected = {'operator_account_id', 'task_ids', 'quiescence_reference'}
         if set(request) != expected:
             raise OperatorError('Unexpected request fields')
-        with ExistingDatabase(database, read_only=True)() as connection:
+        database_adapter = (guarded_database(database, read_only=True, deletion_history=deletion_history)
+                            if args.command == 'plan-person-repair' else
+                            ExistingDatabase(database, read_only=True))
+        with database_adapter() as connection:
             planner = planner_type(connection, clock=clock)
             if recovery:
                 envelope = planner.recover(**request)
@@ -218,16 +235,26 @@ def execute(args, *, clock=time.time):
         if (str(uuid.UUID(args.plan_id)) != args.plan_id
                 or not re.fullmatch('[0-9a-f]{64}', args.reviewed_plan_digest)):
             raise OperatorError('Exact receipt identity required')
-        with ExistingDatabase(database, read_only=True)() as connection:
+        database_adapter = (guarded_database(database, read_only=True, deletion_history=deletion_history)
+                            if deletion_history is not None else ExistingDatabase(database, read_only=True))
+        with database_adapter() as connection:
             row = connection.execute('''SELECT receipt FROM access_provisioning_receipts
                 WHERE plan_id=? AND plan_digest=?''', (args.plan_id, args.reviewed_plan_digest)).fetchone()
         if row is None:
             return {'applied': False, 'receipt_found': False}
         receipt = json.loads(row[0])
+        if deletion_history is not None and receipt.get('operation') != 'repair_suppressed_person_ownership':
+            raise OperatorError('Deletion history options require a person repair receipt')
         return receipt_summary(receipt) | {'receipt_found': True}
     envelope = read_json(args.plan)
+    if deletion_history is not None:
+        plan = envelope.get('plan')
+        if not isinstance(plan, dict) or plan.get('operation') != 'repair_suppressed_person_ownership':
+            raise OperatorError('Deletion history options require a person repair plan')
     if args.command in ('validate', 'validate-recovery', 'validate-promotion', 'validate-claim-recovery'):
-        with ExistingDatabase(database, read_only=True)() as connection:
+        database_adapter = (guarded_database(database, read_only=True, deletion_history=deletion_history)
+                            if deletion_history is not None else ExistingDatabase(database, read_only=True))
+        with database_adapter() as connection:
             result = planner_type(connection, clock=clock).validate(envelope)
         return result | {'plan_digest': plan_digest(envelope)}
     if claim_recovery:
@@ -263,9 +290,13 @@ def execute(args, *, clock=time.time):
     restore_options = {}
     if not recovery and getattr(args, 'restore_out', None) is not None:
         restore_options['restore_out'] = selected_path(args.restore_out)
+    if deletion_history is not None and args.command in ('review', 'apply'):
+        if getattr(args, 'restore_out', None) is None:
+            raise OperatorError('Deletion history review requires a fresh restore output')
     review = reviewer(database=database, backup=selected_path(args.backup), envelope=envelope,
         reviewed_plan_digest=args.reviewed_plan_digest, authority_reference=args.authority_reference,
-        restore_reference=args.restore_reference, clock=clock, **restore_options)
+        restore_reference=args.restore_reference, clock=clock, **restore_options,
+        **({'deletion_history': deletion_history} if deletion_history is not None else {}))
     if args.command in ('review', 'review-recovery'):
         return {'backup_reviewed': True, 'applied': False, 'plan_id': envelope['plan']['plan_id'],
                 'operation': envelope['plan']['operation'], 'plan_digest': review.plan_digest,
@@ -287,6 +318,14 @@ def review_digest(review):
         'backup':str(review.backup), 'backup_identity':review.backup_identity,
         'snapshot_digest':review.snapshot_digest, 'plan_digest':review.plan_digest,
         'authority_reference':review.authority_reference, 'restore_reference':review.restore_reference}
+    deletion_history = getattr(review, 'deletion_history', None)
+    if deletion_history is not None:
+        value['deletion_history'] = {
+            'journal': str(deletion_history.journal),
+            'journal_identity': deletion_history.journal_identity,
+            'namespace': deletion_history.namespace,
+            'head': deletion_history.head,
+        }
     encoded = json.dumps(value,sort_keys=True,separators=(',', ':'),ensure_ascii=True).encode()
     return hashlib.sha256(b'PhotoHouse operator review v1\0'+encoded).hexdigest()
 

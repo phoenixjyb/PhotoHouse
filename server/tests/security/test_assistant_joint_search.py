@@ -317,6 +317,66 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertEqual(removed['filters'], {key:value for key,value in text_only['filters'].items() if key != 'text'})
         self.assertEqual([item['id'] for item in removed['items']], ['103','101'])
 
+    def test_people_scope_explanations_keep_joint_results_and_refinements_strict(self):
+        for words, notice, joint in (
+                ('find Sample Child and Sample Adult videos', 'confirmed assignments only', 'same item'),
+                ('找示例儿童和示例成人一起的视频', '已确认的标注', '同一项'),
+                ('find示例儿童and示例成人的videos', '已确认的标注', '同一项')):
+            with self.subTest(words=words):
+                response = self.turn(words)
+                self.assertEqual(response.status_code, 200, response.text)
+                initial = response.json()
+                self.assertEqual(initial['kind'], 'results', initial)
+                self.assertEqual(initial['filters'], {'media': ['video'],
+                    'people': {'ids': ['301', '302'], 'match': 'all'}})
+                self.assertEqual(initial['total'], 0)
+                self.assertEqual(initial['items'], [])
+                self.assertIn(notice, initial['reply'])
+                self.assertIn(joint, initial['reply'])
+                for followup in ('why no results', '介绍这些结果'):
+                    current = self.turn(followup, context=initial['context']).json()
+                    for key in ('context', 'filters', 'items', 'total', 'has_more', 'interpretation'):
+                        self.assertEqual(current[key], initial[key])
+                    self.assertIsNone(current['effect'])
+                    self.assertLessEqual(len(current['reply'].encode('utf-8')), 600)
+                    self.assertIn('same item' if followup.startswith('why') else '同一项', current['reply'])
+                photos = self.turn('only photos', context=initial['context']).json()
+                self.assertEqual(photos['filters'], {**initial['filters'], 'media': ['image']})
+                self.assertEqual([item['id'] for item in photos['items']], ['103'])
+                self.assertIn('confirmed assignments only', photos['reply'])
+                self.assertIn('same item', photos['reply'])
+
+    def test_people_speech_uses_the_same_review_scope_and_retains_authorization(self):
+        import io
+        from urllib.parse import parse_qs
+        import wave
+        import httpx
+        from app.access.assistant_speech import LocalAssistantTts
+        raw = io.BytesIO()
+        with wave.open(raw, 'wb') as audio:
+            audio.setnchannels(1); audio.setsampwidth(2); audio.setframerate(16000)
+            audio.writeframes(b'\0\0' * 1600)
+        spoken = []
+        def provider(request):
+            spoken.append(parse_qs(request.content.decode())['text'][0])
+            return httpx.Response(200, content=raw.getvalue(), headers={'content-type': 'audio/wav'})
+        self.app.state.assistant_tts = LocalAssistantTts(url='http://127.0.0.1:7350/tts',
+                                                       transport=httpx.MockTransport(provider))
+        for words in ('find Sample Child and Sample Adult photos',
+                      'find Sample Child and Sample Adult videos'):
+            found = self.turn(words).json()
+            payload = {'library_id': 'family-a', 'context': found['context'], 'language': 'en'}
+            headers = {**self.auth, **SEARCH_V2}
+            response = self.client.post('/assistant/v1/speech', json=payload, headers=headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(spoken[-1], found['reply'])
+            self.assertIn('confirmed assignments only', spoken[-1])
+            self.assertIn('same item', spoken[-1])
+            denied = self.client.post('/assistant/v1/speech', json=payload,
+                headers={**SEARCH_V2, 'Authorization': 'Bearer ' + OTHER})
+            self.assertNotEqual(denied.status_code, 200)
+        self.assertEqual(len(spoken), 2)
+
     def test_zero_result_questions_need_context_and_do_not_claim_a_cause(self):
         missing = self.turn('why no results').json()
         self.assertEqual(missing['kind'], 'clarification')

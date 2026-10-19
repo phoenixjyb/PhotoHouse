@@ -18,7 +18,7 @@ from time import monotonic
 import unicodedata
 
 from .credentials import session_digest
-from .discovery_provider import ProjectedIndex, RefreshingPlaceIndex, RegionRule, ReviewedIndex, ReviewedPerson, ReviewedFace, ReviewedPlace, NamedPlace
+from .discovery_provider import ProjectedIndex, RefreshingPlaceIndex, RefreshingPeopleIndex, RegionRule, ReviewedIndex, ReviewedPerson, ReviewedFace, ReviewedPlace, NamedPlace
 from .library import _asset
 from .service import AccessService, AccessDenied
 
@@ -195,12 +195,67 @@ def projected_source(library, read, enabled):
 
 
 def index_source(index, read):
+    if type(index) is RefreshingPeopleIndex:
+        # Only approved face rows can affect this layer. Scanning every raw
+        # detection would waste the shared row budget on unadmitted identities.
+        source = projected_source(index.library_id, read,
+                                  tuple(field for field in index.enabled if field != 'people'))
+        source['faces'] = reviewed_faces_source(index.library_id, index.assignments, read)
+        source['reviewed_people'] = reviewed_people_source(index.library_id, index.people, read)
+        return source
     return (projected_source(index.library_id, read, index.enabled)
             if isinstance(index, ProjectedIndex) else scoped_source(index.library_id, read))
 
 
+def reviewed_faces_source(library, assignments, read):
+    result = []
+    selected = sorted((face.id for face in assignments), key=int)
+    for start in range(0, len(selected), 256):
+        batch = selected[start:start + 256]
+        result.extend(read('SELECT x.id,x.asset_id,x.person_id,x.label_source FROM face_detections x'
+            + SCOPE + ' AND x.id IN (' + ','.join('?' for _ in batch) + ') ORDER BY x.id',
+            (library, *batch)))
+    return result
+
+
+def reviewed_people_source(library, people, read):
+    """Only explicit reviewed IDs owned by this library, after membership.
+
+    No global name search, orphan adoption, face propagation or inferred alias.
+    Current name/ownership/revision are part of every continuation binding.
+    """
+    result = []
+    selected = sorted((person.id for person in people), key=int)
+    for start in range(0, len(selected), 256):
+        batch = selected[start:start + 256]
+        result.extend(read("""SELECT p.id,
+            CASE WHEN length(CAST(p.display_name AS BLOB))<=256 THEN p.display_name END,
+            CASE WHEN length(CAST(p.updated_at AS BLOB))<=64 THEN p.updated_at END,
+            length(CAST(p.updated_at AS BLOB)),o.library_id,o.revision
+            FROM access_person_libraries o JOIN persons p ON p.id=o.person_id
+            WHERE o.library_id=? AND p.id IN (""" + ','.join('?' for _ in batch)
+            + ') ORDER BY p.id', (library, *batch)))
+    return result
+
+
+def reviewed_catalog_digest(rows):
+    # Review freezes identity and library ownership. Catalog bookkeeping (for
+    # example face-worker revision bumps) still invalidates old bindings, but
+    # cannot admit new face rows or force an unchanged name to be re-reviewed.
+    return digest([(row[0], row[1], row[4]) for row in rows])
+
+
+def validate_people_source(index, source):
+    rows = source['reviewed_people']
+    labels = {person.id: person.label for person in index.people}
+    if (len(rows) != len(labels) or
+            any(str(row[0]) not in labels or row[1] != labels[str(row[0])] for row in rows) or
+            reviewed_catalog_digest(rows) != index.catalog_digest):
+        raise DiscoveryChanged()
+
+
 def validate(index, library, limit):
-    require(type(index) in (ReviewedIndex, ProjectedIndex, RefreshingPlaceIndex) and index.library_id==library)
+    require(type(index) in (ReviewedIndex, ProjectedIndex, RefreshingPlaceIndex, RefreshingPeopleIndex) and index.library_id==library)
     if isinstance(index, ProjectedIndex): require(index.projection == 'enabled-v2')
     identifier(index.revision); require(hashed(index.source_digest))
     scope=ids(index.scope_ids,limit,ordered=True); selected=ids(index.indexed_ids,limit,ordered=True)
@@ -238,11 +293,16 @@ def validate(index, library, limit):
         require(type(pair) is tuple and len(pair)==2)
         for value in pair:identifier(value)
         require(pair not in pairs and pair[0] in selected and pair[1] in places);pairs.add(pair)
-    if type(index) is RefreshingPlaceIndex:
-        require(index.refresh_policy == 'current-library-regions-v1')
-        require(set(index.enabled) == {'date', 'locations', 'media'})
+    if type(index) in (RefreshingPlaceIndex, RefreshingPeopleIndex):
+        if type(index) is RefreshingPlaceIndex:
+            require(index.refresh_policy == 'current-library-regions-v1')
+            require(set(index.enabled) == {'date', 'locations', 'media'})
+        else:
+            require(index.refresh_policy == 'current-library-reviewed-people-v1')
+            require(set(index.enabled) == {'people', 'date', 'locations', 'media'})
+            require(hashed(index.catalog_digest) and bool(people))
         require(index.indexed_ids == index.scope_ids)
-        require(type(index.region_rules) is tuple and 1 <= len(index.region_rules) <= 128)
+        require(type(index.region_rules) is tuple and (1 if type(index) is RefreshingPlaceIndex else 0) <= len(index.region_rules) <= 128)
         seen_rules = set()
         for rule in index.region_rules:
             validate_region_rule(rule)
@@ -349,7 +409,9 @@ class DiscoveryReads:
                     if len(packed(asdict(index)))>self.budget.index_bytes: raise DiscoveryUnavailable()
                 except (DiscoveryInvalid,TypeError,KeyError,RecursionError): raise DiscoveryUnavailable() from None
                 source=index_source(index,read);check()
-                if type(index) is RefreshingPlaceIndex:
+                if type(index) is RefreshingPeopleIndex:
+                    validate_people_source(index, source)
+                if type(index) in (RefreshingPlaceIndex, RefreshingPeopleIndex):
                     index=refreshed_index(index,source,check,self.budget.rows)
                     if len(packed(asdict(index)))>self.budget.index_bytes: raise DiscoveryUnavailable()
                     check()

@@ -56,7 +56,9 @@ _SEARCH_OPEN = re.compile(
 _REFINE_OPEN = re.compile(
     r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
     r'refine(?a:\b)|only(?a:\b)|filter(?a:\b)|just(?a:\b)|what about(?a:\b)|how about(?a:\b)|same but(?a:\b))', re.I)
-_CONNECTORS = re.compile(r'(?a:\b)(and|or|both|together)(?a:\b)|和|与|及|或者|或|一起|同时', re.I)
+_CONNECTORS = re.compile(r'(?a:\b)(and|or|both|together|with)(?a:\b)|和|跟|与|及|或者|或|一起|同时', re.I)
+_CONNECTORS_WITHOUT_NAMED_JOIN = re.compile(
+    r'(?a:\b)(and|or|both|together)(?a:\b)|和|与|及|或者|或|一起|同时', re.I)
 _CONTENT_INTRO = re.compile(
     r'包含|含有|關於|关于|内容|內容|(?a:\b)(?:containing|contains|about|with the words)(?a:\b)', re.I)
 _CONTENT_ACTION = re.compile(
@@ -608,13 +610,17 @@ def plan_query(words, *, now: datetime, entities: dict,
     relation_tokens = [match.group(0).casefold() for match in _CONNECTORS.finditer(outside)]
     together = any(token in {'both', 'together', '一起', '同时'} for token in relation_tokens)
     has_and = any(token in {'and', '和', '与', '及'} for token in relation_tokens)
+    named_join = any(token in {'with', '跟'} for token in relation_tokens)
     has_or = any(token in {'or', '或者', '或'} for token in relation_tokens)
+    if named_join and len(people) >= 2:
+        has_and = True
     if has_and and has_or:
         return _clarify('conflicting_people_mode', previous_filters if refine else None)
     if (together or has_and or has_or) and len(people) < 2:
         return _clarify('incomplete_people_relation', previous_filters if refine else None)
     people_mode = 'all' if together or has_and else 'any'
-    outside = _CONNECTORS.sub(' ', outside)
+    outside = (_CONNECTORS.sub(' ', outside) if len(people) >= 2
+               else _CONNECTORS_WITHOUT_NAMED_JOIN.sub(' ', outside))
 
     # Multiple content introducers make the literal span unclear. This check
     # follows date, media, entity and negation validation, so those guards stay

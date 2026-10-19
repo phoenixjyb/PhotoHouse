@@ -18,6 +18,7 @@ from .access.memory_stories import router as memory_router
 from .access.memory_transport import router as memory_community_router
 from .access.memory_book_edition_transport import router as memory_edition_router
 from .access.people import router as people_router
+from .access.people_review import router as people_review_router
 from .access.tags import router as tag_router
 from .access.albums import router as album_router
 from .access.boundary import ClosedBoundary
@@ -211,6 +212,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(memory_edition_router)
     app.include_router(memory_community_router)
     app.include_router(people_router)
+    app.include_router(people_review_router)
     app.include_router(tag_router)
     app.include_router(album_router)
     app.include_router(ui_router)

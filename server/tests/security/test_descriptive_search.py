@@ -61,7 +61,9 @@ class DescriptiveSearchTests(unittest.TestCase):
         self.access = AccessRuntime(self.connection, "https://photohouse.example.test",
                                     clock=lambda: NOW)
         self.discovery = DiscoveryRuntime(self.access, MemoryIndexProvider((self.index,)),
-                                          d.ReadBudget())
+                                          # Functional assertions use a fixed clock; this is not
+                                          # a latency qualification of the production budget.
+                                          d.ReadBudget(clock=lambda: 0.0))
         self.v3 = SearchRuntime(self.discovery, search_version=3)
         self.binding = self.entities(self.v3)['binding']
 

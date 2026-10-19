@@ -21,7 +21,7 @@ import re
 import stat
 
 from . import discovery as d
-from .discovery_provider import (MemoryIndexProvider, ProjectedIndex, RefreshingPlaceIndex, RegionRule, ReviewedFace, ReviewedIndex,
+from .discovery_provider import (MemoryIndexProvider, ProjectedIndex, RefreshingPlaceIndex, RefreshingPeopleIndex, RegionRule, ReviewedFace, ReviewedIndex,
                                  ReviewedPerson, ReviewedPlace, NamedPlace)
 from .discovery_transport import DiscoveryRuntime
 
@@ -115,12 +115,15 @@ def parse(payload):
                            parse_constant=reject_constant)
     except (ValueError, UnicodeError, RecursionError):
         raise DiscoveryIndexRefused() from None
-    if type(value) is not dict or set(value) not in (INDEX_KEYS, INDEX_KEYS | {'projection'}, INDEX_KEYS | {'projection', 'region_rules', 'refresh_policy'}):
+    if type(value) is not dict or set(value) not in (INDEX_KEYS, INDEX_KEYS | {'projection'}, INDEX_KEYS | {'projection', 'region_rules', 'refresh_policy'}, INDEX_KEYS | {'projection', 'region_rules', 'refresh_policy', 'catalog_digest'}):
         raise DiscoveryIndexRefused()
     if 'projection' in value and value['projection'] != 'enabled-v2':
         raise DiscoveryIndexRefused()
-    if 'refresh_policy' in value and value['refresh_policy'] != 'current-library-regions-v1':
-        raise DiscoveryIndexRefused()
+    if 'refresh_policy' in value:
+        expected = ('current-library-reviewed-people-v1' if 'catalog_digest' in value
+                    else 'current-library-regions-v1')
+        if value['refresh_policy'] != expected:
+            raise DiscoveryIndexRefused()
     return value
 
 
@@ -175,6 +178,11 @@ def index(payload, limit):
             except d.DiscoveryInvalid: raise DiscoveryIndexRefused() from None
             rules.append(parsed)
         extra = {'region_rules': tuple(rules)}
+        if 'catalog_digest' in record:
+            constructor = RefreshingPeopleIndex
+            if DIGEST.fullmatch(text(record['catalog_digest'], 64)) is None:
+                raise DiscoveryIndexRefused()
+            extra['catalog_digest'] = record['catalog_digest']
     return constructor(
         **extra,
         library_id=record['library_id'], revision=record['revision'],
