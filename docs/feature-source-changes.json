@@ -24736,6 +24736,359 @@
       "deployed_or_published": false,
       "phone_ui_verified": false,
       "notes": "Documentation-only closure. Native Windows qualification and delivery remain separate; existing phone source checks do not establish emulator visual acceptance."
+    },
+    {
+      "feature": "reviewed-people-search-evidence-scope-replies",
+      "source_commit": "a38caf59e4cf67df69cf6fc80c1f732d45c3466c",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "0976e726a848e451df906dcf1760df6bc19f94b53296d9bd7c119cce13adb74b",
+          "sha256": "b39a6adc4019bba6e212ed5db4352d05e46b003fc7e32a0e522fcdcb9cd249b7"
+        },
+        {
+          "path": "server/backend/app/access/search_explanation.py",
+          "before_sha256": "b6a3ad50d5f2b3ea99f1a52894401140e1649292446ef5a9e6225b116291e7c8",
+          "sha256": "9d69247ba31c0e50e6930e435b3b5020ed177608b9df99a3cd263a3be52f5f27"
+        },
+        {
+          "path": "server/tests/security/test_search_explanation.py",
+          "before_sha256": "5a5854fbe9f94130f245882209813b26818b8cda80363e42c13cc955a2eb5d73",
+          "sha256": "ade067b918aeb54918ecb92e9f12bfc99c4d494577d7865863e38555a324241b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "b786bc8f09013e3084c549d60a692647e81bee84b23f29b58261e831ff73c737",
+          "sha256": "8aa7f80bfe7b731d69505f8a91937abdf9a9d7dbc08579bd52c7233d2319ca3a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_result_overview.py",
+          "before_sha256": "3a14b6ed305a5faefe96fb1e7ad18f2555c18ed2be30b62b845212b1888e0719",
+          "sha256": "16624ee74a295808392b49618cbc412fb052c8e47f59eefce4cd9596885b37cd"
+        },
+        {
+          "path": "server/tests/security/test_assistant_search_browser.cjs",
+          "before_sha256": "185804a1c532d815399c073d05e603f4659fd2cdd57cf436d196cf7836d96d74",
+          "sha256": "b7560ce4eed26bb289bc20e05e2617fe65f77f99fd379457635e8527531c75d1"
+        },
+        {
+          "path": "docs/SEARCH_READINESS_AND_RELEVANCE.md",
+          "before_sha256": "b3f6cca8d69be2906d1a871554d6e350331b084d77fde89788d2219aed22470e",
+          "sha256": "a570e0187d3f8a3149f9bfbe14299cd6bbacc178673e4d598441f23b5f3fe582"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": false,
+      "provider_calls_added": false,
+      "client_contract_changed": false
+    },
+    {
+      "feature": "bounded-manual-people-review-candidate-proposal",
+      "source_commit": "18304524bc5a17030d711408c3352db7d2c85c6f",
+      "files": [
+        {
+          "path": "server/scripts/inspect_people_review_candidates.py",
+          "before_sha256": null,
+          "sha256": "64bd3eead5b708e814bcbc57c135a4a9f9afc8de64eb7c1a5c218f71ff9e9a88"
+        },
+        {
+          "path": "server/tests/security/test_people_review_candidates.py",
+          "before_sha256": null,
+          "sha256": "b64c375c54c36dac76a455c3d552560d8a7fcd723b0d21c594b7c11aaee61f7c"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "2dfd7504fa03b65c24ac05f8e98a7f720d1f86c1e7cc1b7273a049ee1f21c5ee",
+          "sha256": "b0a8b4ee28c86114a8a76b8b2ec6273781806baba2b9aa76ab99bfe8187d1ca0"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": "02a18a91e66cb4cbe5c0928926d411f67269841ed80776de6abfff0d02143fe5",
+          "sha256": "036c94272b768edc3748b72dab30e3acf274c82ebb5936e2860aed2f851c1346"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": false,
+      "provider_calls_added": false,
+      "production_data_written": false,
+      "operator_only": true,
+      "integration_replay": {
+        "from_commit": "1df9d89dbddf5681b742200ce029b12d2843e00d",
+        "rebased_before_hashes": [
+          {
+            "path": "tools/check.py",
+            "original_before_sha256": "77a8f6a637416fea3a5aca8a09e03f534e0d4a6bfebeb9eef7691fc0bd00abad"
+          }
+        ],
+        "notes": "Before hashes follow the integrated ledger sequence; original source after hashes are retained; final resolved bytes have their own overlay."
+      }
+    },
+    {
+      "feature": "private-owner-visual-people-review-and-bilingual-date-followup",
+      "source_commit": "159a5234373c2192fe3b165437b5f3755171bab1",
+      "files": [
+        {
+          "path": "docs/PRIVATE_PEOPLE_VISUAL_REVIEW.md",
+          "before_sha256": null,
+          "sha256": "4cb9503b570e9c65437af3eaf754689c031e04ef43ae209d063e10823f10f4b9"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": "036c94272b768edc3748b72dab30e3acf274c82ebb5936e2860aed2f851c1346",
+          "sha256": "b0301526343020724e6a94be4915cf5adab12d10a70571ad7e4b1c36bd1e2d44"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "b39a6adc4019bba6e212ed5db4352d05e46b003fc7e32a0e522fcdcb9cd249b7",
+          "sha256": "29783ed46d6e7423db0213cfc417867d102fa3af3be8f918b8043e9df026b58f"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "d88c5966a508512f92a3069020a95f62b641d9164ed592c74dc8ba104a8c1ac1",
+          "sha256": "252fd60f7696f736a5f3a7372490bf5da74fd8d5f1ca5dab4d6fdf4fca23ed83"
+        },
+        {
+          "path": "server/backend/app/access/people_review.py",
+          "before_sha256": null,
+          "sha256": "cf77435f66b1d9957914c48581b2cc4f363b3df755cc972e4e36cab864f8393e"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "a9c90ccc6aa39b0a8f325593e8df049c637e5a99b19a0c02d2f1be0d8b2a07b5",
+          "sha256": "4fa1ff43cbabba54e30de8151fd4389f0ef403b3d7b9e26fb13fac9815869df9"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "394b42274f7042179dff0251248bf3bf84d72ff8119c3ad16161922047675e76",
+          "sha256": "05ac853330564c3d77d8d43cdb017bf9f51f6b66d0130f8b70b5b97816824905"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "b5cc4da0eb6febebede2b4ca3432c34fc4c3cde4e52e84fa7b2b37d42c94e805",
+          "sha256": "b4b80f9bf80dcca932062559b35d48fc89fd2f79c1b5557284c127c325f51445"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "d290c0f063ddd4ce02e472ce8aecdde4a080d749d4cdffc8e4a1d0f3376b4b1e",
+          "sha256": "626fcc69a98abd086b66b9a28210d2373bb794f90d39967ff68078103bd3d376"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "3f638fe70836b40ebf6928240eb7656cda46f06d8f1bb8c208ea0d08caa084db",
+          "sha256": "1255bdf0d0a46c345dfd5fae0fc9f43f08563c302007e1358bf63c404b1bb2bf"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "ce0306de28a277806768046af9858c0d5412752ccee2b6dd77d5cf7c75f66fe8",
+          "sha256": "b592b4b326165cd31d3d0224168e98d38dd437dab313b83f2551116678d2bec3"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "69dcba0ff27beef27911994c84730a1463fb146ead12d7c8edf8462b614398b6",
+          "sha256": "f2aca9500892e4ca175d149bfd762865aaf25b1e856d134fe7436705fd77c6dc"
+        },
+        {
+          "path": "server/scripts/export_visual_people_review.py",
+          "before_sha256": null,
+          "sha256": "d91557bc1a103d06d296dbf530249bb557ac302e956731a99b7bd3a22c8bdb12"
+        },
+        {
+          "path": "server/tests/security/people_review_browser_bridge.py",
+          "before_sha256": null,
+          "sha256": "603e2e663eb3ff33d506a3132d37ed4f21dce5a443828c19dd79a16ad9c2a7b5"
+        },
+        {
+          "path": "server/tests/security/test_assistant_bilingual_review_journeys.py",
+          "before_sha256": null,
+          "sha256": "3ef1c46afdf36cda9381b5c102362cf871566eda9e81bde050100b6535982237"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "0d2240087a0c6d75d6adcf5eca9b55286687cb8691eee71cd770a31996088c10",
+          "sha256": "0da0b7a2cba06285e12977ba1c7871163fb6e364d70a6fbf98b28c04a8c2c3ca"
+        },
+        {
+          "path": "server/tests/security/test_people_review_browser.cjs",
+          "before_sha256": null,
+          "sha256": "140b41048d1fd9ab2b6da3fecd6fd9e35ae30038ce2ee0690eaedc3ae569a446"
+        },
+        {
+          "path": "server/tests/security/test_people_visual_review.py",
+          "before_sha256": null,
+          "sha256": "3f74055f1e62d221389de0b5eb67dffb8742f473054fa4d56780e46973d6566e"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "95fb26c3d6b9d0fd29a2785d634822330a5c549f16aa01d6c5c9c10bf741823b",
+          "sha256": "ad80efb3f7227c4283060e3d2fabfe2fc69a719b34d15eb860d9882c3fdb9c59"
+        },
+        {
+          "path": "server/tests/security/test_visual_people_review_export.py",
+          "before_sha256": null,
+          "sha256": "60cc2e5c2de5545f8fdf2a57b8c02307ca96e431a6d799819326548f9e91424f"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "b0a8b4ee28c86114a8a76b8b2ec6273781806baba2b9aa76ab99bfe8187d1ca0",
+          "sha256": "dcdab43031cb8b202a124f1920ef3b0c353b6412ff0fd0ff946d147355b362a4"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": true,
+      "provider_calls_added": false,
+      "client_contract_changed": true,
+      "production_data_written": false,
+      "integration_replay": {
+        "from_commit": "1df9d89dbddf5681b742200ce029b12d2843e00d",
+        "rebased_before_hashes": [
+          {
+            "path": "server/backend/app/access/boundary.py",
+            "original_before_sha256": "1e949651c515b3180c43d3423370d4f830d90895e94c99e61ef2d07cedd19246"
+          },
+          {
+            "path": "server/backend/app/ui/access/app.js",
+            "original_before_sha256": "a2397ca8c70f4c49015cd4c12860f0d6dd5e8c53aa1afd97d70d271513c0f4ef"
+          },
+          {
+            "path": "server/backend/app/ui/access/index.html",
+            "original_before_sha256": "654b7a33553cd0bf5b013c6f0d38d3f2e5ad6672062367cea840a16f692bc633"
+          },
+          {
+            "path": "server/backend/app/ui/access/styles.css",
+            "original_before_sha256": "ecf2f279d3b40c0cf6d86e8b2f9e0b1394f0d20e609f6a30e6a4463ae0fcc8f7"
+          },
+          {
+            "path": "server/docs/security/route_capabilities.json",
+            "original_before_sha256": "797bb8f9966ae4a257ebb820fb356f66c99f8f5a13f3afae9d077a62aeae312a"
+          },
+          {
+            "path": "server/scripts/build_staging_package.py",
+            "original_before_sha256": "c031fdf5c913e1767bcabcb70d2e7500c2d12f6cdf5a682e26eb0f24caf17b61"
+          },
+          {
+            "path": "server/tests/security/test_closed_application.py",
+            "original_before_sha256": "f072249651264113fca750d639c8b439c91a988201f798157fd97243fb86d90e"
+          },
+          {
+            "path": "server/tests/security/test_staging_package.py",
+            "original_before_sha256": "e65c734f2d744456ce2889e3d144a8a5ddabfbfd95674f0b7d1f667df1a21120"
+          }
+        ],
+        "notes": "Before hashes follow the integrated ledger sequence; original source after hashes are retained; final resolved bytes have their own overlay."
+      }
+    },
+    {
+      "feature": "wait-for-owner-controls-in-visual-review-journey",
+      "source_commit": "973d45db8b35af22e727a4f44badef0ea213b90e",
+      "files": [
+        {
+          "path": "server/tests/security/test_people_review_browser.cjs",
+          "before_sha256": "140b41048d1fd9ab2b6da3fecd6fd9e35ae30038ce2ee0690eaedc3ae569a446",
+          "sha256": "8192a1d5f8f2b14bb5430d3c9b5c34f36c18875743b21f115186581a748b77f7"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": false,
+      "provider_calls_added": false,
+      "client_contract_changed": false
+    },
+    {
+      "feature": "repair-upload-history-journal-fixture-and-report-bridge-failures",
+      "source_commit": "c09dce7f78add228bc873e039f1633f643793cf2",
+      "files": [
+        {
+          "path": "server/tests/security/upload_history_browser_bridge.py",
+          "before_sha256": "13434ccce27b717de6d6e0595d28f768da9a46a6df555ea74f4d1be940a53b63",
+          "sha256": "fffaeb2e8da3c907b15fe23db7072bb1eaedefb839e132cd32ece7c9c21a6652"
+        },
+        {
+          "path": "server/tests/security/test_upload_history_browser.cjs",
+          "before_sha256": "64e54507a3dc5552c5fde178ce74aef7742c3af9ca151c7e82338b9d85ecc2c7",
+          "sha256": "d0cfd9be855cf641102ab978b97eca68a4dff57e2bdeeeb67d7d6b39b2253e0b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": false,
+      "provider_calls_added": false,
+      "client_contract_changed": false,
+      "production_data_written": false,
+      "integration_replay": {
+        "from_commit": "1df9d89dbddf5681b742200ce029b12d2843e00d",
+        "rebased_before_hashes": [
+          {
+            "path": "server/tests/security/upload_history_browser_bridge.py",
+            "original_before_sha256": "2fefa17277492d4de67f305bd226fb118f7d88f36457fcb79c9343977c5364db"
+          },
+          {
+            "path": "server/tests/security/test_upload_history_browser.cjs",
+            "original_before_sha256": "da6a4bdf66ec3eaede4e5923b083cd7c0d09b5c217efecb338514d445ab8ff00"
+          }
+        ],
+        "notes": "Before hashes follow the integrated ledger sequence; original source after hashes are retained; final resolved bytes have their own overlay."
+      }
+    },
+    {
+      "feature": "integrate-deployed-visual-review-with-photo-stacks",
+      "merged_main_commit": "1df9d89dbddf5681b742200ce029b12d2843e00d",
+      "deployed_source_preserved": "3c2c48f5411c03d5e53ea9ae0b0d2c7a12297826",
+      "files": [
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "252fd60f7696f736a5f3a7372490bf5da74fd8d5f1ca5dab4d6fdf4fca23ed83",
+          "sha256": "a210e6b73d3bc76d7f1e5da1ea6a3168aa58c4e06819513723f47571f48c3b28"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "b4b80f9bf80dcca932062559b35d48fc89fd2f79c1b5557284c127c325f51445",
+          "sha256": "b36d7c8c564e0d9db41c1fa5b81e925e3c90d185c5f58b4c26141ec023ea33bf"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "626fcc69a98abd086b66b9a28210d2373bb794f90d39967ff68078103bd3d376",
+          "sha256": "c418197c84fa3d6bcd21f1621064beb4a363f257e0664315068d6080657ef84a"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "1255bdf0d0a46c345dfd5fae0fc9f43f08563c302007e1358bf63c404b1bb2bf",
+          "sha256": "4844df2a40e26f39bb992e03d63a3f5799884c62047f960e63c7bfae0b1c95b9"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "b592b4b326165cd31d3d0224168e98d38dd437dab313b83f2551116678d2bec3",
+          "sha256": "fa4359610630b9da92fae34b4f41d7304473b64e8617a12c10c2e60c4c07619f"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "0da0b7a2cba06285e12977ba1c7871163fb6e364d70a6fbf98b28c04a8c2c3ca",
+          "sha256": "d45d6b8090a7fff99dfee3f10f49aa1e780ce8d961ecb4863f5ee89904f37670"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "ad80efb3f7227c4283060e3d2fabfe2fc69a719b34d15eb860d9882c3fdb9c59",
+          "sha256": "a5ec30939e4d8f1b92289ea300e7c288cddfc82013754523d19e25f6bac01b34"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "dcdab43031cb8b202a124f1920ef3b0c353b6412ff0fd0ff946d147355b362a4",
+          "sha256": "7e234e0972652104c5243d61d94015717d5b95ee24f22653611b2835fa4da386"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "f2aca9500892e4ca175d149bfd762865aaf25b1e856d134fe7436705fd77c6dc",
+          "sha256": "e2b7d4d0e1551c4869c79a54f4232c19c04ea16a6be9303729b35df9cc8eeba4"
+        }
+      ],
+      "notes": "Combines page-local gallery stacks with current owner visual review and upload-history harness guards; closed route inventory174. Three generated browser journeys passed. No live operation."
     }
   ]
 }

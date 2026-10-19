@@ -343,6 +343,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .memory-navigation a[aria-current="location"]{color:var(--accent);box-shadow:inset 0 -2px var(--accent)}
 .memory-navigation a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #saved-memory-panel,#memory-books,#grid,#albums-panel,#assistant-panel{scroll-margin-top:var(--memory-navigation-offset,140px)}
+#people-review,#people-review-step{scroll-margin-top:var(--memory-navigation-offset,140px)}
 #saved-memory-panel :is(h2,h3):focus-visible,#memory-books :is(h2,h3):focus-visible,#grid:focus-visible{outline:2px solid var(--accent);outline-offset:6px}
 .memory-home{display:grid;grid-template-columns:1fr 1fr;min-height:340px;border-radius:24px;overflow:hidden;background:#eee6d9;margin-bottom:2.5rem}
 .memory-home-copy{padding:2.8rem;align-self:center}
@@ -876,3 +877,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .photo-stack-actions{display:flex;gap:.4rem;flex-wrap:wrap;padding:.25rem .4rem .55rem}.photo-stack-actions button{min-height:40px;padding:.5rem .7rem}
 .photo-stack-member[aria-current="true"]{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 24%,transparent)}
 @media(max-width:750px){.photo-stack-tools{align-items:stretch}.photo-stack-tools p{flex-basis:100%}.photo-stack-actions button{flex:1 1 8rem}}
+.people-review{margin:1.25rem 0;padding:1rem;border:1px solid var(--line);border-radius:1rem;background:var(--paper,#fffaf3)}
+.people-review-card{display:grid;grid-template-columns:5rem minmax(0,1fr);gap:.65rem 1rem;align-items:center;padding:1rem 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.people-review-card>img{grid-row:span 2;width:5rem;height:5rem;object-fit:cover;border-radius:1rem;background:#eee}
+.people-review-choice,.people-review-confirm-label{display:flex;align-items:flex-start;gap:.65rem;line-height:1.45}
+.people-review-choice input,.people-review-confirm-label input{width:1.2rem;height:1.2rem;flex:0 0 auto;margin:.1rem 0 0}
+.people-review-actions{grid-column:2;display:flex;gap:.5rem;flex-wrap:wrap}
+.people-review-selected{display:flex;flex-wrap:wrap;gap:.65rem;margin:.75rem 0}
+.people-review-selected img{width:5rem;height:5rem;object-fit:cover;border-radius:1rem}
+#people-review-step{margin-top:1rem;padding:1rem;border:1px solid var(--line);border-radius:.75rem;background:#fff}
+#people-review-step>button{margin:.75rem .5rem 0 0}
+@media(max-width:480px){.people-review{padding:.8rem}.people-review-card{grid-template-columns:4.25rem minmax(0,1fr);gap:.6rem}.people-review-card>img{width:4.25rem;height:4.25rem}.people-review-actions button{flex:1 1 100%}.people-review-selected img{width:4.25rem;height:4.25rem}}

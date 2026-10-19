@@ -3399,7 +3399,7 @@
    ],
    "scope": "Exact duplicate groups within one library: active assets this library maps that share a hash_sha256 with at least one other active asset in the same library.",
    "current_control": "Same reviewed closed boundary and shared bearer/cookie/CSRF policy as the other member reads; library.read rather than an owner capability, matching the tag catalog and the people directory; the repeat predicate is scoped to the library, so a copy that is deleted, in another library or unmapped never counts and never appears; 25 groups per page, 25 copies per group, bounded page number, 3-second query deadline. The response carries no filesystem path, no filename and no content hash: a group is identified by its lowest asset id, which is stable for paging without letting a caller test whether a known image is in the library.",
-   "gap": "Source/synthetic evidence only; no member UI control yet. Exact duplicates only — perceptual near-duplicates (legacy /duplicates/reduction/*) need the phash task output and an explicit threshold decision, and are a separate contract. Nothing here deletes, suppresses or merges a copy, and deletion stays EXCLUDED, so the view explains the duplication rather than resolving it. On the deployed library that is 3,081 groups covering 6,189 of 27,842 active assets, caused by the same material being imported twice under two naming schemes. No physical acceptance."
+   "gap": "Source/synthetic evidence only; no member UI control yet. Exact duplicates only \u2014 perceptual near-duplicates (legacy /duplicates/reduction/*) need the phash task output and an explicit threshold decision, and are a separate contract. Nothing here deletes, suppresses or merges a copy, and deletion stays EXCLUDED, so the view explains the duplication rather than resolving it. On the deployed library that is 3,081 groups covering 6,189 of 27,842 active assets, caused by the same material being imported twice under two naming schemes. No physical acceptance."
   },
   {
    "source": "backend/app/access/captions.py",
@@ -4716,6 +4716,48 @@
    ],
    "current_control": "Not mounted by the PhotoHouse default application. Explicit local socket, loopback peer and exact Host/port, bearer authentication before body, no browser/proxy/query credential access. Strict bounded UTF8 JSON, exact joint binding/query digest/checksum, one inference lease retained until actual worker completion, bounded response and cooperative deadline; no logs or filesystem/model selection from requests.",
    "gap": "Native dependency/checkpoint/GPU/resource/relevance qualification and service deployment are separate. The source probe records observed implementation identity and never grants library access or qualifies multilingual recall. In-progress inference cannot be forcibly preempted by ASGI shutdown."
+  },
+  {
+   "source": "backend/app/access/people_review.py",
+   "owner": "router",
+   "method": "GET",
+   "path": "/admin/people/{person_id}/review",
+   "handler": "queue",
+   "surface": "photohouse",
+   "scope": "Current owner and exact reviewed identities in the selected active library",
+   "capabilities": [
+    "library.people.manage"
+   ],
+   "current_control": "Owner before provider; current frozen roster and manual assignments; bounded cursor queue; HMAC face/person/membership revisions; explicit confirmation records only an opaque audit marker; cookie CSRF",
+   "gap": "Confirmation does not reassign faces, propagate identities or activate search; separate source-bound index preparation required"
+  },
+  {
+   "source": "backend/app/access/people_review.py",
+   "owner": "router",
+   "method": "GET",
+   "path": "/admin/faces/{face_id}/review",
+   "handler": "status",
+   "surface": "photohouse",
+   "scope": "Current owner and exact reviewed identities in the selected active library",
+   "capabilities": [
+    "library.people.manage"
+   ],
+   "current_control": "Owner before provider; current frozen roster and manual assignments; bounded cursor queue; HMAC face/person/membership revisions; explicit confirmation records only an opaque audit marker; cookie CSRF",
+   "gap": "Confirmation does not reassign faces, propagate identities or activate search; separate source-bound index preparation required"
+  },
+  {
+   "source": "backend/app/access/people_review.py",
+   "owner": "router",
+   "method": "POST",
+   "path": "/admin/faces/{face_id}/review",
+   "handler": "confirm",
+   "surface": "photohouse",
+   "scope": "Current owner and exact reviewed identities in the selected active library",
+   "capabilities": [
+    "library.people.manage"
+   ],
+   "current_control": "Owner before provider; current frozen roster and manual assignments; bounded cursor queue; HMAC face/person/membership revisions; explicit confirmation records only an opaque audit marker; cookie CSRF",
+   "gap": "Confirmation does not reassign faces, propagate identities or activate search; separate source-bound index preparation required"
   }
  ]
 }

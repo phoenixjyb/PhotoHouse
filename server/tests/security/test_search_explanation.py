@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROOT / 'backend'))
 
 from app.access.search_explanation import (
     describe_empty_query, describe_filter_query, explain_filters, no_results_guidance,
+    people_scope_notice,
 )
 
 
@@ -145,8 +146,47 @@ def test_empty_result_guidance_text_and_generic_branches_are_bounded_bilingual_a
                    no_results_guidance({'date': object(), 'text': object()}, 'zh')):
         assert len(result.encode('utf-8')) <= 600
         lowered = result.casefold()
-        assert not any(term in lowered for term in ('event', 'person', 'people', 'no one', 'your fault'))
-        assert '人物' not in result and '家人' not in result
+        assert not any(term in lowered for term in ('event', 'no one', 'your fault'))
+        assert '家人' not in result
+    assert 'confirmed assignments only' in generic_en
+    assert '人物检索只使用已确认的标注' in generic_zh
+
+
+def test_people_notice_explains_reviewed_evidence_without_counts_names_or_absence_claims():
+    for match in ('all', 'any'):
+        filters = {'people': {'ids': ['PRIVATE ONE', 'PRIVATE TWO'], 'match': match}}
+        before = copy.deepcopy(filters)
+        en = people_scope_notice(filters, 'en')
+        zh = people_scope_notice(filters, 'zh')
+        assert 'confirmed assignments only' in en and 'may be missing' in en
+        assert '已确认的标注' in zh and '可能遗漏' in zh
+        assert ('same item' in en) == (match == 'all')
+        assert ('同一项' in zh) == (match == 'all')
+        assert 'PRIVATE' not in en + zh
+        assert filters == before
+    for filters in (None, {}, {'people': None}, {'people': {'ids': []}},
+                    {'people': {'ids': 'PRIVATE'}}):
+        assert people_scope_notice(filters, 'en') == ''
+    assert 'same item' not in people_scope_notice({'people': {'ids': ['1'], 'match': 'all'}}, 'en')
+
+
+def test_people_notice_survives_all_empty_search_guidance_combinations():
+    import itertools
+    people = {'ids': ['PRIVATE ONE', 'PRIVATE TWO'], 'match': 'all'}
+    fields = [('date', {'from': '2032-01-01', 'to': '2032-12-31'}),
+              ('text', 'PRIVATE LITERAL'),
+              ('descriptive', {'version': 1, 'concepts': [
+                  {'surface': 'PRIVATE CLUE', 'alternatives': ['PRIVATE ALTERNATIVE']}]} )]
+    for enabled in itertools.product((False, True), repeat=len(fields)):
+        filters = dict(pair for pair, active in zip(fields, enabled) if active)
+        filters['people'] = people
+        for language in ('en', 'zh'):
+            reply = no_results_guidance(filters, language)
+            assert people_scope_notice(filters, language) in reply
+            assert 'PRIVATE' not in reply
+            assert len(reply.encode('utf-8')) <= 600
+            if 'date' in filters:
+                assert ('any date' if language == 'en' else '不限日期') in reply
 
 
 def test_empty_filters_have_explicit_bilingual_response():

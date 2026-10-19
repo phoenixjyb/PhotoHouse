@@ -48,6 +48,10 @@ _PEOPLE_REFERENCES = re.compile('|'.join(
 _JOIN = r'(?:and(?![a-z0-9_])|和)'
 _PEOPLE_ANSWER_RELATIONS = re.compile(
     r'(?<![a-z0-9_])(?:and|or|both|together)(?![a-z0-9_])|和|与|及|或者|或|一起|同时', re.I)
+_RELATIVE_EARLIER = re.compile(
+    r'^(?:再早一点|再早点|更早一点|再早一点\s*please|'
+    r'(?:a\s+bit|a\s+little)\s+earlier(?:\s+please)?|'
+    r'earlier(?:\s+please)?|earlier一点)[\s,，。.!！?？]*$', re.I)
 _NAMED_PARENT_COMPANION = re.compile(
     r'(?P<anchor>.+?)\s*(?P<join>(?:(?a:\b)(?:with|and)(?a:\b)|和|跟|与))\s*'
     r'(?P<pronoun>(?:(?a:\b)(?:her|his)(?a:\b)|她|他))\s*(?:的\s*)?'
@@ -216,6 +220,8 @@ def plan_people_answer(words, *, now, entities, previous_filters):
 def query_mode(words):
     if type(words) is not str:
         return _query_mode(words)
+    if _RELATIVE_EARLIER.fullmatch(d.fold(words.strip())):
+        return 'refine'
     if _correction_parts(words) is not None:
         return 'refine'
     operations = _operations(words)
@@ -269,6 +275,15 @@ def plan_query(words, *, now, entities, previous_filters, refine):
     if type(words) is not str or len(words) > 1024:
         return _plan_query(words, now=now, entities=entities,
                            previous_filters=previous_filters, refine=refine)
+    if _RELATIVE_EARLIER.fullmatch(d.fold(words.strip())):
+        original = _plan_query(words, now=now, entities=entities,
+                               previous_filters=previous_filters, refine=refine)
+        if (refine and previous_filters is not None and
+                original.status == 'clarification' and
+                original.reason == 'unsupported_condition'):
+            return QueryPlan(1, 'clarification', dict(previous_filters),
+                             'ambiguous_relative_date')
+        return original
     correction = _correction_parts(words)
     if correction is not None:
         return _plan_correction(words, correction, now=now, entities=entities,

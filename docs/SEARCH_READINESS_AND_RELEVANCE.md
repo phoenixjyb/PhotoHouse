@@ -34,6 +34,21 @@ no names, identifiers, aliases, graph facts or account scope. `unique_allow_zero
 counts current catalog joins intentionally approved without a face assignment.
 An unresolved graph binding does not create an identity or change search access.
 
+## People-search replies
+
+Search-v2/v3 result replies, current-result overviews and their explicit speech
+readout disclose that people search uses confirmed assignments. Unreviewed
+photos or videos may be missing; a joint `all` search requires every selected
+person to have a confirmed assignment in the same item. Empty-result guidance
+keeps date, text and descriptive constraints and their existing explicit
+relaxation suggestions. The explanation itself never changes a filter.
+
+This fixed bilingual notice is an evidence boundary, not a measured coverage
+percentage or a claim that the requested people are absent from the library.
+It emits no additional names, roster counts, IDs or graph details. Reply shape,
+the 600-byte bound, source revalidation and access checks remain unchanged.
+General searches without people filters retain their existing wording.
+
 ## Reviewed people and index preparation
 
 Reuse `server/scripts/prepare_access_discovery_index.py` for the reviewed index;

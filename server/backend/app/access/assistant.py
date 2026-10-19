@@ -413,7 +413,7 @@ def _describe_results(words):
                        '这些视频是什么时候拍的', '这些照片是什么时候的', '这些结果是什么时候的'}
 
 
-def _result_overview(result, language):
+def _result_overview(result, language, *, filters=None):
     """Speak only bounded metadata from the current authorized card order.
 
     Discovery cards do not contain filename/upload date hints, captions or
@@ -422,7 +422,12 @@ def _result_overview(result, language):
     """
     total, items = result['total'], result['items']
     zh = language == 'zh'
+    from .search_explanation import people_scope_notice
+    scope = people_scope_notice(filters, language)
     if not items:
+        if scope:
+            from .search_explanation import no_results_guidance
+            return no_results_guidance(filters, language)
         return ('没有找到匹配的照片或视频。可以调整查找条件。' if zh else
                 'No matching photos or videos were found. Try adjusting the search.')
     prefix = (f'找到 {total} 项。当前列表前{min(3, len(items))}项：' if zh else
@@ -434,6 +439,8 @@ def _result_overview(result, language):
     else:
         suffix = (f'可以说“打开第{opening}项”查看。' if zh else
                   f'Say "open the {("first", "second", "third")[opening - 1]} result" to view it.')
+    if scope:
+        suffix += ' ' + scope
     clauses = []
     months = ('January', 'February', 'March', 'April', 'May', 'June',
               'July', 'August', 'September', 'October', 'November', 'December')
@@ -680,7 +687,8 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                               'Search for photos or videos first, then say "describe these results".'),
                     'context': None, 'filters': None, 'items': [], 'total': 0,
                     'has_more': False, 'effect': None}
-        return {'version': 1, 'kind': 'results', 'reply': _result_overview(existing, lang),
+        return {'version': 1, 'kind': 'results', 'reply': _result_overview(
+                    existing, lang, filters=previous['filters'] if search_v2 else None),
                 'context': previous, 'filters': previous['filters'], 'items': existing['items'],
                 'total': existing['total'], 'has_more': existing['has_more'], 'effect': None}
     numbered = _asset_number(words)
@@ -842,6 +850,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'people_reference_unavailable':
                 reply = ('当前查找条件还没有明确人物，无法判断指的是谁。请提供已登记的姓名。' if lang == 'zh' else
                          'The current search has no selected people to refer to. Use a reviewed name first.')
+            elif plan.reason == 'ambiguous_relative_date':
+                reply = ('“再早一点”没有指定具体日期。请提供明确的年份、月份或日期；当前人物、媒体和文字条件会保留。' if lang == 'zh' else
+                         '“Earlier” does not specify a capture date. Give a year, month, or date; the current people, media, and text filters will stay in place.')
             elif plan.reason == 'ambiguous_people_reference':
                 reply = ('这个人物指代与当前选定的人数不一致。请提供完整姓名，或明确要沿用哪些人物。' if lang == 'zh' else
                          'That reference does not match the number of selected people. Use full names or clarify who you mean.')
@@ -1035,8 +1046,9 @@ def _search_reply(engine, token, library, binding, filters, source, lang):
     context = {'library_id': library, 'binding': result['binding'],
                'fingerprint': result['fingerprint'], 'filters': filters,
                'visible_ids': [item['id'] for item in result['items']], 'total': result['total']}
-    reply = _result_overview(result, lang)
     from .assistant_search import SearchRuntime
+    reply = _result_overview(result, lang,
+                             filters=filters if isinstance(engine, SearchRuntime) else None)
     if result['total'] == 0 and isinstance(engine, SearchRuntime):
         from .search_explanation import no_results_guidance
         reply = no_results_guidance(filters, lang)
@@ -1142,7 +1154,9 @@ async def speech(request: Request):
     context = _context(payload['context'], library)
     result = await run_in_threadpool(_context_result, engine, token, library, context)
     language = payload['language']
-    words = _result_overview(result, language)
+    from .assistant_search import SearchRuntime
+    words = _result_overview(result, language,
+                             filters=context['filters'] if isinstance(engine, SearchRuntime) else None)
     await _stage(request, 'validated')
     await _stage(request, 'provider_started')
     audio = await run_in_threadpool(tts.synthesize, words, language)

@@ -71,6 +71,10 @@ async function installSyntheticTransport(targetContext){
   const result=await send('找示例儿童和妈妈在海边的照片');
   assert.equal(result.result.version,2);assert.deepEqual(result.result.filters.people,{ids:['301','302'],match:'all'});
   assert.deepEqual(result.result.items.map(x=>x.id),['101','102']);
+  assert.match(result.result.reply,/已确认的标注/);assert.match(result.result.reply,/同一项/);
+  await page.waitForFunction(value=>document.querySelector('#assistant-reply')?.textContent===value,result.result.reply);
+  await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'people-scope-desktop-zh.png'),fullPage:false});
   await page.locator('#assistant-search-summary').waitFor({state:'visible'});
   const summary=await page.locator('#assistant-search-summary').innerText();
   assert.match(summary,/示例儿童/);assert.match(summary,/示例成人/);assert.match(summary,/海边/);assert.match(summary,/同时|全部|所有/);
@@ -125,6 +129,25 @@ async function installSyntheticTransport(targetContext){
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.locator('#assistant-results').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'search-phone-evidence-en-150.png'),fullPage:false});
   checkpoint('Keyboard submission and Chinese/English 390px enlarged layouts retain readable conditions and generated-evidence labels');
+  // A no-match result describes the evidence boundary without relaxing people.
+  const empty=await send('find Sample Child and Sample Adult photos in 2099');
+  assert.equal(empty.result.total,0);assert.deepEqual(empty.result.items,[]);
+  assert.deepEqual(empty.result.filters.people,{ids:['301','302'],match:'all'});
+  assert.match(empty.result.reply,/confirmed assignments only/);assert.match(empty.result.reply,/same item/);
+  assert.match(empty.result.reply,/any date/);assert.equal(empty.result.effect,null);
+  await page.waitForFunction(value=>document.querySelector('#assistant-reply')?.textContent===value,empty.result.reply);
+  await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'people-scope-phone-en-150.png'),fullPage:false});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  const explained=await send('为什么没有结果');
+  for(const key of ['context','filters','items','total','has_more','interpretation'])assert.deepEqual(explained.result[key],empty.result[key]);
+  assert.match(explained.result.reply,/已确认的标注/);assert.match(explained.result.reply,/同一项/);
+  await page.waitForFunction(value=>document.querySelector('#assistant-reply')?.textContent===value,explained.result.reply);
+  await page.setViewportSize({width:320,height:845});
+  await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'people-scope-phone-zh-150-320.png'),fullPage:false});
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  checkpoint('Reviewed-person scope stays visible in enlarged English/Chinese empty replies without changing joint filters, context or opening media');
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,pageErrors,blockedOrigins,syntheticBackend:true,externalRequests:0},null,2));
   console.log(`Search browser checks: ${checkpoints.length} passed. Artifacts: ${artifacts}`);

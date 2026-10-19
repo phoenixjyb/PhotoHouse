@@ -213,3 +213,49 @@ python server/scripts/inspect_reviewed_people_readiness.py \
 
 The output is a private `requires_explicit_review` inspection packet, never an
 index artifact. Standard output contains only counts and hashes.
+
+## Bounded next review batch
+
+`inspect_people_review_candidates.py` prepares an offline proposal for people
+already present in an explicit `RefreshingPeopleIndex`. It verifies their
+current library ownership, exact catalog labels and every frozen approved face
+assignment before selecting more candidates. It does not discover a new person
+or infer an identity from a name, face embedding or automatic detection.
+
+The first batch uses only existing manual catalog associations on active assets
+in the selected library. Photos already containing an approved assignment are
+excluded. Each person has at most six new photos by default (configurable from
+one to twelve), in descending asset-ID order; these are review candidates, not
+ranked identity predictions. A bounded extra row indicates whether more photos
+remain. Duplicate manual faces in one photo stay grouped for individual review;
+an excessive group refuses the operation instead of silently omitting faces.
+
+```text
+python server/scripts/inspect_people_review_candidates.py \
+  --database /private/operator/library.sqlite --library LIBRARY_ID \
+  --reviewed-index /private/operator/approved-people.json \
+  --photos-per-person 6 --out /private/operator/new-review-batch.json
+```
+
+For a primary bound to deletion history, supply the paired existing journal and
+namespace arguments described above. The approved input and new output stay in
+owner-private direct local storage on the data-owning host. The output contains
+private face/asset identifiers and catalog associations, but no media, original
+paths, embeddings, face coordinates, account information or access tokens.
+Standard output contains only counts and an output digest.
+
+Every candidate remains explicitly unconfirmed and ineligible for search. The
+packet is not accepted as an index, a readiness selection or an identity review.
+Use the protected owner face-review flow to view the face crop and parent photo;
+do not use the legacy face routes. An explicit visual confirmation covers only
+the selected face. Recheck current source and deletion history through the
+existing two-pass index preparation workflow before proposing activation. This
+export neither changes catalog assignments nor installs an expanded index.
+
+## Owner visual confirmation
+
+The [private visual review screen](PRIVATE_PEOPLE_VISUAL_REVIEW.md) records
+explicit, revision-bound confirmations separately from catalog assignments.
+It excludes existing approved faces and never activates the search index.
+Owner permission, current frozen identity checks and the two-pass preparation
+and activation boundaries still apply.

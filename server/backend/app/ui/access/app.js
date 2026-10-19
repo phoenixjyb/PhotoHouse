@@ -352,6 +352,7 @@
   }
   const storyState={asset:null,editing:null,dirty:false,busy:false,page:1,load:0,loading:false,history:0,deletes:new Map(),pending:null,search:null,suspended:null,notes:[]};
   const peopleState={page:1,total:0,load:0,query:'',named:'all'};
+  const peopleReviewState={load:0,person:null,items:[],selected:new Set(),nextBefore:null,step:false,library:null,account:null,busy:false,statusKey:'',statusValues:null};
   const directoryState={page:1,total:0,load:0,query:'',person:null,assetLoad:0,assetPage:1,assetTotal:0};
   Object.assign(words.en,{familyTagsTitle:'Family note tags',familyTagsHelp:'Labels suggested from family notes and accepted by the library owner. Only photos in this library appear here.',findFamilyTag:'Find a family tag',familyTagsEmpty:'No accepted family note tags in this library yet.',familyTagAssets:'Photos with this family tag',clearFamilyTag:'Close'});
   Object.assign(words.zh,{familyTagsTitle:'家庭留言标签',familyTagsHelp:'从家庭留言生成、经相册库主人接受的标签。这里只显示此相册库的照片。',findFamilyTag:'查找家庭标签',familyTagsEmpty:'此相册库还没有已接受的家庭留言标签。',familyTagAssets:'带有此家庭标签的照片',clearFamilyTag:'关闭'});
@@ -389,6 +390,8 @@
   Object.assign(words.zh,{assignFaces:'查看人脸归属 · 主人',assignHelp:'为一张人脸选择已保存的人物。不会自动传播标签或创建新人物。',unassigned:'未分配',choosePerson:'选择人物',confirmAssignment:'确认归属',assignmentReview:'将这张人脸分配给',assignmentSaved:'已保存归属，其他人脸未更改。',assignmentConflict:'人脸或人物已更改，或人脸处理正在进行。请刷新并重新确认。',assignmentFailed:'尚未确认保存成功，请刷新并核对此人脸后再试。',assignmentUnavailable:'此归属需要另行确认权限。',noFaces:'此照片暂无已检测的人脸。',selectPerson:'选择此人'});
   Object.assign(words.en,{managePeople:'Manage people · Owner',peopleHelp:'Review saved names and faces in this library. Renaming does not merge people or change face assignments.',findPerson:'Find a saved name',peopleEmpty:'No matching saved names. Unassigned faces and names not linked to this library are not included yet.',personName:'Display name',unnamedPerson:'Unnamed person',reviewFaces:'Review faces',saveName:'Save name',nameSaved:'Name saved.',nameConflict:'This person changed. Review the refreshed record before editing again.',nameUnavailable:'Name editing needs a separate ownership review for this record.',facesCount:'faces in this library',moreFaces:'More faces',nameShortened:'Long existing name: preview shortened.',nameSaveFailed:'Save not confirmed. Refresh the record before trying again.'});
   Object.assign(words.zh,{managePeople:'管理人物 · 主人',peopleHelp:'查看本家庭库中已保存的人名和人脸。修改姓名不会合并人物或更改人脸归属。',findPerson:'查找已保存的人名',peopleEmpty:'没有匹配的人名。暂不包含未分配的人脸或尚未关联到本家庭库的人名。',personName:'显示姓名',unnamedPerson:'未命名人物',reviewFaces:'查看人脸',saveName:'保存姓名',nameSaved:'姓名已保存。',nameConflict:'该人物已更改，请查看刷新后的记录再编辑。',nameUnavailable:'此记录需另行确认归属后才能修改姓名。',facesCount:'张本库人脸',moreFaces:'更多人脸',nameShortened:'原姓名较长，此处缩短显示。',nameSaveFailed:'尚未确认保存成功，请刷新记录后再试。'});
+  Object.assign(words.en,{openIdentityReview:'Review suggested faces',reviewCatalogNotice:'Catalog suggestions can be wrong. Review each face yourself; confirmation records only the faces you select and does not assign or enable search.',reviewQueueTitle:'Review faces suggested for {name}',reviewQueueLoading:'Loading a bounded batch of faces…',reviewQueueEmpty:'No faces are available in this batch. Load more to continue.',reviewMore:'Load more faces',reviewRefresh:'Refresh review queue',reviewSelectFace:'I recognize this person in this face',reviewOpenPhoto:'Open parent photo',reviewWrongPerson:'Wrong person',reviewChoose:'Choose the correct saved person, then confirm the correction.',reviewSelected:'Selected faces: {count}',reviewContinue:'Review selected faces',reviewStepTitle:'Confirm visual review',reviewStepCopy:'You are recording that you visually recognized {count} selected face(s) as {name}. This will not change assignments or activate search.',reviewSave:'Save visual confirmation',reviewCancel:'Back to selection',reviewSaved:'Visual confirmation recorded for the selected faces.',reviewConflict:'The face or person changed. This batch and its selections were cleared. Refresh the review queue before continuing.',reviewPartial:'Some confirmations may have been recorded, or the result is unknown. This batch and its selections were cleared. Refresh the review queue before continuing; nothing was retried.',reviewPermission:'Owner permission changed. The batch and its selections were cleared.',reviewLoadFailed:'Could not load this review batch. Refresh the people list and try again.',reviewPhotoUnavailable:'Could not open the parent photo.',reviewNoSelection:'Select at least one face to continue.',reviewConfirmationRequired:'Confirm that each selected face shows this person.',reviewCorrectionSaved:'Correction saved. Review the refreshed faces and confirm any again yourself.'});
+  Object.assign(words.zh,{openIdentityReview:'复核系统建议的人脸',reviewCatalogNotice:'目录建议可能有误。请亲自查看每张人脸；确认只记录你选中的人脸，不会更改归属或启用搜索。',reviewQueueTitle:'复核建议属于「{name}」的人脸',reviewQueueLoading:'正在读取有限批次的人脸…',reviewQueueEmpty:'此批次没有可复核的人脸。可继续读取后续批次。',reviewMore:'读取更多人脸',reviewRefresh:'刷新复核队列',reviewSelectFace:'我确认这张人脸是此人',reviewOpenPhoto:'打开原照片',reviewWrongPerson:'人物不对',reviewChoose:'选择正确的已保存人物，并确认更正。',reviewSelected:'已选人脸：{count} 张',reviewContinue:'复核已选人脸',reviewStepTitle:'确认目视复核',reviewStepCopy:'你将记录自己已亲自确认所选 {count} 张人脸是「{name}」。此操作不会更改归属或启用搜索。',reviewSave:'保存目视确认',reviewCancel:'返回选择',reviewSaved:'已记录所选人脸的目视确认。',reviewConflict:'人脸或人物信息已变化。本批次和选择已清除，请刷新复核队列后继续。',reviewPartial:'部分确认可能已保存，或结果暂不明确。本批次和选择已清除，请刷新复核队列后继续；系统没有自动重试。',reviewPermission:'主人权限已变化。本批次和选择已清除。',reviewLoadFailed:'无法读取复核批次。请刷新人物列表后重试。',reviewPhotoUnavailable:'无法打开原照片。',reviewNoSelection:'请至少选择一张人脸。',reviewConfirmationRequired:'请确认每张已选人脸都显示此人。',reviewCorrectionSaved:'更正已保存。请查看刷新后的人脸，并由你重新确认。'});
   Object.assign(words.en,{viewFilmstrip:'Photos in this view',viewFilmstripItem:'Photo',goToPage:'Go to page',go:'Go',pageRange:'Enter a page number between 1 and the last page.'});
   Object.assign(words.zh,{viewFilmstrip:'当前视图中的照片',viewFilmstripItem:'照片',goToPage:'跳转到页码',go:'前往',pageRange:'请输入有效范围内的页码。'});
   Object.assign(words.en,{displayName:'Your name',displayNameHelp:'How your family will see you, up to 64 characters.',invalidName:'Enter your name to join.',filterByDate:'Filter by date, places and media',discoveryHelp:'Narrow this library by when a photo was taken, a reviewed place, and whether it is a photo or a video. Read-only: nothing here changes or hides a photo.',places:'Places',placesHelp:'Choose a named place from reviewed library metadata. Places are shown only when this library has them.',placesNone:'No named places are available in this library.',placesUnavailable:'Named places are not available for this library.',placesLoading:'Loading named places…',placesRetry:'Retry places',placesCount:'items',placesLimit:'Choose up to 20 places at a time.',placeSelected:'Selected',mediaKind:'Media',mediaAll:'Photos and videos',mediaImage:'Photos only',mediaVideo:'Videos only',dateFrom:'From',dateTo:'To',applyFilter:'Apply',clearFilter:'Clear',discoveryHint:'Choose a date range, named place or media kind, then apply.',discoveryRange:'Enter a range whose first date is not after the second.',discoveryNone:'No item in this library matches that filter.',discoveryChanged:'The library changed after this filter was prepared. Refresh the filter snapshot, then retry.',discoveryResult:'Filtered item'});
@@ -454,6 +457,8 @@
     $('grid').setAttribute('aria-label',t('memoryMediaRegion'));
     updatePhotoStackControls();
     storyWorkspace?.translate();
+    if(peopleReviewState.person)renderPeopleReview();
+    if(peopleReviewState.statusKey)reviewStatus(peopleReviewState.statusKey,peopleReviewState.statusValues);
     renderAssistantTrail();
     const sceneTurn=privateAssistant?.state().currentResult;if(sceneTurn?.version===4){renderAssistantSceneRanking(sceneTurn);const rows=$('assistant-search-summary-items');rows.replaceChildren();for(const line of assistantSearchLines(sceneTurn)){const li=document.createElement('li');li.textContent=line;rows.append(li);}for(const [i,rank] of Array.from($('assistant-results').querySelectorAll('.assistant-scene-rank')).entries())rank.textContent=t('assistantSceneRank').replace('{rank}',String(i+1));}
     if(assistantState.transcriptReviewPending){renderAssistantTranscriptLanguage();$('assistant-status').textContent=t('assistantTranscriptReady');}
@@ -479,6 +484,7 @@
   }
   function clearPhotos({cancelMemoryJobs=true}={}) {
     resetPhotoStacks();
+    clearPeopleReview({hide:true});
     memoryGroupGalleryItems=[];memoryGroups?.clear();
     storyWorkspace?.clear({cancelCommunityJobs:cancelMemoryJobs});
     transferState.selected.clear();transferState.review=null;transferState.source=null;transferState.destinations=[];transferState.busy=false;transferState.canMove=null;
@@ -1891,6 +1897,7 @@
     finally{privateAssistantBusy=false;renderPrivateAssistant(privateAssistant.state());syncAssistantControls();}
   }
   function showAuth() {
+    clearPeopleReview({hide:true});
     assistantState.transcribe=false;assistantState.speech=false;
     resetAssistant();$('assistant-form').hidden=true;
     albumState.draft=null;albumState.page=1;$('album-archived-panel').hidden=true;$('album-archived-panel').open=false;$('album-archived-list').replaceChildren();
@@ -2582,7 +2589,7 @@
       let recovery=readAssistantRecoveryPointer();
       if(recovery&&recovery.account_id!==profile.account_id){clearAssistantRecoveryPointer(recovery.request_id);recovery=null;}
       if(previousAccount!==profile.account_id){assistantState.transcribe=false;assistantState.speech=false;resetAssistant();assistantState.binding=null;state.library=null;}
-      if(state.profile?.account_id!==profile.account_id){peopleState.page=1;peopleState.query='';$('people-query').value='';directoryState.page=1;directoryState.query='';$('directory-query').value='';tagState.page=1;tagState.query='';tagState.tag=null;tagState.open=null;$('tag-query').value='';$('tag-assets').replaceChildren();familyTagState.page=1;familyTagState.query='';familyTagState.tag=null;$('family-tag-query').value='';$('family-tag-assets').replaceChildren();uploadState.page=1;}
+      if(state.profile?.account_id!==profile.account_id){clearPeopleReview({hide:true});peopleState.page=1;peopleState.query='';$('people-query').value='';directoryState.page=1;directoryState.query='';$('directory-query').value='';tagState.page=1;tagState.query='';tagState.tag=null;tagState.open=null;$('tag-query').value='';$('tag-assets').replaceChildren();familyTagState.page=1;familyTagState.query='';familyTagState.tag=null;$('family-tag-query').value='';$('family-tag-assets').replaceChildren();uploadState.page=1;}
       state.profile=profile;state.csrf=profile.csrf_token;state.locked=false;
       $('auth').hidden=true;$('library').hidden=false;$('account-label').textContent=profile.phone_login;
       const available=availableLibraries(profile);
@@ -3072,7 +3079,7 @@
   $('album-create').addEventListener('click',()=>editAlbum());
   $('album-previous').addEventListener('click',()=>{if(albumState.page>1){albumState.page--;void loadAlbums();}});
   $('album-next').addEventListener('click',()=>{if(albumState.page*10<albumState.total){albumState.page++;void loadAlbums();}});
-  function personPicker({face,image,current,epoch,onSaved,status,container}){
+  function personPicker({face,image,current,epoch,onSaved,status,container,savedKey='assignmentSaved'}){
     if(!current()||state.busy)return;
     // One picker per viewer; no previous person's selection survives opening another.
     container.querySelectorAll('.face-picker').forEach(node=>node.remove());
@@ -3103,7 +3110,7 @@
               state.busy=true;confirm.disabled=true;
               try{
                 await request(libraryPath(`/admin/faces/${face.id}/assignment`),{method:'POST',epoch,body:{person_id:person.id,revision:face.revision,person_revision:person.revision}});
-                if(active()){await onSaved();if(!stale(epoch))status.textContent=t('assignmentSaved');}
+                if(active()){await onSaved();if(!stale(epoch))status.textContent=t(savedKey);}
               }catch(error){
                 if(active()){
                   // Ambiguous writes require fresh server readback; never retry automatically.
@@ -3129,6 +3136,85 @@
     void find();input.focus();
     return picker;
   }
+
+  function resetPeopleReviewBatch(){peopleReviewState.load++;peopleReviewState.items=[];peopleReviewState.selected.clear();peopleReviewState.nextBefore=null;peopleReviewState.step=false;peopleReviewState.busy=false;peopleReviewState.statusKey='';peopleReviewState.statusValues=null;$('people-review-list').replaceChildren();$('people-review-step').replaceChildren();$('people-review-step').hidden=true;$('people-review-pages').hidden=true;$('people-review-continue').hidden=true;$('people-review-continue').disabled=true;}
+  function clearPeopleReview({hide=false}={}){
+    resetPeopleReviewBatch();peopleReviewState.person=null;peopleReviewState.library=null;peopleReviewState.account=null;
+    const panel=$('people-review');if(!panel)return;panel.hidden=hide;panel.dataset.personId='';reviewStatus('');$('people-review-heading').textContent='';
+  }
+  const reviewName=person=>person?.display_name||`${t('unnamedPerson')} ${person?.id||''}`.trim();
+  const reviewInterpolate=(key,values)=>Object.entries(values).reduce((out,[name,value])=>out.replaceAll(`{${name}}`,String(value)),t(key));
+  function reviewStatus(key,values=null){peopleReviewState.statusKey=key||'';peopleReviewState.statusValues=values;$('people-review-status').textContent=key?(values?reviewInterpolate(key,values):t(key)):'';}
+  function reviewCurrent(epoch,load,personId){return !state.locked&&!stale(epoch)&&peopleReviewState.load===load&&peopleReviewState.person?.id===personId&&peopleReviewState.library===state.library&&peopleReviewState.account===state.profile?.account_id&&$('people-review').isConnected&&!$('people-review').hidden&&$('people-panel').open&&!$('people-panel').hidden;}
+  function reviewScopeCurrent(epoch,library,account){return !state.locked&&!stale(epoch)&&state.library===library&&state.profile?.account_id===account&&$('people-panel').open;}
+  function reviewMediaURL(value){try{const url=new URL(value,location.href);return url.origin===location.origin?url.href:null;}catch{return null;}}
+  function renderPeopleReview(){
+    const root=$('people-review-list');if(!root||!peopleReviewState.person)return;root.replaceChildren();$('people-review-heading').textContent=reviewInterpolate('reviewQueueTitle',{name:reviewName(peopleReviewState.person)});$('people-review-heading').tabIndex=-1;
+    for(const face of peopleReviewState.items){
+      const card=document.createElement('article');card.className='people-review-card';card.dataset.faceId=face.id;
+      const cardEpoch=peopleReviewState.epoch,cardLoad=peopleReviewState.load,cardPersonId=face.person_id,cardLibrary=peopleReviewState.library,cardAccount=peopleReviewState.account;
+      const cardCurrent=()=>reviewCurrent(cardEpoch,cardLoad,cardPersonId)&&card.isConnected&&cardLibrary===state.library&&cardAccount===state.profile?.account_id;
+      const image=document.createElement('img');image.className='assignment-crop';image.alt=`${t('reviewSelectFace')} · ${face.id}`;image.loading='eager';image.src=reviewMediaURL(face.crop_url)||'';image.dataset.loaded='false';
+      const selectLabel=document.createElement('label');selectLabel.className='people-review-choice';const check=document.createElement('input');check.type='checkbox';check.checked=peopleReviewState.selected.has(face.id);check.disabled=peopleReviewState.step||!face.can_assign;check.setAttribute('aria-label',`${t('reviewSelectFace')} · ${face.id}`);
+      const labelText=document.createElement('span');labelText.textContent=t('reviewSelectFace');selectLabel.append(check,labelText);
+      const stateNote=document.createElement('p');stateNote.className='fine';stateNote.textContent=face.identity_confirmed?t('reviewSaved'):'';
+      const actions=document.createElement('div');actions.className='people-review-actions';
+      const open=storyButton('reviewOpenPhoto',async()=>{if(!cardCurrent()||state.busy||peopleReviewState.busy)return;try{const detail=await request(libraryPath(`/assets/detail/${face.asset_id}`),{epoch:cardEpoch});if(cardCurrent())await openAsset(detail.asset);}catch(error){if(cardCurrent())reviewStatus(error.status===401||error.status===403?'reviewPermission':'reviewPhotoUnavailable');if(error.status===401||error.status===403)await failure(error,cardEpoch);}});
+      const wrong=storyButton('reviewWrongPerson',()=>{if(!cardCurrent()||state.busy||peopleReviewState.busy)return;const reviewPerson=peopleReviewState.person,entity={id:face.id,asset_id:face.asset_id,person_id:face.person_id,revision:face.revision,display_name:face.display_name,can_assign:true};card.append(personPicker({face:entity,image,current:cardCurrent,epoch:cardEpoch,onSaved:async()=>{clearPeopleReview();$('people-review').hidden=false;setTimeout(()=>{if(reviewPerson?.id===cardPersonId&&reviewScopeCurrent(cardEpoch,cardLibrary,cardAccount))void loadPeopleReview(reviewPerson,{reset:true});},0);},status:$('people-review-status'),container:root,savedKey:'reviewCorrectionSaved'}));});
+      // The backend queue is bounded, but keep the browser limit as a second guard.
+      open.disabled=wrong.disabled=peopleReviewState.step||peopleReviewState.busy;
+      actions.append(open,wrong);card.append(image,selectLabel,stateNote,actions);
+      image.addEventListener('load',()=>{if(!cardCurrent())return;image.dataset.loaded='true';check.disabled=peopleReviewState.step||peopleReviewState.busy||!face.can_assign;},{once:true});
+      image.addEventListener('error',()=>{if(!cardCurrent())return;image.dataset.loaded='error';image.alt=t('previewMissing');check.checked=false;peopleReviewState.selected.delete(face.id);check.disabled=true;$('people-review-continue').hidden=peopleReviewState.selected.size===0;if(peopleReviewState.selected.size)reviewStatus('reviewSelected',{count:peopleReviewState.selected.size});},{once:true});
+      check.disabled=!face.can_assign||image.dataset.loaded!=='true'||peopleReviewState.step||peopleReviewState.busy;
+      check.addEventListener('change',()=>{if(!cardCurrent()||peopleReviewState.busy||peopleReviewState.step||!face.can_assign||image.dataset.loaded!=='true'){check.checked=false;return;}if(check.checked)peopleReviewState.selected.add(face.id);else peopleReviewState.selected.delete(face.id);reviewStatus('reviewSelected',{count:peopleReviewState.selected.size});$('people-review-continue').hidden=peopleReviewState.selected.size===0;});
+      root.append(card);
+    }
+    $('people-review-pages').hidden=!peopleReviewState.nextBefore||peopleReviewState.step;
+    $('people-review-more').disabled=peopleReviewState.busy;
+    $('people-review-continue').hidden=peopleReviewState.step||peopleReviewState.selected.size===0;
+    $('people-review-continue').disabled=peopleReviewState.busy;
+    if(peopleReviewState.step)renderPeopleReviewStep();
+  }
+  function renderPeopleReviewStep(){
+    const step=$('people-review-step'),selected=peopleReviewState.items.filter(face=>peopleReviewState.selected.has(face.id));step.replaceChildren();step.hidden=false;
+    const heading=document.createElement('h4');heading.textContent=t('reviewStepTitle');heading.tabIndex=-1;const copy=document.createElement('p');copy.textContent=reviewInterpolate('reviewStepCopy',{count:selected.length,name:reviewName(peopleReviewState.person)});const crops=document.createElement('div');crops.className='people-review-selected';
+    for(const face of selected){const img=document.createElement('img');img.className='assignment-crop';img.alt=`${t('reviewSelectFace')} · ${face.id}`;img.src=reviewMediaURL(face.crop_url)||'';img.loading='eager';crops.append(img);}
+    const label=document.createElement('label');label.className='people-review-confirm-label';const confirm=document.createElement('input');confirm.type='checkbox';confirm.checked=false;confirm.setAttribute('aria-label',t('reviewConfirmationRequired'));const text=document.createElement('span');text.textContent=t('reviewConfirmationRequired');label.append(confirm,text);
+    const save=storyButton('reviewSave',()=>{void savePeopleReview();});save.className='primary';save.disabled=peopleReviewState.busy;
+    const back=storyButton('reviewCancel',()=>{if(!peopleReviewState.busy){peopleReviewState.step=false;renderPeopleReview();}});back.disabled=peopleReviewState.busy;
+    confirm.addEventListener('change',()=>{save.disabled=!confirm.checked||peopleReviewState.busy;});save.disabled=true;step.append(heading,copy,crops,label,save,back);step.scrollIntoView({block:'nearest'});heading.focus?.();
+  }
+  async function loadPeopleReview(person,{reset=false,before=null}={}){
+    if(state.locked||state.busy||!person||!$('people-panel').open)return;
+    if(reset||peopleReviewState.person?.id!==person.id){clearPeopleReview();peopleReviewState.person=person;peopleReviewState.library=state.library;peopleReviewState.account=state.profile?.account_id;peopleReviewState.epoch=state.generation;$('people-review').hidden=false;}
+    const epoch=state.generation,load=peopleReviewState.load,personId=person.id;peopleReviewState.busy=true;peopleReviewState.step=false;peopleReviewState.selected.clear();$('people-review-step').replaceChildren();$('people-review-step').hidden=true;reviewStatus('reviewQueueLoading');
+    if(reset||before){peopleReviewState.items=[];peopleReviewState.selected.clear();peopleReviewState.nextBefore=null;}
+    renderPeopleReview();
+    try{
+      const params={...(before?{before}:{} )};const result=await request(libraryPath(`/admin/people/${encodeURIComponent(personId)}/review`,params),{epoch});
+      if(!reviewCurrent(epoch,load,personId))return;
+      const incoming=Array.isArray(result.items)?result.items.slice(0,12):[];peopleReviewState.items=incoming.filter(item=>item.person_id===personId);peopleReviewState.nextBefore=result.next_before||null;peopleReviewState.selected.clear();
+      reviewStatus(peopleReviewState.items.length?'':'reviewQueueEmpty');renderPeopleReview();
+    }catch(error){if(reviewCurrent(epoch,load,personId)){reviewStatus(error.status===409?'reviewConflict':error.status===401||error.status===403?'reviewPermission':'reviewLoadFailed');if(error.status===401||error.status===403)await failure(error,epoch);}}
+    finally{if(reviewCurrent(epoch,load,personId)){peopleReviewState.busy=false;renderPeopleReview();}}
+  }
+  async function savePeopleReview(){
+    const person=peopleReviewState.person,epoch=peopleReviewState.epoch,load=peopleReviewState.load,personId=person?.id;
+    if(!person||peopleReviewState.busy||state.busy||state.locked||!reviewCurrent(epoch,load,personId)||!peopleReviewState.step)return;
+    const selected=peopleReviewState.items.filter(face=>peopleReviewState.selected.has(face.id));if(!selected.length){reviewStatus('reviewNoSelection');return;}
+    const frozen=selected.map(face=>({id:face.id,revision:face.revision,person_revision:face.person_revision,review_revision:face.review_revision}));
+    peopleReviewState.busy=true;state.busy=true;renderPeopleReviewStep();
+    try{
+      for(const item of frozen){if(!reviewCurrent(epoch,load,personId))return;await request(libraryPath(`/admin/faces/${encodeURIComponent(item.id)}/review`),{method:'POST',epoch,body:{person_id:personId,revision:item.revision,person_revision:item.person_revision,review_revision:item.review_revision}});}
+      if(!reviewCurrent(epoch,load,personId))return;state.busy=false;peopleReviewState.busy=false;resetPeopleReviewBatch();$('people-review').hidden=false;reviewStatus('reviewSaved');await loadPeopleReview(person,{reset:true});if(!stale(epoch))reviewStatus('reviewSaved');
+    }catch(error){if(reviewCurrent(epoch,load,personId)){resetPeopleReviewBatch();$('people-review').hidden=false;reviewStatus(error.status===409?'reviewConflict':error.status===401||error.status===403?'reviewPermission':'reviewPartial');if(error.status===401||error.status===403)await failure(error,epoch);}}
+    finally{state.busy=false;if(reviewCurrent(epoch,peopleReviewState.load,peopleReviewState.person?.id)){peopleReviewState.busy=false;renderPeopleReview();}}
+  }
+  $('people-review-more').addEventListener('click',()=>{if(peopleReviewState.nextBefore&&!peopleReviewState.busy)void loadPeopleReview(peopleReviewState.person,{before:peopleReviewState.nextBefore});});
+  $('people-review-refresh').addEventListener('click',()=>{if(!peopleReviewState.busy&&!state.busy&&peopleReviewState.person)void loadPeopleReview(peopleReviewState.person,{reset:true});});
+  $('people-review-continue').addEventListener('click',()=>{if(!peopleReviewState.busy&&!state.busy&&peopleReviewState.selected.size){peopleReviewState.step=true;renderPeopleReview();}});
+  $('people-panel').addEventListener('toggle',()=>{if(!$('people-panel').open)clearPeopleReview({hide:true});});
 
   async function loadAssetFaces(){
     if(state.locked||$('face-panel').hidden||!storyState.asset)return;
@@ -3212,6 +3298,7 @@
           });
         }else{const note=document.createElement('p');note.className='fine';note.textContent=t('nameUnavailable');row.append(note);}
         const faces=document.createElement('div');faces.className='person-faces';
+        if(person.can_rename&&person.display_name){const identityReview=storyButton('openIdentityReview',()=>{if(!current()||state.locked||state.busy)return;void loadPeopleReview(person,{reset:true});});identityReview.className='quiet';row.append(identityReview);}
         const review=document.createElement('button');review.type='button';review.className='quiet';review.textContent=t('reviewFaces');
         let facePage=0;
         review.addEventListener('click',async()=>{
@@ -3801,7 +3888,7 @@
     photoStackState.mode=photoStackState.mode==='stacked'?'all':'stacked';
     rerenderPhotoStacks('#photo-stack-toggle');
   });
-  $('library-select').addEventListener('change',()=>{if(state.locked||!abandonStory()){$('library-select').value=state.library||'';return;}clearAssistantRecoveryPointer();clearDiscoveryMode({clearInputs:true,clearBinding:true});assistantState.transcribe=false;assistantState.speech=false;resetAssistant();$('assistant-form').hidden=true;assistantState.binding=null;storyState.search=null;storyState.suspended=null;$('search-text').value='';peopleState.page=1;peopleState.query='';$('people-query').value='';familyTagState.page=1;familyTagState.query='';familyTagState.tag=null;familyTagState.assetPage=1;$('family-tag-query').value='';$('family-tag-assets').replaceChildren();$('family-tag-asset-pages').hidden=true;state.library=$('library-select').value;state.page=1;state.memberPage=1;uploadState.page=1;void restore();});
+  $('library-select').addEventListener('change',()=>{if(state.locked||!abandonStory()){$('library-select').value=state.library||'';return;}clearPeopleReview({hide:true});clearAssistantRecoveryPointer();clearDiscoveryMode({clearInputs:true,clearBinding:true});assistantState.transcribe=false;assistantState.speech=false;resetAssistant();$('assistant-form').hidden=true;assistantState.binding=null;storyState.search=null;storyState.suspended=null;$('search-text').value='';peopleState.page=1;peopleState.query='';$('people-query').value='';familyTagState.page=1;familyTagState.query='';familyTagState.tag=null;familyTagState.assetPage=1;$('family-tag-query').value='';$('family-tag-assets').replaceChildren();$('family-tag-asset-pages').hidden=true;state.library=$('library-select').value;state.page=1;state.memberPage=1;uploadState.page=1;void restore();});
   $('previous').addEventListener('click',()=>{if(!state.busy&&state.page>1&&abandonStory()){state.page--;void loadGallery();}});
   $('next').addEventListener('click',()=>{if(!state.busy&&state.page*24<state.total&&abandonStory()){state.page++;void loadGallery();}});
   $('page-jump').addEventListener('submit',event=>{
@@ -3982,7 +4069,7 @@
   $('invite-form').addEventListener('submit',event=>{void invite(event);});
   $('cancel-invite').addEventListener('click',()=>{void cancelInvite();});
   $('accept-form').addEventListener('submit',event=>{void accept(event);});
-  $('language').addEventListener('click',()=>{if(!abandonStory())return;closeAssistantWorkspace({restoreFocus:false,restoreScroll:false});if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();state.language=state.language==='en'?'zh':'en';translate();const keepWork=assistantState.pendingTurn||assistantState.busy||assistantState.transcribing||assistantState.transcriptReviewPending||assistantState.capture||assistantState.captureStarting||memoryCommunity?.isBookEditing?.();if(state.profile&&!state.locked&&!keepWork)void restore();});
+  $('language').addEventListener('click',()=>{if(!abandonStory())return;closeAssistantWorkspace({restoreFocus:false,restoreScroll:false});if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();state.language=state.language==='en'?'zh':'en';translate();const keepWork=assistantState.pendingTurn||assistantState.busy||assistantState.transcribing||assistantState.transcriptReviewPending||assistantState.capture||assistantState.captureStarting||memoryCommunity?.isBookEditing?.()||peopleReviewState.person;if(state.profile&&!state.locked&&!keepWork)void restore();});
   window.addEventListener('beforeunload',event=>{if(storyState.dirty||albumState.draft?.dirty){event.preventDefault();event.returnValue='';}});
   window.addEventListener('pagehide',()=>{invalidate();$('password').value='';$('code').value='';});
   window.addEventListener('pageshow',event=>{if(event.persisted&&!state.locked&&!state.busy)void restoreWithDraft();});

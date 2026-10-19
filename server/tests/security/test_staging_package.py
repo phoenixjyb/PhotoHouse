@@ -158,6 +158,10 @@ class StagingPackageTests(unittest.TestCase):
             'backend/alembic.ini',
             'scripts/staging_app.py',
         }
+        required.update({'backend/app/access/people_review.py',
+                         'scripts/export_visual_people_review.py',
+                         'scripts/inspect_reviewed_people_readiness.py',
+                         'scripts/reviewed_people_source.py'})
         self.assertTrue(required <= set(package.FILES), required - set(package.FILES))
 
     def test_extracted_actual_api_imports_without_checkout_fallback(self):
@@ -189,6 +193,7 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.asset_tombstones import prepare_asset_tombstone, plan_durable_asset_vector_cleanup\n'
                 'import qualify_oral_history\n'
                 'import check_private_search\n'
+                'import export_visual_people_review, inspect_reviewed_people_readiness, reviewed_people_source\n'
                 'from app.access.search_evaluation import evaluate_cases\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'
@@ -198,7 +203,7 @@ class StagingPackageTests(unittest.TestCase):
                 'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search'):\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"

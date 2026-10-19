@@ -10,10 +10,12 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 from PIL import Image
+import test_promotion as promotion_module
 from test_promotion import BATCH, PromotionTests
 from test_access_foundation import NOW
 from app.access.runtime import AccessRuntime, ExistingDatabase, RuntimeConfiguration
 from app.access.original_deletions import OriginalDeletionJournal
+import app.access.promotion as promotion_runtime
 from app.photo_delivery import PhotoCache
 
 fixture = PromotionTests()
@@ -65,6 +67,12 @@ try:
     # Keep their connection factory on the same verified journal contract too.
     fixture.access=AccessRuntime(ExistingDatabase(fixture.path.resolve(),original_deletions=selected),
                                  fixture.access.web_origin,clock=fixture.access.clock)
+    def journaled_database(path, **options):
+        if options.get('original_deletions') is None:
+            options['original_deletions'] = selected
+        return ExistingDatabase(path, **options)
+    promotion_module.ExistingDatabase=journaled_database
+    promotion_runtime.ExistingDatabase=journaled_database
     client = TestClient(RuntimeConfiguration(fixture.path, 'https://photohouse.test',
         (fixture.originals,), fixture.root/'derived',
         incoming_root=fixture.incoming, upload_review_enabled=True,
