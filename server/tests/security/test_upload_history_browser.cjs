@@ -7,10 +7,26 @@ const root=path.resolve(__dirname,'../..');
 const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'upload-history-browser-'));
 fs.mkdirSync(artifacts,{recursive:true});
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'upload_history_browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
-let next=0,readyResolve;const ready=new Promise(r=>readyResolve=r),pending=new Map();
+let next=0,readyResolve,readyReject,bridgeFailure=null,stopping=false;
+const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;}),pending=new Map();
+const readyTimer=setTimeout(()=>failBridge(new Error('Upload-history bridge startup timed out')),60000);
+function failBridge(error){
+  if(bridgeFailure||stopping)return;
+  bridgeFailure=error;clearTimeout(readyTimer);readyReject(error);
+  for(const call of pending.values()){clearTimeout(call.timer);call.reject(error);}pending.clear();
+}
 bridge.stderr.on('data',v=>process.stderr.write(v));
-createInterface({input:bridge.stdout}).on('line',line=>{const m=JSON.parse(line);if(m.ready)readyResolve(m);else{pending.get(m.id)?.(m);pending.delete(m.id);}});
-function rpc(m){return new Promise(resolve=>{const id=++next;pending.set(id,resolve);bridge.stdin.write(JSON.stringify({...m,id})+'\n');});}
+bridge.on('error',failBridge);bridge.stdin.on('error',failBridge);
+bridge.on('exit',(code,signal)=>failBridge(new Error(`Upload-history bridge exited (${code??signal})`)));
+createInterface({input:bridge.stdout}).on('line',line=>{
+  try{const m=JSON.parse(line);if(m.ready){clearTimeout(readyTimer);readyResolve(m);}else{const call=pending.get(m.id);if(call){clearTimeout(call.timer);pending.delete(m.id);call.resolve(m);}}}
+  catch(error){failBridge(error);}
+});
+function rpc(m){return new Promise((resolve,reject)=>{
+  if(bridgeFailure)return reject(bridgeFailure);
+  const id=++next,timer=setTimeout(()=>failBridge(new Error(`Upload-history bridge request ${id} timed out`)),30000);
+  pending.set(id,{resolve,reject,timer});bridge.stdin.write(JSON.stringify({...m,id})+'\n',error=>{if(error)failBridge(error);});
+});}
 let historyUnavailable=false,holdHistory=false,releaseHistory,historyHeld,holdNoteTextSave=false,releaseNoteTextSave,noteTextSaveHeld,nextNoteTextFailure=false,holdNoteAudioSave=false,releaseNoteAudioSave,noteAudioSaveHeld,nextNoteAudioFailure=false,malformedNoteLimit=false;const errors=[],outside=[],requests=[],noteTextMutations=[],noteAudioMutations=[];
 let browser,guardPage=null,bootstrapCatalogueEnteredResolve,releaseBootstrapCatalogue;
 const bootstrapCatalogueEntered=new Promise(resolve=>bootstrapCatalogueEnteredResolve=resolve);
@@ -192,4 +208,11 @@ const bootstrapCatalogueRelease=new Promise(resolve=>releaseBootstrapCatalogue=r
   assert.equal(await page.locator('#my-uploads-panel').evaluate(panel=>panel.hidden),true,'revocation keeps the history panel unavailable');
   assert.deepEqual(errors,[]);assert.deepEqual(outside,[]);
   console.log(JSON.stringify({passed:['member history distinct from owner review','10 plus 2 pagination','pending has no open','notes load only when dialog opens','real promotion reflected after refresh','folder and item notes saved and scoped through signed-in browser','approved opens authorized viewer','Chinese narrow dialog without overflow','closing clears receipts','503 clears rows while gallery remains usable','late closed-panel response discarded','revocation clears private history'],artifacts}));
-})().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();bridge.stdin.write(JSON.stringify({command:'quit'})+'\n');bridge.stdin.end();});
+})().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{
+  stopping=true;clearTimeout(readyTimer);for(const call of pending.values())clearTimeout(call.timer);pending.clear();
+  if(browser)await browser.close();
+  if(bridge.exitCode===null&&bridge.signalCode===null){
+    if(bridgeFailure)bridge.kill();
+    else if(!bridge.stdin.destroyed&&!bridge.stdin.writableEnded)bridge.stdin.end(JSON.stringify({command:'quit'})+'\n');
+  }
+});

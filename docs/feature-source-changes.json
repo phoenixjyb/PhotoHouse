@@ -23924,6 +23924,29 @@
       "identity_approval_changed": false,
       "provider_calls_added": false,
       "client_contract_changed": false
+    },
+    {
+      "feature": "repair-upload-history-journal-fixture-and-report-bridge-failures",
+      "source_commit": "c09dce7f78add228bc873e039f1633f643793cf2",
+      "files": [
+        {
+          "path": "server/tests/security/upload_history_browser_bridge.py",
+          "before_sha256": "2fefa17277492d4de67f305bd226fb118f7d88f36457fcb79c9343977c5364db",
+          "sha256": "fffaeb2e8da3c907b15fe23db7072bb1eaedefb839e132cd32ece7c9c21a6652"
+        },
+        {
+          "path": "server/tests/security/test_upload_history_browser.cjs",
+          "before_sha256": "da6a4bdf66ec3eaede4e5923b083cd7c0d09b5c217efecb338514d445ab8ff00",
+          "sha256": "d0cfd9be855cf641102ab978b97eca68a4dff57e2bdeeeb67d7d6b39b2253e0b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": false,
+      "provider_calls_added": false,
+      "client_contract_changed": false,
+      "production_data_written": false
     }
   ]
 }

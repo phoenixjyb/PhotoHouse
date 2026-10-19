@@ -67,7 +67,10 @@ try:
     # Keep their connection factory on the same verified journal contract too.
     fixture.access=AccessRuntime(ExistingDatabase(fixture.path.resolve(),original_deletions=selected),
                                  fixture.access.web_origin,clock=fixture.access.clock)
-    journaled_database=lambda path,**options: ExistingDatabase(path,original_deletions=selected,**options)
+    def journaled_database(path, **options):
+        if options.get('original_deletions') is None:
+            options['original_deletions'] = selected
+        return ExistingDatabase(path, **options)
     promotion_module.ExistingDatabase=journaled_database
     promotion_runtime.ExistingDatabase=journaled_database
     client = TestClient(RuntimeConfiguration(fixture.path, 'https://photohouse.test',
