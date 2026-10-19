@@ -24,6 +24,8 @@
   Object.assign(words.zh,{assistantTrailTitle:'本页最近对话',assistantTrailYou:'你',assistantTrailAssistant:'助手',assistantTrailLatest:'跳到最新'});
   Object.assign(words.zh,{assistantPrivateTitle:'我的私密对话',assistantPrivateHelp:'只对你可见，保留 30 天。录音不保存在对话中。',assistantPrivateCurrentLabel:'当前对话',assistantPrivateNoCurrent:'尚未选择对话',assistantPrivateContinue:'可以继续补充条件',assistantPrivateManage:'管理对话',assistantPrivateReturn:'返回对话',assistantPrivateExchangeCount:'{count} 条交流',assistantPrivateNew:'新对话',assistantPrivateChoose:'继续之前的对话',assistantPrivatePreferences:'我的助手偏好',assistantPrivateLocale:'回复语言',assistantPrivateAuto:'跟随请求语言',assistantPrivateDelete:'删除这段对话',assistantPrivateDeleteConfirm:'确认删除对话',assistantPrivateRecover:'恢复已发送的请求',assistantPrivateReconcile:'确认新对话是否已创建',assistantPrivateOlder:'显示最近的完整消息。',assistantPrivateLoadOlder:'查看更早消息',assistantPrivateReloadHistory:'对话已有更新，重新加载记录',assistantPrivateSearchOffline:'检索暂不可用，仍可查看已保存的对话。',assistantPrivateSelect:'选择对话',assistantPrivateReady:'对话已保存，可以继续补充条件。',assistantPrivateUnknown:'回复尚未确认。请查询已发送的请求，不会自动重发。',assistantPrivateEmpty:'新对话已准备好，说说你想找什么。',assistantPrivateFailed:'暂时无法完成操作。输入仍保留，请先确认之前的请求。'});
   Object.assign(words.en,{assistantPrivateTitle:'My private conversations',assistantPrivateHelp:'Visible only to you, kept for 30 days. Recordings are not saved in conversations.',assistantPrivateCurrentLabel:'Current conversation',assistantPrivateNoCurrent:'No conversation selected',assistantPrivateContinue:'Ready to add details',assistantPrivateManage:'Manage conversations',assistantPrivateReturn:'Return to conversation',assistantPrivateExchangeCount:'{count} exchanges',assistantPrivateNew:'New conversation',assistantPrivateChoose:'Continue a conversation',assistantPrivatePreferences:'My assistant preferences',assistantPrivateLocale:'Reply language',assistantPrivateAuto:'Follow request language',assistantPrivateDelete:'Delete this conversation',assistantPrivateDeleteConfirm:'Confirm deletion',assistantPrivateRecover:'Recover the sent request',assistantPrivateReconcile:'Check whether the conversation was created',assistantPrivateOlder:'Showing recent complete messages.',assistantPrivateLoadOlder:'Read earlier messages',assistantPrivateReloadHistory:'Conversation changed; reload history',assistantPrivateSearchOffline:'Search is unavailable. Saved conversations are still readable.',assistantPrivateSelect:'Choose a conversation',assistantPrivateReady:'Conversation saved. Add details to continue.',assistantPrivateUnknown:'The reply is unconfirmed. Check the sent request; it will not be resent automatically.',assistantPrivateEmpty:'A new conversation is ready. What would you like to find?',assistantPrivateFailed:'This operation could not finish. Your input remains; check the earlier request first.'});
+  Object.assign(words.en,{preparationHelp:'Processing details are checked only while this panel is open. A finished task does not mean a preview or playback is available.',preparationTitle:'Processing details',preparationLoading:'Checking processing details…',preparationUnavailable:'Processing details are unavailable. Your upload history is still shown.',preparationUnknown:'Status unknown',preparationStagePreview:'Preview',preparationStageIndex:'Search task',preparationStageFaces:'Faces',preparationStageCaption:'Image description',preparationStageVideoProbe:'Video check',preparationAwaiting:'Awaiting review',preparationPending:'Pending',preparationRunning:'Running',preparationFinished:'Finished',preparationTasksFinished:'Processing tasks finished · availability not verified',preparationFailed:'Failed · needs attention',preparationDead:'Stopped · needs attention',preparationNA:'Not applicable',preparationRecords:'Records',preparationVector:'Search record',preparationCaptionRecord:'Image description record',preparationFacesRecord:'Face detections',preparationPresent:'Record present',preparationAbsent:'No record yet',preparationAvailability:'Availability',preparationPreviewAvailability:'Preview',preparationPlaybackAvailability:'Playback',preparationUnverified:'Not verified',preparationDoNotRetry:'The server has received this upload. A failed or stopped task needs attention; do not upload it again.',preparationUnsupported:'Processing details are not supported here. Your upload history is still shown.'});
+  Object.assign(words.zh,{preparationHelp:'仅在此面板打开时查询处理详情。任务显示“已完成”并不代表预览或播放已经可用。',preparationTitle:'处理详情',preparationLoading:'正在查询处理详情…',preparationUnavailable:'暂时无法查看处理详情，上传记录仍会显示。',preparationUnknown:'状态未知',preparationStagePreview:'预览',preparationStageIndex:'检索任务',preparationStageFaces:'人脸',preparationStageCaption:'影像描述',preparationStageVideoProbe:'视频检测',preparationAwaiting:'等待审核',preparationPending:'等待处理',preparationRunning:'正在处理',preparationFinished:'已完成',preparationTasksFinished:'处理任务已结束 · 可用情况尚未验证',preparationFailed:'失败 · 需要关注',preparationDead:'已停止 · 需要关注',preparationNA:'不适用',preparationRecords:'记录情况',preparationVector:'检索记录',preparationCaptionRecord:'影像描述记录',preparationFacesRecord:'人脸检测记录',preparationPresent:'已有记录',preparationAbsent:'尚无记录',preparationAvailability:'可用情况',preparationPreviewAvailability:'预览',preparationPlaybackAvailability:'播放',preparationUnverified:'尚未验证',preparationDoNotRetry:'服务器已收到此上传。失败或停止的任务需要关注，请勿重复上传。',preparationUnsupported:'此服务暂不支持处理详情，上传记录仍会显示。'});
   const t = key => words[state.language][key] || key;
   Object.assign(words.zh,{assistantSceneBack:'返回完整查找',assistantSceneTitle:'在当前条件内按画面查找',assistantSceneHelp:'描述动作、颜色或环境，例如“在蓝桥旁放风筝”。人物、日期和其他条件保持如下；要更改这些条件，请先在主输入框完整查找。',assistantSceneLabel:'想找什么样的画面？',assistantSceneConfirm:'保留上面的条件，我只补充画面描述。',assistantSceneUnready:'请先完成一次条件明确的照片查找。待确认的人物或其他条件需要先处理。',assistantSceneSend:'按画面相似度排列照片',assistantSceneLimit:'{count}/512 UTF-8 字节；请使用单行描述。',assistantSceneRankingTitle:'按画面相似度排列 · 请查看确认',assistantSceneQuery:'画面描述：{query}',assistantSceneRankingHelp:'相似度是近似排序，不是匹配概率或文字证据。已显示 {shown}/{total} 张候选照片。',assistantSceneMore:'当前只提供前 20 张。请缩小查找条件以查看其他照片。',assistantSceneRank:'画面相似度排序 #{rank}',assistantSceneRejected:'这次画面查找未能完成。请重新加载对话以确认当前条件，或输入完整的新查找；画面描述已保留。',assistantSceneFailed:'尚未确认结果。请恢复已发送的请求，不会自动重发。',assistantSceneRewordHelp:'这个画面描述暂时无法使用。请改写描述；保留的原文不会自动发送。继续前，请重新加载并确认当前查找条件。',assistantSceneReload:'重新加载当前条件',assistantSceneNewSearch:'要更改人物、日期或其他条件，请在主输入框输入完整的新查找。'});
   Object.assign(words.en,{assistantSceneBack:'Return to full search',assistantSceneTitle:'Find a scene within these conditions',assistantSceneHelp:'Describe actions, colors or surroundings, such as “flying a kite beside a blue bridge”. People, dates and other conditions below stay in place. To change them, first enter a complete search in the main composer.',assistantSceneLabel:'What does the scene look like?',assistantSceneConfirm:'Keep the conditions above; I am only adding a scene description.',assistantSceneUnready:'First complete a photo search with resolved conditions. Resolve any unanswered person or other condition first.',assistantSceneSend:'Rank photos by scene similarity',assistantSceneLimit:'{count}/512 UTF-8 bytes; use a single line.',assistantSceneRankingTitle:'Ranked by scene similarity · Check the photos',assistantSceneQuery:'Scene description: {query}',assistantSceneRankingHelp:'Similarity is an approximate ranking, not a match probability or text evidence. Showing {shown}/{total} candidate photos.',assistantSceneMore:'Only the first 20 are available here. Narrow your search to see other photos.',assistantSceneRank:'Scene similarity rank #{rank}',assistantSceneRejected:'This scene search could not finish. Reload the conversation to check its current conditions, or enter a complete new search. Your scene description is kept.',assistantSceneFailed:'The result is unconfirmed. Recover the sent request; it will not be resent automatically.',assistantSceneRewordHelp:'This scene description could not be used. Reword it; the saved wording will not be sent automatically. Reload and review the current search conditions before continuing.',assistantSceneReload:'Reload current conditions',assistantSceneNewSearch:'To change people, dates or other conditions, enter a complete new search in the main composer.'});
@@ -73,7 +75,7 @@
   Object.assign(words.zh,{annotationListTitle:'已保存的留言',annotationAddTitle:'添加留言'});
   Object.assign(words.en,{tagReviewTitle:'Review suggested tags',tagReviewHelp:'Review suggestions for uploads already added to this library. The original and polished words stay visible; accepted tags can be found in memory search.',tagReviewEmpty:'No tags are waiting for review in this library.',tagReviewAccept:'Accept tag',tagReviewReject:'Reject tag',tagReviewSuggested:'Suggested tag',tagReviewSaved:'Tag decision saved.',tagReviewConflict:'This suggestion changed. Review the refreshed list.',tagReviewUncertain:'The decision could not be confirmed. Refresh before trying again.',tagReviewUnavailable:'Suggested tags could not load. Try Refresh.'});
   Object.assign(words.zh,{tagReviewTitle:'审核建议标签',tagReviewHelp:'审核已加入此相册库的上传内容所生成的标签建议。原文和润色文字仍可查看；接受的标签可在回忆搜索中找到。',tagReviewEmpty:'此相册库没有待审核的标签。',tagReviewAccept:'接受标签',tagReviewReject:'拒绝标签',tagReviewSuggested:'建议标签',tagReviewSaved:'标签审核结果已保存。',tagReviewConflict:'此建议已更新，请查看刷新的列表。',tagReviewUncertain:'暂时无法确认审核结果，请先刷新再重试。',tagReviewUnavailable:'暂时无法加载建议标签，请点击刷新。'});
-  const myUploadsState={page:1,total:0,load:0,busy:false};
+  const myUploadsState={page:1,total:0,load:0,busy:false,preparationController:null,preparationLoad:0};
   Object.assign(words.en,{annotationRecord:'Record with microphone',annotationStop:'Stop recording',annotationRecording:'Recording… up to 60 seconds',annotationReady:'Recording ready. Save it to this batch or item.',annotationCaptureError:'Microphone recording is unavailable. You can choose a WAV file instead.'});
   Object.assign(words.zh,{annotationRecord:'使用麦克风录音',annotationStop:'结束录音',annotationRecording:'正在录音，最长 60 秒',annotationReady:'录音已就绪，可以保存到此批次或项目。',annotationCaptureError:'无法使用麦克风录音，可以选择 WAV 文件。'});
   Object.assign(words.en,{annotationOriginalAudio:'Original recording',annotationAcceptedTags:'Accepted tags',annotationMore:'More notes',annotationHeld:'Original saved. Local processing was not requested.',annotationQueued:'Original saved. Local processing is pending.',annotationProcessing:'Original saved. Local processing is underway.',annotationDerivationFailed:'Original saved. Local processing did not finish.'});
@@ -197,7 +199,7 @@
     if(annotationState.capture)void annotationState.capture.stop(false);
     $('my-uploads-list').querySelector('.annotation-dialog[open]')?.close();
     myUploadsState.load++;myUploadsState.page=1;myUploadsState.total=0;myUploadsState.busy=false;
-    $('my-uploads-panel').open=false;$('my-uploads-list').replaceChildren();$('my-uploads-status').textContent='';$('my-uploads-pages').hidden=true;$('my-uploads-refresh').disabled=false;annotationState.pending.clear();
+    cancelUploadPreparation();$('my-uploads-panel').open=false;$('my-uploads-list').replaceChildren();$('my-uploads-status').textContent='';$('my-uploads-pages').hidden=true;$('my-uploads-refresh').disabled=false;annotationState.pending.clear();
   }
   function receiptPageValid(data,page){
     const keys=(value,names)=>value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).sort().join(',')===names.split(',').sort().join(',');
@@ -315,9 +317,74 @@
       $('viewer-annotations-status').textContent=t('annotationUnavailable');
     }finally{if(current())more.disabled=false;}
   }
+  const preparationStages=['preview','index','faces','caption','video_probe'];
+  const preparationStates=new Set(['awaiting_review','pending','running','finished','failed','dead','unknown','not_applicable']);
+  function preparationStateLabel(value){return ({awaiting_review:'preparationAwaiting',pending:'preparationPending',running:'preparationRunning',finished:'preparationFinished',failed:'preparationFailed',dead:'preparationDead',unknown:'preparationUnknown',not_applicable:'preparationNA'})[value]||'preparationUnknown';}
+  function preparationPageValid(data,page,history,profile){
+    const keys=(value,names)=>value&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).sort().join(',')===names.split(',').sort().join(',');
+    if(!keys(data,'version,page,page_size,total,items')||data.version!==1||data.page!==page||data.page_size!==10||data.total!==history.total||!Array.isArray(data.items)||data.items.length!==history.items.length)return false;
+    const receipts=new Map(history.items.map(item=>[item.asset_id,item]));
+    if(receipts.size!==history.items.length)return false;
+    const preparations=new Map();
+    for(const item of data.items){
+      if(!keys(item,'asset_id,created_at,bytes,kind,state,library_id,processing')||typeof item.asset_id!=='string'||preparations.has(item.asset_id))return false;
+      const receipt=receipts.get(item.asset_id);
+      if(!receipt||item.created_at!==receipt.created_at||item.bytes!==receipt.bytes||item.kind!==receipt.kind||item.state!==receipt.state||item.library_id!==receipt.library_id)return false;
+      if(item.processing===null){if(item.state==='available')return false;preparations.set(item.asset_id,item);continue;}
+      if(item.state!=='available'||!availableLibraries(profile).some(member=>member.library_id===item.library_id))return false;
+      const prep=item.processing;
+      if(!keys(prep,'stages,records,availability')||!keys(prep.stages,'preview,index,faces,caption,video_probe')||!keys(prep.records,'image_vector,caption,face_detections')||!keys(prep.availability,'preview,playback'))return false;
+      if(!preparationStages.every(stage=>preparationStates.has(prep.stages[stage])))return false;
+      // v1 has only two kind-specific NA stages. Availability is deliberately
+      // conservative: this endpoint never verifies that preview/playback works.
+      const expectedNotApplicable=item.kind==='image'?['video_probe']:item.kind==='video'?['faces']:[];
+      if(!['image','video'].includes(item.kind)||!preparationStages.every(stage=>expectedNotApplicable.includes(stage)?prep.stages[stage]==='not_applicable':prep.stages[stage]!=='not_applicable'))return false;
+      if(prep.availability.preview!=='unknown'||prep.availability.playback!==(item.kind==='image'?'not_applicable':'unknown'))return false;
+      if(!Object.values(prep.records).every(value=>typeof value==='boolean'))return false;
+      preparations.set(item.asset_id,item);
+    }
+    return preparations.size===receipts.size;
+  }
+  function preparationRow(label,value){const row=document.createElement('div');row.className='preparation-row';const name=document.createElement('span');name.textContent=t(label);const status=document.createElement('span');status.textContent=t(value);row.append(name,status);return row;}
+  function setPreparation(card,item,processing,unavailable=false,unsupported=false,loading=false){
+    const box=card.querySelector('.upload-preparation');if(!box)return;
+    const summary=box.querySelector('summary');summary.replaceChildren();const title=document.createElement('span');title.textContent=t('preparationTitle');const compact=document.createElement('span');compact.className='preparation-compact';
+    const stages=processing?.stages;const values=stages?preparationStages.map(key=>stages[key]):[];const needs=values.some(value=>value==='failed'||value==='dead');const running=values.includes('running');const pending=values.includes('pending');const applicable=values.filter(value=>value!=='not_applicable');const finished=applicable.length>0&&applicable.every(value=>value==='finished');
+    compact.textContent=loading?t('preparationLoading'):unsupported?t('preparationUnsupported'):unavailable?t('preparationUnavailable'):needs?t('preparationFailed'):running?t('preparationRunning'):pending?t('preparationPending'):finished?t('preparationTasksFinished'):t('preparationUnknown');summary.append(title,compact);
+    const body=box.querySelector('.preparation-body');body.replaceChildren();
+    if(unavailable||unsupported||!processing){const status=document.createElement('p');status.className='fine';status.textContent=loading?t('preparationLoading'):unsupported?t('preparationUnsupported'):unavailable?t('preparationUnavailable'):t('preparationUnknown');body.append(status);return;}
+    const rows=document.createElement('div');rows.className='preparation-rows';
+    const names={preview:'preparationStagePreview',index:'preparationStageIndex',faces:'preparationStageFaces',caption:'preparationStageCaption',video_probe:'preparationStageVideoProbe'};
+    for(const stage of preparationStages)rows.append(preparationRow(names[stage],preparationStateLabel(stages[stage])));
+    const heading=document.createElement('h4');heading.textContent=t('preparationRecords');rows.append(heading);
+    for(const [key,label] of [['image_vector','preparationVector'],['caption','preparationCaptionRecord'],['face_detections','preparationFacesRecord']])rows.append(preparationRow(label,processing.records[key]?'preparationPresent':'preparationAbsent'));
+    const avail=document.createElement('h4');avail.textContent=t('preparationAvailability');rows.append(avail);
+    rows.append(preparationRow('preparationPreviewAvailability',processing.availability.preview==='not_applicable'?'preparationNA':'preparationUnverified'));
+    rows.append(preparationRow('preparationPlaybackAvailability',processing.availability.playback==='not_applicable'?'preparationNA':'preparationUnverified'));
+    body.append(rows);
+    if(needs){const note=document.createElement('p');note.className='fine preparation-attention';note.textContent=t('preparationDoNotRetry');body.append(note);}
+  }
+  function cancelUploadPreparation(){myUploadsState.preparationLoad++;if(myUploadsState.preparationController){myUploadsState.preparationController.abort();myUploadsState.preparationController=null;}}
+  async function loadUploadPreparation(page,history,{epoch,account,load}={}){
+    cancelUploadPreparation();const controller=new AbortController();myUploadsState.preparationController=controller;const operation=myUploadsState.preparationLoad;
+    const library=state.library;const current=()=>!stale(epoch)&&account===state.profile?.account_id&&library===state.library&&load===myUploadsState.load&&operation===myUploadsState.preparationLoad&&$('my-uploads-panel').open&&!controller.signal.aborted;
+    const cards=[...$('my-uploads-list').querySelectorAll('.receipt-card')];for(const card of cards)setPreparation(card,history.items.find(item=>item.asset_id===card.dataset.asset),null,false,false,true);
+    try{
+      const data=await request(`/upload-preparation?page=${page}`,{epoch,signal:controller.signal});if(!current())return;
+      if(!preparationPageValid(data,page,history,state.profile)){for(const card of cards)setPreparation(card,null,null,true);return;}
+      const receipts=new Map(history.items.map(item=>[item.asset_id,item]));
+      for(const item of data.items){const card=cards.find(candidate=>candidate.dataset.asset===item.asset_id);setPreparation(card,receipts.get(item.asset_id),item.processing);}
+    }catch(error){
+      if(!current()||error.name==='AbortError')return;
+      if(error.status===401){for(const card of cards)setPreparation(card,null,null,true);await failure(error,epoch);return;}
+      if(error.status===403){for(const card of cards)setPreparation(card,null,null,true);await failure(error,epoch);return;}
+      const unsupported=[404,405,501].includes(error.status);
+      for(const card of cards)setPreparation(card,null,null,!unsupported,unsupported);
+    }finally{if(myUploadsState.preparationController===controller)myUploadsState.preparationController=null;}
+  }
   async function loadMyUploads(){
     if(state.locked||!state.profile||!$('my-uploads-panel').open)return;
-    const epoch=state.generation,account=state.profile.account_id,load=++myUploadsState.load,page=myUploadsState.page;
+    cancelUploadPreparation();const epoch=state.generation,account=state.profile.account_id,load=++myUploadsState.load,page=myUploadsState.page;
     const current=()=>!stale(epoch)&&account===state.profile?.account_id&&load===myUploadsState.load&&$('my-uploads-panel').open;
     myUploadsState.busy=true;$('my-uploads-refresh').disabled=true;$('my-uploads-list').querySelector('.annotation-dialog[open]')?.close();$('my-uploads-list').replaceChildren();$('my-uploads-pages').hidden=true;$('my-uploads-status').textContent=t('loading');
     try{
@@ -329,6 +396,7 @@
         const title=document.createElement('h3');title.textContent=`${t(item.kind==='image'?'photo':'video')} ${item.asset_id}`;
         const meta=document.createElement('p');meta.className='fine';meta.textContent=`${new Date(item.created_at*1000).toLocaleString(state.language==='zh'?'zh-CN':'en')} · ${(item.bytes/1024).toFixed(1)} KiB`;
         const label=document.createElement('p');label.className='receipt-state';label.textContent=t(item.state==='available'?'receiptAvailable':item.state==='awaiting_review'?'receiptAwaiting':'receiptUnavailable');card.append(title,meta,label);
+        const preparation=document.createElement('details');preparation.className='upload-preparation';preparation.dataset.asset=item.asset_id;const summary=document.createElement('summary');const summaryTitle=document.createElement('span');summaryTitle.textContent=t('preparationTitle');const compact=document.createElement('span');compact.className='preparation-compact';compact.textContent=t('preparationUnknown');summary.append(summaryTitle,compact);const body=document.createElement('div');body.className='preparation-body';preparation.append(summary,body);card.append(preparation);
         if(item.state==='available'&&availableLibraries(state.profile).some(m=>m.library_id===item.library_id)){
           const button=document.createElement('button');button.type='button';button.className='quiet';button.textContent=t('receiptOpen');button.addEventListener('click',async()=>{
             if(!current()||state.busy||!abandonStory())return;
@@ -347,6 +415,7 @@
       $('my-uploads-status').textContent=t(data.total?'receiptHelp':'myUploadsEmpty');$('my-uploads-pages').hidden=data.total===0;
       $('my-uploads-page-label').textContent=`${t('page')} ${page} ${t('of')} ${Math.max(1,Math.ceil(data.total/10))}`;
       $('my-uploads-previous').disabled=page<=1;$('my-uploads-next').disabled=page*10>=data.total;
+      void loadUploadPreparation(page,data,{epoch,account,load});
     }catch(error){if(!current()||error.name==='AbortError')return;$('my-uploads-list').replaceChildren();$('my-uploads-status').textContent=t('myUploadsUnavailable');if(error.status===401)await failure(error,epoch);}
     finally{if(current()){myUploadsState.busy=false;$('my-uploads-refresh').disabled=false;}}
   }

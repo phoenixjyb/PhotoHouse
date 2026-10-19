@@ -29,6 +29,7 @@ internal fun ImportStatusPanel(
     onOpenHistory: (UploadHistoryItem) -> Unit, onDescribeHistory: (UploadHistoryItem) -> Unit,
     workspaceExpanded: Boolean = true, onToggleWorkspace: () -> Unit = {},
     activity: UploadQueueActivity? = null, onRetryBatch: ((String) -> Unit)? = null,
+    preparation: UploadPreparationState? = null,
 ) {
     if (queueItems.isEmpty() && history == null) return
     fun t(en: String, cn: String) = if (zh) cn else en
@@ -173,6 +174,9 @@ internal fun ImportStatusPanel(
                         else -> t("${current.total} uploads · page ${current.page}", "共 ${current.total} 条 · 第 ${current.page} 页")
                     }
                     Text(message, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("upload-history-summary"))
+                    if (usableHistory && current.items.any { uploadHistoryStatus(it, availableLibraries) == UploadImportStatus.IN_LIBRARY }) {
+                        UploadPreparationNotice(preparation?.takeIf { it.page == current.page && it.total == current.total }, zh)
+                    }
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         TextButton(onClick = onToggleHistory, modifier = Modifier.testTag("upload-history-toggle").semantics {
                             stateDescription = t(if (historyExpanded) "Expanded" else "Collapsed", if (historyExpanded) "已展开" else "已收起")
@@ -197,8 +201,8 @@ internal fun ImportStatusPanel(
                             val date = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, locale).format(Date(item.createdAt * 1000))
                             Text("$date · ${importBytes(item.bytes, zh)}", style = MaterialTheme.typography.bodySmall)
                             if (status == UploadImportStatus.IN_LIBRARY) {
-                                Text(t("Preview and playback readiness not confirmed", "预览与播放准备状态未确认"),
-                                    style = MaterialTheme.typography.bodySmall)
+                                UploadPreparationDetails(item,
+                                    preparation?.takeIf { it.page == current.page && it.total == current.total }, zh)
                                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     TextButton(onClick = { onOpenHistory(item) }, enabled = actionsEnabled) { Text(t("Open", "打开")) }
                                     TextButton(onClick = { onDescribeHistory(item) }, enabled = actionsEnabled,

@@ -157,6 +157,16 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         return UploadHistoryWire.parse(response.bytes, page)
     }
 
+    override suspend fun uploadPreparation(token: Bearer, page: Int): UploadPreparationPage {
+        require(uploadEnabled && protectedNativeV2Enabled && page in 1..100000)
+        val requestUrl = origin.url.newBuilder().encodedPath("/upload-preparation")
+            .addQueryParameter("page", page.toString()).build()
+        val response = packet(requestUrl, token, limit = 64 * 1024, method = "GET")
+        if (response.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json")
+            throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        return UploadPreparationWire.parse(response.bytes, page)
+    }
+
     override suspend fun postUploadTextAnnotation(token: Bearer, library: String, request: UploadTextAnnotationRequest): UploadAnnotation {
         require(uploadEnabled && protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library))
         val body = UploadAnnotationsWire.request(request)

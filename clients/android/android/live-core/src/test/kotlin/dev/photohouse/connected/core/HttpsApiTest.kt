@@ -752,6 +752,21 @@ class HttpsApiTest {
             }
         }
     }
+    @Test fun uploadPreparationUsesProtectedGetAndStrictVersionedPage() = runBlocking {
+        TlsFixture().use { f ->
+            val api = HttpsPhotoHouseApi(f.origin, f.client, protectedNativeV2Enabled = true, uploadEnabled = true)
+            f.server.enqueue(json("""{"version":1,"page":1,"page_size":10,"total":1,"items":[{"asset_id":"901","created_at":1760000000,"bytes":1234,"kind":"image","state":"available","library_id":"family","processing":{"stages":{"preview":"unknown","index":"finished","faces":"unknown","caption":"unknown","video_probe":"not_applicable"},"records":{"image_vector":true,"caption":false,"face_detections":false},"availability":{"preview":"unknown","playback":"not_applicable"}}}]}"""))
+            assertEquals("901", api.uploadPreparation(token, 1).items.single().receipt.assetId)
+            val request = f.server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/upload-preparation?page=1", request.path)
+            assertEquals("Bearer " + "T".repeat(43), request.getHeader("Authorization"))
+            for (status in listOf(404, 405, 501, 503)) {
+                f.server.enqueue(MockResponse().setResponseCode(status))
+                assertEquals(status, failure { api.uploadPreparation(token, 1) }.status)
+            }
+        }
+    }
     @Test fun originAdmissionAndOpaqueTokenValidation() {
         for (origin in listOf("http://localhost", "https://u:p@example.invalid", "https://example.invalid/path", "https://example.invalid?x=1", "https://example.invalid#x", " https://example.invalid", "https://example.invalid\\path")) {
             assertTrue(runCatching { TrustedOrigin.parse(origin) }.isFailure)

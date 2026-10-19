@@ -888,3 +888,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 #people-review-step{margin-top:1rem;padding:1rem;border:1px solid var(--line);border-radius:.75rem;background:#fff}
 #people-review-step>button{margin:.75rem .5rem 0 0}
 @media(max-width:480px){.people-review{padding:.8rem}.people-review-card{grid-template-columns:4.25rem minmax(0,1fr);gap:.6rem}.people-review-card>img{width:4.25rem;height:4.25rem}.people-review-actions button{flex:1 1 100%}.people-review-selected img{width:4.25rem;height:4.25rem}}
+
+/* Optional, read-only preparation status stays compact within each receipt. */
+.upload-preparation{margin-top:.25rem;border-top:1px solid var(--line);padding-top:.35rem}
+.upload-preparation>summary{display:flex;align-items:center;justify-content:space-between;gap:.65rem;min-height:2.75rem;cursor:pointer;font-weight:600;list-style:none}
+.upload-preparation>summary::-webkit-details-marker{display:none}
+.upload-preparation>summary::before{content:"›";color:var(--accent);font-size:1.25rem;line-height:1}
+.upload-preparation[open]>summary::before{transform:rotate(90deg)}
+.preparation-compact{font-size:.84rem;font-weight:500;color:var(--muted);text-align:end;overflow-wrap:anywhere}
+.preparation-body{padding:.25rem 0 .35rem}
+.preparation-rows{display:grid;gap:.15rem}
+.preparation-rows h4{margin:.45rem 0 .1rem;font-size:.88rem}
+.preparation-row{display:flex;justify-content:space-between;gap:.75rem;padding:.25rem 0;font-size:.88rem;line-height:1.4}
+.preparation-row span:last-child{text-align:end;color:var(--muted);overflow-wrap:anywhere}
+.preparation-attention{padding:.55rem .65rem;border-inline-start:3px solid #a44b37;background:#fff3ef;line-height:1.45}
+.preparation-help{margin-bottom:.25rem}
+@media(max-width:600px){.upload-preparation>summary{gap:.4rem}.preparation-compact{max-width:58%}.preparation-row{gap:.5rem}}
+@media(forced-colors:active){.preparation-attention{border:1px solid CanvasText}}

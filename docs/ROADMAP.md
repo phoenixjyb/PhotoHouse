@@ -9,7 +9,8 @@ indexing, saved cover/separation preferences and family visual calibration remai
 later work.
 
 The separate [upload-preparation read](UPLOAD_PREPARATION.md) is also in the live API;
-client negotiation and visible stage labels remain the next import-status slice.
+Web and phone v74 source now add negotiated, expandable stage labels.
+Candidate release and physical upload acceptance remain outstanding.
 Do not label previews or video playback ready from task completion alone.
 
 **October 18 API/CPU qualification:** the [R5 native synthetic trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
@@ -132,26 +133,21 @@ separate resource/lifecycle qualification and operation authority.
 The generic legacy worker remains incompatible with the current parallel lanes.
 Do not reset completed work or use downloaded comparison models implicitly.
 
-## Next source slice: expose actual import preparation evidence
+## Current candidate: expose actual import preparation evidence
 
-The client-first [import workspace](PHONE_IMPORT_STATUS.md) is delivered in v70.
-It reuses the queue and account-owned history, keeps batch lists folded and
-preserves committed byte progress. The v71 owner trial confirmed server receipt; visible preparation and the v72
-physical upload trial remain open.
+The [import workspace](PHONE_IMPORT_STATUS.md) reuses the existing upload queue
+and account-owned history. The live [preparation endpoint](UPLOAD_PREPARATION.md)
+and new Web/phone v74 source distinguish receipt, library approval, processing
+and unverified media availability. Details are folded by default and refresh
+only after explicit history reads. Older-server/error fallback preserves receipts;
+stale account/library/page responses cannot repopulate protected details.
 
-The next server/client slice should extend that existing presentation. A completed
-transfer means the server received the bytes; it must not always say “awaiting
-review” when selected-member auto approval may already have assigned the item.
-Show received, awaiting approval, preparing and ready only when supported by
-current authorized server evidence. Display unknown/unavailable status honestly
-when a stage is not exposed; do not infer preview/playback readiness from receipt
-or membership alone. Keep the existing per-library fences, explicit upload Start
-and bounded explicit recovery. Do not create a second upload queue.
-
-**Exit:** generated manual-review, auto-approved, delayed-preparation, failed and
-access-changed journeys; Chinese/English large-text UI; native full package checks;
-then a real phone upload receipt and final visible result. Preparation evidence
-is planned server/client work, not a capability delivered in v70.
+**Next gates:** finish generated delayed/failed/access-changed journeys and
+Chinese/English large-text inspection; review/merge source; prepare pinned Web
+and phone artifacts for authorized deployment/publication. Then validate a real
+Samsung upload through receipt, processing and gallery/video opening. Finished
+tasks alone never establish preview or playback readiness. Do not add a second
+queue or repeat an upload to recover derived processing.
 
 ## 1. Accept the delivered experience
 

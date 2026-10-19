@@ -19,6 +19,7 @@ listed in `tools/check.py`. It includes:
 - `server/tests/security/test_story_related_media_browser.cjs`
 - `server/tests/security/test_story_reader_frames_browser.cjs`
 - `server/tests/security/test_upload_history_browser.cjs`
+- `server/tests/security/test_upload_preparation_browser.cjs`
 - `server/tests/security/test_photo_stacks_browser.cjs`
 - `server/tests/security/test_story_workspace_browser.cjs`
 
@@ -165,3 +166,13 @@ bridges. It preserves explicit Playwright module/browser paths, existing Python
 and Chromium selections, artifact locations and `NODE_PATH`. It excludes live
 provider/database settings and Python/Node preload variables. This does not
 alter the caller's shell environment.
+
+
+## Upload preparation journey
+
+The preparation journey binds generated processing evidence to the real synthetic
+ASGI upload-history page. It checks collapsed details, task completion with
+unverified availability, failed processing without resubmission, malformed/foreign
+responses, unsupported servers and stale scope. It renders Chinese/English and
+150% narrow layouts. No household endpoint, original file, model or worker is used.
+See [the endpoint and acceptance guide](UPLOAD_PREPARATION.md).
