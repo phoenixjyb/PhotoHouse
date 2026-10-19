@@ -92,6 +92,21 @@ class HttpsApiTest {
             assertEquals("/assets/1/thumbnail?library=family", missing.path)
         }
     }
+    @Test fun unsupportedStacksDoNotDisableLegacyDateHints() = runBlocking {
+        val legacy = """{"library_id":"family","page":1,"page_size":50,"total":1,"originals_allowed":false,"items":[{"id":"1","kind":"image","width":null,"height":null,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/1/thumbnail?library=family","date_hint":{"value":"2024-05-12","source":"filename"}}]}"""
+        TlsFixture().use { f ->
+            val api = HttpsPhotoHouseApi(f.origin, f.client, dateHintsEnabled = true)
+            f.server.enqueue(MockResponse().setResponseCode(400))
+            f.server.enqueue(MockResponse().setResponseCode(400))
+            assertEquals(400, failure { api.galleryWithPhotoStacks(token, "family", 1, GalleryMedia.ALL) }.status)
+            assertEquals("1", f.server.takeRequest().requestUrl!!.queryParameter("date_hints"))
+            assertNull(f.server.takeRequest().requestUrl!!.queryParameter("date_hints"))
+
+            f.server.enqueue(json(legacy))
+            assertEquals(DateHint("2024-05-12", "filename"), api.gallery(token, "family", 1).items.single().date_hint)
+            assertEquals("1", f.server.takeRequest().requestUrl!!.queryParameter("date_hints"))
+        }
+    }
     @Test fun savedMemoryStoriesUseProtectedNoStoreGetAndStrictDetailScope() = runBlocking {
         TlsFixture().use { f ->
             val api = HttpsPhotoHouseApi(f.origin, f.client, protectedNativeV2Enabled = true)

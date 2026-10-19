@@ -753,14 +753,18 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
             .apply { if (media != GalleryMedia.ALL) addQueryParameter("media", media.wire) }
             .build()
         val useDateHints = dateHintsEnabled && dateHintsAvailable != false
+        val priorDateHintsAvailability = dateHintsAvailable
         val requested = if (useDateHints) target.newBuilder().addQueryParameter("date_hints", "1").build() else target
         var result = packet(requested, token, limit = JSON_LIMIT, method = "GET", acceptedStatuses = setOf(400, 404))
         // Match the established gallery adapter's bounded old-server date-hint fallback.
         // This keeps the stacks opt-in on both requests; it never silently switches API shape.
         if (result.code == 400 && useDateHints) {
-            dateHintsAvailable = false
             result.bytes.fill(0)
             result = packet(target, token, limit = JSON_LIMIT, method = "GET", acceptedStatuses = setOf(400, 404))
+            // A no-date-hints success proves date-hints were the unsupported parameter.
+            // If stacks are also unsupported, retain the previous capability knowledge
+            // so the legacy gallery can still request date labels.
+            dateHintsAvailable = if (result.code == 200) false else priorDateHintsAvailability
         } else if (useDateHints && result.code == 200) {
             dateHintsAvailable = true
         }
