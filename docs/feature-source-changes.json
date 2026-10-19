@@ -25558,6 +25558,20 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Native tracing identified an unsupported SiglipProcessor keyword before any text-feature scorecard; match the actual pinned call signature and test it with a strict fake. Apply the narrow fidelity rejection guard at the offline translator response boundary, with no retry and fixed redacted errors. No semantic activation."
+    },
+    {
+      "feature": "multilingual-native-screen-result-and-activation-blocker",
+      "files": [
+        {
+          "path": "docs/MULTILINGUAL_ENCODER_QUALIFICATION.md",
+          "sha256": "63d51ebb6bf3db04cfa2242104f114210f0f8fe17c8ff59dd9afd4dce3831f2c",
+          "before_sha256": "5b57606201dc03fd78fde711dfa33b76a399eff6ccecc17a581a5259f1878377"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Record the completed CPU public-scene screen and independent readback: fresh direct English/Chinese/mixed top1 each15of16; earlier regression29/23/23of32. Diagnostic negative variants top1zeroof9 despite9of9 positive successes. Semantic search remains off; no production or family acceptance. API2573tests and2520subtests passed on unchanged8bc6f43 with110focusedtests."
     }
   ]
 }

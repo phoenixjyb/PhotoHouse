@@ -56,3 +56,80 @@ compatible immutable vector coverage, protected serving integration, serving
 latency and device acceptance remain separate gates. Translation-based
 comparisons must also satisfy the [fidelity review contract](SEMANTIC_SCENE_TRANSLATION_FIDELITY.md);
 a high retrieval score cannot establish that a translation preserved meaning.
+
+## Native screening result — October 20, 2026
+
+The native path completed on source `8bc6f43665ff17596e4ba8aaaef4efaf407c52e7`,
+using the pinned model and installed dependencies above. The candidate passes
+the frozen directional multilingual screen, but **does not qualify for
+production activation**. Direct negation and mixed-language contrasts remain
+weak. Semantic search remains disabled.
+
+Sixteen additional public COCO128 photos (positions 65–80) were selected before
+model inspection. Sixteen matched cases have English, Chinese and mixed
+variants: eight literal, four vague and four contrast cases. An independent
+assistant reviewed the photos and wording before scoring; two review corrections
+were applied before the final freeze. There was no human/family review.
+
+| Fresh set, top-one / 16 | English | Chinese | Mixed |
+| --- | ---: | ---: | ---: |
+| Existing OpenCLIP, direct queries | 15 | 2 | 8 |
+| SigLIP2, direct queries | 15 | 15 | 15 |
+
+SigLIP2 top-five was 16/16 in each language; the earlier encoder scored
+16/16, 9/16 and 14/16 respectively. Fifteen cases ranked correctly first
+in all three languages, compared with two cases for OpenCLIP. The remaining
+fresh contrast missed in all three languages. These small public-image scores
+do not establish family relevance or open-ended vague-intent understanding.
+
+On the unchanged 32-photo earlier regression, SigLIP2 direct top-one was
+29/32 English, 23/32 Chinese and 23/32 mixed; top-five was 32/32, 32/32 and
+30/32. Literal descriptions were 12/12 in all languages. Vague cases were
+11/12, 6/12 and 9/12; contrasts were 6/8, 5/8 and 2/8. This earlier set
+is a regression, not a fresh development holdout.
+
+A separate diagnostic used three positive/negative pairs on the same 16
+candidate photos, with all three language variants. Its queries and labels
+were independently reviewed and frozen before that diagnostic was scored.
+This reuses photos and is not an additional untouched-photo holdout.
+All nine positive variants ranked their intended photo first. All nine
+negative variants ranked their intended photo second; none of the nine
+pair/language combinations retrieved both sides correctly first. All 18
+variants still had a top-five hit, illustrating why top-five relevance cannot
+establish that an exclusion was honored. The diagnostic establishes concrete
+failures, not a calibrated general negation error rate.
+
+Four successful inference jobs used two CPU threads, an 8 GiB Job Object,
+four processes, a 600-second ceiling and a 16 GiB free-RAM floor per job.
+Each child proved its Job limits before model imports. Source files, model
+artifacts, images and dataset identities were checked around execution; an
+independent readback checked all 248 packaged source hashes and the measurement
+hashes, Job proofs and SigLIP2 original/lowercased query hashes. The older
+OpenCLIP measurement format has no per-query hash receipts; its direct-query
+provenance rests on the inspected runner, pinned dataset and source hashes.
+
+The worker denied Python socket connection/listening calls and used offline
+hub settings. This is not an OS-firewall qualification. These CPU measurement
+timings do not qualify serving/network latency, concurrency or peak memory.
+No serving binding or compatible immutable index was created. Live health
+checks before and after the runs confirmed the semantic flag off, no semantic
+provider configuration, healthy HTTPS and protected anonymous boundaries.
+
+Translation v2 now rejects detected cue changes at the provider-response
+boundary and binds declared review to exact source/output and recipe hashes.
+All four earlier flagged outputs are rejected by the guard; four manual
+assistant-reviewed corrections pass it. This does not qualify the complete
+earlier 64-output translation dataset or guarantee arbitrary translation
+faithfulness. Raw datasets, corrections, resource receipts and measurements
+remain outside Git.
+
+The next gate is reliable exclusion/relationship handling with explicit
+constraints or clarification before ranking. Compatible 768-dimensional image
+coverage, protected serving integration, serving latency and family/device
+acceptance also remain outstanding. No GPU, ASR or Shanxi dialect acceptance
+is claimed.
+
+Validation on that unchanged source passed 2,573 API tests and 2,520 subtests,
+including package dependency/planning checks, plus the generated no-listener
+application demo. The focused encoder/translation suites passed 110 tests.
+The later result-record commit changes documentation and its source ledger only.
