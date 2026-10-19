@@ -24706,6 +24706,36 @@
         }
       ],
       "notes": "Immutable API source package includes both new imported modules; extracted isolated API import regression checks their symbols and source roots. No Windows staging or publication."
+    },
+    {
+      "feature": "combined-gallery-api-candidate-qualification-and-architecture-record",
+      "source_commit": "1ddf955e30ae297ce28fdabd28fa861190a23678",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "b09b0dfa85dc9533909a5973211db4c0891287db15532da532d37d717f4cd34c",
+          "sha256": "66280c7f6b004982ff2e17defd6fedb86d1ad811ecde3406952c20b530d58658"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "d2e3eb9f3908f32ec7c48d6740d7b9064b95f9331c5f61b8d9d5dc58bbeea651",
+          "sha256": "1dc3c20ec67b160fdb3f4d9a5341851bb9a41aef8e43b493b9418e1b272e0df4"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": "3f330fc8b08dce257cc09c8fbf5bdfbb046c9fe1789089c55e898ea8706124ec",
+          "sha256": "f69cf9cfb0f60be9663401a0287f1c48874a8ad2028aa0019c41b81c8e32b3c1"
+        }
+      ],
+      "qualified_api_source_commit": "966cf139aa621416a5a22b6b11cd40f299a75b55",
+      "api_tests_passed": 2464,
+      "api_subtests_passed": 2486,
+      "staging_package_tests_passed": 7,
+      "generated_demo_passed": true,
+      "web_journey_passed": true,
+      "deployed_or_published": false,
+      "phone_ui_verified": false,
+      "notes": "Documentation-only closure. Native Windows qualification and delivery remain separate; existing phone source checks do not establish emulator visual acceptance."
     }
   ]
 }
