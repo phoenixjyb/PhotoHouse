@@ -23709,6 +23709,53 @@
       "provider_calls_added": false,
       "runtime_changed": true,
       "incumbent_behavior_preserved": true
+    },
+    {
+      "feature": "reviewed-people-search-evidence-scope-replies",
+      "source_commit": "a38caf59e4cf67df69cf6fc80c1f732d45c3466c",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "0976e726a848e451df906dcf1760df6bc19f94b53296d9bd7c119cce13adb74b",
+          "sha256": "b39a6adc4019bba6e212ed5db4352d05e46b003fc7e32a0e522fcdcb9cd249b7"
+        },
+        {
+          "path": "server/backend/app/access/search_explanation.py",
+          "before_sha256": "b6a3ad50d5f2b3ea99f1a52894401140e1649292446ef5a9e6225b116291e7c8",
+          "sha256": "9d69247ba31c0e50e6930e435b3b5020ed177608b9df99a3cd263a3be52f5f27"
+        },
+        {
+          "path": "server/tests/security/test_search_explanation.py",
+          "before_sha256": "5a5854fbe9f94130f245882209813b26818b8cda80363e42c13cc955a2eb5d73",
+          "sha256": "ade067b918aeb54918ecb92e9f12bfc99c4d494577d7865863e38555a324241b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "b786bc8f09013e3084c549d60a692647e81bee84b23f29b58261e831ff73c737",
+          "sha256": "8aa7f80bfe7b731d69505f8a91937abdf9a9d7dbc08579bd52c7233d2319ca3a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_result_overview.py",
+          "before_sha256": "3a14b6ed305a5faefe96fb1e7ad18f2555c18ed2be30b62b845212b1888e0719",
+          "sha256": "16624ee74a295808392b49618cbc412fb052c8e47f59eefce4cd9596885b37cd"
+        },
+        {
+          "path": "server/tests/security/test_assistant_search_browser.cjs",
+          "before_sha256": "185804a1c532d815399c073d05e603f4659fd2cdd57cf436d196cf7836d96d74",
+          "sha256": "b7560ce4eed26bb289bc20e05e2617fe65f77f99fd379457635e8527531c75d1"
+        },
+        {
+          "path": "docs/SEARCH_READINESS_AND_RELEVANCE.md",
+          "before_sha256": "b3f6cca8d69be2906d1a871554d6e350331b084d77fde89788d2219aed22470e",
+          "sha256": "a570e0187d3f8a3149f9bfbe14299cd6bbacc178673e4d598441f23b5f3fe582"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": false,
+      "provider_calls_added": false,
+      "client_contract_changed": false
     }
   ]
 }

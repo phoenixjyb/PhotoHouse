@@ -12,6 +12,25 @@ from app.access.assistant_speech import LocalAssistantTts
 
 
 class OverviewFormattingTests(unittest.TestCase):
+    def test_people_scope_reserves_room_without_truncating_a_metadata_clause(self):
+        filters = {'people': {'ids': ['PRIVATE ONE', 'PRIVATE TWO'], 'match': 'all'}}
+        result = dict(total=100000, items=[dict(kind='video', taken_at='2032-09-30')] * 3)
+        for language, notice, joint in (
+                ('en', 'confirmed assignments only', 'same item'),
+                ('zh', '已确认的标注', '同一项')):
+            with self.subTest(language=language):
+                reply = assistant._result_overview(result, language, filters=filters)
+                self.assertIn(notice, reply)
+                self.assertIn(joint, reply)
+                self.assertIn('100000', reply)
+                self.assertLessEqual(len(reply.encode('utf-8')), 600)
+                self.assertNotIn('PRIVATE', reply)
+                empty = assistant._result_overview(dict(total=0, items=[]), language, filters=filters)
+                self.assertIn(notice, empty)
+                self.assertIn(joint, empty)
+                self.assertLessEqual(len(empty.encode('utf-8')), 600)
+        self.assertNotIn('confirmed assignments', assistant._result_overview(result, 'en'))
+
     def test_first_three_order_kind_and_recorded_dates_only(self):
         items = [dict(id=str(i), kind=k, taken_at=d) for i, k, d in (
             (91, 'other', '2026-01-02'), (12, 'image', None),

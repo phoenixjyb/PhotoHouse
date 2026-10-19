@@ -240,6 +240,20 @@ def explain_filters(filters, interpretation, language, *, max_bytes=_MAX_BYTES) 
     return result
 
 
+def people_scope_notice(filters, language) -> str:
+    """Describe identity evidence, without claiming measured review coverage."""
+    people = filters.get('people') if type(filters) is dict else None
+    if type(people) is not dict or type(people.get('ids')) is not list or not people['ids']:
+        return ''
+    zh = language == 'zh'
+    result = ('人物检索只使用已确认的标注；尚未确认的照片或视频可能遗漏。' if zh else
+              'People search uses confirmed assignments only; unreviewed photos or videos may be missing.')
+    if people.get('match') == 'all' and len(people['ids']) > 1:
+        result += (' 所选人物须在同一项中均有确认标注。' if zh else
+                   ' All selected people must be confirmed in the same item.')
+    return result
+
+
 def no_results_guidance(filters, language) -> str:
     """Give bounded, non-speculative guidance for the current empty search."""
     filters = filters if type(filters) is dict else {}
@@ -267,13 +281,18 @@ def no_results_guidance(filters, language) -> str:
         result = '没有找到符合条件的照片或视频。可以问“现在筛选了哪些条件”查看当前筛选条件。'
     else:
         result = 'No matching photos or videos were found. Ask "what filters are active" to review the current filters.'
+    scope = people_scope_notice(filters, language)
+    if scope:
+        result += ' ' + scope
     if 'descriptive' in filters:
-        result += (' 可按检索条件中的原文说：去掉“某条线索”线索。其余条件会保留。'
-                   if zh else ' To drop one descriptive clue, use its exact wording from the search conditions: '
-                   'remove the "clue wording" clue. Other conditions stay active.')
+        clue = (' 可按检索条件中的原文说：去掉“某条线索”线索。其余条件会保留。'
+                if zh else ' To drop one descriptive clue, use its exact wording from the search conditions: '
+                'remove the "clue wording" clue. Other conditions stay active.')
+        if len((result + clue).encode('utf-8')) <= _MAX_BYTES:
+            result += clue
     # Fixed strings are already small, but preserve the same hard reply bound
     # if future wording changes exceed the transport limit.
     if len(result.encode('utf-8')) <= _MAX_BYTES:
         return result
     return ('没有找到符合条件的照片或视频。' if zh else
-            'No matching photos or videos were found.')
+            'No matching photos or videos were found.') + (' ' + scope if scope else '')
