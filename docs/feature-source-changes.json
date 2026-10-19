@@ -23521,6 +23521,60 @@
       "operator_tool_changed": true,
       "people_index_enabled": false,
       "kinship_graph_enabled": false
+    },
+    {
+      "feature": "journal-guarded-reviewed-family-search-preparation",
+      "source_commit": "bebc8df465eeeb537e9151730b122484598c4a74",
+      "files": [
+        {
+          "path": "server/scripts/inspect_reviewed_people_readiness.py",
+          "before_sha256": "2466cbf9c8339c0274aad7ad5896ad8747d7bd622036d08d6a3f37b6e0e27838",
+          "sha256": "df1c3a08625de499893a447496424e956eccc665361e9c9b1f8f69409949b1f9"
+        },
+        {
+          "path": "server/scripts/prepare_reviewed_people_index.py",
+          "before_sha256": "11e794987f2dc1fcfff680188b7927aaf3575bf40700c8ba359ab67f2ec58bfb",
+          "sha256": "ffecf752b7099f04d2a91153b5a5c585b65b38865c88e48c1d01c500136bc468"
+        },
+        {
+          "path": "server/scripts/reviewed_people_source.py",
+          "before_sha256": null,
+          "sha256": "789ede683cbd7e56e5c0825ab0f6987da1dadc17acb8e65ea90c7f3915a3d896"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_family_search_journeys.py",
+          "before_sha256": null,
+          "sha256": "9c3b7f86e7448707474ec94cf7691be3cb0f0b0da1299e28126d0b850c56d993"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_people_deletion_guard.py",
+          "before_sha256": null,
+          "sha256": "69a3215e8513b1081e53befe85822ed22b290444f662a494e43647eaf40d9919"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": "8cf4f76c8677b92cbbd2926700c6aa269349718063084a758d21194d76411e78",
+          "sha256": "6228dfc4a0f4f3727986a99941894e1572bb6bba15fcf580ea79e2e9889961f8"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "5c736820b3407f58854b42dbc256554dbfc4b94f30b14d8967cd4aadd197299b",
+          "sha256": "74fd5db2437ed1a6473aec158895110adc388468c78e95d7c6f85e8ce9571769"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "fea5dfae93952b2187fb80e616f3a32fd6ea29f47a44d2f69324c15d59670a55",
+          "sha256": "7dd7a638255c8537df219348bb1e52da38fc22e4b5f598f1b580d5e2ff78a577"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false,
+      "operator_tool_changed": true,
+      "people_index_enabled": false,
+      "kinship_graph_enabled": false
     }
   ]
 }

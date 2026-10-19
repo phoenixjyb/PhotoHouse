@@ -5,7 +5,6 @@ The two-pass inspector emits a private review envelope. Only a subsequent exact
 source-bound review can produce an index. No names or assignments are inferred.
 """
 import argparse
-from contextlib import closing
 from dataclasses import asdict, replace
 import json
 import os
@@ -19,6 +18,7 @@ import prepare_access_discovery_index as producer
 from app.access import discovery as d
 from app.access.discovery_index import accepted, index as parse_index, person, face, read
 from app.access.discovery_provider import RefreshingPlaceIndex, RefreshingPeopleIndex
+from reviewed_people_source import open_reviewed_people_source
 
 ENABLED = ('people', 'date', 'locations', 'media')
 
@@ -77,13 +77,17 @@ def main(argv=None):
     parser.add_argument('--revision', required=True)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--inspect', action='store_true')
+    parser.add_argument('--deletion-journal', type=Path)
+    parser.add_argument('--deletion-namespace')
     try:
         args = parser.parse_args(argv)
         library, revision = producer.library(args.library), producer.revision(args.revision)
         base_bytes = read(args.base_index, d.ReadBudget().index_bytes)
         base = parse_index(base_bytes, d.ReadBudget().rows)
         review = producer.review_json(args.review)
-        with closing(producer.open_read_only(args.database, time.monotonic())) as db:
+        with open_reviewed_people_source(producer, args.database, time.monotonic(),
+                deletion_journal=args.deletion_journal,
+                deletion_namespace=args.deletion_namespace) as db:
             candidate, envelope = derive(db, base, library, revision, review, inspect=args.inspect)
         # An inspector output is intentionally not a loadable index/review file.
         result = ({'schema': 1, 'status': 'requires_explicit_review', 'review': envelope,

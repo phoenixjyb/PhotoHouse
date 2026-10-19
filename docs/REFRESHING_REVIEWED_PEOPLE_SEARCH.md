@@ -39,6 +39,39 @@ unique proper-name aliases. The index grants no graph access. A missing account
 binding, ambiguous identity, changed/deleted graph or revoked membership cannot
 be repaired by matching display names. See [private kinship](PRIVATE_KINSHIP_SEARCH.md).
 
+## Deletion history during offline preparation
+
+Both `inspect_reviewed_people_readiness.py` and
+`prepare_reviewed_people_index.py` accept paired `--deletion-journal` and
+`--deletion-namespace` options. Supply the existing native journal and namespace
+when the selected primary has an original-deletion marker. Omitting the guard
+for a bound primary, supplying only one option, or selecting a mismatched or
+stale journal refuses preparation without producing output.
+
+The shared source boundary retains the producer's read-only SQLite authorizer
+and deadline. It checks the current primary against a captured external head
+before and after reading, then rechecks the ledger after closing the primary.
+The operator never initializes, binds, replays or upgrades deletion history.
+Unbound generated fixtures still work without either option. These checks
+establish preparation evidence; activating the resulting people index or
+private graph remains a separate operation.
+
+For a bound primary, append these options to **both passes** shown below and to
+the readiness command at the end of this guide:
+
+```text
+  --deletion-journal /private/operator/existing-deletions.sqlite \
+  --deletion-namespace EXISTING_NAMESPACE
+```
+
+A three-person fictional HTTP journey covers Chinese, English and mixed child,
+mother and father queries, all-person matches, capture-date refinement, ordinal
+opening, unreviewed detections, excluded graph accounts and withdrawn/suppressed
+reviewed samples. This does not claim broad real-family face coverage. A
+candidate includes only its exact reviewed manual assignments, so combined
+person searches may correctly return no results when no reviewed photo contains
+the requested combination.
+
 ## Offline preparation
 
 `server/scripts/prepare_reviewed_people_index.py` accepts an explicit existing

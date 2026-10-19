@@ -7,7 +7,6 @@ It never scans for candidate people or faces: every identity and face ID comes
 from the private selection file.
 """
 import argparse
-from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -21,6 +20,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 
 from app.access import discovery as d
 import prepare_access_discovery_index as producer
+from reviewed_people_source import open_reviewed_people_source
 
 SELECTION_KEYS = frozenset({'schema', 'library_id', 'people', 'assignments'})
 PERSON_KEYS = frozenset({'id', 'label'})
@@ -225,12 +225,16 @@ def main(argv=None):
     parser.add_argument('--library', required=True)
     parser.add_argument('--selection', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--deletion-journal', type=Path)
+    parser.add_argument('--deletion-namespace')
     try:
         args = parser.parse_args(argv)
         library_id = producer.library(args.library)
         selection = read_selection(args.selection)
         start = time.monotonic()
-        with closing(producer.open_read_only(args.database, start)) as db:
+        with open_reviewed_people_source(producer, args.database, start,
+                deletion_journal=args.deletion_journal,
+                deletion_namespace=args.deletion_namespace) as db:
             result = inspect_selection(db, library_id, selection)
         payload = json.dumps(result, sort_keys=True, ensure_ascii=True,
                              separators=(',', ':'), allow_nan=False).encode()

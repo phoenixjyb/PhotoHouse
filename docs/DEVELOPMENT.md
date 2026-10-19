@@ -2766,3 +2766,12 @@ Repair fixtures migrate to the operation's exact supported revision using the
 actual Alembic chain. The ordinary gallery fixture still defaults to the current
 head. Synthetic success does not establish a native repair or family search
 acceptance; a private-copy rehearsal does not authorize a live apply.
+
+
+### Reviewed family-search preparation boundary
+
+The API profile includes the generated three-person bilingual search journeys
+and both reviewed-people operator CLIs' deletion-history refusal checks. See
+[reviewed people refresh](REFRESHING_REVIEWED_PEOPLE_SEARCH.md#deletion-history-during-offline-preparation)
+for paired journal arguments and source-bound preparation. Candidate generation
+does not activate a runtime, enlarge reviewed face coverage or reactivate media.
