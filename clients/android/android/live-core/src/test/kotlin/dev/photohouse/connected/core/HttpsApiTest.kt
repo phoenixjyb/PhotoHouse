@@ -59,6 +59,54 @@ class HttpsApiTest {
             assertEquals("1", f.server.takeRequest().requestUrl!!.queryParameter("date_hints"))
         }
     }
+    @Test fun optionalPhotoStacksUsesTheExistingScopedGalleryFilters() = runBlocking {
+        val body = """{"library_id":"family","page":2,"page_size":50,"total":1,"originals_allowed":false,"items":[{"id":"1","kind":"image","width":null,"height":null,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/1/thumbnail?library=family","date_hint":null}],"photo_stacks":{"version":1,"scope":"page","groups":[]}}"""
+        TlsFixture().use { f ->
+            val api = HttpsPhotoHouseApi(f.origin, f.client, protectedNativeV2Enabled = true, mediaFilterEnabled = true, dateHintsEnabled = true)
+            f.server.enqueue(json(body))
+            val page = api.galleryWithPhotoStacks(token, "family", 2, GalleryMedia.PHOTOS)
+            assertEquals("1", page.gallery.items.single().id)
+            assertEquals(emptyList<PhotoStackGroup>(), page.groups)
+            val request = f.server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/assets", request.requestUrl!!.encodedPath)
+            assertEquals("family", request.requestUrl!!.queryParameter("library"))
+            assertEquals("2", request.requestUrl!!.queryParameter("page"))
+            assertEquals("image", request.requestUrl!!.queryParameter("media"))
+            assertEquals("1", request.requestUrl!!.queryParameter("photo_stacks"))
+            assertEquals("1", request.requestUrl!!.queryParameter("date_hints"))
+            assertEquals(token.header(), request.getHeader("Authorization"))
+        }
+        for (status in listOf(400, 404, 500)) TlsFixture().use { f ->
+            val api = HttpsPhotoHouseApi(f.origin, f.client)
+            f.server.enqueue(MockResponse().setResponseCode(status))
+            assertEquals(status, failure { api.galleryWithPhotoStacks(token, "family", 1, GalleryMedia.ALL) }.status)
+            assertEquals(1, f.server.requestCount)
+        }
+        TlsFixture().use { f ->
+            val api = HttpsPhotoHouseApi(f.origin, f.client)
+            f.server.enqueue(MockResponse().setResponseCode(404))
+            assertNull(api.thumbnail(token, "family", asset))
+            val missing = f.server.takeRequest()
+            assertEquals("GET", missing.method)
+            assertEquals("/assets/1/thumbnail?library=family", missing.path)
+        }
+    }
+    @Test fun unsupportedStacksDoNotDisableLegacyDateHints() = runBlocking {
+        val legacy = """{"library_id":"family","page":1,"page_size":50,"total":1,"originals_allowed":false,"items":[{"id":"1","kind":"image","width":null,"height":null,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/1/thumbnail?library=family","date_hint":{"value":"2024-05-12","source":"filename"}}]}"""
+        TlsFixture().use { f ->
+            val api = HttpsPhotoHouseApi(f.origin, f.client, dateHintsEnabled = true)
+            f.server.enqueue(MockResponse().setResponseCode(400))
+            f.server.enqueue(MockResponse().setResponseCode(400))
+            assertEquals(400, failure { api.galleryWithPhotoStacks(token, "family", 1, GalleryMedia.ALL) }.status)
+            assertEquals("1", f.server.takeRequest().requestUrl!!.queryParameter("date_hints"))
+            assertNull(f.server.takeRequest().requestUrl!!.queryParameter("date_hints"))
+
+            f.server.enqueue(json(legacy))
+            assertEquals(DateHint("2024-05-12", "filename"), api.gallery(token, "family", 1).items.single().date_hint)
+            assertEquals("1", f.server.takeRequest().requestUrl!!.queryParameter("date_hints"))
+        }
+    }
     @Test fun savedMemoryStoriesUseProtectedNoStoreGetAndStrictDetailScope() = runBlocking {
         TlsFixture().use { f ->
             val api = HttpsPhotoHouseApi(f.origin, f.client, protectedNativeV2Enabled = true)

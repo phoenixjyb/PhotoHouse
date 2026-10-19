@@ -188,6 +188,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val batchQueue = store?.batchUploads
     val batchItems = batchQueue?.state?.collectAsState()?.value ?: emptyList()
     val batchActivity = batchQueue?.activity?.collectAsState()?.value
+    var batchBackgroundUnavailable by remember(state.generation) { mutableStateOf(false) }
     var importProgressExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var batchQueueExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var uploadHistoryExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
@@ -199,6 +200,15 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         familyTagQuery = state.familyTags?.query.orEmpty()
     }
     val context = LocalContext.current
+    var uploadNotificationsAllowed by remember { mutableStateOf(android.os.Build.VERSION.SDK_INT < 33 ||
+        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) }
+    val requestUploadNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        uploadNotificationsAllowed = it
+    }
+    val runBatchInBackground: (BatchUploadCommand, String?) -> Unit = { command, target ->
+        batchBackgroundUnavailable = store == null ||
+            !BatchUploadForegroundRequests.start(context, store, command, target)
+    }
     val availableMemberships = state.session?.memberships?.filter { it.available }.orEmpty()
     LaunchedEffect(store, state.generation, state.library, state.covered) {
         if (store?.assistantEnabled == true && state.library != null && state.session != null && !state.covered)
@@ -230,6 +240,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     var batchUris by remember { mutableStateOf<BatchPickerSelection<List<Uri>>?>(null) }
     var batchTree by remember { mutableStateOf<BatchPickerSelection<Uri>?>(null) }
     var batchReview by remember(state.generation, state.session?.account_id) { mutableStateOf<List<BatchUploadSource>>(emptyList()) }
+    var batchReadGrantWarning by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var batchSkipped by remember(state.generation, state.session?.account_id) { mutableIntStateOf(0) }
     var batchApproved by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var batchEnqueueIssue by remember(state.generation, state.session?.account_id, batchReview, batchItems,
@@ -375,14 +386,14 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         pickPhoto.launch(arrayOf("image/jpeg", "image/png"))
     }
     val pickBatch = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        uris.forEach { uri -> runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
-        batchUris = batchPickerAccount?.takeIf { uris.isNotEmpty() }?.let { BatchPickerSelection(it, batchPickerDestination, uris) }
+        val retained = uris.map { uri -> runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }.isSuccess }.all { it }
+        batchUris = batchPickerAccount?.takeIf { uris.isNotEmpty() }?.let { BatchPickerSelection(it, batchPickerDestination, uris, retained) }
         batchPickerAccount = null; batchPickerDestination = null; batchApproved = false
     }
     val pickBatchFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         batchTree = uri?.let { selected ->
-            runCatching { context.contentResolver.takePersistableUriPermission(selected, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
-            batchPickerAccount?.let { BatchPickerSelection(it, batchPickerDestination, selected) }
+            val retained = runCatching { context.contentResolver.takePersistableUriPermission(selected, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }.isSuccess
+            batchPickerAccount?.let { BatchPickerSelection(it, batchPickerDestination, selected, retained) }
         }
         batchPickerAccount = null; batchPickerDestination = null; batchApproved = false
     }
@@ -398,6 +409,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                 if (source.bytes > 64L * 1024 * 1024 * 1024 - total) false else { total += source.bytes; true }
             }
             batchReviewDestination = selected.destination
+            batchReadGrantWarning = !selected.persistedReadAccess
             batchSkipped = selected.value.size - accepted.size; batchReview = accepted; batchUris = null
         },
         onDiscard = { batchUris = null; batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null })
@@ -408,6 +420,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         } },
         onReady = { selected, result ->
             batchReviewDestination = selected.destination
+            batchReadGrantWarning = !selected.persistedReadAccess
             batchSkipped = result.skipped; batchReview = result.sources; batchTree = null
         },
         onDiscard = { batchTree = null; batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null })
@@ -433,7 +446,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         else try {
             val queued = queue.enqueue(batchReview, destination)
             if (queued.isNotEmpty()) {
-                queue.resume()
+                runBatchInBackground(BatchUploadCommand.RESUME, null)
                 importProgressExpanded = true
                 batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null; batchApproved = false
             }
@@ -1130,6 +1143,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     }
                                     if (contributeExpanded) {
                                         HorizontalDivider()
+                                        BatchUploadBackgroundNotice(words.zh, uploadNotificationsAllowed,
+                                            onAllow = { if (android.os.Build.VERSION.SDK_INT >= 33) requestUploadNotifications.launch(Manifest.permission.POST_NOTIFICATIONS) })
                                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                             if (batchQueue != null) OutlinedButton(onClick = {
                                                 batchPickerAccount = state.session?.account_id
@@ -1140,7 +1155,13 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                         }
                                     }
                                 } }
+                                if (batchBackgroundUnavailable) Text(t("Background upload could not start. Keep the app open and try Resume again; your queue is saved.",
+                                    "暂时无法启动后台上传。请保持相册打开后再点继续，上传队列已保留。"),
+                                    color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("batch-background-unavailable"))
                                 if (batchReview.isNotEmpty() || batchSkipped > 0) {
+                                    if (batchReadGrantWarning) Text(t("This file provider did not grant lasting access. If Android ends the app, you may need to select unfinished files again.",
+                                        "文件提供方未授予长期读取权限。若系统结束应用，可能需要重新选择未完成的文件。"),
+                                        style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("batch-read-grant-warning"))
                                     val destination = batchReviewDestination ?: selectedUploadLibrary
                                     val batchDestination = destination?.let { id -> availableMemberships.firstOrNull { it.library_id == id }
                                         ?.let { LibraryNames.display(it.library_id, words.zh) } }
@@ -1180,15 +1201,15 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                         onToggleHistory = { uploadHistoryExpanded = !uploadHistoryExpanded },
                                         onCheckServer = { uploadHistoryExpanded = true; store.loadUploadHistory(1) },
                                         onHistoryPage = store::loadUploadHistory, onCloseHistory = store::closeUploadHistory,
-                                        onPause = { batchQueue?.pause() }, onResume = { batchQueue?.resume(it) },
-                                        onRetry = { batchQueue?.retry(it) }, onCancel = { batchQueue?.cancel(it) },
+                                        onPause = { store.endBackgroundBatchUploads() }, onResume = { runBatchInBackground(BatchUploadCommand.RESUME, it) },
+                                        onRetry = { runBatchInBackground(BatchUploadCommand.RETRY, it) }, onCancel = { batchQueue?.cancel(it) },
                                         onDescribeBatch = { destination, batch, asset -> beginAnnotation(destination, batch, "", asset) },
                                         onDescribeItem = { destination, batch, asset -> beginAnnotation(destination, batch, asset) },
                                         onOpenHistory = store::openUploadHistory,
                                         onDescribeHistory = { item -> item.libraryId?.let { beginAnnotation(it, "", item.assetId) } },
                                         workspaceExpanded = importProgressExpanded,
                                         onToggleWorkspace = { importProgressExpanded = !importProgressExpanded },
-                                        activity = batchActivity, onRetryBatch = { batchQueue?.retryBatch(it) },
+                                        activity = batchActivity, onRetryBatch = { runBatchInBackground(BatchUploadCommand.RETRY_BATCH, it) },
                                     )
                                 }
                                 }
@@ -1413,8 +1434,19 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     }
                                     state.gallery?.let { gallery ->
                                         if (gallery.items.isEmpty()) item { Text(t("No matching items on this page", "此页暂无符合条件的内容")) }
-                                        val columns = if (gallery.items.size == 1 || config.fontScale > 1.3f || config.screenWidthDp < 360) 1 else 2
-                                        items(gallery.items.chunked(columns)) { row -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        val stackGroups = state.photoStacks.orEmpty().filterNot { it.id in state.separatePhotoStackIds }
+                                        if (stackGroups.isNotEmpty()) item {
+                                            OutlinedButton(onClick = store::toggleAllPhotos,
+                                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("photo-stacks-all-toggle")) {
+                                                Text(if (state.showAllPhotos) t("Group similar photos", "收起相似照片") else t("Show all photos", "显示全部照片"))
+                                            }
+                                        }
+                                        val visibleIds = PhotoStackProjection.visibleAssetIds(gallery, state.photoStacks,
+                                            state.showAllPhotos, state.expandedPhotoStackIds, state.separatePhotoStackIds,
+                                            state.photoStackCoverOverrides).toSet()
+                                        val visibleAssets = gallery.items.filter { it.id in visibleIds }
+                                        val columns = if (visibleAssets.size == 1 || config.fontScale > 1.3f || config.screenWidthDp < 360) 1 else 2
+                                        items(visibleAssets.chunked(columns)) { row -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                             row.forEach { asset -> Card(onClick = { store.openMedia(asset) }, modifier = Modifier.weight(1f).testTag("media-${asset.id}")) {
                                                 Preview(asset, state.previews[asset.id], words)
                                                 Column(Modifier.padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)) {
@@ -1428,6 +1460,43 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                                                         TextButton(onClick = { store.openAsset(asset) }, modifier = Modifier.testTag("details-${asset.id}")) {
                                                             Text(t("Details", "详情"))
+                                                        }
+                                                    }
+                                                    stackGroups.firstOrNull { (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) == asset.id }?.let { group ->
+                                                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.SpaceBetween) {
+                                                            Text(if (group.reason == "same_upload")
+                                                                t("Same upload · ${group.count} photos", "同次上传 · ${group.count} 张相似照片")
+                                                            else t("Similar photos · ${group.count}", "相似照片 · ${group.count}"),
+                                                                style = MaterialTheme.typography.labelMedium,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                maxLines = 2,
+                                                                modifier = Modifier.weight(1f).semantics { stateDescription = t("Stack cover", "相似照片组封面") })
+                                                            TextButton(onClick = {
+                                                                if (state.showAllPhotos) {
+                                                                    store.toggleAllPhotos()
+                                                                    store.collapsePhotoStack(group.id)
+                                                                } else store.togglePhotoStack(group.id)
+                                                            }, modifier = Modifier.testTag("photo-stack-toggle-${group.id}")) {
+                                                                val expanded = state.showAllPhotos || group.id in state.expandedPhotoStackIds
+                                                                Text(if (expanded) t("Collapse", "收起") else t("Expand", "展开"))
+                                                            }
+                                                        }
+                                                    }
+                                                    stackGroups.firstOrNull { asset.id in it.assetIds &&
+                                                        (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) != asset.id &&
+                                                        (state.showAllPhotos || it.id in state.expandedPhotoStackIds) }?.let { group ->
+                                                        TextButton(onClick = { store.selectPhotoStackCover(group.id, asset.id) },
+                                                            modifier = Modifier.testTag("photo-stack-select-cover-${group.id}-${asset.id}")) {
+                                                            Text(t("Select as cover", "设为封面"))
+                                                        }
+                                                    }
+                                                    stackGroups.firstOrNull { asset.id in it.assetIds &&
+                                                        (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) == asset.id &&
+                                                        (state.showAllPhotos || it.id in state.expandedPhotoStackIds) }?.let { group ->
+                                                        TextButton(onClick = { store.showPhotoStackSeparately(group.id) },
+                                                            modifier = Modifier.testTag("photo-stack-separate-${group.id}")) {
+                                                            Text(t("Show separately", "单独显示"))
                                                         }
                                                     }
                                                 }

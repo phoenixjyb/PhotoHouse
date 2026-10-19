@@ -173,6 +173,36 @@ replacement reader's conversation-selection hint.
 | Workers | Bounded derived media and model processing; explicit queue state and resource limits |
 | Operator tools | Backups, migration, qualification, release and recovery; separate from product flows |
 
+The phone's [background batch-upload candidate](../clients/android/docs/PHONE_BACKGROUND_UPLOAD.md)
+separates a process-owned store and an explicitly started `dataSync` foreground
+service from the covered Activity. Its memory-only account/credential lease
+authorizes only the upload queue; locking the screen still clears private UI and
+stops voice interaction. Pause, logout, expiry or access changes fence the runner.
+Encrypted metadata and server-offset reconciliation support explicit recovery
+after process death without restoring permission to run automatically.
+
+## Similar-photo gallery projection
+
+[Photo stacks](SIMILAR_PHOTO_STACKS.md) reuse stored perceptual hashes and
+capture-time evidence inside the authorized gallery transaction. The optional
+page response retains every ordinary asset and adds disjoint suggested groups.
+The API opens no original media or model and writes no group records. Web and
+phone validate the complete extension before displaying one cover and a count;
+invalid or unsupported metadata leaves every asset visible.
+
+These groups belong to a fetched page. Expansion, cover and separation choices
+are temporary client state, cleared on scope changes or reload. They do not
+change the shared-memory/story groups, another member's curation, or the separate
+anonymous Home TV catalog. Whole-library indexing and persistent preferences
+need their own pagination and storage contract.
+
+The separate [upload preparation read](UPLOAD_PREPARATION.md) joins only the
+current account's receipt page with attributable processing evidence and current
+library access. It preserves the existing upload-history wire shape. Task state
+and record existence do not establish that preview/playback files are usable;
+those fields remain unknown until there is explicit delivery evidence. Client
+preparation-status presentation remains a follow-up.
+
 ## Schema and release boundaries
 
 An installed source head does not establish the live Alembic revision. Optional
@@ -730,3 +760,21 @@ Normal and rollback receipts must match their pinned configurations, including
 providers already enabled on the old release. The
 [v57 recovery record](../clients/android/docs/PHONE_V57_RELEASE_2026-10-14.md)
 documents the count/receipt correction and listener-free staging gate.
+
+## Receipt-selected caption processing candidate
+
+The [scoped caption worker](../server/docs/security/RELEASED_CAPTION_WORKER.md)
+separates three responsibilities: authorized receipt/task transactions, shared
+bilingual generation policy, and an explicit loopback HTTP model adapter. Inference
+runs outside the writer reservation; source, membership, assignment, journal and
+claim are revalidated before one atomic caption/completion write. Concurrent family
+edits are retained. Its bounded CPU client and separately operated GPU model
+service have distinct resource and delivery gates. This source path adds no API
+route or startup hook and does not make the legacy broad worker compatible.
+
+The [native provider/batch follow-through](CAPTION_PROVIDER_RECOVERY_2026-10-18.md)
+also separates model startup demand from steady model footprint: the admitted
+provider reported about 6.26 GB of model memory, while startup Job commit peaked
+near 30 GiB. Pin the local checkpoint identity and actual class/device/quantization;
+keep GPU sampling in the qualified outer supervisor. A successful one-time batch
+and verified process teardown do not install persistent provider/worker startup.

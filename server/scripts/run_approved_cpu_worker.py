@@ -24,6 +24,7 @@ MEDIA_CHILD = ROOT / 'scripts' / 'home_media_worker.py'
 RESOURCE_HELPER = ROOT / 'scripts' / 'home_preparation_resources.py'
 sys.path.insert(0, str(ROOT / 'scripts'))
 from home_preparation_resources import emit_worker_failure, memory as observe_memory
+from home_memory_envelope import WindowsJob
 REVISIONS = {'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304'}
 KINDS = {'thumb', 'phash'}
 MAX_INPUT = 256 * 1024**2
@@ -39,6 +40,9 @@ MAX_CHILD_RSS = 1536 * 1024**2
 LIMITS = {'256': (256, 256**2, MAX_OUTPUT), '1024': (1024, 1024**2, MAX_OUTPUT)}
 POLICY = {'pixels': MAX_PIXELS, 'decoded_pixels': MAX_DECODED_PIXELS,
           'jpeg_source_pixels': MAX_JPEG_SOURCE_PIXELS}
+
+_ACTIVE_WINDOWS_JOB = None
+_ACTIVE_WINDOWS_JOB_PID = None
 
 
 class Refused(ValueError):
@@ -235,6 +239,52 @@ def _guard_resources(derived, stop_file, child, deadline):
         raise RuntimeError('memory_budget')
 
 
+def _verify_windows_job(job):
+    summary = job.summary()
+    if (type(summary) is not dict
+            or summary.get('limit_bytes') != MAX_CHILD_RSS
+            or summary.get('limit_flags') != 0x200):
+        raise RuntimeError('hard_child_memory_cap_unavailable')
+
+
+@contextmanager
+def worker_memory_envelope():
+    """Bind one verified Windows memory limit to this worker execution lifetime."""
+    global _ACTIVE_WINDOWS_JOB, _ACTIVE_WINDOWS_JOB_PID
+    if sys.platform != 'win32':
+        yield
+        return
+    if _ACTIVE_WINDOWS_JOB is not None:
+        raise RuntimeError('worker_memory_envelope_already_active')
+    try:
+        available, _ = observe_memory(None)
+    except Exception as error:
+        raise RuntimeError('resource_observation_failed') from error
+    if available < MIN_FREE_RAM:
+        raise RuntimeError('memory_floor')
+    job = WindowsJob(MAX_CHILD_RSS // 1024**2)
+    active = False
+    try:
+        _verify_windows_job(job)
+        _ACTIVE_WINDOWS_JOB = job
+        _ACTIVE_WINDOWS_JOB_PID = os.getpid()
+        active = True
+        yield
+    finally:
+        if active:
+            _ACTIVE_WINDOWS_JOB = None
+            _ACTIVE_WINDOWS_JOB_PID = None
+        job.close()
+
+
+def _require_active_windows_job():
+    job = _ACTIVE_WINDOWS_JOB
+    if job is None or _ACTIVE_WINDOWS_JOB_PID != os.getpid():
+        raise RuntimeError('hard_child_memory_cap_unavailable')
+    _verify_windows_job(job)
+    return job
+
+
 def run_child(args, cwd, derived, stop_file, deadline):
     if sys.platform.startswith('linux'):
         values = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
@@ -244,11 +294,9 @@ def run_child(args, cwd, derived, stop_file, deadline):
         available, _ = observe_memory(None)
         if available < MIN_FREE_RAM:
             raise RuntimeError('memory_floor')
-    job = None
     popen_options = {}
     if sys.platform == 'win32':
-        from home_memory_envelope import WindowsJob
-        job = WindowsJob(MAX_CHILD_RSS // 1024**2)
+        _require_active_windows_job()
         popen_options['creationflags'] = subprocess.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS
     elif sys.platform.startswith('linux'):
         import resource
@@ -257,13 +305,8 @@ def run_child(args, cwd, derived, stop_file, deadline):
         def limits():
             resource.setrlimit(resource.RLIMIT_AS, (MAX_CHILD_RSS, MAX_CHILD_RSS))
         popen_options['preexec_fn'] = limits
-    try:
-        process = subprocess.Popen(args, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                   stderr=subprocess.DEVNULL, text=True, close_fds=True, **popen_options)
-    except BaseException:
-        if job is not None:
-            job.close()
-        raise
+    process = subprocess.Popen(args, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                               stderr=subprocess.DEVNULL, text=True, close_fds=True, **popen_options)
     try:
         while process.poll() is None:
             _guard_resources(derived, stop_file, process, deadline)
@@ -278,8 +321,6 @@ def run_child(args, cwd, derived, stop_file, deadline):
         raise
     finally:
         process.stdout.close()
-        if job is not None:
-            job.close()
 
 
 def sha_and_verify(path, expected_size, expected_hash, derived, stop_file, deadline):
@@ -433,27 +474,28 @@ def run(args):
             raise Refused('Worker target changed')
         if any(name in sys.modules for name in ('app.tasks', 'app.main', 'torch', 'transformers', 'onnxruntime', 'insightface')):
             raise Refused('Fresh isolated CPU process required')
-        completed = attempted = 0
-        while not os.path.lexists(stop_file):
-            row = claim_one(database)
-            if row is None:
+        with worker_memory_envelope():
+            completed = attempted = 0
+            while not os.path.lexists(stop_file):
+                row = claim_one(database)
+                if row is None:
+                    if args.once:
+                        break
+                    if os.path.lexists(stop_file):
+                        break
+                    time.sleep(POLL_SECONDS)
+                    continue
+                attempted += 1
+                try:
+                    completed += int(process_task(row, database, originals, derived, stop_file))
+                except Exception as error:
+                    record_failure(database, row[0], row[3], error)
+                    if args.once:
+                        break
                 if args.once:
                     break
-                if os.path.lexists(stop_file):
-                    break
-                time.sleep(POLL_SECONDS)
-                continue
-            attempted += 1
-            try:
-                completed += int(process_task(row, database, originals, derived, stop_file))
-            except Exception as error:
-                record_failure(database, row[0], row[3], error)
-                if args.once:
-                    break
-            if args.once:
-                break
-        return {'worker': 'stopped', 'attempted': attempted, 'completed': completed,
-                'stopped_by_operator': os.path.lexists(stop_file)}
+            return {'worker': 'stopped', 'attempted': attempted, 'completed': completed,
+                    'stopped_by_operator': os.path.lexists(stop_file)}
 
 
 def main(argv=None):

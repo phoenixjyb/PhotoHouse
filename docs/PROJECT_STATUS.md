@@ -1,11 +1,72 @@
 # Current project status
 
-**October 17 upload recovery update:** [Phone v71 is published](../clients/android/docs/PHONE_V71_RELEASE_2026-10-17.md)
-and its owner trial produced complete server transfers and receipts after repeated
-Retry taps. Review/assignment and media readiness remain separate. The following
-[v72 candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md) adds bounded
-foreground recovery, same-batch continuation and clearer final-confirmation feedback.
-It is not published. Earlier delivery snapshots below retain their dated scope.
+**October 19 combined gallery candidate:** source `f2041c1` integrates current
+main and the newer deployed visual-review source `3c2c48f`, preserving search
+and upload guards alongside photo stacks. The complete API profile passed
+2,508 tests / 2,510 subtests, the generated demo, seven staging-package tests
+and three affected Web journeys. Its fixed 245-file API package also passed
+native Windows qualification: all nine generated cases and both bounded-child
+Job proofs passed. The finished temporary task was removed; all nine production
+task definitions were preserved. The API/Web cutover and Android visual/release
+gates remain open. Native qualification is not a live deployment. See the
+[photo-stack qualification record](SIMILAR_PHOTO_STACKS.md#visual-review-integration-qualification--october-19).
+
+## October 19 development candidate
+
+[Similar-photo stacks](SIMILAR_PHOTO_STACKS.md) passed local backend, generated
+Web and 60 focused Android JVM checks for the protected gallery. Grouping is page-local and reversible;
+search/story result views and originals are unchanged. This is distinct from
+editorial shared-memory groups and does not enable those groups or any model.
+The companion account-owned upload-preparation endpoint is source work; client
+stage presentation remains outstanding. Neither feature has been deployed or
+published by this development round. Earlier dated runtime records below retain
+their original scope; the current live search overlay must be preserved in any
+future release composition.
+
+**October 18 API/CPU qualification:** the [R5 native synthetic trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
+passed its Job-proof startup, 132 API tests, three `a0` journal tests, five invitation
+checks and 20 CPU tests. Independent native result readback and nine-task/fifteen-file
+preservation checks passed. The candidate’s Windows contention fix returns retryable 429.
+The live API was separately updated with a newer search overlay before this trial;
+retain that overlay when composing the next rollout candidate. This operation did
+not switch an API or worker, open family data, migrate a database or publish OTA.
+
+**October 18 caption follow-through:** the bounded
+[provider recovery and released-batch trial](CAPTION_PROVIDER_RECOVERY_2026-10-18.md)
+passed. All 17 selected captions were generated and committed with 17 completion
+receipts and zero task retries. Independent readback verified all original hashes,
+all 34 JPEG previews and the preserved earlier results/failed thumbnail record.
+The temporary model process trees exited; API and OTA bindings were unchanged.
+This completes this batch's captions. Persistent processing, the general API/CPU
+worker rollout and family UI/quality acceptance remain outstanding. Earlier dated
+pending-caption statements below describe the state before this trial.
+
+**October 17 upload recovery update:** [Phone v72 is published](../clients/android/docs/PHONE_V72_RELEASE_2026-10-17.md)
+with bounded foreground recovery, same-batch continuation and clearer receipt
+confirmation. Full Windows and independent trusted HTTPS package checks passed;
+physical v72 upload and emulator UI acceptance remain open. The earlier v71 owner
+trial confirmed all server receipts after repeated Retry taps.
+
+The subsequent operator recovery accepted that received batch without processing,
+then released its exact held starters only after a separate user request. CPU,
+face and image-vector workers were started or observed running. This is processing
+start evidence, not complete media readiness. The caption lane needs a scoped,
+current-schema worker; the legacy broad caption launcher is incompatible with
+parallel writers. [The journal/release contract](UPLOAD_REVIEW_JOURNAL_CONTEXT.md)
+records the source fix, guards and remaining delivery gates. The general API
+repair remains a source candidate; the offline batch operation did not deploy it.
+Earlier delivery snapshots below retain their dated scope.
+
+The follow-through independently verified all original hashes and both preview
+sizes for the received batch. One missing preview pair was repaired without
+resetting its failed task. Vector and face processing finished; person identity
+was not assigned automatically. Caption tasks remain pending and the configured
+caption service was unreachable at the latest read-only check. The
+[receipt-selected caption candidate](../server/docs/security/RELEASED_CAPTION_WORKER.md)
+now has generated-media, mock-HTTP and bound-journal qualification. Native package
+qualification also [passed on Windows](NATIVE_CAPTION_QUALIFICATION_2026-10-18.md)
+for source `d615583`, including an explicit Job-proof canary and ten synthetic
+cases. Provider recovery and live caption processing remain separate gates.
 
 ## Earlier v70 delivery snapshot
 

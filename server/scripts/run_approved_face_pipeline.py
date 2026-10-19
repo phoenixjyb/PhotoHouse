@@ -378,6 +378,12 @@ def _probe(config):
 
 
 def run(args):
+    # All supervised children inherit one cap for this worker invocation.
+    with image_worker.worker_memory_envelope():
+        return _run_with_memory_envelope(args)
+
+
+def _run_with_memory_envelope(args):
     config = _config(args)
     result = {'preflight': 'pass', 'activated': False, 'pending': config['pending'],
               'detector_sha256': DETECTOR_HASH, 'embedder_sha256': EMBEDDER_HASH,
@@ -400,6 +406,8 @@ def run(args):
             try: fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except OSError: raise Refused('another_face_owner') from None
         try:
+            if sys.platform == 'win32':
+                image_worker._require_active_windows_job()
             with closing(_sqlite(config['database'], writable=True)) as db:
                 _recover_journals(config, db)
                 recovered = recover_owned(db)
@@ -411,6 +419,8 @@ def run(args):
                     if args.once: break
                     time.sleep(POLL_SECONDS); continue
                 with kernel_lock(config['database'], blocking=True):
+                    if sys.platform == 'win32':
+                        image_worker._require_active_windows_job()
                     with closing(_sqlite(config['database'], writable=True)) as db:
                         if not claim(db, candidate):
                             continue

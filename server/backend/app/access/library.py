@@ -14,6 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from .service import AccessDenied, AccessService
 from .transport import AccessRoute, TransportError, _runtime, credentials_from_request
 from .date_hints import date_hint
+from .photo_stacks import build_photo_stacks
 
 
 class LibraryRoute(AccessRoute):
@@ -52,11 +53,14 @@ class LibraryReads:
         self.access = service
         self.prepared = prepared
 
-    def gallery(self, token, library_id, *, page=1, page_size=50, media='all', date_hints=False):
+    def gallery(self, token, library_id, *, page=1, page_size=50, media='all', date_hints=False,
+                photo_stacks=False):
         if type(page) is not int or not 1 <= page <= 100000 or type(page_size) is not int or not 1 <= page_size <= 100:
             raise ValueError('Invalid pagination')
         if type(media) is not str or media not in {'all', 'image', 'video', 'prepared_video'}:
             raise ValueError('Invalid media')
+        if type(photo_stacks) is not bool:
+            raise ValueError('Invalid photo stack option')
         with self.access._transaction():
             member = self.access._require(token, library_id, 'library.read')
             db = self.access.db
@@ -74,14 +78,24 @@ class LibraryReads:
                 media_arg += (json.dumps(list(self.prepared.entries)),)
             total = db.execute('SELECT count(*)' + SOURCE + media_sql,
                                (library_id,) + media_arg).fetchone()[0]
-            rows = db.execute('SELECT ' + (HINT_FIELDS if date_hints else FIELDS) + SOURCE +
+            projection = HINT_FIELDS if date_hints else FIELDS
+            if photo_stacks:
+                # Keep stack evidence in this authorized page snapshot. These
+                # fields are internal inputs to the projection, never returned.
+                projection += ''',a.perceptual_hash,
+                    (SELECT u.account_id FROM access_uploads u WHERE u.asset_id=a.id LIMIT 1),
+                    (SELECT u.batch FROM access_uploads u WHERE u.asset_id=a.id LIMIT 1)'''
+            rows = db.execute('SELECT ' + projection + SOURCE +
                 media_sql + GALLERY_ORDER + ' LIMIT ? OFFSET ?',
                 (library_id,) + media_arg + (page_size, (page - 1) * page_size)).fetchall()
             if media == 'prepared_video':
                 self.prepared.current()
-            return {'library_id': library_id, 'page': page, 'page_size': page_size,
+            result = {'library_id': library_id, 'page': page, 'page_size': page_size,
                     'total': total, 'originals_allowed': bool(member['originals']),
                     'items': [_asset(row, library_id, hints=date_hints) for row in rows]}
+            if photo_stacks:
+                result['photo_stacks'] = build_photo_stacks(rows, hints=date_hints)
+            return result
 
     def detail(self, token, library_id, asset_id, *, date_hints=False, upload_notes=False):
         with self.access._transaction():
@@ -163,15 +177,18 @@ def _integer(value, maximum):
 @router.get('/assets')
 async def gallery(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
-    query = _query(request, {'library', 'page', 'page_size', 'media', 'date_hints'})
+    query = _query(request, {'library', 'page', 'page_size', 'media', 'date_hints', 'photo_stacks'})
     if query.get('media', 'all') not in {'all', 'image', 'video', 'prepared_video'}:
         raise TransportError(400, 'Invalid request')
     if query.get('date_hints', '0') not in {'0', '1'}:
+        raise TransportError(400, 'Invalid request')
+    if query.get('photo_stacks', '0') not in {'0', '1'}:
         raise TransportError(400, 'Invalid request')
     result = await run_in_threadpool(_read, _runtime(request, allow_query=True), 'gallery', token,
         query['library'], page=_integer(query.get('page', '1'), 100000),
         page_size=_integer(query.get('page_size', '50'), 100), media=query.get('media', 'all'),
         date_hints=query.get('date_hints') == '1',
+        photo_stacks=query.get('photo_stacks') == '1',
         prepared=getattr(getattr(request.app.state, 'media_runtime', None), 'prepared_videos', None))
     return JSONResponse(result)
 

@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Build a fixed source-only package for receipt-selected caption qualification.
+
+The package contains no media, credentials, model weights, environment, or
+launcher registration. Its immutable commit and per-file hashes are recorded so
+the Windows operator can qualify the exact installed source before activation.
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import io
+import json
+import os
+from pathlib import Path, PurePosixPath
+import re
+import subprocess
+import zipfile
+
+ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_SCHEMA_REVISION = 'a0c9d2e4f817'
+TARGET_SCHEMA_REVISIONS = (DEFAULT_SCHEMA_REVISION, 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304')
+from build_staging_package import FILES as API_FILES
+
+# The runtime's guarded ExistingDatabase dependency closure is the same reviewed
+# source closure used by the protected API. Shipping it does not start that API.
+FILES = tuple(sorted(set(API_FILES) | {
+    'backend/app/access/upload_caption_processing.py',
+    'backend/app/approved_caption_generation.py',
+    'backend/app/approved_caption_http.py',
+    'backend/app/caption_policy.py',
+    'config/detailed-caption-prompt.txt',
+    'scripts/run_released_caption_worker.py',
+    'scripts/qualify_released_caption_worker.py',
+    'docs/security/RELEASED_CAPTION_WORKER.md',
+}))
+
+
+def git(*args: str) -> bytes:
+    return subprocess.check_output(['git', *args], cwd=ROOT, stderr=subprocess.DEVNULL)
+
+
+def source_files(commit: str) -> dict[str, bytes]:
+    if not re.fullmatch(r'[0-9a-f]{40}', commit) or git('cat-file', '-t', commit).strip() != b'commit':
+        raise ValueError('Explicit immutable local commit required')
+    # Git's full-tree names include server/ in the monorepo. Keep the archive
+    # layout stable for installed launchers and retain standalone-repo support.
+    prefix = git('rev-parse', '--show-prefix').decode('utf-8').removesuffix('\n').removesuffix('\r')
+    if prefix and (not prefix.endswith('/') or len(prefix) > 1024
+                   or PurePosixPath(prefix).is_absolute()
+                   or any(part in ('', '.', '..') for part in prefix[:-1].split('/'))
+                   or any(c in prefix for c in '\\\r\n\x00')):
+        raise ValueError('Direct repository source prefix required')
+    source_names = {prefix + name: name for name in FILES}
+    entries = {}
+    for row in filter(None, git('ls-tree', '-r', '-z', '--full-tree', commit, '--', *source_names).split(b'\0')):
+        identity, name = row.split(b'\t', 1)
+        mode, kind, oid = identity.decode('ascii').split()
+        if mode not in ('100644', '100755') or kind != 'blob':
+            raise ValueError('Regular source blobs required')
+        relative = source_names.get(name.decode('utf-8'))
+        if relative is None or relative in entries:
+            raise ValueError('Exact worker source paths required')
+        entries[relative] = oid
+    if set(entries) != set(FILES):
+        raise ValueError('Worker source files missing')
+    sizes = {name: int(git('cat-file', '-s', oid)) for name, oid in entries.items()}
+    if any(size > 1_000_000 for size in sizes.values()) or sum(sizes.values()) > 16_000_000:
+        raise ValueError('Worker source budget exceeded')
+    return {name: git('cat-file', 'blob', entries[name]) for name in FILES}
+
+
+def package_bytes(commit: str, files: dict[str, bytes], *,
+                  schema_revision: str = DEFAULT_SCHEMA_REVISION) -> bytes:
+    if not re.fullmatch(r'[0-9a-f]{40}', commit) or set(files) != set(FILES):
+        raise ValueError('Exact immutable worker source manifest required')
+    if type(schema_revision) is not str or schema_revision not in TARGET_SCHEMA_REVISIONS:
+        raise ValueError('Explicit supported target schema required')
+    manifest = {
+        'format_version': 1, 'source_commit': commit,
+        'artifact_kind': 'released_caption_worker_source_only',
+        'schema_revision': schema_revision, 'activated': False,
+        'dependencies_included': False, 'private_configuration_included': False,
+        'model_weights_included': False, 'media_included': False,
+        'files': {name: hashlib.sha256(files[name]).hexdigest() for name in FILES},
+    }
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_STORED) as archive:
+        for name, data in [*sorted(files.items()),
+                           ('manifest.json', (json.dumps(manifest, indent=2) + '\n').encode())]:
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.create_system = 3
+            info.external_attr = 0o100644 << 16
+            archive.writestr(info, data)
+    return output.getvalue()
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--commit', required=True)
+    parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--schema-revision', choices=TARGET_SCHEMA_REVISIONS,
+                        default=DEFAULT_SCHEMA_REVISION,
+                        help='Intended qualification target; does not qualify or migrate a database')
+    args = parser.parse_args(argv)
+    try:
+        if (not args.out.is_absolute() or '..' in args.out.parts
+                or args.out.parent.resolve(strict=True) != args.out.parent):
+            raise ValueError('Explicit direct output required')
+        data = package_bytes(args.commit, source_files(args.commit), schema_revision=args.schema_revision)
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0)
+        with os.fdopen(os.open(args.out, flags, 0o600), 'wb') as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        print(json.dumps({'source_commit': args.commit, 'schema_revision': args.schema_revision, 'files': len(FILES),
+                          'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest(),
+                          'activated': False}))
+        return 0
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        print('Worker packaging refused; existing output was not overwritten.')
+        return 2
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MEDIA_CHILD = ROOT / 'scripts' / 'home_media_worker.py'
 sys.path.insert(0, str(ROOT / 'scripts'))
 from home_preparation_resources import emit_worker_failure, memory as observe_memory
+from home_memory_envelope import WindowsJob
 from image_embedding_receipts import inspect_checkpoint, verify_checkpoint, recipe_sha256
 from image_preprocessing_receipts import observe_preprocessing
 
@@ -423,25 +424,15 @@ def run_supervised(argv, *, env, derived, deadline, capture_stdout=False):
         raise RuntimeError('resource_observation_unsupported')
     if available < MIN_FREE_RAM:
         raise RuntimeError('memory_floor')
-    job = None
     options = {}
     if sys.platform == 'win32':
-        try:
-            from home_memory_envelope import WindowsJob
-            job = WindowsJob(MAX_CHILD_RSS // 1024**2)
-        except Exception as error:
-            raise RuntimeError('hard_child_memory_cap_unavailable') from error
+        _require_active_windows_job()
         options['creationflags'] = subprocess.CREATE_NO_WINDOW | subprocess.BELOW_NORMAL_PRIORITY_CLASS
-    try:
-        proc = subprocess.Popen(
-            argv, cwd=ROOT, env=env, stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE if capture_stdout else subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL, close_fds=True, **options,
-        )
-    except BaseException:
-        if job is not None:
-            job.close()
-        raise
+    proc = subprocess.Popen(
+        argv, cwd=ROOT, env=env, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE if capture_stdout else subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL, close_fds=True, **options,
+    )
     try:
         while proc.poll() is None:
             _check_resources(proc, derived, deadline)
@@ -457,8 +448,62 @@ def run_supervised(argv, *, env, derived, deadline, capture_stdout=False):
     finally:
         if proc.stdout is not None:
             proc.stdout.close()
-        if job is not None:
-            job.close()
+
+
+_ACTIVE_WINDOWS_JOB = None
+_ACTIVE_WINDOWS_JOB_PID = None
+
+
+def _verify_windows_job(job):
+    try:
+        summary = job.summary()
+    except Exception as error:
+        raise RuntimeError('hard_child_memory_cap_unavailable') from error
+    if (type(summary) is not dict
+            or summary.get('limit_bytes') != MAX_CHILD_RSS
+            or summary.get('limit_flags') != 0x200):
+        raise RuntimeError('hard_child_memory_cap_unavailable')
+
+
+@contextmanager
+def worker_memory_envelope():
+    """Bind one verified Windows memory limit to this worker execution lifetime."""
+    global _ACTIVE_WINDOWS_JOB, _ACTIVE_WINDOWS_JOB_PID
+    if sys.platform != 'win32':
+        yield
+        return
+    if _ACTIVE_WINDOWS_JOB is not None:
+        raise RuntimeError('worker_memory_envelope_already_active')
+    try:
+        available, _ = observe_memory(None)
+    except Exception as error:
+        raise RuntimeError('resource_observation_failed') from error
+    if available < MIN_FREE_RAM:
+        raise RuntimeError('memory_floor')
+    try:
+        job = WindowsJob(MAX_CHILD_RSS // 1024**2)
+    except Exception as error:
+        raise RuntimeError('hard_child_memory_cap_unavailable') from error
+    active = False
+    try:
+        _verify_windows_job(job)
+        _ACTIVE_WINDOWS_JOB = job
+        _ACTIVE_WINDOWS_JOB_PID = os.getpid()
+        active = True
+        yield
+    finally:
+        if active:
+            _ACTIVE_WINDOWS_JOB = None
+            _ACTIVE_WINDOWS_JOB_PID = None
+        job.close()
+
+
+def _require_active_windows_job():
+    job = _ACTIVE_WINDOWS_JOB
+    if job is None or _ACTIVE_WINDOWS_JOB_PID != os.getpid():
+        raise RuntimeError('hard_child_memory_cap_unavailable')
+    _verify_windows_job(job)
+    return job
 
 
 def _probe_provider(args, checkpoint, *, deadline):
@@ -1020,81 +1065,86 @@ def run(args):
     result = preflight(database, originals, derived, checkpoint, args.checkpoint_sha256,
                        args.image_model, args.model_version, args.device,
                        getattr(args, 'expected_gpu_uuid', None), allow_running=immutable)
-    if not args.execute:
+    with worker_memory_envelope():
+        if not args.execute:
+            with kernel_lock(database, blocking=True):
+                provider = _probe_provider(args, checkpoint,
+                                           deadline=time.monotonic() + MAX_TASK_SECONDS)
+            result.update({'provider': provider['effective_provider'],
+                           'effective_device': provider['effective_device'],
+                           'selected_physical_device': provider['selected_physical_device'],
+                           'selected_gpu_uuid': provider['selected_gpu_uuid'],
+                           'preprocessing_sha256': provider['preprocessing_sha256'],
+                           'observed_dimension': provider['dimension'],
+                           'child_checkpoint_and_recipe_verified': True})
+            return result
+        if os.path.lexists(stop_file):
+            raise Refused('Stop request already present')
+        if targets != (identity(database)[:2], identity(originals)[:2], identity(derived)[:2]):
+            raise Refused('Worker target changed')
+        if os.path.lexists(stop_file):
+            raise Refused('Stop request arrived before startup')
+        # Verify the exact model and actual provider/device before any task claim.
         with kernel_lock(database, blocking=True):
+            if sys.platform == 'win32':
+                _require_active_windows_job()
+            recovered = (_recover_immutable_startup(database, originals, derived, args, checkpoint,
+                         checkpoint_identity, stop_file) if immutable else 0)
+            if recovered and args.once:
+                return {'worker': 'stopped', 'recovered': recovered, 'attempted': 0,
+                        'completed': recovered, 'provider_activated': False}
             provider = _probe_provider(args, checkpoint,
                                        deadline=time.monotonic() + MAX_TASK_SECONDS)
-        result.update({'provider': provider['effective_provider'],
-                       'effective_device': provider['effective_device'],
-                       'selected_physical_device': provider['selected_physical_device'],
-                       'selected_gpu_uuid': provider['selected_gpu_uuid'],
-                       'preprocessing_sha256': provider['preprocessing_sha256'],
-                       'observed_dimension': provider['dimension'],
-                       'child_checkpoint_and_recipe_verified': True})
-        return result
-    if os.path.lexists(stop_file):
-        raise Refused('Stop request already present')
-    if targets != (identity(database)[:2], identity(originals)[:2], identity(derived)[:2]):
-        raise Refused('Worker target changed')
-    if os.path.lexists(stop_file):
-        raise Refused('Stop request arrived before startup')
-    # Verify the exact model and actual provider/device before any task claim.
-    with kernel_lock(database, blocking=True):
-        recovered = (_recover_immutable_startup(database, originals, derived, args, checkpoint,
-                     checkpoint_identity, stop_file) if immutable else 0)
-        if recovered and args.once:
-            return {'worker': 'stopped', 'recovered': recovered, 'attempted': 0,
-                    'completed': recovered, 'provider_activated': False}
-        provider = _probe_provider(args, checkpoint,
-                                   deadline=time.monotonic() + MAX_TASK_SECONDS)
-    args.expected_preprocessing_sha256 = provider['preprocessing_sha256']
-    args.expected_vector_dimension = provider['dimension']
-    stop = threading.Event()
-    previous = {}
-    def request_stop(*_): stop.set()
-    for sig in (signal.SIGINT, signal.SIGTERM, *([signal.SIGBREAK] if hasattr(signal, 'SIGBREAK') else [])):
-        previous[sig] = signal.signal(sig, request_stop)
-    attempted, completed = 0, recovered
-    try:
-        while not stop.is_set() and not os.path.lexists(stop_file):
-            candidate = None
-            try:
-                with kernel_lock(database, blocking=True):
-                    candidate = (_claim_one(database, immutable_identity=args.immutable_vector_identity)
-                                 if immutable else _claim_one(database))
-                    if candidate is None:
-                        if args.once:
-                            break
-                    else:
-                        attempted += 1
-                        completed += int(_process_task(candidate, database, originals, derived,
-                                                       args, checkpoint, checkpoint_identity, stop_file))
-            except Exception as error:
-                if candidate is None or isinstance(error, PreparedVectorPublicationPending):
-                    raise
-                record_failure(database, candidate, error)
+        args.expected_preprocessing_sha256 = provider['preprocessing_sha256']
+        args.expected_vector_dimension = provider['dimension']
+        stop = threading.Event()
+        previous = {}
+        def request_stop(*_): stop.set()
+        for sig in (signal.SIGINT, signal.SIGTERM, *([signal.SIGBREAK] if hasattr(signal, 'SIGBREAK') else [])):
+            previous[sig] = signal.signal(sig, request_stop)
+        attempted, completed = 0, recovered
+        try:
+            while not stop.is_set() and not os.path.lexists(stop_file):
+                candidate = None
+                try:
+                    with kernel_lock(database, blocking=True):
+                        if sys.platform == 'win32':
+                            _require_active_windows_job()
+                        candidate = (_claim_one(database, immutable_identity=args.immutable_vector_identity)
+                                     if immutable else _claim_one(database))
+                        if candidate is None:
+                            if args.once:
+                                break
+                        else:
+                            attempted += 1
+                            completed += int(_process_task(candidate, database, originals, derived,
+                                                           args, checkpoint, checkpoint_identity, stop_file))
+                except Exception as error:
+                    if candidate is None or isinstance(error, PreparedVectorPublicationPending):
+                        raise
+                    record_failure(database, candidate, error)
+                    if args.once:
+                        break
+                if candidate is None:
+                    stop.wait(POLL_SECONDS)
+                    continue
                 if args.once:
                     break
-            if candidate is None:
-                stop.wait(POLL_SECONDS)
-                continue
-            if args.once:
-                break
-    finally:
-        for sig, handler in previous.items():
-            signal.signal(sig, handler)
-    return {
-        'worker': 'stopped', 'attempted': attempted, 'completed': completed,
-        'recovered': recovered,
-        'stopped_by_operator': stop.is_set() or os.path.lexists(stop_file),
-        'provider': provider['effective_provider'],
-        'effective_device': provider['effective_device'],
-        'selected_physical_device': provider['selected_physical_device'],
-        'selected_gpu_uuid': provider['selected_gpu_uuid'],
-        'checkpoint_sha256': provider['checkpoint_sha256'],
-        'preprocessing_sha256': provider['preprocessing_sha256'],
-        'observed_dimension': provider['dimension'],
-    }
+        finally:
+            for sig, handler in previous.items():
+                signal.signal(sig, handler)
+        return {
+            'worker': 'stopped', 'attempted': attempted, 'completed': completed,
+            'recovered': recovered,
+            'stopped_by_operator': stop.is_set() or os.path.lexists(stop_file),
+            'provider': provider['effective_provider'],
+            'effective_device': provider['effective_device'],
+            'selected_physical_device': provider['selected_physical_device'],
+            'selected_gpu_uuid': provider['selected_gpu_uuid'],
+            'checkpoint_sha256': provider['checkpoint_sha256'],
+            'preprocessing_sha256': provider['preprocessing_sha256'],
+            'observed_dimension': provider['dimension'],
+        }
 
 
 def main(argv=None):

@@ -28,7 +28,7 @@ class InMemoryUploadQueuePersistence : UploadQueuePersistence {
 data class UploadQueueItem(val record: UploadQueueRecord, val sent: Long = record.offset)
 
 enum class UploadQueuePhase { HASHING, CHECKING, UPLOADING, FINALIZING, WAITING_RETRY }
-/** Foreground-only activity; never restored as permission to start network work. */
+/** Ephemeral activity for an explicitly started run; never restored as permission to start network work. */
 data class UploadQueueActivity(
     val localId: String, val phase: UploadQueuePhase,
     val retryAttempt: Int = 0, val maxRetries: Int = 3, val retryDelayMillis: Long = 0,
@@ -61,6 +61,8 @@ class BatchUploadQueue(
     @Volatile private var account: String? = null
     @Volatile private var epoch = 0L
     private var job: Job? = null
+    /** Observed on the owner's dispatcher; a notification owner must stop when this becomes false. */
+    val running: Boolean get() = job?.isActive == true
 
     fun attach(accountId: String) {
         pause(); account = accountId

@@ -171,3 +171,79 @@ def test_preexisting_journal_is_never_removed_by_task_attempt(tmp_path, monkeypa
     with pytest.raises(worker.Refused, match='unrecovered_journal'):
         worker._process(candidate, config)
     assert journal.read_bytes() == b'foreign-or-previous-journal'
+
+
+def test_worker_envelope_covers_default_provider_probe(monkeypatch):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    events = []
+
+    @contextmanager
+    def envelope():
+        events.append('enter')
+        try:
+            yield
+        finally:
+            events.append('exit')
+
+    def configure(_args):
+        assert events == ['enter']
+        return {'pending': {'face': 1}}
+
+    def probe(_config):
+        assert events == ['enter']
+        events.append('probe')
+        return {'provider': 'fixture'}
+
+    monkeypatch.setattr(worker.image_worker, 'worker_memory_envelope', envelope)
+    monkeypatch.setattr(worker, '_config', configure)
+    monkeypatch.setattr(worker, '_probe', probe)
+    result = worker.run(SimpleNamespace(execute=False))
+    assert result['activated'] is False
+    assert events == ['enter', 'probe', 'exit']
+
+
+def test_worker_memory_refusal_precedes_configuration_probe_and_claim(monkeypatch):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+
+    @contextmanager
+    def refused():
+        raise RuntimeError('hard_child_memory_cap_unavailable')
+        yield
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail('worker reached a provider or database operation before memory admission')
+
+    monkeypatch.setattr(worker.image_worker, 'worker_memory_envelope', refused)
+    monkeypatch.setattr(worker, '_config', forbidden)
+    monkeypatch.setattr(worker, '_probe', forbidden)
+    monkeypatch.setattr(worker, 'claim', forbidden)
+    with pytest.raises(RuntimeError, match='hard_child_memory_cap_unavailable'):
+        worker.run(SimpleNamespace(execute=True))
+
+
+def test_post_probe_memory_loss_prevents_journal_recovery_and_claim(tmp_path, monkeypatch):
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+    config, _ = fixture(tmp_path)
+    config['pending'] = {'face': 1}
+    monkeypatch.setattr(worker.image_worker, 'worker_memory_envelope', nullcontext)
+    monkeypatch.setattr(worker, '_config', lambda _args: config)
+    monkeypatch.setattr(worker, '_probe', lambda _cfg: {'provider': 'fixture'})
+
+    def invalid_job():
+        raise RuntimeError('hard_child_memory_cap_unavailable')
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail('worker changed journal/task state after failed Job verification')
+
+    monkeypatch.setattr(worker.sys, 'platform', 'win32')
+    monkeypatch.setattr(worker.image_worker, '_require_active_windows_job', invalid_job)
+    monkeypatch.setattr(worker, '_recover_journals', forbidden)
+    monkeypatch.setattr(worker, 'recover_owned', forbidden)
+    monkeypatch.setattr(worker, 'claim', forbidden)
+    with pytest.raises(RuntimeError, match='hard_child_memory_cap_unavailable'):
+        worker.run(SimpleNamespace(execute=True, once=True))
+    with sqlite3.connect(config['database']) as db:
+        assert db.execute('SELECT state,retry_count FROM tasks').fetchall() == [('pending', 0)]

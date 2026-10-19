@@ -13,6 +13,7 @@ from .transport import (TransportError, _runtime, _single,
                         credentials_from_request)
 from .upload import MAX_UPLOAD_BYTES, UploadRuntime
 from .library import LibraryRoute, _integer
+from .upload_preparation import UploadPreparation
 
 router = APIRouter(route_class=LibraryRoute)
 
@@ -96,6 +97,18 @@ async def own_uploads(request: Request):
         raise TransportError(400, 'Invalid request')
     page = _integer(dict(pairs).get('page', '1'), 100000)
     return JSONResponse(await run_in_threadpool(upload.history, token, page=page))
+
+
+@router.get('/upload-preparation')
+async def upload_preparation(request: Request):
+    upload = runtime(request, allow_query=True)
+    token, _mode = credentials_from_request(request, allow_query=True)
+    pairs = list(request.query_params.multi_items())
+    if len(pairs) != len(dict(pairs)) or set(dict(pairs)) - {'page'}:
+        raise TransportError(400, 'Invalid request')
+    page = _integer(dict(pairs).get('page', '1'), 100000)
+    result = await run_in_threadpool(UploadPreparation(upload).page, token, page=page)
+    return JSONResponse(result)
 
 # Two bounded body/finalization slots per worker; one serialized transfer on disk.
 # Idle connections do not retain a buffer beyond 4 MiB or a database writer lock.

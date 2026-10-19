@@ -345,6 +345,12 @@ data class LiveState(
     val generation: Long = 0, val session: Session? = null, val library: String? = null,
     val gallery: Gallery? = null, val detail: Detail? = null, val captions: Captions? = null,
     val previews: Map<String, ByteArray> = emptyMap(), val busy: Boolean = false,
+    /** Optional stack metadata is scoped to this exact gallery page. */
+    val photoStacks: List<PhotoStackGroup>? = null,
+    val showAllPhotos: Boolean = false,
+    val expandedPhotoStackIds: Set<String> = emptySet(),
+    val separatePhotoStackIds: Set<String> = emptySet(),
+    val photoStackCoverOverrides: Map<String, String> = emptyMap(),
     val covered: Boolean = false, val problem: LiveProblem? = null,
     val photoNavigation: PhotoNavigation? = null,
     val video: VideoReader? = null,
@@ -389,6 +395,7 @@ class ConnectedStore(
     private val memoryBookReaderPositionPersistence: MemoryBookReaderPositionPersistence? = null,
     assistantWorkspaceApi: AssistantWorkspaceApi? = null,
     private val localStoryDraftPersistence: StoryDraftPersistence? = null,
+    batchUploadScope: CoroutineScope? = null,
 ) {
     /** Keeps historical trailing-lambda clock construction source-compatible. */
     constructor(
@@ -405,7 +412,7 @@ class ConnectedStore(
         savedStoryReaderPositionPersistence: SavedStoryReaderPositionPersistence? = null,
         clock: () -> Long,
     ) : this(api, scope, persistence, uploadNetwork, batchPersistence, batchSource, memoryCommunityApi,
-        memoryCommunityEnabled, memoryGroupsApi, memoryGroupsEnabled, savedStoryReaderPositionPersistence, clock, null, null, null)
+        memoryCommunityEnabled, memoryGroupsApi, memoryGroupsEnabled, savedStoryReaderPositionPersistence, clock, null, null, null, null)
 
     private var assistantSpeechJob: Job? = null
     private var assistantSpeechReplyReference: PrivateReplySpeechReference? = null
@@ -723,8 +730,14 @@ class ConnectedStore(
     private val bookNarrativeDictation = MemoryBookNarrativeDictationStore(
         api, scope, ::currentMemoryBookNarrativeScope, ::memoryCommunityDenied)
     val memoryBookNarrativeDictationState get() = bookNarrativeDictation.state
-    private val batchQueue = if (batchPersistence != null && batchSource != null) BatchUploadQueue(api, scope, batchPersistence, batchSource,
-        valid = { usable() }, token = { token ?: throw ApiFailure(FailureKind.HTTP, 401) },
+    private data class BackgroundBatchUploadLease(
+        val accountId: String,
+        val credential: Bearer,
+        val expiresAtMillis: Long,
+    )
+    @Volatile private var backgroundBatchUploadLease: BackgroundBatchUploadLease? = null
+    private val batchQueue = if (batchPersistence != null && batchSource != null) BatchUploadQueue(api, batchUploadScope ?: scope, batchPersistence, batchSource,
+        valid = { if (backgroundBatchUploadLease == null) usable() else backgroundBatchUploadsActive() }, token = { token ?: throw ApiFailure(FailureKind.HTTP, 401) },
         destinationAllowed = { library -> identity?.memberships?.any { it.library_id == library && it.available } == true }) else null
     val batchUploads get() = batchQueue
     val groupedStoryCreationAvailable get() = api.protectedNativeV2Enabled && api is StoryWorkspaceApi
@@ -793,6 +806,7 @@ class ConnectedStore(
         requests.toList().forEach { it.cancel() }; requests.clear(); retry = null
         var storageFailed = false
         if (!keepIdentity) {
+            backgroundBatchUploadLease = null
             batchQueue?.detach()
             resumeLibrary = null
             playbackProgress.clear()
@@ -6008,15 +6022,23 @@ class ConnectedStore(
         mutable.value = state.value.copy(library = library, busy = true, media = media)
         launch { generation ->
             try {
-                // The first gallery read can lose a freshly established connection. Retry
-                // exactly once, only for a transport-level OFFLINE result. The retry stays
-                // inside this generation so logout/background/expiry cancellation wins.
-                val gallery = galleryReadWithOfflineRecovery(credential, library, page, media, generation)
+                // Stack negotiation permits the established bounded OFFLINE retry. Only an
+                // explicit unsupported status may fall back to the established gallery call.
+                val withStacks = try {
+                    photoStackGalleryReadWithOfflineRecovery(credential, library, page, media, generation)
+                } catch (e: ApiFailure) {
+                    if (e.kind != FailureKind.HTTP || e.status !in setOf(400, 404)) throw e
+                    PhotoStackGallery(legacyGalleryReadWithOfflineRecovery(credential, library, page, media, generation), null)
+                }
+                val gallery = withStacks.gallery
                 if (!active(generation)) return@launch
                 validResponse(gallery.library_id == library && gallery.page == page && gallery.page_size in 1..100 && gallery.total >= 0 && gallery.items.size <= gallery.page_size)
                 validResponse(media == GalleryMedia.ALL || gallery.items.all { it.kind == media.assetKind })
                 val unique = gallery.copy(items = gallery.items.distinctBy { it.id })
-                mutable.value = state.value.copy(gallery = unique)
+                val stacks = withStacks.groups?.takeIf { validPhotoStackGroups(unique, it) }
+                mutable.value = state.value.copy(gallery = unique, photoStacks = stacks,
+                    showAllPhotos = false, expandedPhotoStackIds = emptySet(), separatePhotoStackIds = emptySet(),
+                    photoStackCoverOverrides = emptyMap())
                 var byteCount = 0
                 val images = mutableMapOf<String, ByteArray>()
                 for (asset in unique.items) {
@@ -6039,12 +6061,60 @@ class ConnectedStore(
             catch (e: Exception) { readFailure(e, generation, credential) { loadPage(page, media) } }
         }
     }
-    private suspend fun galleryReadWithOfflineRecovery(
-        credential: Bearer,
-        library: String,
-        page: Int,
-        media: GalleryMedia,
-        generation: Long,
+    private fun validPhotoStackGroups(gallery: Gallery, groups: List<PhotoStackGroup>): Boolean {
+        val pageAssets = gallery.items.associateBy { it.id }
+        val members = groups.flatMap { it.assetIds }
+        return groups.all { group ->
+            group.count == group.assetIds.size && group.count >= 2 && group.reason in setOf("near_capture", "same_upload") &&
+                group.assetIds.distinct().size == group.assetIds.size && group.assetIds.all { pageAssets[it]?.kind == "image" } &&
+                group.id == group.assetIds.minByOrNull { it.toLong() } && group.coverAssetId == group.assetIds.first() &&
+                group.assetIds == group.assetIds.sortedBy { gallery.items.indexOfFirst { asset -> asset.id == it } }
+        } && members.distinct().size == members.size && groups.map { it.id }.distinct().size == groups.size
+    }
+    fun togglePhotoStack(groupId: String) {
+        if (!allowed()) return
+        val groups = state.value.photoStacks ?: return
+        if (groups.none { it.id == groupId }) return
+        val expanded = state.value.expandedPhotoStackIds
+        mutable.value = state.value.copy(expandedPhotoStackIds = if (groupId in expanded) expanded - groupId else expanded + groupId)
+    }
+    fun collapsePhotoStack(groupId: String) {
+        if (!allowed() || state.value.photoStacks?.any { it.id == groupId } != true) return
+        mutable.value = state.value.copy(expandedPhotoStackIds = state.value.expandedPhotoStackIds - groupId)
+    }
+    fun toggleAllPhotos() {
+        if (!allowed() || state.value.photoStacks.isNullOrEmpty()) return
+        mutable.value = state.value.copy(showAllPhotos = !state.value.showAllPhotos)
+    }
+    fun selectPhotoStackCover(groupId: String, assetId: String) {
+        if (!allowed()) return
+        val group = state.value.photoStacks?.firstOrNull { it.id == groupId } ?: return
+        if (assetId !in group.assetIds || groupId in state.value.separatePhotoStackIds) return
+        mutable.value = state.value.copy(photoStackCoverOverrides = state.value.photoStackCoverOverrides + (groupId to assetId))
+    }
+    fun showPhotoStackSeparately(groupId: String) {
+        if (!allowed()) return
+        val groups = state.value.photoStacks ?: return
+        if (groups.none { it.id == groupId }) return
+        mutable.value = state.value.copy(separatePhotoStackIds = state.value.separatePhotoStackIds + groupId,
+            expandedPhotoStackIds = state.value.expandedPhotoStackIds - groupId,
+            photoStackCoverOverrides = state.value.photoStackCoverOverrides - groupId)
+    }
+    private suspend fun photoStackGalleryReadWithOfflineRecovery(
+        credential: Bearer, library: String, page: Int, media: GalleryMedia, generation: Long,
+    ): PhotoStackGallery {
+        try {
+            return api.galleryWithPhotoStacks(credential, library, page, media)
+        } catch (e: ApiFailure) {
+            if (e.kind != FailureKind.OFFLINE) throw e
+            delay(GALLERY_RECOVERY_DELAY_MILLIS)
+            if (!active(generation)) throw CancellationException("Gallery read is no longer active")
+            return api.galleryWithPhotoStacks(credential, library, page, media)
+        }
+    }
+    /** Preserve established old-server recovery once stacks are explicitly unsupported. */
+    private suspend fun legacyGalleryReadWithOfflineRecovery(
+        credential: Bearer, library: String, page: Int, media: GalleryMedia, generation: Long,
     ): Gallery {
         try {
             return api.gallery(credential, library, page, media)
@@ -6492,7 +6562,49 @@ class ConnectedStore(
     fun background() {
         // Retain only an internal selection hint; clear all private UI state.
         if (!state.value.covered) resumeLibrary = state.value.library
-        batchQueue?.pause(); invalidate(keepIdentity = true, cover = true, preserveConversationNavigation = true)
+        if (!backgroundBatchUploadsActive()) batchQueue?.pause()
+        invalidate(keepIdentity = true, cover = true, preserveConversationNavigation = true)
+    }
+
+    /**
+     * Authorizes a separately owned runner for this exact in-memory session.
+     * The lease is intentionally not included in remembered session persistence.
+     */
+    fun beginBackgroundBatchUploads(): Boolean {
+        val credential = token ?: return false
+        val accountId = identity?.account_id ?: return false
+        if (!api.uploadEnabled || !api.protectedNativeV2Enabled || batchQueue == null || !usable() ||
+            accountId.isBlank() || state.value.session?.account_id != accountId || now() >= deadline ||
+            identity?.memberships?.none { it.available } != false) return false
+        if (backgroundBatchUploadsActive()) return true
+        backgroundBatchUploadLease = BackgroundBatchUploadLease(accountId, credential, deadline)
+        return true
+    }
+
+    /** Stops the independently owned runner and persists any in-flight row as paused. */
+    fun endBackgroundBatchUploads() {
+        backgroundBatchUploadLease = null
+        batchQueue?.pause()
+    }
+
+    /** Reports whether the in-memory authorization still matches this session. */
+    fun backgroundBatchUploadsActive(): Boolean {
+        val lease = backgroundBatchUploadLease ?: return false
+        return batchQueue != null && api.uploadEnabled && api.protectedNativeV2Enabled &&
+            token === lease.credential && identity?.account_id == lease.accountId &&
+            deadline == lease.expiresAtMillis && now() < lease.expiresAtMillis
+    }
+
+    private fun leaseAllowsSession(session: Session): Boolean {
+        val lease = backgroundBatchUploadLease ?: return false
+        if (!backgroundBatchUploadsActive() || session.account_id != lease.accountId) return false
+        return batchQueue?.state?.value.orEmpty().all { item ->
+            val record = item.record
+            record.status in setOf("complete", "cancelled") ||
+                record.destinationLibraryId?.let { destination ->
+                    session.memberships.any { it.library_id == destination && it.available }
+                } == true
+        }
     }
     fun foreground() {
         if (!state.value.covered || state.value.busy || coolingDown()) return
@@ -6506,9 +6618,15 @@ class ConnectedStore(
             try {
                 val session = sessionReadWithOfflineRecovery(credential, generation)
                 if (!active(generation)) return@launch
-                validateSession(session, identity?.account_id)
+                try { validateSession(session, identity?.account_id) }
+                catch (error: Exception) {
+                    if (backgroundBatchUploadLease != null) endBackgroundBatchUploads()
+                    throw error
+                }
+                val keepBatchLease = leaseAllowsSession(session)
+                if (backgroundBatchUploadLease != null && !keepBatchLease) endBackgroundBatchUploads()
                 identity = session
-                batchQueue?.attach(session.account_id)
+                if (!keepBatchLease) batchQueue?.attach(session.account_id)
                 mutable.value = state.value.copy(session = session, covered = false, busy = false)
                 resumeLibrary = null
                 openPreferredLibrary(session, previousLibrary, preserveConversationNavigation = true)

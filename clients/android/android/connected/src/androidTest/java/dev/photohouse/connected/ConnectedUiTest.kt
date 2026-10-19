@@ -92,6 +92,8 @@ class ConnectedUiTest {
         var registrationCode: String? = null
         val photo = Asset("1", "video", null, null, null, "2026-01-01", "/assets/1/thumbnail?library=synthetic-library")
         var photos = listOf(photo)
+        var photoStackGroups: List<PhotoStackGroup>? = null
+        var photoStackReads = 0
         var total = 1L
         var originalsAllowed = false
         var uploadHistoryPages: Map<Int, UploadHistoryPage> = emptyMap()
@@ -115,6 +117,10 @@ class ConnectedUiTest {
         override suspend fun completeUploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 4, 4, 4194304, "complete", "902", batchDestination)
         override suspend fun cancelUploadSession(token: Bearer, uploadId: String) = UploadSession(uploadId, 4, batchOffset, 4194304, "cancelled", null, batchDestination)
         override suspend fun gallery(token: Bearer, library: String, page: Int) = Gallery(library, page, 50, total, false, photos)
+        override suspend fun galleryWithPhotoStacks(token: Bearer, library: String, page: Int, media: GalleryMedia): PhotoStackGallery {
+            photoStackReads++
+            return PhotoStackGallery(Gallery(library, page, 50, total, false, photos), photoStackGroups)
+        }
         var transientDetailFailures = 0
         override suspend fun detail(token: Bearer, library: String, assetId: String): Detail {
             if (transientDetailFailures > 0) { transientDetailFailures--; throw ApiFailure(FailureKind.HTTP, 503) }
@@ -634,6 +640,52 @@ class ConnectedUiTest {
         rule.onNodeWithText("退出登录").performClick(); rule.waitForIdle()
         assertFalse(store.hasSession); assertTrue(store.state.value.previews.isEmpty())
         rule.onNodeWithText("你的资料库").assertDoesNotExist()
+    }
+    @Test fun phonePhotoStacksKeepCountActionsAndViewOnlyControlsVisibleAtLargeText() {
+        val api = SyntheticApi().apply {
+            photos = listOf(photo.copy(kind = "image"), photo.copy(id = "2", kind = "image"),
+                photo.copy(id = "3", kind = "image"))
+            total = photos.size.toLong()
+            photoStackGroups = listOf(PhotoStackGroup("1", "1", listOf("1", "2", "3"), 3, "same_upload"))
+        }
+        val store = ConnectedStore(api, scope)
+        rule.runOnUiThread {
+            rule.activity.setContent {
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, 1.5f)) {
+                    ConnectedApp(store, initialLanguage = "en")
+                }
+            }
+            store.authenticate("+12025550123", "synthetic-password-only")
+        }
+        awaitLibrary(store); click("Libraries"); click("Open library")
+        reveal(hasTestTag("media-1")); reveal(hasTestTag("photo-stack-toggle-1"))
+        rule.onNodeWithText("Same upload · 3 photos").assertIsDisplayed()
+        rule.onNodeWithTag("photo-stack-toggle-1").assertIsDisplayed()
+        capture("photo-stacks-en-150")
+        val reads = api.photoStackReads
+        click("简体中文")
+        reveal(hasTestTag("media-1")); reveal(hasTestTag("photo-stack-toggle-1"))
+        rule.onNodeWithText("同次上传 · 3 张相似照片").assertIsDisplayed()
+        rule.onNodeWithTag("photo-stack-toggle-1").assertIsDisplayed()
+        capture("photo-stacks-zh-150")
+
+        clickTag("photo-stack-toggle-1")
+        reveal(hasTestTag("media-2")); rule.onNodeWithTag("media-2").assertIsDisplayed()
+        clickTag("photo-stack-select-cover-1-2")
+        assertEquals("Cover selection is local view state", reads, api.photoStackReads)
+        clickTag("photo-stack-toggle-1")
+        reveal(hasTestTag("media-2")); rule.onNodeWithTag("media-2").assertIsDisplayed()
+        rule.onNodeWithTag("media-1").assertDoesNotExist()
+        clickTag("photo-stack-toggle-1")
+        clickTag("photo-stack-separate-1")
+        reveal(hasTestTag("media-1")); reveal(hasTestTag("media-2")); reveal(hasTestTag("media-3"))
+        rule.onNodeWithTag("media-1").assertIsDisplayed()
+        rule.onNodeWithTag("media-2").assertIsDisplayed()
+        rule.onNodeWithTag("media-3").assertIsDisplayed()
+        assertEquals("Dissolving a stack is local view state", reads, api.photoStackReads)
+        capture("photo-stacks-separated-zh-150")
     }
     @Test fun familyNoteTagsKeepAlbumContextAndRenderOnPhone() {
         val api = SyntheticApi().apply {

@@ -15,6 +15,8 @@ use dated release/qualification records as evidence for their exact revision.
 | Backend/Web entry | [Server README](../server/README.md), [Web development](WEB_DEVELOPMENT.md) |
 | Phone/TV entry | [Android README](../clients/android/README.md) |
 | Phone import progress and receipt/readiness meanings | [Import status contract](PHONE_IMPORT_STATUS.md) |
+| Own-upload server processing evidence | [Preparation read contract](UPLOAD_PREPARATION.md) |
+| Collapse and inspect similar photos | [Photo-stack contract](SIMILAR_PHOTO_STACKS.md) |
 | Family trial | [Delivered v70 import/upload guide](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md), [v70 release](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md), [retained voice guide](../clients/android/docs/PHONE_V68_TEST_GUIDE_ZH.md), [proposal adoption guide](../clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md) |
 | Deployment/recovery workflow | [Operations](OPERATIONS.md), [source packaging](SOURCE_PACKAGING.md), [API package inspection](API_PACKAGE_INSPECTION.md) |
 | Replaceable models and infrastructure | [Provider architecture](MODEL_PROVIDER_ARCHITECTURE.md), [model directory](../models/README.md) |

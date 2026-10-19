@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.advanceTimeBy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -24,6 +25,10 @@ import org.junit.Test
 class GalleryMediaStoreTest {
     private val video = Asset("2", "video", 1920, 1080, 4.0, null, "/video")
     private val photo = Asset("3", "image", 640, 480, null, null, "/photo")
+    private val photo40 = Asset("40", "image", 640, 480, null, null, "/photo40")
+    private val photo20 = Asset("20", "image", 640, 480, null, null, "/photo20")
+    private val photo30 = Asset("30", "image", 640, 480, null, null, "/photo30")
+    private val photo10 = Asset("10", "image", 640, 480, null, null, "/photo10")
 
     @Test fun videoSelectionNextPageDetailAndBackRetainVideoFilter() = runTest {
         val api = Api().apply { mediaFilterEnabled = true }
@@ -75,6 +80,85 @@ class GalleryMediaStoreTest {
         assertFalse(store.mediaFilterEnabled)
     }
 
+    @Test fun supportedStacksCollapseOnlyCurrentPageAndKeepAllPhotosAvailable() = runTest {
+        val api = Api().apply {
+            stackResponse = PhotoStackGallery(Gallery("family", 1, 50, 5, false,
+                listOf(photo40, photo20, photo30, photo10, video)), listOf(
+                PhotoStackGroup("20", "40", listOf("40", "20"), 2, "near_capture"),
+                PhotoStackGroup("10", "30", listOf("30", "10"), 2, "same_upload"),
+            ))
+        }
+        val store = open(api)
+        api.stackCalls = 0
+        api.calls.clear()
+        store.loadPage(1); runCurrent()
+        assertEquals(1, api.stackCalls)
+        assertEquals(listOf("20", "10"), store.state.value.photoStacks!!.map { it.id })
+        fun visible() = PhotoStackProjection.visibleAssetIds(store.state.value.gallery!!, store.state.value.photoStacks,
+            store.state.value.showAllPhotos, store.state.value.expandedPhotoStackIds,
+            store.state.value.separatePhotoStackIds, store.state.value.photoStackCoverOverrides)
+        assertEquals(listOf("40", "30", "2"), visible())
+        store.togglePhotoStack("20")
+        assertEquals(listOf("40", "20", "30", "2"), visible())
+        store.selectPhotoStackCover("20", "20")
+        store.togglePhotoStack("20")
+        assertEquals(listOf("20", "30", "2"), visible())
+        store.togglePhotoStack("20")
+        store.toggleAllPhotos()
+        assertEquals(5, visible().size)
+        store.toggleAllPhotos()
+        store.collapsePhotoStack("20")
+        assertFalse("20" in store.state.value.expandedPhotoStackIds)
+        assertEquals(listOf("20", "30", "2"), visible())
+        store.togglePhotoStack("20")
+        store.showPhotoStackSeparately("20")
+        assertEquals(listOf("40", "20", "30", "2"), visible())
+        assertTrue("20" in store.state.value.separatePhotoStackIds)
+        store.toggleAllPhotos()
+        assertTrue(store.state.value.showAllPhotos)
+        assertEquals(listOf("40", "20", "30", "10", "2"), visible())
+        api.stackResponse = null
+        store.navigatePage(2); runCurrent()
+        assertNull(store.state.value.photoStacks)
+        assertTrue(store.state.value.expandedPhotoStackIds.isEmpty())
+        assertFalse(store.state.value.showAllPhotos)
+    }
+
+    @Test fun onlyExplicitUnsupportedUsesOldGalleryAndOfflineStackReadGetsOneBoundedRetry() = runTest {
+        val api = Api().apply { stackFailure = ApiFailure(FailureKind.HTTP, 404) }
+        val store = open(api)
+        api.stackCalls = 0
+        api.calls.clear()
+        store.loadPage(1); runCurrent()
+        assertEquals(1, api.stackCalls)
+        assertEquals(1, api.calls.size)
+        assertNull(store.state.value.photoStacks)
+        api.stackFailure = ApiFailure(FailureKind.HTTP, 400)
+        store.loadPage(1); runCurrent()
+        assertEquals(2, api.stackCalls)
+        assertEquals(2, api.calls.size)
+        api.stackFailure = ApiFailure(FailureKind.OFFLINE)
+        val galleryReads = api.calls.size
+        store.loadPage(1); runCurrent()
+        assertEquals(3, api.stackCalls)
+        assertEquals(galleryReads, api.calls.size)
+        advanceTimeBy(351); runCurrent()
+        assertEquals(4, api.stackCalls)
+        assertEquals(galleryReads, api.calls.size)
+    }
+
+    @Test fun malformedStackProjectionDoesNotHideItems() = runTest {
+        val api = Api().apply {
+            stackResponse = PhotoStackGallery(Gallery("family", 1, 50, 3, false, listOf(photo40, photo20, photo30)),
+                listOf(PhotoStackGroup("20", "20", listOf("40", "20"), 2, "near_capture")))
+        }
+        val store = open(api)
+        assertNull(store.state.value.photoStacks)
+        assertEquals(listOf("40", "20", "30"), PhotoStackProjection.visibleAssetIds(
+            store.state.value.gallery!!, store.state.value.photoStacks, false, emptySet(),
+            store.state.value.separatePhotoStackIds, store.state.value.photoStackCoverOverrides))
+    }
+
     @Test fun preparedVideosAreOptInAndRetainSelectionAcrossNavigation() = runTest {
         val api = Api().apply { mediaFilterEnabled = true }
         val store = open(api)
@@ -106,6 +190,9 @@ class GalleryMediaStoreTest {
         override var mediaFilterEnabled = false
         override var preparedBrowseEnabled = false
         var gate: CompletableDeferred<Unit>? = null
+        var stackResponse: PhotoStackGallery? = null
+        var stackFailure: ApiFailure? = null
+        var stackCalls = 0
         val calls = mutableListOf<Call>()
         override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
         override suspend fun register(phone: String, password: String, code: String) = login(phone, password)
@@ -124,6 +211,11 @@ class GalleryMediaStoreTest {
                 GalleryMedia.ALL -> listOf(photo, video)
             }
             return Gallery(library, page, 50, 100, false, items)
+        }
+        override suspend fun galleryWithPhotoStacks(token: Bearer, library: String, page: Int, media: GalleryMedia): PhotoStackGallery {
+            stackCalls++
+            stackFailure?.let { throw it }
+            return stackResponse ?: throw ApiFailure(FailureKind.HTTP, 404)
         }
         override suspend fun acceptInvitation(token: Bearer, code: String) {}
         override suspend fun detail(token: Bearer, library: String, assetId: String) = Detail(library, false, if (assetId == video.id) video else photo)
