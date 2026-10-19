@@ -117,8 +117,13 @@ late library responses. Chinese/English phone and desktop screenshots were
 inspected, including enlarged phone text and a generated valid cover image.
 The focused Android cohort passed 60 JVM tests: four parser, eight gallery-store,
 40 HTTPS and eight existing recovery cases, with zero failures/errors/skips.
-The connected-app TLS/persistence boundary verifier also passed. These are
-focused source checks rather than the complete Android/hosted CI profiles.
+The connected-app TLS/persistence boundary verifier also passed. The separate
+unconfigured QA application and instrumentation APKs built successfully. The
+explicit emulator UI run did not reach its gallery assertions: Android killed
+the QA process for a startup ANR while the emulator and host were under resource
+pressure. No native stack screenshots were produced, so phone visual acceptance
+remains open. These are focused source checks rather than the complete
+Android/hosted CI profiles.
 
 These results use temporary generated data. They do not establish family-photo
 similarity quality, hosted CI, a Windows rollout or a signed phone release.
