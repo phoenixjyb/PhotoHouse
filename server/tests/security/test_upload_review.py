@@ -105,6 +105,42 @@ class UploadReviewTests(unittest.TestCase):
         self.assertEqual(self._rows(
             'SELECT state FROM access_uploads WHERE asset_id=?', (asset_id,))[0][0], 'assigned')
 
+    def test_upload_review_and_approval_reuse_the_primary_deletion_guard(self):
+        from dataclasses import replace
+        from app.access.runtime import ExistingDatabase
+
+        class Guard:
+            calls = 0
+            def assert_current(self, connection):
+                if tuple(connection.execute('''SELECT namespace,applied_seq,applied_digest
+                        FROM access_original_deletion_state WHERE id=1''').fetchone()) != marker:
+                    raise RuntimeError('synthetic deletion marker mismatch')
+                self.calls += 1
+
+        uploaded = self._upload()
+        asset_id = int(uploaded['asset_id'])
+        marker = ('00000000-0000-4000-8000-000000000001', 0, '0' * 64)
+        self.fixture.mutate('INSERT INTO access_original_deletion_state VALUES (1,?,?,?)', marker)
+        guard = Guard()
+        access = replace(self.fixture.access, connection_factory=ExistingDatabase(
+            self.fixture.path.resolve(), original_deletions=guard))
+        self.fixture.access = access
+        self.fixture.uploads = replace(self.fixture.uploads, access=access)
+        self.runtime = self.UploadReviewRuntime(upload=self.fixture.uploads, photo_cache=None)
+        self.client.close()
+        self.client = TestClient(
+            self._app(self.runtime), base_url='https://photohouse.test',
+            client=('192.0.2.41', 23457))
+
+        reviewed = self._review(asset_id)
+        self.assertEqual(reviewed.status_code, 200, reviewed.text)
+        after_review = guard.calls
+        self.assertGreater(after_review, 0)
+
+        approved = self._approve(asset_id, reviewed.json()['plan'])
+        self.assertEqual(approved.status_code, 200, approved.text)
+        self.assertGreater(guard.calls, after_review)
+
     def test_video_review_approval_preserves_original_without_photo_preview(self):
         import hashlib
         from app.access.resumable import Transfers

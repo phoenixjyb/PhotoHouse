@@ -23635,6 +23635,58 @@
       "runtime_changed": true,
       "people_index_enabled": false,
       "kinship_graph_enabled": false
+    },
+    {
+      "feature": "preserve-incumbent-upload-journal-and-windows-lock-contracts",
+      "source_commit": "a7e845f1111f73c6c020347170210cc356814421",
+      "files": [
+        {
+          "path": "server/backend/app/access/promotion.py",
+          "before_sha256": "6c5eeb2f01c76a0005138daae709138e2a8c33355bca2fa890675666983a6bf4",
+          "sha256": "08222956812a9452b797ded5d81d32c8dd8390b0a9844239c14dcbb5820c91ef"
+        },
+        {
+          "path": "server/backend/app/access/upload_review.py",
+          "before_sha256": "3e477d9bec041b9ed28db38a3d593eb2ce26d4ebb982cc205995424d4ce9ae8e",
+          "sha256": "14316208689de2bbeec8f0a84d650b2acec9a1b8c4638900482007268e718cb5"
+        },
+        {
+          "path": "server/backend/app/access/library_organization.py",
+          "before_sha256": "9cd387945ae2047da9bdbb862f99eb9b7eb16dde6f8170cc19b7eda7b330eaf7",
+          "sha256": "215fb1c3bb4e04b8f28acbbc2b0ce8eedef1d5c8779eccc8e49f47a5f155ac98"
+        },
+        {
+          "path": "server/backend/app/access/resumable.py",
+          "before_sha256": "891bcf8499a7727a07d23df36f7013109b24b26fbf9b1a98ba6f25255f0fe37a",
+          "sha256": "4616738e7a65dae6c3eeb23031800d7703cce256cadb4053e0cf93ebfeffffe0"
+        },
+        {
+          "path": "server/tests/security/test_promotion.py",
+          "before_sha256": "b3a2655466dbd036839bb58c278419090ec63a45b8d3e61e18cf75c82bdb4f86",
+          "sha256": "1b1b340616b436de6148a903603fa926de25f735d88b1faabcf1a7b71737d344"
+        },
+        {
+          "path": "server/tests/security/test_upload_review.py",
+          "before_sha256": "322b88b7356bb362132c5bcc8dabd1cbb735443962f17c6fc59dea596bef9cdc",
+          "sha256": "f18009767f76a3ce19e279cac4208a45226f53e2bb9a9caee38c865e6d7c56cb"
+        },
+        {
+          "path": "server/tests/security/test_library_organization.py",
+          "before_sha256": "74d21b15e452273c365dd14ea11ccc368762abf4825e614ea21c7aa6b64dc3e0",
+          "sha256": "1f10ecd69ca29cabeb67fb652dc0bb5481fbc00eba46b22ae8b853c60565a297"
+        },
+        {
+          "path": "server/tests/security/test_resumable_upload.py",
+          "before_sha256": "3655a4ecc176d7912018f612f3f3d717cfa727c1dbb68d86abc96b6581347169",
+          "sha256": "fad30709d70458b3c3deb99ad1e90e8384f188936e07be50e0da189c1ba94ee3"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": true,
+      "incumbent_behavior_preserved": true
     }
   ]
 }

@@ -1,13 +1,17 @@
 """Real migrated ASGI transfer lifecycle with synthetic media; no runtime access."""
 from contextlib import closing
+import errno
 import hashlib
 from pathlib import Path
 import sqlite3
+import sys
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 import test_upload as fixture
 from app.access.resumable import Transfers, CHUNK_BYTES, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES
 from app.access.transport import COOKIE
+from app.access.transport import TransportError
 
 
 class ResumableUploadTests(unittest.TestCase):
@@ -175,3 +179,16 @@ class ResumableUploadTests(unittest.TestCase):
         with transfers.lock(self.f.member_token,row['upload_id']):
             self.assertEqual(429,self.append(row).status_code)
         self.assertEqual(200,self.append(row).status_code)
+
+    def test_windows_eacces_lock_contention_returns_upload_busy(self):
+        row,_=self.create();transfers=Transfers(self.f.runtime)
+        def locked_out(*_args):
+            raise OSError(errno.EACCES, 'synthetic Windows lock contention')
+        msvcrt=SimpleNamespace(LK_NBLCK=1, LK_UNLCK=2, locking=locked_out)
+        with patch.dict(sys.modules, {'msvcrt': msvcrt}), \
+                patch('app.access.resumable._is_windows', return_value=True):
+            with self.assertRaises(TransportError) as caught:
+                with transfers.lock(self.f.member_token,row['upload_id']):
+                    self.fail('contended lock must not be acquired')
+        self.assertEqual(429,caught.exception.status)
+        self.assertEqual('Upload busy',caught.exception.message)
