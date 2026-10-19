@@ -28,6 +28,8 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/search_pending.py',
             'backend/app/access/search_evaluation.py',
             'backend/app/access/kinship.py',
+            'backend/app/access/photo_stacks.py',
+            'backend/app/access/upload_preparation.py',
             'backend/app/access/assistant_journal.py',
             'backend/app/access/assistant_workspace_store.py',
             'backend/app/access/assistant_workspace_transport.py',
@@ -197,7 +199,10 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.semantic_configuration import load_semantic_runtime\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'
+                'from app.access.photo_stacks import build_photo_stacks\n'
+                'from app.access.upload_preparation import UploadPreparation\n'
                 'assert len(sqlite_visual_vector_contract()) == 5\n'
+                'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
                 " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source'):\n"

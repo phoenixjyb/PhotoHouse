@@ -603,6 +603,26 @@ class ConnectedStoreTest {
         override var uploadEnabled = false
         var uploads = 0
         var uploadError: ApiFailure? = null
+        private val resumableUploadId = "a".repeat(32)
+        var resumableBytes = 0L
+        var resumableOffset = 0L
+        var resumableDestination: String? = null
+        var resumableChunkCalls = 0
+        var resumableChunkGate: CompletableDeferred<Unit>? = null
+        override suspend fun createUploadSession(token: Bearer, request: UploadSessionRequest): UploadSession {
+            resumableBytes = request.bytes; resumableOffset = 0; resumableDestination = request.destinationLibraryId
+            return UploadSession(resumableUploadId, resumableBytes, resumableOffset, 4 * 1024 * 1024, "uploading", null, resumableDestination)
+        }
+        override suspend fun uploadSession(token: Bearer, uploadId: String): UploadSession = UploadSession(
+            uploadId, resumableBytes, resumableOffset, 4 * 1024 * 1024, "uploading", null, resumableDestination)
+        override suspend fun uploadChunk(token: Bearer, uploadId: String, offset: Long, chunk: ByteArray, sha256: String): UploadSession {
+            resumableChunkCalls++
+            resumableChunkGate?.await()
+            resumableOffset = offset + chunk.size
+            return UploadSession(uploadId, resumableBytes, resumableOffset, 4 * 1024 * 1024, "uploading", null, resumableDestination)
+        }
+        override suspend fun completeUploadSession(token: Bearer, uploadId: String): UploadSession = UploadSession(
+            uploadId, resumableBytes, resumableBytes, 4 * 1024 * 1024, "complete", "901", resumableDestination)
         override suspend fun uploadPhoto(token: Bearer, source: UploadSource, batch: String, destinationLibraryId: String?, onProgress: (Long) -> Unit): UploadReceipt {
             uploads++; uploadError?.let { throw it }
             return UploadReceipt("7", null, "synthetic", batch, "image", 1, 1, "a".repeat(64), source.bytes, 5)
@@ -755,6 +775,160 @@ class ConnectedStoreTest {
     }
     private fun TestScope.store(api: FakeApi) = ConnectedStore(api, backgroundScope) { testScheduler.currentTime }
     private fun TestScope.signIn(store: ConnectedStore) { store.authenticate("+12025550123", "synthetic-password-only"); runCurrent(); assertNotNull(store.state.value.session) }
+
+    private fun batchVideoSource() = BatchUploadSource("family-video.mp4", 4, UploadKind.VIDEO,
+        { java.io.ByteArrayInputStream(byteArrayOf(1, 2, 3, 4)) }, "content://family/video")
+    private fun batchUploadStore(api: FakeApi, persistence: UploadQueuePersistence, scope: CoroutineScope,
+                                 batchScope: CoroutineScope = scope, now: () -> Long = System::currentTimeMillis) =
+        ConnectedStore(api, scope, batchPersistence = persistence, batchSource = { batchVideoSource() },
+            now = now, batchUploadScope = batchScope)
+    private suspend fun awaitCondition(condition: () -> Boolean) {
+        withTimeout(5_000) { while (!condition()) delay(5) }
+    }
+
+    @Test fun backgroundStillPausesBatchQueueWithoutExplicitLease() = runBlocking {
+        val api = FakeApi().apply { uploadEnabled = true; protectedNativeV2Enabled = true; resumableChunkGate = CompletableDeferred() }
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val persistence = InMemoryUploadQueuePersistence()
+        try {
+            val store = batchUploadStore(api, persistence, appScope)
+            store.authenticate("+12025550123", "synthetic-password-only")
+            awaitCondition { store.state.value.session != null }
+            val queue = store.batchUploads!!
+            val id = queue.enqueue(listOf(batchVideoSource()), "family").single()
+            queue.resume(id)
+            awaitCondition { api.resumableChunkCalls == 1 }
+
+            store.background()
+
+            awaitCondition { persistence.load("account-a").singleOrNull()?.status == "paused" }
+            assertFalse(store.backgroundBatchUploadsActive())
+        } finally { appScope.cancel() }
+    }
+
+    @Test fun explicitLeaseContinuesAcrossCoverAndSameAccountForegroundRefresh() = runBlocking {
+        val api = FakeApi().apply { uploadEnabled = true; protectedNativeV2Enabled = true; resumableChunkGate = CompletableDeferred() }
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val persistence = InMemoryUploadQueuePersistence()
+        try {
+            val store = batchUploadStore(api, persistence, appScope, serviceScope)
+            store.authenticate("+12025550123", "synthetic-password-only")
+            awaitCondition { store.state.value.session != null }
+            assertTrue(store.beginBackgroundBatchUploads())
+            val queue = store.batchUploads!!
+            val id = queue.enqueue(listOf(batchVideoSource()), "family").single()
+            queue.resume(id)
+            awaitCondition { api.resumableChunkCalls == 1 }
+
+            store.background()
+            assertTrue(store.backgroundBatchUploadsActive())
+            store.foreground()
+            awaitCondition { !store.state.value.covered && store.state.value.session != null }
+            assertTrue(store.backgroundBatchUploadsActive())
+            assertEquals("uploading", persistence.load("account-a").single().status)
+
+            api.resumableChunkGate!!.complete(Unit)
+            awaitCondition { persistence.load("account-a").singleOrNull()?.status == "complete" }
+        } finally { serviceScope.cancel(); appScope.cancel() }
+    }
+
+    @Test fun endingLeaseAndLogoutPauseAndFenceBatchRunner() = runBlocking {
+        val api = FakeApi().apply { uploadEnabled = true; protectedNativeV2Enabled = true; resumableChunkGate = CompletableDeferred() }
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val persistence = InMemoryUploadQueuePersistence()
+        try {
+            val store = batchUploadStore(api, persistence, appScope, serviceScope)
+            store.authenticate("+12025550123", "synthetic-password-only")
+            awaitCondition { store.state.value.session != null }
+            assertTrue(store.beginBackgroundBatchUploads())
+            val queue = store.batchUploads!!
+            val id = queue.enqueue(listOf(batchVideoSource()), "family").single()
+            queue.resume(id)
+            awaitCondition { api.resumableChunkCalls == 1 }
+            store.background()
+
+            store.endBackgroundBatchUploads()
+            awaitCondition { persistence.load("account-a").singleOrNull()?.status == "paused" }
+            assertFalse(store.backgroundBatchUploadsActive())
+
+            store.foreground()
+            awaitCondition { !store.state.value.covered && store.state.value.session != null }
+            assertTrue(store.beginBackgroundBatchUploads())
+            api.resumableChunkGate = CompletableDeferred()
+            queue.resume(id)
+            awaitCondition { api.resumableChunkCalls == 2 }
+            store.logout()
+            awaitCondition { !store.hasSession && persistence.load("account-a").singleOrNull()?.status == "paused" }
+            assertFalse(store.backgroundBatchUploadsActive())
+        } finally { serviceScope.cancel(); appScope.cancel() }
+    }
+
+    @Test fun foregroundSessionRevocationStopsLeasedBatchRunner() = runBlocking {
+        val api = FakeApi().apply { uploadEnabled = true; protectedNativeV2Enabled = true; resumableChunkGate = CompletableDeferred() }
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val persistence = InMemoryUploadQueuePersistence()
+        try {
+            val store = batchUploadStore(api, persistence, appScope, serviceScope)
+            store.authenticate("+12025550123", "synthetic-password-only")
+            awaitCondition { store.state.value.session != null }
+            assertTrue(store.beginBackgroundBatchUploads())
+            val queue = store.batchUploads!!
+            val id = queue.enqueue(listOf(batchVideoSource()), "family").single()
+            queue.resume(id)
+            awaitCondition { api.resumableChunkCalls == 1 }
+            store.background()
+            api.currentSession = api.currentSession.copy(memberships = listOf(membership("family", available = false)))
+
+            store.foreground()
+
+            awaitCondition { !store.state.value.covered && persistence.load("account-a").singleOrNull()?.status == "paused" }
+            assertFalse(store.backgroundBatchUploadsActive())
+        } finally { serviceScope.cancel(); appScope.cancel() }
+    }
+
+    @Test fun sessionExpiryRevokesAndDetachesLeasedBatchRunner() = runBlocking {
+        var clock = 1_000L
+        val api = FakeApi().apply { uploadEnabled = true; protectedNativeV2Enabled = true; resumableChunkGate = CompletableDeferred() }
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val persistence = InMemoryUploadQueuePersistence()
+        try {
+            val store = batchUploadStore(api, persistence, appScope, serviceScope) { clock }
+            store.authenticate("+12025550123", "synthetic-password-only")
+            awaitCondition { store.state.value.session != null }
+            assertTrue(store.beginBackgroundBatchUploads())
+            val queue = store.batchUploads!!
+            val id = queue.enqueue(listOf(batchVideoSource()), "family").single()
+            queue.resume(id)
+            awaitCondition { api.resumableChunkCalls == 1 }
+            store.background()
+
+            clock += 86_400_000L
+            store.foreground()
+
+            awaitCondition { !store.hasSession && persistence.load("account-a").singleOrNull()?.status == "paused" }
+            assertFalse(store.backgroundBatchUploadsActive())
+        } finally { serviceScope.cancel(); appScope.cancel() }
+    }
+
+    @Test fun restoredBatchQueueNeverRestoresBackgroundLease() = runBlocking {
+        val persistence = InMemoryUploadQueuePersistence()
+        persistence.save("account-a", listOf(UploadQueueRecord("local", "1".repeat(32), "2".repeat(32),
+            "family-video.mp4", "content://family/video", 4, UploadKind.VIDEO, "3".repeat(64),
+            "4".repeat(32), 2, "uploading", destinationLibraryId = "family")))
+        val api = FakeApi().apply { uploadEnabled = true; protectedNativeV2Enabled = true }
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        try {
+            val store = batchUploadStore(api, persistence, appScope)
+            store.authenticate("+12025550123", "synthetic-password-only")
+            awaitCondition { store.state.value.session != null }
+            assertFalse(store.backgroundBatchUploadsActive())
+            assertEquals("paused", store.batchUploads!!.state.value.single().record.status)
+        } finally { appScope.cancel() }
+    }
 
     @Test fun directLookupFetchesAuthorizedDetailOutsideCurrentPageAndReturnsToPage() = runTest {
         val api = FakeApi()

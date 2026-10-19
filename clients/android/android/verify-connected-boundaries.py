@@ -11,8 +11,15 @@ manifest = ET.parse(root / 'connected/src/main/AndroidManifest.xml').getroot()
 assert {p.get(ns + 'name') for p in manifest.findall('uses-permission')} == {
     'android.permission.INTERNET', 'android.permission.ACCESS_NETWORK_STATE',
     'android.permission.RECORD_AUDIO', 'android.permission.REQUEST_INSTALL_PACKAGES',
+    'android.permission.FOREGROUND_SERVICE', 'android.permission.FOREGROUND_SERVICE_DATA_SYNC',
+    'android.permission.WAKE_LOCK', 'android.permission.POST_NOTIFICATIONS',
 }
 app = manifest.find('application')
+services = app.findall('service')
+assert len(services) == 1
+assert services[0].get(ns + 'name') == '.BatchUploadForegroundService'
+assert services[0].get(ns + 'exported') == 'false'
+assert services[0].get(ns + 'foregroundServiceType') == 'dataSync'
 for name in ('allowBackup', 'fullBackupContent', 'usesCleartextTraffic'):
     assert app.get(ns + name) == 'false'
 network = ET.parse(root / 'connected/src/main/res/xml/network_security_config.xml').getroot()

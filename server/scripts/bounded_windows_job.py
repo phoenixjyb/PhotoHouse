@@ -10,6 +10,7 @@ import ctypes
 import ctypes.wintypes
 import hashlib
 import math
+import os
 import subprocess
 import sys
 import time
@@ -26,6 +27,10 @@ JOB_OBJECT_BASIC_ACCOUNTING_INFORMATION = 1
 JOB_OBJECT_LIMIT_ACTIVE_PROCESS = 0x00000008
 JOB_OBJECT_LIMIT_JOB_MEMORY = 0x00000200
 JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+JOB_OBJECT_QUERY = 0x0004
+PROCESS_DUP_HANDLE = 0x0040
+PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+BOUNDED_JOB_QUERY_ENV = 'PHOTOHOUSE_BOUNDED_JOB_QUERY_HANDLE'
 
 class CheckRefused(RuntimeError):
     pass
@@ -35,6 +40,8 @@ class NativeAPI(Protocol):
     def free_ram(self) -> int: ...
     def create_job(self, memory_limit: int, process_limit: int) -> Any: ...
     def create_suspended(self, executable: str, argv: list[str], environment: dict[str, str], cwd: str) -> tuple[Any, Any, int]: ...
+    def create_suspended_proven(self, executable: str, argv: list[str], environment: dict[str, str], cwd: str,
+                                job: Any) -> tuple[Any, Any, int, Any]: ...
     def assign(self, job: Any, process: Any) -> bool: ...
     def resume(self, thread: Any) -> bool: ...
     def wait_process(self, process: Any, milliseconds: int) -> str: ...
@@ -59,6 +66,7 @@ def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: d
                 process_limit: int = 16, minimum_free_ram: int = 8 * 1024**3,
                 descendant_grace_seconds: float = 5,
                 terminate_descendants_after_exit: bool = False,
+                require_child_job_proof: bool = False,
                 monotonic=time.monotonic, sleep=time.sleep) -> int:
     """Run an assigned child Job and retain it until descendants drain.
 
@@ -78,11 +86,15 @@ def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: d
         raise CheckRefused('invalid_descendant_grace')
     if type(terminate_descendants_after_exit) is not bool:
         raise CheckRefused('invalid_descendant_exit_policy')
+    if type(require_child_job_proof) is not bool:
+        raise CheckRefused('invalid_child_job_proof_policy')
+    if require_child_job_proof and not callable(getattr(api, 'create_suspended_proven', None)):
+        raise CheckRefused('job_proof_unavailable')
     environment_block(environment)
     if api.free_ram() < minimum_free_ram:
         raise CheckRefused('free_ram_below_minimum')
     deadline = monotonic() + timeout_seconds
-    job = process = thread = None
+    job = process = thread = proof_handle = None
     assigned = completed = False
     def drain(until):
         while True:
@@ -99,7 +111,15 @@ def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: d
         job = api.create_job(memory_limit, process_limit)
         if not job:
             raise CheckRefused('job_create_failed')
-        process, thread, _ = api.create_suspended(executable, argv, environment, cwd)
+        if require_child_job_proof:
+            created = api.create_suspended_proven(executable, argv, environment, cwd, job)
+            if not isinstance(created, tuple) or len(created) != 4:
+                raise CheckRefused('job_proof_unavailable')
+            process, thread, _, proof_handle = created
+            if not proof_handle:
+                raise CheckRefused('job_proof_unavailable')
+        else:
+            process, thread, _ = api.create_suspended(executable, argv, environment, cwd)
         if not process or not thread:
             raise CheckRefused('process_create_failed')
         if not api.assign(job, process):
@@ -139,7 +159,7 @@ def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: d
                     drain(monotonic() + 5)
             except BaseException:
                 cleanup_ok = False
-        for handle in (thread, process, job):
+        for handle in (thread, process, proof_handle, job):
             if handle:
                 try:
                     api.close(handle)
@@ -191,6 +211,10 @@ class _Accounting(ctypes.Structure):
     ]
 
 
+class _FileTime(ctypes.Structure):
+    _fields_ = [('dwLowDateTime', ctypes.c_ulong), ('dwHighDateTime', ctypes.c_ulong)]
+
+
 class WindowsAPI:
     """Small Win32 adapter; all process creation starts suspended in a Job."""
     def __init__(self):
@@ -220,6 +244,20 @@ class WindowsAPI:
         k.GetExitCodeProcess.restype = w.BOOL
         k.CloseHandle.argtypes = [w.HANDLE]
         k.CloseHandle.restype = w.BOOL
+        k.GetCurrentProcess.argtypes = []
+        k.GetCurrentProcess.restype = w.HANDLE
+        k.GetCurrentProcessId.argtypes = []
+        k.GetCurrentProcessId.restype = w.DWORD
+        k.GetProcessTimes.argtypes = [w.HANDLE, ctypes.POINTER(_FileTime), ctypes.POINTER(_FileTime),
+                                     ctypes.POINTER(_FileTime), ctypes.POINTER(_FileTime)]
+        k.GetProcessTimes.restype = w.BOOL
+        k.OpenProcess.argtypes = [w.DWORD, w.BOOL, w.DWORD]
+        k.OpenProcess.restype = w.HANDLE
+        k.DuplicateHandle.argtypes = [w.HANDLE, w.HANDLE, w.HANDLE, ctypes.POINTER(w.HANDLE),
+                                     w.DWORD, w.BOOL, w.DWORD]
+        k.DuplicateHandle.restype = w.BOOL
+        k.IsProcessInJob.argtypes = [w.HANDLE, w.HANDLE, ctypes.POINTER(w.BOOL)]
+        k.IsProcessInJob.restype = w.BOOL
         k.CreateProcessW.argtypes = [w.LPCWSTR, w.LPWSTR, ctypes.c_void_p, ctypes.c_void_p,
                                      w.BOOL, w.DWORD, ctypes.c_void_p, w.LPCWSTR,
                                      ctypes.c_void_p, ctypes.c_void_p]
@@ -305,7 +343,7 @@ class WindowsAPI:
             raise CheckRefused('job_limits_not_verified')
         return job
 
-    def create_suspended(self, executable: str, argv: list[str], environment: dict[str, str], cwd: str):
+    def _create_suspended(self, executable: str, argv: list[str], environment: dict[str, str], cwd: str):
         si_type = self._startup_info_type()
         class STARTUPINFOEX(ctypes.Structure):
             _fields_ = [('StartupInfo', si_type), ('lpAttributeList', ctypes.c_void_p)]
@@ -365,6 +403,102 @@ class WindowsAPI:
                         except BaseException:
                             pass
                 raise CheckRefused('process_create_cleanup_failed') from None
+
+    def create_suspended(self, executable: str, argv: list[str], environment: dict[str, str], cwd: str):
+        return self._create_suspended(executable, argv, environment, cwd)
+
+    def _process_creation_time(self, process) -> int:
+        created, exited, kernel, user = _FileTime(), _FileTime(), _FileTime(), _FileTime()
+        if not self.k32.GetProcessTimes(process, ctypes.byref(created), ctypes.byref(exited),
+                                        ctypes.byref(kernel), ctypes.byref(user)):
+            raise CheckRefused('job_proof_identity_unavailable')
+        return (int(created.dwHighDateTime) << 32) | int(created.dwLowDateTime)
+
+    def create_suspended_proven(self, executable: str, argv: list[str], environment: dict[str, str],
+                                cwd: str, job):
+        """Keep proof in this process; the child duplicates it only when checking."""
+        if any(key.upper() == BOUNDED_JOB_QUERY_ENV for key in environment):
+            raise CheckRefused('job_proof_environment_conflict')
+        current = self.k32.GetCurrentProcess()
+        query = self.wintypes.HANDLE()
+        if not self.k32.DuplicateHandle(current, job, current, ctypes.byref(query), JOB_OBJECT_QUERY, False, 0):
+            raise CheckRefused('job_proof_duplicate_failed')
+        try:
+            if not query.value:
+                raise CheckRefused('job_proof_duplicate_failed')
+            parent_pid = int(self.k32.GetCurrentProcessId())
+            creation_time = self._process_creation_time(current)
+            child_environment = dict(environment)
+            child_environment[BOUNDED_JOB_QUERY_ENV] = f'{parent_pid}:{creation_time}:{int(query.value)}'
+            process, thread, pid = self._create_suspended(executable, argv, child_environment, cwd)
+            # The query-only duplicate remains only in this supervisor process.
+            # It is returned for run_bounded to close before its owned Job handle.
+            return process, thread, pid, query.value
+        except BaseException:
+            if query.value:
+                try:
+                    self.close(query)
+                except BaseException:
+                    raise CheckRefused('job_proof_close_failed') from None
+            raise
+
+    def consume_job_proof(self) -> dict[str, int]:
+        """Consume a supervisor-owned query handle, verify membership, then close it."""
+        raw = os.environ.pop(BOUNDED_JOB_QUERY_ENV, None)
+        if type(raw) is not str:
+            raise CheckRefused('job_proof_missing')
+        try:
+            parts = raw.split(':')
+            if len(parts) != 3 or any(not part.isascii() or not part.isdecimal() for part in parts):
+                raise ValueError
+            parent_pid, creation_time, parent_query_value = map(int, parts)
+            if (any(str(value) != part for value, part in zip(
+                    (parent_pid, creation_time, parent_query_value), parts))
+                    or not 0 < parent_pid <= 0xFFFFFFFF or not 0 < creation_time < 2**64
+                    or not 0 < parent_query_value < 2 ** (ctypes.sizeof(ctypes.c_void_p) * 8)):
+                raise ValueError
+        except (ValueError, TypeError, OverflowError):
+            raise CheckRefused('job_proof_invalid') from None
+
+        parent = self.k32.OpenProcess(PROCESS_DUP_HANDLE | PROCESS_QUERY_LIMITED_INFORMATION,
+                                      False, parent_pid)
+        if not parent:
+            raise CheckRefused('job_proof_supervisor_unavailable')
+        query = self.wintypes.HANDLE()
+        try:
+            if self._process_creation_time(parent) != creation_time:
+                raise CheckRefused('job_proof_supervisor_changed')
+            current = self.k32.GetCurrentProcess()
+            if not self.k32.DuplicateHandle(parent, self.wintypes.HANDLE(parent_query_value), current,
+                                            ctypes.byref(query), JOB_OBJECT_QUERY, False, 0):
+                raise CheckRefused('job_proof_duplicate_failed')
+            if not query.value:
+                raise CheckRefused('job_proof_duplicate_failed')
+            in_job = self.wintypes.BOOL()
+            if not self.k32.IsProcessInJob(current, query, ctypes.byref(in_job)):
+                raise CheckRefused('job_proof_membership_unavailable')
+            if not in_job.value:
+                raise CheckRefused('job_proof_membership_failed')
+            limits = _ExtendedLimits()
+            if not self.k32.QueryInformationJobObject(query, JOB_OBJECT_EXTENDED_LIMIT_INFORMATION,
+                    ctypes.byref(limits), ctypes.sizeof(limits), None):
+                raise CheckRefused('job_proof_query_failed')
+            return {'flags': int(limits.BasicLimitInformation.LimitFlags),
+                    'memory_limit': int(limits.JobMemoryLimit),
+                    'process_limit': int(limits.BasicLimitInformation.ActiveProcessLimit)}
+        finally:
+            close_failed = False
+            if query.value:
+                try:
+                    self.close(query)
+                except BaseException:
+                    close_failed = True
+            try:
+                self.close(parent)
+            except BaseException:
+                close_failed = True
+            if close_failed:
+                raise CheckRefused('job_proof_close_failed') from None
 
     def assign(self, job, process) -> bool:
         return bool(self.k32.AssignProcessToJobObject(job, process))

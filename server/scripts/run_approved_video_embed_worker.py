@@ -404,6 +404,12 @@ def _record_failure(database, candidate, error):
 
 
 def run(args):
+    # All supervised children inherit one cap for this worker invocation.
+    with image_worker.worker_memory_envelope():
+        return _run_with_memory_envelope(args)
+
+
+def _run_with_memory_envelope(args):
     database = image_worker.direct_path(args.database); originals = image_worker.direct_path(args.originals_root, directory=True)
     derived = image_worker.direct_path(args.derived_root, directory=True); checkpoint = image_worker.direct_path(args.checkpoint)
     stop_file = image_worker.direct_path(args.stop_file, new=True)
@@ -433,6 +439,8 @@ def run(args):
             candidate = None
             try:
                 with image_worker.kernel_lock(database, blocking=True):
+                    if sys.platform == 'win32':
+                        image_worker._require_active_windows_job()
                     candidate = _claim_one(database, derived)
                     if candidate is not None:
                         attempted += 1

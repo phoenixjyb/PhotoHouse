@@ -2,14 +2,16 @@
 from contextlib import closing
 import errno
 import hashlib
+import os
 from pathlib import Path
 import sqlite3
+import tempfile
 import sys
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 import test_upload as fixture
-from app.access.resumable import Transfers, CHUNK_BYTES, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES
+from app.access.resumable import Transfers, CHUNK_BYTES, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES, _acquire_windows_byte_lock
 from app.access.transport import COOKIE
 from app.access.transport import TransportError
 
@@ -178,6 +180,40 @@ class ResumableUploadTests(unittest.TestCase):
         row,_=self.create();transfers=Transfers(self.f.runtime)
         with transfers.lock(self.f.member_token,row['upload_id']):
             self.assertEqual(429,self.append(row).status_code)
+        self.assertEqual(200,self.append(row).status_code)
+
+    def test_windows_crt_busy_errno_is_normalized_only_at_lock_acquisition(self):
+        class FakeMsvcrt:
+            LK_NBLCK=1
+            def __init__(self,error):self.error=error
+            def locking(self,fd,mode,count):raise self.error
+
+        with tempfile.TemporaryFile() as stream:
+            with self.assertRaises(BlockingIOError):
+                _acquire_windows_byte_lock(stream.fileno(),FakeMsvcrt(OSError(errno.EACCES,'busy')))
+        with tempfile.TemporaryFile() as stream:
+            with self.assertRaises(OSError) as raised:
+                _acquire_windows_byte_lock(stream.fileno(),FakeMsvcrt(OSError(errno.EIO,'storage failure')))
+            self.assertEqual(errno.EIO,raised.exception.errno)
+        with tempfile.TemporaryFile() as stream:
+            with patch('app.access.resumable.os.write',side_effect=PermissionError(errno.EACCES,'storage denied')):
+                with self.assertRaises(PermissionError) as raised:
+                    _acquire_windows_byte_lock(stream.fileno(),FakeMsvcrt(None))
+            self.assertEqual(errno.EACCES,raised.exception.errno)
+
+    def test_lock_body_error_propagates_closes_descriptor_and_allows_retry(self):
+        row,_=self.create();transfers=Transfers(self.f.runtime);opened=[]
+        original_open=os.open
+        def capture_lock_descriptor(path,*args,**kwargs):
+            fd=original_open(path,*args,**kwargs)
+            if str(path).endswith('.lock'):opened.append(fd)
+            return fd
+        with patch('app.access.resumable.os.open',side_effect=capture_lock_descriptor):
+            with self.assertRaisesRegex(BlockingIOError,'synthetic body failure'):
+                with transfers.lock(self.f.member_token,row['upload_id']):
+                    raise BlockingIOError('synthetic body failure')
+        self.assertEqual(1,len(opened))
+        with self.assertRaises(OSError):os.fstat(opened[0])
         self.assertEqual(200,self.append(row).status_code)
 
     def test_windows_eacces_lock_contention_returns_upload_busy(self):

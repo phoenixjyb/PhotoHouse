@@ -54,8 +54,8 @@ class PromotionReview:
     authority_reference: str
     incoming_root: Path = None
     originals_root: Path = None
-    # Upload and library-move callers carry the runtime's explicit external
-    # deletion guard into each database connection used for the mutation.
+    # Optional only for offline/unconfigured callers, which remain fail-closed on
+    # a journal-bound primary. HTTP runtimes pass their active explicit guard.
     original_deletions: object = None
 
 

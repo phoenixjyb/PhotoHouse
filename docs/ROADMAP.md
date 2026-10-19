@@ -1,11 +1,47 @@
 # Product roadmap
 
-**October 17 upload recovery update:** [Phone v71 is published](../clients/android/docs/PHONE_V71_RELEASE_2026-10-17.md)
-and its owner trial produced complete server transfers and receipts after repeated
-Retry taps. Review/assignment and media readiness remain separate. The following
-[v72 candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md) adds bounded
-foreground recovery, same-batch continuation and clearer final-confirmation feedback.
-It is not published. Earlier delivery snapshots below retain their dated scope.
+**October 19 delivery:** [similar-photo stacks](SIMILAR_PHOTO_STACKS.md) add
+conservative, page-local suggestions from existing perceptual hashes and capture
+times, with a stricter same-upload fallback for undated photos. Web and phone
+controls preserve every original and the complete viewer sequence. This is a
+live API/Web release with phone v73 available on HTTPS OTA. Whole-library
+indexing, saved cover/separation preferences and family visual calibration remain
+later work.
+
+The separate [upload-preparation read](UPLOAD_PREPARATION.md) is also in the live API;
+client negotiation and visible stage labels remain the next import-status slice.
+Do not label previews or video playback ready from task completion alone.
+
+**October 18 API/CPU qualification:** the [R5 native synthetic trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
+passed its Job-proof startup, 132 API tests, three `a0` journal tests, five invitation
+checks and 20 CPU tests. Independent native result readback and nine-task/fifteen-file
+preservation checks passed. The candidate’s Windows contention fix returns retryable 429.
+The live API was separately updated with a newer search overlay before this trial;
+retain that overlay when composing the next rollout candidate. This operation did
+not switch an API or worker, open family data, migrate a database or publish OTA.
+
+**October 18 follow-through:** [the selected batch's captions are complete](CAPTION_PROVIDER_RECOVERY_2026-10-18.md):
+17 generated results and completion receipts, unchanged original hashes and 34
+decoded previews independently verified. Next prepare the general API/CPU fixes
+for reviewed rollout, then persistent provider/scoped processing and visible
+per-asset preparation evidence. Family UI and caption-quality review remain
+separate from the completed backend operation.
+
+**October 17 upload recovery update:** [Phone v72 is published](../clients/android/docs/PHONE_V72_RELEASE_2026-10-17.md)
+with bounded foreground recovery, same-batch continuation and clearer receipt
+confirmation. Full Windows and independent trusted HTTPS package checks passed;
+physical v72 upload and emulator UI acceptance remain open. The earlier v71 owner
+trial confirmed all server receipts after repeated Retry taps.
+
+The subsequent operator recovery accepted that received batch without processing,
+then released its exact held starters only after a separate user request. CPU,
+face and image-vector workers were started or observed running. This is processing
+start evidence, not complete media readiness. The caption lane needs a scoped,
+current-schema worker; the legacy broad caption launcher is incompatible with
+parallel writers. [The journal/release contract](UPLOAD_REVIEW_JOURNAL_CONTEXT.md)
+records the source fix, guards and remaining delivery gates. The general API
+repair remains a source candidate; the offline batch operation did not deploy it.
+Earlier delivery snapshots below retain their dated scope.
 
 Active priorities after the **October 17 phone v70 and October 16 API/Web deliveries**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) records current
@@ -64,18 +100,16 @@ activated by the phone or API/Web releases.
 
 ## Current priority: accept folder upload, then voice, search and story linking
 
-V71 repaired the response contract and its owner trial has complete server
-transfers and receipts. Next qualify the [v72 recovery candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md):
-bounded foreground recovery, same-batch continuation and visible receipt confirmation.
-Review/assignment and media readiness must be verified separately. Do not reselect
-the completed folder to recreate its queue.
+V72 is published. Retry the same existing batch after updating, rather than
+reselecting a folder whose server receipt is already complete. Receipt,
+assignment, queue release, per-stage processing and visible previews are separate
+acceptance steps. The observed v71 batch is accepted and processing has started;
+its final previews, faces and captions must be verified independently.
 
-Using v71, follow the [import/folder-upload trial](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md).
-Check return from the system picker, transient recovery and explicit Retry,
-reviewed destination/count/size, metered-network consent and Start. Confirm a
-fresh accepted receipt before diagnosing approval or preparation. A read-only
-October 16 14:48 UTC check still had no newer accepted transfer; this does not rule out
-rejected requests. Keep the real Samsung result open until observed.
+Follow the [import/folder-upload trial](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md)
+for a genuinely new upload: picker return, bounded recovery and explicit Retry,
+reviewed destination/count/size, metered-network consent and Start. Do not create
+duplicate transfers to repair a processing failure.
 
 Using v71, also run the retained v68 recovery/voice continuation trial on the physical
 phone, then compare the served Web experience. Separately run owner/member acceptance journeys for
@@ -86,11 +120,24 @@ save/reopen and large-text usability. Keep search relevance, physical
 interaction and family acceptance separate from CI, APK and HTTPS evidence. Do
 not infer family acceptance from publication or emulator journeys.
 
+## Follow the receipt-selected caption trial
+
+The [new caption lane](../server/docs/security/RELEASED_CAPTION_WORKER.md) has
+transaction, provider and shared-policy source with generated-media/HTTP checks.
+Its extracted package [passed native qualification](NATIVE_CAPTION_QUALIFICATION_2026-10-18.md),
+including an explicit Job proof and ten generated-data cases. A subsequent bounded
+existing-provider trial [finished all 17 selected captions](CAPTION_PROVIDER_RECOVERY_2026-10-18.md).
+Prepare persistent startup and scoped processing of future released batches with
+separate resource/lifecycle qualification and operation authority.
+The generic legacy worker remains incompatible with the current parallel lanes.
+Do not reset completed work or use downloaded comparison models implicitly.
+
 ## Next source slice: expose actual import preparation evidence
 
 The client-first [import workspace](PHONE_IMPORT_STATUS.md) is delivered in v70.
 It reuses the queue and account-owned history, keeps batch lists folded and
-preserves committed byte progress. Physical upload acceptance remains open.
+preserves committed byte progress. The v71 owner trial confirmed server receipt; visible preparation and the v72
+physical upload trial remain open.
 
 The next server/client slice should extend that existing presentation. A completed
 transfer means the server received the bytes; it must not always say “awaiting

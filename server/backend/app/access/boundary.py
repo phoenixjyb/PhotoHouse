@@ -110,6 +110,10 @@ class ClosedBoundary:
         if method == 'POST' and path == '/admin/upload-annotations/delete': return True
         if method == 'GET' and path == '/upload-annotations': return True
         if method == 'GET' and re.fullmatch(r'/upload-annotations/[0-9a-f-]{36}/audio', path): return True
+        if method == 'GET' and path == '/upload-preparation':
+            # Own receipts and server-owned preparation evidence only; the handler
+            # still enforces the caller's active account and own-upload scope.
+            return True
         if method in {'GET', 'POST'} and path == '/uploads':
             # No library in the path: the upload is a pre-library action, so there is nothing
             # library-scoped for this pattern to bind. The capability is checked in the service.

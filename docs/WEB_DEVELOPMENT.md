@@ -19,6 +19,7 @@ listed in `tools/check.py`. It includes:
 - `server/tests/security/test_story_related_media_browser.cjs`
 - `server/tests/security/test_story_reader_frames_browser.cjs`
 - `server/tests/security/test_upload_history_browser.cjs`
+- `server/tests/security/test_photo_stacks_browser.cjs`
 - `server/tests/security/test_story_workspace_browser.cjs`
 
 The saved-edition editor and reader suites use generated records. The separate
@@ -78,6 +79,13 @@ run only API and Android checks, so ordinary development does not require
 Node, Playwright, or Chromium.
 
 ## Existing local tools
+
+The photo-stack journey uses generated media and an authorized temporary
+library. It checks collapsed/expanded cards, current-view cover/separation,
+complete viewer navigation, unsupported/malformed extension fallback, scope
+changes and logout. It also renders the controls at phone/desktop widths and
+150% text. See [the stack contract](SIMILAR_PHOTO_STACKS.md); generated render
+checks do not establish family-photo grouping quality or release delivery.
 
 Provide an existing Node.js executable, an already provisioned Playwright
 module, and a compatible Chromium executable. The check wrapper does not run a

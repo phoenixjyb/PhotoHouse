@@ -7,7 +7,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
 /** Opaque picker result; no filenames or bytes are read until access is revalidated. */
-internal data class BatchPickerSelection<T>(val account: String, val destination: String?, val value: T)
+internal data class BatchPickerSelection<T>(val account: String, val destination: String?, val value: T,
+    val persistedReadAccess: Boolean = true)
 
 /** Wait across same-account session recovery; never read or publish across an access change. */
 @Composable
