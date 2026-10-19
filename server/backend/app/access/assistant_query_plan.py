@@ -10,6 +10,7 @@ from datetime import date, datetime, timedelta
 import re
 
 from . import discovery as d
+from .search_exclusions import NEGATION as _NEGATION, explicit_media_exclusion
 
 
 @dataclass(frozen=True)
@@ -40,7 +41,6 @@ _MEDIA = (
     ('video', re.compile(r'影片|视频|(?a:\b)(?:videos?|movies?)(?a:\b)', re.I)),
     ('image', re.compile(r'照片|图片|相片|(?a:\b)(?:photos?|photographs?|pictures?|images?)(?a:\b)', re.I)),
 )
-_NEGATION = re.compile(r'不要|没有|排除|除外|删除|不包括|(?a:\b)(?:not|without|except|excluding|exclude|remove|delete)(?a:\b)', re.I)
 _SEARCH_OPEN = re.compile(
     r'^(?:'
     r'(?:(?:please\s+)?(?:i(?:\s+am|[\x27’]m)\s+looking\s+for|'
@@ -587,6 +587,15 @@ def plan_query(words, *, now: datetime, entities: dict,
         return _clarify('ambiguous_date_entity', previous_filters if refine else None)
     if dates and 'date' not in enabled:
         return _clarify('date_unavailable', previous_filters if refine else None)
+
+    media_surface = explicit_media_exclusion(outside)
+    if _consumed_label(outside, media_surface, labels):
+        return _clarify('ambiguous_media_entity', previous_filters if refine else None)
+    outside = media_surface
+    # Do this before masking media nouns or asking an intent model to select
+    # spans. A model cannot turn an unresolved exclusion into a positive clue.
+    if _NEGATION.search(_remove_occurrences(outside, labels)):
+        return _clarify('unsupported_negation', previous_filters if refine else None)
 
     media_hits = []
     for kind, pattern in _MEDIA:

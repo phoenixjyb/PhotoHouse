@@ -39,8 +39,8 @@ internal fun AssistantSceneControls(
                 "请先完成条件明确的照片查找。待确认的条件、视频查找和说明文字描述查找需要先返回完整查找处理。"),
                 Modifier.testTag("private-assistant-scene-unready"), style = MaterialTheme.typography.bodySmall)
             if (state.sceneRecoveryRequired) {
-                Text(t("This scene description could not be used. Reword it, then reload the previous search conditions before trying again.",
-                    "这段画面描述无法用于查找。请换一种说法，并先重新载入之前的查找条件，再试一次。"),
+                Text(t("Some scene descriptions, exclusions, or claims that something is absent cannot be verified from photos. No scene search was applied, and your original request, including its exclusions, remains in the input. Reload and review the current conditions. Which visible feature should I look for? Submit a complete revised scene request; it replaces the original only when submitted. To change people, dates, or media, return to full search and submit a complete search.",
+                    "有些画面描述、排除条件或“画面中没有某物”的要求无法核实。这次没有执行画面查找，原请求（含排除条件）仍保留在输入框中。请重新载入并核对当前查找条件。你希望查找哪些可见特征？请提交完整修订后的画面请求；只有提交后，新描述才会替换原请求。要更改人物、日期或媒体条件，请返回完整查找并提交完整查找。"),
                     Modifier.testTag("private-assistant-scene-reword"), style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error)
                 OutlinedButton(onClick = onReload, enabled = !interactionBlocked,

@@ -844,8 +844,9 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
     from .search_intent import intent_mode, _strong_content_cue_before
     from .search_refinement import plan_query as plan_deterministic, query_mode
     from .search_pending import (current_pending, description_context_digest,
-                                 find_date_slot, make_description_pending, make_pending,
-                                 resolve_date_answer)
+                                 exclusion_context_digest, find_date_slot,
+                                 make_description_pending, make_exclusion_pending,
+                                 make_pending, resolve_date_answer, validate_pending)
 
     if (type(previous) is dict and previous.get('search_version') == 4 and
             not isinstance(engine, SearchRuntime)):
@@ -908,7 +909,44 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
                 'has_more': existing['has_more'] if existing else False,
                 'effect': None, 'interpretation': interpretation}
 
+    def exclusion_question(state, *, expired=False):
+        # A short answer cannot resolve this query safely. Revalidate the
+        # exact prior context and current source binding, then ask for a full
+        # revised request while retaining the original pending query.
+        try:
+            context_matches = exclusion_context_digest(previous) == state['context_digest']
+        except ValueError:
+            context_matches = False
+        if (not context_matches or
+                (previous is not None and previous.get('binding') != state['binding'])):
+            raise assistant_engine.AssistantChanged()
+        existing = None
+        if previous is not None:
+            existing = assistant_engine._context_result(engine, token, library, previous)
+        presentation = engine.call('presentation', token, library, lambda: False,
+                                   {'binding': state['binding']})
+        interpretation = {key: value for key, value in presentation.items()
+                          if key != 'version'}
+        interpretation.update(people=[], tags=[], locations=[])
+        from .search_exclusions import exclusion_reply
+        reply = exclusion_reply(lang, continuation=True, expired=expired)
+        context = previous if existing is not None else None
+        return {'version': engine.search_version, 'kind': 'clarification',
+                'reply': reply, 'context': context,
+                'filters': context['filters'] if context else None,
+                'items': existing['items'] if existing else [],
+                'total': existing['total'] if existing else 0,
+                'has_more': existing['has_more'] if existing else False,
+                'effect': None, 'interpretation': interpretation}
+
     if pending_intent is not None and not new_search:
+        if pending_intent.get('question') == 'exclusion':
+            # Unlike date/description continuations, this pending question is
+            # intentionally retained past TTL until the user starts a full
+            # new search. Expiry changes the prompt, never the guard.
+            state = validate_pending(pending_intent)
+            active = current_pending(state, stamp) is not None
+            return exclusion_question(state, expired=not active), state
         state = current_pending(pending_intent, stamp)
         if pending_intent.get('question') == 'description':
             if state is None:
@@ -988,6 +1026,12 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
             planner_outcome.get('reason') == 'intent_description' and
             result['kind'] == 'clarification' and result['context'] == previous):
         pending = make_description_pending(words, planner_outcome['binding'], previous, stamp)
+        return result, pending
+    if (engine.search_version in (2, 3) and
+            planner_outcome.get('status') == 'clarification' and
+            planner_outcome.get('reason') == 'unsupported_negation' and
+            result['kind'] == 'clarification' and result['context'] == previous):
+        pending = make_exclusion_pending(words, planner_outcome['binding'], previous, stamp)
         return result, pending
     return result, None
 

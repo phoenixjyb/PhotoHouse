@@ -845,6 +845,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             plan = (people_answer if people_answer is not None else
                     plan_query(words, now=now, entities=first,
                                previous_filters=previous['filters'] if previous else None, refine=refine))
+            if planner_outcome is not None:
+                planner_outcome.update(status=plan.status, reason=plan.reason,
+                                       binding=binding)
             if continuation is not None and 'date' in continuation and plan.status == 'ready':
                 if plan.filters.get('date') not in (None, continuation['date']):
                     raise AssistantChanged()
@@ -853,7 +856,10 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                                  dict(plan.filters, date=continuation['date']))
         if plan.status != 'ready':
             reply = _search_clarification_guidance(enabled, lang)
-            if 'people' not in enabled and plan.reason in (
+            if plan.reason == 'unsupported_negation':
+                from .search_exclusions import exclusion_reply
+                reply = exclusion_reply(lang)
+            elif 'people' not in enabled and plan.reason in (
                     'ambiguous_date_entity', 'ambiguous_media_entity',
                     'ambiguous_entities', 'ambiguous_people', 'ambiguous',
                     'people_reference_unavailable', 'ambiguous_people_reference',

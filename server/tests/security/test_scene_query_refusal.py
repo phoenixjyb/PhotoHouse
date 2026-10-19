@@ -49,6 +49,35 @@ class SceneQueryRefusalTests(unittest.TestCase):
     def refused(self, rid=None):
         return self.fixture.send(self.unknown, 1, scene=True, rid=rid)
 
+    def test_application_exclusion_refusal_is_durable_without_provider_or_vector_reads(self):
+        for query in ('a dog not on grass', '不在船上的狗', '没有人holding的phone'):
+            with self.subTest(query=query):
+                rid = str(uuid.uuid4())
+                with patch('app.access.semantic_search._read_vector',
+                           side_effect=AssertionError('vector read')):
+                    response = self.fixture.send(query, 1, scene=True, rid=rid)
+                    self.assertEqual(response.status_code, 200, response.text)
+                    result = response.json()
+                    self.assertEqual(result['status'], 'failed')
+                    self.assertEqual(result['error'], 'scene_query_unsupported')
+                    self.assertEqual(result['revision'], 1)
+                    self.assertIsNone(result['result'])
+                    self.assertNotIn(query, response.text)
+                    recovered = self.fixture.read(rid)
+                    replayed = self.fixture.send(query, 1, scene=True, rid=rid)
+                    self.assertEqual(recovered.json(), {**result, 'recovered': True})
+                    self.assertEqual(replayed.json(), recovered.json())
+        self.assertEqual(self.requests, [])
+        self.assertEqual(self.inner.calls, [])
+
+    def test_stale_scope_precedes_application_exclusion_refusal(self):
+        self.fixture.source.mutate(
+            "UPDATE access_stories SET revision=2,text='changed' WHERE id='note-101'")
+        response = self.fixture.send('a dog not on grass', 1, scene=True)
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertNotIn('scene_query_unsupported', response.text)
+        self.assertEqual(self.requests, [])
+
     def test_failed_receipt_preserves_previous_scope_and_explicit_reword_succeeds(self):
         rid = str(uuid.uuid4())
         first = self.refused(rid)

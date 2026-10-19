@@ -25572,6 +25572,106 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Record the completed CPU public-scene screen and independent readback: fresh direct English/Chinese/mixed top1 each15of16; earlier regression29/23/23of32. Diagnostic negative variants top1zeroof9 despite9of9 positive successes. Semantic search remains off; no production or family acceptance. API2573tests and2520subtests passed on unchanged8bc6f43 with110focusedtests."
+    },
+    {
+      "feature": "exclusion-admission-and-private-clarification-continuity",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/AssistantScenePanel.kt",
+          "sha256": "4be9d1439f870a50ecf2bacdb1dddf309ac39fc97d921d58a18edcbfc54b9866",
+          "before_sha256": "04055f931c7eda937454623fa93046dd015c26b15402323068482c61d0148d1b"
+        },
+        {
+          "path": "docs/SCENE_QUERY_REWORDING.md",
+          "sha256": "aafa0ed8fd08cea5c0ef9d1f821eb98e0c941f1e54869f1d535b32a58d299808",
+          "before_sha256": "572551cfff01f38872e67ff951971b4985cc9947a41272daee2c7fb2303f7afa"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "sha256": "0777af17e41608ac1e470a90d7ea39a036a681d4dd77be62b390ae7c33413879",
+          "before_sha256": "272777b96e4c2bd6225308c1370546fab5b98db39ed0953bb031e0ee1ec0c376"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "sha256": "18d0b8d4b632480e72227d1b987c53463476808a3a8adb406e438792038e641a",
+          "before_sha256": "9f9e2d3e57055fea23072bacd2037dbade07f2a6e5deb43f0a8dd4b56dae9eeb"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "sha256": "02491433111d0c51d0e60f9262fd8f31e34fc576d00a4dd124f919592d5d423e",
+          "before_sha256": "37cc1dde77ea173bc30e585952434431f7c9307cc44e808be8529e40dc9ce6a6"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "sha256": "47c32a1a8697879f80900ac1cd8eb891fc00395ac92217c394bcc9223a1d674e",
+          "before_sha256": "8ed15db9720e47d589163d23bd64eb42ee3d815a3146d84fef277f3f717586d2"
+        },
+        {
+          "path": "server/backend/app/access/search_exclusions.py",
+          "sha256": "fbe95b9d6291f033f8c2591b8a3761945e77ec219080cd160eb2c065a801c809"
+        },
+        {
+          "path": "server/backend/app/access/search_pending.py",
+          "sha256": "ee89f67b1a94a404975b0b03c205396662759431849b0998640ac2cd5f0466ef",
+          "before_sha256": "57aa85abfe16965857ee17b2ea7691aca9c04f0c1bb0156dd08abb4e3b132c91"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "sha256": "31cd01845bea6aece0dbd7089b1613e5d8b15b7373075f4a11e17719cbcfab43",
+          "before_sha256": "848a2c4f7ccc68eb58a3c765de67866cceab68bc86a41cb42709ce1e60f5a3e9"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "a73f87108307207edb7efb28f5fb9e9fc9f08e84ae47a5189cb7e3479f9c7e74",
+          "before_sha256": "9fbe188d549317ca50414e487e8b27b5c62f4ed661728d8f9b9b43265e7bc109"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "sha256": "ee432e3b94c7215201abccded96ca5a0c8667fd9881498efff328474baaa594d",
+          "before_sha256": "c07dca3ef5eaa1894662a73d3c9b5436e703305f74eb91a6f172e8e0b43651ec"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "d3b1fc1af8f1362812ce8d7374b591ccfee41d1127a4fb3e01bc065b454e370a",
+          "before_sha256": "78de2465f29dc0a41a7e18860a1b5d1d36f2ba01be9cbc3862263c1f951668bf"
+        },
+        {
+          "path": "server/tests/security/test_assistant_exclusion_pending.py",
+          "sha256": "272b768351e6d3f18195b437bcdd95c22a41dc062826c5dfbdc69ccfc369357e"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_browser.cjs",
+          "sha256": "bcb67dd5015188a39def2aaa907feb0a5a78e7d6a1019f7b3a767542751ad605",
+          "before_sha256": "0e2a6c9017d2fcfa237b7e92d3543973a62ff095994319fd862f62f90e0b9d92"
+        },
+        {
+          "path": "server/tests/security/test_scene_query_refusal.py",
+          "sha256": "8ccfc3d886632ca94023d3fe5c4ec145eab7b07b19b351a479958c71669d33e2",
+          "before_sha256": "3d27d1f5609212ce19861778e1e767f82fdb196a2d8fd0b09e8de8c34db62380"
+        },
+        {
+          "path": "server/tests/security/test_search_exclusion_pending.py",
+          "sha256": "d353dbb59c27af08908df85dace7a40234c8d258c648a2c9d5db98913f64a025"
+        },
+        {
+          "path": "server/tests/security/test_search_exclusions.py",
+          "sha256": "f235bc25d25c9115bacc7e0ee18e15df1d24e0573036f2dff6bb095d0b9719f0"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "afe03a8b4b0a6692fe69dcb71b53177fe2937fb97426a508d27f3b30b1672c93",
+          "before_sha256": "21c6121597f66ac1bca2808d6c08d812ad256f0c2297961dc18cdd7a37f1e49d"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "081707e7f20200647f842ddb37bcaa08f30e6483fb5fddc78d8b9ba19cde004f",
+          "before_sha256": "43352e45d69358b77d784439104e4e5d86d65ccda1b4d904d974f8f56fad3564"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Bounded bilingual exclusions refuse before semantic vector/encoder/snapshot use; closed positive media counterparts use existing filters. Exact unresolved v2/v3 request remains private and source-bound through short replies, replay and expiry. No semantic activation or runtime change."
     }
   ]
 }

@@ -26,6 +26,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/search_intent.py',
             'backend/app/access/search_intent_local.py',
             'backend/app/access/search_pending.py',
+            'backend/app/access/search_exclusions.py',
             'backend/app/access/search_evaluation.py',
             'backend/app/access/kinship.py',
             'backend/app/access/photo_stacks.py',
@@ -198,6 +199,8 @@ class StagingPackageTests(unittest.TestCase):
                 'import check_private_search\n'
                 'import export_visual_people_review, inspect_reviewed_people_readiness, reviewed_people_source\n'
                 'from app.access.search_evaluation import evaluate_cases\n'
+                'from app.access.search_exclusions import requires_exclusion_clarification\n'
+                "assert requires_exclusion_clarification('不在grass上的dog')\n"
                 'from app.access.semantic_configuration import load_semantic_runtime\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'

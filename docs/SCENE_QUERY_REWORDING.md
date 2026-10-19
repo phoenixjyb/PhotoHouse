@@ -10,6 +10,44 @@ This improves refusal handling. It does not expand the set of supported phrases,
 translate a query, infer dialect aliases, relax filters or approve activation.
 The scene-search gates remain off by default.
 
+## Exclusion admission and clarification (October 20)
+
+The application now checks bounded English, Chinese and mixed exclusion cues
+before visual vector reads, text encoding or restoring semantic scores. This
+includes “not on grass”, “不在船上”, “没有人holding的phone”, common contractions,
+and explicit exclusion phrases. Authorization, the current hard filters and
+source binding are checked first. The semantic source binding includes the new
+admission policy, so old score snapshots cannot bypass it. Quoted scene wording
+receives the same guard; quotes are opaque only in an explicit literal-caption
+search. The existing `scene_query_unsupported` failed receipt and explicit client
+reload/resubmit flow apply without a new wire enum.
+
+Ordinary v2/v3 planning checks exclusions before consulting an intent model.
+The closed metadata form “find photos, not videos” (also “找照片，不要视频”)
+compiles to the existing positive image filter. It requires an explicit positive
+counterpart and a complete trailing media clause. Bare “exclude videos” does
+not imply images: the catalogue can contain other MIME types. Reviewed-name
+collisions, contradictions and unconsumed conditions still require clarification.
+Existing explicit media/date corrections and filter-removal commands retain
+their separate closed grammar.
+
+An unresolved v2/v3 exclusion asks what should visibly appear and requests a
+complete revised search. Private pending state retains the exact original input,
+authorized source binding and digest of the previous context (including null).
+It is omitted from public replies/history. A short answer, reload or expired
+15-minute clarification cannot drop the exclusion or invoke a planner/encoder.
+The previous filters/cards remain checked against current membership and source.
+A complete new search runs normal validation and replaces the unresolved request;
+it must restate any conditions the user wishes to retain. Expiry changes the
+prompt rather than silently broadening the search.
+
+This is a conservative admission policy, not a complete negation parser. It
+does not prove that a person, object or event is absent, infer negative evidence
+from missing tags/detections, or qualify arbitrary language/dialect. Unrecognized
+wording and scope ambiguity remain a reason to keep semantic search disabled.
+The multilingual encoder's prior negation-quality failure is not repaired by
+this guard; relevance qualification and family acceptance are still required.
+
 ## User flow
 
 1. Start with a completed, authorized photo search with resolved conditions.
