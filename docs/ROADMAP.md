@@ -1,5 +1,17 @@
 # Product roadmap
 
+**October 19 source work:** [similar-photo stacks](SIMILAR_PHOTO_STACKS.md) add
+conservative, page-local suggestions from existing perceptual hashes and capture
+times, with a stricter same-upload fallback for undated photos. Web and phone
+controls preserve every original and the complete viewer sequence. This is a
+source candidate; no API rollout or phone publication is implied. Whole-library
+indexing, saved cover/separation preferences and family visual calibration remain
+later work.
+
+The separate [upload-preparation read](UPLOAD_PREPARATION.md) now has an implementation candidate;
+client negotiation and visible stage labels remain the next import-status slice.
+Do not label previews or video playback ready from task completion alone.
+
 **October 18 API/CPU qualification:** the [R5 native synthetic trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
 passed its Job-proof startup, 132 API tests, three `a0` journal tests, five invitation
 checks and 20 CPU tests. Independent native result readback and nine-task/fifteen-file

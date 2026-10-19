@@ -403,7 +403,7 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
             }
         }
     }
-    private suspend fun packet(url: HttpUrl, token: Bearer?, body: String? = null, limit: Int = JSON_LIMIT, missingAllowed: Boolean = false, accept: String = "application/json", rangeStart: Long? = null, requestLimit: Int = 2048, prepared: Boolean = false, head: Boolean = false, preparedEtag: String? = null, method: String = "POST", extraHeaders: Map<String, String> = emptyMap()): Packet {
+    private suspend fun packet(url: HttpUrl, token: Bearer?, body: String? = null, limit: Int = JSON_LIMIT, missingAllowed: Boolean = false, accept: String = "application/json", rangeStart: Long? = null, requestLimit: Int = 2048, prepared: Boolean = false, head: Boolean = false, preparedEtag: String? = null, method: String = "POST", extraHeaders: Map<String, String> = emptyMap(), acceptedStatuses: Set<Int> = emptySet()): Packet {
         require(url.scheme == "https" && url.host == origin.url.host && url.port == origin.url.port)
         val bytes = body?.toByteArray(Charsets.UTF_8)
         if (bytes != null && bytes.size > requestLimit) throw ApiFailure(FailureKind.INVALID_INPUT)
@@ -425,7 +425,7 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
                 override fun onResponse(call: Call, response: Response) {
                     try {
                         val result = response.use {
-                            if (it.code !in 200..299 && !(missingAllowed && it.code == 404)) {
+                            if (it.code !in 200..299 && !(missingAllowed && it.code == 404) && it.code !in acceptedStatuses) {
                                 val retryAfter = it.header("Retry-After")
                                 throw ApiFailure(FailureKind.HTTP, it.code,
                                     when {
@@ -434,7 +434,7 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
                                         else -> 0
                                     })
                             }
-                            if (it.code == 404) return@use Packet(404, null, byteArrayOf())
+                            if (it.code == 404 && missingAllowed || it.code in acceptedStatuses) return@use Packet(it.code, null, byteArrayOf())
                             var total = 0L
                             var expectedBytes = -1L
                             if (prepared) {
@@ -743,6 +743,33 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         require(mediaFilterEnabled)
         require(media != GalleryMedia.PREPARED_VIDEOS || preparedBrowseEnabled)
         return datedJson(url("/assets", library, page).newBuilder().addQueryParameter("media", media.wire).build(), Gallery.serializer(), token)
+    }
+    override suspend fun galleryWithPhotoStacks(token: Bearer, library: String, page: Int, media: GalleryMedia): PhotoStackGallery {
+        require(PhoneDiscoveryWire.validLibrary(library) && page in 1..100000)
+        require(media == GalleryMedia.ALL || mediaFilterEnabled)
+        require(media != GalleryMedia.PREPARED_VIDEOS || preparedBrowseEnabled)
+        val target = url("/assets", library, page).newBuilder()
+            .addQueryParameter("photo_stacks", "1")
+            .apply { if (media != GalleryMedia.ALL) addQueryParameter("media", media.wire) }
+            .build()
+        val useDateHints = dateHintsEnabled && dateHintsAvailable != false
+        val requested = if (useDateHints) target.newBuilder().addQueryParameter("date_hints", "1").build() else target
+        var result = packet(requested, token, limit = JSON_LIMIT, method = "GET", acceptedStatuses = setOf(400, 404))
+        // Match the established gallery adapter's bounded old-server date-hint fallback.
+        // This keeps the stacks opt-in on both requests; it never silently switches API shape.
+        if (result.code == 400 && useDateHints) {
+            dateHintsAvailable = false
+            result.bytes.fill(0)
+            result = packet(target, token, limit = JSON_LIMIT, method = "GET", acceptedStatuses = setOf(400, 404))
+        } else if (useDateHints && result.code == 200) {
+            dateHintsAvailable = true
+        }
+        if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json") {
+            result.bytes.fill(0)
+            throw ApiFailure(FailureKind.HTTP, result.code)
+        }
+        return try { PhotoStacksWire.parse(result.bytes) }
+        finally { result.bytes.fill(0) }
     }
     override suspend fun detail(token: Bearer, library: String, assetId: String) = datedJson(url("/assets/detail/${assetId(assetId)}", library), Detail.serializer(), token)
     override suspend fun captions(token: Bearer, library: String, assetId: String) = json(url("/assets/${assetId(assetId)}/captions", library), Captions.serializer(), token)

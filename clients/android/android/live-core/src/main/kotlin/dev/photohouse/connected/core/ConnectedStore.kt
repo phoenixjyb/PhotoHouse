@@ -345,6 +345,12 @@ data class LiveState(
     val generation: Long = 0, val session: Session? = null, val library: String? = null,
     val gallery: Gallery? = null, val detail: Detail? = null, val captions: Captions? = null,
     val previews: Map<String, ByteArray> = emptyMap(), val busy: Boolean = false,
+    /** Optional stack metadata is scoped to this exact gallery page. */
+    val photoStacks: List<PhotoStackGroup>? = null,
+    val showAllPhotos: Boolean = false,
+    val expandedPhotoStackIds: Set<String> = emptySet(),
+    val separatePhotoStackIds: Set<String> = emptySet(),
+    val photoStackCoverOverrides: Map<String, String> = emptyMap(),
     val covered: Boolean = false, val problem: LiveProblem? = null,
     val photoNavigation: PhotoNavigation? = null,
     val video: VideoReader? = null,
@@ -6016,15 +6022,23 @@ class ConnectedStore(
         mutable.value = state.value.copy(library = library, busy = true, media = media)
         launch { generation ->
             try {
-                // The first gallery read can lose a freshly established connection. Retry
-                // exactly once, only for a transport-level OFFLINE result. The retry stays
-                // inside this generation so logout/background/expiry cancellation wins.
-                val gallery = galleryReadWithOfflineRecovery(credential, library, page, media, generation)
+                // Stack negotiation permits the established bounded OFFLINE retry. Only an
+                // explicit unsupported status may fall back to the established gallery call.
+                val withStacks = try {
+                    photoStackGalleryReadWithOfflineRecovery(credential, library, page, media, generation)
+                } catch (e: ApiFailure) {
+                    if (e.kind != FailureKind.HTTP || e.status !in setOf(400, 404)) throw e
+                    PhotoStackGallery(api.gallery(credential, library, page, media), null)
+                }
+                val gallery = withStacks.gallery
                 if (!active(generation)) return@launch
                 validResponse(gallery.library_id == library && gallery.page == page && gallery.page_size in 1..100 && gallery.total >= 0 && gallery.items.size <= gallery.page_size)
                 validResponse(media == GalleryMedia.ALL || gallery.items.all { it.kind == media.assetKind })
                 val unique = gallery.copy(items = gallery.items.distinctBy { it.id })
-                mutable.value = state.value.copy(gallery = unique)
+                val stacks = withStacks.groups?.takeIf { validPhotoStackGroups(unique, it) }
+                mutable.value = state.value.copy(gallery = unique, photoStacks = stacks,
+                    showAllPhotos = false, expandedPhotoStackIds = emptySet(), separatePhotoStackIds = emptySet(),
+                    photoStackCoverOverrides = emptyMap())
                 var byteCount = 0
                 val images = mutableMapOf<String, ByteArray>()
                 for (asset in unique.items) {
@@ -6047,20 +6061,55 @@ class ConnectedStore(
             catch (e: Exception) { readFailure(e, generation, credential) { loadPage(page, media) } }
         }
     }
-    private suspend fun galleryReadWithOfflineRecovery(
-        credential: Bearer,
-        library: String,
-        page: Int,
-        media: GalleryMedia,
-        generation: Long,
-    ): Gallery {
+    private fun validPhotoStackGroups(gallery: Gallery, groups: List<PhotoStackGroup>): Boolean {
+        val pageAssets = gallery.items.associateBy { it.id }
+        val members = groups.flatMap { it.assetIds }
+        return groups.all { group ->
+            group.count == group.assetIds.size && group.count >= 2 && group.reason in setOf("near_capture", "same_upload") &&
+                group.assetIds.distinct().size == group.assetIds.size && group.assetIds.all { pageAssets[it]?.kind == "image" } &&
+                group.id == group.assetIds.minByOrNull { it.toLong() } && group.coverAssetId == group.assetIds.first() &&
+                group.assetIds == group.assetIds.sortedBy { gallery.items.indexOfFirst { asset -> asset.id == it } }
+        } && members.distinct().size == members.size && groups.map { it.id }.distinct().size == groups.size
+    }
+    fun togglePhotoStack(groupId: String) {
+        if (!allowed()) return
+        val groups = state.value.photoStacks ?: return
+        if (groups.none { it.id == groupId }) return
+        val expanded = state.value.expandedPhotoStackIds
+        mutable.value = state.value.copy(expandedPhotoStackIds = if (groupId in expanded) expanded - groupId else expanded + groupId)
+    }
+    fun collapsePhotoStack(groupId: String) {
+        if (!allowed() || state.value.photoStacks?.any { it.id == groupId } != true) return
+        mutable.value = state.value.copy(expandedPhotoStackIds = state.value.expandedPhotoStackIds - groupId)
+    }
+    fun toggleAllPhotos() {
+        if (!allowed() || state.value.photoStacks.isNullOrEmpty()) return
+        mutable.value = state.value.copy(showAllPhotos = !state.value.showAllPhotos)
+    }
+    fun selectPhotoStackCover(groupId: String, assetId: String) {
+        if (!allowed()) return
+        val group = state.value.photoStacks?.firstOrNull { it.id == groupId } ?: return
+        if (assetId !in group.assetIds || groupId in state.value.separatePhotoStackIds) return
+        mutable.value = state.value.copy(photoStackCoverOverrides = state.value.photoStackCoverOverrides + (groupId to assetId))
+    }
+    fun showPhotoStackSeparately(groupId: String) {
+        if (!allowed()) return
+        val groups = state.value.photoStacks ?: return
+        if (groups.none { it.id == groupId }) return
+        mutable.value = state.value.copy(separatePhotoStackIds = state.value.separatePhotoStackIds + groupId,
+            expandedPhotoStackIds = state.value.expandedPhotoStackIds - groupId,
+            photoStackCoverOverrides = state.value.photoStackCoverOverrides - groupId)
+    }
+    private suspend fun photoStackGalleryReadWithOfflineRecovery(
+        credential: Bearer, library: String, page: Int, media: GalleryMedia, generation: Long,
+    ): PhotoStackGallery {
         try {
-            return api.gallery(credential, library, page, media)
+            return api.galleryWithPhotoStacks(credential, library, page, media)
         } catch (e: ApiFailure) {
             if (e.kind != FailureKind.OFFLINE) throw e
             delay(GALLERY_RECOVERY_DELAY_MILLIS)
             if (!active(generation)) throw CancellationException("Gallery read is no longer active")
-            return api.gallery(credential, library, page, media)
+            return api.galleryWithPhotoStacks(credential, library, page, media)
         }
     }
     fun navigatePage(page: Int) {

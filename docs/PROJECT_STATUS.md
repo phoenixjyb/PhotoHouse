@@ -1,5 +1,17 @@
 # Current project status
 
+## October 19 development candidate
+
+[Similar-photo stacks](SIMILAR_PHOTO_STACKS.md) are being qualified in source for
+the protected gallery, Web and phone. Grouping is page-local and reversible;
+search/story result views and originals are unchanged. This is distinct from
+editorial shared-memory groups and does not enable those groups or any model.
+The companion account-owned upload-preparation endpoint is source work; client
+stage presentation remains outstanding. Neither feature has been deployed or
+published by this development round. Earlier dated runtime records below retain
+their original scope; the current live search overlay must be preserved in any
+future release composition.
+
 **October 18 API/CPU qualification:** the [R5 native synthetic trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
 passed its Job-proof startup, 132 API tests, three `a0` journal tests, five invitation
 checks and 20 CPU tests. Independent native result readback and nine-task/fifteen-file

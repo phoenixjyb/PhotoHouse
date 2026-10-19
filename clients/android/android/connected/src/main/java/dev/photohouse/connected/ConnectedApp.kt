@@ -1434,8 +1434,19 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     }
                                     state.gallery?.let { gallery ->
                                         if (gallery.items.isEmpty()) item { Text(t("No matching items on this page", "此页暂无符合条件的内容")) }
-                                        val columns = if (gallery.items.size == 1 || config.fontScale > 1.3f || config.screenWidthDp < 360) 1 else 2
-                                        items(gallery.items.chunked(columns)) { row -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        val stackGroups = state.photoStacks.orEmpty().filterNot { it.id in state.separatePhotoStackIds }
+                                        if (stackGroups.isNotEmpty()) item {
+                                            OutlinedButton(onClick = store::toggleAllPhotos,
+                                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("photo-stacks-all-toggle")) {
+                                                Text(if (state.showAllPhotos) t("Group similar photos", "收起相似照片") else t("Show all photos", "显示全部照片"))
+                                            }
+                                        }
+                                        val visibleIds = PhotoStackProjection.visibleAssetIds(gallery, state.photoStacks,
+                                            state.showAllPhotos, state.expandedPhotoStackIds, state.separatePhotoStackIds,
+                                            state.photoStackCoverOverrides).toSet()
+                                        val visibleAssets = gallery.items.filter { it.id in visibleIds }
+                                        val columns = if (visibleAssets.size == 1 || config.fontScale > 1.3f || config.screenWidthDp < 360) 1 else 2
+                                        items(visibleAssets.chunked(columns)) { row -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                             row.forEach { asset -> Card(onClick = { store.openMedia(asset) }, modifier = Modifier.weight(1f).testTag("media-${asset.id}")) {
                                                 Preview(asset, state.previews[asset.id], words)
                                                 Column(Modifier.padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)) {
@@ -1449,6 +1460,43 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                                                         TextButton(onClick = { store.openAsset(asset) }, modifier = Modifier.testTag("details-${asset.id}")) {
                                                             Text(t("Details", "详情"))
+                                                        }
+                                                    }
+                                                    stackGroups.firstOrNull { (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) == asset.id }?.let { group ->
+                                                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.SpaceBetween) {
+                                                            Text(if (group.reason == "same_upload")
+                                                                t("Same upload · ${group.count} photos", "同次上传 · ${group.count} 张相似照片")
+                                                            else t("Similar photos · ${group.count}", "相似照片 · ${group.count}"),
+                                                                style = MaterialTheme.typography.labelMedium,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                maxLines = 2,
+                                                                modifier = Modifier.weight(1f).semantics { stateDescription = t("Stack cover", "相似照片组封面") })
+                                                            TextButton(onClick = {
+                                                                if (state.showAllPhotos) {
+                                                                    store.toggleAllPhotos()
+                                                                    store.collapsePhotoStack(group.id)
+                                                                } else store.togglePhotoStack(group.id)
+                                                            }, modifier = Modifier.testTag("photo-stack-toggle-${group.id}")) {
+                                                                val expanded = state.showAllPhotos || group.id in state.expandedPhotoStackIds
+                                                                Text(if (expanded) t("Collapse", "收起") else t("Expand", "展开"))
+                                                            }
+                                                        }
+                                                    }
+                                                    stackGroups.firstOrNull { asset.id in it.assetIds &&
+                                                        (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) != asset.id &&
+                                                        (state.showAllPhotos || it.id in state.expandedPhotoStackIds) }?.let { group ->
+                                                        TextButton(onClick = { store.selectPhotoStackCover(group.id, asset.id) },
+                                                            modifier = Modifier.testTag("photo-stack-select-cover-${group.id}-${asset.id}")) {
+                                                            Text(t("Select as cover", "设为封面"))
+                                                        }
+                                                    }
+                                                    stackGroups.firstOrNull { asset.id in it.assetIds &&
+                                                        (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) == asset.id &&
+                                                        (state.showAllPhotos || it.id in state.expandedPhotoStackIds) }?.let { group ->
+                                                        TextButton(onClick = { store.showPhotoStackSeparately(group.id) },
+                                                            modifier = Modifier.testTag("photo-stack-separate-${group.id}")) {
+                                                            Text(t("Show separately", "单独显示"))
                                                         }
                                                     }
                                                 }

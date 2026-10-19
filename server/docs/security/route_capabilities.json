@@ -3740,6 +3740,20 @@
   {
    "source": "backend/app/access/upload_transport.py",
    "owner": "router",
+   "method": "GET",
+   "path": "/upload-preparation",
+   "handler": "upload_preparation",
+   "surface": "photohouse",
+   "capabilities": [
+    "upload.history.read"
+   ],
+   "scope": "Current account own receipts; processing evidence only for currently authorized destination libraries.",
+   "current_control": "Same upload runtime and active-account admission as receipt history; current library authorization in one read-only snapshot; strict page-only query, ten rows, allowlisted task states and record-existence booleans, no-store, no media/model access or queue writes.",
+   "gap": "Source candidate. Preview/playback file availability remains unknown; client negotiation, Windows delivery and family acceptance remain separate."
+  },
+  {
+   "source": "backend/app/access/upload_transport.py",
+   "owner": "router",
    "method": "POST",
    "path": "/upload-sessions",
    "handler": "create_transfer",

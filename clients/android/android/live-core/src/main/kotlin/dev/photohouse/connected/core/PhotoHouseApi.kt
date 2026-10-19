@@ -114,6 +114,9 @@ interface PhotoHouseApi {
         require(media == GalleryMedia.ALL)
         return gallery(token, library, page)
     }
+    /** Optional additive page metadata. Legacy adapters explicitly report unsupported. */
+    suspend fun galleryWithPhotoStacks(token: Bearer, library: String, page: Int, media: GalleryMedia): PhotoStackGallery =
+        throw ApiFailure(FailureKind.HTTP, 404)
     suspend fun saveStory(token: Bearer, library: String, mutation: StoryMutation): ProtectedStory = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun currentStory(token: Bearer, library: String, assetId: String, storyId: String): ProtectedStory? = throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun detail(token: Bearer, library: String, assetId: String): Detail
