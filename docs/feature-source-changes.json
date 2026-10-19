@@ -23843,6 +23843,7 @@
       "runtime_changed": false
     },
     {
+<<<<<<< HEAD
       "feature": "native-r5-api-cpu-qualification-result",
       "source_commit": "d4d434387e2e7ed60e1effbbbdf0b862c6be5bf1",
       "files": [
@@ -23929,10 +23930,35 @@
           "path": "server/tests/security/test_image_worker_memory_lifetime_qualification.py",
           "sha256": "d71798b4be284fb921f3abd9a33f868c85e56d5d2a2698ed4464491aa4fcfe6a",
           "before_sha256": null
+=======
+      "feature": "web-transcription-terminal-receipt-recovery",
+      "source_commit": "8fc51ad0b7534cc5a459f830e7f59a85bb101235",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "0b0d43a25997be6282f105cbf437baea3260990a590b97997fe5afba9636d0e3",
+          "sha256": "a2397ca8c70f4c49015cd4c12860f0d6dd5e8c53aa1afd97d70d271513c0f4ef"
+        },
+        {
+          "path": "server/tests/security/test_assistant_transcript_browser.cjs",
+          "before_sha256": "849ff2bc1af7de5f8f1ba9438027a99e7f202ecb1f3f258900ca77af8cd0be79",
+          "sha256": "45c12a26e3c8b6d04456bad85721e79b3b4e73e26da3094907a25fb6a62cc2d9"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "cf67fa6900452e819815e3b6640a173d57fa96ff0a0fedb5a8b8e3059b0a93a7",
+          "sha256": "dcf6f445454280a98d86d0c53c906b6c034283c43b0ce6a6ce3b22b01b117305"
+        },
+        {
+          "path": "docs/ASSISTANT_VOICE_RELIABILITY.md",
+          "before_sha256": "833357f25d629f49eb6d5326bc5b1a57199d91dbbc30ac568ca04784e43355b4",
+          "sha256": "236bf9010aad061fbc073fb38f7efc001cca421d3d051eefb550e458c610ed96"
+>>>>>>> origin/main
         }
       ],
       "routes_added": false,
       "schema_changed": false,
+<<<<<<< HEAD
       "models_changed": false,
       "current_public_worker_native_qualified": false,
       "private_frozen_projection_native_children": 120,
@@ -24036,6 +24062,11 @@
       "max_session_hours": 2,
       "production_api_changed": false,
       "signed_or_published": false
+=======
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false
+>>>>>>> origin/main
     }
   ]
 }
