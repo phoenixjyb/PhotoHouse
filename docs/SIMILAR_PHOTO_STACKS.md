@@ -108,7 +108,9 @@ switch, APK publication, photo deletion or model activation.
 The stack algorithm/route, ordinary library reads and duplicate-management
 cohort passed 40 tests (18 subtests). The separate preparation/history/closed-app
 cohort passed 46 tests (18 subtests), preserving the old history shape and the
-reviewed route inventory. The focused generated Chromium journey passed,
+reviewed route inventory. The final stack suite passed 16 tests (five subtests),
+including extreme timezone dates remaining separate instead of breaking a page.
+The focused generated Chromium journey passed,
 including keyboard focus after rerender, lowest-ID member separation,
 cover selection, full viewer navigation, invalid/unsupported metadata and
 late library responses. Chinese/English phone and desktop screenshots were

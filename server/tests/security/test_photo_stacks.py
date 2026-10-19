@@ -42,6 +42,11 @@ class PhotoStackAlgorithmTests(unittest.TestCase):
         self.assertEqual(stacks(first, row(2, taken_at=None, phash=second[6],
             account='account-a', batch=None))['groups'], [])
 
+    def test_timezone_normalization_overflow_keeps_photos_separate(self):
+        for value in ('0001-01-01T00:00:00+01:00', '9999-12-31T23:59:59-01:00'):
+            with self.subTest(value=value):
+                self.assertEqual(stacks(row(1, taken_at=value), row(2, taken_at=value))['groups'], [])
+
     def test_conflicting_recorded_dates_veto_same_upload_fallback(self):
         first = row(1, taken_at='2026-04-05', account='account-a', batch='batch-a')
         second = row(2, taken_at='2026-04-06', phash='0000000000000003',

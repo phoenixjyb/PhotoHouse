@@ -55,8 +55,11 @@ def _pair_reason(left, right):
         if left_aware != right_aware:
             return None
         if left_aware:
-            left_time = left_time.astimezone(timezone.utc)
-            right_time = right_time.astimezone(timezone.utc)
+            try:
+                left_time = left_time.astimezone(timezone.utc)
+                right_time = right_time.astimezone(timezone.utc)
+            except (OverflowError, ValueError):
+                return None
         return 'near_capture' if abs((left_time - right_time).total_seconds()) <= 300 else None
     if left_time is not None or right_time is not None:
         return None
