@@ -170,3 +170,31 @@ Windows-style socketpair compatibility with ordinary network calls blocked.
 This local result and read-only native syntax parsing do not establish a
 Windows execution pass. Staging, temporary qualification task registration/run,
 API cutover and phone signing/publication retain their separate operation gates.
+
+### Native Windows qualification — October 19
+
+The same immutable `f2041c1` package subsequently passed its authorized synthetic
+Windows run under a temporary SYSTEM task. All nine gallery/preparation checks
+passed: near-capture grouping, stricter same-upload fallback, different-batch
+separation, preservation of every original item, owner receipt isolation,
+foreign-library denials and safe processing-stage projection. Both child
+processes proved the required Job membership, 2 GiB memory limit and eight-process
+limit. Startup was limited to 10 seconds, the gallery fixture to 180 seconds,
+with an 8 GiB free-memory admission floor and a five-minute task limit.
+
+The initial Mac dispatch stopped before task registration because its encoded
+command exceeded the transport limit. Read-only Windows reconciliation confirmed
+the task and candidate did not exist. The unchanged hash-pinned registration
+script was then staged privately and executed once through a short verified-file
+bootstrap; the qualification was not replayed. Native exit code was zero, with
+no output truncation or invocation error. All extracted inputs passed the final
+integrity check.
+
+The finished temporary task was removed after checking its exact definition;
+all nine production task definitions remained unchanged. The run used generated
+databases and fixtures only, without opening family media or production databases,
+loading models, making application network requests, changing services or
+publishing OTA. These results qualify this package on Windows; they do not show
+that photo stacks are served by the live API or installed on a phone. API/Web
+cutover, responsive-emulator UI acceptance and phone signing/publication remain
+separate delivery gates.

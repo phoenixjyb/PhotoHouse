@@ -25114,6 +25114,29 @@
       "native_execution_qualified": false,
       "deployed_or_published": false,
       "notes": "Read-only runtime reconciliation found newer visual-review source; prior966candidate is not the forward cutover source. Local generated qualification and native syntax parsing remain separate from Windows execution."
+    },
+    {
+      "feature": "gallery-native-windows-qualification-record",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "d8b67f2694a597a8badbe22700b1868099ba064a3c163dd09b6931521773264d",
+          "sha256": "19452f118ba9bcc6fb7fb27909071c83539b965c39fc17b0756a2f01347ff4a4"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": "fb793b660df94a24e7db243b063d6264967dc697aef26b9d0af0ac546a4bb9ee",
+          "sha256": "5bd6f7858edd7e93e987228e01dae47126feaa51838c787abb23ceed770fbd60"
+        }
+      ],
+      "qualified_api_source_commit": "f2041c1c2cb554350112c9a163de39f4c8c0af91",
+      "api_zip_sha256": "db603eb8c4f87f4daf2302c60ef94f66ddb6642ded2bef84b2afc6ea23c9af77",
+      "native_synthetic_checks_passed": 9,
+      "native_job_proofs_passed": 2,
+      "temporary_task_removed": true,
+      "production_task_definitions_preserved": 9,
+      "deployed_or_published": false,
+      "notes": "Native generated-data run passed once; exact pinned registration script used a short file bootstrap after command-budget refusal before dispatch. No live API cutover or phone delivery."
     }
   ]
 }

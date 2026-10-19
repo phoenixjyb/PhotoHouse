@@ -4,9 +4,11 @@
 main and the newer deployed visual-review source `3c2c48f`, preserving search
 and upload guards alongside photo stacks. The complete API profile passed
 2,508 tests / 2,510 subtests, the generated demo, seven staging-package tests
-and three affected Web journeys. Its fixed 245-file API package is prepared
-locally. Windows execution/delivery and the Android visual gate remain open;
-read-only native syntax checks are not deployment. See the
+and three affected Web journeys. Its fixed 245-file API package also passed
+native Windows qualification: all nine generated cases and both bounded-child
+Job proofs passed. The finished temporary task was removed; all nine production
+task definitions were preserved. The API/Web cutover and Android visual/release
+gates remain open. Native qualification is not a live deployment. See the
 [photo-stack qualification record](SIMILAR_PHOTO_STACKS.md#visual-review-integration-qualification--october-19).
 
 ## October 19 development candidate
