@@ -8,6 +8,7 @@ media/speech path.
 import json
 import math
 import re
+import statistics
 import time
 
 from . import discovery as d
@@ -17,6 +18,8 @@ _EXPECT_FIELDS = frozenset(('kind', 'filters', 'top_ids', 'relevant_ids',
                             'absent_ids', 'total', 'effect'))
 _KINDS = frozenset(('results', 'open', 'clarification', 'unsupported'))
 _REPORT_FIELDS = ('kind', 'filters', 'top_ids', 'relevant_ids', 'absent_ids', 'total', 'effect')
+_LANGUAGES = frozenset(('en', 'zh', 'mixed', 'unassigned'))
+_CATEGORIES = frozenset(('person', 'date', 'text', 'scene', 'followup', 'no_match'))
 
 
 def _invalid():
@@ -87,8 +90,9 @@ def _expected_ids(value, *, required=False, maximum=100):
 def _validate_envelope(document):
     if type(document) is not dict or set(document) != {'version', 'cases'}:
         _invalid()
-    if type(document['version']) is not int or document['version'] != 1:
+    if type(document['version']) is not int or document['version'] not in (1, 2):
         _invalid()
+    version = document['version']
     cases = document['cases']
     if type(cases) is not list or not 1 <= len(cases) <= 100:
         _invalid()
@@ -96,7 +100,10 @@ def _validate_envelope(document):
     validated = []
     seen = set()
     for raw in cases:
-        if type(raw) is not dict or set(raw) - {'id', 'text', 'expect', 'after'} or not {'id', 'text', 'expect'} <= set(raw):
+        allowed_case_fields = {'id', 'text', 'expect', 'after'}
+        if version == 2:
+            allowed_case_fields |= {'language', 'category'}
+        if type(raw) is not dict or set(raw) - allowed_case_fields or not {'id', 'text', 'expect'} <= set(raw):
             _invalid()
         ident = raw['id']
         if type(ident) is not str or _CASE_ID.fullmatch(ident) is None or ident in seen:
@@ -126,13 +133,88 @@ def _validate_envelope(document):
         if 'total' in expected:
             if type(expected['total']) is not int or not 0 <= expected['total'] <= d.MAX_ID:
                 _invalid()
+        if version == 2 and raw.get('category') == 'no_match':
+            if expected.get('total') != 0:
+                _invalid()
         after = raw.get('after')
         if 'after' in raw:
             if type(after) is not str or after not in seen - {ident}:
                 _invalid()
-        validated.append({'id': ident, 'text': words, 'expect': expected,
-                          **({'after': after} if 'after' in raw else {})})
-    return validated
+        case = {'id': ident, 'text': words, 'expect': expected,
+                **({'after': after} if 'after' in raw else {})}
+        if version == 2:
+            if 'language' in raw:
+                if type(raw['language']) is not str or raw['language'] not in _LANGUAGES:
+                    _invalid()
+                case['language'] = raw['language']
+            if 'category' in raw:
+                if type(raw['category']) is not str or raw['category'] not in _CATEGORIES:
+                    _invalid()
+                case['category'] = raw['category']
+        validated.append(case)
+    return version, validated
+
+
+def _percentile(values, fraction):
+    """Nearest-rank percentile over bounded, finite local elapsed values."""
+    if not values:
+        return None
+    ordered = sorted(values)
+    return ordered[max(0, math.ceil(fraction * len(ordered)) - 1)]
+
+
+def _cohort_metrics(pairs):
+    elapsed = [report['elapsed_ms'] for _, report in pairs
+               if not report.get('dependency_failed', False)]
+    relevant = [report for _, report in pairs if 'hit_at_5' in report]
+    hits = sum(report['hit_at_5'] for report in relevant)
+    denominator = len(relevant)
+    filter_checks = [report['checks']['filters'] for _, report in pairs
+                     if 'filters' in report['checks']]
+    absence_checks = [report['checks']['absent_ids'] for _, report in pairs
+                      if 'absent_ids' in report['checks']]
+    return {
+        'denominator': len(pairs),
+        'passed_count': sum(report['passed'] for _, report in pairs),
+        'failed_count': sum(not report['passed'] for _, report in pairs),
+        'no_match_count': sum(case.get('category') == 'no_match' for case, _ in pairs),
+        'failed_dependency_count': sum(report.get('dependency_failed', False) for _, report in pairs),
+        'hard_filter_checked_count': len(filter_checks),
+        'hard_filter_failed_count': sum(not passed for passed in filter_checks),
+        'absence_checked_count': len(absence_checks),
+        'absence_failed_count': sum(not passed for passed in absence_checks),
+        'relevance_denominator': denominator,
+        'hit_at_5_count': hits,
+        'hit_at_5': hits / denominator if denominator else None,
+        'labeled_recall_at_5': (sum(report['labeled_recall_at_5'] for report in relevant) / denominator
+                                if denominator else None),
+        'mrr_at_20': (sum(report['reciprocal_rank_at_20'] for report in relevant) / denominator
+                      if denominator else None),
+        'executed_count': len(elapsed),
+        'latency_sample_count': len(elapsed),
+        'elapsed_ms_median': statistics.median(elapsed) if elapsed else None,
+        'elapsed_ms_p95': _percentile(elapsed, .95),
+    }
+
+
+def _scorecard(cases, reports):
+    """Build fixed-label, content-free cohorts without a pooled score."""
+    cohorts = {name: [] for name in ('en', 'zh', 'mixed', 'unassigned')}
+    categories = {name: [] for name in (*sorted(_CATEGORIES), 'unassigned')}
+    for case, report in zip(cases, reports):
+        cohorts[case.get('language', 'unassigned')].append((case, report))
+        categories[case.get('category', 'unassigned')].append((case, report))
+
+    result = {name: _cohort_metrics(pairs) for name, pairs in cohorts.items()}
+    category_result = {}
+    for name, pairs in categories.items():
+        metrics = _cohort_metrics(pairs)
+        category_result[name] = {key: metrics[key] for key in ('denominator', 'passed_count', 'failed_count')}
+    return {
+        'cohorts': result,
+        'categories': category_result,
+        'recall_at_5_note': 'Fraction of supplied relevant IDs retrieved; incomplete labels do not measure population recall.',
+    }
 
 
 def _bound_snapshot(engine, token, library, binding):
@@ -161,7 +243,7 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
     Access denial and discovery change/unavailability/busy exceptions intentionally
     pass through unchanged. In those cases no report is returned.
     """
-    cases = _validate_envelope(document)
+    version, cases = _validate_envelope(document)
     from .assistant import _turn
 
     binding = _readiness_binding(engine, token, library)
@@ -196,12 +278,17 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
             checks = {'kind': False, 'context_missing': True}
             skipped_case = {'ordinal': ordinal, 'checks': checks, 'passed': False,
                             'elapsed_ms': elapsed_ms, 'result_count': 0}
+            if version == 2:
+                skipped_case['dependency_failed'] = True
             if 'relevant_ids' in expected:
                 checks['relevant_ids'] = False
                 relevant_case_count += 1
                 reciprocal_ranks.append(0.0)
                 skipped_case['hit_at_20'] = False
                 skipped_case['reciprocal_rank_at_20'] = 0.0
+                if version == 2:
+                    skipped_case['hit_at_5'] = False
+                    skipped_case['labeled_recall_at_5'] = 0.0
             reports.append(skipped_case)
             contexts[case['id']] = None
             continue
@@ -275,10 +362,18 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
         if 'relevant_ids' in expected:
             report_case['hit_at_20'] = hit
             report_case['reciprocal_rank_at_20'] = reciprocal
+            if version == 2:
+                hit_at_5 = any(ident in expected['relevant_ids'] for ident in item_ids[:5]) and result['kind'] in ('results', 'open')
+                report_case['hit_at_5'] = hit_at_5
+                report_case['labeled_recall_at_5'] = (
+                    len(set(item_ids[:5]) & set(expected['relevant_ids'])) / len(expected['relevant_ids'])
+                    if result['kind'] in ('results', 'open') else 0.0)
+        if version == 2:
+            report_case['dependency_failed'] = False
         reports.append(report_case)
 
     passed = sum(case['passed'] for case in reports)
-    report = {'version': 1, 'case_count': len(reports), 'passed_count': passed,
+    report = {'version': version, 'case_count': len(reports), 'passed_count': passed,
               'failed_count': len(reports) - passed, 'cases': reports}
     if relevant_case_count:
         report['relevance'] = {
@@ -286,4 +381,6 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
             'hit_count': relevant_hit_count,
             'mrr_at_20': sum(reciprocal_ranks) / relevant_case_count,
         }
+    if version == 2:
+        report['scorecard'] = _scorecard(cases, reports)
     return report

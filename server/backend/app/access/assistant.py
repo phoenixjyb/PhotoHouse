@@ -565,17 +565,19 @@ def _context_result(engine, token, library, context):
     return result
 
 
-def _turn(engine, token, library, words, previous, clock, *, language=None, continuation=None):
+def _turn(engine, token, library, words, previous, clock, *, language=None, continuation=None,
+          planner_outcome=None):
     from .assistant_search import SearchRuntime
     if isinstance(engine, SearchRuntime):
         with engine.turn_scope():
             return _turn_scoped(engine, token, library, words, previous, clock, language=language,
-                                continuation=continuation)
+                                continuation=continuation, planner_outcome=planner_outcome)
     return _turn_scoped(engine, token, library, words, previous, clock, language=language,
-                        continuation=continuation)
+                        continuation=continuation, planner_outcome=planner_outcome)
 
 
-def _turn_scoped(engine, token, library, words, previous, clock, *, language=None, continuation=None):
+def _turn_scoped(engine, token, library, words, previous, clock, *, language=None, continuation=None,
+                 planner_outcome=None):
     from .assistant_search import SearchRuntime
     v2 = isinstance(engine, SearchRuntime)
     if previous is not None:
@@ -598,7 +600,8 @@ def _turn_scoped(engine, token, library, words, previous, clock, *, language=Non
         previous = None
     source = {}
     result = _turn_impl(engine, token, library, words, previous, clock, language=language,
-                        source=source, continuation=continuation)
+                        source=source, continuation=continuation,
+                        planner_outcome=planner_outcome)
     if v2:
         result['version'] = engine.search_version
         interpretation = source.get('interpretation')
@@ -614,18 +617,27 @@ def _turn_scoped(engine, token, library, words, previous, clock, *, language=Non
 
 
 def _turn_impl(engine, token, library, words, previous, clock, *, language=None, source=None,
-               continuation=None):
+               continuation=None, planner_outcome=None):
     from .assistant_search import SearchRuntime
     search_v2 = isinstance(engine, SearchRuntime)
     search_v3 = search_v2 and engine.search_version == 3
     if continuation is not None:
         from .assistant_query_plan import _valid_previous
-        if (not search_v2 or previous is not None or type(continuation) is not dict
-                or set(continuation) not in ({'binding', 'date'},
-                                             {'binding', 'date', 'redacted_span'})
-                or type(continuation['binding']) is not str
-                or re.fullmatch('[0-9a-f]{64}', continuation['binding']) is None
-                or not _valid_previous({'date': continuation['date']})):
+        valid_date = (type(continuation) is dict and
+                      set(continuation) in ({'binding', 'date'},
+                                            {'binding', 'date', 'redacted_span'}) and
+                      _valid_previous({'date': continuation.get('date')}))
+        valid_description = (type(continuation) is dict and
+                             set(continuation) == {'binding', 'context_digest'} and
+                             type(continuation.get('context_digest')) is str and
+                             re.fullmatch('[0-9a-f]{64}', continuation['context_digest']) is not None)
+        if (not search_v2 or type(continuation) is not dict or
+                (not valid_date and not valid_description) or
+                (valid_description and not search_v3) or
+                (valid_date and previous is not None) or
+                (valid_description and previous is None) or
+                type(continuation.get('binding')) is not str or
+                re.fullmatch('[0-9a-f]{64}', continuation['binding']) is None):
             raise AssistantChanged()
     source = {} if source is None else source
     lang = language if language in ('zh', 'en') else _language(words)
@@ -635,6 +647,14 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
         previous = _context(previous, library)
         existing = _context_result(engine, token, library, previous)
         source.update(existing)
+    if continuation is not None and valid_description:
+        from .search_pending import description_context_digest
+        try:
+            matches_context = description_context_digest(previous) == continuation['context_digest']
+        except ValueError:
+            matches_context = False
+        if not matches_context:
+            raise AssistantChanged()
     if search_v2:
         from .search_explanation import (describe_filter_query, explain_filters,
                                          describe_empty_query, no_results_guidance)
@@ -809,9 +829,12 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             # current membership/source and supplies its own interpretation.
             # Clarifications have no final search, so replay their authorized
             # snapshot here before returning anything after inference.
+            if planner_outcome is not None:
+                planner_outcome.update(status=plan.status, reason=plan.reason,
+                                       binding=binding)
             if plan.status != 'ready':
                 engine.call('presentation', token, library, lambda: False, {'binding': binding})
-            if continuation is not None and plan.status == 'ready':
+            if continuation is not None and 'date' in continuation and plan.status == 'ready':
                 from .assistant_query_plan import QueryPlan
                 if plan.filters.get('date') not in (None, continuation['date']):
                     # This early refusal has no final search to revalidate it.
@@ -822,7 +845,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             plan = (people_answer if people_answer is not None else
                     plan_query(words, now=now, entities=first,
                                previous_filters=previous['filters'] if previous else None, refine=refine))
-            if continuation is not None and plan.status == 'ready':
+            if continuation is not None and 'date' in continuation and plan.status == 'ready':
                 if plan.filters.get('date') not in (None, continuation['date']):
                     raise AssistantChanged()
                 from .assistant_query_plan import QueryPlan
@@ -941,6 +964,10 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                     'intent_scope': ('这次要继续缩小当前结果，还是开始一次新的查找？',
                                      'Would you like to refine these results or start a new search?'),
                 }
+                if plan.reason == 'intent_description' and search_v3 and previous is not None:
+                    replies['intent_description'] = (
+                        '当时有什么醒目的物品或地点？请只回复一条带引号的场景或说明线索；当前人物、日期和媒体条件会保留。',
+                        'What distinctive object or place should I look for? Reply with one quoted scene or caption clue; the current person, date, and media filters will stay in place.')
                 if plan.reason == 'intent_person' and 'people' not in enabled:
                     reply = _search_clarification_guidance(enabled, lang)
                 elif plan.reason == 'intent_date' and 'date' not in enabled:
