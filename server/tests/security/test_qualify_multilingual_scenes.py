@@ -189,10 +189,13 @@ def test_measure_uses_fake_cpu_model_and_records_only_query_receipts(monkeypatch
     class FakeProcessor:
         tokenizer = FakeTokenizer()
 
-        def __call__(self, *, images=None, text=None, **_kwargs):
+        def __call__(self, text=None, images=None, padding=False, truncation=None,
+                     max_length=None, return_tensors='pt'):
             if images is not None:
+                assert text is None and return_tensors == 'pt'
                 return {'pixel_values': FakeTensor([0.0] * 768, (1, 3, 256, 256))}
-            assert _kwargs['return_attention_mask'] is False
+            assert images is None and padding == 'max_length' and truncation is False
+            assert max_length == runner.TEXT_MAX_LENGTH and return_tensors == 'pt'
             model_input, token_count = runner._query_tokens(self, text[0])
             assert model_input == text[0]
             return {'input_ids': FakeTensor([1] * 64, (1, 64))}

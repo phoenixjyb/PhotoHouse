@@ -206,6 +206,9 @@ class LocalSceneTranslator:
             if (type(result) is not dict or set(result) != {"translation"}
                     or not _valid_translation(result["translation"])):
                 raise SceneTranslationError("scene_translation_unavailable")
+            from semantic_scene_translation_fidelity import feature_mismatch
+            if feature_mismatch(query, result["translation"]) is not None:
+                raise SceneTranslationError("scene_translation_fidelity_mismatch")
             check_deadline()
             return result["translation"]
         except SceneTranslationError:

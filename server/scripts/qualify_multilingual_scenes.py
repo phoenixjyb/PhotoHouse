@@ -351,7 +351,7 @@ def measure(model_handle, dataset, image_pins, model_pins, package_versions, dea
             key, query = case['id'] + ':' + language, case['queries'][language]
             model_input, token_count = _query_tokens(processor, query)
             inputs = processor(text=[model_input], padding='max_length', max_length=TEXT_MAX_LENGTH,
-                               truncation=False, return_attention_mask=False, return_tensors='pt')
+                               truncation=False, return_tensors='pt')
             if set(inputs) != {'input_ids'}:
                 raise Refused()
             ids = inputs['input_ids']

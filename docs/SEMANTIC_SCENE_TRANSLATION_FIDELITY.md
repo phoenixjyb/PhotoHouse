@@ -39,3 +39,10 @@ negation scope, uncertainty, and contrastive relationships. It adds no example
 scene facts. Prompt wording, lexical checks, or retrieval rank do not establish
 universal translation fidelity. Semantic serving remains disabled; this
 offline contract does not grant activation approval.
+
+The offline HTTP translator applies the cue guard to every valid returned
+translation before exposing it to its caller. A detected mismatch raises the
+fixed `scene_translation_fidelity_mismatch` error, releases the one-request
+lease, and performs no retry. This does not automatically approve outputs
+that pass the cue checks. Unreviewed derivation remains available for preserving
+diagnostic evidence, with its reviewed flag false.

@@ -83,6 +83,67 @@ def test_chat_request_is_fixed_local_data_only_and_returns_ascii_scene_text():
     assert len(seen) == 1
 
 
+@pytest.mark.parametrize(("query", "bad_translation"), [
+    ("A van waiting beside a road", "A van parked beside a road"),
+    ("A snowboarder carrying a snowboard", "A snowboarder carrying one snowboard"),
+    ("A person drinking wine alone", "A person drinking wine with glasses placed separately"),
+    ("无雪运动场", "A no snow sports field"),
+])
+def test_translator_rejects_explicit_fidelity_mismatch_without_retry_or_query_leak(
+        query, bad_translation, caplog):
+    calls = []
+    sensitive_query = f"{query} PRIVATE_TRANSLATION_QUERY_TOKEN"
+
+    def handler(_):
+        calls.append("called")
+        return httpx.Response(200, json=envelope(
+            json.dumps({"translation": bad_translation})))
+
+    instance = translator(handler)
+    with pytest.raises(RuntimeError) as caught:
+        instance.translate(sensitive_query)
+    assert str(caught.value) == "scene_translation_fidelity_mismatch"
+    assert "PRIVATE_TRANSLATION_QUERY_TOKEN" not in str(caught.value)
+    assert "PRIVATE_TRANSLATION_QUERY_TOKEN" not in caplog.text
+    assert calls == ["called"]
+
+
+@pytest.mark.parametrize(("query", "translation"), [
+    ("A van waiting beside a road", "A van is waiting beside a road"),
+    ("A snowboarder carrying a snowboard", "A snowboarder is carrying a snowboard"),
+    ("A person drinking wine alone", "A person is drinking wine alone"),
+    ("无雪运动场", "A sports field with no snow"),
+    ("Two children 停着等", "Two children are waiting in place"),
+])
+def test_translator_accepts_corrected_and_explicit_mixed_cue_outputs(query, translation):
+    calls = []
+
+    def handler(_):
+        calls.append("called")
+        return httpx.Response(200, json=envelope(
+            json.dumps({"translation": translation})))
+
+    assert translator(handler).translate(query) == translation
+    assert calls == ["called"]
+
+
+def test_fidelity_refusal_releases_translator_lease_for_next_request():
+    calls = []
+
+    def handler(_):
+        calls.append("called")
+        translation = ("A van parked beside a road" if len(calls) == 1
+                       else "A van is waiting beside a road")
+        return httpx.Response(200, json=envelope(
+            json.dumps({"translation": translation})))
+
+    instance = translator(handler)
+    with pytest.raises(RuntimeError, match="^scene_translation_fidelity_mismatch$"):
+        instance.translate("A van waiting beside a road")
+    assert instance.translate("A van waiting beside a road") == "A van is waiting beside a road"
+    assert calls == ["called", "called"]
+
+
 @pytest.mark.parametrize("url", [
     "https://127.0.0.1:11434/api/chat", "http://example.com:11434/api/chat",
     "http://127.0.0.1:11434/api/generate", "http://127.0.0.1:11434/api/chat?x=1",

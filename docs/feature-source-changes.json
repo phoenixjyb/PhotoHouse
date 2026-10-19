@@ -25524,6 +25524,40 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Match the official tokenizer input names: omit attention mask, preserve explicit lowercase and 64-token no-truncation recipe, and validate special tokens and right padding. Native inference remains a separate qualification."
+    },
+    {
+      "feature": "native-siglip-processor-and-translation-boundary-refusal",
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SCENE_TRANSLATION_FIDELITY.md",
+          "sha256": "f771fb47b9a722b9724e886e0abfa7f828cb31e6ad8d454fcbb63fe1f4e46319",
+          "before_sha256": "cef7d24c8931696fb6caa69bc16d3055039f7e4f955ddfaf32b787d0e2194140"
+        },
+        {
+          "path": "server/scripts/qualify_multilingual_scenes.py",
+          "sha256": "9c9cf6a85763def9278b25c18de967a8f99630363b03b8c387fa8ba9c7a876e0",
+          "before_sha256": "1eb0d7db528d655c30cc351f1ad5f1d6c12911e74adbac484df028c6b598a046"
+        },
+        {
+          "path": "server/scripts/semantic_scene_translation.py",
+          "sha256": "63e3705968a5b78595f9adae4e8b8fb5086bd5fc9d8b547fd6acc7b8ce55a907",
+          "before_sha256": "10cf6020b242c9a7fcdedf948b8afa662a5c7d819184ba67e1a1ce44259660cf"
+        },
+        {
+          "path": "server/tests/security/test_qualify_multilingual_scenes.py",
+          "sha256": "c2dbdea3cf3049a94cda032e6192c62a291da4d931cfa380f67dcf96ad6918e5",
+          "before_sha256": "80382ca76ddd882decb813c69d29268d54942f75cbeb62e188889d1e84478f79"
+        },
+        {
+          "path": "server/tests/security/test_semantic_scene_translation.py",
+          "sha256": "caa528cb850adfd40029ef779ab5d7a428d2d18c69c2c75c4cb647562bd671b4",
+          "before_sha256": "81f7caf11735ac0c2972fbd7a3e2257af309782cefe3e483a05c6ce472317841"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Native tracing identified an unsupported SiglipProcessor keyword before any text-feature scorecard; match the actual pinned call signature and test it with a strict fake. Apply the narrow fidelity rejection guard at the offline translator response boundary, with no retry and fixed redacted errors. No semantic activation."
     }
   ]
 }
