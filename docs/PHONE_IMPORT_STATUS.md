@@ -1,11 +1,17 @@
 # Phone import progress and server status
 
+**October 20:** [Phone v74 and matching Web UI](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md)
+are delivered. Expand **处理详情** in server history for account-owned preparation
+records; receipt, library assignment and actual media readiness remain separate.
+Samsung lock-screen transfer and real-media acceptance remain open.
+
 **October 17 upload recovery update:** [Phone v71 is published](../clients/android/docs/PHONE_V71_RELEASE_2026-10-17.md)
 and its owner trial produced complete server transfers and receipts after repeated
 Retry taps. Review/assignment and media readiness remain separate. The following
 [v72 candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md) adds bounded
 foreground recovery, same-batch continuation and clearer final-confirmation feedback.
-It is not published. Earlier delivery snapshots below retain their dated scope.
+[V72 was subsequently published](../clients/android/docs/PHONE_V72_RELEASE_2026-10-17.md).
+Earlier delivery snapshots below retain their dated scope.
 
 Delivered in [phone v70](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md),
 October 17, 2026. Signing and full Windows/independent HTTPS readback passed;
@@ -23,7 +29,7 @@ restoration and history refresh do not restart uploads. V71 is published.
 
 The [v72 recovery candidate](../clients/android/docs/PHONE_V72_CANDIDATE_2026-10-17.md)
 adds bounded recovery within an explicit foreground run and same-batch continuation;
-it is not yet published.
+it was subsequently [published](../clients/android/docs/PHONE_V72_RELEASE_2026-10-17.md).
 
 ## One view of the existing flow
 

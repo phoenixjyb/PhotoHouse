@@ -4,13 +4,14 @@
 conservative, page-local suggestions from existing perceptual hashes and capture
 times, with a stricter same-upload fallback for undated photos. Web and phone
 controls preserve every original and the complete viewer sequence. This is a
-live API/Web release with phone v73 available on HTTPS OTA. Whole-library
+live API/Web release, retained in the current phone v74 HTTPS OTA release. Whole-library
 indexing, saved cover/separation preferences and family visual calibration remain
 later work.
 
 The separate [upload-preparation read](UPLOAD_PREPARATION.md) is also in the live API;
-Web and phone v74 source now add negotiated, expandable stage labels.
-Candidate release and physical upload acceptance remain outstanding.
+Web and [phone v74](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md) now deliver
+negotiated, expandable stage labels. Native and independent HTTPS delivery passed
+on October 20; physical upload and signed-in family acceptance remain outstanding.
 Do not label previews or video playback ready from task completion alone.
 
 **October 18 API/CPU qualification:** the [R5 native synthetic trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
