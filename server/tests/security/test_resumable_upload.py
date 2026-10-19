@@ -192,3 +192,24 @@ class ResumableUploadTests(unittest.TestCase):
                     self.fail('contended lock must not be acquired')
         self.assertEqual(429,caught.exception.status)
         self.assertEqual('Upload busy',caught.exception.message)
+
+    def test_windows_unrelated_lock_error_remains_visible(self):
+        row,_=self.create();transfers=Transfers(self.f.runtime)
+        def failed_lock(*_args):
+            raise OSError(errno.EIO, 'synthetic Windows lock I/O failure')
+        msvcrt=SimpleNamespace(LK_NBLCK=1, LK_UNLCK=2, locking=failed_lock)
+        with patch.dict(sys.modules, {'msvcrt': msvcrt}), \
+                patch('app.access.resumable._is_windows', return_value=True):
+            with self.assertRaises(OSError) as caught:
+                with transfers.lock(self.f.member_token,row['upload_id']):
+                    self.fail('failed lock must not be acquired')
+        self.assertEqual(errno.EIO,caught.exception.errno)
+
+    def test_lock_body_blocking_error_is_not_rewritten_as_upload_busy(self):
+        row,_=self.create();transfers=Transfers(self.f.runtime)
+        msvcrt=SimpleNamespace(LK_NBLCK=1, LK_UNLCK=2, locking=lambda *_args: None)
+        with patch.dict(sys.modules, {'msvcrt': msvcrt}), \
+                patch('app.access.resumable._is_windows', return_value=True):
+            with self.assertRaises(BlockingIOError):
+                with transfers.lock(self.f.member_token,row['upload_id']):
+                    raise BlockingIOError('synthetic transfer-body error')

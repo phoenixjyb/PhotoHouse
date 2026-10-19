@@ -217,10 +217,12 @@ class Transfers:
                     raise TransportError(429,'Upload busy') from None
             else:
                 import fcntl
-                fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                try:
+                    fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                except BlockingIOError:
+                    raise TransportError(429,'Upload busy') from None
             locked=True
             yield root/(identifier+'.part')
-        except BlockingIOError: raise TransportError(429,'Upload busy') from None
         finally:
             try:
                 if locked:

@@ -23687,6 +23687,28 @@
       "provider_calls_added": false,
       "runtime_changed": true,
       "incumbent_behavior_preserved": true
+    },
+    {
+      "feature": "preserve-narrow-lock-contention-error-scope",
+      "source_commit": "95adfd6f1df339dc2d2b949cc2da3f5171a86f38",
+      "files": [
+        {
+          "path": "server/backend/app/access/resumable.py",
+          "before_sha256": "4616738e7a65dae6c3eeb23031800d7703cce256cadb4053e0cf93ebfeffffe0",
+          "sha256": "b18366c6a079316522af2cab719d15dccd77e0018bc180d959bc92e1dee0bd6f"
+        },
+        {
+          "path": "server/tests/security/test_resumable_upload.py",
+          "before_sha256": "fad30709d70458b3c3deb99ad1e90e8384f188936e07be50e0da189c1ba94ee3",
+          "sha256": "c4aa646f9313d95cc4a61243ef997fd400ebabaa023727e9958c37d69b884415"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": true,
+      "incumbent_behavior_preserved": true
     }
   ]
 }
