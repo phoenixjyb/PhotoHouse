@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 from semantic_scene_cases import dataset_sha256  # noqa: E402
 from semantic_scene_translation import (  # noqa: E402
     FORMAT_SCHEMA, GENERATION_OPTIONS, PROMPT, LocalSceneTranslator, derive_dataset,
-    translation_recipe,
+    legacy_translation_recipe_v1, translation_recipe,
 )
 
 
@@ -260,3 +260,8 @@ def test_recipe_schema_is_deep_copied_and_prompt_requires_exact_json():
     assert second["format_schema"] == FORMAT_SCHEMA
     assert second["format_schema"]["properties"]["translation"]["type"] == "string"
     assert "exactly one JSON object" in PROMPT
+    assert "explicit quantities" in PROMPT
+    assert "negation scope" in PROMPT
+    assert second["kind"].endswith(".v2")
+    assert legacy_translation_recipe_v1(PROVIDER)["recipe_sha256"] == (
+        "3126f5ead411878b4bed3d6f4f2e0f63bcc5e638e6b20927f31397d13e6f84ea")

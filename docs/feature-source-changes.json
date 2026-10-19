@@ -25427,6 +25427,79 @@
       "backend_contract_tests_passed": 63,
       "backend_contract_subtests_passed": 28,
       "notes": "Expandable own-receipt stage evidence with exact receipt matching, request scope fencing and older-server fallback. Task completion and record presence never claim viewable preview or playback. Synthetic Web and 150 percent Chinese/English QA renders inspected; no physical installation or live operation."
+    },
+    {
+      "feature": "offline-multilingual-encoder-and-translation-fidelity",
+      "files": [
+        {
+          "path": "docs/MULTILINGUAL_ENCODER_QUALIFICATION.md",
+          "sha256": "71766ac3c5f1a20af97370c38480980e671cf8ed7119855a8837abde06570752"
+        },
+        {
+          "path": "docs/SEMANTIC_SCENE_QUALIFICATION.md",
+          "sha256": "1a6dfdf1e9578839c003ea107ad6d52759742b3205ebf852c8f80ffb2e9e5c76",
+          "before_sha256": "abbd1edbb4311f2a9c4bf416b9d3f280830f58c1a939f3b5d566175a4862e127"
+        },
+        {
+          "path": "docs/SEMANTIC_SCENE_TRANSLATION_FIDELITY.md",
+          "sha256": "cef7d24c8931696fb6caa69bc16d3055039f7e4f955ddfaf32b787d0e2194140"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "78de2465f29dc0a41a7e18860a1b5d1d36f2ba01be9cbc3862263c1f951668bf",
+          "before_sha256": "4501f0762b87fa0a82c5e58809f96f4c1a35e1008ce54d85699a9906ae4c9d68"
+        },
+        {
+          "path": "server/scripts/qualify_multilingual_scenes.py",
+          "sha256": "73bebc2b238ec91f2076dbac2c5a563bc092444b031fc7b7ee499e64fd5798a9"
+        },
+        {
+          "path": "server/scripts/semantic_scene_cases.py",
+          "sha256": "a71f5b1d7089f04312288488c5dce544cc1de9025a739cfb02ad7f7dfccb176c",
+          "before_sha256": "9043a1434ec1042c3312566a673b19ed61a611bdfad0c1758debb2a8a13a37bf"
+        },
+        {
+          "path": "server/scripts/semantic_scene_translation.py",
+          "sha256": "10cf6020b242c9a7fcdedf948b8afa662a5c7d819184ba67e1a1ce44259660cf",
+          "before_sha256": "7a45a78cb4e882b9a6c7b872ae718a09b478a3152e4e460fb645a12b56ece6c9"
+        },
+        {
+          "path": "server/scripts/semantic_scene_translation_fidelity.py",
+          "sha256": "52ee85ee020d9744755b1fee7b3a4e34708fcad2d46d7d1f36a78422389ed6ad"
+        },
+        {
+          "path": "server/tests/security/test_qualify_multilingual_scenes.py",
+          "sha256": "34afb4881459011e292faec44712c846237e0fb3f28ee91af5e60d755b8b794c"
+        },
+        {
+          "path": "server/tests/security/test_semantic_scene_cases.py",
+          "sha256": "d210bb1b11a032f9c74ae030026ba4222ecd7957c1c9dd92d5b039cd1a0b62ca",
+          "before_sha256": "6ca525a1fe0fee5090b234bbfcc1c5524ab71abb3133dc345b7b17ec902d213a"
+        },
+        {
+          "path": "server/tests/security/test_semantic_scene_translation.py",
+          "sha256": "81f7caf11735ac0c2972fbd7a3e2257af309782cefe3e483a05c6ce472317841",
+          "before_sha256": "7da3b7547558146c7a6aaab7b9768d7b65659e2e4075ddd807ef060f2ff39f71"
+        },
+        {
+          "path": "server/tests/security/test_semantic_scene_translation_fidelity.py",
+          "sha256": "fa6545c2bd9bc2454fb4767e36f32e74caa7b86b3c69cdb90af830e991f54fb9"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "21c6121597f66ac1bca2808d6c08d812ad256f0c2297961dc18cdd7a37f1e49d",
+          "before_sha256": "9d124a2817a5b5a6f481e15ebcb6c6f86944e11eef15af822c784b5f7a16ac6d"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "43352e45d69358b77d784439104e4e5d86d65ccda1b4d904d974f8f56fad3564",
+          "before_sha256": "9b90f7e435f548c9c05da6c1d1bb76d7ce762ccc36c3ad90096c884b1ed6c38c"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Pinned CPU-only SigLIP2 public-scene qualifier with original multilingual text, explicit 768-dimensional evaluation and no activation. Translation v2 preserves source/output provenance and requires hash-bound declared review with conservative quantity, state, relation and negation guards. Public and family relevance, serving latency, vector coverage and device acceptance remain separate gates."
     }
   ]
 }

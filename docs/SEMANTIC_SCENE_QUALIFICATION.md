@@ -193,3 +193,10 @@ uses existing matching inner/composite bindings and the same image pipeline. It
 calls the exact reviewed provider for original queries, records original/derived
 hashes and preserves language/cohort metrics. Its measured image identity must
 match the declared binding; it does not turn a diagnostic into an approval.
+
+## Direct multilingual candidate
+
+The separate [multilingual encoder qualification](MULTILINGUAL_ENCODER_QUALIFICATION.md)
+uses the same reviewed scene labels with explicit 768-dimensional vectors.
+Existing OpenCLIP runs retain their 512-dimensional contract. Neither offline
+runner activates semantic search.

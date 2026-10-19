@@ -141,12 +141,12 @@ def dataset_sha256(dataset: object) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _vectors(value: object, expected_ids: set[str]) -> dict[str, tuple[float, ...]]:
+def _vectors(value: object, expected_ids: set[str], dimension: int) -> dict[str, tuple[float, ...]]:
     if type(value) is not dict or set(value) != expected_ids:
         raise ValueError(_INVALID_VECTORS)
     result: dict[str, tuple[float, ...]] = {}
     for key, raw in value.items():
-        if type(raw) not in (list, tuple) or len(raw) != _DIMENSION:
+        if type(raw) not in (list, tuple) or len(raw) != dimension:
             raise ValueError(_INVALID_VECTORS)
         if any(type(component) not in (int, float) for component in raw):
             raise ValueError(_INVALID_VECTORS)
@@ -196,7 +196,8 @@ def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def evaluate(dataset: object, image_vectors: object, text_vectors: object) -> dict[str, Any]:
+def evaluate(dataset: object, image_vectors: object, text_vectors: object,
+             *, dimension: int = _DIMENSION) -> dict[str, Any]:
     """Evaluate exact image/query vector maps; return metrics without private inputs.
 
     Text vector keys are ``<case-id>:<language>``. Ranking uses dot products of
@@ -205,12 +206,14 @@ def evaluate(dataset: object, image_vectors: object, text_vectors: object) -> di
     No score threshold or activation decision is applied. ``matched_case_count``
     counts cases whose three language queries all rank a relevant image first.
     """
+    if type(dimension) is not int or dimension not in (_DIMENSION, 768):
+        raise ValueError(_INVALID_VECTORS)
     normalized = validate_dataset(dataset)
     image_ids = {image["id"] for image in normalized["images"]}
     query_ids = {f'{case["id"]}:{language}'
                  for case in normalized["cases"] for language in _LANGUAGES}
-    images = _vectors(image_vectors, image_ids)
-    texts = _vectors(text_vectors, query_ids)
+    images = _vectors(image_vectors, image_ids, dimension)
+    texts = _vectors(text_vectors, query_ids, dimension)
     languages: dict[str, list[dict[str, Any]]] = {language: [] for language in _LANGUAGES}
     case_metrics: list[dict[str, Any]] = []
 

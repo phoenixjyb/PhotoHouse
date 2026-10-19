@@ -196,6 +196,25 @@ def test_constant_vectors_with_eight_candidates_get_no_top_five_credit():
     assert report["languages"]["en"]["recall_at_5"] == 0.0
 
 
+def test_explicit_768_dimension_is_supported_without_changing_default_report():
+    value = dataset()
+    images, texts = vectors(value)
+    report_512 = evaluate(value, images, texts)
+    images_768 = {key: vector + [0.0] * 256 for key, vector in images.items()}
+    texts_768 = {key: vector + [0.0] * 256 for key, vector in texts.items()}
+    report_768 = evaluate(value, images_768, texts_768, dimension=768)
+    assert report_768 == report_512
+    with pytest.raises(ValueError, match="^invalid_semantic_scene_vectors$"):
+        evaluate(value, images_768, texts_768)
+
+
+def test_mixed_dimension_vectors_are_rejected_for_explicit_dimension():
+    images, texts = vectors()
+    images[next(iter(images))] += [0.0] * 256
+    with pytest.raises(ValueError, match="^invalid_semantic_scene_vectors$"):
+        evaluate(dataset(), images, texts, dimension=768)
+
+
 def test_nonrelevant_candidate_within_epsilon_counts_ahead_despite_id_order():
     value = dataset()
     images, texts = vectors(value)

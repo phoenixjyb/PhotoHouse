@@ -256,6 +256,8 @@ FILES = (
     'scripts/qualify_semantic_pair.py',
     'scripts/semantic_scene_cases.py',
     'scripts/semantic_scene_translation.py',
+    'scripts/semantic_scene_translation_fidelity.py',
+    'scripts/qualify_multilingual_scenes.py',
     'scripts/semantic_scene_comparison.py',
     'scripts/semantic_reviewed_projection.py',
     'scripts/serve_reviewed_semantic_text.py',
