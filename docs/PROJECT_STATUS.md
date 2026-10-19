@@ -1,14 +1,27 @@
 # Current project status
 
-**October 19 combined gallery candidate:** source `f2041c1` integrates current
+**October 19 gallery delivery:** PR #94 merged after all five CI jobs passed.
+The Windows API/Web now serves immutable source `f2041c1`; native and independent
+Mac HTTPS checks verified the served HTML, JavaScript and CSS. Four stopped-writer
+database backups and four on-disk restore rehearsals passed, all nine runtime
+states were restored, and the other 78 task definitions were preserved. No schema
+migration or production database restore occurred. [Phone v73](../clients/android/docs/PHONE_V73_RELEASE_2026-10-19.md)
+is published on HTTPS OTA with the original certificate and icon; complete
+Windows and independent Mac APK downloads matched. Similar-photo stacks and
+the background upload service are available for family testing. The TV feed
+remains v30. Real-photo grouping quality and Samsung lock-screen upload acceptance
+remain open; source/test/OTA delivery does not establish device installation.
+
+**Earlier October 19 combined gallery qualification:** source `f2041c1` integrates current
 main and the newer deployed visual-review source `3c2c48f`, preserving search
 and upload guards alongside photo stacks. The complete API profile passed
 2,508 tests / 2,510 subtests, the generated demo, seven staging-package tests
 and three affected Web journeys. Its fixed 245-file API package also passed
 native Windows qualification: all nine generated cases and both bounded-child
 Job proofs passed. The finished temporary task was removed; all nine production
-task definitions were preserved. The API/Web cutover and Android visual/release
-gates remain open. Native qualification is not a live deployment. See the
+task definitions were preserved. At that checkpoint the API/Web cutover and Android
+visual/release gates remained open; the delivery above closes those release gates.
+Native qualification alone is not a live deployment. See the
 [photo-stack qualification record](SIMILAR_PHOTO_STACKS.md#visual-review-integration-qualification--october-19).
 
 ## October 19 development candidate

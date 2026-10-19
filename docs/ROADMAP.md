@@ -1,14 +1,14 @@
 # Product roadmap
 
-**October 19 source work:** [similar-photo stacks](SIMILAR_PHOTO_STACKS.md) add
+**October 19 delivery:** [similar-photo stacks](SIMILAR_PHOTO_STACKS.md) add
 conservative, page-local suggestions from existing perceptual hashes and capture
 times, with a stricter same-upload fallback for undated photos. Web and phone
 controls preserve every original and the complete viewer sequence. This is a
-source candidate; no API rollout or phone publication is implied. Whole-library
+live API/Web release with phone v73 available on HTTPS OTA. Whole-library
 indexing, saved cover/separation preferences and family visual calibration remain
 later work.
 
-The separate [upload-preparation read](UPLOAD_PREPARATION.md) now has an implementation candidate;
+The separate [upload-preparation read](UPLOAD_PREPARATION.md) is also in the live API;
 client negotiation and visible stage labels remain the next import-status slice.
 Do not label previews or video playback ready from task completion alone.
 

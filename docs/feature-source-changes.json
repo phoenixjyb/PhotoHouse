@@ -25137,6 +25137,50 @@
       "production_task_definitions_preserved": 9,
       "deployed_or_published": false,
       "notes": "Native generated-data run passed once; exact pinned registration script used a short file bootstrap after command-budget refusal before dispatch. No live API cutover or phone delivery."
+    },
+    {
+      "feature": "gallery-api-and-phone-v73-live-delivery-record",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "f633f428c22aece2d499e98ebaf3e40660df5ae5e48d45a53a7234437c45b859",
+          "before_sha256": "19452f118ba9bcc6fb7fb27909071c83539b965c39fc17b0756a2f01347ff4a4"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "sha256": "859d56234bfcd5aae6bd774a890d78590482c2e736f88be62ed2d7688145b1ac",
+          "before_sha256": "5bd6f7858edd7e93e987228e01dae47126feaa51838c787abb23ceed770fbd60"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "92481fc893e5a42c07b5866b23ab27a78b2a49cb7a84994097dc1c349fc45fea",
+          "before_sha256": "6898213ce9d567e1488a517eb290774448391d2818493d77961ba8a885a3722d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "ecfd64a80abc93160416ba58caf0331a8438bd3cdd27a6bd93af5ac150295c6d",
+          "before_sha256": "31218beda1fe251aceac2980866ba24b5c0a105243baf176d04fd728b72a30b3"
+        },
+        {
+          "path": "clients/android/docs/PHONE_BACKGROUND_UPLOAD.md",
+          "sha256": "44e91275cfe9decdcab2ef86d37b175423d025fc6053d8e64124a9ed4c2207ab",
+          "before_sha256": "45c3e56e085b8b8599a07be2a2d292ac0c1b5883befdd6741d5c19094d7735e8"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V73_RELEASE_2026-10-19.md",
+          "sha256": "e3d888bf3dc58e7220ff7a4769775dd0510d23ed77a0d2292759d0b7f46ccbae"
+        }
+      ],
+      "source_merge_commit": "4459ad8d9d6cf40ec719d48301cc507204a974c5",
+      "qualified_api_source_commit": "f2041c1c2cb554350112c9a163de39f4c8c0af91",
+      "phone_build_source_commit": "d0be1bfbf5702745e54ddd118d674d705523b477",
+      "hosted_ci_jobs_passed": 5,
+      "native_api_postflight_passed": true,
+      "phone_version_published": 73,
+      "phone_signed_sha256": "3b6d92ffa56eea586a5a0de076c1766c1e022f3ee1b05b890f3f64d699e5dca3",
+      "independent_https_readbacks_passed": true,
+      "physical_phone_acceptance": false,
+      "notes": "Guarded API-only source rollout with four stopped-writer backups/restores verified; all nine runtime states and other78 task definitions preserved. Phone native/full HTTPS publication readback passed without API restart or TV feed change. Family grouping and lock-screen upload quality remain separate."
     }
   ]
 }
