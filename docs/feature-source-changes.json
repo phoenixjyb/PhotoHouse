@@ -23575,6 +23575,23 @@
       "operator_tool_changed": true,
       "people_index_enabled": false,
       "kinship_graph_enabled": false
+    },
+    {
+      "feature": "deterministic-descriptive-search-functional-fixture-clock",
+      "source_commit": "1dbd220dfd676f0ea32cb4d3c8cd4b9cd81a92c0",
+      "files": [
+        {
+          "path": "server/tests/security/test_descriptive_search.py",
+          "before_sha256": "4706aeee4644639d7b01b8208721babbccd61e4b136106678d0d9503904dd371",
+          "sha256": "a8b4b4e8733d1b064492fe24e75cd302f9a438b13e7024957cee4824bbcf303d"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false,
+      "test_fixture_only": true
     }
   ]
 }
