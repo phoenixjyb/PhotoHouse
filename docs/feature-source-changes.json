@@ -25427,6 +25427,49 @@
       "backend_contract_tests_passed": 63,
       "backend_contract_subtests_passed": 28,
       "notes": "Expandable own-receipt stage evidence with exact receipt matching, request scope fencing and older-server fallback. Task completion and record presence never claim viewable preview or playback. Synthetic Web and 150 percent Chinese/English QA renders inspected; no physical installation or live operation."
+    },
+    {
+      "feature": "v74-web-phone-verified-delivery-documentation-20261020",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "716acae87a9747ddb800f8a630ade2c0ec103194a23e9ce6fec53c1252bbf521",
+          "before_sha256": "11ecdaffe111c649010b49be559a65e2de69410951dbca14f661f52b4e37746d"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V74_CANDIDATE_2026-10-19.md",
+          "sha256": "7b0cfc9c7a3091488ff39c22f7b13bc8477a49c457de12aa666141bfe971e61f",
+          "before_sha256": "97d6cfeb5ed198db824a2b804b272bf25c55959b867d4e660d6315c2d1f8c259"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md",
+          "sha256": "d980e01c6024e42d56ce09cad2403d8409f13d1302fde54672d25a89524aace4",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/PHONE_IMPORT_STATUS.md",
+          "sha256": "760a8d16fd170a7f9825bace2617f93b008bbfaf5513201a210273d265bc8e31",
+          "before_sha256": "e6bdb5fe06ae2cfda628395a4ec05cef4902dc3f8890ea3264cd60ce524fdad8"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "1f401a7940e0e6c6c4d65d3d7f0dbe8a30501934587c75c18eb660a199860785",
+          "before_sha256": "a32a670546924561f840e5fad8eddf63660d3d1171d8173925286c3a505edf59"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "1e8f6e8495edb977a8f2eec2f17223fd64405d82efb2b7a74600a68b7721f94e",
+          "before_sha256": "257b82d13845cf5be31222f5053d517aec827714d76b2ef8c74f9d6d7d8a0efd"
+        },
+        {
+          "path": "docs/UPLOAD_PREPARATION.md",
+          "sha256": "4ce2396dbda7ee92e92f7d6feeb880a73e246740b3758073bf9a694aa6eeacf0",
+          "before_sha256": "3c50c2aaf887f064caba2b4b72ff5367fe9735112e520223950295d9165b5a50"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "notes": "Record the completed source 9e39ebd API/Web and original-certificate v74 OTA delivery, independent source/APK readbacks and separate physical family acceptance. Documentation only; this commit performs no deployment, publication or device installation."
     }
   ]
 }
