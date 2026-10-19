@@ -6028,7 +6028,7 @@ class ConnectedStore(
                     photoStackGalleryReadWithOfflineRecovery(credential, library, page, media, generation)
                 } catch (e: ApiFailure) {
                     if (e.kind != FailureKind.HTTP || e.status !in setOf(400, 404)) throw e
-                    PhotoStackGallery(api.gallery(credential, library, page, media), null)
+                    PhotoStackGallery(legacyGalleryReadWithOfflineRecovery(credential, library, page, media, generation), null)
                 }
                 val gallery = withStacks.gallery
                 if (!active(generation)) return@launch
@@ -6110,6 +6110,19 @@ class ConnectedStore(
             delay(GALLERY_RECOVERY_DELAY_MILLIS)
             if (!active(generation)) throw CancellationException("Gallery read is no longer active")
             return api.galleryWithPhotoStacks(credential, library, page, media)
+        }
+    }
+    /** Preserve established old-server recovery once stacks are explicitly unsupported. */
+    private suspend fun legacyGalleryReadWithOfflineRecovery(
+        credential: Bearer, library: String, page: Int, media: GalleryMedia, generation: Long,
+    ): Gallery {
+        try {
+            return api.gallery(credential, library, page, media)
+        } catch (e: ApiFailure) {
+            if (e.kind != FailureKind.OFFLINE) throw e
+            delay(GALLERY_RECOVERY_DELAY_MILLIS)
+            if (!active(generation)) throw CancellationException("Gallery read is no longer active")
+            return api.gallery(credential, library, page, media)
         }
     }
     fun navigatePage(page: Int) {
