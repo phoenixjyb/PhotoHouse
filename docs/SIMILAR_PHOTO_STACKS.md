@@ -146,3 +146,27 @@ documentation commits do not rebuild that artifact. Windows qualification and
 cutover, full Android qualification, phone visual acceptance and signed OTA
 delivery remain separate gates. No deployment or publication occurred in this
 source preparation round.
+
+### Visual-review integration qualification — October 19
+
+A fresh read-only runtime check found the API had advanced to visual-review
+source `3c2c48f`; GitHub main includes it through `1df9d89`. The later immutable
+candidate `f2041c1c2cb554350112c9a163de39f4c8c0af91` integrates that source with
+photo stacks. The earlier `966cf13` qualification remains evidence only for its
+own artifact and must not justify replacing the newer deployed functionality.
+
+The combined candidate passed **2,508 API tests and 2,510 subtests**, followed
+by the generated no-listener demo, with unchanged source and commit throughout.
+Seven staging-package tests and three generated browser journeys passed: photo
+stacks, owner visual review and upload history. Synthetic enlarged Chinese
+phone renders were inspected. The closed application has 174 registered routes,
+including the original preparation read and the incoming owner-review routes.
+
+The new fixed API ZIP contains 245 source files, SHA-256
+`db603eb8c4f87f4daf2302c60ef94f66ddb6642ded2bef84b2afc6ea23c9af77`;
+exact committed-source inspection passed. A separate generated nine-case
+gallery qualification passes locally against the extracted package, including
+Windows-style socketpair compatibility with ordinary network calls blocked.
+This local result and read-only native syntax parsing do not establish a
+Windows execution pass. Staging, temporary qualification task registration/run,
+API cutover and phone signing/publication retain their separate operation gates.

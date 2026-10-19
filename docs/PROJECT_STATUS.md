@@ -1,12 +1,13 @@
 # Current project status
 
-**October 19 combined gallery candidate:** source `966cf13` preserves the deployed
-search/upload fixes and passes the complete API profile (2,464 tests / 2,486
-subtests), generated demo, seven staging-package tests and the integrated Web
-journey. Its fixed 241-file API package is prepared locally; native Windows
-qualification and live delivery are outstanding. Android visual verification
-remains blocked by an emulator startup ANR. See the
-[photo-stack qualification record](SIMILAR_PHOTO_STACKS.md#combined-api-candidate-qualification).
+**October 19 combined gallery candidate:** source `f2041c1` integrates current
+main and the newer deployed visual-review source `3c2c48f`, preserving search
+and upload guards alongside photo stacks. The complete API profile passed
+2,508 tests / 2,510 subtests, the generated demo, seven staging-package tests
+and three affected Web journeys. Its fixed 245-file API package is prepared
+locally. Windows execution/delivery and the Android visual gate remain open;
+read-only native syntax checks are not deployment. See the
+[photo-stack qualification record](SIMILAR_PHOTO_STACKS.md#visual-review-integration-qualification--october-19).
 
 ## October 19 development candidate
 
