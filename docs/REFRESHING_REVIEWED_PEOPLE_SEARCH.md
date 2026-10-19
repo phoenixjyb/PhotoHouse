@@ -107,3 +107,56 @@ upload continuity, stale catalog/face/graph contexts and account isolation.
 
 Video capture-date repairs require a separate operator proposal and review.
 Neither people-index preparation command writes capture dates.
+
+## Read-only identity readiness inspection
+
+Before preparing a source-bound people index, an operator can classify a small,
+explicit selection without adopting any person or changing the serving gates.
+`server/scripts/inspect_reviewed_people_readiness.py` accepts only the selected
+person IDs and manual face IDs supplied in a private file. It does not enumerate
+candidate people or faces, install an artifact, or modify the database.
+
+The strict selection shape is:
+
+```json
+{
+  "schema": 1,
+  "library_id": "LIBRARY_ID",
+  "people": [{"id": "PERSON_ID", "label": "CURRENTLY_REVIEWED_LABEL"}],
+  "assignments": [{"id": "FACE_ID", "asset_id": "ASSET_ID",
+                   "person_id": "PERSON_ID", "source": "manual"}]
+}
+```
+
+Each person and face ID must be explicit, unique, and within the supplied
+library. A selected person is `exact_owned` only when the owning-library row and
+current display label match the selection. An unowned person with at least one
+active face in this library is reported as `legacy_visible_without_owner`; that
+status explains directory visibility but does not grant search admission. A
+foreign-owned, hidden, absent, or changed-label record is summarized as
+`name_changed_or_unavailable` without returning its current foreign label or
+library ID. For visible selected legacy records only, the report may include a
+single `outside_or_unmapped_faces` boolean; it contains no face or library IDs.
+
+Assignments are checked only by their selected face IDs and only through active
+assets in the selected library. They are `manual_current`, `not_manual`, or
+`unavailable`; out-of-library rows are never returned. Readiness is true only
+when every selected person is exactly owned with the selected label, each has at
+least one selected current manual assignment, and every selected assignment is
+current. This is a preparation precondition only. It does not approve a person,
+repair ownership, merge clusters, or create a loadable index.
+
+Use a private selection file (POSIX mode 0600) and a private output directory
+(POSIX mode 0700; output files are exclusive mode 0600). The output path must
+not already exist:
+
+```text
+python server/scripts/inspect_reviewed_people_readiness.py \
+  --database /private/operator/library.sqlite \
+  --library LIBRARY_ID \
+  --selection /private/operator/selected-people.json \
+  --out /private/operator/people-readiness.json
+```
+
+The output is a private `requires_explicit_review` inspection packet, never an
+index artifact. Standard output contains only counts and hashes.

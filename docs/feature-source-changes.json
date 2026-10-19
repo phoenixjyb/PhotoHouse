@@ -23429,6 +23429,39 @@
       "schema_changed": false,
       "authorization_changed": false,
       "runtime_changed": false
+    },
+    {
+      "feature": "reviewed-people-identity-readiness-inspection",
+      "source_commit": "da9f6b950514cb3c34759de84987c4a197b17a53",
+      "files": [
+        {
+          "path": "server/scripts/inspect_reviewed_people_readiness.py",
+          "before_sha256": null,
+          "sha256": "2466cbf9c8339c0274aad7ad5896ad8747d7bd622036d08d6a3f37b6e0e27838"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_people_readiness.py",
+          "before_sha256": null,
+          "sha256": "79945b99c0ea11ab17f7ffdf1e513d6c5ceb49c57a6037be7a5598dbbe9aca5c"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": "96b5d2ae35eb994628ca13eab3218f9e182009c24d79a2d2c88e3112ef662fad",
+          "sha256": "8cf4f76c8677b92cbbd2926700c6aa269349718063084a758d21194d76411e78"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "36a7b98953570226a50d3a3c01d073c9e93116442d70af7c7ed0e0909dca385a",
+          "sha256": "f4fcc3df670ccc7529e6159bf251ff76bbc6027e03bf3ad021197f1233df9a29"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": false,
+      "people_index_enabled": false,
+      "kinship_graph_enabled": false
     }
   ]
 }
