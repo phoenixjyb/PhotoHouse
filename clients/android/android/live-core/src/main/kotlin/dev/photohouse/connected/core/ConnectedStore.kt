@@ -264,6 +264,15 @@ data class FamilyTagsBrowsing(
     val selectedTag: String? = null, val assetPage: Int = 1, val busy: Boolean = false, val problem: LiveProblem? = null,
 )
 data class UploadHistoryState(val page: Int = 1, val total: Int = 0, val items: List<UploadHistoryItem> = emptyList(), val busy: Boolean = false, val unavailable: Boolean = false)
+enum class UploadPreparationStatus { LOADING, AVAILABLE, UNSUPPORTED, UNAVAILABLE }
+enum class UploadPreparationFailure { TRANSIENT, INVALID_RESPONSE }
+data class UploadPreparationState(
+    val status: UploadPreparationStatus,
+    val page: Int,
+    val total: Int = 0,
+    val items: List<UploadPreparationItem> = emptyList(),
+    val failure: UploadPreparationFailure? = null,
+)
 data class UploadAnnotationWriteState(
     val library: String, val request: UploadTextAnnotationRequest, val busy: Boolean = false,
     val result: UploadAnnotation? = null, val failure: ApiFailure? = null,
@@ -371,6 +380,7 @@ data class LiveState(
     val memoryGroupGallery: List<Asset> = emptyList(),
     val upload: UploadStore? = null,
     val uploadHistory: UploadHistoryState? = null,
+    val uploadPreparation: UploadPreparationState? = null,
     val uploadAnnotationWrite: UploadAnnotationWriteState? = null,
     val uploadAudioAnnotationWrite: UploadAudioAnnotationWriteState? = null,
     val uploadAnnotationRead: UploadAnnotationReadState? = null,
@@ -499,6 +509,7 @@ class ConnectedStore(
     private val requests = mutableSetOf<Job>()
     private var retry: (() -> Unit)? = null
     private var uploadHistoryRequest = 0L
+    private var uploadPreparationRequest = 0L
     private var uploadAnnotationAudioRequest = 0L
     private var uploadAnnotationAudioJob: Job? = null
     private var groupedStoryRequest = 0L
@@ -763,6 +774,7 @@ class ConnectedStore(
         bookCompositionDictation.clear()
         bookCompositionStore?.close()
         val previous = state.value
+        uploadHistoryRequest++; uploadPreparationRequest++
         groupedStoryRequest++; groupedStoryPageRequest++; groupedStoryAlbumsRequest++
         groupedStoryAlbumPageRequest++; groupedStoryAlbumChoiceRequest++
         savedGroupedStoryEditRequest++
@@ -4978,21 +4990,58 @@ class ConnectedStore(
             page !in 1..100000 || state.value.uploadHistory?.busy == true) return
         val credential = token!!
         val request = ++uploadHistoryRequest
-        mutable.value = state.value.copy(uploadHistory = UploadHistoryState(page = page, busy = true))
+        val preparationRequest = ++uploadPreparationRequest
+        val account = identity?.account_id
+        mutable.value = state.value.copy(uploadHistory = UploadHistoryState(page = page, busy = true),
+            uploadPreparation = UploadPreparationState(UploadPreparationStatus.LOADING, page))
         launch { generation ->
             try {
                 val result = api.uploadHistory(credential, page)
-                if (!active(generation) || request != uploadHistoryRequest) return@launch
-                mutable.value = state.value.copy(uploadHistory = UploadHistoryState(result.page, result.total, result.items))
+                if (!active(generation) || request != uploadHistoryRequest || preparationRequest != uploadPreparationRequest ||
+                    identity?.account_id != account || state.value.uploadPreparation?.page != page) return@launch
+                mutable.value = state.value.copy(uploadHistory = UploadHistoryState(result.page, result.total, result.items),
+                    uploadPreparation = UploadPreparationState(UploadPreparationStatus.LOADING, result.page, result.total))
+                try {
+                    val preparation = api.uploadPreparation(credential, page)
+                    if (!active(generation) || request != uploadHistoryRequest || preparationRequest != uploadPreparationRequest ||
+                        identity?.account_id != account || state.value.uploadPreparation?.page != page) return@launch
+                    val snapshotMatches = preparation.page == result.page && preparation.total == result.total &&
+                        preparation.items.size == result.items.size
+                    val evidenceByAsset = preparation.items.associateBy { it.receipt.assetId }
+                    val attached = result.items.map { receipt ->
+                        val evidence = evidenceByAsset[receipt.assetId]
+                        UploadPreparationItem(receipt, evidence?.takeIf { snapshotMatches && it.receipt == receipt }?.processing)
+                    }
+                    mutable.value = state.value.copy(uploadPreparation = UploadPreparationState(
+                        UploadPreparationStatus.AVAILABLE, result.page, result.total, attached))
+                } catch (e: CancellationException) { throw e }
+                catch (e: Exception) {
+                    if (!active(generation) || request != uploadHistoryRequest || preparationRequest != uploadPreparationRequest ||
+                        identity?.account_id != account || state.value.uploadPreparation?.page != page) return@launch
+                    when {
+                        e is ApiFailure && e.status == 401 -> readFailure(e, generation, credential) { background(); foreground() }
+                        e is ApiFailure && e.status == 403 -> mutable.value = state.value.copy(uploadPreparation = null)
+                        e is ApiFailure && e.status in setOf(404, 405, 501) -> mutable.value = state.value.copy(
+                            uploadPreparation = UploadPreparationState(UploadPreparationStatus.UNSUPPORTED, page, result.total))
+                        e is ApiFailure && e.kind == FailureKind.INVALID_RESPONSE -> mutable.value = state.value.copy(
+                            uploadPreparation = UploadPreparationState(UploadPreparationStatus.UNAVAILABLE, page, result.total,
+                                failure = UploadPreparationFailure.INVALID_RESPONSE))
+                        else -> mutable.value = state.value.copy(uploadPreparation = UploadPreparationState(
+                            UploadPreparationStatus.UNAVAILABLE, page, result.total, failure = UploadPreparationFailure.TRANSIENT))
+                    }
+                }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                if (!active(generation) || request != uploadHistoryRequest) return@launch
+                if (!active(generation) || request != uploadHistoryRequest || preparationRequest != uploadPreparationRequest ||
+                    identity?.account_id != account || state.value.uploadPreparation?.page != page) return@launch
                 if (e is ApiFailure && e.status == 401) {
                     readFailure(e, generation, credential) { background(); foreground() }
                 } else if (e is ApiFailure && e.status in listOf(403, 404, 503)) {
-                    mutable.value = state.value.copy(uploadHistory = UploadHistoryState(page = page, busy = false, unavailable = true))
+                    mutable.value = state.value.copy(uploadHistory = UploadHistoryState(page = page, busy = false, unavailable = true),
+                        uploadPreparation = null)
                 } else {
-                    mutable.value = state.value.copy(uploadHistory = UploadHistoryState(page = page, unavailable = true), problem = problem(e))
+                    mutable.value = state.value.copy(uploadHistory = UploadHistoryState(page = page, unavailable = true),
+                        uploadPreparation = null, problem = problem(e))
                 }
             }
         }
@@ -5006,7 +5055,10 @@ class ConnectedStore(
         if (state.value.library == target) { openAssetById(item.assetId); return }
         selectLibrary(target) { openAssetById(item.assetId) }
     }
-    fun closeUploadHistory() { uploadHistoryRequest++; mutable.value = state.value.copy(uploadHistory = null) }
+    fun closeUploadHistory() {
+        uploadHistoryRequest++; uploadPreparationRequest++
+        mutable.value = state.value.copy(uploadHistory = null, uploadPreparation = null)
+    }
     fun saveUploadTextAnnotation(library: String, batch: String, assetId: String, language: String, consent: String, text: String) {
         val previous = state.value.uploadAnnotationWrite
         val stableMutation = previous?.takeIf { it.library == library && it.request.batch == batch && it.request.assetId == assetId &&

@@ -381,8 +381,107 @@ class ConnectedStoreTest {
         store.authenticate("+12025550123", "synthetic-password-only"); runCurrent()
         store.loadUploadHistory(); runCurrent()
         assertEquals("901", store.state.value.uploadHistory?.items?.single()?.assetId)
+        assertEquals(UploadPreparationStatus.UNSUPPORTED, store.state.value.uploadPreparation?.status)
         store.background(); assertNull(store.state.value.uploadHistory)
     }
+    @Test fun preparationFailureDoesNotHideReceiptAndReceiptMismatchStaysUnknown() = runTest {
+        val receipt = UploadHistoryItem("901", 1760000000, 1234, "image", "available", "family")
+        val api = FakeApi().apply {
+            protectedNativeV2Enabled = true; uploadEnabled = true
+            uploadHistoryResult = UploadHistoryPage(1, 10, 1, listOf(receipt))
+            preparationError = ApiFailure(FailureKind.HTTP, 503)
+        }
+        val store = store(api)
+        store.authenticate("+12025550123", "synthetic-password-only"); runCurrent()
+        store.loadUploadHistory(); runCurrent()
+        assertEquals(receipt, store.state.value.uploadHistory?.items?.single())
+        assertEquals(UploadPreparationStatus.UNAVAILABLE, store.state.value.uploadPreparation?.status)
+
+        api.preparationError = null
+        api.preparationResult = preparationPage(receipt.copy(bytes = 1235))
+        store.loadUploadHistory(); runCurrent()
+        assertEquals(receipt, store.state.value.uploadHistory?.items?.single())
+        assertNull(store.state.value.uploadPreparation?.items?.single()?.processing)
+    }
+    @Test fun preparationAuthorizationDenialKeepsLegacyHistoryAndUnsupportedFallbackIsSeparate() = runTest {
+        val receipt = UploadHistoryItem("901", 1760000000, 1234, "image", "available", "family")
+        val api = FakeApi().apply {
+            protectedNativeV2Enabled = true; uploadEnabled = true
+            uploadHistoryResult = UploadHistoryPage(1, 10, 1, listOf(receipt))
+            preparationError = ApiFailure(FailureKind.HTTP, 403)
+        }
+        val store = store(api)
+        store.authenticate("+12025550123", "synthetic-password-only"); runCurrent()
+        store.loadUploadHistory(); runCurrent()
+        assertEquals(receipt, store.state.value.uploadHistory?.items?.single())
+        assertNull(store.state.value.uploadPreparation)
+        api.preparationError = ApiFailure(FailureKind.HTTP, 404)
+        store.loadUploadHistory(); runCurrent()
+        assertEquals(UploadPreparationStatus.UNSUPPORTED, store.state.value.uploadPreparation?.status)
+        assertEquals(receipt, store.state.value.uploadHistory?.items?.single())
+    }
+    @Test fun latePreparationIsDiscardedAfterCloseAndBackground() = runTest {
+        val receipt = UploadHistoryItem("901", 1760000000, 1234, "image", "available", "family")
+        val api = FakeApi().apply {
+            protectedNativeV2Enabled = true; uploadEnabled = true
+            uploadHistoryResult = UploadHistoryPage(1, 10, 1, listOf(receipt))
+            preparationError = null; preparationResult = preparationPage(receipt)
+            preparationGate = CompletableDeferred()
+        }
+        val store = store(api)
+        store.authenticate("+12025550123", "synthetic-password-only"); runCurrent()
+        store.loadUploadHistory(); runCurrent()
+        assertEquals(UploadPreparationStatus.LOADING, store.state.value.uploadPreparation?.status)
+        store.closeUploadHistory()
+        api.preparationGate!!.complete(Unit); runCurrent()
+        assertNull(store.state.value.uploadPreparation)
+
+        api.preparationGate = CompletableDeferred()
+        store.loadUploadHistory(); runCurrent()
+        store.background()
+        api.preparationGate!!.complete(Unit); runCurrent()
+        assertNull(store.state.value.uploadHistory)
+        assertNull(store.state.value.uploadPreparation)
+    }
+    @Test fun preparation401UsesIdentityRecoveryAndLatePageOrAccountResultsAreDropped() = runTest {
+        val receipt = UploadHistoryItem("901", 1760000000, 1234, "image", "available", "family")
+        val api = FakeApi().apply {
+            protectedNativeV2Enabled = true; uploadEnabled = true
+            uploadHistoryResult = UploadHistoryPage(1, 10, 1, listOf(receipt))
+            preparationError = ApiFailure(FailureKind.HTTP, 401)
+        }
+        val store = store(api)
+        store.authenticate("+12025550123", "synthetic-password-only"); runCurrent()
+        api.sessionError = ApiFailure(FailureKind.HTTP, 401)
+        store.loadUploadHistory(); runCurrent()
+        assertFalse(store.hasSession)
+        assertNull(store.state.value.uploadHistory)
+
+        api.sessionError = null; api.preparationError = null
+        api.preparationResult = preparationPage(receipt)
+        store.authenticate("+12025550123", "synthetic-password-only"); runCurrent()
+        api.preparationGate = CompletableDeferred()
+        store.loadUploadHistory(1); runCurrent()
+        api.uploadHistoryResult = UploadHistoryPage(2, 10, 0, emptyList())
+        store.loadUploadHistory(2); runCurrent()
+        api.preparationGate!!.complete(Unit); runCurrent()
+        assertEquals(2, store.state.value.uploadHistory?.page)
+        assertEquals(2, store.state.value.uploadPreparation?.page)
+
+        api.preparationGate = CompletableDeferred()
+        store.loadUploadHistory(1); runCurrent()
+        store.logout(); runCurrent()
+        api.preparationGate!!.complete(Unit); runCurrent()
+        assertNull(store.state.value.uploadPreparation)
+        assertNull(store.state.value.uploadHistory)
+    }
+
+    private fun preparationPage(receipt: UploadHistoryItem) = UploadPreparationPage(1, 10, 1, listOf(
+        UploadPreparationItem(receipt, UploadProcessingEvidence(
+            UploadPreparationStage.entries.associateWith { UploadPreparationStageState.UNKNOWN },
+            UploadPreparationRecords(false, false, false), mapOf("preview" to UploadPreparationAvailability.UNKNOWN,
+                "playback" to if (receipt.kind == "image") UploadPreparationAvailability.NOT_APPLICABLE else UploadPreparationAvailability.UNKNOWN)))
+    ))
     @Test fun annotationRetryKeepsMutationIdAfterUncertainFailure() = runTest {
         val api = FakeApi().apply { protectedNativeV2Enabled = true; uploadEnabled = true; annotationFailures = 1 }
         val store = store(api)
@@ -633,6 +732,13 @@ class ConnectedStoreTest {
         override suspend fun uploadHistory(token: Bearer, page: Int): UploadHistoryPage {
             historyGate?.await(); historyError?.let { throw it }
             return uploadHistoryResult.copy(page = page)
+        }
+        var preparationResult: UploadPreparationPage? = null
+        var preparationError: ApiFailure? = ApiFailure(FailureKind.HTTP, 404)
+        var preparationGate: CompletableDeferred<Unit>? = null
+        override suspend fun uploadPreparation(token: Bearer, page: Int): UploadPreparationPage {
+            preparationGate?.await(); preparationError?.let { throw it }
+            return (preparationResult ?: error("missing fixture preparation result")).copy(page = page)
         }
         val annotationRequests = mutableListOf<UploadTextAnnotationRequest>()
         var annotationFailures = 0

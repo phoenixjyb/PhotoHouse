@@ -1210,6 +1210,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                         workspaceExpanded = importProgressExpanded,
                                         onToggleWorkspace = { importProgressExpanded = !importProgressExpanded },
                                         activity = batchActivity, onRetryBatch = { runBatchInBackground(BatchUploadCommand.RETRY_BATCH, it) },
+                                        preparation = state.uploadPreparation,
                                     )
                                 }
                                 }

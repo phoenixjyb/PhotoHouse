@@ -50,6 +50,9 @@ interface PhotoHouseApi {
         throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun uploadHistory(token: Bearer, page: Int = 1): UploadHistoryPage =
         throw ApiFailure(FailureKind.INVALID_INPUT)
+    /** Optional additive processing evidence; older servers and adapters report unsupported. */
+    suspend fun uploadPreparation(token: Bearer, page: Int = 1): UploadPreparationPage =
+        throw ApiFailure(FailureKind.HTTP, 404)
     suspend fun postUploadTextAnnotation(token: Bearer, library: String, request: UploadTextAnnotationRequest): UploadAnnotation =
         throw ApiFailure(FailureKind.INVALID_INPUT)
     suspend fun postUploadAudioAnnotation(token: Bearer, library: String, request: UploadAudioAnnotationRequest): UploadAnnotation =

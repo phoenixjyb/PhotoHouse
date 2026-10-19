@@ -25296,6 +25296,137 @@
       "client_contract_changed": false,
       "production_data_written": false,
       "integration_note": "Preserve current gallery/upload release and append the reviewed R38 search changes; package and check-profile closures retain both feature sets."
+    },
+    {
+      "feature": "own-upload-preparation-web-phone-v74-presentation",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "sha256": "40376ded9a939e9b86888afd1ccd64ded1cfe5209131798921b124a8b93a9504",
+          "before_sha256": "daf2b422b44cf701424134e2043a558831540b58441d90f6bf68b68967549a95"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/UploadPreparationUiTest.kt",
+          "sha256": "8abafc5d3b5d8ad016bd98cc15745cfaa643167b76a404addbeb6f1123d0d92f"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "sha256": "f372e8ce319da9ffdb7ab778975516d3c0b2cae748847b28a04f2e269e078293",
+          "before_sha256": "b1b9321401e29f8ca380a054d379653b8444ecb908a1394771562fda007c7f14"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ImportStatusPanel.kt",
+          "sha256": "363428462ca9479ccd29b5c16e438c064ee0b6678083e71da070a681c1b005e8",
+          "before_sha256": "573590b4cda56d6c62832328b20d50737c90d3426ca179f524ee5c97b423f8d5"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/UploadPreparationDetails.kt",
+          "sha256": "05d65cf17548d95dd698425b99f94e28ba859af73f7dfdbcd1aad65ce4be3a67"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "sha256": "9d8538730672523fce236325a501f5e525481cb955395268b64648c91bcb16fe",
+          "before_sha256": "dc95cbb60b5779ed75b967350196fb23a07dbc1ba6ca1cec0146744c790b0be5"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsPhotoHouseApi.kt",
+          "sha256": "614b7143736fca8a72b0f81e2e70836b2762e0429f6f2a30f8056c4fbe558c91",
+          "before_sha256": "37fce84a516f0c4dbb36421bf64b4f9b30671579609fc61738347392d15f218e"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoHouseApi.kt",
+          "sha256": "5e50c987536565e4e5994b77658da293c4a976d67b5b07c4d6e8946a782a1fb2",
+          "before_sha256": "f1ffe8d8105412db87db7b0f6497c090902082ed0f8d84cc3ccb6c11adb81f9d"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/UploadPreparationWire.kt",
+          "sha256": "429df938d5319529b389a228aec039d001be8e0fd4f002820df840649ab3fddb"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/ConnectedStoreTest.kt",
+          "sha256": "dfc130043d174367828498d19170f37ecce6be9fa25fd7a399d21fed916dca71",
+          "before_sha256": "ce76e3d4b2ae86d7cbf1f22be99ad8c499063b11748e255a9a05ba5459c4ecde"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsApiTest.kt",
+          "sha256": "98b4dc568c56eec8905547a55dfb9a04b1f8c896b55bb936f9bde0c956ac2d1f",
+          "before_sha256": "08dabb12f5041278111461416d020751ad5b771ec180edf9caf75702f03d4902"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/UploadPreparationWireTest.kt",
+          "sha256": "243381a90250e7163e9a123d28fde0477bed7e83ce50d450d6ef5030ea2f31cf"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V74_CANDIDATE_2026-10-19.md",
+          "sha256": "97d6cfeb5ed198db824a2b804b272bf25c55959b867d4e660d6315c2d1f8c259"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "3208e71ae009a7090c48f25dfb8dbb2d139e3e3242da269204b98031114a1d24",
+          "before_sha256": "ecfd64a80abc93160416ba58caf0331a8438bd3cdd27a6bd93af5ac150295c6d"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "a32a670546924561f840e5fad8eddf63660d3d1171d8173925286c3a505edf59",
+          "before_sha256": "f633f428c22aece2d499e98ebaf3e40660df5ae5e48d45a53a7234437c45b859"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "257b82d13845cf5be31222f5053d517aec827714d76b2ef8c74f9d6d7d8a0efd",
+          "before_sha256": "92481fc893e5a42c07b5866b23ab27a78b2a49cb7a84994097dc1c349fc45fea"
+        },
+        {
+          "path": "docs/UPLOAD_PREPARATION.md",
+          "sha256": "3c50c2aaf887f064caba2b4b72ff5367fe9735112e520223950295d9165b5a50",
+          "before_sha256": "fe1f11966eb1c9afbd37566358fe192d938adfd83cc4ebb6a21bfd3d449fc896"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "sha256": "baee12732049eb04c28ec5cc623eb89a4f0883b1f25a03b3edfa25bfb392474f",
+          "before_sha256": "ff0ff721c342a11d623e83af856ae0747730bbc8a4212a25e9d54cab16166243"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "9fbe188d549317ca50414e487e8b27b5c62f4ed661728d8f9b9b43265e7bc109",
+          "before_sha256": "b36d7c8c564e0d9db41c1fa5b81e925e3c90d185c5f58b4c26141ec023ea33bf"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "sha256": "c07dca3ef5eaa1894662a73d3c9b5436e703305f74eb91a6f172e8e0b43651ec",
+          "before_sha256": "c418197c84fa3d6bcd21f1621064beb4a363f257e0664315068d6080657ef84a"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "sha256": "7c39eae7a5c7f03e2b565972632e383f7611ab901ee57453c5cb7b188555161f",
+          "before_sha256": "4844df2a40e26f39bb992e03d63a3f5799884c62047f960e63c7bfae0b1c95b9"
+        },
+        {
+          "path": "server/tests/security/test_upload_preparation_browser.cjs",
+          "sha256": "8b89660e6fa1841b32c89f883166bbe46952955aaeecf68fb936196a4c6a3a2b"
+        },
+        {
+          "path": "server/tests/security/upload_preparation_browser_bridge.py",
+          "sha256": "45b35b4d57cc0d3d186cac70c4fbeb7f588aa72aab17f1ef12a0a2edb3596a35"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "9b90f7e435f548c9c05da6c1d1bb76d7ce762ccc36c3ad90096c884b1ed6c38c",
+          "before_sha256": "41b26f5697fbcaae5e485b9d15118d74016b7e55ecc1ec7516c6b8b557577f36"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "sha256": "94d9818135b2a2b715452ae06ed9f67bcadd3b167232e9112e74ffa293b8c1c4",
+          "before_sha256": "76a6328a3330be224beb81b65c9cbc423ea96cbc32c8b3301cfc9516b12afb04"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "core_jvm_tests_passed": 1146,
+      "qa_emulator_ui_tests_passed": 13,
+      "backend_contract_tests_passed": 63,
+      "backend_contract_subtests_passed": 28,
+      "notes": "Expandable own-receipt stage evidence with exact receipt matching, request scope fencing and older-server fallback. Task completion and record presence never claim viewable preview or playback. Synthetic Web and 150 percent Chinese/English QA renders inspected; no physical installation or live operation."
     }
   ]
 }

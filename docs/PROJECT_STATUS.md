@@ -24,17 +24,22 @@ visual/release gates remained open; the delivery above closes those release gate
 Native qualification alone is not a live deployment. See the
 [photo-stack qualification record](SIMILAR_PHOTO_STACKS.md#visual-review-integration-qualification--october-19).
 
-## October 19 development candidate
+## October 19 next development candidate
 
-[Similar-photo stacks](SIMILAR_PHOTO_STACKS.md) passed local backend, generated
-Web and 60 focused Android JVM checks for the protected gallery. Grouping is page-local and reversible;
-search/story result views and originals are unchanged. This is distinct from
-editorial shared-memory groups and does not enable those groups or any model.
-The companion account-owned upload-preparation endpoint is source work; client
-stage presentation remains outstanding. Neither feature has been deployed or
-published by this development round. Earlier dated runtime records below retain
-their original scope; the current live search overlay must be preserved in any
-future release composition.
+The [upload-preparation endpoint](UPLOAD_PREPARATION.md) is included in the live
+API above. New Web and [phone v74 source](../clients/android/docs/PHONE_V74_CANDIDATE_2026-10-19.md) now presents account-owned stage
+records in expandable upload-history rows, preserving the separate receipt and
+library labels. Unsupported/error responses leave receipts visible. Task completion
+never claims that a preview or playback is viewable. No queue retry or worker
+activation is added.
+
+The candidate passed 1,146 core JVM tests, debug build/lint, 13 QA-emulator
+import/preparation tests, the focused preparation browser journey and existing
+Web upload-history regression. Chinese/English 150% renders were inspected.
+These checks are separate from the live v73 delivery. It has not yet been signed, published or served; real
+Samsung upload/background-transfer acceptance remains open. Similar-photo stacks
+are already delivered as recorded above, and remain distinct from editorial
+shared-memory groups or any model activation.
 
 **October 18 API/CPU qualification:** the [R5 native synthetic trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)
 passed its Job-proof startup, 132 API tests, three `a0` journal tests, five invitation
