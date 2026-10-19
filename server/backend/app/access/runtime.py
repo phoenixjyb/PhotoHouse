@@ -202,6 +202,8 @@ class RuntimeConfiguration:
     assistant_intent_url: str | None = None
     assistant_intent_model: str | None = None
     assistant_intent_timeout_seconds: float = 20
+    semantic_configuration_path: Path | None = None
+    assistant_semantic_search_enabled: bool = False
 
     def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
         """Return explicit provider settings only; never build/serve or enable features."""
@@ -239,6 +241,14 @@ class RuntimeConfiguration:
         here, which refuses an incoming root that overlaps an original root — the invariant
         that keeps an unassigned upload unservable.
         """
+        if (type(self.assistant_semantic_search_enabled) is not bool or
+                (self.semantic_configuration_path is not None and
+                 not self.assistant_semantic_search_enabled)):
+            raise ValueError('Explicit semantic configuration opt-in required')
+        if self.assistant_semantic_search_enabled and (
+                not self.assistant_enabled or self.assistant_workspace_path is None or
+                not self.discovery_indexes or self.semantic_configuration_path is None):
+            raise ValueError('Semantic search requires assistant, workspace and discovery configuration')
         if type(self.story_title_suggestions_enabled) is not bool:
             raise ValueError('Explicit title suggestion opt-in required')
         if type(self.story_title_timeout_seconds) not in (int, float) or not 0 < self.story_title_timeout_seconds <= 30:
@@ -371,6 +381,22 @@ class RuntimeConfiguration:
             # This opens only an existing validated store in mode=rw. It never
             # initializes or creates the optional private database.
             assistant_workspace_store = AssistantWorkspaceStore(selected, clock=clock)
+        semantic_search_runtime = None
+        if self.assistant_semantic_search_enabled:
+            from .semantic_configuration import load_semantic_runtime
+            semantic_protected_paths = (self.database, self.derived_root, *self.original_roots,
+                *self.discovery_indexes,
+                *((self.incoming_root,) if self.incoming_root else ()),
+                *((self.update_root,) if self.update_root else ()),
+                *((self.assistant_workspace_path,) if self.assistant_workspace_path else ()),
+                *((self.assistant_journal_path,) if self.assistant_journal_path else ()),
+                *((self.assistant_kinship_path,) if self.assistant_kinship_path else ()),
+                *((self.original_deletion_journal_path,)
+                  if self.original_deletion_journal_path else ()))
+            semantic_search_runtime = load_semantic_runtime(
+                self.semantic_configuration_path, discovery=discovery,
+                source_root=Path(__file__).resolve().parents[4],
+                protected_paths=semantic_protected_paths)
         assistant_asr = None
         if self.assistant_asr_url is not None:
             from .assistant_speech import LocalAssistantAsr
@@ -412,4 +438,6 @@ class RuntimeConfiguration:
                           assistant_intent_planner=assistant_intent_planner,
                           assistant_reply_speech_enabled=self.assistant_reply_speech_enabled,
                           assistant_saved_memory_cards_enabled=self.assistant_saved_memory_cards_enabled,
+                          semantic_search_runtime=semantic_search_runtime,
+                          assistant_semantic_search_enabled=self.assistant_semantic_search_enabled,
                           update_root=self.update_root)

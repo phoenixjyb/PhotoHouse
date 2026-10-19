@@ -320,10 +320,18 @@ def _result_summary(value, library_id):
                   filters=filters, total=value['total'], has_more=value['has_more'],
                   effect=None if effect is None else dict(effect))
     if 'pending_intent' in value:
-        from .search_pending import validate_pending
-        if value['version'] not in (2, 3) or value['kind'] != 'clarification' or ctx is not None:
+        from .search_pending import description_context_digest, validate_pending
+        pending = validate_pending(value['pending_intent'])
+        description = pending['question'] == 'description'
+        if (value['version'] not in (2, 3) or value['kind'] != 'clarification' or
+                (not description and ctx is not None) or
+                (description and (value['version'] != 3 or ctx is None or
+                                  ctx.get('search_version') != 3 or
+                                  pending['binding'] != ctx['binding'] or
+                                  pending['context_digest'] !=
+                                  description_context_digest(ctx)))):
             raise ValueError('Invalid pending result')
-        result['pending_intent'] = validate_pending(value['pending_intent'])
+        result['pending_intent'] = pending
     return json.loads(_json_value(result, 32 * 1024, 'result summary'))
 
 

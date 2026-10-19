@@ -246,6 +246,77 @@ async function openPrivateWorkspace(){
   await page.locator('#assistant-search-summary').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(artifacts,'intent-v3-pending-date-answer-phone-390-font150.png'),fullPage:false});
 
+  // A vague v3 scene refinement keeps the current hard filters. The private
+  // continuation accepts one quoted clue and survives GET-only history reads.
+  const previousDescriptionThread=await page.locator('#assistant-private-select').inputValue();
+  if(!await page.locator('#assistant-private-management').evaluate(element=>element.open))await page.locator('#assistant-private-management-toggle').click();
+  await page.locator('#assistant-private-new').click();
+  await page.waitForFunction(previous=>document.querySelector('#assistant-private-select')?.value&&document.querySelector('#assistant-private-select').value!==previous,
+    previousDescriptionThread);
+  await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
+  const descriptionInitial=await send('find photos of Sample Child in September 2032 playing in snow');
+  const descriptionPrior=descriptionInitial.response.result;
+  assert.equal(descriptionPrior.kind,'results');assert.equal(descriptionPrior.version,3);
+  assert.deepEqual(descriptionPrior.filters.people,{ids:['301'],match:'any'});
+  assert.deepEqual(descriptionPrior.filters.date,{from:'2032-09-01',to:'2032-09-30'});
+  assert.deepEqual(descriptionPrior.filters.media,['image']);
+  assert.deepEqual(descriptionPrior.filters.descriptive.concepts.map(item=>item.surface),['playing in snow']);
+  const descriptionThread=await page.locator('#assistant-private-select').inputValue();
+  const descriptionCallsBefore=await plannerCalls();
+  const vagueDescription=await send('more moments');
+  const descriptionQuestion=vagueDescription.response.result;
+  assert.equal(vagueDescription.status,200);assert.equal(descriptionQuestion.kind,'clarification');
+  assert.deepEqual(descriptionQuestion.context,descriptionPrior.context);
+  assert.deepEqual(descriptionQuestion.filters,descriptionPrior.filters);
+  assert.deepEqual(descriptionQuestion.items.map(item=>item.id),descriptionPrior.items.map(item=>item.id));
+  assert.match(descriptionQuestion.reply,/one quoted scene or caption clue/);
+  assert.equal(await plannerCalls(),descriptionCallsBefore+1,'the vague refinement is planned once');
+  assert.equal(JSON.stringify(vagueDescription.response).includes('pending_intent'),false);
+  await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.screenshot({path:path.join(artifacts,'intent-v3-description-pending-en-phone-390-font150.png'),fullPage:false});
+
+  const invalidDescription=await send('red coat');
+  assert.equal(invalidDescription.response.result.kind,'clarification');
+  assert.deepEqual(invalidDescription.response.result.context,descriptionPrior.context);
+  assert.deepEqual(invalidDescription.response.result.filters,descriptionPrior.filters);
+  assert.equal(await plannerCalls(),descriptionCallsBefore+1,'an unquoted short answer keeps the pending question without planning');
+  assert.equal(JSON.stringify(invalidDescription.response).includes('pending_intent'),false);
+
+  if(!await page.locator('#assistant-private-management').evaluate(element=>element.open))await page.locator('#assistant-private-management-toggle').click();
+  await page.locator('#assistant-private-refresh').click();
+  await page.locator('#assistant-private-select').selectOption('');
+  const descriptionHistoryRead=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(`/assistant/workspace/v1/threads/${descriptionThread}?`));
+  const descriptionTurnsBeforeRead=turnEntries().length;
+  await page.locator('#assistant-private-select').selectOption(descriptionThread);await descriptionHistoryRead;
+  await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
+  assert.equal(turnEntries().length,descriptionTurnsBeforeRead,'pending clarification recovery does not resubmit a turn');
+  assert.equal(await plannerCalls(),descriptionCallsBefore+1,'pending clarification recovery does not call the planner');
+  const descriptionHistory=browserRequests.filter(entry=>entry.method==='GET'&&entry.path.includes(`/assistant/workspace/v1/threads/${descriptionThread}?`)&&entry.status===200).at(-1).response;
+  assert.ok(descriptionHistory);assert.equal(JSON.stringify(descriptionHistory).includes('pending_intent'),false);
+  assert.deepEqual(descriptionHistory.exchanges.map(exchange=>exchange.input_text),
+    ['find photos of Sample Child in September 2032 playing in snow','more moments','red coat']);
+
+  const quotedDescription=await send('“red coat”');
+  const descriptionAnswer=quotedDescription.response.result;
+  assert.equal(quotedDescription.status,200);assert.equal(descriptionAnswer.kind,'results');
+  assert.deepEqual(descriptionAnswer.filters.people,descriptionPrior.filters.people);
+  assert.deepEqual(descriptionAnswer.filters.date,descriptionPrior.filters.date);
+  assert.deepEqual(descriptionAnswer.filters.media,descriptionPrior.filters.media);
+  assert.deepEqual(descriptionAnswer.filters.descriptive.concepts.map(item=>item.surface),['playing in snow','red coat']);
+  assert.deepEqual(descriptionAnswer.items.map(item=>item.id),['101']);
+  assert.equal(await plannerCalls(),descriptionCallsBefore+2,'the quoted clue uses the existing planner once');
+  assert.equal(JSON.stringify(quotedDescription.response).includes('pending_intent'),false);
+
+  const chineseClarification=await send('再看更多时刻');
+  assert.equal(chineseClarification.response.result.kind,'clarification');
+  assert.deepEqual(chineseClarification.response.result.filters,descriptionAnswer.filters);
+  assert.match(chineseClarification.response.result.reply,/只回复一条带引号/);
+  assert.equal(await plannerCalls(),descriptionCallsBefore+3);
+  await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.screenshot({path:path.join(artifacts,'intent-v3-description-pending-zh-phone-390-font150.png'),fullPage:false});
+
   const emptyEntry=await send('find photos of Sample Child in September 2032 playing in snow green coat containing "secret memory phrase"');
   const empty=emptyEntry.response.result;
   assert.equal(empty.kind,'results');assert.equal(empty.total,0);assert.deepEqual(empty.items,[]);
@@ -368,6 +439,7 @@ async function openPrivateWorkspace(){
     'lost paired correction recovers the corrected blue-coat plan without resubmission or replanning',
     'v3 client hydrates an older saved v2 result with a version-bound history read',
     'short date answer resolves a saved clarification, retains every original filter, and keeps both inputs separately in private history',
+    'v3 description clarification accepts a quoted clue after a vague refine, retains person/date/media/scene filters, rejects unquoted input, and recovers from GET without replanning; English and Chinese replies fit at 390px/150%',
     'explicit single-clue removal repairs empty results while retaining every hard condition; lost response recovers without another turn or model call',
     'a Chinese why-result question explains current filters and edited-caption evidence while preserving result order and invoking no model or open action',
     'with the planner off, v2 preserves a mixed-language date question through history, resolves a short Chinese answer, and recovers a lost reply with GET only',

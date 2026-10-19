@@ -23947,6 +23947,120 @@
       "provider_calls_added": false,
       "client_contract_changed": false,
       "production_data_written": false
+    },
+    {
+      "feature": "language-search-scorecard-private-semantic-wiring-and-description-continuations",
+      "source_commit": "1df9d89dbddf5681b742200ce029b12d2843e00d",
+      "files": [
+        {
+          "path": "docs/README.md",
+          "before_sha256": "62450d7d188290d65f238b4ee07b9e8b2b9d78833ac0f677098a65e3ac0ad895",
+          "sha256": "8b3ccb940b6f3d6beb4119c55dded110772feadbb4cde34df6b122310c6fcb52"
+        },
+        {
+          "path": "docs/SEARCH_DESCRIPTION_CONTINUATIONS.md",
+          "before_sha256": null,
+          "sha256": "371ad2583ae904634e2beb005b12fd70814e24731986a903fce5b814e760b0db"
+        },
+        {
+          "path": "docs/SEARCH_QUALITY_SCORECARD.md",
+          "before_sha256": null,
+          "sha256": "3dff411ca95aa06a35626a5c58056fa8e247f3c7e988a3d3d413e288bfe01330"
+        },
+        {
+          "path": "docs/SEMANTIC_RUNTIME_CONFIGURATION.md",
+          "before_sha256": null,
+          "sha256": "76d4bc6d2b224a616f427fa0c19863c88ccf090c3f1bc8fab7d607756a5dd9af"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "29783ed46d6e7423db0213cfc417867d102fa3af3be8f918b8043e9df026b58f",
+          "sha256": "272777b96e4c2bd6225308c1370546fab5b98db39ed0953bb031e0ee1ec0c376"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "43400ddc82d7077a79d5188ba19b666909d614d0c57513ad72be676efa245f2e",
+          "sha256": "37cc1dde77ea173bc30e585952434431f7c9307cc44e808be8529e40dc9ce6a6"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "729233c9adae4dd373c7faa379e5f88a96bf59ff1ab40b0eb4ae2e397418aada",
+          "sha256": "8ed15db9720e47d589163d23bd64eb42ee3d815a3146d84fef277f3f717586d2"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "d7317cab6d733388c816798e6d03ca04d6029f37ce5074331e4426e021664953",
+          "sha256": "d3166c2cfcf065cc970d5b983bd271aa1e5823913b898efe0c988552ee6d88a7"
+        },
+        {
+          "path": "server/backend/app/access/search_evaluation.py",
+          "before_sha256": "73816a1bd34acb72c54f353ee0e11cf512416c01eb5ec14fc5b20ff4cf8abd4c",
+          "sha256": "ccfb4ed3e5d3dbd7bdc6ff224df2606481f92e1b93fb33224643898af8b2d2fc"
+        },
+        {
+          "path": "server/backend/app/access/search_pending.py",
+          "before_sha256": "c1bc3cdbe5139531844a5b248cb5a60c0d4635137a14e5c2148977e726b0314a",
+          "sha256": "57aa85abfe16965857ee17b2ea7691aca9c04f0c1bb0156dd08abb4e3b132c91"
+        },
+        {
+          "path": "server/backend/app/access/semantic_configuration.py",
+          "before_sha256": null,
+          "sha256": "7f2bdd9f053fc255498a213021c149c9bd3aed41d4d5a74d3b9407ec3679f683"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "f2aca9500892e4ca175d149bfd762865aaf25b1e856d134fe7436705fd77c6dc",
+          "sha256": "bd7305c122c46cb282a8b72db5d404c19208d8ba5dd4f25342edcaf17063ed17"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "before_sha256": "0aaaba2f766752baef39ca701325eb19648f328600bf0c17a7a2c5ab1a484ab8",
+          "sha256": "7f667f3b82f3cfb5a56ad0cfe5f706b62877578602847c9ae4fa52390111d5f5"
+        },
+        {
+          "path": "server/tests/security/test_assistant_description_clarification.py",
+          "before_sha256": "a750b4d9143998150ee2950f2cbfa5be739f1a574f71ef089bb113e5ee3a0f2d",
+          "sha256": "9b4815d6cbbc440e41f544441243b5cfde349c3e55447d19de3f17b7b31a3b1d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_description_pending.py",
+          "before_sha256": null,
+          "sha256": "df8d5e87747a71f582af9020c26d7a68e57e5e89f5a3ca60350884bfde87d77a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_intent_browser.cjs",
+          "before_sha256": "5ea2a7a175a5585cb908be058e6b8c99308a02ea9c4e181d12f4ebb8c7d55e62",
+          "sha256": "dbbc99dbc584b285df32920c94624b55b08c8ebbbf7b6de64de05f959c55b203"
+        },
+        {
+          "path": "server/tests/security/test_search_quality_scorecard.py",
+          "before_sha256": null,
+          "sha256": "7fd6b6be5a6a7f18d6b0c7526d613de2753e54f0e3df6ac2ebfa5de7a067e20d"
+        },
+        {
+          "path": "server/tests/security/test_semantic_configuration.py",
+          "before_sha256": null,
+          "sha256": "31daf01076503974e70fb4003ff205ee045f5b0c68d442823cc0e41d27571765"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "ad80efb3f7227c4283060e3d2fabfe2fc69a719b34d15eb860d9882c3fdb9c59",
+          "sha256": "966c8f8465a80c412f5dc3693848ad44210b5a84af390c15f68cc2de2661f09d"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "dcdab43031cb8b202a124f1920ef3b0c353b6412ff0fd0ff946d147355b362a4",
+          "sha256": "940bc9759ee3efcb34ab254421a49a31a5b05804f897761f57806bf6c57e026c"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": false,
+      "provider_calls_added": true,
+      "provider_calls_note": "Existing loopback semantic adapter is wired only after explicit private opt-in; no provider was activated or invoked on the live runtime.",
+      "client_contract_changed": false,
+      "production_data_written": false
     }
   ]
 }
