@@ -18,6 +18,7 @@ API_TESTS = (
     "test_refreshing_people.py", "test_refreshing_people_http.py",
     "test_reviewed_people_readiness.py",
     "test_reviewed_people_deletion_guard.py", "test_reviewed_family_search_journeys.py",
+    "test_named_kinship_companion.py",
     "test_provisioning_deletion_guard.py", "test_operator_deletion_guard.py",
     "test_suppressed_ownership_repair.py",
     "test_assistant_capability_guidance.py",

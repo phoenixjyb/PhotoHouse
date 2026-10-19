@@ -39,6 +39,26 @@ unique proper-name aliases. The index grants no graph access. A missing account
 binding, ambiguous identity, changed/deleted graph or revoked membership cannot
 be repaired by matching display names. See [private kinship](PRIVATE_KINSHIP_SEARCH.md).
 
+## Explicit named-parent companions
+
+An explicit fresh request such as `find photos of Sample Child with her dad`,
+`找示例儿童和她爸爸一起的照片`, or mixed Chinese/English can combine the
+named person with that person's reviewed parent. The private graph must resolve
+one unambiguous proper-name anchor and the asserted mother/father path; the
+result requires both people in the same reviewed photo. This path uses the named
+person as its anchor, even when the graph has a different selected perspective.
+It never guesses a person from gender, a login name, an automatic cluster or a
+bare pronoun.
+
+The routing exception preserves the original text and consumes only recognized
+identity spans. Unknown names, missing/unreviewed parents, multiple possible
+anchors and extra unresolved conditions still clarify. A named companion followed
+by another unscoped relative also clarifies. Selector-only nicknames cannot become
+proper-name anchors. Quoted phrases remain literal text, and ordinary continuation
+requests such as `find videos of them` retain their prior people filters.
+Negotiated search versions 2 and 3 use the same protected resolution; this adds
+no request field, response field, model call or access grant.
+
 ## Deletion history during offline preparation
 
 Both `inspect_reviewed_people_readiness.py` and

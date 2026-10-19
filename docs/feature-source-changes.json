@@ -23592,6 +23592,49 @@
       "provider_calls_added": false,
       "runtime_changed": false,
       "test_fixture_only": true
+    },
+    {
+      "feature": "explicit-named-parent-companion-search",
+      "source_commit": "bb74f1311785bc37278e91ee5798c8e55eff9c49",
+      "files": [
+        {
+          "path": "server/backend/app/access/kinship.py",
+          "before_sha256": "e6e8b8df323e2204193e6ac4651c3f0ac4abcbf618e518aaf99f1c8c75eeebab",
+          "sha256": "2d5371c7feb0eab3dfb9df5bd77d91a013c9a18b773bf5faed60e8e0ff1030ce"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "e1dccaa45e94a0ed2e9a08c20aefb0ab9e7be2ac8483f95964f052bd46e9135f",
+          "sha256": "9f9e2d3e57055fea23072bacd2037dbade07f2a6e5deb43f0a8dd4b56dae9eeb"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "c1de3a24dcfb609d998aaa2fb9b3089c919233a8ea833ea936bd6476be9cb997",
+          "sha256": "a9c90ccc6aa39b0a8f325593e8df049c637e5a99b19a0c02d2f1be0d8b2a07b5"
+        },
+        {
+          "path": "server/tests/security/test_named_kinship_companion.py",
+          "before_sha256": null,
+          "sha256": "c979746ec7a9be2f15cce7a625331708978cab1bd3808fe5ee94e31ae9e87d1a"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": "6228dfc4a0f4f3727986a99941894e1572bb6bba15fcf580ea79e2e9889961f8",
+          "sha256": "02a18a91e66cb4cbe5c0928926d411f67269841ed80776de6abfff0d02143fe5"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "7dd7a638255c8537df219348bb1e52da38fc22e4b5f598f1b580d5e2ff78a577",
+          "sha256": "77a8f6a637416fea3a5aca8a09e03f534e0d4a6bfebeb9eef7691fc0bd00abad"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "provider_calls_added": false,
+      "runtime_changed": true,
+      "people_index_enabled": false,
+      "kinship_graph_enabled": false
     }
   ]
 }
