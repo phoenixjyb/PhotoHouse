@@ -129,3 +129,27 @@ Generated protocol, API, Web controller/browser and Android store/wire checks
 cover refusal, replay, explicit reload, draft preservation and scope changes.
 These are synthetic results. Native model relevance/resources, live activation,
 signed client release, dialect/ASR and family/device acceptance remain separate.
+
+## R40 local validation
+
+The complete API profile on immutable `38f5f8d` passed **2,593 tests and
+2,632 subchecks**, plus the generated no-listener demo. Its private invocation
+receipt records identical start/end commits and input hashes. Packaged-source
+imports include the new policy module. A text-only replay of the prior frozen
+public-photo stress queries blocked all nine negative variants and admitted all
+nine positive controls; it opened no images and called no model. This is
+admission evidence, not new relevance measurement.
+
+The Web controller suites passed 97 tests. The generated scene browser journey
+passed eight checkpoints, with Chinese/English desktop and phone 150-percent
+text renders inspected. Android phone debug Kotlin compilation and lint passed
+(79 tasks); no emulator, installation, signed release or physical acceptance
+was performed. Independent source review caught additional absence wording,
+including “lacking”, “absence of”, “没看见” and “无红色汽车”; those cases now
+have passing admission regressions.
+
+This round is local source preparation only. No PR, push, deployment, Windows
+service/model/configuration, live library, or semantic activation changed.
+The semantic gates remain disabled by default, and activation remains blocked
+on model relevance, broader language/clarification qualification and separately
+authorized runtime and family/device acceptance.

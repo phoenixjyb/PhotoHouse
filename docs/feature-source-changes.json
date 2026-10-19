@@ -25672,6 +25672,20 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Bounded bilingual exclusions refuse before semantic vector/encoder/snapshot use; closed positive media counterparts use existing filters. Exact unresolved v2/v3 request remains private and source-bound through short replies, replay and expiry. No semantic activation or runtime change."
+    },
+    {
+      "feature": "exclusion-clarification-validation-record",
+      "files": [
+        {
+          "path": "docs/SCENE_QUERY_REWORDING.md",
+          "before_sha256": "aafa0ed8fd08cea5c0ef9d1f821eb98e0c941f1e54869f1d535b32a58d299808",
+          "sha256": "e2e3f3cd42f5e1da8196bdc6609ccd934329cf9495f58714e78c06446a4dac8b"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Record fixed-source R40 API2593tests2632subchecks, Web97controller tests/eight browser checkpoints and Android compile/lint. Semantic activation remains blocked."
     }
   ]
 }
