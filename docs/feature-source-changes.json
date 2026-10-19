@@ -24067,6 +24067,192 @@
       "authorization_changed": false,
       "provider_calls_added": false,
       "runtime_changed": false
+    },
+    {
+      "feature": "page-local-similar-photo-stacks-and-own-upload-preparation",
+      "source_commit": "d94f217ee108fed87f002513f957a0e967a60056",
+      "source_base_commit": "e379851ff6ad8cb09958a21763a94b6453eaa365",
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "6b364ad52afa2057ec1b39d68233a044d2dae2baaff11c82371f0e527781806c",
+          "sha256": "11ecdaffe111c649010b49be559a65e2de69410951dbca14f661f52b4e37746d"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "before_sha256": "6b47c521cbeb8feb6d1c59a94b81446e0d9776e68a3f281f8cc7c7f48da5c37d",
+          "sha256": "40570427163fe4274f8e90cf154eb12755711fc7b5d9cee7fb677317eb375731"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "13c1155cc87186918957881f94ebf053a9942df8053f3b70564306a72a093266",
+          "sha256": "b1b9321401e29f8ca380a054d379653b8444ecb908a1394771562fda007c7f14"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "before_sha256": "17f6474a490d728dfd49e574e35667859aab00fdc2f99fd0e564d77d2ec8fdfa",
+          "sha256": "dc95cbb60b5779ed75b967350196fb23a07dbc1ba6ca1cec0146744c790b0be5"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsPhotoHouseApi.kt",
+          "before_sha256": "8577b8ce271fc5f61a86e0e026e6bb725885f7aeb31eabeb025096b15a985ca8",
+          "sha256": "37fce84a516f0c4dbb36421bf64b4f9b30671579609fc61738347392d15f218e"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoHouseApi.kt",
+          "before_sha256": "a5d5392d8febd75091c1ca53fb4b540e3d6973869a998ae24bf78afb37cc8879",
+          "sha256": "f1ffe8d8105412db87db7b0f6497c090902082ed0f8d84cc3ccb6c11adb81f9d"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoStacksWire.kt",
+          "before_sha256": null,
+          "sha256": "dbd931cf6e0bf06d1e0a3b40edb930adf2fb399b69b34330eeaf92c6704c26a5"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/GalleryMediaStoreTest.kt",
+          "before_sha256": "7c3618166b27cccefbd5fbdfa93879ac234d3baf69cee1b4ac016f9f4edbb7ab",
+          "sha256": "1086b7280104b56ac5a6a7435719bb423a8d63c2635bb178c20baa11d0007d6f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsApiTest.kt",
+          "before_sha256": "386dcc51cd9eee756fc074b2a1deaafc3e8e73f06bade54fc990fa4cb33ea113",
+          "sha256": "08dabb12f5041278111461416d020751ad5b771ec180edf9caf75702f03d4902"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/PhotoStacksWireTest.kt",
+          "before_sha256": null,
+          "sha256": "4392a4deedac400336ba7d12809e92054698767178c29ccfb35eb69d3e39c17e"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "aff4688530a08a7f8182f00ec643c1b941a2ff4436a4aabcadd7b7f03bfc497b",
+          "sha256": "31218beda1fe251aceac2980866ba24b5c0a105243baf176d04fd728b72a30b3"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "345fea21f3dd50408af70b93bc7762446e4c88f05b92181bfaba71e24de40956",
+          "sha256": "d2e3eb9f3908f32ec7c48d6740d7b9064b95f9331c5f61b8d9d5dc58bbeea651"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "62450d7d188290d65f238b4ee07b9e8b2b9d78833ac0f677098a65e3ac0ad895",
+          "sha256": "ee2bc084341de3f4943a3f229adcbc04a8e85462a7415c3df9a25924a610dc6b"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "88c557d3c71c9c46855704724f1ae3f23f55c188569d15765b6ec201f48d5909",
+          "sha256": "6898213ce9d567e1488a517eb290774448391d2818493d77961ba8a885a3722d"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": null,
+          "sha256": "3f330fc8b08dce257cc09c8fbf5bdfbb046c9fe1789089c55e898ea8706124ec"
+        },
+        {
+          "path": "docs/UPLOAD_PREPARATION.md",
+          "before_sha256": null,
+          "sha256": "fe1f11966eb1c9afbd37566358fe192d938adfd83cc4ebb6a21bfd3d449fc896"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "e114c6f79ea50dfc15cdfa0bef785b99f7b78f0a3ddb499c7c0a438bdb8e3cbd",
+          "sha256": "ff0ff721c342a11d623e83af856ae0747730bbc8a4212a25e9d54cab16166243"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "1e949651c515b3180c43d3423370d4f830d90895e94c99e61ef2d07cedd19246",
+          "sha256": "d88c5966a508512f92a3069020a95f62b641d9164ed592c74dc8ba104a8c1ac1"
+        },
+        {
+          "path": "server/backend/app/access/library.py",
+          "before_sha256": "f79711a079b28eebd371b9f3961b1efd8103fb1edc30c3587cbd847425b58859",
+          "sha256": "8ea2bc5f511d4c15b680206af753b0dd74099a9826dfd5f603fe09777123693c"
+        },
+        {
+          "path": "server/backend/app/access/photo_stacks.py",
+          "before_sha256": null,
+          "sha256": "e0dd009b0c25c0c54182d601e00eb17dff0a02e3dfe17a8bfc171250d9dc3e88"
+        },
+        {
+          "path": "server/backend/app/access/upload_preparation.py",
+          "before_sha256": null,
+          "sha256": "b21284f1d579c0fcf204aef6ad3b991c489f4dc5e7b4e46f4b063205e2a5b920"
+        },
+        {
+          "path": "server/backend/app/access/upload_transport.py",
+          "before_sha256": "ec7b0e62617be9c44656c8e7e3322766cd28b430545d7e4de17b54ced385f007",
+          "sha256": "be40f74c36c83bdb4582a2201c3cd723e474e02c48fc03a1b5329d526707c43a"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "a2397ca8c70f4c49015cd4c12860f0d6dd5e8c53aa1afd97d70d271513c0f4ef",
+          "sha256": "b5cc4da0eb6febebede2b4ca3432c34fc4c3cde4e52e84fa7b2b37d42c94e805"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "654b7a33553cd0bf5b013c6f0d38d3f2e5ad6672062367cea840a16f692bc633",
+          "sha256": "d290c0f063ddd4ce02e472ce8aecdde4a080d749d4cdffc8e4a1d0f3376b4b1e"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "ecf2f279d3b40c0cf6d86e8b2f9e0b1394f0d20e609f6a30e6a4463ae0fcc8f7",
+          "sha256": "3f638fe70836b40ebf6928240eb7656cda46f06d8f1bb8c208ea0d08caa084db"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "797bb8f9966ae4a257ebb820fb356f66c99f8f5a13f3afae9d077a62aeae312a",
+          "sha256": "ce0306de28a277806768046af9858c0d5412752ccee2b6dd77d5cf7c75f66fe8"
+        },
+        {
+          "path": "server/tests/security/photo_stacks_browser_bridge.py",
+          "before_sha256": null,
+          "sha256": "78e959539eec8e3b487104bb04a95d5af800247bd6232b4a2e5c586a9e03b431"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "f072249651264113fca750d639c8b439c91a988201f798157fd97243fb86d90e",
+          "sha256": "0d2240087a0c6d75d6adcf5eca9b55286687cb8691eee71cd770a31996088c10"
+        },
+        {
+          "path": "server/tests/security/test_photo_stacks.py",
+          "before_sha256": null,
+          "sha256": "863793dc53d9723a84aa522e5beac2b54ca625ebafcd0948077227d1d7f6d338"
+        },
+        {
+          "path": "server/tests/security/test_photo_stacks_browser.cjs",
+          "before_sha256": null,
+          "sha256": "b413a89a21e3ec701d1faaf2a700dee3b8dc88c5792edc73ba49aa2ad90c3462"
+        },
+        {
+          "path": "server/tests/security/test_upload_preparation.py",
+          "before_sha256": null,
+          "sha256": "1c74f7106899eff1364e4a149d7f1d3a7a07cd176fbc6739b70ca163ed805128"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "5ecac7f9d35db4a06e9a35a40b69277187562dc58bad08ea8a9a58f2f7c774b1",
+          "sha256": "1a8790e7911a8a27146cb2036ae196bbb502beb9082200199518dafd2d9f5f98"
+        }
+      ],
+      "routes_added": [
+        "GET /upload-preparation"
+      ],
+      "schema_changed": false,
+      "original_media_changed": false,
+      "models_invoked": false,
+      "persistent_stack_choices": false,
+      "stack_scope": "authorized gallery page",
+      "backend_tests_passed": 87,
+      "web_generated_journey_passed": true,
+      "phone_qualification": "60 focused JVM tests and connected boundary check passed; QA app/test APK builds passed; emulator UI blocked by app startup ANR before gallery assertions",
+      "deployed_or_published": false,
+      "backend_checks": {
+        "initial_stack_library_duplicates": 40,
+        "preparation_history_closed_app": 46,
+        "final_stack_suite": 16,
+        "unique_tests": 87
+      },
+      "phone_emulator_ui_passed": false
     }
   ]
 }
