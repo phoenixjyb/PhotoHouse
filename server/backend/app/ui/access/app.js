@@ -2462,7 +2462,9 @@
     const placedGroups=new Set(),placedAssets=new Set();
     function makeAssetCard(item,group=null,stack=null,expanded=false){
       const card=document.createElement('article');card.className='asset';card.dataset.assetId=item.id;
-      const open=document.createElement('button');open.type='button';open.className='asset-open';open.setAttribute('aria-label',assetLabel(item));
+      const open=document.createElement('button');open.type='button';open.className='asset-open';
+      const accessibleName=assetLabel(item);
+      open.setAttribute('aria-label',group&&stack&&!expanded?`${accessibleName} · ${t('photoStackCount').replace('{count}',String(stack.ids.length))}`:accessibleName);
       const preview=document.createElement('span');preview.className='asset-preview-wrap';
       const image=document.createElement('img');image.loading='lazy';image.alt='';
       const fallback=document.createElement('span');fallback.className='asset-preview-fallback';fallback.dataset.i18n='previewMissing';fallback.hidden=true;fallback.textContent=t('previewMissing');
