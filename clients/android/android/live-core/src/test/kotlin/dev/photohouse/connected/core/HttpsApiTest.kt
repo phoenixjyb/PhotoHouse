@@ -62,7 +62,7 @@ class HttpsApiTest {
     @Test fun optionalPhotoStacksUsesTheExistingScopedGalleryFilters() = runBlocking {
         val body = """{"library_id":"family","page":2,"page_size":50,"total":1,"originals_allowed":false,"items":[{"id":"1","kind":"image","width":null,"height":null,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/1/thumbnail?library=family","date_hint":null}],"photo_stacks":{"version":1,"scope":"page","groups":[]}}"""
         TlsFixture().use { f ->
-            val api = HttpsPhotoHouseApi(f.origin, f.client, mediaFilterEnabled = true, dateHintsEnabled = true)
+            val api = HttpsPhotoHouseApi(f.origin, f.client, protectedNativeV2Enabled = true, mediaFilterEnabled = true, dateHintsEnabled = true)
             f.server.enqueue(json(body))
             val page = api.galleryWithPhotoStacks(token, "family", 2, GalleryMedia.PHOTOS)
             assertEquals("1", page.gallery.items.single().id)

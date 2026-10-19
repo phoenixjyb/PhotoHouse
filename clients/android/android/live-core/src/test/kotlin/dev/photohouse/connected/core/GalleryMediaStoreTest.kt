@@ -89,6 +89,9 @@ class GalleryMediaStoreTest {
             ))
         }
         val store = open(api)
+        api.stackCalls = 0
+        api.calls.clear()
+        store.loadPage(1); runCurrent()
         assertEquals(1, api.stackCalls)
         assertEquals(listOf("20", "10"), store.state.value.photoStacks!!.map { it.id })
         fun visible() = PhotoStackProjection.visibleAssetIds(store.state.value.gallery!!, store.state.value.photoStacks,
@@ -124,6 +127,9 @@ class GalleryMediaStoreTest {
     @Test fun onlyExplicitUnsupportedUsesOldGalleryAndOfflineStackReadGetsOneBoundedRetry() = runTest {
         val api = Api().apply { stackFailure = ApiFailure(FailureKind.HTTP, 404) }
         val store = open(api)
+        api.stackCalls = 0
+        api.calls.clear()
+        store.loadPage(1); runCurrent()
         assertEquals(1, api.stackCalls)
         assertEquals(1, api.calls.size)
         assertNull(store.state.value.photoStacks)
