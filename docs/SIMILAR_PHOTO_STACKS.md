@@ -127,3 +127,22 @@ Android/hosted CI profiles.
 
 These results use temporary generated data. They do not establish family-photo
 similarity quality, hosted CI, a Windows rollout or a signed phone release.
+
+### Combined API candidate qualification
+
+Immutable source `966cf139aa621416a5a22b6b11cd40f299a75b55` integrates the
+existing deployed search/upload guard source before packaging the gallery work.
+Its full API profile passed **2,464 tests and 2,486 subtests**, followed by the
+generated no-listener demo, with identical start/end commit and source hashes.
+The seven immutable staging-package tests and the integrated generated Web
+journey also passed. Chromium 151 rendered Chinese/English desktop and phone
+layouts, including enlarged phone text.
+
+The fixed API ZIP has 241 source files and SHA-256
+`9dce639072302f0400648ad18c8bbf483c9beb3d677bbea1d456a5420be2b16c`.
+The read-only inspector reconstructed it from the exact immutable Git source.
+This proves source/package identity, not native Windows execution. Subsequent
+documentation commits do not rebuild that artifact. Windows qualification and
+cutover, full Android qualification, phone visual acceptance and signed OTA
+delivery remain separate gates. No deployment or publication occurred in this
+source preparation round.

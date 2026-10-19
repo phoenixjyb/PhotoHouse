@@ -181,6 +181,28 @@ stops voice interaction. Pause, logout, expiry or access changes fence the runne
 Encrypted metadata and server-offset reconciliation support explicit recovery
 after process death without restoring permission to run automatically.
 
+## Similar-photo gallery projection
+
+[Photo stacks](SIMILAR_PHOTO_STACKS.md) reuse stored perceptual hashes and
+capture-time evidence inside the authorized gallery transaction. The optional
+page response retains every ordinary asset and adds disjoint suggested groups.
+The API opens no original media or model and writes no group records. Web and
+phone validate the complete extension before displaying one cover and a count;
+invalid or unsupported metadata leaves every asset visible.
+
+These groups belong to a fetched page. Expansion, cover and separation choices
+are temporary client state, cleared on scope changes or reload. They do not
+change the shared-memory/story groups, another member's curation, or the separate
+anonymous Home TV catalog. Whole-library indexing and persistent preferences
+need their own pagination and storage contract.
+
+The separate [upload preparation read](UPLOAD_PREPARATION.md) joins only the
+current account's receipt page with attributable processing evidence and current
+library access. It preserves the existing upload-history wire shape. Task state
+and record existence do not establish that preview/playback files are usable;
+those fields remain unknown until there is explicit delivery evidence. Client
+preparation-status presentation remains a follow-up.
+
 ## Schema and release boundaries
 
 An installed source head does not establish the live Alembic revision. Optional
