@@ -84,6 +84,12 @@ class CpuEnvironmentTests(unittest.TestCase):
             self.assertEqual(env["PYTEST_DISABLE_PLUGIN_AUTOLOAD"], "1")
             self.assertIn("--noconftest", run.call_args.args[0])
 
+    def test_indexed_photo_stack_checks_are_in_the_api_profile(self):
+        self.assertIn("test_photo_stack_index.py", check.API_TESTS)
+        self.assertIn("test_library_photo_stacks.py", check.API_TESTS)
+        self.assertIn("test_photo_stack_index.py", check.WINDOWS_CPU_TESTS)
+        self.assertIn("test_library_photo_stacks.py", check.WINDOWS_CPU_TESTS)
+
     def test_demo_uses_the_same_environment_after_api_checks(self):
         with mock.patch.object(check, "api_tests") as tests, mock.patch.object(check, "run") as run, \
                 mock.patch.dict(check.os.environ, {"ASR_URL": "synthetic-provider"}, clear=True):
@@ -137,6 +143,7 @@ class WebProfileTests(unittest.TestCase):
         self.assertIn("server/tests/security/test_annotation_web_wav.cjs", check.WEB_TESTS)
         self.assertIn("server/tests/security/test_upload_history_browser.cjs", check.WEB_TESTS)
         self.assertIn("server/tests/security/test_upload_preparation_browser.cjs", check.WEB_TESTS)
+        self.assertIn("server/tests/security/test_library_photo_stacks_browser.cjs", check.WEB_TESTS)
         self.assertIn("server/tests/security/test_story_workspace_browser.cjs", check.WEB_TESTS)
         with mock.patch.object(check, "ROOT", self.root), \
                 mock.patch.object(check.shutil, "which", return_value="/existing/node"), \

@@ -159,6 +159,117 @@ class GalleryMediaStoreTest {
             store.state.value.separatePhotoStackIds, store.state.value.photoStackCoverOverrides))
     }
 
+    @Test fun libraryStackPreferencesWriteThenRefetchAndRemainPerLibraryScope() = runTest {
+        val group = PhotoStackGroup("1", "1", listOf("1", "2", "3"), 3, "same_upload")
+        val api = Api().apply {
+            thumbnailBytes = true
+            libraryStackResponse = PhotoStackGallery(
+                Gallery("family", 1, 12, 1, false, listOf(photo.copy(id = "1"), photo.copy(id = "2"), photo.copy(id = "3"))),
+                listOf(group), "library", INDEX_REVISION, 2,
+            )
+        }
+        val store = open(api)
+        assertEquals("library", store.state.value.photoStackScope)
+        assertEquals(INDEX_REVISION, store.state.value.photoStackIndexRevision)
+        assertEquals(2L, store.state.value.photoStackPreferenceRevision)
+        assertTrue(api.thumbnailIds.contains("1"))
+        assertFalse(api.thumbnailIds.contains("2"))
+        store.togglePhotoStack("1")
+        runCurrent()
+        assertTrue(api.thumbnailIds.contains("2"))
+        assertTrue(api.thumbnailIds.contains("3"))
+
+        api.preferenceUpdate = { old, mutation ->
+            assertEquals("family", api.preferenceLibrary)
+            assertEquals(INDEX_REVISION, mutation.indexRevision)
+            assertEquals(2L, mutation.revision)
+            assertEquals("2", mutation.coverAssetId)
+            assertEquals("1", mutation.groupId)
+            api.libraryStackResponse = old.copy(groups = listOf(old.groups!!.single().copy(coverAssetId = "2")), preferenceRevision = 3)
+        }
+        store.selectPhotoStackCover("1", "2")
+        runCurrent()
+        assertEquals(1, api.preferenceWrites)
+        assertEquals(3L, store.state.value.photoStackPreferenceRevision)
+        assertEquals("2", store.state.value.photoStacks!!.single().coverAssetId)
+
+        api.preferenceUpdate = { old, mutation ->
+            assertEquals("2", mutation.separateAssetId)
+            api.libraryStackResponse = old.copy(
+                groups = listOf(PhotoStackGroup("1", "1", listOf("1", "3"), 2, "same_upload")), preferenceRevision = 4)
+        }
+        store.showPhotoStackSeparately("1")
+        runCurrent()
+        assertEquals(2, api.preferenceWrites)
+        assertEquals(listOf("1", "3"), store.state.value.photoStacks!!.single().assetIds)
+
+        api.preferenceUpdate = { old, mutation ->
+            assertTrue(mutation.reset)
+            assertTrue(mutation.groupId.isEmpty())
+            api.libraryStackResponse = old.copy(groups = listOf(group), preferenceRevision = 5)
+        }
+        store.resetPhotoStackPreferences()
+        runCurrent()
+        assertEquals(3, api.preferenceWrites)
+        assertEquals(listOf("1", "2", "3"), store.state.value.photoStacks!!.single().assetIds)
+    }
+
+    @Test fun stalePreferenceWriteRefetchesWithoutRetryingTheWrite() = runTest {
+        val api = Api().apply {
+            libraryStackResponse = PhotoStackGallery(
+                Gallery("family", 1, 12, 1, false, listOf(photo.copy(id = "1"), photo.copy(id = "2"))),
+                listOf(PhotoStackGroup("1", "1", listOf("1", "2"), 2, "near_capture")),
+                "library", INDEX_REVISION, 0,
+            )
+            preferenceFailure = ApiFailure(FailureKind.HTTP, 409)
+        }
+        val store = open(api)
+        val reads = api.libraryStackCalls
+        store.selectPhotoStackCover("1", "2")
+        runCurrent()
+        assertEquals(1, api.preferenceWrites)
+        assertEquals(reads + 1, api.libraryStackCalls)
+        assertEquals(0L, store.state.value.photoStackPreferenceRevision)
+    }
+
+    @Test fun invalidLibraryIndexRequestDoesNotNegotiateAnOlderRoute() = runTest {
+        val api = Api().apply { libraryStackFailure = ApiFailure(FailureKind.HTTP, 400) }
+        val store = open(api)
+        api.libraryStackCalls = 0; api.stackCalls = 0; api.calls.clear()
+        store.loadPage(1); runCurrent()
+        assertEquals(1, api.libraryStackCalls)
+        assertEquals(0, api.stackCalls)
+        assertTrue(api.calls.isEmpty())
+        assertNull(store.state.value.gallery)
+    }
+
+    @Test fun malformedLibraryMetadataFallsBackToPageStacksAndOrdinaryGallery() = runTest {
+        val api = Api().apply {
+            libraryStackResponse = PhotoStackGallery(
+                Gallery("family", 1, 12, 1, false, listOf(photo)), null, "library")
+        }
+        val store = open(api)
+        api.libraryStackCalls = 0; api.stackCalls = 0; api.calls.clear()
+        store.loadPage(1); runCurrent()
+        assertEquals(1, api.libraryStackCalls)
+        assertEquals(1, api.stackCalls)
+        assertEquals(1, api.calls.size)
+        assertNull(store.state.value.photoStacks)
+        assertEquals(listOf(photo.id, video.id), store.state.value.gallery!!.items.map { it.id })
+    }
+
+    @Test fun legacyPageStacksKeepTheirExistingMemberLimit() = runTest {
+        val assets = (1..25).map { Asset(it.toString(), "image", 10, 10, null, null, "/$it") }
+        val api = Api().apply {
+            stackResponse = PhotoStackGallery(
+                Gallery("family", 1, 50, 25, false, assets),
+                listOf(PhotoStackGroup("1", "1", assets.map { it.id }, 25, "same_upload")),
+            )
+        }
+        val store = open(api)
+        assertEquals(25, store.state.value.photoStacks!!.single().count)
+    }
+
     @Test fun preparedVideosAreOptInAndRetainSelectionAcrossNavigation() = runTest {
         val api = Api().apply { mediaFilterEnabled = true }
         val store = open(api)
@@ -193,6 +304,15 @@ class GalleryMediaStoreTest {
         var stackResponse: PhotoStackGallery? = null
         var stackFailure: ApiFailure? = null
         var stackCalls = 0
+        var libraryStackResponse: PhotoStackGallery? = null
+        var libraryStackCalls = 0
+        var libraryStackFailure: ApiFailure? = null
+        var preferenceWrites = 0
+        var preferenceLibrary: String? = null
+        var preferenceFailure: ApiFailure? = null
+        var preferenceUpdate: ((PhotoStackGallery, PhotoStackPreferenceMutation) -> Unit)? = null
+        val thumbnailIds = mutableListOf<String>()
+        var thumbnailBytes = false
         val calls = mutableListOf<Call>()
         override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
         override suspend fun register(phone: String, password: String, code: String) = login(phone, password)
@@ -217,13 +337,30 @@ class GalleryMediaStoreTest {
             stackFailure?.let { throw it }
             return stackResponse ?: throw ApiFailure(FailureKind.HTTP, 404)
         }
+        override suspend fun libraryPhotoStackGallery(token: Bearer, library: String, page: Int, media: GalleryMedia): PhotoStackGallery {
+            libraryStackCalls++
+            libraryStackFailure?.let { throw it }
+            return libraryStackResponse ?: throw ApiFailure(FailureKind.HTTP, 404)
+        }
+        override suspend fun postPhotoStackPreference(token: Bearer, library: String, mutation: PhotoStackPreferenceMutation): PhotoStackPreferenceRevision {
+            preferenceWrites++
+            preferenceLibrary = library
+            preferenceFailure?.let { throw it }
+            val old = libraryStackResponse ?: throw ApiFailure(FailureKind.HTTP, 404)
+            preferenceUpdate?.invoke(old, mutation)
+            return PhotoStackPreferenceRevision(mutation.indexRevision, old.preferenceRevision!! + 1)
+        }
         override suspend fun acceptInvitation(token: Bearer, code: String) {}
         override suspend fun detail(token: Bearer, library: String, assetId: String) = Detail(library, false, if (assetId == video.id) video else photo)
         override suspend fun captions(token: Bearer, library: String, assetId: String) = Captions(library, assetId, false, emptyList())
-        override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray? = null
+        override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray? {
+            thumbnailIds += asset.id
+            return if (thumbnailBytes) byteArrayOf(1) else null
+        }
         override suspend fun videoRange(token: Bearer, library: String, assetId: String, start: Long, length: Int) = VideoChunk(start, 0, ByteArray(0))
         override suspend fun originalPhoto(token: Bearer, library: String, assetId: String): ByteArray = byteArrayOf(1)
 
 
     }
+    companion object { private const val INDEX_REVISION = "123e4567-e89b-42d3-a456-426614174000" }
 }

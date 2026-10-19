@@ -4758,6 +4758,34 @@
    ],
    "current_control": "Owner before provider; current frozen roster and manual assignments; bounded cursor queue; HMAC face/person/membership revisions; explicit confirmation records only an opaque audit marker; cookie CSRF",
    "gap": "Confirmation does not reassign faces, propagate identities or activate search; separate source-bound index preparation required"
+  },
+  {
+   "source": "backend/app/access/photo_stack_transport.py",
+   "owner": "router",
+   "method": "GET",
+   "path": "/photo-stacks/gallery",
+   "handler": "gallery",
+   "surface": "photohouse",
+   "scope": "Current library membership; account-private display preferences",
+   "capabilities": [
+    "library.read"
+   ],
+   "current_control": "Indexed groups revalidate all member metadata and current library mappings in the authorized snapshot; stale groups dissolve. Explicit personal choices use current membership, CSRF or native bearer transport, index generation and preference revision. No media deletion or request-time rebuild.",
+   "gap": "Optional migrated/indexed source only. Native worker qualification, Windows migration/index publication and physical family acceptance remain separate gates."
+  },
+  {
+   "source": "backend/app/access/photo_stack_transport.py",
+   "owner": "router",
+   "method": "POST",
+   "path": "/photo-stacks/preferences",
+   "handler": "preferences",
+   "surface": "photohouse",
+   "scope": "Current library membership; account-private display preferences",
+   "capabilities": [
+    "library.read"
+   ],
+   "current_control": "Indexed groups revalidate all member metadata and current library mappings in the authorized snapshot; stale groups dissolve. Explicit personal choices use current membership, CSRF or native bearer transport, index generation and preference revision. No media deletion or request-time rebuild.",
+   "gap": "Optional migrated/indexed source only. Native worker qualification, Windows migration/index publication and physical family acceptance remain separate gates."
   }
  ]
 }

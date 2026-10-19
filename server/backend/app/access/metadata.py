@@ -109,4 +109,6 @@ def migration_metadata(legacy_metadata):
     add_family_note_identity_tables(metadata)
     from .memory_group_schema import add_memory_group_tables
     add_memory_group_tables(metadata)
+    from .photo_stack_schema import add_photo_stack_tables
+    add_photo_stack_tables(metadata)
     return metadata

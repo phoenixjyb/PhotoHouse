@@ -94,6 +94,8 @@ class ConnectedUiTest {
         var photos = listOf(photo)
         var photoStackGroups: List<PhotoStackGroup>? = null
         var photoStackReads = 0
+        var libraryPhotoStackResponse: PhotoStackGallery? = null
+        val photoStackPreferenceWrites = mutableListOf<Pair<String, PhotoStackPreferenceMutation>>()
         var total = 1L
         var originalsAllowed = false
         var uploadHistoryPages: Map<Int, UploadHistoryPage> = emptyMap()
@@ -120,6 +122,15 @@ class ConnectedUiTest {
         override suspend fun galleryWithPhotoStacks(token: Bearer, library: String, page: Int, media: GalleryMedia): PhotoStackGallery {
             photoStackReads++
             return PhotoStackGallery(Gallery(library, page, 50, total, false, photos), photoStackGroups)
+        }
+        override suspend fun libraryPhotoStackGallery(token: Bearer, library: String, page: Int, media: GalleryMedia): PhotoStackGallery =
+            libraryPhotoStackResponse ?: throw ApiFailure(FailureKind.HTTP, 404)
+        override suspend fun postPhotoStackPreference(token: Bearer, library: String, mutation: PhotoStackPreferenceMutation): PhotoStackPreferenceRevision {
+            photoStackPreferenceWrites += library to mutation
+            val current = libraryPhotoStackResponse ?: throw ApiFailure(FailureKind.HTTP, 404)
+            val revision = (current.preferenceRevision ?: 0) + 1
+            libraryPhotoStackResponse = current.copy(preferenceRevision = revision)
+            return PhotoStackPreferenceRevision(mutation.indexRevision, revision)
         }
         var transientDetailFailures = 0
         override suspend fun detail(token: Bearer, library: String, assetId: String): Detail {
@@ -686,6 +697,28 @@ class ConnectedUiTest {
         rule.onNodeWithTag("media-3").assertIsDisplayed()
         assertEquals("Dissolving a stack is local view state", reads, api.photoStackReads)
         capture("photo-stacks-separated-zh-150")
+    }
+    @Test fun libraryPhotoStackResetIsVisibleEvenWhenNoGroupsRemain() {
+        val indexRevision = "123e4567-e89b-42d3-a456-426614174000"
+        val api = SyntheticApi().apply {
+            photos = listOf(photo.copy(kind = "image"))
+            libraryPhotoStackResponse = PhotoStackGallery(
+                Gallery("synthetic-library", 1, 12, 1, false, photos), emptyList(), "library", indexRevision, 5)
+        }
+        val store = ConnectedStore(api, scope)
+        rule.runOnUiThread {
+            rule.activity.setContent { ConnectedApp(store, initialLanguage = "en") }
+            store.authenticate("+12025550123", "synthetic-password-only")
+        }
+        awaitLibrary(store); click("Libraries"); click("Open library")
+        reveal(hasTestTag("photo-stack-reset-preferences"))
+        rule.onNodeWithText("Cover and separate choices are saved for your account").assertIsDisplayed()
+        clickTag("photo-stack-reset-preferences")
+        rule.waitUntil(5000) { api.photoStackPreferenceWrites.size == 1 && !store.state.value.photoStackPreferenceBusy }
+        val write = api.photoStackPreferenceWrites.single()
+        assertEquals("synthetic-library", write.first)
+        assertTrue(write.second.reset)
+        assertEquals(6L, store.state.value.photoStackPreferenceRevision)
     }
     @Test fun familyNoteTagsKeepAlbumContextAndRenderOnPhone() {
         val api = SyntheticApi().apply {

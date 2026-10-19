@@ -1,5 +1,12 @@
 # Current project status
 
+**October 20 following source:** [Library-wide photo stacks](LIBRARY_PHOTO_STACKS.md)
+add one stack per collapsed page position, full member viewing and persistent
+per-account cover/separation choices on Web and phone. An optional CPU index
+refresh entry point and additive `f2a8c5d1e640` schema are implemented; no migration,
+index refresh, Windows switch or APK publication has occurred for this increment.
+The delivered v74/API remains on its page-local grouping contract.
+
 **October 20 preparation-status delivery:** PR #97 is merged, and Windows API/Web
 serves fixed source `9e39ebd`, retaining the newer search source and private runtime
 configuration. [Phone v74](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md)

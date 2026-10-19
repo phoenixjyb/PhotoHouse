@@ -25470,6 +25470,257 @@
       "schema_changed": false,
       "routes_added": false,
       "notes": "Record the completed source 9e39ebd API/Web and original-certificate v74 OTA delivery, independent source/APK readbacks and separate physical family acceptance. Documentation only; this commit performs no deployment, publication or device installation."
+    },
+    {
+      "feature": "library-wide-photo-stacks-private-presentation-20261020",
+      "source_commit": "2a851893393a1b3ede38b222310bfa5bf9c9efbe",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "sha256": "383b3bbdf9fb262d59071dca2be8a3b7b2e61340fe720e00b47b6eaef01b201f",
+          "before_sha256": "40570427163fe4274f8e90cf154eb12755711fc7b5d9cee7fb677317eb375731"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "sha256": "f5fc86ecaa04d0cff9cb2e07f08d01b508dc0d8abee59e7ea175136226189279",
+          "before_sha256": "f372e8ce319da9ffdb7ab778975516d3c0b2cae748847b28a04f2e269e078293"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/ConnectedStore.kt",
+          "sha256": "0068598952e95d2dcf663e0cb79e493fd58350bf7b8ec34084efef65c2ef8c0b",
+          "before_sha256": "9d8538730672523fce236325a501f5e525481cb955395268b64648c91bcb16fe"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/HttpsPhotoHouseApi.kt",
+          "sha256": "3a4250e1a27b510a0907f007742b48770422e91caaa052c4c94158b4ca56212e",
+          "before_sha256": "614b7143736fca8a72b0f81e2e70836b2762e0429f6f2a30f8056c4fbe558c91"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoHouseApi.kt",
+          "sha256": "d6559cea7caa17af7daf65d39b1c58b5db5087c98195b1aa1bca9aff58871758",
+          "before_sha256": "5e50c987536565e4e5994b77658da293c4a976d67b5b07c4d6e8946a782a1fb2"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/PhotoStacksWire.kt",
+          "sha256": "5407543b88484f9e3b8edb56cc60d8305053560c23effa986d243dbc1080fdfa",
+          "before_sha256": "dbd931cf6e0bf06d1e0a3b40edb930adf2fb399b69b34330eeaf92c6704c26a5"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/GalleryMediaStoreTest.kt",
+          "sha256": "bb207812c3d7eefd8dec52240869dabe9a77e71e72002749684ac8ad15c3ae30",
+          "before_sha256": "1086b7280104b56ac5a6a7435719bb423a8d63c2635bb178c20baa11d0007d6f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/HttpsApiTest.kt",
+          "sha256": "8a0e1ffbb677a1bc41bc17c9253f9317b29fef917bb9d387cf19e2fcf4441e82",
+          "before_sha256": "98b4dc568c56eec8905547a55dfb9a04b1f8c896b55bb936f9bde0c956ac2d1f"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/PhotoStacksWireTest.kt",
+          "sha256": "19ef6750bc590c5bd73bcf9425fd4686645e2cfd44f8b696c1b926d8785971cb",
+          "before_sha256": "4392a4deedac400336ba7d12809e92054698767178c29ccfb35eb69d3e39c17e"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "9f6406074491b133940c6192c2cb3bd9cc3510bd190ff45f54ed86aa868f89c1",
+          "before_sha256": "66280c7f6b004982ff2e17defd6fedb86d1ad811ecde3406952c20b530d58658"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "106463af84b1e2adf4cbbb99801d2374ea030e4c5e222ea3f17acf24df8e5dcf",
+          "before_sha256": "3208e71ae009a7090c48f25dfb8dbb2d139e3e3242da269204b98031114a1d24"
+        },
+        {
+          "path": "docs/LIBRARY_PHOTO_STACKS.md",
+          "sha256": "9a72ee4635c80866ea981148e274432b182f077ba10e0a2ad6cc6357da1ed3fe",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "9502f407fb1d8a020c752700a55e430ffb47bcba561046b7bf91b07e04abebaa",
+          "before_sha256": "1f401a7940e0e6c6c4d65d3d7f0dbe8a30501934587c75c18eb660a199860785"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "e658091fdbf502a13c94d0e9096332d733a4dcc22d474a54090c30a646a8754c",
+          "before_sha256": "f59ddd499f1830950586cd2270001cdd1a14823266dd4acb221163b3ab414580"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "758239b241467b992432801fa84477e540b727792d936293f8064db19904bf3b",
+          "before_sha256": "1e8f6e8495edb977a8f2eec2f17223fd64405d82efb2b7a74600a68b7721f94e"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "sha256": "81fc317d234c9ece2cd951ffbd8fe04e3f5672c3e00159121eb562ebaf66e3b7",
+          "before_sha256": "859d56234bfcd5aae6bd774a890d78590482c2e736f88be62ed2d7688145b1ac"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "8df9f0f97666341033fe076a5ee870c8f5e39a780b224eb3c9158d7ba58cbaf4",
+          "before_sha256": "a210e6b73d3bc76d7f1e5da1ea6a3168aa58c4e06819513723f47571f48c3b28"
+        },
+        {
+          "path": "server/backend/app/access/library_photo_stacks.py",
+          "sha256": "2c4f7ec1f6f35df27e134a3cc3fa78dec9b7d31d1369ee8f22794f68fb8ade2d",
+          "before_sha256": null
+        },
+        {
+          "path": "server/backend/app/access/memory_source_refs.py",
+          "sha256": "f79c031a4bcd144f411756a2de9ff0e9a4685a9d0f3d2e9310618a90a9c52de3",
+          "before_sha256": "4b2d4290f65852f6edd6716037ae449e9e4edc35a6bfa99e66900b536e0dec00"
+        },
+        {
+          "path": "server/backend/app/access/metadata.py",
+          "sha256": "16d02bb31a92d54ed1d5ead216286870e6b569da61779276df97adc40fa5e8fe",
+          "before_sha256": "fd6e2137cf79dabdc484941062f5f18c258b3f5112b6dd315f17cdcd191bf746"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_index.py",
+          "sha256": "3221f85e912cf4576673c20f95bdca71f8364ff48640146e9ae07946cdcd5143",
+          "before_sha256": null
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_schema.py",
+          "sha256": "9991bf53b323ee1f98330bc79ab839c374cbdc87c51c16bad8961b90f9ecb23c",
+          "before_sha256": null
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_transport.py",
+          "sha256": "6afc8f375089e3abba8e0c98515f0373b82fd48961c4b72532d12585b24d3d73",
+          "before_sha256": null
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_worker.py",
+          "sha256": "5f27f8bce052a6431c169e38d3129ba634ab6f657d348e6b44349bdfe147256e",
+          "before_sha256": null
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "sha256": "86bb4fcc8bc3486f824d43176a20c0bcdb85e294e6eb93fdbf4cd7882aa861d9",
+          "before_sha256": "05ac853330564c3d77d8d43cdb017bf9f51f6b66d0130f8b70b5b97816824905"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "02dfb5dac28cde072dd19ba06adad61757f134ce15d4ad73e4736e044bc18c2e",
+          "before_sha256": "9fbe188d549317ca50414e487e8b27b5c62f4ed661728d8f9b9b43265e7bc109"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "sha256": "0d705e19cc0dcf5f9fb2af80488eb22120b7a142498761ab6c6537a33ce6be65",
+          "before_sha256": "c07dca3ef5eaa1894662a73d3c9b5436e703305f74eb91a6f172e8e0b43651ec"
+        },
+        {
+          "path": "server/backend/migrations/versions/f2a8c5d1e640_library_photo_stacks.py",
+          "sha256": "6e8c07690d34abb8fe45fe9fa66e562856271ed98bb343668ff1ec07231d5ae9",
+          "before_sha256": null
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "sha256": "a70081111eefbcc0bed56b2bfa45b736c800fa8f79557b89aaf91b38277263e0",
+          "before_sha256": "fa4359610630b9da92fae34b4f41d7304473b64e8617a12c10c2e60c4c07619f"
+        },
+        {
+          "path": "server/scripts/approved_face_queue.py",
+          "sha256": "cc15b6258d9b0436cb61d52fd5f7366f23280224938ae8be89e9006cce6fea89",
+          "before_sha256": "e50c8e2852799378ddbadba9b38aa3e15fc49e4674c71e5868d5c50dbd6b9475"
+        },
+        {
+          "path": "server/scripts/build_approved_worker_package.py",
+          "sha256": "98dbbb2a5e8930c67dd0a2f9fb7fe54484d99d5d7dbf7ba174ce78e81e3e01f3",
+          "before_sha256": "5fe319a17395bedbd663f0a553e709eb8b0980b75f745d6879763d490951ab34"
+        },
+        {
+          "path": "server/scripts/build_released_caption_package.py",
+          "sha256": "3404f0117e7cd91a5f5bd0e269c84aa7c4a3a9f7c54d9967e6ad345bbe63fff5",
+          "before_sha256": "9494acced3e89589e08f1bf7e975d8d09613c928d4bf906e267088b41d6434f0"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "a5346cb45c188740425b556de61486e5e5d9917a78427b200c0601a81dc37337",
+          "before_sha256": "4501f0762b87fa0a82c5e58809f96f4c1a35e1008ce54d85699a9906ae4c9d68"
+        },
+        {
+          "path": "server/scripts/qualify_approved_workers_windows.py",
+          "sha256": "a0814dc97168dd690d5e4608990c7419ff015f95d0b9ba3fb41cbfe070f57663",
+          "before_sha256": "bd47f835ce3ca210f24402045df74e5e529960715d3c32f157fd626e6cfab82c"
+        },
+        {
+          "path": "server/scripts/run_approved_cpu_worker.py",
+          "sha256": "5a5f71089ff51236399d60d599db814e31d766b9992817826a843ca1b2724a86",
+          "before_sha256": "7792c1fce1d2cc3be2dbbb8ee618f79145f4290d29bd79eaeeaf08ee5cd2c9ee"
+        },
+        {
+          "path": "server/scripts/run_approved_face_worker.py",
+          "sha256": "98c200d75d5055d7adf9439c92ecebdf7eba7a8802aaef0894d08b8f9218d669",
+          "before_sha256": "5fab6caa1543412a2577dd6d5625ba905635e9f63546ee0340c66aad09281e3d"
+        },
+        {
+          "path": "server/scripts/run_approved_image_embed_worker.py",
+          "sha256": "9d67440020cad1d201d23f77382057b4d9584ad54cf40a429ff2023ae88f5247",
+          "before_sha256": "29e86bc568f2ec576d8a427e18bffeb15d4e74cb6d68e157ff64a635383fd39e"
+        },
+        {
+          "path": "server/scripts/run_approved_video_embed_worker.py",
+          "sha256": "86b741aaae9603fd7297a8c9e7a1c0b454bf59771b1b9038ea7b5d722e748a12",
+          "before_sha256": "50d9259933f2e5c791d92b34db86f766cadbf9b5f4fe436491c011188aad9557"
+        },
+        {
+          "path": "server/scripts/run_approved_video_worker.py",
+          "sha256": "3c473993b04ac1f23698db9769d2159f20dd25e2114f330d19b5dc3350c0db40",
+          "before_sha256": "18f2e8480832a9e681a6a5d2ddaedf15aa9a4a5ce8f9fbf53491109a6fd4fbba"
+        },
+        {
+          "path": "server/tests/security/library_photo_stacks_browser_bridge.py",
+          "sha256": "e779b65779ee3646db6806d92db42f3ffbb476293890f6c8b1770d551f13323a",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "0e6d79b7074d9712fdbe4d9182ce1577f873fc5e3d73fc5f9426d58f1de05537",
+          "before_sha256": "d45d6b8090a7fff99dfee3f10f49aa1e780ce8d961ecb4863f5ee89904f37670"
+        },
+        {
+          "path": "server/tests/security/test_library_photo_stacks.py",
+          "sha256": "99c0c642fb464afbbe7c007f243d7a7b1545193d2f1fb1cbd17336361dea18db",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_library_photo_stacks_browser.cjs",
+          "sha256": "c97c75bd3177a0f2456eeb1664aaddbaa8c38802e5ae2a79f7a44c4f7be0254b",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_orm_migrations.py",
+          "sha256": "d8480ac998fac8475ea95b2f0960a3b0859834af7778e1a5a8c3ae5096c8bdc6",
+          "before_sha256": "d04c79d6d421c0c3cc6ee4b7d29f0239709beb548c3f20c8119f9c3232deb783"
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_index.py",
+          "sha256": "2baee1aa63c0f058e7702c1af6696b88f0724d6d78559aa1a9274c1083357adb",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "d1262adc637c8dc63041b62712bb583b4ad7a4bb9d99fdbb65715e96a0117db7",
+          "before_sha256": "9d124a2817a5b5a6f481e15ebcb6c6f86944e11eef15af822c784b5f7a16ac6d"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "aafc82a9653b8907961a1429e92e9a6faea6be8231d40a61c7cc7a878a6e8166",
+          "before_sha256": "9b90f7e435f548c9c05da6c1d1bb76d7ce762ccc36c3ad90096c884b1ed6c38c"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "sha256": "495b3e7ea6f5b3f2ded82130bd1757c37cca6c643f090682cc1e66988e8cdc73",
+          "before_sha256": "94d9818135b2a2b715452ae06ed9f67bcadd3b167232e9112e74ffa293b8c1c4"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": true,
+      "live_schema_changed": false,
+      "generation_enabled": false,
+      "notes": "Optional library index, collapsed pagination and account-private CAS display choices across API, Web and phone. CPU refresh entry point, explicit additive migration and bounded generated checks only; no Windows migration/index job, deployment, model activation, APK signing/publication or device installation."
     }
   ]
 }
