@@ -23756,6 +23756,39 @@
       "identity_approval_changed": false,
       "provider_calls_added": false,
       "client_contract_changed": false
+    },
+    {
+      "feature": "bounded-manual-people-review-candidate-proposal",
+      "source_commit": "18304524bc5a17030d711408c3352db7d2c85c6f",
+      "files": [
+        {
+          "path": "server/scripts/inspect_people_review_candidates.py",
+          "before_sha256": null,
+          "sha256": "64bd3eead5b708e814bcbc57c135a4a9f9afc8de64eb7c1a5c218f71ff9e9a88"
+        },
+        {
+          "path": "server/tests/security/test_people_review_candidates.py",
+          "before_sha256": null,
+          "sha256": "b64c375c54c36dac76a455c3d552560d8a7fcd723b0d21c594b7c11aaee61f7c"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "77a8f6a637416fea3a5aca8a09e03f534e0d4a6bfebeb9eef7691fc0bd00abad",
+          "sha256": "b0a8b4ee28c86114a8a76b8b2ec6273781806baba2b9aa76ab99bfe8187d1ca0"
+        },
+        {
+          "path": "docs/REFRESHING_REVIEWED_PEOPLE_SEARCH.md",
+          "before_sha256": "02a18a91e66cb4cbe5c0928926d411f67269841ed80776de6abfff0d02143fe5",
+          "sha256": "036c94272b768edc3748b72dab30e3acf274c82ebb5936e2860aed2f851c1346"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "authorization_changed": false,
+      "identity_approval_changed": false,
+      "provider_calls_added": false,
+      "production_data_written": false,
+      "operator_only": true
     }
   ]
 }
