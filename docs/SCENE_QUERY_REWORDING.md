@@ -174,3 +174,42 @@ service/model/configuration, live library, or semantic activation changed.
 The semantic gates remain disabled by default, and activation remains blocked
 on model relevance, broader language/clarification qualification and separately
 authorized runtime and family/device acceptance.
+
+## R41 local validation after Mac restart
+
+Recovered the clean R40 worktree and completed this round on immutable
+`50623f9`. The complete API profile passed **2,601 tests and 2,745 subchecks**,
+plus the generated no-listener demo. The private receipt records identical
+start/end commits and input hashes. The focused contracts passed 183 tests and
+766 subchecks before the final added conversation test; the final eight-test
+constraint suite passed 113 subchecks. These overlapping results are not summed.
+
+The new 29 synthetic negative/positive pairs have the expected admission
+behavior. Source-matching checks cover generated captions, edited captions and
+family notes; failed scene receipts, empty cohorts, private v3 clarification,
+short replies and old-policy ranking restoration have separate regressions.
+English/Chinese Web journeys used real synthetic workspace responses with
+ordinary v2 negotiation. Current native-modal desktop and 390-pixel/150-percent
+text captures were inspected; full prompts fit without horizontal overflow.
+Short replies keep the unresolved condition, with no automatic resubmission or
+reload. Earlier harness-only DOM activation and hash-navigation failures are
+retained privately and excluded from accepted visual evidence. No Android build
+was repeated in R41 because client source did not change; no device was tested.
+
+A text-only admission replay verified the frozen dataset identities and did not
+open images or call models. In each of English, Chinese and mixed input, the
+fresh benchmark admits 12/16 requests and refuses 4/16; the earlier regression
+benchmark admits 24/32 and refuses 8/32. The refused requests contain unsupported
+exclusions. In the separate negation stress set, all nine negative variants are
+refused and all nine positive controls remain admitted. Refusal is recorded
+separately from retrieval correctness: these counts do not improve the prior
+encoder scorecard or establish new model relevance. Conservative cues may also
+refuse lexical phrases such as “zero hour” or a negative temperature; wider
+language/recall qualification is still open.
+
+This round is committed local source only. No push, PR, deployment, Windows
+service, model, runtime configuration, private family index or semantic gate
+changed. Semantic activation remains blocked. The next qualification should
+report admission coverage alongside ranking quality, retain every refused case,
+and separately measure ordinary positive counts, relations and vague requests
+before preparing any activation proposal.

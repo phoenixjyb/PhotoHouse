@@ -25734,6 +25734,20 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Share bounded negative-predicate handling between request admission and affirmative metadata matching; guard zero, modifier apostrophes, exclusivity and strict counts before model/ranking. Version source policies to reject old bound results. No semantic activation or Windows change."
+    },
+    {
+      "feature": "strict-scene-admission-validation-record",
+      "files": [
+        {
+          "path": "docs/SCENE_QUERY_REWORDING.md",
+          "before_sha256": "b88c39ac7d47743547f16a7ea855a0fab28332f8378b7dff534d38dbc4114008",
+          "sha256": "5b19ab9ccee51b255d4f0e2294ae9653d0c072e650261eb729da1ea5ee3f093b"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Record immutable R41 API2601tests2745subchecks, 29paired admission controls and synthetic bilingual modal renders. Keep admission coverage separate from model relevance. No semantic activation or runtime change."
     }
   ]
 }
