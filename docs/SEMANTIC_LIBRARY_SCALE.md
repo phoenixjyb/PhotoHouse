@@ -81,3 +81,58 @@ before/after measurements use the frozen known regression plus a separately froz
 unseen-query case, preserve original labels, report every gain/regression and keep
 human/family acceptance false. Complete household indexing, production publication,
 account binding, protected device latency and operational acceptance remain separate.
+
+## Qualification — October 20, 2026
+
+Source `20f6ddba5f7af76b65eab86f385d15f2065fde20` passed generated checks for
+actual builder/inspector/collection/staging of 513 artifacts, a 1,025-record
+three-batch roster, 769 candidates at 768 dimensions,
+and protected API paging with 515 eligible artifacts. Checks cover corrupt-tail
+refusal before inference, hard filtering, vector-byte admission, mid-request
+membership/source changes and conversation recovery without another model call.
+The provider-v2 driver also passed a generated authenticated ASGI normalization
+and original-query binding check. These are source fixtures, not household-scale
+native serving or device performance acceptance.
+
+The Windows CPU model comparison reused the existing private 32-image vectors,
+with eight frozen known cases and one additional query case frozen before scoring.
+That case uses previously seen photos; it is not a new image holdout. The unchanged
+raw baseline reproduced the original literal clothing inconsistency. After the
+bounded parser, all 24 variants of the original eight cases ranked a designated
+relevant photo first. The additional case ranked a relevant photo second in all
+three languages, improved from second/eighth/eighth without normalization.
+
+| All nine cases / 27 queries | Raw | Normalized |
+| --- | ---: | ---: |
+| First relevant photo ranked first | 22/27 | 24/27 |
+| Any relevant photo within five | 25/27 | 27/27 |
+| Mean relevant-image recall within five | 89.815% | 97.222% |
+| Mean reciprocal rank | 0.869 | 0.944 |
+
+No first-relevant rank regressed in this small selected diagnostic. Multi-image
+recall still differs by language, and the added case still misses first place;
+do not interpret consistent first-hit ranks as identical complete rankings or
+broad translation quality. Labels are assistant-reviewed, with human/family
+acceptance false. Three unsupported exclusion probes refused before inference;
+this does not repair the encoder's negation behavior.
+
+The child proved an 8 GiB/four-process Windows Job before model imports, with a
+600-second deadline, 16 GiB free-RAM floor and two CPU threads. It loaded the
+existing seven pinned model artifacts and created no listener or image vectors.
+Offline hub settings and Python socket-call guards were used; OS-firewall,
+GPU, native larger-cohort HTTPS latency, load and peak memory were not qualified.
+The image identity remained exact; only the composite text identity changed.
+
+Independent model-free Windows readback verified all 266 packaged source files,
+model/package pins, 32 artifact records, all 27 original/derived query receipts,
+text-recipe binding and Job proof. It recomputed aggregate metrics from reported
+ranks, not the model scores themselves. API task/listener/configuration and
+phone/TV feed pointers were unchanged. Trusted Mac HTTPS checked UI 200,
+anonymous session 401 and both update feeds 200; semantic remained OFF with no
+semantic provider configuration. Private detailed evidence remains outside Git.
+
+The full API profile passed **2746 tests and 3612 subtests** plus the
+generated no-listener demo; seven packaging tests passed. Implementation and
+documentation are local commits, unmerged and undeployed. Complete compatible
+family indexing, blocked-file handling and real larger-library/device performance
+remain open. No account binding, index publication or activation was performed.

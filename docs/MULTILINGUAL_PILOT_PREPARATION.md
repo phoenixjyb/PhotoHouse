@@ -183,3 +183,8 @@ Semantic search remains **OFF**.
 The following [private family coverage and network diagnostic](FAMILY_SEMANTIC_COVERAGE.md#native-family-diagnostic--october-20-2026)
 qualifies a partial 32-photo cohort and actual loopback HTTPS/TCP transport. It
 adds no production coverage or activation and retains the bilingual ranking gap.
+
+The following [library-scale preparation](SEMANTIC_LIBRARY_SCALE.md) adds a
+version-3 runtime with explicit owner/budget limits and multi-batch collection
+verification, plus a separately bound narrow bilingual text policy. It closes
+source capacity gaps while retaining full-library coverage and activation gates.

@@ -1,5 +1,14 @@
 # Current project status
 
+**October 20 library-scale semantic preparation:** local source `20f6ddb` adds
+verified multi-batch collection/staging and explicit owner-only streaming beyond
+512 candidates. Generated checks cover 513 actual artifacts and 515 API results.
+A narrow bilingual clothing parser fixes the known Chinese/mixed regression:
+all 24 original query variants ranked a relevant photo first; a new three-query
+case ranked second consistently. Semantic remains **OFF**; no deployment, account
+binding or publication. Complete family indexing and native/device performance
+remain open. See the [scale and qualification record](SEMANTIC_LIBRARY_SCALE.md).
+
 **October 20 local semantic qualification:** source `3d572c3` adds complete
 private coverage planning and an explicit temporary HTTPS/TCP canary. A partial
 32-photo candidate produced 22/24 first-place relevance hits across English,

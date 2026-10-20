@@ -26968,6 +26968,31 @@
       "actual_family_account_bound": false,
       "human_relevance_accepted": false,
       "activation_approved": false
+    },
+    {
+      "feature": "library-scale-source-and-frozen-bilingual-native-qualification-record",
+      "files": [
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "e9916ab67f1634ea933a489665e2327f737151a553cec515c3463d38ae023c51",
+          "sha256": "078a9461652811991e009785ace39b14f620a0e9168c897f8132f92ef8d22f8e"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "64dbf355cc3d96336e13f4a3586fc1807c536069ab8bffe1faa4760b8b311298",
+          "sha256": "d1ee312e66dee0c2dcaaa6a3cecfbd5c087d50c12e79c7d5ea0cc17591388271"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "2484a9153c23eefe30dd659b853d1c8598d5f30fe30adda8d5ed49f7355fa046",
+          "sha256": "b8a2a71c58f187f404746aa050a179378797ad0df23066870d3a4dfe5d724f2a"
+        }
+      ],
+      "qualified_source_commit": "20f6ddba5f7af76b65eab86f385d15f2065fde20",
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "activation_approved": false
     }
   ]
 }
