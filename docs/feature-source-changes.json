@@ -26812,6 +26812,83 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Internal selected-source operation owner with exact-request retries, fixed result expiry, bounded identity retention and injected shared admission. Synthetic async providers certify cleanup only in tests; no native stop adapter, application/session hook wiring, HTTP route or deployment. Production admission component unchanged; existing expiry test made deterministic. All 258 API runtime package inputs unchanged."
+    },
+    {
+      "feature": "selected-story-app-session-lifecycle-v1",
+      "source_commit": "0d05928095accd043041e565fef016dc150cb143",
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_lifecycle.py",
+          "before_sha256": null,
+          "sha256": "31d45cd1279e88ac16cffbe6eeccf07942a0bfe1946d55c2135d1ed18390cdcf"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_operations.py",
+          "before_sha256": "d22a45456dd23e32d5804a5bb1757bafc86f83b697db30aa70a42cd667694c18",
+          "sha256": "e157f181a2d899492f7d581eb6ba71899e4606394ea935324b44728f73f646cd"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "fe8228ed39ed3421a19b2fe49786623d2e3c241195fa492963d4fac6e11e0efb",
+          "sha256": "9fe87a7448341a9fceb69ff58c8c69f5afe71c5fc51397b12d3f0725618a6fcb"
+        },
+        {
+          "path": "server/backend/app/access/transport.py",
+          "before_sha256": "c590e516471701230361ca74328632c531d76fcf853f92206504f5b0f80fc4d9",
+          "sha256": "5cfcd821b896625762a86781b5f7054cc445b71bdf50fffe3f73ca3da7c2b67c"
+        },
+        {
+          "path": "server/backend/app/access/members.py",
+          "before_sha256": "d04fe7891812b79b0f56aefed9974f2e101f11df054c008e927d2da77129adf6",
+          "sha256": "c1a3dead9bf3cafda78d805f8e9a3183f71393f17bf139db34ca4a9072249cba"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "37a09a8a8c62880fcc0deb4c1f625310656bdc114216264da4b56472a748ae32",
+          "sha256": "62c413b8d309374ee6be3c4373aa6201401475e4d584e5ce9e709c0167c0a874"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_lifecycle.py",
+          "before_sha256": null,
+          "sha256": "58fc7138c7cbd026b68d45e2af3818a652a2c81891d3ab8dcc14547cbe566f3e"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "5678ea82ca14d6b03b9bdddd48cdbe10cc9865a95a992ca4d99470335722e507",
+          "sha256": "6f47b4f7ebe0d62b7736f87d9c14657750893140f93a21cada8c25632da61517"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "7cd5b7b2b28649ef1f167dbf5dffb72900d9319d8bdb89b3fb28d9725ea615d2",
+          "sha256": "f7c4791b4d87ecb2a228fd4c4631133a04d4510fd2d33c5662a051274a47d10b"
+        },
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "fda8f163bfef3fea114dd4cf0224ae8cd49fae1b62eccf7e7489a1b163b26430",
+          "sha256": "2be9dae31c8cc1d53efafabd981a3ec95ded7b2cc027ec9949e9626ab12639e9"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "f41d5bc1c6c292ba1625e59d5c61eb37c9d50be55250d6aa7af8cce1d9e69f8f",
+          "sha256": "dab6251d4f4f20545e27aeb0bb9ab177991b02df246580e209d0d3425d2ede91"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "161250840051b79e3982a347af18e0d42e2b7a33d092d00371ad313f1ec9d266",
+          "sha256": "dfd2474b15dca81c2f46662ae616ec88ceca50556f1d95d0ab4929b7287b7b82"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "cac9aa5727d066d99c30f4805860e72558d1740be39fedd0afb02e3abe7a40f3",
+          "sha256": "7316e7588f17ef3806a6a9950ecc96675506d4f0ab41f77def454752e9749eea"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Optional explicit async selected-story provider injection creates one app-owned nonqueued inference gate and draft owner. Startup failure/shutdown fence output and retain unresolved ownership. Bounded shielded logout writes hold transient session barriers; authorized committed membership revocation fences only its account/library. Defaults remain off. Adds source-only dependency closure (262 runtime package inputs), synthetic app/session checks and real SQLite authorization. No preparation route/client, installed native provider, cross-process GPU qualification or deployment."
     }
   ]
 }

@@ -1,13 +1,15 @@
-"""Unwired household draft ownership, exact retries and shared model admission.
+"""Household draft ownership, exact retries and shared model admission.
 
 An injected provider must implement async prepare(bundle, scope) and async
 stop_and_reconcile(scope). Only EXACT True from the latter certifies that all
 native work belonging to the scope stopped; coroutine completion is not proof.
-No adapter to the synchronous narrator, app construction or HTTP route is added.
+App/session ownership lives in selected_story_lifecycle. No adapter to the
+synchronous narrator or preparation HTTP route is added here.
 """
 from __future__ import annotations
 
 import asyncio
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
@@ -129,6 +131,7 @@ class DraftOperations:
         self._tasks = set()
         self._reads = set()
         self._invalid_sessions = set()
+        self._session_barriers = {}
         self._closed = False
 
     def _bind(self):
@@ -152,7 +155,8 @@ class DraftOperations:
     def _check_session(self, principal):
         if self._closed:
             raise DraftOperationError('closed')
-        if principal.session_digest in self._invalid_sessions:
+        if (principal.session_digest in self._invalid_sessions or
+                principal.session_digest in self._session_barriers):
             raise DraftOperationError('scope_changed')
 
     def _read(self, function, *args):
@@ -445,6 +449,38 @@ class DraftOperations:
         self._fence(operation, 'cancelled')
         return True
 
+    @contextmanager
+    def session_barrier(self, token):
+        """Trusted host logout barrier held until the revocation write settles.
+
+        Unknown tokens consume only a bounded in-flight slot, never a permanent
+        invalidation record. Current database policy governs later requests.
+        """
+        self._bind()
+        digest = session_digest(token)
+        if digest not in self._session_barriers and len(self._session_barriers) >= 16:
+            raise DraftOperationError('busy')
+        self._session_barriers[digest] = self._session_barriers.get(digest, 0) + 1
+        for operation in self._records.values():
+            if operation.session == digest:
+                self._fence(operation, 'scope_changed')
+        try:
+            yield
+        finally:
+            remaining = self._session_barriers[digest] - 1
+            if remaining:
+                self._session_barriers[digest] = remaining
+            else:
+                del self._session_barriers[digest]
+
+    def invalidate_membership(self, account_id, library_id):
+        """Trusted post-commit hook; never accepts a client authorization claim."""
+        self._bind()
+        for operation in self._records.values():
+            if (operation.identity.account_id == account_id and
+                    operation.identity.library_id == library_id):
+                self._fence(operation, 'scope_changed')
+
     def invalidate_session(self, token):
         """Trusted host lifecycle hook, not an unauthenticated cancellation API."""
         self._bind()
@@ -465,11 +501,15 @@ class DraftOperations:
                 await self._cleanup(operation)
         return all(operation.permit is None for operation in self._records.values())
 
-    async def close(self):
+    def begin_close(self):
+        """Fence synchronously before the app yields to shutdown cleanup tasks."""
         self._bind()
         self._closed = True
         for operation in self._records.values():
             self._fence(operation, 'closed')
+
+    async def close(self):
+        self.begin_close()
         tasks = tuple(self._tasks)
         if tasks:
             await asyncio.wait(tasks, timeout=self.cleanup_seconds)

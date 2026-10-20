@@ -3,7 +3,7 @@
 This contract defines a bounded, review-only operation for preparing a story
 from media and source evidence the author selected. The end-to-end PH-A4 service
 is a proposal; its internal snapshot core, narrative input and operation owner
-are implemented without an endpoint or application wiring. It leaves story ownership,
+are implemented with optional app/session wiring and no preparation endpoint. It leaves story ownership,
 current source authorization, revision checks and explicit save in PhotoHouse.
 The current application facts below were checked against
 [`story_workspace.py`](../server/backend/app/access/story_workspace.py),
@@ -23,7 +23,7 @@ does not require a general agent loop or PH-A1's three-tool ceiling. Reconcile
 shared provider admission and the story-specific baseline before implementation.
 The [PH-P2 acceptance contract](SELECTED_SOURCE_STORY_ACCEPTANCE.md) freezes that
 comparison and specifies the required internal draft-bundle variant. The
-[PH-C0 admission contract](HOUSEHOLD_INFERENCE_ADMISSION.md) defines the unwired
+[PH-C0 admission contract](HOUSEHOLD_INFERENCE_ADMISSION.md) defines the process-local
 capacity primitive; it is not a queue added to this proposal's HTTP API.
 
 ## Existing source and save behavior
@@ -267,10 +267,10 @@ can conservatively invalidate preparation without sending them to the model.
 
 The [synthetic snapshot tests](../server/tests/security/test_selected_story_snapshot.py)
 exercise these checks without model, network or household data. This core is
-not constructed by the application and is intentionally outside the API runtime
-package allowlist. No DB writes, HTTP route, operation registry, retry recovery,
-expiry, admission or generation are implemented here. A future service must own
-those mechanisms, resolve after admission, and call revalidation after provider
+included in the source-only API runtime package for the optional operation
+owner. No DB writes, HTTP route, operation registry, retry recovery, expiry,
+admission or generation are implemented in the snapshot core itself. The
+operation owner resolves after admission and calls revalidation after provider
 work before assembling a review result. Current token validity and account
 binding do not replace operation/session lifecycle fencing on logout, account
 switch, cancellation or a newer generation. Existing Save remains the final
@@ -448,9 +448,11 @@ change originals, sources or saved stories.
 [`selected_story_operations.py`](../server/backend/app/access/selected_story_operations.py)
 implements `DraftOperations` with injected protected `SelectedStorySources`,
 an asynchronous provider and the application's shared `InferenceAdmission`.
-It is not constructed by the app or included in the API runtime package.
-No route, public state/error enum, model runner, database write, saved-story
-job, background restart recovery or native capacity claim is added.
+The optional app lifecycle constructs it only after explicit async provider
+injection; the default app has no owner. It is included in the source-only API
+runtime package. No preparation route, public state/error enum, model runner,
+new database write, saved-story job, background restart recovery or native
+capacity claim is added.
 
 The default household bounds are one admitted generation, no application
 waiting, 60 seconds of work from permit grant, ten seconds to confirm cleanup,
@@ -516,6 +518,52 @@ use synthetic providers and source snapshots, and the
 exercise real protected SQLite policy without a model or password KDF. These
 checks establish process-local contracts, not provider privacy, GPU exclusion
 across processes, real cancellation or household client acceptance.
+
+
+### App and session integration
+
+[`create_app`](../server/backend/app/main.py) accepts the explicit
+`selected_story_provider` injection. It requires an exact protected
+`AccessRuntime`, collaboration opt-in and async `prepare`/`stop_and_reconcile`
+methods. There is no settings/environment fallback or installed native adapter.
+The app's memory-group flag is copied into its protected source runtime, matching
+existing workspace source resolution. No preparation HTTP route or client is
+activated, and saved-memory generation flags and PH-A1 remain independent.
+
+[`SelectedStoryLifecycle`](../server/backend/app/access/selected_story_lifecycle.py)
+constructs one `DraftOperations` at startup and owns one `InferenceAdmission`
+with zero waiting slots. They are retained as `app.state.selected_story_operations`
+and `app.state.inference_admission`. Startup failure also closes them. Shutdown
+synchronously fences all draft output and closes admission before awaiting
+shielded cleanup. The app retains unresolved operation, native stop and access
+mutation tasks; `shutdown_clean` is false when the bounded wait cannot prove
+settlement. It never reports successful native shutdown or constructs a fresh
+gate to bypass quarantine. An enabled app object supports one lifetime; reuse
+must fail closed rather than reset ownership.
+
+The existing authenticated logout route uses an owned access-mutation task.
+Before the database write starts, a temporary session barrier drops retained
+prose, fences matching operations and blocks that session's new/delivering
+work until revocation settles. Disconnecting the response does not cancel the
+write or remove this barrier. Unknown logout tokens do not accumulate permanent
+invalidation hashes. At most 16 access mutations/barriers are in flight. A
+failed write releases the temporary barrier but cannot revive fenced proposals;
+a later request must pass current database policy. The existing web CSRF and
+native bearer rules still apply.
+
+Successful revision-bound membership revocation fences only the affected
+account/library after the authorized commit. Denied or conflicting revocation
+requests cannot cancel another member's work. Existing final authorization and
+source revalidation remain required. Account switch uses logout plus the new
+session's ordinary authorization; independent sessions and conversations do not
+cancel each other. Controller wiring for a newer editor intent and a public
+prepare/cancel protocol remain separate.
+
+The [lifecycle tests](../server/tests/security/test_selected_story_lifecycle.py)
+use generated SQLite accounts/sessions and injected synthetic providers. They
+qualify local app/session ownership only, not an installed provider, Windows
+runtime, physical device or household usability. Package checks separately
+verify extracted source dependency closure; building an archive does not deploy it.
 
 ## Acceptance cases and dependencies
 

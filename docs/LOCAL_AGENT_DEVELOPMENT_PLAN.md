@@ -228,14 +228,16 @@ qualified; a synthetic occupancy signal is not proof of shared GPU admission.
 The [PH-P2 acceptance contract](SELECTED_SOURCE_STORY_ACCEPTANCE.md) now freezes
 six story comparison cases, adoption thresholds and the next provider input
 delta. The [PH-C0 contract](HOUSEHOLD_INFERENCE_ADMISSION.md) records current
-consumer ownership and an isolated, tested admission primitive. The primitive
-is unwired: profile owners, provider-wide coordination and a public waiting
-protocol remain separate integration work. Neither comparison has model/UX
+consumer ownership and a tested admission primitive. The optional PH-A4 app
+lifecycle now constructs one nonqueued gate; other profile owners, provider-wide
+coordination and a public waiting protocol remain separate integration work. Neither comparison has model/UX
 measurements yet. The narrative-only bundle version 3 and isolated authorized
 snapshot core are implemented with synthetic checks. The isolated PH-A4
 operation owner now adds exact retries, fixed expiry and injected shared
-admission. App/client wiring, native stop proof and cross-process resource
-coordination remain separate.
+admission. Optional app startup/shutdown, logout and membership revocation
+wiring now retain that owner and its shared gate. Preparation routes, client
+integration, native stop proof and cross-process resource coordination remain
+separate; no native provider is installed or selected.
 
 PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access

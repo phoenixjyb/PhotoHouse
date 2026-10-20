@@ -33,6 +33,14 @@ async def members(library_id: str, request: Request):
 async def revoke(library_id: str, account_id: str, request: Request):
     token, _ = credentials_from_request(request)
     body = await _body(request, {'revision'})
-    await run_in_threadpool(_runtime(request).call, 'revoke_membership', token, library_id,
-                            account_id, expected_revision=_integer(body['revision'], 2**63-1))
+    runtime = _runtime(request)
+    lifecycle = getattr(request.app.state, 'selected_story_lifecycle', None)
+    change = lifecycle.access_change if lifecycle is not None else None
+    revision = _integer(body['revision'], 2**63-1)
+    if change is None:
+        await run_in_threadpool(runtime.call, 'revoke_membership', token, library_id,
+                                account_id, expected_revision=revision)
+    else:
+        await change('revoke_membership', token, library_id, account_id,
+                     expected_revision=revision)
     return JSONResponse({'ok': True})

@@ -59,6 +59,10 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/qualify_oral_history.py',
             'backend/app/access/assistant_agent.py',
             'backend/app/access/assistant_agent_tools.py',
+            'backend/app/access/inference_admission.py',
+            'backend/app/access/selected_story_snapshot.py',
+            'backend/app/access/selected_story_operations.py',
+            'backend/app/access/selected_story_lifecycle.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
             'backend/app/access/family_note_deletions.py',
@@ -194,6 +198,7 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.model_deployment import validate_deployment\n'
                 'from app.access.model_qualification import validate_qualification\n'
                 'from app.main import create_app\n'
+                'from app.access.selected_story_lifecycle import SelectedStoryLifecycle\n'
                 'from app.access.story_titles import validate_bundle, validate_suggestions\n'
                 'from app.access.visual_vector_loader import VisualVectorReads\n'
                 'from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256\n'

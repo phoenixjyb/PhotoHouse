@@ -34,8 +34,9 @@ fabricate a revision or insert a job to prepare an unsaved draft. The isolated
 [source snapshot core](../server/backend/app/access/selected_story_snapshot.py)
 now authorizes and freezes its input. An isolated
 [operation owner](SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md#implemented-internal-operation-owner)
-adds bounded retries, expiry and shared admission. Public/native integration
-remains separate work.
+adds bounded retries, expiry and shared admission. Explicit provider injection
+now enables app/session lifecycle wiring; preparation routes, clients and native
+provider integration remain separate work.
 
 The new internal narrative **bundle version 3** is solely
 for selected-source preparation. It retains the closed v1 content fields and
