@@ -26627,6 +26627,29 @@
       "android_application_tree_changed": false,
       "semantic_search_enabled": false,
       "production_runtime_changed": false
+    },
+    {
+      "feature": "offline-multilingual-exclusion-label-binding-and-real-vector-scorecard",
+      "files": [
+        {
+          "path": "server/scripts/qualify_multilingual_scenes.py",
+          "before_sha256": "9c9cf6a85763def9278b25c18de967a8f99630363b03b8c387fa8ba9c7a876e0",
+          "sha256": "c2c94af6371cf278b0d4bb7b77c3f8ac474af195ed8838e5892ccad7a744352d"
+        },
+        {
+          "path": "server/tests/security/test_qualify_multilingual_scenes.py",
+          "before_sha256": "82910c27b62b0caeb64563c9cc03759074c494a2fd5938cc31beca92aa28c139",
+          "sha256": "0adef00bc727e2822e999a199325eb2273f906adcf9b250205634dc6467a0da5"
+        },
+        {
+          "path": "docs/SEMANTIC_EXCLUSION_QUALIFICATION.md",
+          "before_sha256": "ee550e57423f2708e7043a5a1484c04b558af4d443646cc1293e71f42382d1fc",
+          "sha256": "02e525988381f7adf6c5ada2700b5105235321372e52d40947407b262c8c5f88"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "activation_approved": false
     }
   ]
 }

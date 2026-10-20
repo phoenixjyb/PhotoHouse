@@ -185,7 +185,8 @@ def test_query_validation_rejects_controls_and_overlength_without_truncation():
         runner._query_tokens(type('P', (), {'tokenizer': FakeTokenizer()})(), '\ud800')
 
 
-def test_measure_uses_fake_cpu_model_and_records_only_query_receipts(monkeypatch):
+@pytest.mark.parametrize('with_exclusions', [False, True])
+def test_measure_uses_fake_cpu_model_and_records_only_query_receipts(monkeypatch, with_exclusions):
     class FakeProcessor:
         tokenizer = FakeTokenizer()
 
@@ -231,6 +232,9 @@ def test_measure_uses_fake_cpu_model_and_records_only_query_receipts(monkeypatch
     monkeypatch.setattr(runner, '_current', lambda _p: None)
     monkeypatch.setattr(runner, 'verify_checkpoint', lambda _p: None)
     monkeypatch.setattr(runner, 'decode_image', lambda _p: FakeImage())
+    labels = {'schema': 'photohouse.semantic_exclusion_cases.v1',
+        'images': [image['id'] for image in images],
+        'cases': [{**case, 'forbidden_images': ['i2']} for case in cases]}
     report = runner.measure({'torch': FakeTorch, 'model': FakeModel(),
         'processor': FakeProcessor(), 'preprocessor_config': {'resample': 2},
         'tokenizer_config': {'tokenizer_class': 'GemmaTokenizer', 'do_lower_case': True,
@@ -238,7 +242,7 @@ def test_measure_uses_fake_cpu_model_and_records_only_query_receipts(monkeypatch
                              'model_input_names': ['input_ids'],
                              'model_max_length': 1000000000000000019884624838656},
         'source_pins': {'fake': FakePin()}}, dataset, image_pins, model_pins, packages,
-        float('inf'))
+        float('inf'), exclusion_dataset=wrap_exclusions(dataset, labels) if with_exclusions else None)
     assert report['device'] == 'cpu'
     assert report['model']['dimension'] == 768
     assert report['model']['tokenizer']['model_input_names'] == ['input_ids']
@@ -252,6 +256,91 @@ def test_measure_uses_fake_cpu_model_and_records_only_query_receipts(monkeypatch
                for receipt in report['queries'].values())
     serialized = json.dumps(report)
     assert 'hello' not in serialized and '你好' not in serialized
+    assert '/private/' not in serialized
+    assert report['vectors_persisted'] is False
+    assert report['serving_binding_created'] is False
+    if with_exclusions:
+        assert report['schema'] == 'photohouse.multilingual_exclusion_measurement.v1'
+        score = report['exclusion_scorecard']
+        assert score['overall']['forbidden_ahead_or_tied'] == 6
+        assert score['overall']['forbidden_in_top_k'] == 6
+        assert score['dataset_sha256'] == runner.exclusions.dataset_sha256(labels)
+        assert score['activation_approved'] is False
+        assert report['activation_approved'] is False
+        assert 'exclusion_cases' in report['source_sha256']
+    else:
+        assert report['schema'] == 'photohouse.multilingual_scene_measurement.v1'
+        assert 'exclusion_scorecard' not in report
+
+
+def wrap_exclusions(scenes, labels):
+    return {'schema': 'photohouse.multilingual_exclusion_labels.v1',
+        'scene_dataset_sha256': runner.dataset_sha256(scenes), 'dataset': labels}
+
+
+def exclusion_fixture():
+    scenes = {'schema': 'photohouse.semantic_scene_cases.v1',
+        'review': {'natural_scenes': True, 'labels_reviewed': True},
+        'images': [{'id': f'i{index}', 'path': f'/private/i{index}.jpg',
+                    'sha256': f'{index:064x}'} for index in range(1, 5)],
+        'cases': [{'id': f'c{index}', 'relevant_images': ['i1'],
+            'queries': {'en': 'No people', 'zh': '没有人的场景', 'zh-en': '没有 people'}}
+            for index in range(1, 3)]}
+    labels = {'schema': 'photohouse.semantic_exclusion_cases.v1',
+        'images': [image['id'] for image in scenes['images']],
+        'cases': [{**case, 'forbidden_images': ['i2']} for case in scenes['cases']]}
+    return scenes, labels
+
+
+@pytest.mark.parametrize('change', ['query', 'case', 'image', 'relevant', 'review', 'overlap', 'image_bytes', 'missing_digest'])
+def test_exclusion_binding_refuses_mismatch_before_loading_or_output(monkeypatch, tmp_path, change):
+    import copy
+    scenes, original_labels = exclusion_fixture()
+    labels = copy.deepcopy(original_labels)
+    envelope = wrap_exclusions(scenes, labels)
+    if change == 'query':
+        labels['cases'][0]['queries']['en'] = 'no people'
+    elif change == 'case':
+        labels['cases'].pop()
+    elif change == 'image':
+        labels['images'][-1] = 'other'
+    elif change == 'relevant':
+        labels['cases'][0]['relevant_images'] = ['i3']
+    elif change == 'review':
+        scenes['review']['labels_reviewed'] = False
+    elif change == 'overlap':
+        labels['cases'][0]['forbidden_images'] = ['i1']
+    elif change == 'image_bytes':
+        scenes['images'][0]['sha256'] = 'a' * 64
+    elif change == 'missing_digest':
+        envelope.pop('scene_dataset_sha256')
+    monkeypatch.setattr(runner, 'configuration', lambda _path: ({}, tmp_path, scenes))
+    monkeypatch.setattr(runner, '_load_private_document', lambda *_a, **_k: envelope)
+    monkeypatch.setattr(runner, 'installed_versions', lambda: pytest.fail('version lookup reached'))
+    output = tmp_path / 'output'
+    with pytest.raises(ValueError):
+        runner.execute(tmp_path / 'config.json', output, exclusion_path=tmp_path / 'labels.json',
+            model_loader=lambda *_a: pytest.fail('model loaded'))
+    assert not output.exists()
+
+
+def test_binding_accepts_reordered_exact_candidates_without_modifying_queries():
+    scenes, labels = exclusion_fixture()
+    labels['images'].reverse()
+    labels['cases'].reverse()
+    envelope = wrap_exclusions(scenes, labels)
+    bound = runner.bind_exclusions(scenes, envelope)
+    assert bound == envelope
+    assert bound['dataset']['cases'][0]['queries']['en'] == 'No people'
+
+
+def test_exclusion_cli_requires_run_and_sanitizes_failure(capsys, monkeypatch):
+    monkeypatch.setattr(runner, '_load_private_document',
+        lambda *_a, **_k: pytest.fail('private file read in planning mode'))
+    assert runner.run(['--exclusion-dataset', '/private/labels.json']) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ''
+    assert json.loads(captured.err) == {'error': 'multilingual_scene_measurement_unavailable'}
 
 
 def test_output_must_be_outside_source_and_new():

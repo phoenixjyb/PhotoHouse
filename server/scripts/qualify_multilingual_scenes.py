@@ -30,6 +30,7 @@ from image_embedding_receipts import inspect_checkpoint, verify_checkpoint, _ope
 from qualify_semantic_pair import canonical, output_target, write_record, quiet_dependencies
 from qualify_semantic_scenes import inspect_images, decode_image
 from semantic_scene_cases import validate_dataset, dataset_sha256, evaluate
+import semantic_exclusion_cases as exclusions
 from semantic_openclip import _source_pin, _current
 
 MODEL_ID = 'google/siglip2-base-patch16-256'
@@ -305,7 +306,32 @@ def _query_tokens(processor, query):
         raise Refused() from None
 
 
-def measure(model_handle, dataset, image_pins, model_pins, package_versions, deadline):
+def bind_exclusions(dataset, value):
+    """Bind explicit labels to the exact reviewed candidates and original queries."""
+    scenes = validate_dataset(dataset)
+    if (type(value) is not dict or set(value) != {'schema', 'scene_dataset_sha256', 'dataset'}
+            or value['schema'] != 'photohouse.multilingual_exclusion_labels.v1'
+            or value['scene_dataset_sha256'] != dataset_sha256(scenes)):
+        raise Refused()
+    labels = exclusions.validate_dataset(value['dataset'])
+    scene_cases = {case['id']: case for case in scenes['cases']}
+    if (not all(scenes['review'].values())
+            or set(labels['images']) != {image['id'] for image in scenes['images']}
+            or {case['id'] for case in labels['cases']} != set(scene_cases)):
+        raise Refused()
+    for case in labels['cases']:
+        original = scene_cases[case['id']]
+        if (case['queries'] != original['queries']
+                or set(case['relevant_images']) != set(original['relevant_images'])):
+            raise Refused()
+    return {'schema': value['schema'], 'scene_dataset_sha256': value['scene_dataset_sha256'],
+            'dataset': labels}
+
+
+def measure(model_handle, dataset, image_pins, model_pins, package_versions, deadline,
+            *, exclusion_dataset=None):
+    if exclusion_dataset is not None:
+        exclusion_dataset = bind_exclusions(dataset, exclusion_dataset)
     if installed_versions() != package_versions:
         raise Refused()
     modules = {'runner': _source_pin(Path(__file__).resolve()),
@@ -318,6 +344,8 @@ def measure(model_handle, dataset, image_pins, model_pins, package_versions, dea
             fromlist=['_load_private_document']).__file__).resolve()),
         'private_storage': _source_pin(Path(__import__('app.access.private_storage',
             fromlist=['require_private_directory']).__file__).resolve())}
+    if exclusion_dataset is not None:
+        modules['exclusion_cases'] = _source_pin(Path(exclusions.__file__).resolve())
     def check():
         if time.monotonic() >= deadline or installed_versions() != package_versions:
             raise Refused()
@@ -368,10 +396,12 @@ def measure(model_handle, dataset, image_pins, model_pins, package_versions, dea
                                    'vector_checksum_sha256': hashlib.sha256(canonical(vector)).hexdigest()}
             check(); timings['text'].append(time.monotonic() - started)
     metrics = evaluate(dataset, image_vectors, text_vectors, dimension=DIMENSION)
+    exclusion_scorecard = (exclusions.evaluate(exclusion_dataset['dataset'], image_vectors, text_vectors,
+        dimension=DIMENSION) if exclusion_dataset is not None else None)
     for pin in (*model_pins.values(), *image_pins.values(), *modules.values(),
                 *model_handle['source_pins'].values()):
         verify_checkpoint(pin)
-    return {'schema': 'photohouse.multilingual_scene_measurement.v1',
+    record = {'schema': 'photohouse.multilingual_scene_measurement.v1',
         'model': {'id': MODEL_ID, 'revision': REVISION, 'dimension': DIMENSION,
                   'image_size': IMAGE_SIZE, 'text_max_length': TEXT_MAX_LENGTH,
                   'configuration_sha256': model_pins['config.json'].sha256,
@@ -400,10 +430,20 @@ def measure(model_handle, dataset, image_pins, model_pins, package_versions, dea
         'serving_binding_created': False, 'activation_performed': False,
         'network_used': False, 'gpu_used': False, 'cli_resource_limit_enforced': False,
         'family_relevance_accepted': False, 'dialect_relevance_measured': False}
+    if exclusion_scorecard is not None:
+        record['schema'] = 'photohouse.multilingual_exclusion_measurement.v1'
+        record['exclusion_scorecard'] = exclusion_scorecard
+        record['exclusion_labels_sha256'] = hashlib.sha256(canonical(exclusion_dataset)).hexdigest()
+        record['activation_approved'] = False
+    return record
 
 
-def execute(config_path, output, *, model_loader=load_model, measure_fn=measure):
+def execute(config_path, output, *, exclusion_path=None, model_loader=load_model, measure_fn=measure):
     config, model_dir, dataset = configuration(config_path)
+    exclusion_dataset = None
+    if exclusion_path is not None:
+        exclusion_dataset = bind_exclusions(dataset,
+            _load_private_document(exclusion_path, source_root=ROOT.parent))
     target = output_target(output)
     if installed_versions() != config['package_versions']:
         raise Refused()
@@ -411,14 +451,19 @@ def execute(config_path, output, *, model_loader=load_model, measure_fn=measure)
     image_pins = inspect_images(dataset)
     target.mkdir(mode=0o700)
     require_private_directory(target)
-    write_record(target, 'started.json', {'dataset_sha256': dataset_sha256(dataset),
+    started_record = {'dataset_sha256': dataset_sha256(dataset),
         'model_revision': REVISION, 'image_count': len(dataset['images']),
-        'query_count': len(dataset['cases']) * 3, 'activation_performed': False})
+        'query_count': len(dataset['cases']) * 3, 'activation_performed': False}
+    if exclusion_dataset is not None:
+        started_record['exclusion_dataset_sha256'] = exclusions.dataset_sha256(exclusion_dataset['dataset'])
+        started_record['exclusion_labels_sha256'] = hashlib.sha256(canonical(exclusion_dataset)).hexdigest()
+    write_record(target, 'started.json', started_record)
     start = time.monotonic(); deadline = start + config['max_elapsed_seconds']
     model = model_loader(model_dir, model_pins, config['package_versions'])
     loading_seconds = time.monotonic() - start
+    kwargs = {} if exclusion_dataset is None else {'exclusion_dataset': exclusion_dataset}
     record = measure_fn(model, dataset, image_pins, model_pins,
-                        config['package_versions'], deadline)
+                        config['package_versions'], deadline, **kwargs)
     if time.monotonic() >= deadline:
         raise Refused()
     for pin in (*model_pins.values(), *image_pins.values()):
@@ -426,10 +471,15 @@ def execute(config_path, output, *, model_loader=load_model, measure_fn=measure)
     record['model_loading_seconds'] = loading_seconds
     record['observed_utc'] = datetime.now(timezone.utc).isoformat()
     write_record(target, 'measurement.json', record)
-    return {'status': 'multilingual_scene_measured', 'dataset_sha256': record['dataset_sha256'],
+    result = {'status': 'multilingual_scene_measured', 'dataset_sha256': record['dataset_sha256'],
         'measurement_sha256': hashlib.sha256(canonical(record) + b'\n').hexdigest(),
         'overall': record['metrics']['overall'], 'languages': record['metrics']['languages'],
         'activation_performed': False, 'serving_binding_created': False}
+    if exclusion_dataset is not None:
+        result['status'] = 'multilingual_exclusions_measured'
+        result['exclusion_scorecard'] = record['exclusion_scorecard']
+        result['activation_approved'] = False
+    return result
 
 
 def run(argv=None):
@@ -441,9 +491,11 @@ def run(argv=None):
         parser.add_argument('--run', action='store_true')
         parser.add_argument('--configuration', type=Path)
         parser.add_argument('--output-directory', type=Path)
+        parser.add_argument('--exclusion-dataset', type=Path)
         args = parser.parse_args(argv)
         if not args.run:
-            if args.configuration is not None or args.output_directory is not None:
+            if any(value is not None for value in (
+                    args.configuration, args.output_directory, args.exclusion_dataset)):
                 raise Refused()
             print(json.dumps({'status': 'multilingual_scene_plan', 'model_id': MODEL_ID,
                 'revision': REVISION, 'image_size': IMAGE_SIZE, 'dimension': DIMENSION,
@@ -457,7 +509,8 @@ def run(argv=None):
         logging.disable(logging.CRITICAL)
         try:
             with quiet_dependencies():
-                result = execute(args.configuration, args.output_directory)
+                result = execute(args.configuration, args.output_directory,
+                                 exclusion_path=args.exclusion_dataset)
         finally:
             logging.disable(previous)
         print(json.dumps(result, sort_keys=True, allow_nan=False))
