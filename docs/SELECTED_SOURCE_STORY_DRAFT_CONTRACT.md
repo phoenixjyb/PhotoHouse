@@ -3,8 +3,9 @@
 This contract defines a bounded, review-only operation for preparing a story
 from media and source evidence the author selected. The end-to-end PH-A4 service
 now has a default-off prepare/cancel API, authorized snapshot core, narrative
-input and app/session operation owner. Client and native-provider integration
-remain separate. It leaves story ownership,
+input and app/session operation owner. Its [optional Web editor](SELECTED_SOURCE_STORY_UI.md)
+now adds a default-off source journey; native-provider and family/device
+qualification remain separate. It leaves story ownership,
 current source authorization, revision checks and explicit save in PhotoHouse.
 The current application facts below were checked against
 [`story_workspace.py`](../server/backend/app/access/story_workspace.py),
@@ -532,7 +533,8 @@ methods. There is no settings/environment fallback or installed native adapter.
 The app's memory-group flag is copied into its protected source runtime, matching
 existing workspace source resolution. The separate `selected_story_drafts_enabled`
 flag controls HTTP preparation and cancellation; provider injection alone leaves
-those routes unavailable. No client or native provider is activated, and
+those routes unavailable. The separate `selected_story_ui_enabled` flag controls
+the optional Web preparation controls. No native provider is activated, and
 saved-memory generation flags and PH-A1 remain independent.
 
 [`SelectedStoryLifecycle`](../server/backend/app/access/selected_story_lifecycle.py)
@@ -561,8 +563,8 @@ account/library after the authorized commit. Denied or conflicting revocation
 requests cannot cancel another member's work. Existing final authorization and
 source revalidation remain required. Account switch uses logout plus the new
 session's ordinary authorization; independent sessions and conversations do not
-cancel each other. Controller wiring for a newer editor intent and client
-integration remain separate.
+cancel each other. The optional Web editor fences newer intents and clears its volatile proposal
+on scope changes; other clients remain separate integrations.
 
 The [lifecycle tests](../server/tests/security/test_selected_story_lifecycle.py)
 use generated SQLite accounts/sessions and injected synthetic providers. They
@@ -582,7 +584,10 @@ lifecycle are also required. No settings/environment fallback or native adapter
 is selected. This source implementation is tested with synthetic providers;
 native qualification is required before household activation.
 
-Both operations are POST requests with exactly one `library` query parameter.
+Preparation and cancellation are POST requests with exactly one `library` query
+parameter. The optional Web editor also negotiates its independent UI opt-in
+through `GET /story-workspace/drafts/capabilities?library=...`; this read requires
+current library membership and grants no preparation or save authority.
 No token, prompt, source text, request ID or extra query parameter is accepted
 in the URL. Existing reviewed HTTPS/Host/Origin/Fetch-Metadata checks, explicit
 native bearer or web cookie credentials, and same-origin cookie CSRF apply.

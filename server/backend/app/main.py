@@ -51,7 +51,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False,
                assistant_semantic_search_enabled=False,
                assistant_agent_runtime=None, assistant_agent_budget=None,
-               selected_story_provider=None, selected_story_drafts_enabled=False):
+               selected_story_provider=None, selected_story_drafts_enabled=False,
+               selected_story_ui_enabled=False):
     if semantic_search_runtime is not None and (
             type(semantic_search_runtime) is not SemanticSearchRuntime or
             semantic_search_runtime.access is not access_runtime or
@@ -119,6 +120,9 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     if (type(selected_story_drafts_enabled) is not bool or
             (selected_story_drafts_enabled and selected_story_provider is None)):
         raise ValueError('Explicit selected-story API opt-in and provider required')
+    if (type(selected_story_ui_enabled) is not bool or
+            (selected_story_ui_enabled and not selected_story_drafts_enabled)):
+        raise ValueError('Explicit selected-story UI and API opt-in required')
     selected_story_lifecycle = None
     if selected_story_provider is not None:
         if not memory_collaboration_enabled:
@@ -201,6 +205,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None,
                   redirect_slashes=False, lifespan=lifespan)
     app.state.access_runtime = access_runtime
+    app.state.selected_story_ui_enabled = selected_story_ui_enabled
     app.state.selected_story_drafts_enabled = selected_story_drafts_enabled
     app.state.selected_story_lifecycle = selected_story_lifecycle
     app.state.selected_story_operations = None

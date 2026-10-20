@@ -403,6 +403,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .story-chapter-strip{display:flex;gap:.5rem;margin-top:1rem;overflow:auto}
 .story-chapter-strip img{width:70px;height:70px;object-fit:cover;border-radius:8px}
 .story-chapter-card textarea{width:100%;font:inherit;line-height:1.8;padding:.9rem;border:1px solid var(--line);border-radius:8px;resize:vertical}
+.story-draft-preparation{min-width:0;margin:1.25rem 0;padding:1rem;border:1px solid var(--line);border-radius:14px;background:#f8f4eb}
+.story-draft-preparation h3{margin:.1rem 0 .45rem;font:400 1.25rem Georgia,"Songti SC",serif}
+.story-draft-preparation>.fine,.story-draft-status{line-height:1.6;overflow-wrap:anywhere}
+.story-draft-direction{display:block;width:100%;min-height:5rem;margin-top:.45rem;padding:.75rem;border:1px solid var(--line);border-radius:8px;font:inherit;line-height:1.55;resize:vertical}
+.story-draft-preparation .story-draft-actions{position:static;flex-wrap:wrap;padding:.75rem 0;margin:.3rem 0;border:0;background:transparent}
+.story-draft-preparation .story-draft-actions button{min-height:44px;white-space:normal;overflow-wrap:anywhere}
+.story-draft-review-label{display:flex;align-items:flex-start;gap:.65rem;line-height:1.5;overflow-wrap:anywhere}
+.story-draft-reviewed{flex:0 0 auto;width:1.2rem;height:1.2rem;margin:.1rem 0 0}
+.story-draft-citations{display:grid;gap:.65rem;margin-top:.8rem}
+.story-draft-citation-group{min-width:0;padding:.7rem;border:1px solid var(--line);border-radius:9px;background:#fffdfa}
+.story-draft-citation-group summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600;overflow-wrap:anywhere}
+.story-draft-citation{padding:.45rem 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+.story-draft-citation p{white-space:pre-wrap;overflow-wrap:anywhere}
+.story-draft-prose-origin{display:inline-block;margin:.5rem 0 0;padding:.25rem .55rem;border-radius:999px;background:#f1e5c9;color:#654b17;font-size:.78rem;font-weight:600;overflow-wrap:anywhere}
 .story-chapter-dictation{min-width:0;margin:.75rem 0 1rem;padding:.75rem 0;border-top:1px solid var(--line)}
 .story-chapter-dictation>button{min-height:44px;max-width:100%;white-space:normal}
 .story-dictation-status{min-height:1.4em;margin:.35rem 0;color:var(--muted);font-size:.88rem;line-height:1.5;overflow-wrap:anywhere}

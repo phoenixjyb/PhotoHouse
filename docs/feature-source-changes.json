@@ -26966,6 +26966,93 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Default-off protected prepare/cancel HTTP v1 with separate explicit bool opt-in and injected async provider requirement. Closed route inventory, bearer/cookie CSRF, strict bounded UTF-8 JSON, exact retries, fixed expiry and source revalidation use the existing app-owned lifecycle/shared gate. Cancel matched is an output fence, not native stop proof, and absent identities receive no future tombstone. Fixed errors omit diagnostics. Synthetic providers and generated SQLite only, including real source resolution/foreign media denial. Source-only API package has 263 inputs. No client, native provider installation, live activation, save authority or deployment."
+    },
+    {
+      "feature": "selected-source-story-web-review-save-v1",
+      "source_commit": "be15811fda978ec46b3fd3f4971d3aef4f2373f9",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "750c19f11ed29b4fedcfecfb7bcc3a38abf47a6aa0503ec80aa2a9ad22551db3",
+          "sha256": "a58abcf8f994f4bc46af8640a5d7f97c47a2e4c402a7b27e21fcb882cc65687b"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "34885bae1b4a3c8ea7b48f3bdaf49746513bf35bb57176325a0eb20e2996f86b",
+          "sha256": "b454e29bf5cb91e368d71b121bf4d64fa738110cbf3feaef1dfd29f39cacc2b1"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_UI.md",
+          "before_sha256": null,
+          "sha256": "949c899275d1bf708f4f937389394854cf4e6f9cfd64704af62b83ba0dcb63ad"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "6af1ed0ff78a472902657cb1882047c46b3ae290ee9ffab2dcc6567dbbbda2f9",
+          "sha256": "0f247ccc83ad309738f1242a0d2584abcae0d0ac182e25c57fb82149ee9bde20"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_transport.py",
+          "before_sha256": "44cea4cbff4be345150834efc7a5558a73db7624000f6be3212f5d8642d04ef4",
+          "sha256": "2941629e41e6923a57ff52835468ae810885874353bac64776faa251ae708ce8"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "28b9c25088a69f95eb3a71444500ea1de2cd59b8a943e3a9a3cc0cab2b403e34",
+          "sha256": "57803cd76b9c2f449e5f2dc2e43eba3861d40a648e3aa152b22c01d8d1324429"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "c93ac1daa7e88df19ab6247a71939dbb6194f5d5365edfe96494060bd09aca2e",
+          "sha256": "41e3010fadbb39c119fc07ff8d2c741a2534acafe0d6a8d006bfaabd74d25991"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "df7f4b6117ee0cf51e535e26350836ae78fe259f664ade61bac43d383474f6a9",
+          "sha256": "8e3b3663c5df2a37c79c27c192c9519a6b2786824a035236a54b265a6ed53180"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "7c39eae7a5c7f03e2b565972632e383f7611ab901ee57453c5cb7b188555161f",
+          "sha256": "4502d2e0a54414bf6968c787cc2055196ad10a605ec654130f669378cc377d09"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "ff8a4e546977a9bb9c2de20ffc0bfcadf111660f26a8688c00ef67fbb5189ee3",
+          "sha256": "a2e9e4444d80603dfa38a2622defcfde461baba83d2bf43d910d89f6ad7545ed"
+        },
+        {
+          "path": "server/tests/security/story_draft_browser_bridge.py",
+          "before_sha256": null,
+          "sha256": "76e7670e2fb7f6d8c41e7edc3ba30d829bddb4827ac06482a44fa02c956debcb"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "fdb83d04999a7b146cfdb349a73a9e14758060b5d6a58baa450fcc7ea7e398a6",
+          "sha256": "de673b90d64ccac9516009308b72e2c776a41ce30c5a024dd4ae84684a205874"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_ui_capabilities.py",
+          "before_sha256": null,
+          "sha256": "e322e916e77f006060c1bea620e833c2138cf61b7bc8045da3d3f749f6527a66"
+        },
+        {
+          "path": "server/tests/security/test_story_draft_preparation_browser.cjs",
+          "before_sha256": null,
+          "sha256": "f459a751a700586eef4e5127809d5a94dac322a10d9815bf1ea1886339fc269f"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "935fe31000175f9483fcf63bd600b3839120acb79689ca1dff1efa0a40d461c6",
+          "sha256": "0439e9f896cbfb764e7feec7011a50b8d4291e09c4e6af388700fe5e6dc513b1"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Independent default-off Web UI and protected library-scoped capability negotiation. Existing selection and chapter-source review feed prepare; bounded citation validation, editable AI-labelled wording, explicit fingerprint-bound review and existing idempotent Save retain author authority. Frozen explicit preparation retries, cancellation of abandoned results, source/scope/replacement fences and fixed expiry preserve prior family wording; uncertain Save keeps its frozen mutation. Generated SQLite/images and injected synthetic providers only. No native provider, model download, voice activation, Windows runtime/data, deployment or publication."
     }
   ]
 }

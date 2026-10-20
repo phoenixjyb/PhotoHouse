@@ -71,7 +71,7 @@ API_TESTS = (
     "test_apply_memory_group_schema.py", "test_memory_group_workers_qualification.py", "test_runtime_adapter.py", "test_windows_tts.py",
     "test_memory_worker_launcher.py",
     "test_memory_book_editorial_contract.py", "test_memory_book_editorial_schema.py", "test_memory_book_editorial_deletions.py", "test_memory_book_editorial_erasure.py",
-    "test_memory_jobs.py", "test_memory_narrative.py", "test_selected_story_narrative.py", "test_selected_story_snapshot.py", "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_story_workspace.py", "test_story_outline.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_story_related_media.py", "test_visual_candidates.py", "test_visual_vector_artifacts.py", "test_visual_vector_loader.py", "test_memory_grouping.py", "test_memory_groups.py", "test_memory_group_routes.py", "test_story_titles.py", "test_story_title_routes.py", "test_memory_processing.py",
+    "test_memory_jobs.py", "test_memory_narrative.py", "test_selected_story_narrative.py", "test_selected_story_snapshot.py", "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_selected_story_ui_capabilities.py", "test_story_workspace.py", "test_story_outline.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_story_related_media.py", "test_visual_candidates.py", "test_visual_vector_artifacts.py", "test_visual_vector_loader.py", "test_memory_grouping.py", "test_memory_groups.py", "test_memory_group_routes.py", "test_story_titles.py", "test_story_title_routes.py", "test_memory_processing.py",
     "test_memory_editorial_context.py", "test_memory_book_planning.py",
     "test_assistant_http.py", "test_assistant_conversational_search.py", "test_assistant_joint_search.py", "test_assistant_memory_discovery.py", "test_assistant_memory_intent.py", "test_assistant_memory_followup.py", "test_assistant_memory_reading_speech.py", "test_assistant_memory_segment_speech.py", "test_assistant_saved_memory_tool.py", "test_assistant_saved_memory_http.py", "test_assistant_saved_memory_reader.py", "test_assistant_workspace_http.py", "test_assistant_workspace_turn_http.py",
     "test_assistant_workspace_reply_speech.py", "test_assistant_memory_actions.py", "test_qualify_private_assistant.py",
@@ -105,11 +105,11 @@ MEMORY_TESTS = (
     "test_memory_book_edition_http.py", "test_memory_book_edition_migration.py",
     "test_memory_book_edition_sources.py", "test_memory_book_edition_sources_http.py",
     "test_memory_editorial_context.py", "test_memory_book_planning.py",
-    "test_memory_jobs.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_memory_narrative.py", "test_selected_story_narrative.py", "test_selected_story_snapshot.py", "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_memory_processing.py", "test_memory_transport.py",
+    "test_memory_jobs.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_memory_narrative.py", "test_selected_story_narrative.py", "test_selected_story_snapshot.py", "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_selected_story_ui_capabilities.py", "test_memory_processing.py", "test_memory_transport.py",
 )
 WINDOWS_CPU_TESTS = (
     "test_inference_admission.py",
-    "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py",
+    "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_selected_story_ui_capabilities.py",
     "test_approved_workers_f2_compatibility.py",
     "test_photo_stack_index.py", "test_library_photo_stacks.py", "test_library_photo_stacks_qualification.py",
     "test_upload_socketpair_guard.py", "test_resumable_upload.py",
@@ -125,6 +125,7 @@ ANDROID_TASKS = (
     ":connected:lintDebug", ":tv:lintDebug", ":connected:assembleDebug", ":tv:assembleDebug",
 )
 WEB_TESTS = (
+    "server/tests/security/test_story_draft_preparation_browser.cjs",
     "server/tests/security/test_people_review_browser.cjs",
     "server/tests/ui/voice-session-control.test.mjs",
     "server/tests/ui/voice-turn-timing.test.mjs",

@@ -7,12 +7,14 @@ import json
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from .library import LibraryRoute, _query
 from .memory_narrative import _canonical_uuid
 from .selected_story_operations import DraftOperationError, DraftOperations
 from .selected_story_snapshot import MAX_REQUEST_BYTES
-from .transport import TransportError, _single, credentials_from_request
+from .transport import TransportError, _runtime, _single, credentials_from_request
+from .service import AccessService
 
 
 router = APIRouter(route_class=LibraryRoute)
@@ -83,6 +85,30 @@ async def _json(request, limit):
         return value
     except (ValueError, UnicodeError, RecursionError):
         raise TransportError(400, 'Invalid request') from None
+
+
+def _can_prepare(runtime, token, library):
+    with runtime.connection_factory() as db:
+        access = AccessService(db, clock=runtime.clock,
+                               memory_groups_enabled=runtime.memory_groups_enabled)
+        with access._transaction():
+            member = access._require(token, library, 'library.read')
+            return member['role'] in {'owner', 'contributor'}
+
+
+@router.get('/story-workspace/drafts/capabilities')
+async def capabilities(request: Request):
+    token, _ = credentials_from_request(request, allow_query=True)
+    library = _query(request, {'library'})['library']
+    writer = await run_in_threadpool(_can_prepare, _runtime(request, allow_query=True), token, library)
+    lifecycle = getattr(request.app.state, 'selected_story_lifecycle', None)
+    owner = getattr(request.app.state, 'selected_story_operations', None)
+    enabled = bool(getattr(request.app.state, 'selected_story_ui_enabled', False) is True and
+                   getattr(request.app.state, 'selected_story_drafts_enabled', False) is True and
+                   type(owner) is DraftOperations and lifecycle is not None and
+                   lifecycle.started and not lifecycle.closing and not owner._closed)
+    return JSONResponse({'version': 1, 'enabled': enabled, 'can_prepare': enabled and writer,
+                         'source_policy': 'chapter_sources_v1'})
 
 
 @router.post('/story-workspace/drafts/prepare')

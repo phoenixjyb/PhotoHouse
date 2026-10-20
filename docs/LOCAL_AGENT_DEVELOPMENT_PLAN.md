@@ -237,8 +237,11 @@ operation owner now adds exact retries, fixed expiry and injected shared
 admission. Optional app startup/shutdown, logout and membership revocation
 wiring now retain that owner and its shared gate. The protected prepare/cancel
 HTTP v1 routes now have a separate default-off opt-in and synthetic-provider
-coverage. Client integration, native stop proof and cross-process resource
-coordination remain separate; no native provider is installed or selected.
+coverage. The [optional Web editor](SELECTED_SOURCE_STORY_UI.md) now adds selected
+sources, preparation, citation inspection, editing, explicit review and existing
+idempotent Save. Native stop proof, cross-process resource coordination and
+family/device qualification remain separate; no native provider is installed
+or selected.
 
 PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access
