@@ -47,7 +47,8 @@ use dated release/qualification records as evidence for their exact revision.
 
 Latest recorded phone delivery: [v74 preparation details](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md).
 The [v75 gallery/search candidate](../clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md)
-is built and verified locally but remains unsigned and unpublished. The
+records the signed preparation snapshot; [release PR #104](https://github.com/phoenixjyb/PhotoHouse/pull/104)
+tracks the subsequent UI qualification and publication result. The
 [offline exclusion scorecard](SEMANTIC_EXCLUSION_QUALIFICATION.md) has generated-vector
 validation only; semantic search remains disabled.
 The [October 20 API/Web search release](SEARCH_RELEASE_2026-10-20.md) preserved

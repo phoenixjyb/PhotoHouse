@@ -26565,6 +26565,40 @@
       "semantic_search_enabled": false,
       "signed": false,
       "published": false
+    },
+    {
+      "feature": "v75-signed-preparation-and-hosted-fixture-ui-qualification",
+      "files": [
+        {
+          "path": ".github/workflows/android-ui-qualification.yml",
+          "before_sha256": null,
+          "sha256": "d3295ef7469adf77228cae1bb165c539f0355fd565af32afbf8a45691e08eb09"
+        },
+        {
+          "path": "tools/android_ui_qualification.py",
+          "before_sha256": null,
+          "sha256": "4a9306e47c7d325cf1088d377768251ba80596beb2a0e98fc630dc3dff122419"
+        },
+        {
+          "path": "tools/tests/test_android_ui_qualification.py",
+          "before_sha256": null,
+          "sha256": "79ebfd182d2c9330d6cd95515fa4165ae0c0c1099b21509ad16ce61fc23d13ec"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md",
+          "before_sha256": "7d3beadd291daf3b831f2061ee56d1d3374a29206f50bb207a2de8362c593eae",
+          "sha256": "eb275c6efe7a11c6b82ac88fe97b1f383ea2336543f5cd107a73840aefa15a04"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "74a38e5361a69bade6f54c4080f56ff662a2ca9178e7219677f04907adb0c94f",
+          "sha256": "57c24921ecc4eb6c57aaf1a96fb45c8c8a68a59a31ed7d066643575afae3594a"
+        }
+      ],
+      "android_application_tree_changed": false,
+      "semantic_search_enabled": false,
+      "ota_published": false,
+      "physical_device_acceptance": false
     }
   ]
 }

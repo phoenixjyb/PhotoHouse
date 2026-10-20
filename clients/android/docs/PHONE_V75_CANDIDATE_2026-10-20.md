@@ -1,8 +1,11 @@
 # Phone v75 gallery/search candidate — October 20, 2026
 
-Phone **75 / `0.75-gallery-search`** is a configured **unsigned candidate** for
-`dev.photohouse.connected`. It has not been signed, published or installed.
-The published feeds were independently checked as phone v74 and TV v30.
+This preparation snapshot records phone **75 / `0.75-gallery-search`** as a
+configured **signed candidate** for `dev.photohouse.connected`, before hosted UI
+qualification and OTA publication. The prepublication feeds were independently
+checked as phone v74 and TV v30. Final merge and publication results belong to
+[release PR #104](https://github.com/phoenixjyb/PhotoHouse/pull/104); this snapshot
+does not claim physical-phone installation.
 
 ## Source and behavior
 
@@ -28,23 +31,31 @@ record their separate scopes.
   unchanged-source incremental resume.
 - All 19 explicit profile properties were preserved. Native APK inspection
   matched all 17 embedded settings fields, package/version and the original
-  icon pixels. The candidate is unsigned.
+  icon pixels in the original unsigned build. Signing preserved every original
+  ZIP entry, including all embedded settings.
 - The APK's ten permission entries match the published v74 artifact. The
   previous signed APK and its original certificate were independently verified;
-  no signing key was accessed.
+  the approved signing operation subsequently preserved that certificate.
 - The separate unconfigured QA app, instrumentation APK and debug lint passed.
-  No instrumentation or new UI render was executed in this round.
+  The isolated local emulator exhausted its boot budget before instrumentation.
+  The hosted [fixture workflow](../../../.github/workflows/android-ui-qualification.yml)
+  runs the seven selected cases and retains seven app-private screenshots. Its
+  result is separate from build checks; no UI pass is claimed in this snapshot.
 - Related qualification, profile, check-registry and extracted-package checks:
   **105 tests and 66 subtests** passed.
 
 Unsigned APK: **11,778,753 bytes**. SHA-256:
 `4614b02dd0be5e9ff5866d8ef72b3a4871f00f4e601883c4e74a290fd642f2a0`.
 
+Signed APK: **11,798,960 bytes**. SHA-256:
+`bce2f1fc2ab595c03bfe4d2a24949c75252f98aa22ff272fe91137067b26133b`.
+The original certificate, alignment, DEX and icon continuity checks passed.
+
 ## Remaining delivery gates
 
 Source review/hosted CI, enlarged-text English/Chinese QA presentation checks,
-native Windows artifact checks, original-certificate signing and guarded phone
-OTA publication remain separate gates. Recheck the current feed/version before
+native Windows artifact checks and guarded phone OTA publication remain
+separate gates. Signing alone does not satisfy publication or device acceptance. Recheck the current feed/version before
 publishing and compare the complete trusted HTTPS APK after publication. TV
 publication is outside this candidate.
 
