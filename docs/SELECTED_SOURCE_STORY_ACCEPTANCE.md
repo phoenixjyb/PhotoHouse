@@ -36,8 +36,10 @@ now authorizes and freezes its input. An isolated
 [operation owner](SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md#implemented-internal-operation-owner)
 adds bounded retries, expiry and shared admission. Explicit provider injection
 now enables app/session lifecycle wiring. Prepare/cancel HTTP v1 has an
-independent default-off opt-in. Clients and native provider integration remain
-separate work.
+independent default-off opt-in. The optional Web editor and
+[default-off local adapter](SELECTED_SOURCE_STORY_LOCAL.md) now have source
+integration. Native work ownership, model quality/locality and deployment remain
+separate qualification gates.
 
 The new internal narrative **bundle version 3** is solely
 for selected-source preparation. It retains the closed v1 content fields and

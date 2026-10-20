@@ -64,6 +64,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/selected_story_operations.py',
             'backend/app/access/selected_story_lifecycle.py',
             'backend/app/access/selected_story_transport.py',
+            'backend/app/access/selected_story_local.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
             'backend/app/access/family_note_deletions.py',
@@ -200,6 +201,8 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.model_qualification import validate_qualification\n'
                 'from app.main import create_app\n'
                 'from app.access.selected_story_lifecycle import SelectedStoryLifecycle\n'
+                'from app.access.selected_story_local import LocalSelectedStoryProvider\n'
+                "provider=LocalSelectedStoryProvider('http://127.0.0.1:11434', 'synthetic-local-model')\nassert provider.enabled is False\n"
                 'from app.access.story_titles import validate_bundle, validate_suggestions\n'
                 'from app.access.visual_vector_loader import VisualVectorReads\n'
                 'from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256\n'

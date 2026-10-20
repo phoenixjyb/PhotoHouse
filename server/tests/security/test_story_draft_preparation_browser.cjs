@@ -50,6 +50,7 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  const words=()=>page.locator('.story-chapter-card textarea[maxlength="6000"]').first();
  const panel=()=>page.locator('.story-draft-preparation');
  const chooseSources=async()=>{
+  await page.waitForFunction(()=>document.querySelector('.story-source-opt-in')||document.querySelector('.story-source-choice input[type=checkbox]'));
   const opt=page.locator('.story-source-opt-in').first();if(await opt.count()&&await opt.isVisible())await opt.click();
   const choices=page.locator('.story-source-choice input[type=checkbox]');await choices.first().waitFor();
   for(let i=0;i<await choices.count();i++)await choices.nth(i).uncheck();
@@ -58,6 +59,7 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  const prepare=async()=>{await page.locator('.story-draft-prepare').click();await page.waitForFunction(()=>document.querySelector('.story-chapter-card textarea[maxlength="6000"]')?.value.includes('合成整理文字'));};
  await rpc({command:'mutate',scenario:'disable-draft-ui'});await signIn();await open();
  assert.equal(await panel().isVisible(),false);assert.equal(prepareRows().length,0);pass('Default-off hides AI controls and never prepares');
+ assert.equal((await rpc({command:'provider-status'})).generation_calls,0);
  await page.locator('#story-workspace-close').click();await rpc({command:'mutate',scenario:'enable-draft-ui'});
  const capabilityGate={arrived:delay(),release:delay()};heldCapability=capabilityGate;await open();await capabilityGate.arrived.promise;
  await words().fill('能力检查期间的家人文字。');await words().focus();const chapterField=await words().elementHandle();capabilityGate.release.done();await panel().waitFor();
@@ -110,5 +112,8 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  pass('A changed server source requires fresh source review and never applies or saves stale wording');
  await page.locator('#story-workspace-close').click();await page.locator('#logout').click();await page.locator('#auth').waitFor();assert.equal(await page.locator('.story-draft-preparation:visible').count(),0);
  assert.deepEqual(external,[]);assert.deepEqual(errors,[]);pass('Logout clears protected content; no external request or browser error');
- fs.writeFileSync(path.join(artifacts,'checks.json'),JSON.stringify({checks,errors,external,prepare_requests:prepareRows().length,explicit_save_requests:saveBodies.length,fixture:'Generated SQLite, synthetic provider, real protected ASGI'},null,2));console.log('ARTIFACTS '+artifacts);
-})().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{try{await context?.close();await browser?.close();}finally{bridge.stdin.end();}});
+ const providerStatus=await rpc({command:'provider-status'});assert(providerStatus.generation_calls>0);assert.equal(providerStatus.cleanup_calls,providerStatus.generation_calls);assert.equal(providerStatus.http_closed,providerStatus.generation_calls);assert.equal(providerStatus.active,0);assert.equal(providerStatus.native_model,false);assert.equal(providerStatus.transport,'synthetic-in-memory');
+ pass('The async local adapter uses only mocked HTTP and reconciles every synthetic generation');
+ delete providerStatus.id;
+ fs.writeFileSync(path.join(artifacts,'checks.json'),JSON.stringify({checks,errors,external,prepare_requests:prepareRows().length,explicit_save_requests:saveBodies.length,provider_status:providerStatus,fixture:'Generated SQLite, synthetic local transport/native owner, real protected ASGI'},null,2));console.log('ARTIFACTS '+artifacts);
+})().catch(async error=>{console.error(error);process.exitCode=1;fs.writeFileSync(path.join(artifacts,'checks.json'),JSON.stringify({status:'failed',checks,error:String(error),errors,external},null,2));try{await page?.screenshot({path:path.join(artifacts,'failure.png')});}catch(_){}}).finally(async()=>{try{await context?.close();await browser?.close();}finally{bridge.stdin.end();}});

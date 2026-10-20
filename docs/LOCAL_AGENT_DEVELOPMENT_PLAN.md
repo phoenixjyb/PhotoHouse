@@ -240,8 +240,9 @@ HTTP v1 routes now have a separate default-off opt-in and synthetic-provider
 coverage. The [optional Web editor](SELECTED_SOURCE_STORY_UI.md) now adds selected
 sources, preparation, citation inspection, editing, explicit review and existing
 idempotent Save. Native stop proof, cross-process resource coordination and
-family/device qualification remain separate; no native provider is installed
-or selected.
+family/device qualification remain separate. A [default-off local adapter](SELECTED_SOURCE_STORY_LOCAL.md)
+now provides the async narrative transport and explicit native-reconciliation
+seam, with synthetic checks only. No native owner/provider is installed or selected.
 
 PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access

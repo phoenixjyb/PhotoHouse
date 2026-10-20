@@ -78,8 +78,10 @@ service rechecks authority and resolves the same mutation idempotently.
   cover default-off configuration, roles, fresh membership, credentials and query
   restrictions with generated SQLite data.
 - [Browser fixture](../server/tests/security/story_draft_browser_bridge.py) uses
-  generated images, an actual family-note API record, a synthetic provider and
-  the real protected ASGI application without a listening server.
+  generated images, an actual family-note API record, and the
+  [async local adapter](SELECTED_SOURCE_STORY_LOCAL.md) with in-memory synthetic
+  HTTP/native ownership through the real protected ASGI application. It opens no
+  listening server and uses no model.
 - [Browser journey](../server/tests/security/test_story_draft_preparation_browser.cjs)
   exercises selection, reference inspection, edits/review, explicit Save,
   ambiguous-save retry, foreign citation rejection, frozen preparation retries,

@@ -494,8 +494,10 @@ ID matching the draft bundle, a fixed deadline and a cooperative cancellation
 check. Exact `True` from cleanup is required on success as well as failure and
 must certify that **all native work for the scope has stopped**. A cancelled
 Python task, finished HTTP response or `asyncio.to_thread` wrapper is not that
-proof. No adapter to the synchronous `LocalMemoryNarrator` is installed here;
-a real provider needs separately qualified stop/ownership semantics.
+proof. The optional [async local adapter](SELECTED_SOURCE_STORY_LOCAL.md) reuses the
+narrative prompt/schema through a bounded async HTTP path. It requires an
+explicit injected native work owner, including on completed HTTP responses;
+no synchronous thread wrapper or native owner is installed by default.
 
 `cancel(token, library, request_id)` requires current matching account/session
 authority. Trusted `invalidate_session(token)` and `close()` fence output and

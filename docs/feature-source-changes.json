@@ -27053,6 +27053,93 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Independent default-off Web UI and protected library-scoped capability negotiation. Existing selection and chapter-source review feed prepare; bounded citation validation, editable AI-labelled wording, explicit fingerprint-bound review and existing idempotent Save retain author authority. Frozen explicit preparation retries, cancellation of abandoned results, source/scope/replacement fences and fixed expiry preserve prior family wording; uncertain Save keeps its frozen mutation. Generated SQLite/images and injected synthetic providers only. No native provider, model download, voice activation, Windows runtime/data, deployment or publication."
+    },
+    {
+      "feature": "selected-story-async-local-model-adapter-v1",
+      "source_commit": "6d84df36c6cd2c9d3ae438a447270857b7cc4e0c",
+      "files": [
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "24f3cefc1eeef3d9c8811ba02c3a95d8a2ce2d04eeb831adf70a6afdf1181ae9",
+          "sha256": "d93e4a4eb0df4620c1113004a761865581b8ecb68b14e70cb2263f5ebed895b2"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "a58abcf8f994f4bc46af8640a5d7f97c47a2e4c402a7b27e21fcb882cc65687b",
+          "sha256": "614184d5055b65a7809623fb8f3506eff92df7ba42fc31254f1f8c6342a964d7"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "97a4b2abebdc1b2629c92d4e29b1191e0a23491a72686b70d60f1442517f6b72",
+          "sha256": "27d274bfe55860da0930ea09720cda8058c793a6197ecebcf3e2b72f8a237cc9"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "b454e29bf5cb91e368d71b121bf4d64fa738110cbf3feaef1dfd29f39cacc2b1",
+          "sha256": "a53f7e9dee832346ea22da962acecb2cebaaa5e05bc0e114118810f967bf77d9"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_LOCAL.md",
+          "before_sha256": null,
+          "sha256": "aaf4d6e9c5d41537d8ceadb38e2b624fdc699b4d9f407f3cbee6b61cc3f8522c"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_UI.md",
+          "before_sha256": "949c899275d1bf708f4f937389394854cf4e6f9cfd64704af62b83ba0dcb63ad",
+          "sha256": "15d4b2dc079db1359ec5fb5068b97d5fcc4dc81a4c1bab84e013eca31576765d"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "a840ae2d4c86226fb1eda8bbf22520217e11954cf12296f031129f4dfe0a1336",
+          "sha256": "aa065adf5ade30f1a9ce2d6b6091fbc41d206ab0f28535904a5ccbc764222568"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_local.py",
+          "before_sha256": null,
+          "sha256": "f889d8f00d35850c4789705f0a73927ae5b6d46f4886071fac11c00581d2a725"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "6500cf85e69588e7175bd3ada5e4359d6b489c60a4812d3879c74d5e1c470777",
+          "sha256": "9937e1613d4e8b529c2c2217b44e2752db57544460f8a7459f4ae6c19d907f57"
+        },
+        {
+          "path": "server/tests/security/story_draft_browser_bridge.py",
+          "before_sha256": "76e7670e2fb7f6d8c41e7edc3ba30d829bddb4827ac06482a44fa02c956debcb",
+          "sha256": "b936d8366d1bbb244e8243bbfe7421b681c36058032304cbe231922a1466cbd7"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_local.py",
+          "before_sha256": null,
+          "sha256": "494793a253852e51a6e780bb14be5281685e31ab19ef3d4be4698dbdf852283b"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_local_lifecycle.py",
+          "before_sha256": null,
+          "sha256": "6ec04bd351d26af444a0d994cde67ac192baebf18510ac3f447f1b036f002218"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "c181a9e79dfc6cf1008ced7eb5e425fef80eb87418e0ef5f00b897e142ec96e1",
+          "sha256": "b9d6b45ebf7dd1a0a79fd7027767193fdf34b26943f789d290c826038c5394e9"
+        },
+        {
+          "path": "server/tests/security/test_story_draft_preparation_browser.cjs",
+          "before_sha256": "f459a751a700586eef4e5127809d5a94dac322a10d9815bf1ea1886339fc269f",
+          "sha256": "1f6a32a0b9a1764f8a78e20f6712da429613e654a29fd802c2bf12abcd1cb71e"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "0439e9f896cbfb764e7feec7011a50b8d4291e09c4e6af388700fe5e6dc513b1",
+          "sha256": "dc6a259b3a1a4c57f18f5448d82d9995a6594719070da3a7cfb79f38b5d836a8"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Default-off explicit literal-loopback async narrative v3 adapter with bounded request/body/deadline, fixed errors, no proxy/redirect/fallback/retry, and shared unchanged narrative prompt/schema helper. Every dispatched request requires injected trusted native-owner exact-True reconciliation even after a completed HTTP response. Retained cleanup survives waiter cancellation and cannot release a newer scope; uncertain native work quarantines the existing shared gate. Source-only package closure adds the inactive adapter. Synthetic transport/native-owner unit, operation lifecycle and real protected ASGI/browser fixtures only; fake model completion is independent of HTTP close. No native-owner implementation/qualification, installed model, Windows/GPU data access, activation, deployment or publication."
     }
   ]
 }
