@@ -26536,6 +26536,42 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Documentation-only clarification of canonical synthetic asset/person mappings and author-owned chapter titles; application, tests, provider and package-builder bytes remain unchanged."
+    },
+    {
+      "feature": "local-agent-stock-runtime-capability-probe",
+      "source_commit": "23733e2eb4f94a4ee474ea0746b0633b12589c9f",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_QUALIFICATION.md",
+          "before_sha256": null,
+          "sha256": "56c081e627738f6c4852234f756231f51494dcb6663ccb0ed46ed0340aa30236"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_RUNTIME.md",
+          "before_sha256": "6adb6bf2d091cf14ae020c94f64afff36a90a317c87d7eac22798fcd3a2c89ad",
+          "sha256": "ddb893c553d5055c5cd434a34c31fb2012684a5654c14b744f83b183ac21f9e8"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "719151eb3cb195a78e4d12756ff5e82341a4d680346cfd6bc72ebbde0ed0d5bb",
+          "sha256": "ecce732adc4f2e92a3504ee6b991c186ceb06fb671b6c9f1dace8ecb0b8efe68"
+        },
+        {
+          "path": "tools/probe_agent_runtime.py",
+          "before_sha256": null,
+          "sha256": "4dca58a42c8fec03baa43e1a40bdef8eb9be968f897d4757d617e1d70318a6b8"
+        },
+        {
+          "path": "tools/tests/test_probe_agent_runtime.py",
+          "before_sha256": null,
+          "sha256": "5048f788f1a55d7e9968117e5825d9d5cc16849ffebe37bf375a598380c9496a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Developer-only synthetic real-binary PH-A0 capability probe, scoped tests and failed-stock-ceiling record. Application/client source is unchanged; no real model, PH-A2 activation, deployment or publication."
     }
   ]
 }

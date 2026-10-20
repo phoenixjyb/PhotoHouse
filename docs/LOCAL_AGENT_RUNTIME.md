@@ -12,6 +12,9 @@ clarification contract added after the engineering guide's earlier source pin.
 [PH-U0](LOCAL_AGENT_ACCEPTANCE.md) defines the product comparison.
 [PH-A4](SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md) defines a separate proposed
 selected-source drafting contract; it is not implemented by this search lane.
+[PH-A0 qualification](LOCAL_AGENT_QUALIFICATION.md) records a failed stock
+runtime capability ceiling. This application boundary remains usable with
+synthetic adapters; no real runtime is activated by that finding.
 
 ## Injection and negotiation
 
