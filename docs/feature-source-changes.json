@@ -26406,6 +26406,20 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Remove an extra trailing blank line in the offline qualification tests before release integration checks."
+    },
+    {
+      "feature": "guarded-search-browser-pre-encoder-refusal",
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_scene_browser.cjs",
+          "before_sha256": "bcb67dd5015188a39def2aaa907feb0a5a78e7d6a1019f7b3a767542751ad605",
+          "sha256": "697982010f6954f4a596a221227bcf3637cbc6146e306fd047e85a4e03d93b02"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Require Chinese and English exclusions to refuse before encoder use; retain separate injected provider-refusal coverage for positive wording and GET recovery."
     }
   ]
 }
