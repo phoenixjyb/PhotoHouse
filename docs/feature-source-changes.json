@@ -27135,6 +27135,25 @@
       "production_runtime_changed": false,
       "production_index_published": false,
       "activation_approved": false
+    },
+    {
+      "feature": "snapshot-mutable-vector-inputs-and-bind-checksum-dimension-to-packed-bytes",
+      "files": [
+        {
+          "path": "server/backend/app/access/visual_candidates.py",
+          "before_sha256": "bbd44ca7f280ee2cd114d08a3238ed71d4e7cfaf641c32ed9c51b5d129f98fb0",
+          "sha256": "55eb961c64893a17c9b07cac0c23833549a08b14b6853b52ffb63419fd5f44af"
+        },
+        {
+          "path": "server/tests/security/test_visual_candidates.py",
+          "before_sha256": "18906595e1f58b59354c0ac6be01808fa3d4ca402eb578f54bfbe030f9a8c3a6",
+          "sha256": "4f86707a8d2532603a3abdf8b6e68ac0c070b0829ccac674e38befd2b317d989"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "activation_approved": false
     }
   ]
 }

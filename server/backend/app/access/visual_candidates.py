@@ -115,11 +115,16 @@ def canonical_vector_checksum(vector: tuple[float, ...] | list[float]) -> str:
     unavailable result.
     """
     packed = _packed_vector(vector)
-    return hashlib.sha256(_CHECKSUM_PREFIX + struct.pack(">I", len(vector)) + packed).hexdigest()
+    return hashlib.sha256(_CHECKSUM_PREFIX + struct.pack(">I", len(packed) // 4) + packed).hexdigest()
 
 
 def _packed_vector(vector: tuple[float, ...] | list[float]) -> bytes:
     if type(vector) not in (tuple, list) or not 1 <= len(vector) <= MAX_DIMENSION:
+        raise ValueError("invalid_vector")
+    # Freeze mutable inputs before checking types. Limit the copy even when a
+    # caller changes a list concurrently; tuple search vectors need no copy.
+    vector = vector if type(vector) is tuple else tuple(vector[:MAX_DIMENSION + 1])
+    if not 1 <= len(vector) <= MAX_DIMENSION:
         raise ValueError("invalid_vector")
     if any(type(component) not in (int, float) for component in vector):
         raise ValueError("invalid_vector")
