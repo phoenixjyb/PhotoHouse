@@ -8,7 +8,7 @@ import json
 import uuid
 
 from .library import SOURCE, _asset, _integer
-from .memory_group_schema import (TABLE, REVISION_TABLE, GROUP_REVISION,
+from .memory_group_schema import (TABLE, REVISION_TABLE, GROUP_REVISIONS,
                                   verify_memory_group_schema)
 from .service import AccessDenied
 from .stories import Stories, _uuid
@@ -120,7 +120,7 @@ class MemoryGroups:
 
     def _ready(self):
         versions = [tuple(row) for row in self.db.execute('SELECT version_num FROM alembic_version')]
-        if versions != [(GROUP_REVISION,)] or not verify_memory_group_schema(self.db):
+        if len(versions)!=1 or versions[0][0] not in GROUP_REVISIONS or not verify_memory_group_schema(self.db):
             raise TransportError(503, 'Memory groups unavailable')
 
     def _row(self, ident, library):

@@ -16,11 +16,13 @@ from .media import MediaRuntime
 from .transport import AccessRuntime
 from .memory_book_edition_schema import EDITION_REVISION, EDITION_TABLE, SOURCES_TABLE
 from .family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES
-from .memory_group_schema import GROUP_REVISION, TABLE as GROUP_TABLE, REVISION_TABLE as GROUP_HISTORY
+from .memory_group_schema import GROUP_REVISIONS, TABLE as GROUP_TABLE, REVISION_TABLE as GROUP_HISTORY
+
+from .photo_stack_schema import REVISION as PHOTO_STACK_REVISION, TABLES as PHOTO_STACK_TABLES
 
 REQUIRED_REVISION = 'a0c9d2e4f817'
 EDITORIAL_REVISION = 'b1d7e4a9c230'
-IDENTITY_REVISIONS = frozenset({IDENTITY_REVISION, GROUP_REVISION})
+IDENTITY_REVISIONS = frozenset({IDENTITY_REVISION, *GROUP_REVISIONS})
 EDITION_REVISIONS = frozenset({EDITION_REVISION, *IDENTITY_REVISIONS})
 EDITORIAL_REVISIONS = frozenset({EDITORIAL_REVISION, *EDITION_REVISIONS})
 SOURCE_REFERENCE_REVISIONS = frozenset({REQUIRED_REVISION, *EDITORIAL_REVISIONS})
@@ -41,7 +43,7 @@ REQUIRED_TABLES = frozenset({
     'access_original_deletion_state',
     'access_memory_contribution_refs',
     'access_memory_book_editorial', 'access_memory_book_editorial_refs',
-    EDITION_TABLE, SOURCES_TABLE, *IDENTITY_TABLES, GROUP_TABLE, GROUP_HISTORY,
+    EDITION_TABLE, SOURCES_TABLE, *IDENTITY_TABLES, GROUP_TABLE, GROUP_HISTORY, *PHOTO_STACK_TABLES,
 })
 
 
@@ -50,7 +52,9 @@ def required_tables_for_revision(revision):
     if type(revision) is not str or revision not in COMPATIBLE_REVISIONS:
         raise ValueError('Unsupported schema revision')
     required_tables = REQUIRED_TABLES
-    if revision != GROUP_REVISION:
+    if revision != PHOTO_STACK_REVISION:
+        required_tables = required_tables - set(PHOTO_STACK_TABLES)
+    if revision not in GROUP_REVISIONS:
         required_tables = required_tables - {GROUP_TABLE, GROUP_HISTORY}
     if revision not in IDENTITY_REVISIONS:
         required_tables = required_tables - IDENTITY_TABLES
@@ -121,7 +125,11 @@ class ExistingDatabase:
             required_tables = required_tables_for_revision(versions[0][0])
             if not required_tables <= tables:
                 raise RuntimeUnavailable('Access unavailable')
-            if versions[0][0] == GROUP_REVISION:
+            if versions[0][0] == PHOTO_STACK_REVISION:
+                from .photo_stack_schema import available as photo_stack_schema_available
+                if not photo_stack_schema_available(connection):
+                    raise RuntimeUnavailable('Access unavailable')
+            if versions[0][0] in GROUP_REVISIONS:
                 from .memory_group_schema import verify_memory_group_schema
                 if not verify_memory_group_schema(connection):
                     raise RuntimeUnavailable('Access unavailable')

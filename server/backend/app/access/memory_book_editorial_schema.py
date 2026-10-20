@@ -7,10 +7,10 @@ or enable an existing database.
 
 from .memory_book_edition_schema import EDITION_REVISION
 from .family_note_identity_schema import IDENTITY_REVISION
-from .memory_group_schema import GROUP_REVISION
+from .memory_group_schema import GROUP_REVISIONS
 
 EDITORIAL_REVISION = 'b1d7e4a9c230'  # Additive source revision; live deployment is a separate gate.
-EDITORIAL_REVISIONS = frozenset({EDITORIAL_REVISION, EDITION_REVISION, IDENTITY_REVISION, GROUP_REVISION})
+EDITORIAL_REVISIONS = frozenset({EDITORIAL_REVISION, EDITION_REVISION, IDENTITY_REVISION, *GROUP_REVISIONS})
 BOOK_TABLE = 'access_memory_book_editorial'
 REFS_TABLE = 'access_memory_book_editorial_refs'
 MAX_CHILDREN = 24

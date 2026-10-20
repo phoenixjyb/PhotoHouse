@@ -79,8 +79,8 @@ def _database_state(db, budget):
     revision = full.validate(db, budget)
     if revision not in COLLABORATION_REVISIONS:
         raise full.small.Refused('Supported collaboration schema required')
-    from app.access.memory_group_schema import GROUP_REVISION, verify_memory_group_schema
-    if revision == GROUP_REVISION and not verify_memory_group_schema(db):
+    from app.access.memory_group_schema import GROUP_REVISIONS, verify_memory_group_schema
+    if revision in GROUP_REVISIONS and not verify_memory_group_schema(db):
         raise full.small.Refused('Unexpected memory group schema')
     tables = full.schema(db)
     expected_tables = dict(schema_check.EXPECTED)

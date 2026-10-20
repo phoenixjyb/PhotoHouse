@@ -37,9 +37,9 @@ def verify_family_note_identity_schema(db):
 
 
 def identity_enabled(db):
-    from .memory_group_schema import GROUP_REVISION
+    from .memory_group_schema import GROUP_REVISIONS
     versions = [tuple(row) for row in db.execute('SELECT version_num FROM alembic_version')]
-    if len(versions) != 1 or versions[0][0] not in {IDENTITY_REVISION, GROUP_REVISION}:
+    if len(versions) != 1 or versions[0][0] not in {IDENTITY_REVISION, *GROUP_REVISIONS}:
         return False
     verify_family_note_identity_schema(db)
     return True

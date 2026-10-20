@@ -25721,6 +25721,91 @@
       "live_schema_changed": false,
       "generation_enabled": false,
       "notes": "Optional library index, collapsed pagination and account-private CAS display choices across API, Web and phone. CPU refresh entry point, explicit additive migration and bounded generated checks only; no Windows migration/index job, deployment, model activation, APK signing/publication or device installation."
+    },
+    {
+      "feature": "library-photo-stack-additive-runtime-compatibility",
+      "source_commit": "874c62c59f9c0c57aab0ba0653770cd508088f7d",
+      "files": [
+        {
+          "path": "server/backend/app/access/family_note_identity.py",
+          "sha256": "51eb273b76eb83ce13054a4c79b333d0a6bb76f6b7ee11b6492dab3a5d39ad65",
+          "before_sha256": "f276c78390bf3d5948028872f08de5d3db36e19e6b343df05a455b591237a63a"
+        },
+        {
+          "path": "server/backend/app/access/memory_book_editions.py",
+          "sha256": "433bb37ff3ca2789623d8c22e27f53eb64384a6a01a2f1d7d5e2b176b587e02b",
+          "before_sha256": "971d8563159e1d27998df803333ba133a78169ea57bdd332ce404d339a4b0d69"
+        },
+        {
+          "path": "server/backend/app/access/memory_book_editorial_schema.py",
+          "sha256": "34fc38ad6393b88d431a77e099a733397168074acf0c2514fd7acd4b2ce6645d",
+          "before_sha256": "56014d6ccad607b340f0432ffe9be74e14d3ece2d440295e2d5ea7a07b7a2838"
+        },
+        {
+          "path": "server/backend/app/access/memory_group_schema.py",
+          "sha256": "55c8f70e567a1e6c2b5d8eb16460db1e3bbeee3f9dbca9b1f6bef4e6cd021254",
+          "before_sha256": "bdf10c120ecdab13e89c7d8a4c2cc0642f9378bc9f1664bb6f3037c917857871"
+        },
+        {
+          "path": "server/backend/app/access/memory_group_transport.py",
+          "sha256": "17b59ed23c49ebdcbbea0c193936dd7340aabf589a91abadf4bf91aaf15af369",
+          "before_sha256": "742a711a47d95287fd4b5c8f29b740912deac8bccfb1172cf0f09a6ec9cc9126"
+        },
+        {
+          "path": "server/backend/app/access/memory_groups.py",
+          "sha256": "d0e528489559d246a94b30b7b95d2d5598f6ca0c2571cde4929847c21660c423",
+          "before_sha256": "ebc817a41206e5048e0978bc662ae6d8d0507469fc1aa2aa393e61c454e3886e"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "sha256": "e600b2eb885c68b1942fb9c1953f55bc8bf8f304936141d0d8ebfa2d4c26ccfb",
+          "before_sha256": "d3166c2cfcf065cc970d5b983bd271aa1e5823913b898efe0c988552ee6d88a7"
+        },
+        {
+          "path": "server/backend/app/access/story_workspace.py",
+          "sha256": "d582adf21230510748da914e79ed27a866c5c5386043501e290e6c13ea6275dc",
+          "before_sha256": "acf2099f56ca8509176f830727fa01c94a28d871764031705bb9333cf0c3db91"
+        },
+        {
+          "path": "server/backend/app/scoped_face_worker.py",
+          "sha256": "ad2ce346a068eb6ea8be3f41a1c80def6c86636a8213eb82d2556b7a574f619f",
+          "before_sha256": "0a85af1bc4d7097aefb6dd357d23240a7e1cb5e23bbfe5a1ccae33947b57f010"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "6787fcdc5bc11b1829b7f32706a81e17b8d27f5457c43a569217641cf35ed1d8",
+          "before_sha256": "02dfb5dac28cde072dd19ba06adad61757f134ce15d4ad73e4736e044bc18c2e"
+        },
+        {
+          "path": "server/scripts/initialize_original_deletions.py",
+          "sha256": "c67f6292913aa6f49e2fe06afb546c5968470b6a67c811ec54f58eca362af0d0",
+          "before_sha256": "4f2c199c65691ba9781f7b083b718d699fa1b97a133b99cd7e0823675b6de28d"
+        },
+        {
+          "path": "server/scripts/run_memory_worker.py",
+          "sha256": "49195c3fb1b7f7afe56d878884b3a90ea80182c494ee3a91c2022b5573d423b2",
+          "before_sha256": "530e99dc2b8140496154fad23a90028ae034269dfe16a6e4ce706a1725dd05f8"
+        },
+        {
+          "path": "server/tests/security/test_memory_worker_launcher.py",
+          "sha256": "80c388ce64b040dbe98b54009366aa8dd1e9d6c6fb95967f3123197200658b71",
+          "before_sha256": "c8d19746c3c40aef5dba0b741e8cc598b93b3ed13ae5aae65a3b5cb5c9a06ef9"
+        },
+        {
+          "path": "server/tests/security/test_runtime_adapter.py",
+          "sha256": "9cda82eab9d0de62254d97d74cea69fbce26d65bb3ba667974dbbab852e641b8",
+          "before_sha256": "ad941eb0552f383e71cc09046c59b3a03635dec5742f2f156df7293f60b57218"
+        },
+        {
+          "path": "server/tests/security/test_scoped_face_worker.py",
+          "sha256": "c209be4d1e35182129c90a197cb25737bc35f7a767c6f6f8419c356ad96eb5b0",
+          "before_sha256": "379e576d23276102b09f19ec0b00fe72a1d5a994a8233bb68ea3b0431fdce306"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "notes": "Retain page-local toggle/cover state and explicitly admit the additive photo-stack revision through existing runtime, story/group, identity, journal and worker guards. Preserve all older admitted revisions, optional feature flags and pinned migration controllers. Generated compatibility tests only; no live activation."
     }
   ]
 }
