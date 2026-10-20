@@ -26867,6 +26867,107 @@
       "actual_family_account_bound": false,
       "human_relevance_accepted": false,
       "activation_approved": false
+    },
+    {
+      "feature": "bounded-multibatch-index-and-streaming-owner-serving-with-bilingual-clothing-policy",
+      "files": [
+        {
+          "path": "docs/FAMILY_SEMANTIC_COVERAGE.md",
+          "before_sha256": "1d7265411b9fff92bf834eff24c4b50cb63fefa00f07aa596fe3ba3c24ff0417",
+          "sha256": "3991bb91910bda59530ff01ff70da41d1c5093ddf4bf5b3418dd6eb8c80f9171"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": null,
+          "sha256": "e9916ab67f1634ea933a489665e2327f737151a553cec515c3463d38ae023c51"
+        },
+        {
+          "path": "server/backend/app/access/assistant_scene_search.py",
+          "before_sha256": "9a783c0a90489923109a3447b3d4a73181a57c46226ddbbf41c3efb966c737c2",
+          "sha256": "fb905fe51b20ed237cca083b1e53909b2a7e4d8a6cfece5d06e6278c25fc3a94"
+        },
+        {
+          "path": "server/backend/app/access/semantic_configuration.py",
+          "before_sha256": "3c5b595dc2307b72363fe9807f0e59bde4768740a2ccb385c1a2b7101c189ae3",
+          "sha256": "c236a733b7397121decfca834860b5bdd53df8cbdf0db4a1bc2dfd67611d85aa"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "4e68722e88d84cbb13c0ebcfb4e1419724941b9b3c3ca10c744249bec1b38016",
+          "sha256": "b7936bdc30395f388fb2a5fb944cb03ecb54db59de9bd1a3755f93be96936781"
+        },
+        {
+          "path": "server/backend/app/access/semantic_streaming.py",
+          "before_sha256": null,
+          "sha256": "a41a5202d9ab6a354fc426e32d8b57d71230bc1a0678ad51bc074019536319a6"
+        },
+        {
+          "path": "server/backend/app/access/visual_vector_loader.py",
+          "before_sha256": "16d5b16e9c50fb67ca7426f0dc21ef8b36a271abe74b2b787e4d542e93732bfb",
+          "sha256": "4c4829dbb16c1a222f1d15fe880ae96d7ffc2e539ba4b2af778a14237a3155b1"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "1a816de90f1a3ff0c6569a57e9768abc19321d0a4fba1cd74e911f4ca68e483f",
+          "sha256": "68f0aa6776c38aaabbd2058de3e40b3a8d9b662c69b114d94d33ef82cb6d6b7b"
+        },
+        {
+          "path": "server/scripts/multilingual_index_collection.py",
+          "before_sha256": null,
+          "sha256": "7f6a2495101657074957d6f69f2a942b87c49c271eb9b0c8e131d029b8a4e913"
+        },
+        {
+          "path": "server/scripts/semantic_bilingual_clothing.py",
+          "before_sha256": null,
+          "sha256": "58455055639d0feafc96070d98043727fe8db526134ac44f9c478a782dd4e464"
+        },
+        {
+          "path": "server/scripts/serve_multilingual_semantic_text.py",
+          "before_sha256": "442e81d2688d6312700e9c0ef5740b24da913eecdc0778565963dee6853274d4",
+          "sha256": "0fb21f122dffd31daf7a4d6bab17e9bc53ff634409fc1928f5391b3cbf5ef542"
+        },
+        {
+          "path": "server/tests/security/test_multilingual_index_collection.py",
+          "before_sha256": null,
+          "sha256": "52c0090a0c5c335072040d89de65ff56ffa09c000361a77960cfa2d5949a4d64"
+        },
+        {
+          "path": "server/tests/security/test_multilingual_index_provider.py",
+          "before_sha256": "b1ba7b64960d8256dbbaae96cca178166d795b7375fb2fd48555ccede39dbf45",
+          "sha256": "653720fa6fe7c4dc276d9208414a6cb62738e7ae1cb16c8f10aa7ebb4e407b51"
+        },
+        {
+          "path": "server/tests/security/test_semantic_bilingual_clothing.py",
+          "before_sha256": null,
+          "sha256": "9cf97dfa4efb924111a79e8e9f66210ca01376ed1f19c303c7a069b5d4c7121d"
+        },
+        {
+          "path": "server/tests/security/test_semantic_configuration.py",
+          "before_sha256": "34252ff1c0b6a725778aae19af20f900c4bb2bb3fbbf9048b8f7e24ac47e3ded",
+          "sha256": "148398cfac2ca93d12232f197b6bc158230f9b4e21ad0fc208b7f3ff90baadba"
+        },
+        {
+          "path": "server/tests/security/test_semantic_streaming_search.py",
+          "before_sha256": null,
+          "sha256": "38df73afc6a9f47dd1e75b269ca53ca68ccd4dc2b1a5fa232ec1421939143997"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "3180dd5e9181a18dacfda143d6a37029b7fb3519e7832569092d6e2347d20bca",
+          "sha256": "6dda8eeffa2b328886b5163bfa4cec2f06d2fb6d77af297a5af543cba3bf6d1b"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "52af78fdd2224493ef01605a0b74c0e75b264fb57174e0daca7ab06b13575dfa",
+          "sha256": "4d33481e7234ec3f51ae2b4529751e27c0204581350146d7e5c67b45d5c3e4c6"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "actual_family_account_bound": false,
+      "human_relevance_accepted": false,
+      "activation_approved": false
     }
   ]
 }

@@ -11,6 +11,7 @@ import stat
 from .model_deployment import DeploymentError, _load_private_document
 from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder
 from .semantic_search import SemanticSearchRuntime, _valid_pilot_owner_account_id
+from .semantic_streaming import SemanticServingLimits
 from .visual_candidates import VectorSpaceIdentity
 
 _IDENTITY_KEYS = {'artifact_sha256', 'preprocessing_sha256', 'vector_space_id',
@@ -18,6 +19,7 @@ _IDENTITY_KEYS = {'artifact_sha256', 'preprocessing_sha256', 'vector_space_id',
 _FIELDS = {'format_version', 'vector_root', 'encoder_url', 'encoder_timeout_seconds',
            'credential_file', 'binding', 'binding_sha256', 'operator_reviewed'}
 _OWNER_FIELDS = _FIELDS | {'pilot_owner_account_id'}
+_LARGE_FIELDS = _OWNER_FIELDS | {'serving_limits'}
 
 
 class SemanticConfigurationError(ValueError):
@@ -97,13 +99,20 @@ def load_semantic_runtime(path, *, discovery, source_root, protected_paths=()):
             if set(doc) != _FIELDS:
                 raise SemanticConfigurationError()
             owner_account_id = None
-        elif version == 2:
-            if (set(doc) != _OWNER_FIELDS or
+        elif version in (2, 3):
+            if (set(doc) != (_OWNER_FIELDS if version == 2 else _LARGE_FIELDS) or
                     not _valid_pilot_owner_account_id(doc['pilot_owner_account_id'])):
                 raise SemanticConfigurationError()
             owner_account_id = doc['pilot_owner_account_id']
         else:
             raise SemanticConfigurationError()
+        limits = None
+        if version == 3:
+            value = doc['serving_limits']
+            if type(value) is not dict or set(value) != {
+                    'candidate_limit', 'source_rows', 'source_bytes', 'search_seconds'}:
+                raise SemanticConfigurationError()
+            limits = SemanticServingLimits(**value)
         if type(doc['operator_reviewed']) is not bool or doc['operator_reviewed'] is not True:
             raise SemanticConfigurationError()
         binding_doc = doc['binding']
@@ -128,7 +137,7 @@ def load_semantic_runtime(path, *, discovery, source_root, protected_paths=()):
             raise SemanticConfigurationError()
         encoder = LocalSemanticEncoder(binding, doc['encoder_url'], timeout=float(timeout),
                                        bearer_token=token)
-        return SemanticSearchRuntime(discovery, root, encoder, owner_account_id)
+        return SemanticSearchRuntime(discovery, root, encoder, owner_account_id, limits)
     except SemanticConfigurationError:
         raise
     except (DeploymentError, OSError, TypeError, ValueError, KeyError, OverflowError):

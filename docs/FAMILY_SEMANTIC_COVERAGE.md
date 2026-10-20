@@ -90,11 +90,13 @@ model-request warmup is separate. These are not remote Mac/phone timings,
 whole-family serving, concurrency, peak-memory or operational acceptance.
 The outer native Job timeout and resource limits remain mandatory.
 
-The serving cohort still has a 512-candidate cap. A complete multi-batch offline
+The original version-1/2 serving cohort has a 512-candidate cap. A complete multi-batch offline
 inventory or index does not remove that cap. Whole-library serving needs a
 separately qualified scaling design, complete current coverage, relevance,
 operational and device checks before activation. See the
-[pilot preparation record](MULTILINGUAL_PILOT_PREPARATION.md).
+[pilot preparation record](MULTILINGUAL_PILOT_PREPARATION.md). The later
+[explicit larger-cohort path](SEMANTIC_LIBRARY_SCALE.md) prepares an opt-in
+version 3; it does not qualify actual full-library serving or change production.
 
 ## Native family diagnostic — October 20, 2026
 

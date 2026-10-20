@@ -278,7 +278,7 @@ def _is_reparse(info) -> bool:
     return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
 
 
-def _read_vector(root: Path, artifact: ImmutableVectorArtifact) -> tuple[float, ...] | None:
+def _read_vector(root: Path, artifact: ImmutableVectorArtifact, *, charge=None) -> tuple[float, ...] | None:
     """Read one tightly bounded NPY payload without shape-driven allocation."""
     root = _checked_root(root)
     if root is None:
@@ -308,8 +308,12 @@ def _read_vector(root: Path, artifact: ImmutableVectorArtifact) -> tuple[float, 
             opened = os.fstat(descriptor)
             if not _same_file(before, opened) or not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
                 return None
-            chunks = []
             remaining = min(opened.st_size, _MAX_FILE_BYTES) + 1
+            # Reserve the maximum bytes this handle can read before I/O. The
+            # optional large-cohort caller shares one budget across both passes.
+            if charge is not None:
+                charge(remaining)
+            chunks = []
             while remaining:
                 chunk = os.read(descriptor, min(remaining, 8192))
                 if not chunk:

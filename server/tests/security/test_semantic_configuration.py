@@ -113,6 +113,41 @@ class SemanticConfigurationTests(unittest.TestCase):
         runtime = load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
         self.assertEqual(runtime.pilot_owner_account_id, 'pilot-owner')
 
+    def test_v3_large_cohort_requires_closed_explicit_limits_and_retains_admission_pool(self):
+        from app.access.discovery import ReadBudget
+        self.write_credential()
+        discovery = DiscoveryRuntime.__new__(DiscoveryRuntime)
+        object.__setattr__(discovery, 'budget', ReadBudget(rows=100, seconds=1, concurrency=1))
+        limits = {'candidate_limit': 30000, 'source_rows': 500000,
+                  'source_bytes': 128 * 1024**2, 'search_seconds': 60}
+        document = self.document | {'format_version': 3,
+            'pilot_owner_account_id': 'pilot-owner', 'serving_limits': limits}
+        self.write(document)
+        runtime = load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+        self.assertEqual(runtime.serving_limits.candidate_limit, 30000)
+        self.assertIs(runtime.budget.slots, discovery.budget.slots)
+        self.assertEqual(runtime.budget.rows, 500000)
+        self.assertEqual(runtime.budget.search_source_bytes, 128 * 1024**2)
+        self.assertEqual(runtime.budget.search_seconds, 60)
+        self.assertEqual(discovery.budget.rows, 100)
+        self.assertEqual(discovery.budget.seconds, 1)
+        self.assertEqual(runtime.budget.response_bytes, discovery.budget.response_bytes)
+        for invalid in (None, {}, {**limits, 'candidate_limit': True},
+                        {**limits, 'candidate_limit': 100001},
+                        {**limits, 'candidate_limit': 512},
+                        {**limits, 'source_rows': 1000001},
+                        {**limits, 'source_bytes': 256 * 1024**2 + 1},
+                        {**limits, 'search_seconds': float('inf')},
+                        {**limits, 'search_seconds': 121},
+                        {**limits, 'search_seconds': True}, {**limits, 'unexpected': 1}):
+            self.write({**document, 'serving_limits': invalid})
+            with self.assertRaises(SemanticConfigurationError):
+                load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+        # Earlier versions cannot silently opt into a larger scope.
+        self.write({**document, 'format_version': 2})
+        with self.assertRaises(SemanticConfigurationError):
+            load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+
     def test_direct_768_runtime_requires_owner_and_validates_owner_identifier(self):
         image_identity = replace(vector_fixtures.IDENTITY, dimension=768)
         text_identity = replace(self.binding.text_identity, dimension=768)

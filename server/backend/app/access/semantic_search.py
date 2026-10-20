@@ -4,7 +4,7 @@ The ordinary assistant wire stays literal. This explicit pilot shares its
 authorization, reviewed metadata and hard-filter implementation, then ranks a
 complete bounded cohort using a separately qualified joint text/image space.
 """
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import math
 from pathlib import Path
 import re
@@ -19,6 +19,7 @@ from .visual_candidates import MAX_CANDIDATES, VectorRecord, _canonical_componen
 from .visual_vector_artifacts import identity_sha256
 from .visual_vector_loader import _COLUMNS, _checked_root, _read_vector, _validated_rows
 from .visual_vector_schema import verify_visual_vector_schema
+from .semantic_streaming import SemanticServingLimits, VECTOR_BATCH_SIZE, MAX_VECTOR_READ_BYTES, rank_semantic_batches
 
 
 def _valid_pilot_owner_account_id(value):
@@ -27,13 +28,15 @@ def _valid_pilot_owner_account_id(value):
 
 class SemanticSearchReads(AssistantSearchReads):
     def __init__(self, access, provider, budget, *, vector_root, encoder, query,
-                 server_snapshot=None):
+                 server_snapshot=None, serving_limits=None):
         super().__init__(access, provider, budget)
         self.vector_root, self.encoder, self.query = vector_root, encoder, query
         self._vector_rows = ()
         self._source_hashes = {}
         self._candidate_count = 0
         self._server_snapshot = server_snapshot
+        self.serving_limits = serving_limits
+        self._vector_read_bytes = 0
 
     def _extra_source(self, index, source, read, check):
         extra = super()._extra_source(index, source, read, check)
@@ -56,20 +59,21 @@ class SemanticSearchReads(AssistantSearchReads):
             ORDER BY a.id''', (index.library_id,))
         self._vector_rows = rows
         self._source_hashes = {str(aid): digest for aid, digest in hashes}
-        return {**extra, 'semantic_policy': 3,
+        return {**extra, 'semantic_policy': (4 if self.serving_limits else 3),
+                **({'serving_limits': asdict(self.serving_limits)} if self.serving_limits else {}),
                 'exclusion_policy': EXCLUSION_POLICY_VERSION,
                 'joint_space_binding': self.encoder.binding.binding_sha256,
                 'semantic_query': d.digest(self.query), 'image_vector_records': rows,
                 'image_source_hashes': hashes}
 
-    def _vectors(self, found):
+    def _artifacts(self, found):
         check = self._check
         check()
         self._candidate_count = len(found)
-        if len(found) > MAX_CANDIDATES:
+        if len(found) > (self.serving_limits.candidate_limit if self.serving_limits else MAX_CANDIDATES):
             raise d.DiscoveryUnavailable()
         if not found:
-            return []
+            return None, ()
         ids = {item['id'] for item in found}
         selected = []
         for row in self._vector_rows:
@@ -84,12 +88,25 @@ class SemanticSearchReads(AssistantSearchReads):
         root = _checked_root(self.vector_root)
         if root is None:
             raise d.DiscoveryUnavailable()
-        vectors = []
-        for aid, artifact in records.items():
+        return root, tuple(records.values())
+
+    def _charge_vector_bytes(self, amount):
+        self._check()
+        if type(amount) is not int or amount <= 0:
+            raise d.DiscoveryUnavailable()
+        self._vector_read_bytes += amount
+        if self._vector_read_bytes > MAX_VECTOR_READ_BYTES:
+            raise d.DiscoveryUnavailable()
+
+    def _vector_records(self, root, records):
+        check = self._check
+        for artifact in records:
+            aid = artifact.asset_id
             check()
             if artifact.source_sha256 != self._source_hashes.get(aid):
                 raise d.DiscoveryUnavailable()
-            vector = _read_vector(root, artifact)
+            vector = (_read_vector(root, artifact, charge=self._charge_vector_bytes)
+                      if self.serving_limits else _read_vector(root, artifact))
             check()
             if vector is None or canonical_vector_checksum(vector) != artifact.component_sha256:
                 raise d.DiscoveryUnavailable()
@@ -99,16 +116,30 @@ class SemanticSearchReads(AssistantSearchReads):
                 _canonical_components(record, self.encoder.binding.image_identity)
             except (ValueError, TypeError, OverflowError):
                 raise d.DiscoveryUnavailable() from None
-            vectors.append(record)
-        return vectors
+            yield record
+
+    def _vectors(self, found):
+        root, records = self._artifacts(found)
+        return list(self._vector_records(root, records))
 
     def _rank(self, found):
         # _run has already checked membership, filters and the current source
         # binding. Refuse before opening vectors, encoding, or restoring scores.
         if requires_semantic_clarification(self.query):
             raise SemanticUnsupported()
-        vectors = self._vectors(found)
         check = self._check
+        if self.serving_limits is None:
+            vectors = self._vectors(found)
+            root, artifacts = None, ()
+        else:
+            root, artifacts = self._artifacts(found)
+            # Complete file validation precedes inference. Never hide a corrupt
+            # tail behind top-k or invoke the provider on an incomplete cohort.
+            for _record in self._vector_records(root, artifacts):
+                check()
+            if artifacts:
+                del _record
+            vectors = None
         if self._server_snapshot is not None:
             # Only the private workspace's validated server-owned summary can
             # supply this snapshot. Neither public API accepts a ranking. A
@@ -126,7 +157,20 @@ class SemanticSearchReads(AssistantSearchReads):
         if not found:
             return []
         query_vector = self.encoder.encode(self.query, check=check)
-        ranked = rank_semantic(query_vector, self.encoder.binding, tuple(vectors), check=check)
+        if self.serving_limits is None:
+            ranked = rank_semantic(query_vector, self.encoder.binding, tuple(vectors), check=check)
+        else:
+            def batches():
+                batch = []
+                for record in self._vector_records(root, artifacts):
+                    batch.append(record)
+                    if len(batch) == VECTOR_BATCH_SIZE:
+                        yield tuple(batch)
+                        batch = []
+                if batch:
+                    yield tuple(batch)
+            ranked = rank_semantic_batches(query_vector, self.encoder.binding, batches(),
+                expected_count=len(found), candidate_limit=self.serving_limits.candidate_limit, check=check)
         by_id = {item['id']: item for item in found}
         check()
         return [dict(by_id[aid], semantic_score=score) for aid, score in ranked]
@@ -138,6 +182,7 @@ class SemanticSearchRuntime:
     vector_root: Path
     encoder: LocalSemanticEncoder
     pilot_owner_account_id: str | None = None
+    serving_limits: SemanticServingLimits | None = None
 
     def __post_init__(self):
         if (type(self.discovery) is not DiscoveryRuntime or
@@ -150,6 +195,9 @@ class SemanticSearchRuntime:
             raise ValueError('Safe pilot owner account identifier required')
         if self.encoder.binding.image_identity.dimension == 768 and self.pilot_owner_account_id is None:
             raise ValueError('A pilot owner account is required for 768-dimensional semantic search')
+        if self.serving_limits is not None and (type(self.serving_limits) is not SemanticServingLimits
+                or self.pilot_owner_account_id is None):
+            raise ValueError('Explicit serving limits require an exact pilot owner')
 
     @property
     def access(self):
@@ -157,7 +205,8 @@ class SemanticSearchRuntime:
 
     @property
     def budget(self):
-        return self.discovery.budget
+        return (self.serving_limits.budget(self.discovery.budget)
+                if self.serving_limits else self.discovery.budget)
 
     def authorize(self, token, library):
         if self.pilot_owner_account_id is None:
@@ -207,8 +256,9 @@ class SemanticSearchRuntime:
         filters = {**filters, 'media': ['image']}
         with self.access.connection_factory() as connection:
             reader = SemanticSearchReads(AccessService(connection, clock=self.access.clock),
-                self.discovery.provider, self.discovery.budget, vector_root=self.vector_root,
-                encoder=self.encoder, query=query, server_snapshot=server_snapshot)
+                self.discovery.provider, self.budget, vector_root=self.vector_root,
+                encoder=self.encoder, query=query, server_snapshot=server_snapshot,
+                serving_limits=self.serving_limits)
             binding = values.get('binding')
             if binding is None:
                 # presentation intentionally omits the internal binding; use

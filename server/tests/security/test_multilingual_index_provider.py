@@ -235,7 +235,7 @@ def test_serving_requires_secret_binding_and_pins_before_model_load(monkeypatch,
 
 def test_explicit_serving_binds_only_loopback_with_bounded_server_options(model,monkeypatch):
     binding=JointSpaceBinding(model.image_identity,model.text_identity,'e'*64)
-    config={'model_directory':'/private/model','artifacts':adapter.qualification.OFFICIAL_ARTIFACTS,
+    config={'schema':'photohouse.multilingual_text_provider.v1','model_directory':'/private/model','artifacts':adapter.qualification.OFFICIAL_ARTIFACTS,
             'package_versions':adapter.qualification.EXPECTED_PACKAGES,'port':43871}
     monkeypatch.setattr(serving,'configuration',lambda _path,**_kwargs:(config,binding,'x'*40))
     monkeypatch.setattr(serving.SiglipModel,'load',lambda **_kwargs:model)
@@ -353,3 +353,33 @@ def test_network_canary_selects_real_encoder_transport_and_closes_resources(mode
     assert measured['tls_receipt']['trust']=='per_run_ca_only'
     assert set(closed)=={44001,44002}
     assert not registry
+
+
+def test_bilingual_v2_run_serves_bound_original_query_after_normalization(model,tmp_path,monkeypatch):
+    from dataclasses import asdict, replace
+    from fastapi.testclient import TestClient
+    from semantic_bilingual_clothing import POLICY
+    inner=JointSpaceBinding(model.image_identity,model.text_identity,'e'*64)
+    recipe=serving.bilingual_recipe(inner)
+    outer=JointSpaceBinding(inner.image_identity,replace(inner.text_identity,
+        preprocessing_sha256=recipe['recipe_sha256']),'f'*64)
+    credential=private_json(tmp_path/'credential.json',{'token':'x'*40})
+    config=private_json(tmp_path/'provider.json',{
+        'schema':'photohouse.multilingual_text_provider.v2','model_directory':str(tmp_path/'model'),
+        'artifacts':adapter.qualification.OFFICIAL_ARTIFACTS,
+        'package_versions':adapter.qualification.EXPECTED_PACKAGES,'port':43871,
+        'binding':asdict(outer),'inner_binding':asdict(inner),'normalization_policy':POLICY,
+        'credential_file':str(credential)})
+    monkeypatch.setattr(serving.SiglipModel,'load',lambda **_kwargs:model)
+    apps=[]
+    monkeypatch.setitem(sys.modules,'uvicorn',SimpleNamespace(run=lambda app,**kwargs:apps.append(app)))
+    assert serving.run(['serve','--configuration',str(config)])==0
+    query='穿蓝色衬衫的男孩'
+    with TestClient(apps[0],base_url='http://127.0.0.1:43871',client=('127.0.0.1',53000))as client:
+        request={'version':1,'binding_sha256':outer.binding_sha256,'query':query}
+        assert client.post('/v1/encode-text',headers={'Authorization':'Bearer '+'y'*40},json=request).status_code==401
+        response=client.post('/v1/encode-text',headers={'Authorization':'Bearer '+'x'*40},json=request)
+        assert response.status_code==200,response.text
+        assert response.json()['query_sha256']==hashlib.sha256(query.encode()).hexdigest()
+        assert response.json()['binding_sha256']==outer.binding_sha256
+    assert model._handle['processor'].seen==['a boy wearing a blue shirt']

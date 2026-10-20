@@ -5,6 +5,8 @@ Serving requires a private bearer credential and the exact image/text binding.
 This provider does not enable or configure PhotoHouse semantic search.
 """
 import argparse
+from dataclasses import asdict, replace
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -19,6 +21,22 @@ from app.access.semantic_encoder import JointSpaceBinding
 from app.access.visual_candidates import VectorSpaceIdentity
 
 
+_FIELDS = {'schema', 'model_directory', 'artifacts', 'package_versions',
+           'binding', 'credential_file', 'port'}
+
+
+def _binding(value):
+    if type(value) is not dict or set(value) != {'image_identity', 'text_identity', 'qualification_sha256'}:
+        raise ProviderRefused()
+    return JointSpaceBinding(VectorSpaceIdentity(**value['image_identity']),
+        VectorSpaceIdentity(**value['text_identity']), value['qualification_sha256'])
+
+
+def bilingual_recipe(inner_binding):
+    from semantic_bilingual_clothing import composition_recipe
+    return composition_recipe(inner_binding, hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
+
+
 class ProviderRefused(ValueError):
     def __init__(self):
         super().__init__('multilingual_provider_unavailable')
@@ -26,22 +44,29 @@ class ProviderRefused(ValueError):
 
 def configuration(path, *, serving=False):
     value = _load_private_document(path, source_root=qualification.ROOT.parent)
-    if (type(value) is not dict or set(value) != {'schema', 'model_directory', 'artifacts',
-            'package_versions', 'binding', 'credential_file', 'port'}
-            or value['schema'] != 'photohouse.multilingual_text_provider.v1'
+    if type(value) is not dict:
+        raise ProviderRefused()
+    bilingual = value.get('schema') == 'photohouse.multilingual_text_provider.v2'
+    if (set(value) != (_FIELDS | {'inner_binding', 'normalization_policy'} if bilingual else _FIELDS)
+            or value['schema'] not in ('photohouse.multilingual_text_provider.v1',
+                                       'photohouse.multilingual_text_provider.v2')
             or type(value['model_directory']) is not str
             or value['artifacts'] != qualification.OFFICIAL_ARTIFACTS
             or value['package_versions'] != qualification.EXPECTED_PACKAGES
             or type(value['port']) is not int or not 1024 <= value['port'] <= 65535):
         raise ProviderRefused()
-    binding = None
-    if value['binding'] is not None:
-        b = value['binding']
-        if type(b) is not dict or set(b) != {'image_identity', 'text_identity', 'qualification_sha256'}:
-            raise ProviderRefused()
-        binding = JointSpaceBinding(VectorSpaceIdentity(**b['image_identity']),
-            VectorSpaceIdentity(**b['text_identity']), b['qualification_sha256'])
-        if binding.image_identity.dimension != qualification.DIMENSION:
+    binding = None if value['binding'] is None else _binding(value['binding'])
+    if binding is not None and binding.image_identity.dimension != qualification.DIMENSION:
+        raise ProviderRefused()
+    if bilingual:
+        from semantic_bilingual_clothing import POLICY
+        inner = _binding(value['inner_binding'])
+        recipe = bilingual_recipe(inner)
+        if (value['normalization_policy'] != POLICY or binding is None
+                or inner.image_identity != binding.image_identity
+                or binding.text_identity != replace(inner.text_identity,
+                    preprocessing_sha256=recipe['recipe_sha256'])
+                or binding.qualification_sha256 == inner.qualification_sha256):
             raise ProviderRefused()
     credential = value['credential_file']
     if credential is not None and (type(credential) is not str or not Path(credential).is_absolute()
@@ -83,15 +108,30 @@ def run(argv=None):
                 config, binding, token = configuration(args.configuration, serving=args.operation == 'serve')
                 model = SiglipModel.load(model_directory=config['model_directory'],
                     artifacts=config['artifacts'], package_versions=config['package_versions'])
-                if binding is not None:
+                provider = model
+                if config['schema'] == 'photohouse.multilingual_text_provider.v2':
+                    import semantic_bilingual_clothing as bilingual_module
+                    from semantic_openclip import _source_pin
+                    from image_embedding_receipts import verify_checkpoint
+                    pins = (_source_pin(Path(__file__).resolve()),
+                            _source_pin(Path(bilingual_module.__file__).resolve()))
+                    def source_check():
+                        for pin in pins:
+                            verify_checkpoint(pin)
+                    model.bind(_binding(config['inner_binding']))
+                    provider = bilingual_module.BilingualClothingProvider(model, binding,
+                        adapter_source_sha256=pins[0].sha256, source_check=source_check)
+                elif binding is not None:
                     model.bind(binding)
             if args.operation == 'probe':
-                print(json.dumps({'model': model.receipt(), 'models_loaded': True,
+                print(json.dumps({'model': model.receipt(),
+                    'provider_binding': asdict(provider.binding) if provider.binding else None,
+                    'models_loaded': True,
                     'listener_started': False, 'activation_performed': False}, sort_keys=True))
                 return 0
             from app.access.semantic_provider_transport import create_provider_app
             import uvicorn
-            application = create_provider_app(model, bearer_token=token, port=config['port'])
+            application = create_provider_app(provider, bearer_token=token, port=config['port'])
             uvicorn.run(application, host='127.0.0.1', port=config['port'], workers=1,
                 access_log=False, log_config=None, proxy_headers=False, forwarded_allow_ips='',
                 timeout_keep_alive=1, limit_concurrency=8, backlog=8, h11_max_incomplete_event_size=8192)
