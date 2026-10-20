@@ -25806,6 +25806,70 @@
       "schema_changed": false,
       "live_schema_changed": false,
       "notes": "Retain page-local toggle/cover state and explicitly admit the additive photo-stack revision through existing runtime, story/group, identity, journal and worker guards. Preserve all older admitted revisions, optional feature flags and pinned migration controllers. Generated compatibility tests only; no live activation."
+    },
+    {
+      "feature": "library-photo-stack-independent-worker-qualification",
+      "source_commit": "d8357934e9779e20cc1c4d8a3b317f5df25e39fd",
+      "files": [
+        {
+          "path": "server/tests/security/test_approved_cpu_worker.py",
+          "sha256": "f432f648eeecfd9c7be98a971deff5f12abd5b189db966d0d2dc7c83aeba2b1d",
+          "before_sha256": "647b0c4e869bf0f54932f33fdf7e86947b93b212d5038e4635e5014dc120452d"
+        },
+        {
+          "path": "server/tests/security/test_approved_face_queue.py",
+          "sha256": "d02e8637c44ef56157797a40326e6b45a671fabf0b029864ee08e97f1945ceb3",
+          "before_sha256": "0a5ba2706b793519895a9e0605e5edb96da368047e637702b1c3409bf23f1933"
+        },
+        {
+          "path": "server/tests/security/test_approved_face_worker.py",
+          "sha256": "8198ee858db1c3c1f488c6a54d799d39ee4c41e7d888020284e534a3ec0e9b1a",
+          "before_sha256": "17019d5a7a1cc16f49e81c3679bc708cf5e1d0769b6e5e391f3272f006c843bf"
+        },
+        {
+          "path": "server/tests/security/test_approved_image_embed_worker.py",
+          "sha256": "c5629b48254ffaf0763061c558137d84a59845625d29522e8682f06d39b50c46",
+          "before_sha256": "38ac740992aecfc552e6866eba9168167d0813ee937ee6055d2eb35d1c75fa8f"
+        },
+        {
+          "path": "server/tests/security/test_approved_video_embed_worker.py",
+          "sha256": "a63e64393e112bf3f999896e1cc89e28b30d7c697d0bf8a6130e6b2598326dde",
+          "before_sha256": "137689c64b54377b3558bdda27652f12f6baab437616656c55a7c0b295b421cc"
+        },
+        {
+          "path": "server/tests/security/test_approved_video_worker.py",
+          "sha256": "8cf17c381c02ba61a16f44928cd68710594097ef7d3ee3d50e15bb6593421bf0",
+          "before_sha256": "0ac20eea9803b51e939d1f1620323afdfd671ad3782c72208298265cb3af456c"
+        },
+        {
+          "path": "server/tests/security/test_approved_workers_e7_compatibility.py",
+          "sha256": "b3777bee6242f69c684d0aef80ba2ceb7f3b06ad2cf7062478b7d80041068e58",
+          "before_sha256": "225529c3b815902bdfee7360959658befba355119ad00b38ac72d93b535ec80f"
+        },
+        {
+          "path": "server/tests/security/test_approved_workers_f2_compatibility.py",
+          "sha256": "927eeed6c0909fbbecfbe100e9f947e048e8ad47117414972868ad053196df06",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_index.py",
+          "sha256": "8457e340e99751e56ac4702ec9de7a0ec3ec6010e12ad2621a8511fb5489e840",
+          "before_sha256": "2baee1aa63c0f058e7702c1af6696b88f0724d6d78559aa1a9274c1083357adb"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "327632ebb7f4a1bfdd85c5c6303e62119d9c9493d48d90ed6ed67c3bf8a78ed0",
+          "before_sha256": "aafc82a9653b8907961a1429e92e9a6faea6be8231d40a61c7cc7a878a6e8166"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "sha256": "7239074f1f123df9397b1397d8e85a1e4b2db344e7f82525d880ed474d30c8c3",
+          "before_sha256": "495b3e7ea6f5b3f2ded82130bd1757c37cca6c643f090682cc1e66988e8cdc73"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "notes": "Make the pure index test independently importable, qualify all five approved worker readers against actual f2 migration, and update exact admitted-revision assertions while retaining E7 coverage. Test/profile changes only; no production activation."
     }
   ]
 }

@@ -80,7 +80,7 @@ API_TESTS = (
     "test_visual_vector_erasure_catalog.py", "test_vector_erasure_qualification.py",
     "test_image_embedding_receipts.py", "test_image_preprocessing_receipts.py",
     "test_visual_vector_worker.py", "test_immutable_image_worker.py",
-    "test_approved_workers_c2_compatibility.py", "test_approved_workers_d1_compatibility.py", "test_approved_workers_e7_compatibility.py",
+    "test_approved_workers_c2_compatibility.py", "test_approved_workers_d1_compatibility.py", "test_approved_workers_e7_compatibility.py", "test_approved_workers_f2_compatibility.py",
     "test_initialize_original_deletions.py",
     "test_staging_config.py", "test_staging_package.py",
     "test_database_preparation.py", "test_fullsize_preparation.py",
@@ -103,6 +103,7 @@ MEMORY_TESTS = (
     "test_memory_jobs.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_memory_narrative.py", "test_memory_processing.py", "test_memory_transport.py",
 )
 WINDOWS_CPU_TESTS = (
+    "test_approved_workers_f2_compatibility.py",
     "test_photo_stack_index.py", "test_library_photo_stacks.py",
     "test_upload_socketpair_guard.py", "test_resumable_upload.py",
     "test_database_preparation.py", "test_fullsize_preparation.py",
