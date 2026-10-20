@@ -273,3 +273,83 @@ def test_protected_pilot_uses_only_new_fixture_db_and_exercises_gate_filters_cor
     for query in pconfig['queries']:assert query['text'] not in json.dumps(measurement,ensure_ascii=False)
     indexer.inspect_index(target/'index.json',expected_library='fixture-library',
         expected_cohort=json.loads((tmp_path/'cohort.json').read_text()))
+
+
+def test_network_configuration_requires_explicit_v2_and_private_tls_files(tmp_path):
+    config=index_configuration(tmp_path)
+    base=json.loads(config.read_text())
+    base.update(schema='photohouse.multilingual_pilot_run.v2',index=str(tmp_path/'index.json'),
+        queries=[{'id':'q','language':'en','text':'red kite','relevant_asset_id':'1'}],repetitions=1)
+    files={key:str(private_json(tmp_path/(key+'.pem'),{}))for key in ('certificate','private_key','ca_file')}
+    base['network']={'transport':'loopback_https_tcp',**files}
+    path=private_json(tmp_path/'network.json',base)
+    assert pilot.configuration(path)[0]['network']['transport']=='loopback_https_tcp'
+    for change in ({'schema':'photohouse.multilingual_pilot_run.v1'},
+                   {'network':{**base['network'],'transport':'asgi'}},
+                   {'network':{**base['network'],'ca_file':'relative.pem'}}):
+        with pytest.raises((pilot.PilotRefused,ValueError)):
+            pilot.configuration(private_json(path,{**base,**change}))
+
+
+def test_network_canary_selects_real_encoder_transport_and_closes_resources(model,tmp_path,monkeypatch):
+    """Generated source fixture: fake servers replace sockets; never native timing."""
+    import httpx
+    import app.access.semantic_encoder as encoder_module
+    config=index_configuration(tmp_path);target=tmp_path/'index'
+    indexer.execute(config,target,model_loader=lambda **_k:model)
+    base=json.loads(config.read_text());base.update(schema='photohouse.multilingual_pilot_run.v2',
+        index=str(target/'index.json'),queries=[{'id':'q','language':'en','text':'red kite','relevant_asset_id':'1'}],
+        repetitions=1)
+    files={key:str(private_json(tmp_path/(key+'.pem'),{}))for key in ('certificate','private_key','ca_file')}
+    base['network']={'transport':'loopback_https_tcp',**files}
+    registry={};closed=[];sockets=[]
+    class Socket:
+        def __init__(self,port):self.port=port
+        def getsockname(self):return ('127.0.0.1',self.port)
+        def close(self):closed.append(self.port)
+    def reserve():
+        sock=Socket(44001+len(sockets));sockets.append(sock);return sock
+    @contextlib.contextmanager
+    def server(app,sock,certificate=None,private_key=None):
+        scheme='https'if certificate else'http'
+        if certificate:assert certificate==files['certificate']and private_key==files['private_key']
+        origin=f'{scheme}://127.0.0.1:{sock.port}'
+        asgi=TestClient(app,base_url=origin,client=('127.0.0.1',41234))
+        asgi.__enter__()
+        registry[origin]={'app':app,'client':asgi}
+        try:yield
+        finally:
+            registry.pop(origin,None)
+            asgi.__exit__(None,None,None)
+            sock.close()
+    @contextlib.contextmanager
+    def client(origin,ca_file=None):
+        if origin.startswith('https:'):assert ca_file==files['ca_file']
+        yield registry[origin]['client']
+    monkeypatch.setitem(sys.modules,'semantic_loopback_network',SimpleNamespace(
+        reserve_socket=reserve,server=server,http_client=client))
+    real_client=httpx.Client;encoder_calls=[]
+    def forward(request):
+        origin=str(request.url).rsplit('/v1/encode-text',1)[0]
+        encoder_calls.append(('forward',origin))
+        r=registry[origin]['client'].post('/v1/encode-text',
+            content=request.content,headers=dict(request.headers))
+        encoder_calls.append(('response',r.status_code))
+        return httpx.Response(r.status_code,content=r.content,headers=r.headers)
+    def encoder_client(**kwargs):
+        assert kwargs['transport']is None and kwargs['trust_env']is False
+        encoder_calls.append(True)
+        return real_client(**{**kwargs,'transport':httpx.MockTransport(forward)})
+    monkeypatch.setattr(encoder_module.httpx,'Client',encoder_client)
+    def no_asgi_encoder(*_a,**_k):raise AssertionError('network mode fell back to ASGI adapter')
+    monkeypatch.setattr(pilot,'LocalSemanticEncoder',no_asgi_encoder)
+    result=pilot.execute(private_json(tmp_path/'network.json',base),tmp_path/'measurement',model_loader=lambda **_k:model)
+    assert len(result['protected_checks'])==12
+    assert encoder_calls.count(True)>0 and ('response',200)in encoder_calls
+    assert not any(item==('response',503)for item in encoder_calls)
+    measured=json.loads((tmp_path/'measurement/measurement.json').read_text())
+    assert measured['network_listener_started']is True and measured['tcp_tls_latency_measured']is True
+    assert measured['canary_resources_closed']is True and measured['remote_device_latency_measured']is False
+    assert measured['tls_receipt']['trust']=='per_run_ca_only'
+    assert set(closed)=={44001,44002}
+    assert not registry

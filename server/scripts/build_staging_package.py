@@ -271,6 +271,8 @@ FILES = (
     'scripts/build_multilingual_image_index.py',
     'scripts/serve_multilingual_semantic_text.py',
     'scripts/qualify_multilingual_pilot.py',
+    'scripts/multilingual_library_coverage.py',
+    'scripts/semantic_loopback_network.py',
     'scripts/semantic_scene_comparison.py',
     'scripts/semantic_reviewed_projection.py',
     'scripts/serve_reviewed_semantic_text.py',

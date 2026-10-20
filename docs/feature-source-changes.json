@@ -26775,6 +26775,71 @@
       "production_index_published": false,
       "actual_family_account_bound": false,
       "activation_approved": false
+    },
+    {
+      "feature": "private-library-coverage-planner-and-explicit-loopback-network-canary",
+      "files": [
+        {
+          "path": "docs/FAMILY_SEMANTIC_COVERAGE.md",
+          "before_sha256": null,
+          "sha256": "0d26599ac62f81a49a7ad18dc05eafad9d588c272fceb32b9cbd401a8991cdf3"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "6358c1bc1ae82e6a252f91ec8d3ee130dd18569f6fc61e95d7b62887ffbac4da",
+          "sha256": "0fd23206da15ada6103a82fe8a332fe2b49c1fd0b2d9ef058f430ce615b52801"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "b7f54fe50894879bae2353bc390c3e3e98f919a199b7c6825e9b3a20d994d85f",
+          "sha256": "1a816de90f1a3ff0c6569a57e9768abc19321d0a4fba1cd74e911f4ca68e483f"
+        },
+        {
+          "path": "server/scripts/multilingual_library_coverage.py",
+          "before_sha256": null,
+          "sha256": "c08d4df5c338bfec8015df3d3172c8d6748a435d8eef166443ca908ff210691c"
+        },
+        {
+          "path": "server/scripts/qualify_multilingual_pilot.py",
+          "before_sha256": "05f4ae4690711e5857ce421569377a7808e74822b364d0e9d2a8c4d3f4e99b25",
+          "sha256": "ef8cf957eb7e76d4fe2b4f681d1e41462595455b453e248c75bb617f2e05ba6a"
+        },
+        {
+          "path": "server/scripts/semantic_loopback_network.py",
+          "before_sha256": null,
+          "sha256": "1d5fb565e351c6e8ba8296e5101539cde22d3cf4359e07dc815f1c96bf54d9da"
+        },
+        {
+          "path": "server/tests/security/test_multilingual_index_provider.py",
+          "before_sha256": "457c74aba6d763715cf37c99aeac80874be6b005851384d229bbf17abdbf3932",
+          "sha256": "b1ba7b64960d8256dbbaae96cca178166d795b7375fb2fd48555ccede39dbf45"
+        },
+        {
+          "path": "server/tests/security/test_multilingual_library_coverage.py",
+          "before_sha256": null,
+          "sha256": "d9f975bd0698cbf2175eeeedb9495f655105f8c44564d59080d658d2b7892321"
+        },
+        {
+          "path": "server/tests/security/test_semantic_loopback_network.py",
+          "before_sha256": null,
+          "sha256": "3726f93f3649c278a006c817218530bdc18e9c0f257a8a5e84959f89322536da"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "d4d5f520e633eb05e7bb93801bcc0b578a2afec682fc83765c18ea9eb67c0ecb",
+          "sha256": "3180dd5e9181a18dacfda143d6a37029b7fb3519e7832569092d6e2347d20bca"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "1d829cb87474b1ed2fba1e83cab6e18cc1c7d55ffe9855d3d7c271f90760c1a3",
+          "sha256": "52af78fdd2224493ef01605a0b74c0e75b264fb57174e0daca7ab06b13575dfa"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "actual_family_account_bound": false,
+      "activation_approved": false
     }
   ]
 }

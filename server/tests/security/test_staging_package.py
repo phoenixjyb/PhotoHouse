@@ -56,6 +56,8 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/build_multilingual_image_index.py',
             'scripts/serve_multilingual_semantic_text.py',
             'scripts/qualify_multilingual_pilot.py',
+            'scripts/multilingual_library_coverage.py',
+            'scripts/semantic_loopback_network.py',
             'scripts/semantic_scene_comparison.py',
             'scripts/semantic_reviewed_projection.py',
             'scripts/serve_reviewed_semantic_text.py',
@@ -251,8 +253,8 @@ class StagingPackageTests(unittest.TestCase):
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'
-                'import semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot\n'
-                'for module in (semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot):\n'
+                'import semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network\n'
+                'for module in (semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network):\n'
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 'for module in (build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot):\n'
                 ' captured=io.StringIO()\n'

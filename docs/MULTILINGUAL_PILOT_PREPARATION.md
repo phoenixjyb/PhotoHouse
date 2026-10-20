@@ -91,6 +91,12 @@ runtime configuration and uses the production API/provider ASGI boundaries
 with an injected in-process HTTP transport. It opens no production DB or
 application listener and creates no real account sessions.
 
+That is the default version-1 canary configuration. An explicit version-2
+configuration now supports temporary loopback HTTPS/TCP with private run TLS
+material, real HTTP clients and bounded listener teardown. The
+[family coverage and network contract](FAMILY_SEMANTIC_COVERAGE.md) defines its
+separate timing and acceptance boundary. It does not change production serving.
+
 Its closed `photohouse.multilingual_pilot_run.v1` configuration contains
 `schema`, `model_directory`, `artifacts`, `package_versions`, `index`, `cohort`,
 `queries`, `repetitions` and `max_elapsed_seconds`. One to twelve operator-supplied

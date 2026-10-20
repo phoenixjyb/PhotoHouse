@@ -2,11 +2,11 @@
 """Protected ASGI/CPU canary over an explicit unpublished multilingual index.
 
 Uses only a newly generated private database, accounts, credentials and vector
-copies. Never opens a production DB or starts a network listener. These timings
-include protected API/provider ASGI processing, not TCP/TLS or device latency.
+copies. Version 1 opens no listener; explicit version 2 measures temporary
+loopback HTTPS/TCP. Neither mode opens a production DB or enables the feature.
 """
 import argparse
-from contextlib import closing, contextmanager
+from contextlib import closing, contextmanager, ExitStack
 from dataclasses import asdict, replace
 import hashlib
 import json
@@ -43,9 +43,13 @@ def _require(value, reason='contract_refused'):
 
 def configuration(path):
     value = _load_private_document(path, source_root=qualification.ROOT.parent)
-    _require(type(value) is dict and set(value) == {'schema', 'model_directory', 'artifacts',
-        'package_versions', 'index', 'cohort', 'queries', 'repetitions', 'max_elapsed_seconds'})
-    _require(value['schema'] == 'photohouse.multilingual_pilot_run.v1'
+    fields = {'schema', 'model_directory', 'artifacts', 'package_versions',
+        'index', 'cohort', 'queries', 'repetitions', 'max_elapsed_seconds'}
+    _require(type(value) is dict)
+    network = value.get('schema') == 'photohouse.multilingual_pilot_run.v2'
+    _require(set(value) == fields | ({'network'} if network else set()))
+    _require(value['schema'] in ('photohouse.multilingual_pilot_run.v1',
+                                'photohouse.multilingual_pilot_run.v2')
         and type(value['model_directory']) is str
         and value['artifacts'] == qualification.OFFICIAL_ARTIFACTS
         and value['package_versions'] == qualification.EXPECTED_PACKAGES
@@ -63,6 +67,15 @@ def configuration(path):
             and _valid_query(query['text']) and not requires_semantic_clarification(query['text'])
             and query['relevant_asset_id'] in ids)
         seen.add(query['id'])
+    if network:
+        net = value['network']
+        _require(type(net) is dict and set(net) == {'transport', 'certificate', 'private_key', 'ca_file'}
+            and net['transport'] == 'loopback_https_tcp')
+        for key in ('certificate', 'private_key', 'ca_file'):
+            _require(type(net[key]) is str and Path(net[key]).is_absolute()
+                and '..' not in Path(net[key]).parts
+                and not Path(net[key]).resolve().is_relative_to(qualification.ROOT.parent.resolve()))
+            require_private_file(net[key])
     return value, cohort
 
 
@@ -111,6 +124,14 @@ CREATE TABLE access_stories(id TEXT PRIMARY KEY,asset_id INTEGER,library_id TEXT
 
 
 def measure(model, index_path, cohort, config, target, deadline):
+    with ExitStack() as resources:
+        result = _measure(model, index_path, cohort, config, target, deadline, resources)
+    # Do not publish a successful measurement unless every owned listener stopped.
+    result['canary_resources_closed'] = True
+    return result
+
+
+def _measure(model, index_path, cohort, config, target, deadline, resources):
     import httpx
     from fastapi.testclient import TestClient
     from app.main import create_app
@@ -143,7 +164,17 @@ def measure(model, index_path, cohort, config, target, deadline):
     now=int(time.time())
     tokens={name:secrets.token_urlsafe(32) for name in ('pilot-owner','pilot-viewer','pilot-other')}
     _fixture(database,records,library,tokens,now)
+    network = config['schema'] == 'photohouse.multilingual_pilot_run.v2'
+    tls_hashes = ({key: hashlib.sha256(Path(config['network'][key]).read_bytes()).hexdigest()
+                   for key in ('certificate', 'ca_file')} if network else None)
     origin='https://pilot.photohouse.test'
+    port=43871
+    if network:
+        import semantic_loopback_network as net
+        provider_socket=net.reserve_socket();resources.callback(provider_socket.close)
+        api_socket=net.reserve_socket();resources.callback(api_socket.close)
+        port=provider_socket.getsockname()[1]
+        origin=f'https://127.0.0.1:{api_socket.getsockname()[1]}'
     @contextmanager
     def connection():
         with closing(sqlite3.connect(database,timeout=.25)) as db:
@@ -162,7 +193,7 @@ def measure(model, index_path, cohort, config, target, deadline):
         'index_sha256':hashlib.sha256(Path(index_path).read_bytes()).hexdigest()})).hexdigest()
     binding=JointSpaceBinding(identities['image'],identities['text'],technical_receipt)
     model.bind(binding)
-    provider_token=secrets.token_urlsafe(32);port=43871
+    provider_token=secrets.token_urlsafe(32)
     credential=target/'credential.json';write_record(target,credential.name,{'token':provider_token})
     runtime_path=target/'runtime.json'
     write_record(target,runtime_path.name,{'format_version':2,'vector_root':str(vectors),
@@ -172,13 +203,16 @@ def measure(model, index_path, cohort, config, target, deadline):
     runtime=load_semantic_runtime(runtime_path,discovery=discovery,
         source_root=qualification.ROOT.parent,protected_paths=(database,))
     counters={'provider_calls':0,'vector_reads':0,'model_encode_calls':0}
+    during_encode=[None]
     class ObservedProvider:
         binding=model.binding
         def encode(self,query,*,check):
+            counters['provider_calls']+=1
             counters['model_encode_calls']+=1
+            if during_encode[0] is not None:
+                callback=during_encode[0];during_encode[0]=None;callback()
             return model.encode(query,check=check)
     provider_app=create_provider_app(ObservedProvider(),bearer_token=provider_token,port=port)
-    during_encode=[None]
     original_read=_read_vector
     def observed_read(*args):
         counters['vector_reads']+=1
@@ -188,7 +222,12 @@ def measure(model, index_path, cohort, config, target, deadline):
     def mutate(sql,args=()):
         with closing(sqlite3.connect(database,timeout=.25))as db, db:db.execute(sql,args)
     rows=[];protected=[];denial_times=[]
-    with TestClient(provider_app,base_url=f'http://127.0.0.1:{port}',client=('127.0.0.1',41234))as provider:
+    if network:
+        resources.enter_context(net.server(provider_app,provider_socket))
+        provider_context=net.http_client(f'http://127.0.0.1:{port}')
+    else:
+        provider_context=TestClient(provider_app,base_url=f'http://127.0.0.1:{port}',client=('127.0.0.1',41234))
+    with provider_context as provider:
         before=dict(counters)
         denied=provider.post('/v1/encode-text',json={'version':1,
             'binding_sha256':binding.binding_sha256,'query':config['queries'][0]['text']},
@@ -196,18 +235,22 @@ def measure(model, index_path, cohort, config, target, deadline):
         _require(denied.status_code==401 and counters==before)
         protected.append('provider_bad_bearer_denied_before_model')
         def forward(request):
-            counters['provider_calls']+=1
-            if during_encode[0] is not None:
-                callback=during_encode[0];during_encode[0]=None;callback()
             response=provider.request(request.method,'/v1/encode-text',content=request.content,
                 headers=dict(request.headers))
             return httpx.Response(response.status_code,content=response.content,headers=response.headers)
-        runtime=replace(runtime,encoder=LocalSemanticEncoder(binding,
-            f'http://127.0.0.1:{port}/v1/encode-text',bearer_token=provider_token,
-            transport=httpx.MockTransport(forward)))
+        if not network:
+            runtime=replace(runtime,encoder=LocalSemanticEncoder(binding,
+                f'http://127.0.0.1:{port}/v1/encode-text',bearer_token=provider_token,
+                transport=httpx.MockTransport(forward)))
         app=create_app(access_runtime=access,discovery_runtime=discovery,
                        assistant_enabled=True,semantic_search_runtime=runtime)
-        with TestClient(app,base_url=origin)as client, patch('app.access.semantic_search._read_vector',observed_read):
+        if network:
+            resources.enter_context(net.server(app,api_socket,
+                certificate=config['network']['certificate'],private_key=config['network']['private_key']))
+            client_context=net.http_client(origin,ca_file=config['network']['ca_file'])
+        else:
+            client_context=TestClient(app,base_url=origin)
+        with client_context as client, patch('app.access.semantic_search._read_vector',observed_read):
             base=f'/libraries/{library}/semantic-search/v1/query'
             query=config['queries'][0]['text']
             def request(text=query,*,token=None,filters=None):
@@ -275,6 +318,9 @@ def measure(model, index_path, cohort, config, target, deadline):
             protected.append('new_request_succeeds_after_fixture_state_restore')
     model.verify()
     inspect_index(index_path,expected_library=library,expected_cohort=cohort)
+    if network:
+        _require(tls_hashes == {key: hashlib.sha256(Path(config['network'][key]).read_bytes()).hexdigest()
+                                for key in ('certificate', 'ca_file')})
     return {'schema':'photohouse.multilingual_pilot_measurement.v1',
         'index_sha256':hashlib.sha256(Path(index_path).read_bytes()).hexdigest(),
         'query_plan_sha256':hashlib.sha256(canonical(config['queries'])).hexdigest(),
@@ -283,9 +329,15 @@ def measure(model, index_path, cohort, config, target, deadline):
         'protected_request_latency':_summary([r['elapsed_ms']for r in rows]),
         'denial_latency':_summary(denial_times),'protected_checks':protected,
         **counters,
-        'latency_boundary':'in_process_protected_api_and_authenticated_provider_asgi_cpu',
-        'tcp_tls_latency_measured':False,'production_database_opened':False,
-        'production_listener_started':False,'network_listener_started':False,
+        'latency_boundary':('host_loopback_protected_api_https_and_authenticated_provider_tcp_cpu'
+            if network else 'in_process_protected_api_and_authenticated_provider_asgi_cpu'),
+        'tcp_tls_latency_measured':network,'production_database_opened':False,
+        'production_listener_started':False,'network_listener_started':network,
+        'remote_device_latency_measured':False,
+        'tls_receipt':({'files_sha256':tls_hashes,'hostname_verified':True,
+            'trust':'per_run_ca_only','api_connection':'reused_after_admission_probes',
+            'provider_connection':'new_per_encode','first_api_request_ms':denial_times[0]}
+            if network else None),
         'real_account_sessions_created':False,'production_index_published':False,
         'activation_performed':False,'activation_approved':False,
         'serving_load_accepted':False,'family_relevance_accepted':False}
