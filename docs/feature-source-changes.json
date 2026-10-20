@@ -26650,6 +26650,26 @@
       "semantic_search_enabled": false,
       "production_runtime_changed": false,
       "activation_approved": false
+    },
+    {
+      "feature": "native-multilingual-exclusion-diagnostic-and-owner-pilot-readiness",
+      "files": [
+        {
+          "path": "docs/SEMANTIC_EXCLUSION_QUALIFICATION.md",
+          "before_sha256": "02e525988381f7adf6c5ada2700b5105235321372e52d40947407b262c8c5f88",
+          "sha256": "33eb41eee531424547fa4a2e43d25205eb1b92d148be1682331e989f155a2d83"
+        },
+        {
+          "path": "docs/MULTILINGUAL_ENCODER_QUALIFICATION.md",
+          "before_sha256": "f8b7905aa4414ec59d84c3da9e6a8d14294998393fbfc8567ecbb432785a5d94",
+          "sha256": "317929f2eeb836156333ad36927df33b17a331f183c30df06b22d31ae39c130f"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "activation_approved": false,
+      "offline_encoder_measurement_performed": true,
+      "human_family_acceptance": false
     }
   ]
 }

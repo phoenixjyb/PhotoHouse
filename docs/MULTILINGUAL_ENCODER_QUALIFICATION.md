@@ -110,10 +110,16 @@ The separate [offline exclusion scorecard](SEMANTIC_EXCLUSION_QUALIFICATION.md)
 now accepts explicit forbidden-image labels. It reports both forbidden images
 that tie or outrank the best relevant image and possible forbidden inclusion
 in the requested top-k, separately for English, Chinese and mixed queries.
-Generated-vector checks qualify this scoring logic only; the native model
-measurements above have not been rerun through it.
+Generated-vector checks qualified the scoring logic first. An October 20
+Windows rerun now applies content-bound labels to the same 16-photo,
+18-query diagnostic using the encoder's original in-memory vectors. Forbidden
+counterparts outranked or tied the intended image in 9/18 variants and could
+occur in the top five in 18/18. All nine negated variants failed that ordering
+check. The separate admission replay correctly required clarification for
+those nine variants; that is a safeguard, not encoder negation understanding.
+See the scorecard document for per-language results and scope limits.
 
-Four successful inference jobs used two CPU threads, an 8 GiB Job Object,
+The earlier four successful inference jobs used two CPU threads, an 8 GiB Job Object,
 four processes, a 600-second ceiling and a 16 GiB free-RAM floor per job.
 Each child proved its Job limits before model imports. Source files, model
 artifacts, images and dataset identities were checked around execution; an
@@ -144,6 +150,26 @@ refusing unsafe requests is reported separately from ranking correctness.
 Compatible 768-dimensional image coverage, protected serving integration,
 serving latency and family/device acceptance also remain outstanding.
 No GPU, ASR or Shanxi dialect acceptance is claimed.
+
+## Work needed before an owner pilot
+
+The October 20 source audit separates existing protections from unfinished
+model integration. These are release gates, not an activation checklist that
+the offline runner can approve.
+
+| Area | Existing source behavior | Remaining work |
+| --- | --- | --- |
+| Joint image/text identity | `JointSpaceBinding` requires equal vector space, dimension and normalization; vector schemas can represent 768 components. | Implement and qualify the pinned SigLIP2 image/text path under one exact identity. |
+| Text serving | The current OpenCLIP serving CLI requires 512 components; the reviewed projection preserves its inner components. | A real 768-component SigLIP2 serving adapter is required. Rebranding or padding old vectors cannot establish compatibility. |
+| Image coverage | Semantic retrieval refuses missing, stale, duplicate or corrupt eligible vectors and caps the complete cohort at 512 images. | Prepare and verify a compatible immutable 768-component image cohort before any index publication. No such cohort was created by this qualification. |
+| Authorization | Library membership is checked before metadata/provider I/O; people, dates, location, tags and literal text remain hard filters. | Library membership alone does not make a pilot owner-only. Add and test an explicit principal restriction before an owner-account pilot. |
+| Unsupported meanings | Exclusion/strict-condition guards require clarification before vector reads or encoding. | Keep refusal evidence separate from encoder ranking. Qualify varied count, relationship, vague and contrast queries. |
+| Operational acceptance | Offline jobs have CPU, process, memory, timeout and input/source checks. | Qualify protected end-to-end serving latency, concurrency, memory, revocation and rollback; CPU batch timings do not establish these. |
+
+The first serving milestone should therefore combine an explicit owner boundary,
+one compatible image/text identity, complete pilot coverage and protected
+integration checks. Deployment and activation remain separate operations.
+Semantic search remains disabled while this work is incomplete.
 
 Validation of the earlier screen/translation source passed 2,573 API tests and 2,520 subtests,
 including package dependency/planning checks, plus the generated no-listener
