@@ -46,6 +46,11 @@ use dated release/qualification records as evidence for their exact revision.
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |
 
 Latest recorded phone delivery: [v74 preparation details](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md).
+The [v75 gallery/search candidate](../clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md)
+records the signed preparation snapshot; [release PR #104](https://github.com/phoenixjyb/PhotoHouse/pull/104)
+tracks the subsequent UI qualification and publication result. The
+[offline exclusion scorecard](SEMANTIC_EXCLUSION_QUALIFICATION.md) has generated-vector
+validation only; semantic search remains disabled.
 The [October 20 API/Web search release](SEARCH_RELEASE_2026-10-20.md) preserved
 phone v74 / TV v30 and kept semantic search OFF. API/Web and client publication
 remain separate in [Project Status](PROJECT_STATUS.md).

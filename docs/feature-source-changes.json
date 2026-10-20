@@ -26492,6 +26492,141 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Reconcile project/search summaries with the verified PR101 API/Web release; retain semantic OFF, separate Android publication and family/device gates, and keep private operator evidence outside source. Documentation only; no runtime operation."
+    },
+    {
+      "feature": "phone-v75-preparation-and-offline-semantic-exclusion-scorecard",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "40376ded9a939e9b86888afd1ccd64ded1cfe5209131798921b124a8b93a9504",
+          "sha256": "fee747e2fc9e4d6bea9b529567018f862ba7361573cbf88ff5d61df1575cc620"
+        },
+        {
+          "path": "server/scripts/semantic_exclusion_cases.py",
+          "before_sha256": null,
+          "sha256": "228c10aaaf71aa2c6a8403f9e846513f103d762ec877cc16056dc49ae4a3575e"
+        },
+        {
+          "path": "server/tests/security/test_semantic_exclusion_cases.py",
+          "before_sha256": null,
+          "sha256": "fb4135793a78190fe20f113d248083303bd5780111a0838dfcd819e77694d089"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "45ae8c2730ccb3e29c5a17a5f5e50f0e76e927c40dd118878304d97b61e9293f",
+          "sha256": "1c16a76ff53f8bf5fa6a5a07544ef36f7b0719cfcbd2c042246f1c2d29588246"
+        },
+        {
+          "path": "docs/MULTILINGUAL_ENCODER_QUALIFICATION.md",
+          "before_sha256": "cdf3ac885a6b4c34a1bc421e5d4da3c689dc717d612c3caf46b0e0ab775e7556",
+          "sha256": "f8b7905aa4414ec59d84c3da9e6a8d14294998393fbfc8567ecbb432785a5d94"
+        },
+        {
+          "path": "docs/SEMANTIC_EXCLUSION_QUALIFICATION.md",
+          "before_sha256": null,
+          "sha256": "8622f5117cad16d1955cb8a464b5802dbd06580d9abedaa6e22652d1d9ddf781"
+        }
+      ],
+      "runtime_changed": false,
+      "semantic_search_enabled": false,
+      "signed": false,
+      "published": false
+    },
+    {
+      "feature": "v75-candidate-evidence-and-portable-exclusion-scorecard",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "5bf82874c26c69d750a994584bcfe89c0bc3beb0dc6f8e90b152cc4375c208a4",
+          "sha256": "101fbb8dec9a125551ac2507b61b6e6981e080da8813335f660b68be35abc621"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "7dcc9bd44dcb9cebb074c3d1a0020ac0d7e96bf07dcb88fb9c0decd81413e9ae",
+          "sha256": "56973971e6c12f2b6b9122a9455e750bb5c77d8890becba9465cb1bcba473dc5"
+        },
+        {
+          "path": "docs/SEMANTIC_EXCLUSION_QUALIFICATION.md",
+          "before_sha256": "8622f5117cad16d1955cb8a464b5802dbd06580d9abedaa6e22652d1d9ddf781",
+          "sha256": "ee550e57423f2708e7043a5a1484c04b558af4d443646cc1293e71f42382d1fc"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "ad99e6b2863f7e6c91d7cd2bddfa4098b8221447811f3970b907418d107bfbd2",
+          "sha256": "74a38e5361a69bade6f54c4080f56ff662a2ca9178e7219677f04907adb0c94f"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md",
+          "before_sha256": null,
+          "sha256": "7d3beadd291daf3b831f2061ee56d1d3374a29206f50bb207a2de8362c593eae"
+        }
+      ],
+      "runtime_changed": false,
+      "semantic_search_enabled": false,
+      "signed": false,
+      "published": false
+    },
+    {
+      "feature": "v75-signed-preparation-and-hosted-fixture-ui-qualification",
+      "files": [
+        {
+          "path": ".github/workflows/android-ui-qualification.yml",
+          "before_sha256": null,
+          "sha256": "d3295ef7469adf77228cae1bb165c539f0355fd565af32afbf8a45691e08eb09"
+        },
+        {
+          "path": "tools/android_ui_qualification.py",
+          "before_sha256": null,
+          "sha256": "4a9306e47c7d325cf1088d377768251ba80596beb2a0e98fc630dc3dff122419"
+        },
+        {
+          "path": "tools/tests/test_android_ui_qualification.py",
+          "before_sha256": null,
+          "sha256": "79ebfd182d2c9330d6cd95515fa4165ae0c0c1099b21509ad16ce61fc23d13ec"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md",
+          "before_sha256": "7d3beadd291daf3b831f2061ee56d1d3374a29206f50bb207a2de8362c593eae",
+          "sha256": "eb275c6efe7a11c6b82ac88fe97b1f383ea2336543f5cd107a73840aefa15a04"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "74a38e5361a69bade6f54c4080f56ff662a2ca9178e7219677f04907adb0c94f",
+          "sha256": "57c24921ecc4eb6c57aaf1a96fb45c8c8a68a59a31ed7d066643575afae3594a"
+        }
+      ],
+      "android_application_tree_changed": false,
+      "semantic_search_enabled": false,
+      "ota_published": false,
+      "physical_device_acceptance": false
+    },
+    {
+      "feature": "android-current-emulator-identity-and-actionable-ui-evidence",
+      "files": [
+        {
+          "path": "tools/android_emulator_test.py",
+          "before_sha256": "3c5fdbf3fb7d7d761f054ea66e6981f0a3eaf9539e018f9b03d178017615742f",
+          "sha256": "e86040ae1da9a2b1660e67444fa18957c964ef7374dfa538d53fe03a213a0f05"
+        },
+        {
+          "path": "tools/tests/test_android_emulator_test.py",
+          "before_sha256": "42f7a628abad98bb7ab3262fa71997ca88eb65948ec75aa7d8426f938595f20e",
+          "sha256": "8f7e99a1813cdb694dad6f0a0aee8855b4ec3891ce2026b937a9d74214821986"
+        },
+        {
+          "path": "tools/android_ui_qualification.py",
+          "before_sha256": "4a9306e47c7d325cf1088d377768251ba80596beb2a0e98fc630dc3dff122419",
+          "sha256": "a97ff65c817cdc67a22a8c0358028f31d1031f74ff979cccc1aebe776e70a3d4"
+        },
+        {
+          "path": "tools/tests/test_android_ui_qualification.py",
+          "before_sha256": "79ebfd182d2c9330d6cd95515fa4165ae0c0c1099b21509ad16ce61fc23d13ec",
+          "sha256": "a7cb2fadebab2320f9cec6acea587a7c294d057f7058514fafe01585b97b8873"
+        }
+      ],
+      "android_application_tree_changed": false,
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false
     }
   ]
 }

@@ -106,6 +106,13 @@ variants still had a top-five hit, illustrating why top-five relevance cannot
 establish that an exclusion was honored. The diagnostic establishes concrete
 failures, not a calibrated general negation error rate.
 
+The separate [offline exclusion scorecard](SEMANTIC_EXCLUSION_QUALIFICATION.md)
+now accepts explicit forbidden-image labels. It reports both forbidden images
+that tie or outrank the best relevant image and possible forbidden inclusion
+in the requested top-k, separately for English, Chinese and mixed queries.
+Generated-vector checks qualify this scoring logic only; the native model
+measurements above have not been rerun through it.
+
 Four successful inference jobs used two CPU threads, an 8 GiB Job Object,
 four processes, a 600-second ceiling and a 16 GiB free-RAM floor per job.
 Each child proved its Job limits before model imports. Source files, model
