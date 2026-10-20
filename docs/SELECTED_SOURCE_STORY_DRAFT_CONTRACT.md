@@ -2,8 +2,8 @@
 
 This contract defines a bounded, review-only operation for preparing a story
 from media and source evidence the author selected. The end-to-end PH-A4 service
-is a proposal; its internal snapshot core and narrative input are implemented
-without an endpoint or application wiring. It leaves story ownership,
+is a proposal; its internal snapshot core, narrative input and operation owner
+are implemented without an endpoint or application wiring. It leaves story ownership,
 current source authorization, revision checks and explicit save in PhotoHouse.
 The current application facts below were checked against
 [`story_workspace.py`](../server/backend/app/access/story_workspace.py),
@@ -289,7 +289,8 @@ echoes only supplied chapter IDs and selected source IDs in that closed output
 grammar; the host validates and resolves those references. Its unsaved input
 uses the PH-P2 bundle version 3, now supported only by the narrative validator
 and provider path. The internal snapshot core constructs and authorizes this
-input; the PH-A4 operation service remains separate. The model cannot mint or
+input; an injected operation owner assembles the result below. The public
+transport, native provider and client integration remain separate. The model cannot mint or
 change identities, supply chapter titles, author citation metadata, choose
 chapter media, or set revisions, expiry or review state. This keeps the current
 validator useful while making the returned citation record server-derived.
@@ -418,8 +419,9 @@ editor payload.
 
 ## Expiry, recovery and privacy
 
-The prepared prose is volatile and is not an application record. Proposed
-client behavior sets `expires_at` once, 30 minutes after the result is issued.
+The prepared prose is volatile and is not an application record. The internal
+owner sets `expires_at` once, 30 minutes after the result is issued; a future
+client must honor this same bound.
 This is a fixed absolute lifetime, not a sliding idle timer. At expiration,
 clear the proposal and its review binding; a user can explicitly save an
 ordinary local draft if that capability is already available. PH-A4 does not
@@ -440,6 +442,80 @@ must separately inspect provider, coordinator, crash and diagnostic retention.
 The result sent to the client includes citation metadata and generated text,
 not a copied source corpus. Clearing the ephemeral draft does not delete or
 change originals, sources or saved stories.
+
+### Implemented internal operation owner
+
+[`selected_story_operations.py`](../server/backend/app/access/selected_story_operations.py)
+implements `DraftOperations` with injected protected `SelectedStorySources`,
+an asynchronous provider and the application's shared `InferenceAdmission`.
+It is not constructed by the app or included in the API runtime package.
+No route, public state/error enum, model runner, database write, saved-story
+job, background restart recovery or native capacity claim is added.
+
+The default household bounds are one admitted generation, no application
+waiting, 60 seconds of work from permit grant, ten seconds to confirm cleanup,
+16 active/retained proposal slots and 128 request identity records. At most
+16 owned database reads may be outstanding, including detached authentication
+and cached-result reads. Conversations at rest hold no permit. An occupied
+shared lane returns a fixed internal busy error; this profile never bypasses
+other profiles' admission or enables the primitive's optional waiting mode.
+
+`prepare(token, library, request)` authorizes `story.write` before registering
+or looking up the account/library/request identity. Exact active retries join
+one owner; cancelling a response waiter detaches it. A changed request digest
+conflicts. Every retained-result delivery reauthenticates the current session
+and revalidates the source snapshot. No await separates the final scope checks
+from returning a detached result. Futures retain notification only, with no
+prose or exception traceback. Citation fields and chapter titles come from the
+host snapshot; the provider supplies only the validated narrative grammar.
+
+The result's UTC expiry and monotonic deadline are fixed at issue; a read never
+extends them. Timer callbacks and lookup/delivery checks discard expired prose
+and source snapshots. A compact digest/session/source-fingerprint tombstone
+remains for 24 hours after the latest accepted execution. No active owner,
+unexpired result or protected tombstone is evicted to admit new work; capacity
+exhaustion refuses registration. The existing request can run again after
+result expiry only with the exact request digest and freshly resolved matching
+source/authorization fingerprints. It receives a new `draft_id` and needs full
+review. Busy work that never started a provider may retry the same ID; provider
+failure and explicit cancellation remain terminal for that ID. These are not
+automatic model retries. After the bounded identity lifetime, or process
+restart, old request identity is no longer remembered.
+
+The provider contract is `async prepare(bundle, scope)` and
+`async stop_and_reconcile(scope) -> bool`. The scope carries a host operation
+ID matching the draft bundle, a fixed deadline and a cooperative cancellation
+check. Exact `True` from cleanup is required on success as well as failure and
+must certify that **all native work for the scope has stopped**. A cancelled
+Python task, finished HTTP response or `asyncio.to_thread` wrapper is not that
+proof. No adapter to the synchronous `LocalMemoryNarrator` is installed here;
+a real provider needs separately qualified stop/ownership semantics.
+
+`cancel(token, library, request_id)` requires current matching account/session
+authority. Trusted `invalidate_session(token)` and `close()` fence output and
+drop retained words before awaiting cleanup. The session hook is not a public
+unauthenticated endpoint. Its invalidated session hashes are bounded at 1,024;
+exhaustion closes this owner instead of reviving an invalidated session. A
+controller must cancel an older operation when a newer intent replaces it in
+the same editor; the service does not infer that independent conversations
+should cancel each other. Current database validity remains authoritative.
+
+Source reads run in owned shielded thread tasks; their transactions must settle
+before a permit is released. Native or thread cleanup that is false, exceptional
+or overdue quarantines the shared scheduler and retains the permit. Late
+successful settlement can release the permit but cannot clear quarantine or
+publish late prose. `reconcile()` retries owned stop proof without resetting
+the scheduler. `close()` returns false while resources remain unresolved and
+never closes a scheduler shared with other profile owners. The lifespan owner
+must retain this object and its tasks until settlement; replacement after
+native reconciliation remains a separate integration decision.
+
+The [operation tests](../server/tests/security/test_selected_story_operations.py)
+use synthetic providers and source snapshots, and the
+[authentication tests](../server/tests/security/test_selected_story_operation_auth.py)
+exercise real protected SQLite policy without a model or password KDF. These
+checks establish process-local contracts, not provider privacy, GPU exclusion
+across processes, real cancellation or household client acceptance.
 
 ## Acceptance cases and dependencies
 

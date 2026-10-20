@@ -8,6 +8,12 @@ configuration. PH-A1 v1 remains nonqueued. This contract implements the bounded
 capacity primitive in the [household plan](LOCAL_AGENT_DEVELOPMENT_PLAN.md),
 not its future user-facing waiting/recovery protocol.
 
+The isolated [selected-source draft owner](SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md#implemented-internal-operation-owner)
+now consumes an injected shared instance in fail-fast mode. It adds process-local
+retry/expiry/session ownership and explicit cleanup proof without constructing
+the scheduler in the application or connecting a native provider. Actual runtime
+consumers below remain independent until lifespan/native integration is qualified.
+
 ## Ownership and API
 
 Construct one `InferenceAdmission` for one application event loop, and share
@@ -105,6 +111,7 @@ still need native verification.
 | Consumer | Existing owner and scheduling scope | Shared-capacity consequence |
 | --- | --- | --- |
 | PH-A1 | [AgentSupervisor](../server/backend/app/access/assistant_agent.py), one app-process lane and owned cleanup | No cross-process model slot |
+| Internal selected-source drafts | [DraftOperations](../server/backend/app/access/selected_story_operations.py), injected shared scheduler, exact retries and retained cleanup | Shares only the supplied process-local instance; unwired, with no native provider adapter |
 | Saved narrative/companion | [process_job](../server/backend/app/access/memory_processing.py) and [worker](../server/scripts/run_memory_worker.py), durable per-job 300-second lease | Distinct worker jobs may call inference concurrently; a job lease is not global admission |
 | Story titles | [title_suggestions](../server/backend/app/access/story_workspace.py), per-app `threading.Lock` | Does not coordinate with saved jobs or another API process |
 | Approved face/image/video vector work | [image worker kernel_lock](../server/scripts/run_approved_image_embed_worker.py), [face lock](../server/scripts/run_approved_face_worker.py), [video worker](../server/scripts/run_approved_video_embed_worker.py), OS file lock at the same database-derived path | Cross-process coordination exists for participating approved media workers; it does not include narrative, assistant or caption HTTP providers |

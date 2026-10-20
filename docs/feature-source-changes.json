@@ -26754,6 +26754,64 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Internal bounded read-only source snapshot and fresh revalidation using current authorized story/media/source services, exact bylines, chapter allowlists and actor/revision binding. Frozen process-local bytes only; no operation registry, provider/admission wiring, HTTP route, DB mutation or runtime package inclusion. All 258 API package inputs unchanged; synthetic security checks do not qualify a live model, family UX or deployment."
+    },
+    {
+      "feature": "household-selected-story-operation-owner-v1",
+      "source_commit": "ff7334d44899eb5ea701bd8c99a5893a94074e7e",
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_operations.py",
+          "before_sha256": null,
+          "sha256": "d22a45456dd23e32d5804a5bb1757bafc86f83b697db30aa70a42cd667694c18"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_operations.py",
+          "before_sha256": null,
+          "sha256": "b8d95b930c4b0a8e1b668f5025a10d23a527789ee7821d8e03f855796798e048"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_operation_auth.py",
+          "before_sha256": null,
+          "sha256": "6c4a950f6b3f15916fd0e1c308461ff74fe19d316a9c4d242b18eff8daae30a9"
+        },
+        {
+          "path": "server/tests/security/test_inference_admission.py",
+          "before_sha256": "301b6828495a09474aa22240cb0ebb79760abb09d8c936a57afb3f6271fa55f0",
+          "sha256": "df05000b76351e3bb17a218812d70f1f9f7138a9e8f5bdd38e79e090e9c29055"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "388d8412f34cb1e006eb44b2169889f6f285c0cd44d19585217594b02cddc01b",
+          "sha256": "7cd5b7b2b28649ef1f167dbf5dffb72900d9319d8bdb89b3fb28d9725ea615d2"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "b27942d105cb4de0c6efb112a5a536dd916ea7f244f47d50324e34cef1d36d99",
+          "sha256": "cac9aa5727d066d99c30f4805860e72558d1740be39fedd0afb02e3abe7a40f3"
+        },
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "b5f53e5f4d3be3d19122056a340ff3491002569768e14f10bd8d69fc7a4a1c6b",
+          "sha256": "fda8f163bfef3fea114dd4cf0224ae8cd49fae1b62eccf7e7489a1b163b26430"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "0f18b0ba789f390c8112f97e1831681eadaaeff3138252c65fefbc15e5273c27",
+          "sha256": "f41d5bc1c6c292ba1625e59d5c61eb37c9d50be55250d6aa7af8cce1d9e69f8f"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "470f717dd2ede0b922f64face17128de3c6dccbff0453a2d95db06e572cfbe65",
+          "sha256": "161250840051b79e3982a347af18e0d42e2b7a33d092d00371ad313f1ec9d266"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "isolated_core": true,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Internal selected-source operation owner with exact-request retries, fixed result expiry, bounded identity retention and injected shared admission. Synthetic async providers certify cleanup only in tests; no native stop adapter, application/session hook wiring, HTTP route or deployment. Production admission component unchanged; existing expiry test made deterministic. All 258 API runtime package inputs unchanged."
     }
   ]
 }

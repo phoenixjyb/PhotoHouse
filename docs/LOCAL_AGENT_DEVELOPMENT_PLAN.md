@@ -232,8 +232,10 @@ consumer ownership and an isolated, tested admission primitive. The primitive
 is unwired: profile owners, provider-wide coordination and a public waiting
 protocol remain separate integration work. Neither comparison has model/UX
 measurements yet. The narrative-only bundle version 3 and isolated authorized
-snapshot core are implemented with synthetic checks. PH-A4 operation service,
-admission and client integration remain separate.
+snapshot core are implemented with synthetic checks. The isolated PH-A4
+operation owner now adds exact retries, fixed expiry and injected shared
+admission. App/client wiring, native stop proof and cross-process resource
+coordination remain separate.
 
 PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access

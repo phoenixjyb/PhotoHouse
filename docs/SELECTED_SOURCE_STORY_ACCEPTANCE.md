@@ -32,8 +32,10 @@ revision. They remain unchanged. The source implementation in
 the explicit v3 narrative input below; it does not invent a saved story,
 fabricate a revision or insert a job to prepare an unsaved draft. The isolated
 [source snapshot core](../server/backend/app/access/selected_story_snapshot.py)
-now authorizes and freezes its input. PH-A4 operation/service integration remains
-separate work.
+now authorizes and freezes its input. An isolated
+[operation owner](SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md#implemented-internal-operation-owner)
+adds bounded retries, expiry and shared admission. Public/native integration
+remains separate work.
 
 The new internal narrative **bundle version 3** is solely
 for selected-source preparation. It retains the closed v1 content fields and
@@ -90,7 +92,8 @@ kinds, output rejection and mocked provider transport. It establishes no real
 model quality or locality. The separate
 [snapshot suite](../server/tests/security/test_selected_story_snapshot.py)
 checks actual generated-library authorization and source revalidation. Neither
-core adds a route, operation service, model selection or family-facing feature.
+core adds a route, model selection or family-facing feature. The internal
+operation owner has its own synthetic lifecycle checks and no live adapter.
 
 ## Frozen fictional evidence
 

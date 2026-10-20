@@ -80,10 +80,15 @@ class InferenceAdmissionTests(unittest.IsolatedAsyncioTestCase):
         permit.finish(reconciled=True)
 
     async def test_expiration_releases_account_and_request_identity(self):
-        admission = InferenceAdmission(wait_seconds=0.01)
+        admission = InferenceAdmission(wait_seconds=20)
         active = await admission.acquire(identity('owner', 'active'))
         expired = identity('member', 'request', library='lib-a')
-        await self.assert_reason(admission.acquire(expired), 'waiting_expired')
+        expiry = asyncio.create_task(admission.acquire(expired))
+        await self.wait_for_waiters(admission, 1)
+        # Deliver the scheduled expiry callback explicitly. The replacement
+        # below must not have to beat a 10 ms wall-clock window on a busy host.
+        admission._expire(admission._waiting[0])
+        await self.assert_reason(expiry, 'waiting_expired')
         self.assertEqual(admission.state().waiting, 0)
         # Same account may wait again, and the expired request key is reusable.
         replacement_identity = identity('member', 'next', library='lib-b', profile='assistant')
