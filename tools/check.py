@@ -41,6 +41,8 @@ API_TESTS = (
     "test_multilingual_library_coverage.py", "test_semantic_loopback_network.py",
     "test_multilingual_index_collection.py", "test_semantic_streaming_search.py",
     "test_semantic_bilingual_clothing.py",
+    "test_library_image_inputs.py", "test_library_siglip.py",
+    "test_library_semantic_index.py", "test_qualify_library_semantic.py",
     "test_semantic_scene_comparison.py",
     "test_semantic_reviewed_projection.py", "test_serve_reviewed_semantic_text.py",
     "test_reviewed_semantic_provider_integration.py",

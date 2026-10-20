@@ -26993,6 +26993,85 @@
       "production_runtime_changed": false,
       "production_index_published": false,
       "activation_approved": false
+    },
+    {
+      "feature": "bounded-full-library-image-preparation-indexing-and-protected-performance",
+      "files": [
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "078a9461652811991e009785ace39b14f620a0e9168c897f8132f92ef8d22f8e",
+          "sha256": "96797ef506f09e34b566147710ed8d61ec6728faec53c314c457fa724a1840af"
+        },
+        {
+          "path": "server/scripts/bounded_windows_job.py",
+          "before_sha256": "b444fad198cf7b63349806592d586e9da258b0bb8218c2c0888f463a9515a251",
+          "sha256": "b95812955088103302d70076168f9ed7490a8f04147f0496a8acb97226da708b"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "68f0aa6776c38aaabbd2058de3e40b3a8d9b662c69b114d94d33ef82cb6d6b7b",
+          "sha256": "8739504bd1233daba18ab6f2c38b5b93c232196534e3e1d659d62ab0bfd387b0"
+        },
+        {
+          "path": "server/scripts/library_image_inputs.py",
+          "before_sha256": null,
+          "sha256": "7847090c72b33b92f948900d2411b1f911f220230ed8853ac92d892a31ec5103"
+        },
+        {
+          "path": "server/scripts/library_semantic_index.py",
+          "before_sha256": null,
+          "sha256": "ce9fc3e0ec4c1945271401724501caf0f2932b0303364042999e67ca491a64e9"
+        },
+        {
+          "path": "server/scripts/library_siglip.py",
+          "before_sha256": null,
+          "sha256": "964bebf609b99a375536d0608b933eb3a872b308ce71d40eb92f681e78ed2446"
+        },
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "before_sha256": null,
+          "sha256": "cc95909f45e3b6c0adee05f001bc561d7b02a596ca3683ae5ee946b6dfae737a"
+        },
+        {
+          "path": "server/tests/security/test_bounded_windows_job.py",
+          "before_sha256": "ce293986b4062f939d5d07b236647f08af4fb7a37100322b874a06986eb5c6de",
+          "sha256": "be6ae8d68e1250e8936d13cf31205df5535f216b848a234a44d599024283ee25"
+        },
+        {
+          "path": "server/tests/security/test_library_image_inputs.py",
+          "before_sha256": null,
+          "sha256": "4d270731e3848dc5088f503c79b2de989ebc9d47dab14fe0f13d3ac7d16afa7e"
+        },
+        {
+          "path": "server/tests/security/test_library_semantic_index.py",
+          "before_sha256": null,
+          "sha256": "08485576ffb4a89504194f719a4dcab442076b2a45f71b04d26c53f329a5eba0"
+        },
+        {
+          "path": "server/tests/security/test_library_siglip.py",
+          "before_sha256": null,
+          "sha256": "cc940e832d074b61fafdb411e1e2b0d0e69eaeac0469a3f16834fe9d1d869f71"
+        },
+        {
+          "path": "server/tests/security/test_qualify_library_semantic.py",
+          "before_sha256": null,
+          "sha256": "21bab85001a8d438aa68dd3713d3fe6f0e0744a63634eeff4b985bf4b15d52fb"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "6dda8eeffa2b328886b5163bfa4cec2f06d2fb6d77af297a5af543cba3bf6d1b",
+          "sha256": "ea6fe09b99735923b782c12630f2186f35881d7806fe714c68638f82a4471e31"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "4d33481e7234ec3f51ae2b4529751e27c0204581350146d7e5c67b45d5c3e4c6",
+          "sha256": "f96be9f5b04f8cb80e50e83ae22b72ec906e1e1a41a669f33b8cfa3a0fb48243"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "activation_approved": false
     }
   ]
 }

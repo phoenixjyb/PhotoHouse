@@ -136,3 +136,52 @@ generated no-listener demo; seven packaging tests passed. Implementation and
 documentation are local commits, unmerged and undeployed. Complete compatible
 family indexing, blocked-file handling and real larger-library/device performance
 remain open. No account binding, index publication or activation was performed.
+
+## Full-library candidate preparation
+
+The dedicated `library_semantic_index.py` worker accepts a frozen
+`photohouse.library_semantic_snapshot.v1` roster and approved original roots.
+It prepares private derivatives, uses `LibrarySiglipModel` in fixed batches of
+eight, and writes immutable vectors with append-only batch checkpoints. Original
+SHA-256 values remain the artifact source identity; derivative hashes and observed
+image dimensions are separate receipts. Catalog dimensions never replace decoder
+observations. This candidate workflow has no production publication path.
+
+The preparation profile accepts single-frame JPEG/PNG up to 128 MiB, 256 megapixels
+and 32,768 pixels per side. It normalizes EXIF orientation, converts to RGB, reduces
+the longest side to 2,048 pixels, and strips metadata from the private PNG. The
+profile, helper source, wrapper source and fixed-batch policy define a new image
+preprocessing identity. Existing raw-image vectors cannot be relabeled with it.
+The established text tower and its identity remain unchanged.
+
+Original files are read-only and may have multiple hard links. Generated scratch
+files must be private regular files with one link, outside original roots and
+source. At most eight preparations are retained. A 32 GiB free-space floor is
+checked between batches. Only verified, successfully checkpointed scratch files
+owned by the current process are removed; failed or partial artifacts remain as
+evidence. Missing, changed, unsupported or undecodable sources remain explicit
+failures. An exact-hash alternative inside the same authorized library can be
+selected in a frozen candidate roster without changing the production catalog.
+
+A bounded slice can stop at a committed batch boundary with `max_new_assets`;
+`resume=True` requires the same roster, model/preparation identities and roots.
+It verifies committed work before continuing and never overwrites partial vector
+files. Interruption inside an uncommitted batch or before scratch cleanup preserves
+the files and refuses automatic resume until operator review; clean committed
+batches are never silently re-encoded. Active and retained scratch share an
+8 × 144 MiB ceiling. Final processing and complete source coverage are separate states: a
+finished roster with failures is still incomplete coverage.
+
+Ordinary Windows qualification jobs retain their 900-second cap. The explicitly
+named `run_bounded_library_index` profile allows up to six hours, with fixed
+8 GiB memory, four processes, a 16 GiB free-RAM floor and mandatory child Job
+proof. It does not install a service or schedule future work.
+
+`qualify_library_semantic.py` measures verified candidate vectors using temporary
+synthetic accounts, captions and databases. It checks authorization before model
+or vector access, multilingual exclusion clarification, hard date filters and
+source-change refusal. Its optional network mode uses temporary loopback HTTPS
+for the API and authenticated TCP for the provider, closing both before writing
+a success receipt. This is host-local performance evidence; phone, remote-network,
+concurrent load, broad relevance and family acceptance remain separate gates.
+Semantic search remains OFF throughout this workflow.
