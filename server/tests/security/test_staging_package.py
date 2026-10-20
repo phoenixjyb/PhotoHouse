@@ -57,6 +57,8 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/qualify_semantic_scenes.py',
             'scripts/qualify_reviewed_semantic_scenes.py',
             'scripts/qualify_oral_history.py',
+            'backend/app/access/assistant_agent.py',
+            'backend/app/access/assistant_agent_tools.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
             'backend/app/access/family_note_deletions.py',

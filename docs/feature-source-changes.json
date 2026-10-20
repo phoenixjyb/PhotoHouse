@@ -26434,6 +26434,87 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Bind corrupt-artifact replay no-encoder assertion to the immediate call count, independent of earlier exclusion admission."
+    },
+    {
+      "feature": "bounded-read-only-assistant-agent-seam-v1",
+      "source_commit": "a4e39221a3dab8ee84bacc7c9226e7b3a71b112b",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_ACCEPTANCE.md",
+          "before_sha256": null,
+          "sha256": "9c5db7a00e744295c26776a590f36dc9b264dd917d2ac8534eaa7a830d4a6fe1"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_RUNTIME.md",
+          "before_sha256": null,
+          "sha256": "6adb6bf2d091cf14ae020c94f64afff36a90a317c87d7eac22798fcd3a2c89ad"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "e658091fdbf502a13c94d0e9096332d733a4dcc22d474a54090c30a646a8754c",
+          "sha256": "719151eb3cb195a78e4d12756ff5e82341a4d680346cfd6bc72ebbde0ed0d5bb"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": null,
+          "sha256": "adcbc1b0fbe15ba80052226f10b6a649541c3066a13a4cde8961d6019e3fc20f"
+        },
+        {
+          "path": "server/backend/app/access/assistant_agent.py",
+          "before_sha256": null,
+          "sha256": "116b64c4d2ef08d37072cc0c509bab1cdfa0a63f921ca9bb7e4c0b504f3c4708"
+        },
+        {
+          "path": "server/backend/app/access/assistant_agent_tools.py",
+          "before_sha256": null,
+          "sha256": "57416ced91794eac68216ef33fb774fc4b5f5604ec8b4bae80c8392fbfacb67d"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "47c32a1a8697879f80900ac1cd8eb891fc00395ac92217c394bcc9223a1d674e",
+          "sha256": "c82098388053955505fbe2d0a315567ab59335ee8dd08a9070065ef3dbf73550"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "86bb4fcc8bc3486f824d43176a20c0bcdb85e294e6eb93fdbf4cd7882aa861d9",
+          "sha256": "fe8228ed39ed3421a19b2fe49786623d2e3c241195fa492963d4fac6e11e0efb"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "5bf82874c26c69d750a994584bcfe89c0bc3beb0dc6f8e90b152cc4375c208a4",
+          "sha256": "37a09a8a8c62880fcc0deb4c1f625310656bdc114216264da4b56472a748ae32"
+        },
+        {
+          "path": "server/tests/security/test_assistant_agent_tools.py",
+          "before_sha256": null,
+          "sha256": "14db30226c7a6a490bbe8313135fe6272cb4de9f6c527f8b5ef7e5ccb278aa25"
+        },
+        {
+          "path": "server/tests/security/test_assistant_agent_workspace.py",
+          "before_sha256": null,
+          "sha256": "47330e0149b56224173e785de11dbe8e5abec6046b34873e49477418b328bb69"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "0e6d79b7074d9712fdbe4d9182ce1577f873fc5e3d73fc5f9426d58f1de05537",
+          "sha256": "7dac47edc41b26d1e71ec226bdf9d870a38f58e8c1a4608aa293efa6390ec8c6"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "7dcc9bd44dcb9cebb074c3d1a0020ac0d7e96bf07dcb88fb9c0decd81413e9ae",
+          "sha256": "5678ea82ca14d6b03b9bdddd48cdbe10cc9865a95a992ca4d99470335722e507"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "45ae8c2730ccb3e29c5a17a5f5e50f0e76e927c40dd118878304d97b61e9293f",
+          "sha256": "746c800fd2e07637e9854cd9e08796241c65e03463957d7023eb91602dfc6677"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Default-off injected PH-A1 supervision and exact v2 domain tools, generated HTTP lifecycle/recovery tests, CPU/staging closure, PH-U0 acceptance sheet and proposed PH-A4 selected-source story contract."
     }
   ]
 }

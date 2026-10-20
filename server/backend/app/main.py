@@ -48,7 +48,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_workspace_store=None, assistant_kinship_provider=None, assistant_intent_planner=None, update_root=None,
                story_title_suggester=None, memory_groups_enabled=False, memory_group_vectors=None,
                assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False,
-               assistant_semantic_search_enabled=False):
+               assistant_semantic_search_enabled=False,
+               assistant_agent_runtime=None, assistant_agent_budget=None):
     if semantic_search_runtime is not None and (
             type(semantic_search_runtime) is not SemanticSearchRuntime or
             semantic_search_runtime.access is not access_runtime or
@@ -83,6 +84,16 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     if assistant_kinship_provider is not None and (
             not assistant_enabled or not callable(getattr(assistant_kinship_provider, 'get', None))):
         raise ValueError('Explicit enabled assistant kinship provider required')
+    agent_supervisor = None
+    if assistant_agent_runtime is not None:
+        if (not assistant_enabled or assistant_workspace_store is None or
+                discovery_runtime is None or access_runtime is None or
+                discovery_runtime.access is not access_runtime):
+            raise ValueError('Agent requires matching assistant, workspace and discovery')
+        from .access.assistant_agent import AgentSupervisor
+        agent_supervisor = AgentSupervisor(assistant_agent_runtime, budget=assistant_agent_budget)
+    elif assistant_agent_budget is not None:
+        raise ValueError('Agent budget requires an injected runtime')
     if assistant_saved_memory_cards_enabled and (not assistant_enabled or
             not memory_collaboration_enabled or
             type(assistant_workspace_store) is not AssistantWorkspaceStore):
@@ -154,6 +165,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
         try:
             yield
         finally:
+            if app.state.assistant_agent_supervisor is not None:
+                await app.state.assistant_agent_supervisor.close()
             if maintenance is not None:
                 maintenance.cancel()
                 with suppress(asyncio.CancelledError):
@@ -198,6 +211,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.assistant_kinship_provider = assistant_kinship_provider
     app.state.assistant_intent_planner = assistant_intent_planner
     app.state.assistant_workspace_healthy = assistant_workspace_store is not None
+    app.state.assistant_agent_supervisor = agent_supervisor
     app.state.upload_runtime = upload_runtime
     app.state.upload_review_runtime = upload_review_runtime
     app.state.annotation_intake_enabled = annotation_intake_enabled

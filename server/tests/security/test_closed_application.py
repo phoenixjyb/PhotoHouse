@@ -57,6 +57,7 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIsNone(main.app.state.discovery_runtime)
                 self.assertIsNone(main.app.state.upload_runtime)
                 self.assertIsNone(main.app.state.semantic_search_runtime)
+                self.assertIsNone(main.app.state.assistant_agent_supervisor)
                 self.assertIs(main.app.state.assistant_semantic_search_enabled, False)
                 self.assertEqual(len(main.app.routes), 176)
                 self.assertEqual(main.app.router.on_startup, [])
