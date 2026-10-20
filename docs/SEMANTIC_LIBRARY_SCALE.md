@@ -185,3 +185,11 @@ for the API and authenticated TCP for the provider, closing both before writing
 a success receipt. This is host-local performance evidence; phone, remote-network,
 concurrent load, broad relevance and family acceptance remain separate gates.
 Semantic search remains OFF throughout this workflow.
+
+The full-library network benchmark explicitly permits a 120-second API read
+timeout within its existing search budget. Connect, write and connection-pool
+timeouts remain two seconds, as does the provider client's default read timeout.
+This qualification-only allowance is not a phone or production latency target.
+Temporary sockets are owned immediately after reservation, including failures
+during a second reservation, source validation or model binding; setup failures
+preserve the synthetic fixture and cannot produce a success receipt.

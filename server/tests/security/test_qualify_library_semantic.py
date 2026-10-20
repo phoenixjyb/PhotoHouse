@@ -44,6 +44,8 @@ class FakeLibraryModel:
 
     def bind(self, binding):
         assert self.binding is None
+        if getattr(self, "raise_on_bind", False):
+            raise RuntimeError("injected_model_bind_failure")
         self.bind_count += 1
         self.binding = binding
 
@@ -183,19 +185,13 @@ def _loopback_tls_files(directory):
     return certificate, private_key
 
 
-def test_network_measurement_uses_real_loopback_https_and_tcp_and_closes_listeners(
-        generated_index, tmp_path, monkeypatch):
-    import semantic_loopback_network as loopback
-
-    index_path, model, _manifest, _records, _root = generated_index
-    certificate, private_key = _loopback_tls_files(tmp_path)
+def _track_loopback_sockets(monkeypatch, loopback):
     reserved = []
     real_reserve = loopback.reserve_socket
 
     def validate_real_socket(sock):
-        # macOS exposes SO_ACCEPTCONN but can reject getsockopt for it with
-        # ENOPROTOOPT. The live HTTPS/TCP round trips below prove the listener
-        # state; keep the portable loopback/family/port/fd checks here.
+        # macOS may reject SO_ACCEPTCONN getsockopt with ENOPROTOOPT; these
+        # checks still prove the acquired descriptor is IPv4 loopback-only.
         address = sock.getsockname()
         assert sock.family == loopback.socket.AF_INET
         assert sock.type & loopback.socket.SOCK_STREAM == loopback.socket.SOCK_STREAM
@@ -212,6 +208,25 @@ def test_network_measurement_uses_real_loopback_https_and_tcp_and_closes_listene
         return sock
 
     monkeypatch.setattr(loopback, "reserve_socket", track_socket)
+    return reserved
+
+
+def test_network_measurement_uses_real_loopback_https_and_tcp_and_closes_listeners(
+        generated_index, tmp_path, monkeypatch):
+    import semantic_loopback_network as loopback
+
+    index_path, model, _manifest, _records, _root = generated_index
+    certificate, private_key = _loopback_tls_files(tmp_path)
+    reserved = _track_loopback_sockets(monkeypatch, loopback)
+    real_http_client = loopback.http_client
+    read_timeouts = []
+
+    def track_http_client(origin, ca_file=None, *, read_timeout_seconds=2.0):
+        read_timeouts.append(read_timeout_seconds)
+        return real_http_client(origin, ca_file,
+            read_timeout_seconds=read_timeout_seconds)
+
+    monkeypatch.setattr(loopback, "http_client", track_http_client)
     import httpx
     monkeypatch.setattr(httpx, "MockTransport", lambda *_args, **_kwargs:
         pytest.fail("network qualification must use an actual provider TCP connection"))
@@ -234,3 +249,61 @@ def test_network_measurement_uses_real_loopback_https_and_tcp_and_closes_listene
     } <= set(result["protected_checks"])
     assert len(reserved) == 2
     assert all(sock.fileno() == -1 for sock in reserved)
+    assert read_timeouts == [2.0, 120.0]
+
+
+def test_second_socket_reservation_failure_closes_first_and_preserves_fixture(
+        generated_index, tmp_path, monkeypatch):
+    import semantic_loopback_network as loopback
+
+    index_path, model, _manifest, _records, _root = generated_index
+    certificate, private_key = _loopback_tls_files(tmp_path)
+    reserved = _track_loopback_sockets(monkeypatch, loopback)
+    real_reserve = loopback.reserve_socket
+    attempts = 0
+
+    def reserve_then_fail():
+        nonlocal attempts
+        attempts += 1
+        if attempts == 2:
+            raise RuntimeError("injected_second_reservation_failure")
+        return real_reserve()
+
+    monkeypatch.setattr(loopback, "reserve_socket", reserve_then_fail)
+    output = tmp_path / "second-reservation-output"
+    with pytest.raises(RuntimeError, match="injected_second_reservation_failure"):
+        subject.measure(index_path, output, model=model,
+            queries=[{"id": "q1", "language": "en", "text": "a quiet family garden"}],
+            network={"transport": "loopback_https_tcp", "certificate": certificate,
+                "private_key": private_key, "ca_file": certificate})
+
+    assert attempts == 2
+    assert len(reserved) == 1
+    assert reserved[0].fileno() == -1
+    assert (output / "synthetic.sqlite").is_file()
+    assert not (output / "measurement.json").exists()
+    assert model.bind_count == 0
+
+
+def test_bind_failure_after_socket_reservation_closes_both_sockets_and_preserves_fixture(
+        generated_index, tmp_path, monkeypatch):
+    import semantic_loopback_network as loopback
+
+    index_path, model, _manifest, _records, _root = generated_index
+    certificate, private_key = _loopback_tls_files(tmp_path)
+    reserved = _track_loopback_sockets(monkeypatch, loopback)
+    model.raise_on_bind = True
+    output = tmp_path / "bind-failure-output"
+
+    with pytest.raises(RuntimeError, match="injected_model_bind_failure"):
+        subject.measure(index_path, output, model=model,
+            queries=[{"id": "q1", "language": "zh", "text": "花园里的家人"}],
+            network={"transport": "loopback_https_tcp", "certificate": certificate,
+                "private_key": private_key, "ca_file": certificate})
+
+    assert len(reserved) == 2
+    assert all(sock.fileno() == -1 for sock in reserved)
+    assert (output / "synthetic.sqlite").is_file()
+    assert not (output / "measurement.json").exists()
+    assert model.bind_count == 0
+    assert model.binding is None

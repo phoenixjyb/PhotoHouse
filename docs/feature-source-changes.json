@@ -27072,6 +27072,40 @@
       "production_runtime_changed": false,
       "production_index_published": false,
       "activation_approved": false
+    },
+    {
+      "feature": "full-library-network-benchmark-resource-ownership-and-bounded-read-timeout",
+      "files": [
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "96797ef506f09e34b566147710ed8d61ec6728faec53c314c457fa724a1840af",
+          "sha256": "33713a7ef81f9a137a727141dff7abdb7a71cb57fd524fce370aaaa4bfd3b966"
+        },
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "before_sha256": "cc95909f45e3b6c0adee05f001bc561d7b02a596ca3683ae5ee946b6dfae737a",
+          "sha256": "9c64a910cab6018205ceac9b0a28b21b1565d2b5a4fc088964438acddc91456d"
+        },
+        {
+          "path": "server/scripts/semantic_loopback_network.py",
+          "before_sha256": "1d5fb565e351c6e8ba8296e5101539cde22d3cf4359e07dc815f1c96bf54d9da",
+          "sha256": "9687ce713f038e90cfd80f92682fc11f2d1fef36546c727018556e1cd095bc8d"
+        },
+        {
+          "path": "server/tests/security/test_qualify_library_semantic.py",
+          "before_sha256": "21bab85001a8d438aa68dd3713d3fe6f0e0744a63634eeff4b985bf4b15d52fb",
+          "sha256": "1d5991d070c87305f88fdbc30318739e522eff85f1c9ef3d226265313f001785"
+        },
+        {
+          "path": "server/tests/security/test_semantic_loopback_network.py",
+          "before_sha256": "3726f93f3649c278a006c817218530bdc18e9c0f257a8a5e84959f89322536da",
+          "sha256": "32e3047458518dd0b3dfecb801d99d6561ecec31a473d72dfb82574d09239293"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "activation_approved": false
     }
   ]
 }

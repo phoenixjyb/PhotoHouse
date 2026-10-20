@@ -334,6 +334,48 @@ def test_https_client_uses_only_private_ca_and_strict_tls(monkeypatch, tmp_path)
             pytest.fail("non-private CA path reached HTTPX")
 
 
+@pytest.mark.parametrize("value", [True, False, 0, -1, 120.001, float("inf"),
+    float("nan"), "120"])
+def test_http_client_rejects_invalid_read_timeout_before_ca_access(value, monkeypatch):
+    import httpx
+
+    def unexpected_ca_access(_value):
+        pytest.fail("invalid timeout reached CA validation")
+
+    monkeypatch.setattr(loopback, "_private_absolute_file", unexpected_ca_access)
+    monkeypatch.setattr(httpx, "Client", lambda **_options:
+        pytest.fail("invalid timeout reached HTTPX client creation"))
+    with pytest.raises(loopback.LoopbackUnavailable):
+        with loopback.http_client("https://127.0.0.1:49152", "/private/ca.pem",
+                read_timeout_seconds=value):
+            pytest.fail("invalid read timeout reached caller")
+
+
+def test_http_client_extends_only_read_timeout_and_keeps_other_limits(monkeypatch):
+    import httpx
+    clients = []
+
+    def client(**options):
+        result = FakeHttpClient(**options)
+        clients.append(result)
+        return result
+
+    monkeypatch.setattr(httpx, "Client", client)
+    with loopback.http_client("http://127.0.0.1:49152",
+            read_timeout_seconds=120.0) as actual:
+        assert actual is clients[-1]
+    timeout = clients[-1].options["timeout"]
+    assert isinstance(timeout, httpx.Timeout)
+    assert timeout.connect == 2.0
+    assert timeout.read == 120.0
+    assert timeout.write == 2.0
+    assert timeout.pool == 2.0
+    assert clients[-1].options["base_url"] == "http://127.0.0.1:49152"
+    assert clients[-1].options["trust_env"] is False
+    assert clients[-1].options["follow_redirects"] is False
+    assert clients[-1].closed
+
+
 def test_import_is_side_effect_free_and_does_not_import_network_clients():
     source = r'''
 import builtins, socket, sys

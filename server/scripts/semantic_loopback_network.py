@@ -25,6 +25,7 @@ _START_POLL_SECONDS = 0.01
 _STOP_JOIN_SECONDS = 1.0
 _FORCE_JOIN_SECONDS = 1.0
 _MAX_SERVER_TIMEOUT_SECONDS = 30.0
+_MAX_CLIENT_READ_TIMEOUT_SECONDS = 120.0
 
 
 def _refuse():
@@ -198,8 +199,16 @@ def _origin(value):
 
 
 @contextmanager
-def http_client(origin, ca_file=None):
-    """Yield an actual bounded HTTPX client to an exact loopback origin."""
+def http_client(origin, ca_file=None, *, read_timeout_seconds=2.0):
+    """Yield an actual bounded HTTPX client to an exact loopback origin.
+
+    Connect, write, and pool timeouts remain at two seconds. An explicitly
+    longer read timeout is for local full-cohort response computation only.
+    """
+    if (type(read_timeout_seconds) not in (int, float)
+            or not math.isfinite(float(read_timeout_seconds))
+            or not 0 < float(read_timeout_seconds) <= _MAX_CLIENT_READ_TIMEOUT_SECONDS):
+        _refuse()
     scheme = _origin(origin)
     if scheme == "http" and ca_file is not None:
         _refuse()
@@ -218,8 +227,10 @@ def http_client(origin, ca_file=None):
             _refuse()
     import httpx
 
+    timeout = (2.0 if float(read_timeout_seconds) == 2.0
+        else httpx.Timeout(2.0, read=float(read_timeout_seconds)))
     options = {"base_url": origin, "trust_env": False,
-               "follow_redirects": False, "timeout": 2.0}
+               "follow_redirects": False, "timeout": timeout}
     if verify is not None:
         options["verify"] = verify
     try:

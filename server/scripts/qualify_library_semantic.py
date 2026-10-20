@@ -199,55 +199,57 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
     base_budget = d.ReadBudget(rows=limits.source_rows,
         source_bytes=limits.source_bytes, seconds=limits.search_seconds,
         search_source_bytes=limits.source_bytes, search_seconds=limits.search_seconds)
-    with closing(sqlite3.connect(database)) as db:
-        with base_budget.attempt(db, lambda: False) as (_check, read):
-            source = d.scoped_source(library, read)
-    ids = tuple(record.asset_id for record in sorted(records, key=lambda item: int(item.asset_id)))
-    reviewed = ReviewedIndex(library, "1", ids, ids, d.digest(source))
-    technical_receipt = hashlib.sha256(canonical({
-        "role": "synthetic_fixture_not_activation",
-        "library_id": library,
-        "snapshot_sha256": manifest["snapshot_sha256"],
-        "index_sha256": index_hash,
-    })).hexdigest()
-    binding = JointSpaceBinding(identities["image"], identities["text"], technical_receipt)
-    model.bind(binding)
-    model.verify()
-
     origin = "https://pilot.photohouse.test"
     port = 43871
     network_enabled = net_files is not None
     provider_socket = api_socket = None
     loopback = None
-    if network_enabled:
-        import semantic_loopback_network as loopback
-        provider_socket = loopback.reserve_socket()
-        api_socket = loopback.reserve_socket()
-        port = provider_socket.getsockname()[1]
-        origin = f"https://127.0.0.1:{api_socket.getsockname()[1]}"
-
-    access = AccessRuntime(connection, origin, clock=lambda: now)
-    discovery = DiscoveryRuntime(access, MemoryIndexProvider((reviewed,)), base_budget)
-
     counters = {"provider_calls": 0, "vector_reads": 0, "model_encode_calls": 0}
     protected = []
     denial_latencies = []
     rows = []
     provider_token = secrets.token_urlsafe(32)
 
-    class ObservedProvider:
-        binding = model.binding
-
-        def encode(self, query, *, check):
-            counters["provider_calls"] += 1
-            counters["model_encode_calls"] += 1
-            return model.encode(query, check=check)
-
-    provider_app = create_provider_app(ObservedProvider(), bearer_token=provider_token, port=port)
     with ExitStack() as resources:
         if network_enabled:
+            import semantic_loopback_network as loopback
+            provider_socket = loopback.reserve_socket()
             resources.callback(provider_socket.close)
+            api_socket = loopback.reserve_socket()
             resources.callback(api_socket.close)
+            port = provider_socket.getsockname()[1]
+            origin = f"https://127.0.0.1:{api_socket.getsockname()[1]}"
+
+        # From the first reserved socket onward, setup belongs to the same
+        # ExitStack as the listeners. A failed source receipt, model bind, or
+        # app construction therefore closes every socket already acquired.
+        with closing(sqlite3.connect(database)) as db:
+            with base_budget.attempt(db, lambda: False) as (_check, read):
+                source = d.scoped_source(library, read)
+        ids = tuple(record.asset_id for record in sorted(records, key=lambda item: int(item.asset_id)))
+        reviewed = ReviewedIndex(library, "1", ids, ids, d.digest(source))
+        technical_receipt = hashlib.sha256(canonical({
+            "role": "synthetic_fixture_not_activation",
+            "library_id": library,
+            "snapshot_sha256": manifest["snapshot_sha256"],
+            "index_sha256": index_hash,
+        })).hexdigest()
+        binding = JointSpaceBinding(identities["image"], identities["text"], technical_receipt)
+        model.bind(binding)
+        model.verify()
+
+        class ObservedProvider:
+            binding = model.binding
+
+            def encode(self, query, *, check):
+                counters["provider_calls"] += 1
+                counters["model_encode_calls"] += 1
+                return model.encode(query, check=check)
+
+        access = AccessRuntime(connection, origin, clock=lambda: now)
+        discovery = DiscoveryRuntime(access, MemoryIndexProvider((reviewed,)), base_budget)
+        provider_app = create_provider_app(ObservedProvider(), bearer_token=provider_token, port=port)
+        if network_enabled:
             resources.enter_context(loopback.server(provider_app, provider_socket))
             provider_context = resources.enter_context(loopback.http_client(f"http://127.0.0.1:{port}"))
         else:
@@ -329,7 +331,8 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
     from fastapi.testclient import TestClient
 
     if network_enabled:
-        api_context = loopback.http_client(origin, ca_file=net_files["ca_file"])
+        api_context = loopback.http_client(origin, ca_file=net_files["ca_file"],
+            read_timeout_seconds=limits.search_seconds)
     else:
         api_context = None
 
