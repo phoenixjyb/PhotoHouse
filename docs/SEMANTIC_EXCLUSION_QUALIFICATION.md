@@ -28,9 +28,17 @@ relevant image, whether any forbidden image scores at least `best relevant -
 existing scene evaluator's pessimistic relevant-rank tie policy is reused. For
 top-k inclusion, a forbidden candidate counts when fewer than k candidates
 score strictly above it by more than `1e-7`; this counts ties as possible
-inclusions. Per-language and overall summaries report both exclusion counts
-and rates. A relevant first-place result therefore cannot hide a forbidden
+inclusions. Per-language and overall summaries count queries with each type
+of violation and report their rates, rather than counting individual images.
+A relevant first-place result therefore cannot hide a forbidden
 candidate that remains in the requested result set.
+
+Nine generated-vector tests cover ranking, near-ties, top-k inclusion,
+multilingual differences, 512/768 dimensions and invalid inputs. This scorecard
+has not yet been applied to real-encoder vectors. The earlier multilingual
+model screen did not report this explicit forbidden-candidate scorecard.
+The source-only staging package includes the helper and verifies it imports
+without optional ML packages or a checkout fallback; no native run is implied.
 
 The output always declares `activation_approved: false`. A scorecard is a
 measurement aid, not a model-quality threshold or activation decision. The

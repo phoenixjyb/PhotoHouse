@@ -26531,6 +26531,40 @@
       "semantic_search_enabled": false,
       "signed": false,
       "published": false
+    },
+    {
+      "feature": "v75-candidate-evidence-and-portable-exclusion-scorecard",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "5bf82874c26c69d750a994584bcfe89c0bc3beb0dc6f8e90b152cc4375c208a4",
+          "sha256": "101fbb8dec9a125551ac2507b61b6e6981e080da8813335f660b68be35abc621"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "7dcc9bd44dcb9cebb074c3d1a0020ac0d7e96bf07dcb88fb9c0decd81413e9ae",
+          "sha256": "56973971e6c12f2b6b9122a9455e750bb5c77d8890becba9465cb1bcba473dc5"
+        },
+        {
+          "path": "docs/SEMANTIC_EXCLUSION_QUALIFICATION.md",
+          "before_sha256": "8622f5117cad16d1955cb8a464b5802dbd06580d9abedaa6e22652d1d9ddf781",
+          "sha256": "ee550e57423f2708e7043a5a1484c04b558af4d443646cc1293e71f42382d1fc"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "ad99e6b2863f7e6c91d7cd2bddfa4098b8221447811f3970b907418d107bfbd2",
+          "sha256": "74a38e5361a69bade6f54c4080f56ff662a2ca9178e7219677f04907adb0c94f"
+        },
+        {
+          "path": "clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md",
+          "before_sha256": null,
+          "sha256": "7d3beadd291daf3b831f2061ee56d1d3374a29206f50bb207a2de8362c593eae"
+        }
+      ],
+      "runtime_changed": false,
+      "semantic_search_enabled": false,
+      "signed": false,
+      "published": false
     }
   ]
 }
