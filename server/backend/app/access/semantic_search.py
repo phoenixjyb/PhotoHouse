@@ -7,17 +7,22 @@ complete bounded cohort using a separately qualified joint text/image space.
 from dataclasses import dataclass
 import math
 from pathlib import Path
+import re
 
 from . import discovery as d
 from .assistant_search import AssistantSearchReads
 from .discovery_transport import DiscoveryRuntime
 from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, SemanticUnsupported, rank_semantic
-from .service import AccessService
+from .service import AccessDenied, AccessService
 from .search_exclusions import EXCLUSION_POLICY_VERSION, requires_semantic_clarification
 from .visual_candidates import MAX_CANDIDATES, VectorRecord, _canonical_components, canonical_vector_checksum
 from .visual_vector_artifacts import identity_sha256
 from .visual_vector_loader import _COLUMNS, _checked_root, _read_vector, _validated_rows
 from .visual_vector_schema import verify_visual_vector_schema
+
+
+def _valid_pilot_owner_account_id(value):
+    return type(value) is str and re.fullmatch(r'[A-Za-z0-9._-]{1,128}', value, re.ASCII) is not None
 
 
 class SemanticSearchReads(AssistantSearchReads):
@@ -132,6 +137,7 @@ class SemanticSearchRuntime:
     discovery: DiscoveryRuntime
     vector_root: Path
     encoder: LocalSemanticEncoder
+    pilot_owner_account_id: str | None = None
 
     def __post_init__(self):
         if (type(self.discovery) is not DiscoveryRuntime or
@@ -139,6 +145,11 @@ class SemanticSearchRuntime:
                 '..' in self.vector_root.parts or type(self.encoder) is not LocalSemanticEncoder or
                 type(self.encoder.binding) is not JointSpaceBinding):
             raise ValueError('Explicit discovery, vector root and qualified local encoder required')
+        if (self.pilot_owner_account_id is not None and
+                not _valid_pilot_owner_account_id(self.pilot_owner_account_id)):
+            raise ValueError('Safe pilot owner account identifier required')
+        if self.encoder.binding.image_identity.dimension == 768 and self.pilot_owner_account_id is None:
+            raise ValueError('A pilot owner account is required for 768-dimensional semantic search')
 
     @property
     def access(self):
@@ -149,7 +160,15 @@ class SemanticSearchRuntime:
         return self.discovery.budget
 
     def authorize(self, token, library):
-        self.discovery.authorize(token, library)
+        if self.pilot_owner_account_id is None:
+            self.discovery.authorize(token, library)
+            return
+        with self.access.connection_factory() as connection:
+            access = AccessService(connection, clock=self.access.clock)
+            with access._transaction():
+                principal = access._require(token, library, 'library.members.manage')
+                if principal['account_id'] != self.pilot_owner_account_id:
+                    raise AccessDenied('Access denied')
 
     def call(self, operation, token, library, cancelled, values):
         return self._call(operation, token, library, cancelled, values)
@@ -210,6 +229,10 @@ class SemanticSearchRuntime:
             # change. Re-read in a fresh transaction before releasing cards.
             reader._run(token, library, result['binding'],
                 lambda _index, _facts, _context, _member, _check: None, bounded_cancelled)
+            # The encoder runs outside the access transaction. Re-authorize the
+            # configured principal and owner role after it completes, including
+            # first-page recovery from a server-owned ranking snapshot.
+            self.authorize(token, library)
             result.update(filters=filters, semantic={'mode': 'text_to_image',
                 'score_kind': 'cosine', 'candidate_count': reader._candidate_count,
                 'coverage': 'complete_eligible_images', 'needs_review': True})

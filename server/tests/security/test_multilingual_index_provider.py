@@ -1,0 +1,275 @@
+"""Synthetic CPU stubs qualify adapter contracts, not real-model relevance."""
+import contextlib
+from dataclasses import asdict, replace
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+from types import SimpleNamespace
+
+import pytest
+from fastapi.testclient import TestClient
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path[:0] = [str(ROOT/'scripts'), str(ROOT/'backend')]
+import semantic_siglip as adapter
+import build_multilingual_image_index as indexer
+import serve_multilingual_semantic_text as serving
+import qualify_multilingual_pilot as pilot
+from app.access.semantic_encoder import JointSpaceBinding, SemanticUnavailable, SemanticUnsupported
+from app.access.semantic_provider_transport import create_provider_app
+from app.access.visual_vector_loader import _read_vector
+
+
+class Tensor:
+    def __init__(self, values, shape): self.values, self.shape = values, shape
+    def to(self, *_a, **_k): return self
+    def detach(self): return self
+    def __getitem__(self, _i): return self
+    def tolist(self): return self.values
+
+
+@pytest.fixture
+def model(monkeypatch, tmp_path):
+    class Torch:
+        float32 = object()
+        @staticmethod
+        def set_num_threads(count): assert count == 2
+        @staticmethod
+        def inference_mode(): return contextlib.nullcontext()
+    class Processor:
+        def __init__(self): self.tokenizer = self; self.seen = []
+        def __call__(self, text=None, images=None, **kwargs):
+            if type(text) is str:
+                assert kwargs['truncation'] is False
+                return {'input_ids': list(range(65 if text == 'long' else 4))}
+            if images is not None:
+                return {'pixel_values': Tensor([0.0], (1,3,256,256))}
+            assert kwargs['truncation'] is False and kwargs['max_length'] == 64
+            self.seen.append(text[0])
+            return {'input_ids': Tensor([1]*64, (1,64))}
+    class Model:
+        def get_image_features(self, **kwargs): return Tensor([1.0]+[0.0]*767, (1,768))
+        def get_text_features(self, **kwargs):
+            assert set(kwargs) == {'input_ids'}
+            return Tensor([1.0]+[0.0]*767, (1,768))
+    class Pin:
+        def __init__(self, digest): self.sha256 = digest
+    directory = tmp_path/'model'; directory.mkdir(mode=0o700)
+    real_import = adapter.importlib.import_module
+    monkeypatch.setattr(adapter, 'importlib', SimpleNamespace(import_module=
+        lambda name: Torch if name == 'torch' else real_import(name)))
+    monkeypatch.setattr(adapter.qualification, 'installed_versions', lambda: adapter.qualification.EXPECTED_PACKAGES)
+    monkeypatch.setattr(adapter.qualification, 'inspect_model_files',
+        lambda *_a: {n: Pin(v['sha256']) for n,v in adapter.qualification.OFFICIAL_ARTIFACTS.items()})
+    monkeypatch.setattr(adapter.qualification, 'load_model', lambda *_a:
+        {'torch': Torch, 'processor': Processor(), 'model': Model(),
+         'source_pins': {}, 'preprocessor_config': {'fixture': True}})
+    monkeypatch.setattr(adapter, '_source_pin', lambda _p: Pin('a'*64))
+    monkeypatch.setattr(adapter, '_current', lambda _p: None)
+    monkeypatch.setattr(adapter, 'verify_checkpoint', lambda _p: None)
+    return adapter.SiglipModel.load(model_directory=str(directory),
+        artifacts=adapter.qualification.OFFICIAL_ARTIFACTS,
+        package_versions=adapter.qualification.EXPECTED_PACKAGES)
+
+
+def bind(model):
+    return model.bind(JointSpaceBinding(model.image_identity, model.text_identity, 'e'*64))
+
+
+def private_json(path, value):
+    path.write_text(json.dumps(value), encoding='utf-8');path.chmod(0o600)
+    return path
+
+
+def index_configuration(tmp_path, *, reviewed=True):
+    from PIL import Image
+    images = tmp_path/'images';images.mkdir(mode=0o700)
+    assets=[]
+    for aid, colour in [(1,'red'),(2,'blue')]:
+        p=images/f'{aid}.png'
+        Image.new('RGB',(16,16),colour).save(p);p.chmod(0o600)
+        assets.append({'asset_id':str(aid),'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()})
+    cohort={'schema':'photohouse.multilingual_image_cohort.v1','library_id':'fixture-library',
+            'reviewed':reviewed,'assets':assets}
+    cp=private_json(tmp_path/'cohort.json',cohort)
+    return private_json(tmp_path/'config.json',{'schema':'photohouse.multilingual_image_index_run.v1',
+        'model_directory':str(tmp_path/'model'),'artifacts':adapter.qualification.OFFICIAL_ARTIFACTS,
+        'package_versions':adapter.qualification.EXPECTED_PACKAGES,'cohort':str(cp),'max_elapsed_seconds':30})
+
+
+def inspect(path, *, expected_library):
+    cohort=json.loads((path.parent.parent/'cohort.json').read_text())
+    return indexer.inspect_index(path,expected_library=expected_library,expected_cohort=cohort)
+
+
+def test_index_prepares_complete_768_artifacts_without_database_or_legacy_lookup(model,tmp_path):
+    config=index_configuration(tmp_path)
+    result=indexer.execute(config,tmp_path/'output',model_loader=lambda **_k:model)
+    manifest,records,identities=inspect(tmp_path/'output/index.json',expected_library='fixture-library')
+    assert result['image_count']==len(records)==2
+    assert identities['image']==model.image_identity
+    assert identities['text']==model.text_identity
+    assert manifest['production_published'] is False and manifest['activation_performed'] is False
+    assert all(len(_read_vector(tmp_path/'output',r))==768 for r in records)
+    assert str(tmp_path) not in json.dumps(manifest)
+    with pytest.raises(ValueError):indexer.execute(config,tmp_path/'output',model_loader=lambda **_k:model)
+    with pytest.raises(ValueError):inspect(tmp_path/'output/index.json',expected_library='another-library')
+
+
+@pytest.mark.parametrize('damage',['vector','metadata','missing','manifest','component_checksum','omitted_record','substituted_source','model_receipt'])
+def test_index_refuses_partial_or_corrupt_complete_cohort(model,tmp_path,damage):
+    config=index_configuration(tmp_path);target=tmp_path/'output'
+    indexer.execute(config,target,model_loader=lambda **_k:model)
+    manifest,records,_ids=inspect(target/'index.json',expected_library='fixture-library')
+    record=records[-1];metadata=(target/record.relative_path).with_suffix('.json')
+    if damage=='vector':(target/record.relative_path).write_bytes(b'corrupt')
+    elif damage=='metadata':metadata.write_text('{}')
+    elif damage=='missing':(target/record.relative_path).unlink()
+    elif damage=='manifest':
+        manifest['complete']=False;private_json(target/'index.json',manifest)
+    elif damage=='omitted_record':
+        manifest['records'].pop();manifest['image_timings_seconds'].pop();private_json(target/'index.json',manifest)
+    elif damage=='model_receipt':
+        manifest['model_receipt']['recipes']['image']['role']='text';private_json(target/'index.json',manifest)
+    else:
+        values=asdict(record)
+        values['source_sha256' if damage=='substituted_source' else 'component_sha256']='0'*64
+        private_json(metadata,values)
+        manifest['records'][-1]['metadata_sha256']=hashlib.sha256(metadata.read_bytes()).hexdigest()
+        private_json(target/'index.json',manifest)
+    with pytest.raises((ValueError,TypeError,KeyError)):
+        inspect(target/'index.json',expected_library='fixture-library')
+
+
+def test_unreviewed_or_stale_image_refused_before_model_and_partial_failure_is_not_complete(model,tmp_path):
+    config=index_configuration(tmp_path,reviewed=False)
+    with pytest.raises(ValueError):indexer.execute(config,tmp_path/'out',model_loader=lambda **_k:pytest.fail('model loaded'))
+    assert not (tmp_path/'out').exists()
+    c=json.loads(config.read_text());cohort=Path(c['cohort']);d=json.loads(cohort.read_text());d['reviewed']=True
+    private_json(cohort,d);Path(d['assets'][-1]['path']).write_bytes(b'changed')
+    with pytest.raises(ValueError):indexer.execute(config,tmp_path/'out',model_loader=lambda **_k:pytest.fail('model loaded'))
+    # No manifest may claim a completed candidate when encoding fails midway.
+    d['assets'][-1]['sha256']=hashlib.sha256(Path(d['assets'][-1]['path']).read_bytes()).hexdigest();private_json(cohort,d)
+    count=[]
+    def fail(_pin,**_kwargs):
+        count.append(1)
+        if len(count)>1:raise SemanticUnavailable()
+        return [1.0]+[0.0]*767
+    model.encode_image=fail
+    with pytest.raises(SemanticUnavailable):indexer.execute(config,tmp_path/'partial',model_loader=lambda **_k:model)
+    assert (tmp_path/'partial/started.json').exists()
+    assert not (tmp_path/'partial/index.json').exists()
+
+
+def test_binding_normalization_original_query_and_overflow_are_protected(model):
+    bind(model)
+    out=model.encode('A RED kite')
+    assert model._handle['processor'].seen==['a red kite']
+    assert out.query_sha256==hashlib.sha256(b'A RED kite').hexdigest()
+    assert len(out.vector)==768
+    with pytest.raises(SemanticUnsupported):model.encode('a dog that is not on grass')
+    with pytest.raises(SemanticUnsupported):model.encode('long')
+    assert model._handle['processor'].seen==['a red kite']
+    with pytest.raises(SemanticUnavailable):bind(model)
+    r=model.receipt();r['recipes']['text']['normalization']='altered'
+    assert model.receipt()['recipes']['text']['normalization']=='unicode_lowercase'
+
+
+def test_wrong_legacy_or_recipe_identity_cannot_bind(model):
+    for image,text in [(replace(model.image_identity,dimension=512),replace(model.text_identity,dimension=512)),
+        (model.image_identity,replace(model.text_identity,preprocessing_sha256='b'*64))]:
+        with pytest.raises(SemanticUnavailable):model.bind(JointSpaceBinding(image,text,'e'*64))
+
+
+def test_authenticated_loopback_provider_exercises_real_transport_shape_and_refuses_exclusions(model):
+    bind(model);token='fixture_'+('x'*40);port=43871
+    app=create_provider_app(model,bearer_token=token,port=port)
+    with TestClient(app,base_url=f'http://127.0.0.1:{port}',client=('127.0.0.1',41234))as client:
+        payload={'version':1,'query':'A RED kite','binding_sha256':model.binding.binding_sha256}
+        denied=client.post('/v1/encode-text',json=payload,headers={'Authorization':'Bearer invalid'})
+        assert denied.status_code==401 and model._handle['processor'].seen==[]
+        good=client.post('/v1/encode-text',json=payload,headers={'Authorization':'Bearer '+token})
+        assert good.status_code==200 and len(good.json()['vector'])==768
+        assert good.json()['query_sha256']==hashlib.sha256(b'A RED kite').hexdigest()
+        bad=client.post('/v1/encode-text',json=payload|{'query':'no people'},headers={'Authorization':'Bearer '+token})
+        assert bad.status_code==503  # Legacy clients have not opted into refusal receipts.
+        bad=client.post('/v1/encode-text',json=payload|{'query':'no people'},
+            headers={'Authorization':'Bearer '+token,'X-PhotoHouse-Semantic-Refusal':'1'})
+        assert bad.status_code==422
+        assert model._handle['processor'].seen==['a red kite']
+
+
+def test_planning_imports_no_optional_ml_and_never_reads_private_files():
+    program="""
+import builtins,sys
+original=builtins.__import__
+def guarded(name,*a,**k):
+ if name.split('.')[0] in {'torch','transformers','PIL','numpy','torchvision'}:raise AssertionError('ML import')
+ return original(name,*a,**k)
+builtins.__import__=guarded
+sys.path[:0]=%r
+import build_multilingual_image_index as i,serve_multilingual_semantic_text as s,qualify_multilingual_pilot as p
+def denied(*a,**k):raise AssertionError('private file read')
+i._load_private_document=s._load_private_document=p._load_private_document=denied
+assert i.run([])==s.run([])==p.run([])==0
+assert i.run(['--configuration','/private/no.json'])==2
+assert s.run(['--configuration','/private/no.json'])==2
+"""%[str(ROOT/'scripts'),str(ROOT/'backend')]
+    result=subprocess.run([sys.executable,'-I','-B','-c',program],capture_output=True,text=True)
+    assert result.returncode==0,result.stderr
+
+
+def test_serving_requires_secret_binding_and_pins_before_model_load(monkeypatch,tmp_path):
+    value={'schema':'photohouse.multilingual_text_provider.v1','model_directory':str(tmp_path/'model'),
+        'artifacts':adapter.qualification.OFFICIAL_ARTIFACTS,'package_versions':adapter.qualification.EXPECTED_PACKAGES,
+        'binding':None,'credential_file':None,'port':43871}
+    p=private_json(tmp_path/'provider.json',value)
+    with pytest.raises(ValueError):serving.configuration(p,serving=True)
+    monkeypatch.setattr(adapter.qualification,'installed_versions',lambda:{'torch':'wrong'})
+    monkeypatch.setattr(adapter.importlib,'import_module',lambda _n:pytest.fail('ML imported'))
+    with pytest.raises(SemanticUnavailable):adapter.SiglipModel.load(model_directory=str(tmp_path),
+        artifacts=adapter.qualification.OFFICIAL_ARTIFACTS,package_versions=adapter.qualification.EXPECTED_PACKAGES)
+
+
+def test_explicit_serving_binds_only_loopback_with_bounded_server_options(model,monkeypatch):
+    binding=JointSpaceBinding(model.image_identity,model.text_identity,'e'*64)
+    config={'model_directory':'/private/model','artifacts':adapter.qualification.OFFICIAL_ARTIFACTS,
+            'package_versions':adapter.qualification.EXPECTED_PACKAGES,'port':43871}
+    monkeypatch.setattr(serving,'configuration',lambda _path,**_kwargs:(config,binding,'x'*40))
+    monkeypatch.setattr(serving.SiglipModel,'load',lambda **_kwargs:model)
+    calls=[]
+    monkeypatch.setitem(sys.modules,'uvicorn',SimpleNamespace(run=lambda app,**kwargs:calls.append(kwargs)))
+    assert serving.run(['serve','--configuration','/private/provider.json'])==0
+    assert model.binding==binding
+    assert len(calls)==1
+    assert calls[0]['host']=='127.0.0.1' and calls[0]['workers']==1
+    assert calls[0]['access_log']is False and calls[0]['proxy_headers']is False
+    assert calls[0]['forwarded_allow_ips']==''
+    assert calls[0]['limit_concurrency']==8 and calls[0]['backlog']==8
+
+
+def test_protected_pilot_uses_only_new_fixture_db_and_exercises_gate_filters_corruption_and_revocation(model,tmp_path):
+    config=index_configuration(tmp_path);target=tmp_path/'index'
+    indexer.execute(config,target,model_loader=lambda **_k:model)
+    pconfig=json.loads(config.read_text())
+    pconfig={k:v for k,v in pconfig.items()if k not in {'schema','max_elapsed_seconds'}}|{
+        'schema':'photohouse.multilingual_pilot_run.v1','index':str(target/'index.json'),
+        'queries':[{'id':language,'language':language,'text':text,'relevant_asset_id':'1'}
+            for language,text in [('en','a red kite'),('zh','红色风筝'),('zh-en','红色kite')]],
+        'max_elapsed_seconds':120,'repetitions':1}
+    p=private_json(tmp_path/'pilot.json',pconfig)
+    result=pilot.execute(p,tmp_path/'pilot',model_loader=lambda **_k:model)
+    assert result['status']=='isolated_multilingual_pilot_measured'
+    assert result['protected_request_latency']['count']==3
+    assert result['activation_approved'] is False
+    measurement=json.loads((tmp_path/'pilot/measurement.json').read_text())
+    assert len(measurement['protected_checks'])==12
+    assert measurement['tcp_tls_latency_measured'] is False
+    assert measurement['production_database_opened'] is False
+    assert measurement['real_account_sessions_created'] is False
+    assert measurement['network_listener_started'] is False
+    for query in pconfig['queries']:assert query['text'] not in json.dumps(measurement,ensure_ascii=False)
+    indexer.inspect_index(target/'index.json',expected_library='fixture-library',
+        expected_cohort=json.loads((tmp_path/'cohort.json').read_text()))

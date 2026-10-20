@@ -13,7 +13,7 @@ sys.path[:0] = [str(ROOT / 'backend'), str(ROOT / 'tests/security')]
 
 from app.access.semantic_configuration import (SemanticConfigurationError,
     _require_semantic_paths_disjoint, load_semantic_runtime)
-from app.access.semantic_encoder import JointSpaceBinding
+from app.access.semantic_encoder import JointSpaceBinding, LocalSemanticEncoder
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.semantic_search import SemanticSearchRuntime
 from app.access.visual_candidates import VectorSpaceIdentity
@@ -88,6 +88,44 @@ class SemanticConfigurationTests(unittest.TestCase):
         self.write(incomplete)
         with self.assertRaises(SemanticConfigurationError):
             load_semantic_runtime(self.config_path, discovery=DiscoveryRuntime.__new__(DiscoveryRuntime), source_root=ROOT.parent)
+
+    def test_v2_requires_a_safe_owner_and_v1_cannot_configure_768_dimensions(self):
+        self.write_credential()
+        discovery = DiscoveryRuntime.__new__(DiscoveryRuntime)
+        for bad_owner in (None, '', 'account/other', 'x' * 129, 7):
+            document = self.document | {'format_version': 2, 'pilot_owner_account_id': bad_owner}
+            self.write(document)
+            with self.assertRaises(SemanticConfigurationError):
+                load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+
+        image_identity = replace(vector_fixtures.IDENTITY, dimension=768)
+        text_identity = replace(self.binding.text_identity, dimension=768)
+        binding = JointSpaceBinding(image_identity, text_identity, 'e' * 64)
+        document = self.document | {'binding': {
+            'image_identity': asdict(image_identity), 'text_identity': asdict(text_identity),
+            'qualification_sha256': 'e' * 64}, 'binding_sha256': binding.binding_sha256}
+        self.write(document)
+        with self.assertRaises(SemanticConfigurationError):
+            load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+
+        document.update(format_version=2, pilot_owner_account_id='pilot-owner')
+        self.write(document)
+        runtime = load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+        self.assertEqual(runtime.pilot_owner_account_id, 'pilot-owner')
+
+    def test_direct_768_runtime_requires_owner_and_validates_owner_identifier(self):
+        image_identity = replace(vector_fixtures.IDENTITY, dimension=768)
+        text_identity = replace(self.binding.text_identity, dimension=768)
+        binding = JointSpaceBinding(image_identity, text_identity, 'e' * 64)
+        encoder = LocalSemanticEncoder(binding, 'http://127.0.0.1:43210/v1/encode-text')
+        discovery = DiscoveryRuntime.__new__(DiscoveryRuntime)
+        with self.assertRaises(ValueError):
+            SemanticSearchRuntime(discovery, self.vector_root, encoder)
+        for invalid in ('', 'pilot/owner', 'x' * 129):
+            with self.assertRaises(ValueError):
+                SemanticSearchRuntime(discovery, self.vector_root, encoder, invalid)
+        runtime = SemanticSearchRuntime(discovery, self.vector_root, encoder, 'pilot.owner-1')
+        self.assertEqual(runtime.pilot_owner_account_id, 'pilot.owner-1')
 
     def test_loader_refuses_bad_endpoint_token_and_partial_credential_document(self):
         self.write_credential(token='a' * 40)

@@ -52,6 +52,10 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/semantic_scene_translation.py',
             'scripts/semantic_scene_translation_fidelity.py',
             'scripts/qualify_multilingual_scenes.py',
+            'scripts/semantic_siglip.py',
+            'scripts/build_multilingual_image_index.py',
+            'scripts/serve_multilingual_semantic_text.py',
+            'scripts/qualify_multilingual_pilot.py',
             'scripts/semantic_scene_comparison.py',
             'scripts/semantic_reviewed_projection.py',
             'scripts/serve_reviewed_semantic_text.py',
@@ -247,6 +251,13 @@ class StagingPackageTests(unittest.TestCase):
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'
+                'import semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot\n'
+                'for module in (semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot):\n'
+                ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
+                'for module in (build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot):\n'
+                ' captured=io.StringIO()\n'
+                ' with redirect_stdout(captured): assert module.run([])==0\n'
+                " assert json.loads(captured.getvalue())['private_files_read'] is False\n"
                 'captured=io.StringIO()\n'
                 'with redirect_stdout(captured): assert serve_reviewed_semantic_text.run([])==0\n'
                 "assert json.loads(captured.getvalue())['execution_performed'] is False\n"

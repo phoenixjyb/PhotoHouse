@@ -159,10 +159,10 @@ the offline runner can approve.
 
 | Area | Existing source behavior | Remaining work |
 | --- | --- | --- |
-| Joint image/text identity | `JointSpaceBinding` requires equal vector space, dimension and normalization; vector schemas can represent 768 components. | Implement and qualify the pinned SigLIP2 image/text path under one exact identity. |
-| Text serving | The current OpenCLIP serving CLI requires 512 components; the reviewed projection preserves its inner components. | A real 768-component SigLIP2 serving adapter is required. Rebranding or padding old vectors cannot establish compatibility. |
-| Image coverage | Semantic retrieval refuses missing, stale, duplicate or corrupt eligible vectors and caps the complete cohort at 512 images. | Prepare and verify a compatible immutable 768-component image cohort before any index publication. No such cohort was created by this qualification. |
-| Authorization | Library membership is checked before metadata/provider I/O; people, dates, location, tags and literal text remain hard filters. | Library membership alone does not make a pilot owner-only. Add and test an explicit principal restriction before an owner-account pilot. |
+| Joint image/text identity | `JointSpaceBinding` requires equal vector space, dimension and normalization. The new SigLIP2 adapter derives role-specific recipe identities in one pinned 768-component space. | Qualify the new adapter/index together before binding a production cohort. |
+| Text serving | The legacy OpenCLIP CLI requires 512 components. A separate pinned SigLIP2 CPU CLI now uses the authenticated loopback transport. | Native integration and operational serving checks remain separate from source implementation; no production provider is installed. |
+| Image coverage | The new unpublished builder validates the frozen expected roster and complete 768-component artifacts. Semantic retrieval refuses incomplete/corrupt eligible vectors and caps the cohort at 512. | Qualify candidate artifacts and plan actual family-library coverage before publication; source tools do not establish production coverage. |
+| Authorization | Runtime configuration v2 and direct 768-component runtimes require an exact current owner principal, checked before reads and before releasing cards. Hard filters remain in force. | Qualify the new gate in the protected canary; actual family account binding remains private and pending. |
 | Unsupported meanings | Exclusion/strict-condition guards require clarification before vector reads or encoding. | Keep refusal evidence separate from encoder ranking. Qualify varied count, relationship, vague and contrast queries. |
 | Operational acceptance | Offline jobs have CPU, process, memory, timeout and input/source checks. | Qualify protected end-to-end serving latency, concurrency, memory, revocation and rollback; CPU batch timings do not establish these. |
 
@@ -170,6 +170,8 @@ The first serving milestone should therefore combine an explicit owner boundary,
 one compatible image/text identity, complete pilot coverage and protected
 integration checks. Deployment and activation remain separate operations.
 Semantic search remains disabled while this work is incomplete.
+See [multilingual pilot preparation](MULTILINGUAL_PILOT_PREPARATION.md) for the
+new source contracts and the isolated ASGI measurement boundary.
 
 Validation of the earlier screen/translation source passed 2,573 API tests and 2,520 subtests,
 including package dependency/planning checks, plus the generated no-listener

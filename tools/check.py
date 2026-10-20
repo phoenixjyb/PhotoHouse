@@ -37,6 +37,7 @@ API_TESTS = (
     "test_semantic_scene_cases.py", "test_semantic_exclusion_cases.py", "test_qualify_semantic_scenes.py",
     "test_semantic_scene_translation.py", "test_semantic_scene_translation_fidelity.py",
     "test_qualify_multilingual_scenes.py",
+    "test_multilingual_index_provider.py",
     "test_semantic_scene_comparison.py",
     "test_semantic_reviewed_projection.py", "test_serve_reviewed_semantic_text.py",
     "test_reviewed_semantic_provider_integration.py",

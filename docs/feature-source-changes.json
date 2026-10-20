@@ -26670,6 +26670,91 @@
       "activation_approved": false,
       "offline_encoder_measurement_performed": true,
       "human_family_acceptance": false
+    },
+    {
+      "feature": "pinned-multilingual-index-owner-only-runtime-and-protected-asgi-canary",
+      "files": [
+        {
+          "path": "docs/MULTILINGUAL_ENCODER_QUALIFICATION.md",
+          "before_sha256": "317929f2eeb836156333ad36927df33b17a331f183c30df06b22d31ae39c130f",
+          "sha256": "56359e845765bb071f2c60716131c41b19297788609798f17fc959d9b707ddc7"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": null,
+          "sha256": "1697955cc7e15425a0ee89eb7b290c5ff8ba4c4ae1580b0c818df7f0dc59cad3"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "57c24921ecc4eb6c57aaf1a96fb45c8c8a68a59a31ed7d066643575afae3594a",
+          "sha256": "7c5ebac67aebca1f5528501d0de3609dc7ccaa9423d7e8cde56912e2bde2596a"
+        },
+        {
+          "path": "server/backend/app/access/semantic_configuration.py",
+          "before_sha256": "7f2bdd9f053fc255498a213021c149c9bd3aed41d4d5a74d3b9407ec3679f683",
+          "sha256": "3c5b595dc2307b72363fe9807f0e59bde4768740a2ccb385c1a2b7101c189ae3"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "d91114b16e30b8e97d53716ab0a431b65a228270be0418790ded1c2cd4250c3f",
+          "sha256": "4e68722e88d84cbb13c0ebcfb4e1419724941b9b3c3ca10c744249bec1b38016"
+        },
+        {
+          "path": "server/scripts/build_multilingual_image_index.py",
+          "before_sha256": null,
+          "sha256": "3dadd5084d6a42038ebda29367466184c94948b5d8ece5e1c3d3811b7373c608"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "101fbb8dec9a125551ac2507b61b6e6981e080da8813335f660b68be35abc621",
+          "sha256": "b7f54fe50894879bae2353bc390c3e3e98f919a199b7c6825e9b3a20d994d85f"
+        },
+        {
+          "path": "server/scripts/qualify_multilingual_pilot.py",
+          "before_sha256": null,
+          "sha256": "05f4ae4690711e5857ce421569377a7808e74822b364d0e9d2a8c4d3f4e99b25"
+        },
+        {
+          "path": "server/scripts/semantic_siglip.py",
+          "before_sha256": null,
+          "sha256": "22419b729d665f43c99e75eb4587a5f4540bcf0e8f1a8ede24b45aba2101e489"
+        },
+        {
+          "path": "server/scripts/serve_multilingual_semantic_text.py",
+          "before_sha256": null,
+          "sha256": "442e81d2688d6312700e9c0ef5740b24da913eecdc0778565963dee6853274d4"
+        },
+        {
+          "path": "server/tests/security/test_multilingual_index_provider.py",
+          "before_sha256": null,
+          "sha256": "457c74aba6d763715cf37c99aeac80874be6b005851384d229bbf17abdbf3932"
+        },
+        {
+          "path": "server/tests/security/test_semantic_configuration.py",
+          "before_sha256": "31daf01076503974e70fb4003ff205ee045f5b0c68d442823cc0e41d27571765",
+          "sha256": "34252ff1c0b6a725778aae19af20f900c4bb2bb3fbbf9048b8f7e24ac47e3ded"
+        },
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": "31850eb19a114b475bff4c8c2c8d21ee4439863fd7a960450679d40c267d094b",
+          "sha256": "d78c59392414a7ce425aa86761022f5070357f9bc0310bbabc1543f339fc5f19"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "56973971e6c12f2b6b9122a9455e750bb5c77d8890becba9465cb1bcba473dc5",
+          "sha256": "d4d5f520e633eb05e7bb93801bcc0b578a2afec682fc83765c18ea9eb67c0ecb"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "1c16a76ff53f8bf5fa6a5a07544ef36f7b0719cfcbd2c042246f1c2d29588246",
+          "sha256": "1d829cb87474b1ed2fba1e83cab6e18cc1c7d55ffe9855d3d7c271f90760c1a3"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "actual_family_account_bound": false,
+      "activation_approved": false
     }
   ]
 }
