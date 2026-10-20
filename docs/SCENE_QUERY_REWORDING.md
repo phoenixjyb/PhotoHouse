@@ -1,5 +1,12 @@
 # Rewording an unsupported scene query
 
+**Delivery status — October 20, 10:49 Asia/Shanghai:** this guarded-search source
+is merged in PR #101 and API/Web source `b170a97` is deployed and verified.
+Semantic search remains **OFF**; Android source is merged, with no new APK from
+this release. The [release record](SEARCH_RELEASE_2026-10-20.md) separates shipped
+ordinary-search safeguards from gated scene ranking and remaining quality/device
+work. R40/R41 local-only statements below describe their earlier checkpoints.
+
 An exact query outside the optional reviewed provider's mapping now has a
 distinct recovery path. The Web workspace and Android client keep the original
 scene description and unsent main draft, clear old result cards, and explain in
@@ -213,3 +220,19 @@ changed. Semantic activation remains blocked. The next qualification should
 report admission coverage alongside ranking quality, retain every refused case,
 and separately measure ordinary positive counts, relations and vague requests
 before preparing any activation proposal.
+
+## October 20 merge and API/Web delivery closure
+
+The integrated release includes current gallery/upload main through PRs #99/#100
+and was merged as `a4e3922` in [PR #101](https://github.com/phoenixjyb/PhotoHouse/pull/101).
+Qualified source `b170a97` has the identical Git tree and passed all five hosted
+jobs, the complete local API profile (2,647 tests / 2,764 subtests plus demo), and
+eight focused scene-browser checkpoints. Native qualification and independent
+native/Mac HTTPS delivery checks passed. See the
+[dated release record](SEARCH_RELEASE_2026-10-20.md) for the preservation scope.
+
+This closes the earlier local-only rounds' merge and API/Web delivery gates.
+The ordinary-search exclusion/strict-condition safeguards are delivered; the
+optional scene flow remains capability-gated with semantic search OFF. No new
+APK or provider was published or activated. Refusal before encoding does not
+establish reliable model negation, counting, relations or vague-intent relevance.

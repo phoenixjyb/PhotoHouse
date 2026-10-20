@@ -4,6 +4,13 @@ Semantic search stays disabled while a direct multilingual encoder is evaluated.
 The offline runner adds no serving provider, binding, database migration, vector
 publication or activation path.
 
+**October 20 release status:** the runner, translation-fidelity checks and
+conservative exclusion/strict-condition safeguards are merged in PR #101 and
+included in the verified API/Web source `b170a97`. Semantic search remains **OFF**.
+Shipping admission/clarification code does not qualify this encoder or repair
+its negation and mixed-language ranking failures. See the
+[release/remaining-gates record](SEARCH_RELEASE_2026-10-20.md).
+
 The candidate is [Google SigLIP2 base, patch 16, 256 pixels](https://huggingface.co/google/siglip2-base-patch16-256)
 at revision `3f9f96cb90da5dbc758b01813f2f6f1aee24c1ab`. The official FixRes
 configuration declares `model_type: siglip`: it uses `SiglipModel` and
@@ -123,13 +130,17 @@ earlier 64-output translation dataset or guarantee arbitrary translation
 faithfulness. Raw datasets, corrections, resource receipts and measurements
 remain outside Git.
 
-The next gate is reliable exclusion/relationship handling with explicit
-constraints or clarification before ranking. Compatible 768-dimensional image
-coverage, protected serving integration, serving latency and family/device
-acceptance also remain outstanding. No GPU, ASR or Shanxi dialect acceptance
-is claimed.
+Conservative [exclusion and strict-condition admission/clarification](SCENE_QUERY_REWORDING.md)
+has since shipped in the October 20 API/Web release. Model-level negation,
+count, relationship and vague/contrast relevance remain qualification gates;
+refusing unsafe requests is reported separately from ranking correctness.
+Compatible 768-dimensional image coverage, protected serving integration,
+serving latency and family/device acceptance also remain outstanding.
+No GPU, ASR or Shanxi dialect acceptance is claimed.
 
-Validation on that unchanged source passed 2,573 API tests and 2,520 subtests,
+Validation of the earlier screen/translation source passed 2,573 API tests and 2,520 subtests,
 including package dependency/planning checks, plus the generated no-listener
 application demo. The focused encoder/translation suites passed 110 tests.
-The later result-record commit changes documentation and its source ledger only.
+The later result-record commit changed documentation and its source ledger only.
+These are that qualification's counts; the integrated release checks are recorded
+separately in the [October 20 release](SEARCH_RELEASE_2026-10-20.md).
