@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Callable, Mapping, Sequence
 
 from .search_text import NormalizedSource, normalize_text
+from .search_exclusions import requires_exclusion_clarification
 
 
 MAX_CONCEPTS = 6
@@ -21,7 +22,7 @@ MAX_ALTERNATIVES = 4
 MAX_PHRASE_BYTES = 128
 MAX_DESCRIPTION_BYTES = 4096
 MAX_MATCH_REASONS = 43
-SEARCH_DESCRIPTION_POLICY_VERSION = 2
+SEARCH_DESCRIPTION_POLICY_VERSION = 3
 _AUTHORED_SOURCES = frozenset(("photo_memory", "edited_caption"))
 _APPROVED_SOURCES = _AUTHORED_SOURCES | {"generated_caption"}
 
@@ -30,11 +31,6 @@ _APPROVED_SOURCES = _AUTHORED_SOURCES | {"generated_caption"}
 # trades some recall for precision; it is not general semantic negation parsing.
 _CLAUSE_BREAK = re.compile(
     r'[.!?。！？;；\n]+|(?a:\b(?:but|however)\b)|但是|然而|不过|但', re.I)
-_NEGATED_CLAUSE = re.compile(
-    r"(?a:\b(?:no|not|never|without|neither|nor|cannot)\b|"
-    r"\b(?:is|are|was|were|do|does|did|ca|could|would|should|has|have|had|wo|must)n['’]t\b)|"
-    r'没有|沒有|并无|並無|并非|並非|不是|未曾|从未|從未|不曾|未见|未見|'
-    r'(?:没|沒|不|未)(?:曾|能|在|有|是|去|到|下|穿|戴|拿|带|帶|看|吃|喝|玩|跑|骑|騎|走|跳|打|吹|读|讀|写|寫|切|笑|见|見|出现|出現)', re.I)
 
 
 def _latin_word_character(char):
@@ -188,7 +184,7 @@ def match_prepared_description(sources: Sequence[NormalizedSource], description:
                 if source.normalized_text not in affirmative:
                     affirmative[source.normalized_text] = tuple(
                         clause for clause in _CLAUSE_BREAK.split(source.normalized_text)
-                        if clause and not _NEGATED_CLAUSE.search(clause))
+                        if clause and not requires_exclusion_clarification(clause))
                 boundary = _positive_phrase_match(affirmative[source.normalized_text], alternative)
                 if boundary is None:
                     continue

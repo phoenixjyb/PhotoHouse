@@ -25686,6 +25686,54 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Record fixed-source R40 API2593tests2632subchecks, Web97controller tests/eight browser checkpoints and Android compile/lint. Semantic activation remains blocked."
+    },
+    {
+      "feature": "shared-negative-evidence-and-strict-scene-admission",
+      "files": [
+        {
+          "path": "docs/SCENE_QUERY_REWORDING.md",
+          "sha256": "b88c39ac7d47743547f16a7ea855a0fab28332f8378b7dff534d38dbc4114008",
+          "before_sha256": "e2e3f3cd42f5e1da8196bdc6609ccd934329cf9495f58714e78c06446a4dac8b"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "sha256": "a5b0d99d7ff6d212ec0ddabbba446b5806708477b59f63c32965015774319e09",
+          "before_sha256": "18d0b8d4b632480e72227d1b987c53463476808a3a8adb406e438792038e641a"
+        },
+        {
+          "path": "server/backend/app/access/search_description.py",
+          "sha256": "d6adca8a8413f7e50f0f53ea129b8eae40a5dc09e7f8e21c44d06fd3dbe7576a",
+          "before_sha256": "091b1b9063743ef5aee77feb11723a5a116e5cdd402923d7abe0d1290f8962a6"
+        },
+        {
+          "path": "server/backend/app/access/search_exclusions.py",
+          "sha256": "248e8722470ae6e5b1f95b5b8dced59dc1353af234a9d380fcaef6310f18017d",
+          "before_sha256": "fbe95b9d6291f033f8c2591b8a3761945e77ec219080cd160eb2c065a801c809"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "sha256": "d91114b16e30b8e97d53716ab0a431b65a228270be0418790ded1c2cd4250c3f",
+          "before_sha256": "31cd01845bea6aece0dbd7089b1613e5d8b15b7373075f4a11e17719cbcfab43"
+        },
+        {
+          "path": "server/tests/security/test_descriptive_search.py",
+          "sha256": "1d7fb127f3aca8cc555372694b5f20f061114345e7a389b17f5483d079fc13d1",
+          "before_sha256": "a8b4b4e8733d1b064492fe24e75cd302f9a438b13e7024957cee4824bbcf303d"
+        },
+        {
+          "path": "server/tests/security/test_search_constraint_admission.py",
+          "sha256": "b6a6496551429ad807271f718320ae1b1473a0c1b22f04ed981859acc8c4135c"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "9f5b73a1eb1cf61d3611f0abbc5cb49019d8d8c72ec1efc01799793c468d41af",
+          "before_sha256": "081707e7f20200647f842ddb37bcaa08f30e6483fb5fddc78d8b9ba19cde004f"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Share bounded negative-predicate handling between request admission and affirmative metadata matching; guard zero, modifier apostrophes, exclusivity and strict counts before model/ranking. Version source policies to reject old bound results. No semantic activation or Windows change."
     }
   ]
 }

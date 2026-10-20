@@ -10,7 +10,8 @@ from datetime import date, datetime, timedelta
 import re
 
 from . import discovery as d
-from .search_exclusions import NEGATION as _NEGATION, explicit_media_exclusion
+from .search_exclusions import (NEGATION as _NEGATION, explicit_media_exclusion,
+                                requires_semantic_clarification)
 
 
 @dataclass(frozen=True)
@@ -594,7 +595,7 @@ def plan_query(words, *, now: datetime, entities: dict,
     outside = media_surface
     # Do this before masking media nouns or asking an intent model to select
     # spans. A model cannot turn an unresolved exclusion into a positive clue.
-    if _NEGATION.search(_remove_occurrences(outside, labels)):
+    if requires_semantic_clarification(_remove_occurrences(outside, labels)):
         return _clarify('unsupported_negation', previous_filters if refine else None)
 
     media_hits = []

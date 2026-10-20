@@ -41,6 +41,27 @@ A complete new search runs normal validation and replaces the unresolved request
 it must restate any conditions the user wishes to retain. Expiry changes the
 prompt rather than silently broadening the search.
 
+The next admission round also guards common Chinese negative predicates such
+as “不下雪”, “未下雪” and “没落在草地上”, apostrophe variants in contractions,
+and zero/absence forms such as “zero dogs”, “0 dogs” and “minus the dogs”.
+The same negative-clause policy is used for descriptive source matching: a
+negative caption cannot become affirmative scene evidence. A separate
+affirmative clause can still supply its own evidence. Literal quoted-caption
+matching remains independent and keeps the original text.
+
+Scene ranking separately refuses known strict-count and exclusivity forms,
+including “exactly two”, “at most three”, “only dogs”, “alone”, “只有两个孩子”
+and “最多两辆车”. It uses the existing scene rewording receipt, keeps the prior
+scope/revision, and never encodes these requests or restores their old scores.
+Ordinary v2/v3 planning also refuses unresolved strict conditions before asking
+an intent model to select scene spans. Its private pending clarification retains
+the exact request using the same guarded continuation flow as exclusions.
+Ordinary positive counts such as “two dogs” remain approximate scene cues;
+their admission is not evidence that the encoder understands or counts them.
+No people-count absence is inferred from a reviewed-person filter. Descriptive
+matching and semantic source-policy versions changed to invalidate old bound
+results; no runtime configuration or model binding is rewritten automatically.
+
 This is a conservative admission policy, not a complete negation parser. It
 does not prove that a person, object or event is absent, infer negative evidence
 from missing tags/detections, or qualify arbitrary language/dialect. Unrecognized
