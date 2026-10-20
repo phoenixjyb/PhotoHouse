@@ -193,3 +193,83 @@ This qualification-only allowance is not a phone or production latency target.
 Temporary sockets are owned immediately after reservation, including failures
 during a second reservation, source validation or model binding; setup failures
 preserve the synthetic fixture and cannot produce a success receipt.
+
+## Full-family run and scale findings — October 21, 2026
+
+The private Windows candidate worker at source `ad94d82` is processing a frozen
+23,761-photo family roster in clean, resumable chunks. Six extreme-input probes
+passed, including a roughly 200-megapixel panorama and an original around 56 MB.
+This is image-only indexing; it does not establish video semantic coverage.
+The final index, relevance rerun and independent current-roster readback are not
+complete. Checkpoints and original failure evidence are retained.
+
+Two catalog paths were missing at preparation time. One had an exact-hash source
+inside the same authorized library; only the frozen candidate roster selects that
+alternative. The other still needs a recoverable source. A separate exclusive-copy
+restore proposal is prepared privately, without changing originals or catalog rows.
+The running pass has also recorded a preparation failure. A resource-capped
+private probe of the exact frozen preparer identified a 3,024 × 4,032 MPO
+multi-picture JPEG stored under a PNG filename. The single-frame JPEG/PNG profile
+refuses that container at its format guard, before pixel verification or decoding.
+This establishes an unsupported format, not corrupted pixels. Original bytes and
+stable file identity were unchanged. The failed preparation and private probe
+copies remain retained; no failure was silently cleared or excluded.
+
+MPO handling needs an explicit primary/auxiliary-frame policy and qualification
+of preprocessing identity and vector reuse before integration. Changing the
+running worker's frozen profile or relabeling existing vectors would invalidate
+its identity evidence. The current run therefore keeps the refusal explicit;
+MPO support and any original-path restoration remain separate unfinished work.
+
+A generated 23,761-vector ASGI canary at source `de80bc5` passed all seven
+protection checks and complete-candidate counts. Its three repeated language
+samples took 76–94 seconds on this Mac while the API suite also ran. The image
+index inspector and encoder were fixture substitutes, so this is neither actual
+family-model relevance nor Windows, network, concurrent-load or device acceptance.
+A single-request diagnostic identified repeated float32 component packing and
+full-file/path checks as major costs; profiler phase times overlap.
+
+Following source removes a checksum calculation immediately before the same
+checksum is verified by canonical component validation. Packing performs builtin
+numeric conversion in C while retaining exact type, finite float32 and unit-norm
+checks. Mutable list inputs are copied into a bounded snapshot, and the checksum's
+dimension tag comes from the packed bytes. Golden and differential tests preserve
+canonical bytes across rounding, signed zero, subnormals, overflow and invalid
+numeric types. Endpoint tail tests still refuse malformed checksums and nonunit
+vectors before the provider runs. Both file-validation passes remain in place.
+These serving changes leave the running worker's frozen image preparation and
+model identities unchanged.
+
+An intermediate three-sample canary failed its final synthetic-source restoration
+check; that attempt and its fixture remain retained. A logged follow-up at
+`9b9641b` passed all seven checks, including source-change refusal and restoration,
+with one repeated full-cohort sample around 35 seconds. This was a diagnostic
+follow-up, not a controlled cross-version comparison or closure of the broader
+performance gate. The final three-language canary at `9eae2d7` also passed all seven checks,
+with 23,761 candidates in every repeated sample: median 48.2 seconds and p95
+55.5 seconds (three samples). It ran alongside local API checks for part of the
+invocation. The failed earlier run remains unresolved as a reliability observation;
+successful follow-ups do not establish concurrent-load acceptance. These timings
+leave interactive serving performance unqualified.
+
+The complete API profile at `9eae2d7` passed **2,808 tests and 3,628 subtests** plus
+the generated no-listener demo, with matching source and commit identities at
+both boundaries. Seven packaging tests passed. Its 270-file source-only archive
+is prepared privately; it has not been deployed. Independent review covered socket
+ownership, bounded HTTP read timeouts and canonical validation compatibility.
+
+Real full-library HTTPS/TCP performance remains held. The actual runtime preflight
+refused because the incumbent API task was not running during a separate exclusive
+service-recovery window. A read-only configuration check still found semantic OFF
+with no semantic provider configuration. This search round performed no service,
+scheduled-task, production database, original-media or account changes. Prepared
+foreground follow-up controls have not been frozen or started; they must recheck
+service recovery, exact runtime pins and final current-roster coverage first.
+No automation or recurring job was installed.
+
+Remaining gates include resolving unavailable inputs without hiding failures,
+finishing and independently verifying the real index and relevance receipts,
+measuring protected Windows and device latency, and qualifying current-library
+refresh, concurrency and broader family relevance. The generated large-library
+checks demonstrate capacity and protection, while their request times still leave
+a substantial serving-performance gap. Semantic search remains OFF.

@@ -1,5 +1,18 @@
 # Current project status
 
+**October 21 full-family candidate indexing:** local source now prepares bounded,
+metadata-stripped image inputs and checkpoints a frozen **23,761-photo** family
+roster. Six native extreme-image probes passed, including about 200 megapixels;
+the long indexing job is still running, with explicit preparation failures retained.
+Missing-original handling, an unsupported MPO container and final coverage remain open. Protected generated
+23,761-vector checks exposed slow request latency; source removes duplicate
+checksum packing and preserves canonical numeric/type checks. The full API profile
+at `9eae2d7` passed **2,808 tests / 3,628 subtests** plus the generated no-listener
+demo; seven packaging tests passed. Real full-library Windows performance has
+not run: its runtime preflight refused during a separate service-recovery window.
+Semantic remains **OFF**; these source commits are local, unmerged and undeployed,
+and the private index is unpublished. See the [current scale record](SEMANTIC_LIBRARY_SCALE.md#full-family-run-and-scale-findings--october-21-2026).
+
 **October 20 library-scale semantic preparation:** local source `20f6ddb` adds
 verified multi-batch collection/staging and explicit owner-only streaming beyond
 512 candidates. Generated checks cover 513 actual artifacts and 515 API results.

@@ -27154,6 +27154,30 @@
       "production_runtime_changed": false,
       "production_index_published": false,
       "activation_approved": false
+    },
+    {
+      "feature": "full-family-indexing-and-scale-diagnostic-status-october-21",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "d1ee312e66dee0c2dcaaa6a3cecfbd5c087d50c12e79c7d5ea0cc17591388271",
+          "sha256": "11f2ced67f52f90a4046f080973be363a6aae8e1c273801197820c756c5b4b28"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "b8a2a71c58f187f404746aa050a179378797ad0df23066870d3a4dfe5d724f2a",
+          "sha256": "042593876c067f851ea4ccfc0c41797463a23694faee6d484fb99ed8302a93e4"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "33713a7ef81f9a137a727141dff7abdb7a71cb57fd524fce370aaaa4bfd3b966",
+          "sha256": "092d1a5e07995617f9b931c4b2edacb647f569a76dd8806645c12074b8108426"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "activation_approved": false
     }
   ]
 }

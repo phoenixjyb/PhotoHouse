@@ -188,3 +188,11 @@ The following [library-scale preparation](SEMANTIC_LIBRARY_SCALE.md) adds a
 version-3 runtime with explicit owner/budget limits and multi-batch collection
 verification, plus a separately bound narrow bilingual text policy. It closes
 source capacity gaps while retaining full-library coverage and activation gates.
+
+The following [full-family indexing round](SEMANTIC_LIBRARY_SCALE.md#full-family-run-and-scale-findings--october-21-2026)
+is in progress over a frozen 23,761-photo roster. Extreme-image input preparation
+is qualified separately from final coverage. Generated full-cohort API checks
+preserve exclusions, authorization and hard date constraints, but expose latency
+that is still unsuitable for declaring an interactive search release ready.
+The final real-library Windows measurement, failure resolution, current-roster
+readback and broader relevance/device acceptance remain open. Semantic stays OFF.
