@@ -85,12 +85,71 @@ def device_rows(output: str) -> list[tuple[str, str]]:
     return rows
 
 
-def _run(argv: list[str], timeout: int = 30, *, env=None, input_text=None) -> str:
+def _write_json(path: Path, value: dict) -> None:
+    with path.open("x", encoding="utf-8") as stream:
+        json.dump(value, stream, indent=2, sort_keys=True)
+        stream.write("\n")
+
+
+def _write_failure(path: Path, value: dict) -> None:
+    try:
+        with path.open("w", encoding="utf-8") as stream:
+            json.dump(value, stream, indent=2, sort_keys=True)
+            stream.write("\n")
+    except OSError:
+        pass
+
+
+def _git_value(revision: str) -> str | None:
+    root = Path(__file__).resolve().parents[1]
+    try:
+        result = subprocess.run(["git", "-C", str(root), "rev-parse", revision],
+                                check=True, capture_output=True, text=True,
+                                encoding="utf-8", errors="strict", timeout=10)
+    except (OSError, subprocess.SubprocessError, UnicodeError):
+        return None
+    value = result.stdout.strip()
+    return value if re.fullmatch(r"[0-9a-f]{40,64}", value) else None
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _safe_command(argv: list[str]) -> dict:
+    tool = Path(argv[0]).name
+    if tool not in {"adb", "aapt", "sdkmanager", "avdmanager", "emulator"}:
+        tool = "unknown"
+    safe_args = []
+    for value in argv[1:]:
+        if value.startswith(("/", "\\")) or "/" in value or "\\" in value:
+            safe_args.append(Path(value).name or "<path>")
+        elif re.fullmatch(r"[A-Za-z0-9_.:=,@+-]{1,160}", value):
+            safe_args.append(value)
+        else:
+            safe_args.append("<redacted>")
+    return {"tool": tool, "arguments": safe_args}
+
+
+def _run(argv: list[str], timeout: int = 30, *, env=None, input_text=None,
+         failure_artifacts: Path | None = None) -> str:
     try:
         result = subprocess.run(argv, check=True, capture_output=True, text=True,
                                 encoding="utf-8", errors="strict", timeout=timeout, env=env,
                                 input=input_text)
-    except (OSError, subprocess.SubprocessError, UnicodeError):
+    except (OSError, subprocess.SubprocessError, UnicodeError) as error:
+        if failure_artifacts is not None:
+            record = {"reason": "android_ui_command_failed", "command": _safe_command(argv),
+                      "error_kind": type(error).__name__}
+            if isinstance(error, subprocess.CalledProcessError):
+                record["returncode"] = error.returncode
+            elif isinstance(error, subprocess.TimeoutExpired):
+                record["timeout_seconds"] = timeout
+            _write_failure(failure_artifacts / "command-failure.json", record)
         raise QualificationError("android_ui_command_failed") from None
     return result.stdout.strip()
 
@@ -127,12 +186,17 @@ def run_qualification(args) -> dict:
     env["ANDROID_SDK_ROOT"] = str(sdk)
     env["ANDROID_HOME"] = str(sdk)
     env["ANDROID_AVD_HOME"] = str(avd_home)
-    if _run([str(adb), "devices"], env=env) != "List of devices attached":
-        rows = device_rows(_run([str(adb), "devices"], env=env))
+    def checked_run(argv, timeout=30, *, input_text=None):
+        return _run(argv, timeout=timeout, env=env, input_text=input_text,
+                    failure_artifacts=artifacts)
+
+    initial_devices = checked_run([str(adb), "devices"])
+    if initial_devices != "List of devices attached":
+        rows = device_rows(initial_devices)
         if rows:
             raise QualificationError("preexisting_android_device_refused")
     for apk, expected in ((app_apk, QA_PACKAGE), (test_apk, QA_TEST_PACKAGE)):
-        badging = _run([str(aapt), "dump", "badging", str(apk)], timeout=60, env=env)
+        badging = checked_run([str(aapt), "dump", "badging", str(apk)], timeout=60)
         if package_from_badging(badging) != expected:
             raise QualificationError("qa_apk_package_mismatch")
 
@@ -140,11 +204,11 @@ def run_qualification(args) -> dict:
     process = None
     emulator_log = None
     try:
-        _run([str(sdkmanager), "--sdk_root=" + str(sdk), "--install",
-              "system-images;android-34;google_apis;x86_64"], timeout=900, env=env)
-        _run([str(avdmanager), "create", "avd", "--name", args.avd_name,
+        checked_run([str(sdkmanager), "--sdk_root=" + str(sdk), "--install",
+              "system-images;android-34;google_apis;x86_64"], timeout=900)
+        checked_run([str(avdmanager), "create", "avd", "--name", args.avd_name,
               "--package", "system-images;android-34;google_apis;x86_64",
-              "--device", "pixel_2"], timeout=120, env=env, input_text="no\n")
+              "--device", "pixel_2"], timeout=120, input_text="no\n")
         avd_created = True
         emulator_log = (artifacts / "emulator.log").open("xb")
         os.chmod(emulator_log.name, 0o600)
@@ -161,35 +225,52 @@ def run_qualification(args) -> dict:
             if process.poll() is not None:
                 raise QualificationError("owned_emulator_exited_before_boot")
             try:
-                _run(prefix + ["wait-for-device"], timeout=min(10, max(1, int(deadline - time.monotonic()))), env=env)
-                if _run(prefix + ["get-serialno"], env=env) == SERIAL:
-                    if _run(prefix + ["shell", "getprop", "sys.boot_completed"], env=env) == "1":
+                checked_run(prefix + ["wait-for-device"], timeout=min(10, max(1, int(deadline - time.monotonic()))))
+                if checked_run(prefix + ["get-serialno"]) == SERIAL:
+                    if checked_run(prefix + ["shell", "getprop", "sys.boot_completed"]) == "1":
                         break
             except QualificationError:
                 time.sleep(2)
         else:
             raise QualificationError("emulator_boot_timeout")
 
-        current_devices = device_rows(_run([str(adb), "devices"], env=env))
+        current_devices = device_rows(checked_run([str(adb), "devices"]))
+        qemu = checked_run(prefix + ["shell", "getprop", "ro.boot.qemu"])
+        api_level = checked_run(prefix + ["shell", "getprop", "ro.build.version.sdk"])
+        abi = checked_run(prefix + ["shell", "getprop", "ro.product.cpu.abi"])
+        _write_json(artifacts / "platform-preflight.json", {
+            "serial": SERIAL, "device_rows": current_devices,
+            "qemu_property": qemu, "api_level": api_level, "abi": abi,
+        })
         if current_devices != [(SERIAL, "device")]:
             raise QualificationError("single_emulator_identity_required")
-        if (_run(prefix + ["shell", "getprop", "ro.kernel.qemu"], env=env) != "1" or
-                _run(prefix + ["shell", "getprop", "ro.build.version.sdk"], env=env) != API_LEVEL or
-                _run(prefix + ["shell", "getprop", "ro.product.cpu.abi"], env=env) != ABI):
+        if qemu != "1" or api_level != API_LEVEL or abi != ABI:
             raise QualificationError("emulator_platform_identity_mismatch")
 
-        # The QA build has blank origins; airplane mode additionally keeps this fixture run offline.
+        def verify_native_emulator() -> None:
+            if (checked_run(prefix + ["get-serialno"]) != SERIAL or
+                    checked_run(prefix + ["shell", "getprop", "ro.boot.qemu"]) != "1"):
+                raise QualificationError("emulator_identity_changed_before_write")
+
+        def device_write(arguments: list[str]) -> str:
+            verify_native_emulator()
+            return checked_run(prefix + arguments)
+
+        # The QA build has blank origins. Record the verified airplane-mode
+        # setting without treating that setting as an independent isolation proof.
         for namespace, key, value in (
             ("global", "device_provisioned", "1"), ("secure", "user_setup_complete", "1"),
-            ("global", "airplane_mode_on", "1"), ("global", "window_animation_scale", "0"),
+            ("global", "window_animation_scale", "0"),
             ("global", "transition_animation_scale", "0"), ("global", "animator_duration_scale", "0"),
         ):
-            _run(prefix + ["shell", "settings", "put", namespace, key, value], env=env)
-        _run(prefix + ["shell", "am", "broadcast", "-a", "android.intent.action.AIRPLANE_MODE",
-                       "--ez", "state", "true"], env=env)
-        _run(prefix + ["shell", "input", "keyevent", "KEYCODE_WAKEUP"], env=env)
-        _run(prefix + ["shell", "wm", "dismiss-keyguard"], env=env)
-        _run(prefix + ["shell", "input", "keyevent", "KEYCODE_HOME"], env=env)
+            device_write(["shell", "settings", "put", namespace, key, value])
+        device_write(["shell", "cmd", "connectivity", "airplane-mode", "enable"])
+        airplane_mode = checked_run(prefix + ["shell", "settings", "get", "global", "airplane_mode_on"])
+        if airplane_mode != "1":
+            raise QualificationError("airplane_mode_not_confirmed")
+        device_write(["shell", "input", "keyevent", "KEYCODE_WAKEUP"])
+        device_write(["shell", "wm", "dismiss-keyguard"])
+        device_write(["shell", "input", "keyevent", "KEYCODE_HOME"])
 
         instrument_outputs: list[bytes] = []
         instrumentation_log = artifacts / "instrumentation.log"
@@ -239,10 +320,13 @@ def run_qualification(args) -> dict:
         result = {"status": "passed", "serial": SERIAL, "api_level": int(API_LEVEL), "abi": ABI,
                   "package": QA_PACKAGE, "instrumentation": instrumentation,
                   "screenshots": screenshot_rows, "physical_device_used": False,
-                  "household_origin_configured": False}
-        with (artifacts / "qualification-result.json").open("x", encoding="utf-8") as stream:
-            json.dump(result, stream, indent=2, sort_keys=True)
-            stream.write("\n")
+                  "household_origin_configured": False,
+                  "airplane_mode": "enabled_and_verified",
+                  "source_revision": _git_value("HEAD"),
+                  "android_tree_revision": _git_value("HEAD:clients/android/android"),
+                  "app_apk_sha256": _file_sha256(app_apk),
+                  "test_apk_sha256": _file_sha256(test_apk)}
+        _write_json(artifacts / "qualification-result.json", result)
         return result
     finally:
         if process is not None:
@@ -274,8 +358,16 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     try:
         result = run_qualification(args)
-    except (QualificationError, OSError, subprocess.SubprocessError):
-        parser.exit(1, "Android UI qualification failed at a bounded gate.\n")
+    except QualificationError as error:
+        if args.artifacts.is_dir():
+            _write_failure(args.artifacts / "qualification-failure.json",
+                           {"status": "failed", "reason": str(error)})
+        parser.exit(1, f"Android UI qualification failed: {error}\n")
+    except (OSError, subprocess.SubprocessError):
+        if args.artifacts.is_dir():
+            _write_failure(args.artifacts / "qualification-failure.json",
+                           {"status": "failed", "reason": "android_ui_operation_failed"})
+        parser.exit(1, "Android UI qualification failed: android_ui_operation_failed\n")
     print(json.dumps(result, sort_keys=True))
     return 0
 

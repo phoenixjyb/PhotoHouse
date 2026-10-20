@@ -1,10 +1,15 @@
+import json
 import struct
+from pathlib import Path
+import subprocess
+import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.android_ui_qualification import (
     ABI, API_LEVEL, QA_PACKAGE, SCREENSHOTS, SERIAL, TEST_CLASS,
-    QualificationError, device_rows, package_from_badging, parse_instrumentation,
-    validate_png,
+    QualificationError, _run, device_rows, package_from_badging,
+    parse_instrumentation, validate_png,
 )
 
 
@@ -51,6 +56,23 @@ class AndroidUiQualificationTests(unittest.TestCase):
         self.assertEqual((result["status"], result["passed"], result["tests"]), ("passed", 7, 7))
         with self.assertRaisesRegex(QualificationError, "strict_instrumentation_report_failed"):
             parse_instrumentation("\n".join(lines).replace("OK (7 tests)", "OK (6 tests)").encode())
+
+    def test_command_failure_artifact_is_actionable_without_raw_output_or_paths(self):
+        with tempfile.TemporaryDirectory() as temp:
+            artifacts = Path(temp)
+            failure = subprocess.CalledProcessError(
+                1, ["/sdk/platform-tools/adb", "-s", "emulator-5560", "shell", "getprop"],
+                output="private stdout", stderr="private stderr")
+            with patch("tools.android_ui_qualification.subprocess.run", side_effect=failure):
+                with self.assertRaisesRegex(QualificationError, "android_ui_command_failed"):
+                    _run(["/private/sdk/platform-tools/adb", "-s", "emulator-5560",
+                          "shell", "getprop"], failure_artifacts=artifacts)
+            record = json.loads((artifacts / "command-failure.json").read_text())
+            self.assertEqual(record["reason"], "android_ui_command_failed")
+            self.assertEqual(record["command"]["tool"], "adb")
+            self.assertNotIn("/private", json.dumps(record))
+            self.assertNotIn("stdout", record)
+            self.assertNotIn("private", json.dumps(record))
 
 
 if __name__ == "__main__": unittest.main()

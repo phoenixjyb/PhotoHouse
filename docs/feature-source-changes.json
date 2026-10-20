@@ -26599,6 +26599,34 @@
       "semantic_search_enabled": false,
       "ota_published": false,
       "physical_device_acceptance": false
+    },
+    {
+      "feature": "android-current-emulator-identity-and-actionable-ui-evidence",
+      "files": [
+        {
+          "path": "tools/android_emulator_test.py",
+          "before_sha256": "3c5fdbf3fb7d7d761f054ea66e6981f0a3eaf9539e018f9b03d178017615742f",
+          "sha256": "e86040ae1da9a2b1660e67444fa18957c964ef7374dfa538d53fe03a213a0f05"
+        },
+        {
+          "path": "tools/tests/test_android_emulator_test.py",
+          "before_sha256": "42f7a628abad98bb7ab3262fa71997ca88eb65948ec75aa7d8426f938595f20e",
+          "sha256": "8f7e99a1813cdb694dad6f0a0aee8855b4ec3891ce2026b937a9d74214821986"
+        },
+        {
+          "path": "tools/android_ui_qualification.py",
+          "before_sha256": "4a9306e47c7d325cf1088d377768251ba80596beb2a0e98fc630dc3dff122419",
+          "sha256": "a97ff65c817cdc67a22a8c0358028f31d1031f74ff979cccc1aebe776e70a3d4"
+        },
+        {
+          "path": "tools/tests/test_android_ui_qualification.py",
+          "before_sha256": "79ebfd182d2c9330d6cd95515fa4165ae0c0c1099b21509ad16ce61fc23d13ec",
+          "sha256": "a7cb2fadebab2320f9cec6acea587a7c294d057f7058514fafe01585b97b8873"
+        }
+      ],
+      "android_application_tree_changed": false,
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false
     }
   ]
 }

@@ -36,7 +36,7 @@ class EmulatorBoundaryTests(unittest.TestCase):
             output = "device"
         elif argv[-1] == "get-serialno":
             output = "emulator-5554"
-        elif argv[-1] == "ro.kernel.qemu":
+        elif argv[-1] == "ro.boot.qemu":
             output = self.qemu
         elif "install" in argv:
             output = "Success"
@@ -56,17 +56,20 @@ class EmulatorBoundaryTests(unittest.TestCase):
         self.assertFalse(any("install" in argv for argv in self.calls))
 
     def test_non_emulator_property_refuses_install(self):
-        self.qemu = "0"
-        with self.assertRaises(Refused):
-            execute(self.args(), self.run_command)
-        self.assertFalse(any("install" in argv for argv in self.calls))
+        for value in ("0", ""):
+            with self.subTest(qemu=value):
+                self.calls.clear()
+                self.qemu = value
+                with self.assertRaises(Refused):
+                    execute(self.args(), self.run_command)
+                self.assertFalse(any("install" in argv for argv in self.calls))
 
     def test_explicit_serial_and_identity_checked_before_every_write(self):
         result = execute(self.args(), self.run_command)
         self.assertEqual(4, result["tests"])
         adb_calls = [argv for argv in self.calls if argv[0] == "adb"]
         self.assertTrue(all(argv[1:3] == ["-s", "emulator-5554"] for argv in adb_calls))
-        self.assertEqual(4, sum(argv[-1] == "ro.kernel.qemu" for argv in adb_calls))
+        self.assertEqual(4, sum(argv[-1] == "ro.boot.qemu" for argv in adb_calls))
 
     def test_qa_installs_use_file_transfer_without_changing_identity_guards(self):
         for dry_run in (False, True):
