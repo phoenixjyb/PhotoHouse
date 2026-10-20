@@ -1,14 +1,30 @@
 # Current project status
 
+**October 20 guarded-search delivery — verified 10:49 Asia/Shanghai:**
+[PR #101](https://github.com/phoenixjyb/PhotoHouse/pull/101) is merged as `a4e3922`;
+API/Web serves qualified source `b170a97`, whose Git tree matches that merge.
+All five hosted checks passed, alongside 2,647 local API tests / 2,764 subtests,
+the generated demo and eight focused browser checkpoints. Native preflight,
+four stopped-writer backups, four disk restore rehearsals and independent
+native/Mac HTTPS postflight passed. Existing configuration, private people/kinship scope, schema
+`a0c9d2e4f817`, phone v74 and TV v30 were preserved; no new APK, model/provider,
+library-wide stack refresh or schema activation occurred. **Semantic search is
+OFF.** General vague visual retrieval, model relevance, broader coverage and
+family/device acceptance remain open. The [search release record](SEARCH_RELEASE_2026-10-20.md)
+maps delivered capabilities, exact source/CI identities and remaining gates.
+This is a dated verified snapshot, not a new live probe; older delivery statements
+below retain their historical scope.
+
 **October 20 following source:** [Library-wide photo stacks](LIBRARY_PHOTO_STACKS.md)
 add one stack per collapsed page position, full member viewing and persistent
 per-account cover/separation choices on Web and phone. An optional CPU index
 refresh entry point and additive `f2a8c5d1e640` schema are implemented; no migration,
-index refresh, Windows switch or APK publication has occurred for this increment.
-The delivered v74/API remains on its page-local grouping contract.
+index refresh or APK publication has occurred for this increment. Its source is
+included in the search API/Web release above, with the older-schema page-local
+grouping fallback retained; library-wide activation remains separate.
 
-**October 20 preparation-status delivery:** PR #97 is merged, and Windows API/Web
-serves fixed source `9e39ebd`, retaining the newer search source and private runtime
+**Earlier October 20 preparation-status delivery:** PR #97 merged, and Windows API/Web
+then served fixed source `9e39ebd`, retaining the newer search source and private runtime
 configuration. [Phone v74](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md)
 is published on HTTPS OTA with the original certificate and icon. Native Windows
 and independent Mac readbacks verified all three served UI files and the complete

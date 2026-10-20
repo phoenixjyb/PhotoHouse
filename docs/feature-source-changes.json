@@ -26434,6 +26434,64 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Bind corrupt-artifact replay no-encoder assertion to the immediate call count, independent of earlier exclusion admission."
+    },
+    {
+      "feature": "guarded-search-release-documentation-20261020",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "2027d301965a5876bff11c33cbfe48e7a9b5dc46ab5108e77df8ffac4fdf7546",
+          "before_sha256": "716acae87a9747ddb800f8a630ade2c0ec103194a23e9ce6fec53c1252bbf521"
+        },
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "sha256": "aff07765fbf87f1d499416f6cfe24fc79beba9ea2490d2ef87e4ee81ce37c302",
+          "before_sha256": "7e6b69cfb3262ccdfc8b8d2d9c4c83c3931bcbc2109d3f2e0d7b3e463be14e4a"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "sha256": "afb76d3b616aec93a9e5bd2994dbca43fa1158231bfe9164a5c2deafcbda38e6",
+          "before_sha256": "74fd5db2437ed1a6473aec158895110adc388468c78e95d7c6f85e8ce9571769"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "04d05e5d29d356f651e45aa379fa23dff783ba95d033f43ba3a8b4f83d7d03cc",
+          "before_sha256": "106463af84b1e2adf4cbbb99801d2374ea030e4c5e222ea3f17acf24df8e5dcf"
+        },
+        {
+          "path": "docs/MULTILINGUAL_ENCODER_QUALIFICATION.md",
+          "sha256": "cdf3ac885a6b4c34a1bc421e5d4da3c689dc717d612c3caf46b0e0ab775e7556",
+          "before_sha256": "63d51ebb6bf3db04cfa2242104f114210f0f8fe17c8ff59dd9afd4dce3831f2c"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "984905d457f9dd6dfa418dd4a546db1b8d083d43eb5cebcb6ff9d5bf4c60948e",
+          "before_sha256": "9502f407fb1d8a020c752700a55e430ffb47bcba561046b7bf91b07e04abebaa"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "ad99e6b2863f7e6c91d7cd2bddfa4098b8221447811f3970b907418d107bfbd2",
+          "before_sha256": "e658091fdbf502a13c94d0e9096332d733a4dcc22d474a54090c30a646a8754c"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "e8c1d0a8dea5c0f3ec64d92192dcc9d5fc96c29851290cf7ef1e08a3308fc526",
+          "before_sha256": "758239b241467b992432801fa84477e540b727792d936293f8064db19904bf3b"
+        },
+        {
+          "path": "docs/SCENE_QUERY_REWORDING.md",
+          "sha256": "7475625c86b3938aa6d42b672f899699506c6b334e0a6710d8fb52b8565e8ec5",
+          "before_sha256": "5b19ab9ccee51b255d4f0e2294ae9653d0c072e650261eb729da1ea5ee3f093b"
+        },
+        {
+          "path": "docs/SEARCH_RELEASE_2026-10-20.md",
+          "sha256": "7b429b85653ce75dddad0cf0f3708420e30a9ae54d14cf2ba46c11544c8e8bc4"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Reconcile project/search summaries with the verified PR101 API/Web release; retain semantic OFF, separate Android publication and family/device gates, and keep private operator evidence outside source. Documentation only; no runtime operation."
     }
   ]
 }
