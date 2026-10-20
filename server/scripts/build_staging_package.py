@@ -221,7 +221,6 @@ FILES = (
     'docs/security/FAMILY_NOTE_IDENTITIES_V1.md',
     'docs/security/MEMORY_GROUPS_V1.md',
     'docs/security/MEMORY_GROUP_SCHEMA_APPLICATION.md',
-    'docs/PHOTO_STACK_OPERATIONS.md',
     'docs/security/FAMILY_NOTE_ERASURE_V2.md',
     'docs/security/ORIGINAL_JOURNAL_UPGRADE_V2.md',
     'scripts/apply_access_schema.py',

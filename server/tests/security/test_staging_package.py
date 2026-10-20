@@ -205,6 +205,8 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.visual_vector_erasure_catalog import VectorErasureCatalog\n'
                 'from app.access.asset_tombstones import prepare_asset_tombstone, plan_durable_asset_vector_cleanup\n'
                 'import qualify_oral_history\n'
+                'import apply_library_photo_stack_schema, run_photo_stack_worker\n'
+                'assert callable(apply_library_photo_stack_schema.apply) and callable(run_photo_stack_worker.preflight)\n'
                 'import check_private_search\n'
                 'import export_visual_people_review, inspect_reviewed_people_readiness, reviewed_people_source\n'
                 'from app.access.search_evaluation import evaluate_cases\n'
@@ -219,7 +221,7 @@ class StagingPackageTests(unittest.TestCase):
                 'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source'):\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'apply_library_photo_stack_schema', 'run_photo_stack_worker'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"

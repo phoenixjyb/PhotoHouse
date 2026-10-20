@@ -26524,6 +26524,26 @@
       "schema_changed": false,
       "production_activation": false,
       "notes": "Prepare explicit a0/e7-to-f2 paired-backup migration with bounded readonly V1-V4 history, one-sweep CPU host with private direct inputs/lock/cancellation/Windows supervision, and generated qualification through both real controller paths. Preserve originals, preferences and failed tasks; current search session owns API deployment. No production/native operation or APK publication."
+    },
+    {
+      "feature": "photo-stack-runtime-package-paths",
+      "source_commit": "2005d98ce536c3650071ec91f92481005f57a042",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "f11193da9f507de1e1da80f475f93d8700e2b71fc34dcd6b46232eab916793ce",
+          "sha256": "8214f6ec1d84034ac7130842a0d84508fa96f17fcf4991a292b5fc9d45b91ff2"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "a5424163979379ff1eafba22818913843135a2efc1e7744041bfa8a76a9918ef",
+          "sha256": "aa45f6c0e8b5639845109070d7383bf7aad462a10cff15f9de889b8a0b8205c3"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "production_activation": false,
+      "notes": "Keep the root-level operations guide in the monorepo documentation; staging remains strictly server-relative. Exercise both new entry points in the isolated extracted import check."
     }
   ]
 }
