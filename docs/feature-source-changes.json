@@ -26492,6 +26492,45 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Reconcile project/search summaries with the verified PR101 API/Web release; retain semantic OFF, separate Android publication and family/device gates, and keep private operator evidence outside source. Documentation only; no runtime operation."
+    },
+    {
+      "feature": "phone-v75-preparation-and-offline-semantic-exclusion-scorecard",
+      "files": [
+        {
+          "path": "clients/android/android/connected/build.gradle.kts",
+          "before_sha256": "40376ded9a939e9b86888afd1ccd64ded1cfe5209131798921b124a8b93a9504",
+          "sha256": "fee747e2fc9e4d6bea9b529567018f862ba7361573cbf88ff5d61df1575cc620"
+        },
+        {
+          "path": "server/scripts/semantic_exclusion_cases.py",
+          "before_sha256": null,
+          "sha256": "228c10aaaf71aa2c6a8403f9e846513f103d762ec877cc16056dc49ae4a3575e"
+        },
+        {
+          "path": "server/tests/security/test_semantic_exclusion_cases.py",
+          "before_sha256": null,
+          "sha256": "fb4135793a78190fe20f113d248083303bd5780111a0838dfcd819e77694d089"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "45ae8c2730ccb3e29c5a17a5f5e50f0e76e927c40dd118878304d97b61e9293f",
+          "sha256": "1c16a76ff53f8bf5fa6a5a07544ef36f7b0719cfcbd2c042246f1c2d29588246"
+        },
+        {
+          "path": "docs/MULTILINGUAL_ENCODER_QUALIFICATION.md",
+          "before_sha256": "cdf3ac885a6b4c34a1bc421e5d4da3c689dc717d612c3caf46b0e0ab775e7556",
+          "sha256": "f8b7905aa4414ec59d84c3da9e6a8d14294998393fbfc8567ecbb432785a5d94"
+        },
+        {
+          "path": "docs/SEMANTIC_EXCLUSION_QUALIFICATION.md",
+          "before_sha256": null,
+          "sha256": "8622f5117cad16d1955cb8a464b5802dbd06580d9abedaa6e22652d1d9ddf781"
+        }
+      ],
+      "runtime_changed": false,
+      "semantic_search_enabled": false,
+      "signed": false,
+      "published": false
     }
   ]
 }
