@@ -26392,6 +26392,20 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Record the composed files after merging current gallery/upload main with guarded search. Preserve both source histories, no semantic activation or schema application."
+    },
+    {
+      "feature": "guarded-search-release-diff-hygiene",
+      "files": [
+        {
+          "path": "server/tests/security/test_qualify_multilingual_scenes.py",
+          "before_sha256": "c2dbdea3cf3049a94cda032e6192c62a291da4d931cfa380f67dcf96ad6918e5",
+          "sha256": "82910c27b62b0caeb64563c9cc03759074c494a2fd5938cc31beca92aa28c139"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Remove an extra trailing blank line in the offline qualification tests before release integration checks."
     }
   ]
 }

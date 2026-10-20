@@ -257,4 +257,3 @@ def test_measure_uses_fake_cpu_model_and_records_only_query_receipts(monkeypatch
 def test_output_must_be_outside_source_and_new():
     with pytest.raises(Exception):
         runner.output_target(ROOT / 'private-output')
-
