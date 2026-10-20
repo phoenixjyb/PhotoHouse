@@ -41,7 +41,7 @@ API_TESTS = (
     "test_semantic_refusal_protocol.py", "test_scene_query_refusal.py",
     "test_kinship.py", "test_assistant_kinship.py",
     "test_closed_application.py", "test_access_foundation.py", "test_access_transport.py", "test_library_reads.py", "test_photo_stacks.py",
-    "test_photo_stack_index.py", "test_library_photo_stacks.py",
+    "test_photo_stack_index.py", "test_library_photo_stacks.py", "test_library_photo_stacks_qualification.py",
     "test_library_albums.py", "test_library_organization.py", "test_android_updates.py",
     "test_upload.py", "test_upload_socketpair_guard.py", "test_resumable_upload.py", "test_upload_annotations.py", "test_upload_auto_approval.py",
     "test_upload_history.py", "test_upload_preparation.py", "test_upload_retry.py", "test_upload_review.py",
@@ -104,7 +104,7 @@ MEMORY_TESTS = (
 )
 WINDOWS_CPU_TESTS = (
     "test_approved_workers_f2_compatibility.py",
-    "test_photo_stack_index.py", "test_library_photo_stacks.py",
+    "test_photo_stack_index.py", "test_library_photo_stacks.py", "test_library_photo_stacks_qualification.py",
     "test_upload_socketpair_guard.py", "test_resumable_upload.py",
     "test_database_preparation.py", "test_fullsize_preparation.py",
     "test_runtime_adapter.py", "test_staging_package.py",
