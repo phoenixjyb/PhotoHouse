@@ -231,7 +231,8 @@ delta. The [PH-C0 contract](HOUSEHOLD_INFERENCE_ADMISSION.md) records current
 consumer ownership and an isolated, tested admission primitive. The primitive
 is unwired: profile owners, provider-wide coordination and a public waiting
 protocol remain separate integration work. Neither comparison has model/UX
-measurements yet; bundle version 3 is specified, not implemented.
+measurements yet. The narrative-only bundle version 3 is now implemented with
+synthetic provider checks; PH-A4 snapshot/service/client integration is not.
 
 PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access

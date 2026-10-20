@@ -234,9 +234,9 @@ The host validates this output against the exact selected
 chapter evidence IDs, then enriches it into the client result below. The model
 echoes only supplied chapter IDs and selected source IDs in that closed output
 grammar; the host validates and resolves those references. Its unsaved input
-requires the separately specified PH-P2 bundle version 3; the current validator
-and provider still reject unsaved targets and have not been changed to support
-it. It cannot mint or
+uses the PH-P2 bundle version 3, now supported only by the narrative validator
+and provider path. This does not construct/authorize the source snapshot or
+implement the PH-A4 service. The model cannot mint or
 change identities, supply chapter titles, author citation metadata, choose
 chapter media, or set revisions, expiry or review state. This keeps the current
 validator useful while making the returned citation record server-derived.

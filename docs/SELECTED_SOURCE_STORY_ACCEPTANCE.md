@@ -24,15 +24,16 @@ In particular, an empty source selection means no evidence, not all evidence.
 Generated wording and source attribution remain distinct. Citation membership
 checks prove eligible provenance pointers, not that the prose is factually true.
 
-## Required provider contract delta
+## Provider contract and source implementation
 
-The existing `memory_narrative._validate_bundle` only accepts a saved story/book
-with positive revision. Both `validate_narrative` and `LocalMemoryNarrator`
-call it. An unsaved PH-A4 target therefore cannot reuse that input unchanged,
-even though its ordered narrative output grammar is reusable. Do not invent
-a saved story, use a fabricated revision or insert a job merely to fit it.
+The legacy narrative v1/v2 inputs require a saved story/book with positive
+revision. They remain unchanged. The source implementation in
+[`memory_narrative.py`](../server/backend/app/access/memory_narrative.py) adds
+the explicit v3 narrative input below; it does not invent a saved story,
+fabricate a revision or insert a job to prepare an unsaved draft. Source
+authorization/snapshot construction and the PH-A4 service are separate work.
 
-The chosen next source delta is internal narrative **bundle version 3**, solely
+The new internal narrative **bundle version 3** is solely
 for selected-source preparation. It retains the closed v1 content fields and
 adds exactly `selection_revision`. Its target is an ephemeral operation:
 
@@ -64,13 +65,28 @@ service has none. Legacy v1/v2 source shapes stay unchanged.
 
 `validate_narrative` may accept this new closed input while its output stays
 version 1. Existing v1/v2 validation remains unchanged. Companion/chat calls
-must reject draft bundles. Update the structured-output schema and bounded
-transport only through this explicit variant; no change to the saved worker's
-job targets, schema, lease, retries or feature flags follows. Before PH-A4
-service wiring, tests must show v3 is accepted only on the narrative path,
-legacy unsaved/mismatched variants are rejected, v1/v2 remain compatible, and
-no source/target identity can be supplied by model output. Version 3 is a
-frozen implementation requirement here, not code already supported.
+reject draft bundles before provider I/O, and the default private bundle
+validator requires an explicit draft opt-in. The v3 structured-output schema
+keeps the existing ordered narrative result, with the stricter title limit.
+The provider prompt preserves each original source kind and treats an edited
+caption as derived visual wording even when its normalized kind is `family`.
+No saved worker target, schema, lease, retry or feature flag is changed.
+
+V3 accepts one to six nonblank-titled chapters, one to four unique media per
+chapter with no overlap, at most 24 media, and at most twelve evidence IDs per
+chapter. Sources are exactly the union of selected evidence, with nonblank text
+and the 48 KiB aggregate text bound; empty evidence with no sources and blank
+narration remains valid. The validator does not require a shared family note's
+original asset to be selected: its actual eligibility is the host source
+service's responsibility. An AI or family-edited caption must name an asset in
+every chapter that references it; captions cannot cross disjoint chapter media
+sets. Input validation is not membership authorization.
+
+[The synthetic v3 suite](../server/tests/security/test_selected_story_narrative.py)
+exercises narrative-only admission, legacy isolation, bilingual/mixed source
+kinds, output rejection and mocked provider transport. It establishes no real
+model quality or locality. No route, source snapshot service, model selection
+or family-facing feature is added by this input variant.
 
 ## Frozen fictional evidence
 

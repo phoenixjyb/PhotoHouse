@@ -26669,6 +26669,48 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Frozen PH-P2 story comparison and explicit future draft-bundle input delta; PH-C0 consumer inventory, unwired event-loop admission primitive and CPU ownership/race tests. No app construction, HTTP/profile/worker wiring, API package inclusion, model generation or native capacity qualification."
+    },
+    {
+      "feature": "selected-source-narrative-draft-bundle-v3",
+      "source_commit": "4599faa182b4db6d286a8fb2ec8fe9f0ca9c08ff",
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "657bcf8c716e96895b0a32b0e06b71d884341011ff5064094bbc3e5eba187cf8",
+          "sha256": "a840ae2d4c86226fb1eda8bbf22520217e11954cf12296f031129f4dfe0a1336"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_narrative.py",
+          "before_sha256": null,
+          "sha256": "cd8c6ca633f6abb2355c7aa98de29da6366862ed36efe58cb480fcdea423bca2"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "2d6b99c117d8f2f70f47265a36c0dc24a99822eff281267f24218da12454755e",
+          "sha256": "f35df61d8fac52039a4bec539a84408b65937148fbe8737bbffa22a3159de8bd"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "8b4ec3e214ad4db1b8518705e81611dd4165b1d71316c35e02fe120c777473f5",
+          "sha256": "a98462d2057e183da8cd92f60e5da57e0b161b385dcfb4700f1765ea6b03d00a"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "eff77b6bc5b23a6a51faf70c72f5e37faf17383fb5b9e84e374c521221f50fc6",
+          "sha256": "3b1dd164842e7dc9deefd54afac37ded190caa3a1e1a31367c56cce5860ce671"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "13da3cf0b91e8dcb69697bebd1294923e27b200d6342dc1c65c36da4d889a1cd",
+          "sha256": "d3d15920795e8cb945fc5917374a98cde1de3ce414fb32210e93cfda5de37610"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": true,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Internal narrative-only v3 draft input with bounded selected evidence, original source-kind mapping and caption-to-chapter media checks; companion and saved v1/v2 contracts remain isolated. Synthetic provider coverage only. No source snapshot authorization/service, HTTP route, worker target, runtime flag, model installation or deployment is added."
     }
   ]
 }
