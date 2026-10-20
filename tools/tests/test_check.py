@@ -91,6 +91,9 @@ class CpuEnvironmentTests(unittest.TestCase):
         self.assertIn("test_library_photo_stacks.py", check.WINDOWS_CPU_TESTS)
         self.assertIn("test_library_photo_stacks_qualification.py", check.API_TESTS)
         self.assertIn("test_library_photo_stacks_qualification.py", check.WINDOWS_CPU_TESTS)
+        for name in ("test_photo_stack_worker_host.py", "test_apply_library_photo_stack_schema.py"):
+            self.assertIn(name, check.API_TESTS)
+            self.assertIn(name, check.WINDOWS_CPU_TESTS)
         self.assertIn("test_approved_workers_f2_compatibility.py", check.API_TESTS)
         self.assertIn("test_approved_workers_f2_compatibility.py", check.WINDOWS_CPU_TESTS)
 

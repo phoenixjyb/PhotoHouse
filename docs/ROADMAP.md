@@ -13,11 +13,14 @@ own later APK; this release preserved phone v74 / TV v30.
 
 **October 20 next increment:** [Library-wide indexed stacks](LIBRARY_PHOTO_STACKS.md)
 are implemented in source, including consistent collapsed pagination, private
-saved covers/separations and a CPU refresh entry point. Their source/CI integration
-is included in PR #101. Separately qualify the actual schema upgrade, Windows
-resource-bounded refresh host, migration/rollback and paired client delivery.
-Family burst-quality and Samsung acceptance remain required. The search release
-did not activate library-wide grouping.
+saved covers/separations and a CPU refresh entry point. Their initial source/CI
+integration is included in PR #101. PR #102 adds the [guarded migration and
+one-sweep host](PHOTO_STACK_OPERATIONS.md); its pinned candidate has passed a
+Windows-private copy rehearsal and native controller qualification. Resolve source
+integration/CI, then perform the approved schema/compatible-worker rollout and
+selected-library refresh. The search release did not activate library-wide grouping.
+Family burst-quality, Samsung acceptance and any later APK publication remain
+separate gates; this source-integration checkpoint does not claim live activation.
 
 **October 19 delivery:** [similar-photo stacks](SIMILAR_PHOTO_STACKS.md) add
 conservative, page-local suggestions from existing perceptual hashes and capture

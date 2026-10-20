@@ -26436,6 +26436,170 @@
       "notes": "Bind corrupt-artifact replay no-encoder assertion to the immediate call count, independent of earlier exclusion admission."
     },
     {
+      "feature": "photo-stack-guarded-migration-and-one-sweep-host",
+      "source_commit": "a4e39221a3dab8ee84bacc7c9226e7b3a71b112b",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "eab668ff9630941df556c8bfa06cb57a96ffcc9f176505d3fc55d057e08a4f59",
+          "before_sha256": "9f6406074491b133940c6192c2cb3bd9cc3510bd190ff45f54ed86aa868f89c1"
+        },
+        {
+          "path": "docs/LIBRARY_PHOTO_STACKS.md",
+          "sha256": "da0acb559e327d8a6b648d9a61f8f91ec45b3b0f54735174820241db94459696",
+          "before_sha256": "b2507f0eeb0ea5042ef4ab58e08210a79319048b707e42f836163b3c454b1807"
+        },
+        {
+          "path": "docs/PHOTO_STACK_OPERATIONS.md",
+          "sha256": "d558b063a7897b303e5c3bc3e62ef23df85be85d06c07a0ad760b3d6c5cc4e84"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "8398b3153eebfcabcae43664e77cf4a0d5b19729cbc8af32a52b531d091f3cf6",
+          "before_sha256": "9502f407fb1d8a020c752700a55e430ffb47bcba561046b7bf91b07e04abebaa"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "6f82d1b06342c3fd9c6fbf925b493cf337ac4971a62eefa2b666e7d40c4156c6",
+          "before_sha256": "758239b241467b992432801fa84477e540b727792d936293f8064db19904bf3b"
+        },
+        {
+          "path": "server/backend/app/access/library_photo_stacks.py",
+          "sha256": "d4f6ac15751a98484a495297395d6e626ae34c28dc7d4e18bbc18ebb8f11f002",
+          "before_sha256": "f3494d70da489ddbaf74667d4498f69a0cde0990fea3ee2ffbf36373674d04c2"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_index.py",
+          "sha256": "8e3b65187dc10f9adc6c9b1decdb215bc61c08cb3f3df39f1a3c250500ce8723",
+          "before_sha256": "3221f85e912cf4576673c20f95bdca71f8364ff48640146e9ae07946cdcd5143"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_worker.py",
+          "sha256": "097c776399807f3f72132d0a0fb4a3c76390fc57632c2410ff643b30c3b73583",
+          "before_sha256": "5f27f8bce052a6431c169e38d3129ba634ab6f657d348e6b44349bdfe147256e"
+        },
+        {
+          "path": "server/scripts/apply_library_photo_stack_schema.py",
+          "sha256": "19e23a79838b3a463a9ab3acb2111db18ea34c3a5c7deca54b69031b4dced714"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "f11193da9f507de1e1da80f475f93d8700e2b71fc34dcd6b46232eab916793ce",
+          "before_sha256": "5bf82874c26c69d750a994584bcfe89c0bc3beb0dc6f8e90b152cc4375c208a4"
+        },
+        {
+          "path": "server/scripts/qualify_library_photo_stacks.py",
+          "sha256": "cca62a75ec77e3a54ae86f04cac682ccd207a1f7ba27f280ac214d538e2ebc8b",
+          "before_sha256": "339bbd10a96f9dd2fbb99d9a4970a333d6fd0089a9aace0edaba72908262133e"
+        },
+        {
+          "path": "server/scripts/run_photo_stack_worker.py",
+          "sha256": "badf0036f3881a17c98559bf4fadaec18368751e8cdb00f3e5d21ec4b226942c"
+        },
+        {
+          "path": "server/tests/security/test_apply_library_photo_stack_schema.py",
+          "sha256": "8edb4122b75757a74116f7d2235eb2981729730603bd6c1408845306001322e9"
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_worker_host.py",
+          "sha256": "027dc97ee56a937235aca5c6b11a80e12eee708231de4ffa8e7f357de2792d63"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "a5424163979379ff1eafba22818913843135a2efc1e7744041bfa8a76a9918ef",
+          "before_sha256": "7dcc9bd44dcb9cebb074c3d1a0020ac0d7e96bf07dcb88fb9c0decd81413e9ae"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "a4d860ccbac20ba9024396e5b819967bcf3b7aad81a21a62c476a2f4a3db87d5",
+          "before_sha256": "45ae8c2730ccb3e29c5a17a5f5e50f0e76e927c40dd118878304d97b61e9293f"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "sha256": "7a8b563f5a06248c2466391250e7d0b69178dcafece96afbe7fb606b204912e7",
+          "before_sha256": "0807d6197278b73bf0050d9e1f649f7d78453a418e71d4b0977f1c5bd912ddbc"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "production_activation": false,
+      "notes": "Prepare explicit a0/e7-to-f2 paired-backup migration with bounded readonly V1-V4 history, one-sweep CPU host with private direct inputs/lock/cancellation/Windows supervision, and generated qualification through both real controller paths. Preserve originals, preferences and failed tasks; current search session owns API deployment. No production/native operation or APK publication."
+    },
+    {
+      "feature": "photo-stack-runtime-package-paths",
+      "source_commit": "2005d98ce536c3650071ec91f92481005f57a042",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "f11193da9f507de1e1da80f475f93d8700e2b71fc34dcd6b46232eab916793ce",
+          "sha256": "8214f6ec1d84034ac7130842a0d84508fa96f17fcf4991a292b5fc9d45b91ff2"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "a5424163979379ff1eafba22818913843135a2efc1e7744041bfa8a76a9918ef",
+          "sha256": "aa45f6c0e8b5639845109070d7383bf7aad462a10cff15f9de889b8a0b8205c3"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "production_activation": false,
+      "notes": "Keep the root-level operations guide in the monorepo documentation; staging remains strictly server-relative. Exercise both new entry points in the isolated extracted import check."
+    },
+    {
+      "feature": "photo-stack-api-package-schema-targets",
+      "source_commit": "094435d5ea180af604f4ebe0cb58f85f075a3d8d",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "8214f6ec1d84034ac7130842a0d84508fa96f17fcf4991a292b5fc9d45b91ff2",
+          "sha256": "e89c9d3ffbde561d1f117cfd46bee642f92b3b762182bf1bedde8f4a5f5e1750"
+        },
+        {
+          "path": "tools/inspect_api_package.py",
+          "before_sha256": "38caff01db900e34f387bb6f91f95300856318325a1154898fbd3e693feeadcb",
+          "sha256": "b2cdcb7cc679fb3cd8b9524c9b36bcec0df0ea9267fae5a1afe2cf2313bc7f1c"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "aa45f6c0e8b5639845109070d7383bf7aad462a10cff15f9de889b8a0b8205c3",
+          "sha256": "8fa973ee31ccc2135df47bda10148dd8a84dcc6f61115daac8448033711e52ee"
+        },
+        {
+          "path": "tools/tests/test_inspect_api_package.py",
+          "before_sha256": "b10fa649bac011c89b3aaeca069850fed77b90d2bfb567f871709f2f5a159f78",
+          "sha256": "edce4820891574816aefb9932f7abde779fc94d3d26f157d0d904b1675cb3268"
+        },
+        {
+          "path": "docs/PHOTO_STACK_OPERATIONS.md",
+          "before_sha256": "d558b063a7897b303e5c3bc3e62ef23df85be85d06c07a0ad760b3d6c5cc4e84",
+          "sha256": "df8737b79b4b2da5c6fc1e01f4fd68dde6917c5d02cfcc4e96eedf2c6cdd2c42"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "production_activation": false,
+      "notes": "Bind API source package and attestation to explicit a0/e7/f2 target, keeping a0 default bytes unchanged. Record installed launcher/schema admission and native evidence boundaries. No runtime payload source, live launcher, database or service changes."
+    },
+    {
+      "feature": "pr102-main-provenance-projection-1-20261021",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "8398b3153eebfcabcae43664e77cf4a0d5b19729cbc8af32a52b531d091f3cf6",
+          "sha256": "9502f407fb1d8a020c752700a55e430ffb47bcba561046b7bf91b07e04abebaa"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "6f82d1b06342c3fd9c6fbf925b493cf337ac4971a62eefa2b666e7d40c4156c6",
+          "sha256": "758239b241467b992432801fa84477e540b727792d936293f8064db19904bf3b"
+        }
+      ],
+      "branch_source_commit": "29f5d5ddf04b488112c315bf893a90caf5c2c7eb",
+      "fork_source_commit": "a4e39221a3dab8ee84bacc7c9226e7b3a71b112b",
+      "source_history_only": true,
+      "notes": "Project the independent main-branch baseline before replaying its unchanged historical feature records. This is ledger provenance, not a runtime or working-file rollback; the integrated resolution overlay follows."
+    },
+    {
       "feature": "guarded-search-release-documentation-20261020",
       "files": [
         {
@@ -26494,6 +26658,20 @@
       "notes": "Reconcile project/search summaries with the verified PR101 API/Web release; retain semantic OFF, separate Android publication and family/device gates, and keep private operator evidence outside source. Documentation only; no runtime operation."
     },
     {
+      "feature": "pr102-main-provenance-projection-2-20261021",
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "a4d860ccbac20ba9024396e5b819967bcf3b7aad81a21a62c476a2f4a3db87d5",
+          "sha256": "45ae8c2730ccb3e29c5a17a5f5e50f0e76e927c40dd118878304d97b61e9293f"
+        }
+      ],
+      "branch_source_commit": "29f5d5ddf04b488112c315bf893a90caf5c2c7eb",
+      "fork_source_commit": "a4e39221a3dab8ee84bacc7c9226e7b3a71b112b",
+      "source_history_only": true,
+      "notes": "Project the independent main-branch baseline before replaying its unchanged historical feature records. This is ledger provenance, not a runtime or working-file rollback; the integrated resolution overlay follows."
+    },
+    {
       "feature": "phone-v75-preparation-and-offline-semantic-exclusion-scorecard",
       "files": [
         {
@@ -26531,6 +26709,25 @@
       "semantic_search_enabled": false,
       "signed": false,
       "published": false
+    },
+    {
+      "feature": "pr102-main-provenance-projection-3-20261021",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "e89c9d3ffbde561d1f117cfd46bee642f92b3b762182bf1bedde8f4a5f5e1750",
+          "sha256": "5bf82874c26c69d750a994584bcfe89c0bc3beb0dc6f8e90b152cc4375c208a4"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "8fa973ee31ccc2135df47bda10148dd8a84dcc6f61115daac8448033711e52ee",
+          "sha256": "7dcc9bd44dcb9cebb074c3d1a0020ac0d7e96bf07dcb88fb9c0decd81413e9ae"
+        }
+      ],
+      "branch_source_commit": "29f5d5ddf04b488112c315bf893a90caf5c2c7eb",
+      "fork_source_commit": "a4e39221a3dab8ee84bacc7c9226e7b3a71b112b",
+      "source_history_only": true,
+      "notes": "Project the independent main-branch baseline before replaying its unchanged historical feature records. This is ledger provenance, not a runtime or working-file rollback; the integrated resolution overlay follows."
     },
     {
       "feature": "v75-candidate-evidence-and-portable-exclusion-scorecard",
@@ -26627,6 +26824,42 @@
       "android_application_tree_changed": false,
       "semantic_search_enabled": false,
       "production_runtime_changed": false
+    },
+    {
+      "feature": "pr102-integrated-search-tooling-and-qualified-grouping-20261021",
+      "source_commit": "d951b1b1ec0fb583084f67e972d4bd5f81dad5a3",
+      "integrated_main_commit": "29f5d5ddf04b488112c315bf893a90caf5c2c7eb",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "984905d457f9dd6dfa418dd4a546db1b8d083d43eb5cebcb6ff9d5bf4c60948e",
+          "sha256": "b35558d65d6996568efffc9a767b84f342aed7349f954064780e5bf416da4335"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "e8c1d0a8dea5c0f3ec64d92192dcc9d5fc96c29851290cf7ef1e08a3308fc526",
+          "sha256": "b93b427926596f56490c55cc958c03ee819dfe896ed04eea47acd59f48778200"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "101fbb8dec9a125551ac2507b61b6e6981e080da8813335f660b68be35abc621",
+          "sha256": "22e6aa237fa926a6c957ebb6642999e2989fd5bcea2cf533a0027ba7c999fd5c"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "56973971e6c12f2b6b9122a9455e750bb5c77d8890becba9465cb1bcba473dc5",
+          "sha256": "b50d0125afb806ea471f56b6ec865e7ea82c02b617bbe2e45df97d23534fecbd"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "1c16a76ff53f8bf5fa6a5a07544ef36f7b0719cfcbd2c042246f1c2d29588246",
+          "sha256": "6685f4585a13573be75a852a414c4a8889de8f18f7f57b002652c99b444b6a53"
+        }
+      ],
+      "live_runtime_changed": false,
+      "semantic_search_enabled": false,
+      "apk_publication": false,
+      "notes": "Resolve only documentation and provenance conflicts; retain main search-release/phone QA tooling and guarded grouping packaging. Keep the already-qualified d951b1b runtime artifact pinned for its separate approved rollout; this merge does not rebuild or publish it."
     }
   ]
 }
