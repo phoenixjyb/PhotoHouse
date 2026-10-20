@@ -26711,6 +26711,49 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Internal narrative-only v3 draft input with bounded selected evidence, original source-kind mapping and caption-to-chapter media checks; companion and saved v1/v2 contracts remain isolated. Synthetic provider coverage only. No source snapshot authorization/service, HTTP route, worker target, runtime flag, model installation or deployment is added."
+    },
+    {
+      "feature": "authorized-selected-story-snapshot-core-v1",
+      "source_commit": "41ca946db5f0a6e76a49c8302d415d2ba1501f25",
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_snapshot.py",
+          "before_sha256": null,
+          "sha256": "1353947899b723080abd5d45d734b415251879c8e9f8cbd929a2f206d8851a6d"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_snapshot.py",
+          "before_sha256": null,
+          "sha256": "ac1f8419aad2c26d42ca9ddb28507446bddc2c4f42207c56c571c3260816d141"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "f35df61d8fac52039a4bec539a84408b65937148fbe8737bbffa22a3159de8bd",
+          "sha256": "388d8412f34cb1e006eb44b2169889f6f285c0cd44d19585217594b02cddc01b"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "a98462d2057e183da8cd92f60e5da57e0b161b385dcfb4700f1765ea6b03d00a",
+          "sha256": "470f717dd2ede0b922f64face17128de3c6dccbff0453a2d95db06e572cfbe65"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "3b1dd164842e7dc9deefd54afac37ded190caa3a1e1a31367c56cce5860ce671",
+          "sha256": "b27942d105cb4de0c6efb112a5a536dd916ea7f244f47d50324e34cef1d36d99"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "d3d15920795e8cb945fc5917374a98cde1de3ce414fb32210e93cfda5de37610",
+          "sha256": "0f18b0ba789f390c8112f97e1831681eadaaeff3138252c65fefbc15e5273c27"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "isolated_core": true,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Internal bounded read-only source snapshot and fresh revalidation using current authorized story/media/source services, exact bylines, chapter allowlists and actor/revision binding. Frozen process-local bytes only; no operation registry, provider/admission wiring, HTTP route, DB mutation or runtime package inclusion. All 258 API package inputs unchanged; synthetic security checks do not qualify a live model, family UX or deployment."
     }
   ]
 }

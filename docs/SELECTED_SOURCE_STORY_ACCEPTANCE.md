@@ -30,8 +30,10 @@ The legacy narrative v1/v2 inputs require a saved story/book with positive
 revision. They remain unchanged. The source implementation in
 [`memory_narrative.py`](../server/backend/app/access/memory_narrative.py) adds
 the explicit v3 narrative input below; it does not invent a saved story,
-fabricate a revision or insert a job to prepare an unsaved draft. Source
-authorization/snapshot construction and the PH-A4 service are separate work.
+fabricate a revision or insert a job to prepare an unsaved draft. The isolated
+[source snapshot core](../server/backend/app/access/selected_story_snapshot.py)
+now authorizes and freezes its input. PH-A4 operation/service integration remains
+separate work.
 
 The new internal narrative **bundle version 3** is solely
 for selected-source preparation. It retains the closed v1 content fields and
@@ -85,8 +87,10 @@ sets. Input validation is not membership authorization.
 [The synthetic v3 suite](../server/tests/security/test_selected_story_narrative.py)
 exercises narrative-only admission, legacy isolation, bilingual/mixed source
 kinds, output rejection and mocked provider transport. It establishes no real
-model quality or locality. No route, source snapshot service, model selection
-or family-facing feature is added by this input variant.
+model quality or locality. The separate
+[snapshot suite](../server/tests/security/test_selected_story_snapshot.py)
+checks actual generated-library authorization and source revalidation. Neither
+core adds a route, operation service, model selection or family-facing feature.
 
 ## Frozen fictional evidence
 

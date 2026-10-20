@@ -1,8 +1,9 @@
 # Selected-source story draft contract
 
 This contract defines a bounded, review-only operation for preparing a story
-from media and source evidence the author selected. It is a proposal for PH-A4,
-not an existing endpoint or runtime capability. It leaves story ownership,
+from media and source evidence the author selected. The end-to-end PH-A4 service
+is a proposal; its internal snapshot core and narrative input are implemented
+without an endpoint or application wiring. It leaves story ownership,
 current source authorization, revision checks and explicit save in PhotoHouse.
 The current application facts below were checked against
 [`story_workspace.py`](../server/backend/app/access/story_workspace.py),
@@ -223,6 +224,58 @@ selection revision, ordered media, chapter source choices and source digests.
 Any difference yields a conflict and discards the generated output. Do not
 refresh the snapshot automatically and apply old prose to new sources.
 
+### Implemented internal snapshot core
+
+[`selected_story_snapshot.py`](../server/backend/app/access/selected_story_snapshot.py)
+implements `validate_request`, `resolve_snapshot` and `revalidate_snapshot`.
+Resolution uses the current `AccessRuntime` connection factory and one owned
+read transaction. It requires `story.write`; an existing target also requires
+the saved-story edit rule and exact base revision. Every selected media item and
+each chapter's explicit evidence choices are checked through `collect_items`.
+No source text, byline, digest or media metadata is accepted from the caller.
+
+The group profile remains the runtime's existing explicit setting. With it on,
+the existing shared-note resolver checks all group members and source origins.
+With it off, only current direct sources are eligible. Original note bylines
+are resolved in that same authorized transaction in either profile. Canonical
+shared notes are deduplicated in the provider bundle; chapter snapshot records
+retain their distinct eligible `selected_asset_ids`. A caption retains its
+derived source kind and its own media origin, with no invented byline.
+
+The process-local `SourceSnapshot` stores immutable canonical JSON bytes and
+keeps source text out of its representation. Its accessors return detached
+copies. The reference-only request is capped at 32 KiB, the deduplicated narrative
+bundle at 64 KiB, and the host snapshot at 384 KiB; this last bound accommodates
+one shared source displayed in several chapters without increasing the 48 KiB
+deduplicated selected-text budget. The host allocates a fresh operation UUID
+separate from the client request ID. Only explicit asset IDs are resolved;
+`stack_id: null` means no stack expansion was performed, not a claim that an
+asset has no stack relationships.
+
+The request digest binds the authenticated account, library and canonical
+request, including target, chapter titles, source choices and author direction.
+Source digests cover the current bounded preview evidence descriptor and the
+resolved origin, kind, revision and exact byline. They identify the selected
+projection, not full original records or factual entailment. Caption records
+expose no source revision; an edit that restores the identical current descriptor
+cannot be distinguished from unchanged content. Revalidation opens a fresh
+transaction, checks the same account and current permissions, then compares
+membership state, target revision, selection and source descriptors. It returns
+no replacement snapshot on a conflict. The existing selection revision also
+includes unchosen current evidence and group dependencies, so changes to those
+can conservatively invalidate preparation without sending them to the model.
+
+The [synthetic snapshot tests](../server/tests/security/test_selected_story_snapshot.py)
+exercise these checks without model, network or household data. This core is
+not constructed by the application and is intentionally outside the API runtime
+package allowlist. No DB writes, HTTP route, operation registry, retry recovery,
+expiry, admission or generation are implemented here. A future service must own
+those mechanisms, resolve after admission, and call revalidation after provider
+work before assembling a review result. Current token validity and account
+binding do not replace operation/session lifecycle fencing on logout, account
+switch, cancellation or a newer generation. Existing Save remains the final
+write authority.
+
 ## Proposed draft and citation result
 
 The preparation adapter's strict narrative output should reuse the existing
@@ -235,8 +288,8 @@ chapter evidence IDs, then enriches it into the client result below. The model
 echoes only supplied chapter IDs and selected source IDs in that closed output
 grammar; the host validates and resolves those references. Its unsaved input
 uses the PH-P2 bundle version 3, now supported only by the narrative validator
-and provider path. This does not construct/authorize the source snapshot or
-implement the PH-A4 service. The model cannot mint or
+and provider path. The internal snapshot core constructs and authorizes this
+input; the PH-A4 operation service remains separate. The model cannot mint or
 change identities, supply chapter titles, author citation metadata, choose
 chapter media, or set revisions, expiry or review state. This keeps the current
 validator useful while making the returned citation record server-derived.
