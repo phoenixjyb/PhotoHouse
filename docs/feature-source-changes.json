@@ -25899,6 +25899,20 @@
       "routes_added": false,
       "schema_changed": false,
       "notes": "Refuse index refresh/no-op on a bound primary without a current external deletion-history guard; preserve prior generation on refusal. Close synthetic SQLite handles explicitly for native cleanup and record the focused source/browser/QA-emulator evidence. No runtime activation or publication."
+    },
+    {
+      "feature": "library-photo-stack-journal-fixture-head-pin",
+      "source_commit": "34f5ed98219dca24ac68f12533dfb230c8600092",
+      "files": [
+        {
+          "path": "server/tests/security/test_initialize_original_deletions.py",
+          "sha256": "2e8199768624046ca7d0a381f2d2d2a516af961b8a43c63c008efc9daa5689b5",
+          "before_sha256": "64c02b5330aed3e33b957f040e3b5f71025f796592ed0c83677f1cb26ca0ad94"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "notes": "Match the generated current-head journal fixture assertion to the additive photo-stack revision. No journal/runtime behavior change, production operation or publication."
     }
   ]
 }
