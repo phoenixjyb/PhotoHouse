@@ -13,6 +13,7 @@ from .assistant_search import AssistantSearchReads
 from .discovery_transport import DiscoveryRuntime
 from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, SemanticUnsupported, rank_semantic
 from .service import AccessService
+from .search_exclusions import EXCLUSION_POLICY_VERSION, requires_semantic_clarification
 from .visual_candidates import MAX_CANDIDATES, VectorRecord, _canonical_components, canonical_vector_checksum
 from .visual_vector_artifacts import identity_sha256
 from .visual_vector_loader import _COLUMNS, _checked_root, _read_vector, _validated_rows
@@ -50,7 +51,8 @@ class SemanticSearchReads(AssistantSearchReads):
             ORDER BY a.id''', (index.library_id,))
         self._vector_rows = rows
         self._source_hashes = {str(aid): digest for aid, digest in hashes}
-        return {**extra, 'semantic_policy': 1,
+        return {**extra, 'semantic_policy': 3,
+                'exclusion_policy': EXCLUSION_POLICY_VERSION,
                 'joint_space_binding': self.encoder.binding.binding_sha256,
                 'semantic_query': d.digest(self.query), 'image_vector_records': rows,
                 'image_source_hashes': hashes}
@@ -96,6 +98,10 @@ class SemanticSearchReads(AssistantSearchReads):
         return vectors
 
     def _rank(self, found):
+        # _run has already checked membership, filters and the current source
+        # binding. Refuse before opening vectors, encoding, or restoring scores.
+        if requires_semantic_clarification(self.query):
+            raise SemanticUnsupported()
         vectors = self._vectors(found)
         check = self._check
         if self._server_snapshot is not None:

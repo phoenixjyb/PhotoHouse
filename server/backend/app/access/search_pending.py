@@ -178,8 +178,82 @@ def make_description_pending(query, binding, context, created_at):
     })
 
 
+def _exclusion_query(value):
+    """Validate an original query without normalizing away its exact surface."""
+    if type(value) is not str or not value.strip():
+        raise _invalid()
+    try:
+        if len(value.encode('utf-8', errors='strict')) > _MAX_QUERY_BYTES:
+            raise _invalid()
+    except UnicodeError:
+        raise _invalid() from None
+    if any(ord(char) < 32 and char not in '\n\t' or ord(char) == 127
+           for char in value):
+        raise _invalid()
+    return value
+
+
+def exclusion_context_digest(context):
+    """Hash the exact prior v2/v3 context, including the absence of one."""
+    if context is not None:
+        fields = {'library_id', 'binding', 'fingerprint', 'filters',
+                  'visible_ids', 'total'}
+        if (type(context) is not dict or
+                set(context) - {'search_version'} != fields or
+                ('search_version' in context and
+                 (type(context['search_version']) is not int or
+                  context['search_version'] not in (2, 3))) or
+                type(context.get('library_id')) is not str or not context['library_id'] or
+                type(context.get('binding')) is not str or
+                _BINDING.fullmatch(context['binding']) is None or
+                type(context.get('fingerprint')) is not str or
+                _BINDING.fullmatch(context['fingerprint']) is None or
+                type(context.get('filters')) is not dict or
+                type(context.get('visible_ids')) is not list or
+                any(type(ident) is not str for ident in context['visible_ids']) or
+                type(context.get('total')) is not int or context['total'] < 0):
+            raise _invalid()
+    try:
+        encoded = json.dumps(context, ensure_ascii=False, sort_keys=True,
+                             separators=(',', ':'), allow_nan=False).encode('utf-8')
+    except (TypeError, ValueError, UnicodeError):
+        raise _invalid() from None
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def make_exclusion_pending(query, binding, context, created_at):
+    """Create private state for one unsupported exclusion clarification."""
+    if (type(binding) is not str or _BINDING.fullmatch(binding) is None or
+            type(created_at) is not int or created_at < 0):
+        raise _invalid()
+    if context is not None:
+        exclusion_context_digest(context)
+        if context.get('binding') != binding:
+            raise _invalid()
+    return validate_pending({
+        'version': 1,
+        'question': 'exclusion',
+        'query': query,
+        'binding': binding,
+        'context_digest': exclusion_context_digest(context),
+        'created_at': created_at,
+    })
+
+
 def validate_pending(value):
     """Validate private pending structure without applying its expiry."""
+    if type(value) is dict and value.get('question') == 'exclusion':
+        fields = {'version', 'question', 'query', 'binding', 'context_digest', 'created_at'}
+        if (set(value) != fields or type(value['version']) is not int or
+                value['version'] != 1 or type(value['question']) is not str or
+                type(value['created_at']) is not int or value['created_at'] < 0 or
+                type(value['binding']) is not str or
+                _BINDING.fullmatch(value['binding']) is None or
+                type(value['context_digest']) is not str or
+                _BINDING.fullmatch(value['context_digest']) is None):
+            raise _invalid()
+        _exclusion_query(value['query'])
+        return dict(value)
     if type(value) is dict and value.get('question') == 'description':
         fields = {'version', 'question', 'query', 'binding', 'context_digest', 'created_at'}
         if (set(value) != fields or type(value['version']) is not int or

@@ -320,16 +320,26 @@ def _result_summary(value, library_id):
                   filters=filters, total=value['total'], has_more=value['has_more'],
                   effect=None if effect is None else dict(effect))
     if 'pending_intent' in value:
-        from .search_pending import description_context_digest, validate_pending
+        from .search_pending import (description_context_digest,
+                                     exclusion_context_digest, validate_pending)
         pending = validate_pending(value['pending_intent'])
         description = pending['question'] == 'description'
-        if (value['version'] not in (2, 3) or value['kind'] != 'clarification' or
-                (not description and ctx is not None) or
-                (description and (value['version'] != 3 or ctx is None or
-                                  ctx.get('search_version') != 3 or
-                                  pending['binding'] != ctx['binding'] or
-                                  pending['context_digest'] !=
-                                  description_context_digest(ctx)))):
+        exclusion = pending['question'] == 'exclusion'
+        invalid_pending = (value['version'] not in (2, 3) or
+                           value['kind'] != 'clarification')
+        if description:
+            invalid_pending = invalid_pending or (
+                value['version'] != 3 or ctx is None or
+                ctx.get('search_version') != 3 or
+                pending['binding'] != ctx['binding'] or
+                pending['context_digest'] != description_context_digest(ctx))
+        elif exclusion:
+            invalid_pending = invalid_pending or (
+                (ctx is not None and pending['binding'] != ctx['binding']) or
+                pending['context_digest'] != exclusion_context_digest(ctx))
+        else:
+            invalid_pending = invalid_pending or ctx is not None
+        if invalid_pending:
             raise ValueError('Invalid pending result')
         result['pending_intent'] = pending
     return json.loads(_json_value(result, 32 * 1024, 'result summary'))
@@ -975,12 +985,18 @@ class AssistantWorkspaceStore:
                 raise WorkspaceStoreConflict()
             pending_intent = summary.get('pending_intent')
             if pending_intent is not None:
-                from .search_pending import current_pending
-                if current_pending(pending_intent, now) is None:
+                from .search_pending import current_pending, validate_pending
+                if pending_intent.get('question') == 'exclusion':
+                    # An expired exclusion stays guarded until the user sends a
+                    # complete new search. Persisting the expired question lets
+                    # the transport ask for that full request after recovery.
+                    validate_pending(pending_intent)
+                elif current_pending(pending_intent, now) is None:
                     raise WorkspaceStoreConflict()
                 if pending_intent['query'] != row['input_text']:
                     prior_pending = self._pending_for(db, thread_id, account_id, library_id,
-                                                       row['expected_revision'], now)
+                        row['expected_revision'], now,
+                        include_expired=pending_intent.get('question') == 'exclusion')
                     if pending_intent != prior_pending:
                         raise WorkspaceStoreConflict()
                 elif pending_intent['created_at'] < row['created_at']:

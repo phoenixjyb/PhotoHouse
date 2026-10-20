@@ -26,6 +26,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/search_intent.py',
             'backend/app/access/search_intent_local.py',
             'backend/app/access/search_pending.py',
+            'backend/app/access/search_exclusions.py',
             'backend/app/access/search_evaluation.py',
             'backend/app/access/kinship.py',
             'backend/app/access/photo_stacks.py',
@@ -48,6 +49,8 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/check_private_search.py',
             'scripts/semantic_scene_cases.py',
             'scripts/semantic_scene_translation.py',
+            'scripts/semantic_scene_translation_fidelity.py',
+            'scripts/qualify_multilingual_scenes.py',
             'scripts/semantic_scene_comparison.py',
             'scripts/semantic_reviewed_projection.py',
             'scripts/serve_reviewed_semantic_text.py',
@@ -203,6 +206,8 @@ class StagingPackageTests(unittest.TestCase):
                 'import check_private_search\n'
                 'import export_visual_people_review, inspect_reviewed_people_readiness, reviewed_people_source\n'
                 'from app.access.search_evaluation import evaluate_cases\n'
+                'from app.access.search_exclusions import requires_exclusion_clarification\n'
+                "assert requires_exclusion_clarification('不在grass上的dog')\n"
                 'from app.access.semantic_configuration import load_semantic_runtime\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'
@@ -236,10 +241,10 @@ class StagingPackageTests(unittest.TestCase):
                 'import sys\nfrom pathlib import Path\n'
                 f'root=Path({str(root)!r})\n'
                 "sys.path.insert(0,str(root/'scripts'))\n"
-                'import qualify_semantic_scenes,semantic_scene_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes\n'
-                'for module in (qualify_semantic_scenes,semantic_scene_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes):\n'
+                'import qualify_multilingual_scenes,semantic_scene_translation_fidelity,qualify_semantic_scenes,semantic_scene_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes\n'
+                'for module in (qualify_multilingual_scenes,semantic_scene_translation_fidelity,qualify_semantic_scenes,semantic_scene_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes):\n'
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
-                "assert not {'torch','torchvision','open_clip','numpy','PIL'} & set(sys.modules)\n"
+                "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'
                 'captured=io.StringIO()\n'
                 'with redirect_stdout(captured): assert serve_reviewed_semantic_text.run([])==0\n'
@@ -247,7 +252,10 @@ class StagingPackageTests(unittest.TestCase):
                 'captured=io.StringIO()\n'
                 'with redirect_stdout(captured): assert qualify_reviewed_semantic_scenes.run([])==0\n'
                 "assert json.loads(captured.getvalue())['private_files_read'] is False\n"
-                "assert not {'torch','torchvision','open_clip','numpy','PIL'} & set(sys.modules)\n"
+                'captured=io.StringIO()\n'
+                'with redirect_stdout(captured): assert qualify_multilingual_scenes.run([])==0\n'
+                "assert json.loads(captured.getvalue())['private_files_read'] is False\n"
+                "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'raise SystemExit(qualify_semantic_scenes.run([]))\n'
             )
             result = subprocess.run([sys.executable, '-I', '-B', '-c', program],
