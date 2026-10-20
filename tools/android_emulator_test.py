@@ -45,7 +45,7 @@ def execute(args, run=subprocess.run):
             raise Refused("The selected emulator is unavailable")
         if command(prefix + ["get-serialno"]) != args.serial:
             raise Refused("The selected device identity changed")
-        if command(prefix + ["shell", "getprop", "ro.kernel.qemu"]) != "1":
+        if command(prefix + ["shell", "getprop", "ro.boot.qemu"]) != "1":
             raise Refused("The selected device is not an emulator")
 
     ensure_emulator()

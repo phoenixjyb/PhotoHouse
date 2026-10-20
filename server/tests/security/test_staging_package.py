@@ -48,6 +48,7 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/search_intent_cases.py',
             'scripts/check_private_search.py',
             'scripts/semantic_scene_cases.py',
+            'scripts/semantic_exclusion_cases.py',
             'scripts/semantic_scene_translation.py',
             'scripts/semantic_scene_translation_fidelity.py',
             'scripts/qualify_multilingual_scenes.py',
@@ -245,8 +246,8 @@ class StagingPackageTests(unittest.TestCase):
                 'import sys\nfrom pathlib import Path\n'
                 f'root=Path({str(root)!r})\n'
                 "sys.path.insert(0,str(root/'scripts'))\n"
-                'import qualify_multilingual_scenes,semantic_scene_translation_fidelity,qualify_semantic_scenes,semantic_scene_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes\n'
-                'for module in (qualify_multilingual_scenes,semantic_scene_translation_fidelity,qualify_semantic_scenes,semantic_scene_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes):\n'
+                'import qualify_multilingual_scenes,semantic_scene_translation_fidelity,qualify_semantic_scenes,semantic_scene_cases,semantic_exclusion_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes\n'
+                'for module in (qualify_multilingual_scenes,semantic_scene_translation_fidelity,qualify_semantic_scenes,semantic_scene_cases,semantic_exclusion_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes):\n'
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'

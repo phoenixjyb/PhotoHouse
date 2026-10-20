@@ -1,5 +1,11 @@
 # Protected text and reviewed-person search, first slice
 
+**Current delivery reference:** the [October 20 search release](SEARCH_RELEASE_2026-10-20.md)
+records the merged and verified API/Web source `b170a97`, its supported search
+layers and remaining gates. Semantic search remains OFF. The first-slice
+preparation statements below retain their October 15 scope and do not describe
+the later release's deployment state.
+
 The release preparation adds an explicit production search-v2 source allowance
 of 64 MiB, with legacy discovery still at 16 MiB. Both share the original
 admission pool and retain the existing row/index/response limits. Search v2 uses

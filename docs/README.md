@@ -35,7 +35,8 @@ use dated release/qualification records as evidence for their exact revision.
 | Title from authored chapter wording | [Chapter-opening title contract](CHAPTER_OPENING_TITLE.md) |
 | Guided phone story creation | [Flow, draft boundary and trial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) |
 | Failed story/memoir images | [Preview recovery](READER_PREVIEW_RECOVERY.md) |
-| Natural-language search diagnosis and next work | [Search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md), [new-session handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md) |
+| Current search delivery, capabilities and remaining gates | [October 20 guarded-search release](SEARCH_RELEASE_2026-10-20.md), [exclusion/clarification contract](SCENE_QUERY_REWORDING.md), [bilingual behavior](BILINGUAL_SEARCH_REQUIREMENTS.md) |
+| Earlier natural-language search diagnosis | [October 15 search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md), [historical redesign handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md) |
 | Private search coverage, relevance cases and video dates | [Readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md) |
 | Installed bilingual intent model quality | [October 16 native trial](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md) |
 | Gated conversational image-semantic retrieval | [Scene-search Web flow and recovery contract](ASSISTANT_SCENE_SEARCH.md), [semantic pilot](SEMANTIC_SEARCH_PILOT.md), [reviewed scene-query provider](REVIEWED_SCENE_PROVIDER.md), [offline reviewed measurement](REVIEWED_SCENE_MEASUREMENT.md) |
@@ -44,8 +45,15 @@ use dated release/qualification records as evidence for their exact revision.
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |
 
-Latest phone delivery: [v69 folder-upload recovery](../clients/android/docs/PHONE_V69_RELEASE_2026-10-16.md).
-API/Web delivery is tracked separately in [Project Status](PROJECT_STATUS.md).
+Latest recorded phone delivery: [v74 preparation details](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md).
+The [v75 gallery/search candidate](../clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md)
+records the signed preparation snapshot; [release PR #104](https://github.com/phoenixjyb/PhotoHouse/pull/104)
+tracks the subsequent UI qualification and publication result. The
+[offline exclusion scorecard](SEMANTIC_EXCLUSION_QUALIFICATION.md) has generated-vector
+validation only; semantic search remains disabled.
+The [October 20 API/Web search release](SEARCH_RELEASE_2026-10-20.md) preserved
+phone v74 / TV v30 and kept semantic search OFF. API/Web and client publication
+remain separate in [Project Status](PROJECT_STATUS.md).
 
 Earlier continuation: [October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and
 [v60 local candidate](../clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md).

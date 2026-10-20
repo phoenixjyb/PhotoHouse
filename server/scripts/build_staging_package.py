@@ -267,6 +267,7 @@ FILES = (
     'scripts/semantic_pair_cases.py',
     'scripts/qualify_semantic_pair.py',
     'scripts/semantic_scene_cases.py',
+    'scripts/semantic_exclusion_cases.py',
     'scripts/semantic_scene_translation.py',
     'scripts/semantic_scene_translation_fidelity.py',
     'scripts/qualify_multilingual_scenes.py',
