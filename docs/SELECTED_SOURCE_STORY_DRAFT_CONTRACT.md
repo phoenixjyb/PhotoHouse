@@ -20,6 +20,10 @@ The revised [household plan](LOCAL_AGENT_DEVELOPMENT_PLAN.md) makes this a first
 product-value candidate alongside the existing saved-story drafting path. It
 does not require a general agent loop or PH-A1's three-tool ceiling. Reconcile
 shared provider admission and the story-specific baseline before implementation.
+The [PH-P2 acceptance contract](SELECTED_SOURCE_STORY_ACCEPTANCE.md) freezes that
+comparison and specifies the required internal draft-bundle variant. The
+[PH-C0 admission contract](HOUSEHOLD_INFERENCE_ADMISSION.md) defines the unwired
+capacity primitive; it is not a queue added to this proposal's HTTP API.
 
 ## Existing source and save behavior
 
@@ -222,13 +226,17 @@ refresh the snapshot automatically and apply old prose to new sources.
 ## Proposed draft and citation result
 
 The preparation adapter's strict narrative output should reuse the existing
-`validate_narrative` input grammar: `version`, `title`, ordered `chapters`
+`validate_narrative` result grammar: `version`, `title`, ordered `chapters`
 with `id`, `narration` and `source_ids`, `questions`, and
-`needs_review: true`. Its source bundle uses the current narrative validator's
-closed bundle types. The host validates this output against the exact selected
+`needs_review: true`. Its source bundle uses the closed PH-P2 v3 input variant,
+reusing chapter/content rules while preserving each source's original kind.
+The host validates this output against the exact selected
 chapter evidence IDs, then enriches it into the client result below. The model
 echoes only supplied chapter IDs and selected source IDs in that closed output
-grammar; the host validates and resolves those references. It cannot mint or
+grammar; the host validates and resolves those references. Its unsaved input
+requires the separately specified PH-P2 bundle version 3; the current validator
+and provider still reject unsaved targets and have not been changed to support
+it. It cannot mint or
 change identities, supply chapter titles, author citation metadata, choose
 chapter media, or set revisions, expiry or review state. This keeps the current
 validator useful while making the returned citation record server-derived.

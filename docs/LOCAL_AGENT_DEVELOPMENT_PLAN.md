@@ -225,7 +225,15 @@ qualified; a synthetic occupancy signal is not proof of shared GPU admission.
 | PH-A3 one client journey | Selected sources, prepare/wait, inspect/edit, review, explicit save and recover | Useful measured benefit plus matching native provider and independent family/device acceptance |
 | Later retrieval improvement | Typed intent/clarification proposals with exclusion-preserving validation | Separate relevance and regression gates; no silent semantic-search activation |
 
-PH-C0 and candidate qualification can proceed alongside fixture/contract work.
+The [PH-P2 acceptance contract](SELECTED_SOURCE_STORY_ACCEPTANCE.md) now freezes
+six story comparison cases, adoption thresholds and the next provider input
+delta. The [PH-C0 contract](HOUSEHOLD_INFERENCE_ADMISSION.md) records current
+consumer ownership and an isolated, tested admission primitive. The primitive
+is unwired: profile owners, provider-wide coordination and a public waiting
+protocol remain separate integration work. Neither comparison has model/UX
+measurements yet; bundle version 3 is specified, not implemented.
+
+PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access
 is unavailable. Shipping or activating it cannot. Existing upload, indexing,
 worker-recovery and process-safe household connection workstreams retain their

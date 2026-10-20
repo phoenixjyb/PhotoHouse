@@ -26618,6 +26618,57 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Documentation-only PhotoHouse plan revision: workflow-specific capabilities, independent family conversations, proposed bounded shared inference scheduling and story-first evaluation. Original PH-A1/probe source and frozen oracles remain unchanged; waiting, generation capacity and native suitability are not implemented or measured by this revision."
+    },
+    {
+      "feature": "household-story-acceptance-and-isolated-admission-core",
+      "source_commit": "ad0ec609e773e8f37ee7579305326decfad98c56",
+      "files": [
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": null,
+          "sha256": "b5f53e5f4d3be3d19122056a340ff3491002569768e14f10bd8d69fc7a4a1c6b"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": null,
+          "sha256": "8b4ec3e214ad4db1b8518705e81611dd4165b1d71316c35e02fe120c777473f5"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "be2b39454a52e554cc04b202d9193e767949a53baa4e7401be284c2b49219a66",
+          "sha256": "eff77b6bc5b23a6a51faf70c72f5e37faf17383fb5b9e84e374c521221f50fc6"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "14f6df49b4d986b2376311609e3b18e8aa4e09d10f683d3bf98f769b5e319e8e",
+          "sha256": "13da3cf0b91e8dcb69697bebd1294923e27b200d6342dc1c65c36da4d889a1cd"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "e254b802ad02b72e8fe686eb78ecc6d083b2e654c034d4d4d9af3a700b420bc8",
+          "sha256": "59404cfcad1591ee3873837bb2f67b59fa204d497058bfb01cb6f4b89a93483d"
+        },
+        {
+          "path": "server/backend/app/access/inference_admission.py",
+          "before_sha256": null,
+          "sha256": "9b881cc6c92874419cf67949c74d58145b770a906ae074c358c678408c8a2146"
+        },
+        {
+          "path": "server/tests/security/test_inference_admission.py",
+          "before_sha256": null,
+          "sha256": "301b6828495a09474aa22240cb0ebb79760abb09d8c936a57afb3f6271fa55f0"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "746c800fd2e07637e9854cd9e08796241c65e03463957d7023eb91602dfc6677",
+          "sha256": "2d6b99c117d8f2f70f47265a36c0dc24a99822eff281267f24218da12454755e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Frozen PH-P2 story comparison and explicit future draft-bundle input delta; PH-C0 consumer inventory, unwired event-loop admission primitive and CPU ownership/race tests. No app construction, HTTP/profile/worker wiring, API package inclusion, model generation or native capacity qualification."
     }
   ]
 }

@@ -14,6 +14,7 @@ else:
 
 ROOT = Path(__file__).resolve().parents[1]
 API_TESTS = (
+    "test_inference_admission.py",
     "test_assistant_agent_tools.py", "test_assistant_agent_workspace.py",
     "test_discovery_text_validation.py",
     "test_refreshing_people.py", "test_refreshing_people_http.py",
@@ -107,6 +108,7 @@ MEMORY_TESTS = (
     "test_memory_jobs.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_memory_narrative.py", "test_memory_processing.py", "test_memory_transport.py",
 )
 WINDOWS_CPU_TESTS = (
+    "test_inference_admission.py",
     "test_approved_workers_f2_compatibility.py",
     "test_photo_stack_index.py", "test_library_photo_stacks.py", "test_library_photo_stacks_qualification.py",
     "test_upload_socketpair_guard.py", "test_resumable_upload.py",
