@@ -25,6 +25,40 @@ Web assets, grouping need not replace them. A schema maintenance window may stop
 and restart the same verified API action; the new worker can use a separate pinned
 source root. Decide this from the actual final source, not a dated directory name.
 
+## Installed launcher compatibility
+
+Runtime schema support is only one layer of admission. Inspect the actual API
+entry, worker entry/launcher, manifest, payload guard and runtime dependencies.
+A launcher or release plan can still pin a0 even when its imported runtime admits
+f2. Never restart an unqualified old launcher against the migrated database.
+
+Prepare a complete new source closure and its matching manifest/entry pins in new
+private directories. Preserve configuration, reviewed search artifacts, semantic
+search OFF, playback guards, memory limits, stop controls and task non-action
+settings. Do not edit installed bytecode, manifests or hashes in place to bypass
+admission. Unknown payload compatibility blocks cutover until resolved.
+
+The API package builder and inspector accept an explicit `--schema-revision`
+(a0, e7 or f2); both default to a0 for existing preparation paths. For an f2
+candidate, select f2 in **both** commands. The inspector reconstructs the exact
+archive against that operator-selected target and rejects a target mismatch.
+This field is a source-package contract, not database inspection, migration,
+launcher qualification or activation. Approved-upload and released-caption
+companion packages have their own explicit target and qualification contracts.
+
+The replacement API entry should distinguish an explicit read-only a0 preparation
+check from the f2 check/production mode. Its production branch must require f2;
+it must not silently accept a0 when an approved migration did not finish. The CPU
+readiness launcher, CPU entry and source manifest must agree on f2 together.
+Review frozen image/face/video and caption entry chains separately. Existing model
+execution and resource protections must survive any replacement.
+
+Only assets with usable time and perceptual hashes can join a similarity group.
+Measure coverage before activation. Unindexed photos remain visible individually;
+missing hashes are not evidence that photos are dissimilar. A broad hash backfill
+needs its own reviewed scope and bounded worker; ordinary approved-upload workers
+must not claim unrelated legacy assets or reset historical failures.
+
 ## Guarded migration library
 
 [`apply_library_photo_stack_schema.py`](../server/scripts/apply_library_photo_stack_schema.py)
@@ -145,8 +179,13 @@ Windows task are operator choices for the later reviewed deployment.
 ## Evidence boundaries
 
 The earlier native rehearsal proved the preceding generated candidate and its
-ten cases. The current qualifier now also calls this guarded migration controller
-and the one-sweep host, with twelve generated cases. Its changed source needs a
-new native qualification. Unit tests and extracted-package execution are source
-checks. They do not establish production quiescence, native host acceptance,
-false-positive similarity quality, family usability or deployment completion.
+ten cases. The guarded-controller and one-sweep candidate at source `094435d`
+subsequently passed all twelve generated cases on Windows, with independent
+readback of all 258 unchanged source inputs. That operation did not activate any
+production schema, task or service. Retain the exact input/report hashes when
+carrying this evidence forward; changed launcher or companion code needs its own
+qualification. A new package target does not itself requalify its runtime.
+
+Unit tests, extracted-package checks and native generated fixtures do not establish
+production quiescence, real-data similarity quality, family usability, production
+restore/replay or power-loss recovery, or deployment completion.

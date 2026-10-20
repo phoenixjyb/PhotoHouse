@@ -292,6 +292,8 @@ class StagingPackageTests(unittest.TestCase):
     def test_archive_is_deterministic_complete_and_contains_no_private_discovery(self):
         files={name:('synthetic source '+name).encode() for name in package.FILES}
         first=package.package_bytes('a'*40,files)
+        self.assertEqual(first,package.package_bytes('a'*40,files,
+                                                     schema_revision=package.DEFAULT_MIGRATION_REVISION))
         self.assertEqual(first,package.package_bytes('a'*40,dict(reversed(list(files.items())))))
         with zipfile.ZipFile(io.BytesIO(first)) as archive:
             self.assertEqual(set(archive.namelist()),set(package.FILES)|{'manifest.json'})
@@ -312,6 +314,34 @@ class StagingPackageTests(unittest.TestCase):
             self.assertNotIn('backend/app/config.py',archive.namelist())
             self.assertNotIn('backend/app/legacy_main.py',archive.namelist())
             self.assertFalse(any(name.endswith(('.sqlite','.pem','.env','.pt')) for name in archive.namelist()))
+
+    def test_explicit_supported_schema_targets_are_bound_in_manifest(self):
+        files={name:('synthetic source '+name).encode() for name in package.FILES}
+        for revision in ('e7c1a9d5b304','f2a8c5d1e640'):
+            with self.subTest(revision=revision):
+                archive_bytes=package.package_bytes('a'*40,files,schema_revision=revision)
+                with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+                    manifest=json.loads(archive.read('manifest.json'))
+                self.assertEqual(manifest['migration_revision'],revision)
+                self.assertFalse(manifest['dependencies_included'] or
+                                 manifest['private_configuration_included'])
+
+    def test_unknown_schema_target_is_refused(self):
+        files={name:b'synthetic' for name in package.FILES}
+        for revision in ('unknown','a0c9d2e4f817x',None):
+            with self.subTest(revision=revision), self.assertRaises(ValueError):
+                package.package_bytes('a'*40,files,schema_revision=revision)
+
+    def test_cli_schema_revision_is_recorded_in_archive_manifest(self):
+        files={name:('synthetic source '+name).encode() for name in package.FILES}
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory).resolve()/'f2-source.zip'
+            with patch.object(package,'source_files',return_value=files):
+                self.assertEqual(package.main(['--commit','a'*40,'--out',str(output),
+                    '--schema-revision','f2a8c5d1e640']),0)
+            with zipfile.ZipFile(output) as archive:
+                manifest=json.loads(archive.read('manifest.json'))
+            self.assertEqual(manifest['migration_revision'],'f2a8c5d1e640')
 
     def test_extra_missing_or_traversal_files_are_refused(self):
         files={name:b'synthetic' for name in package.FILES}

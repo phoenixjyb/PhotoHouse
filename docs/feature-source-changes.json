@@ -26544,6 +26544,41 @@
       "schema_changed": false,
       "production_activation": false,
       "notes": "Keep the root-level operations guide in the monorepo documentation; staging remains strictly server-relative. Exercise both new entry points in the isolated extracted import check."
+    },
+    {
+      "feature": "photo-stack-api-package-schema-targets",
+      "source_commit": "094435d5ea180af604f4ebe0cb58f85f075a3d8d",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "8214f6ec1d84034ac7130842a0d84508fa96f17fcf4991a292b5fc9d45b91ff2",
+          "sha256": "e89c9d3ffbde561d1f117cfd46bee642f92b3b762182bf1bedde8f4a5f5e1750"
+        },
+        {
+          "path": "tools/inspect_api_package.py",
+          "before_sha256": "38caff01db900e34f387bb6f91f95300856318325a1154898fbd3e693feeadcb",
+          "sha256": "b2cdcb7cc679fb3cd8b9524c9b36bcec0df0ea9267fae5a1afe2cf2313bc7f1c"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "aa45f6c0e8b5639845109070d7383bf7aad462a10cff15f9de889b8a0b8205c3",
+          "sha256": "8fa973ee31ccc2135df47bda10148dd8a84dcc6f61115daac8448033711e52ee"
+        },
+        {
+          "path": "tools/tests/test_inspect_api_package.py",
+          "before_sha256": "b10fa649bac011c89b3aaeca069850fed77b90d2bfb567f871709f2f5a159f78",
+          "sha256": "edce4820891574816aefb9932f7abde779fc94d3d26f157d0d904b1675cb3268"
+        },
+        {
+          "path": "docs/PHOTO_STACK_OPERATIONS.md",
+          "before_sha256": "d558b063a7897b303e5c3bc3e62ef23df85be85d06c07a0ad760b3d6c5cc4e84",
+          "sha256": "df8737b79b4b2da5c6fc1e01f4fd68dde6917c5d02cfcc4e96eedf2c6cdd2c42"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "production_activation": false,
+      "notes": "Bind API source package and attestation to explicit a0/e7/f2 target, keeping a0 default bytes unchanged. Record installed launcher/schema admission and native evidence boundaries. No runtime payload source, live launcher, database or service changes."
     }
   ]
 }

@@ -27,7 +27,7 @@ from app.access.private_storage import require_private_file, stable_stat_identit
 COMMIT = re.compile(r'[0-9a-f]{40}\Z')
 DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 MAX_ARCHIVE_BYTES = 32 * 1024**2
-REFUSAL_CODES = frozenset(('explicit_identity_invalid', 'archive_path_invalid', 'archive_identity_invalid', 'archive_changed', 'archive_hash_mismatch', 'archive_source_mismatch', 'git_identity_invalid', 'git_path_invalid', 'git_file_invalid', 'git_changed', 'git_hash_mismatch', 'source_inspection_timeout', 'git_output_limit', 'local_git_failed', 'builder_path_invalid', 'builder_size_invalid', 'builder_changed', 'builder_not_pinned', 'builder_root_invalid', 'cli_arguments_invalid'))
+REFUSAL_CODES = frozenset(('explicit_identity_invalid', 'archive_path_invalid', 'archive_identity_invalid', 'archive_changed', 'archive_hash_mismatch', 'archive_source_mismatch', 'git_identity_invalid', 'git_path_invalid', 'git_file_invalid', 'git_changed', 'git_hash_mismatch', 'source_inspection_timeout', 'git_output_limit', 'local_git_failed', 'builder_path_invalid', 'builder_size_invalid', 'builder_changed', 'builder_not_pinned', 'builder_root_invalid', 'schema_revision_invalid', 'cli_arguments_invalid'))
 
 
 class Refused(ValueError):
@@ -185,7 +185,8 @@ def _read_archive(path, expected_identity=None):
     return raw, before
 
 
-def inspect(archive, expected_commit, expected_sha256, git_executable, git_sha256):
+def inspect(archive, expected_commit, expected_sha256, git_executable, git_sha256,
+            schema_revision='a0c9d2e4f817'):
     if (not isinstance(expected_commit, str) or not COMMIT.fullmatch(expected_commit) or
             not isinstance(expected_sha256, str) or not DIGEST.fullmatch(expected_sha256)):
         raise Refused('explicit_identity_invalid')
@@ -195,11 +196,13 @@ def inspect(archive, expected_commit, expected_sha256, git_executable, git_sha25
         raise Refused('archive_hash_mismatch')
     git = LocalGit(git_executable, git_sha256)
     builder = _builder(expected_commit, git)
+    if type(schema_revision) is not str or schema_revision not in builder.MIGRATION_REVISIONS:
+        raise Refused('schema_revision_invalid')
     # Reconstruct from immutable regular Git blobs, with the reviewed builder's
     # member/expanded-size limits and exact source allowlist. Comparing the whole
     # canonical ZIP refuses every extra or changed member and ZIP metadata.
     files = builder.source_files(expected_commit)
-    canonical = builder.package_bytes(expected_commit, files)
+    canonical = builder.package_bytes(expected_commit, files, schema_revision=schema_revision)
     if len(canonical) > MAX_ARCHIVE_BYTES or canonical != raw:
         raise Refused('archive_source_mismatch')
     # Reopen and hash after Git traversal; restored Windows modification time
@@ -211,6 +214,7 @@ def inspect(archive, expected_commit, expected_sha256, git_executable, git_sha25
     return {
         'schema': 1, 'kind': 'api_source_package_inspection', 'status': 'verified',
         'source_commit': expected_commit, 'source_files': len(files),
+        'target_schema_revision': schema_revision,
         'zip_sha256': expected_sha256, 'bytes': len(raw), 'git_sha256': git_sha256,
         'source_only': True, 'private_configuration_included': False,
         'dependencies_included': False, 'extracted': False,
@@ -231,9 +235,12 @@ def main(argv=None):
     parser.add_argument('--sha256', required=True)
     parser.add_argument('--git', required=True, type=Path, help='Reviewed absolute local Git executable')
     parser.add_argument('--git-sha256', required=True)
+    parser.add_argument('--schema-revision', default='a0c9d2e4f817',
+                        help='Explicit target schema used to reconstruct the expected package')
     try:
         args = parser.parse_args(argv)
-        print(json.dumps(inspect(args.archive, args.commit, args.sha256, args.git, args.git_sha256), sort_keys=True))
+        print(json.dumps(inspect(args.archive, args.commit, args.sha256, args.git, args.git_sha256,
+                                 schema_revision=args.schema_revision), sort_keys=True))
         return 0
     except (Refused, ValueError, OSError, UnicodeError, subprocess.SubprocessError) as error:
         code = str(error) if isinstance(error, Refused) and str(error) in REFUSAL_CODES else 'inputs_unavailable'
