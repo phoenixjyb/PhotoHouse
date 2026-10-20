@@ -26420,6 +26420,20 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Require Chinese and English exclusions to refuse before encoder use; retain separate injected provider-refusal coverage for positive wording and GET recovery."
+    },
+    {
+      "feature": "guarded-search-browser-corrupt-replay-counter",
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_scene_browser.cjs",
+          "before_sha256": "697982010f6954f4a596a221227bcf3637cbc6146e306fd047e85a4e03d93b02",
+          "sha256": "6a235d3190ea012b29d888a5a3ad39cf1a4d8b654ba9d8e10918bce99d6cba05"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Bind corrupt-artifact replay no-encoder assertion to the immediate call count, independent of earlier exclusion admission."
     }
   ]
 }

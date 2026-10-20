@@ -196,9 +196,10 @@ async function installSyntheticTransport(targetContext){
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   checkpoint('Chinese and English 390px 150-percent dialog renders keep scope, input, acknowledgement and ranking readable');
   // Revalidate the actual latest owned scene after synthetic artifact damage.
+  const encoderBeforeCorrupt=(await rpc({command:'scene-stats'})).calls;
   await rpc({command:'scene-corrupt'});
   await reopen();await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
-  assert.equal(await page.locator('#assistant-results .assistant-result').count(),0);assert.equal(await page.locator('#assistant-scene-ranking').isVisible(),false);assert.equal((await rpc({command:'scene-stats'})).calls,calls+1);
+  assert.equal(await page.locator('#assistant-results .assistant-result').count(),0);assert.equal(await page.locator('#assistant-scene-ranking').isVisible(),false);assert.equal((await rpc({command:'scene-stats'})).calls,encoderBeforeCorrupt);
   checkpoint('Corrupt artifact readback withholds old result cards without model replay');
   // Current conditions can only be changed through a full ordinary search.
   const ordinaryScope=await ordinary('find photos of Sample Child in 2026');assert.equal(ordinaryScope.response.result.kind,'results');
