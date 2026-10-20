@@ -23,7 +23,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_REVISION = 'a0c9d2e4f817'
-SUPPORTED_SCHEMA_REVISIONS = (SCHEMA_REVISION, 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304')
+SUPPORTED_SCHEMA_REVISIONS = (SCHEMA_REVISION, 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304', 'f2a8c5d1e640')
 
 
 SCHEMA = '''

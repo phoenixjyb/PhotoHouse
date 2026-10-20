@@ -4,7 +4,10 @@ Application startup executes no DDL. Real installations need the reviewed
 additive migration before the default-off group domain can be enabled.
 """
 
+from .photo_stack_schema import REVISION as PHOTO_STACK_REVISION
+
 GROUP_REVISION = 'e7c1a9d5b304'
+GROUP_REVISIONS = frozenset({GROUP_REVISION, PHOTO_STACK_REVISION})
 TABLE = 'access_memory_groups'
 REVISION_TABLE = 'access_memory_group_revisions'
 

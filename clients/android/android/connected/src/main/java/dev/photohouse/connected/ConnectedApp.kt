@@ -1435,9 +1435,21 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     }
                                     state.gallery?.let { gallery ->
                                         if (gallery.items.isEmpty()) item { Text(t("No matching items on this page", "此页暂无符合条件的内容")) }
+                                        if (state.photoStackScope == "library") item {
+                                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(t("Cover and separate choices are saved for your account", "封面和单独显示设置已保存到你的账户"),
+                                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                OutlinedButton(onClick = store::resetPhotoStackPreferences,
+                                                    enabled = !state.busy && !state.photoStackPreferenceBusy,
+                                                    modifier = Modifier.fillMaxWidth().testTag("photo-stack-reset-preferences")) {
+                                                    Text(if (state.photoStackPreferenceBusy) t("Saving…", "正在保存…") else t("Reset all photo stack choices", "重置全部相似照片设置"))
+                                                }
+                                            }
+                                        }
                                         val stackGroups = state.photoStacks.orEmpty().filterNot { it.id in state.separatePhotoStackIds }
                                         if (stackGroups.isNotEmpty()) item {
                                             OutlinedButton(onClick = store::toggleAllPhotos,
+                                                enabled = !state.busy && !state.photoStackPreferenceBusy,
                                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("photo-stacks-all-toggle")) {
                                                 Text(if (state.showAllPhotos) t("Group similar photos", "收起相似照片") else t("Show all photos", "显示全部照片"))
                                             }
@@ -1478,7 +1490,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                                     store.toggleAllPhotos()
                                                                     store.collapsePhotoStack(group.id)
                                                                 } else store.togglePhotoStack(group.id)
-                                                            }, modifier = Modifier.testTag("photo-stack-toggle-${group.id}")) {
+                                                            }, enabled = !state.busy && !state.photoStackPreferenceBusy,
+                                                                modifier = Modifier.testTag("photo-stack-toggle-${group.id}")) {
                                                                 val expanded = state.showAllPhotos || group.id in state.expandedPhotoStackIds
                                                                 Text(if (expanded) t("Collapse", "收起") else t("Expand", "展开"))
                                                             }
@@ -1488,14 +1501,16 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                         (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) != asset.id &&
                                                         (state.showAllPhotos || it.id in state.expandedPhotoStackIds) }?.let { group ->
                                                         TextButton(onClick = { store.selectPhotoStackCover(group.id, asset.id) },
+                                                            enabled = !state.busy && !state.photoStackPreferenceBusy,
                                                             modifier = Modifier.testTag("photo-stack-select-cover-${group.id}-${asset.id}")) {
                                                             Text(t("Select as cover", "设为封面"))
                                                         }
                                                     }
                                                     stackGroups.firstOrNull { asset.id in it.assetIds &&
-                                                        (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) == asset.id &&
+                                                        (state.photoStackScope == "library" || (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) == asset.id) &&
                                                         (state.showAllPhotos || it.id in state.expandedPhotoStackIds) }?.let { group ->
-                                                        TextButton(onClick = { store.showPhotoStackSeparately(group.id) },
+                                                        TextButton(onClick = { store.showPhotoStackSeparately(group.id, asset.id) },
+                                                            enabled = !state.busy && !state.photoStackPreferenceBusy,
                                                             modifier = Modifier.testTag("photo-stack-separate-${group.id}")) {
                                                             Text(t("Show separately", "单独显示"))
                                                         }

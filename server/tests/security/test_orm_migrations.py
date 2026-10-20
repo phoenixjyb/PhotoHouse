@@ -1,4 +1,5 @@
 """Actual SQLAlchemy/Alembic against temporary synthetic SQLite; no runtime config."""
+from contextlib import closing
 import os
 from pathlib import Path
 import sqlite3
@@ -19,7 +20,7 @@ from app.db import Base
 from app.access.metadata import migration_metadata
 
 PRE_ACCESS = 'd2b7e4f6a901'
-ACCESS_HEAD = 'e7c1a9d5b304'
+ACCESS_HEAD = 'f2a8c5d1e640'
 ACCESS_TABLES = {'access_accounts', 'access_sessions', 'access_operators', 'access_libraries',
     'access_memberships', 'access_invitations', 'access_asset_libraries', 'access_audit',
     'access_admission_key', 'access_attempts', 'access_kdf_slot', 'access_provisioning_receipts',
@@ -33,7 +34,8 @@ ACCESS_TABLES = {'access_accounts', 'access_sessions', 'access_operators', 'acce
     'access_memory_book_editorial', 'access_memory_book_editorial_refs',
     'access_memory_book_editions', 'access_memory_book_edition_sources',
     'access_family_note_identities', 'access_family_note_scopes', 'access_memory_book_edition_family_notes',
-    'access_memory_groups', 'access_memory_group_revisions'}
+    'access_memory_groups', 'access_memory_group_revisions',
+    'access_photo_stack_indexes','access_photo_stack_groups','access_photo_stack_members','access_photo_stack_preferences'}
 
 
 def config():
@@ -82,6 +84,36 @@ class OrmMigrationTests(unittest.TestCase):
             for name in ACCESS_TABLES - {'access_admission_key'}:
                 self.assertEqual(connection.exec_driver_sql('SELECT count(*) FROM ' + name).scalar_one(), 0)
             self.assertEqual(connection.exec_driver_sql('SELECT length(secret) FROM access_admission_key').scalar_one(), 32)
+
+    def test_photo_stack_upgrade_is_atomic_and_populated_index_blocks_downgrade(self):
+        prior='e7c1a9d5b304'
+        self.upgrade(prior)
+        def fail(conn,cursor,statement,parameters,context,executemany):
+            if statement.lstrip().startswith('CREATE TABLE access_photo_stack_members'):
+                raise RuntimeError('Synthetic stack migration interruption')
+        event.listen(self.engine,'before_cursor_execute',fail)
+        try:
+            with self.assertRaisesRegex(RuntimeError,'Synthetic stack migration interruption'):
+                self.upgrade()
+        finally:
+            event.remove(self.engine,'before_cursor_execute',fail)
+        with self.engine.connect() as connection:
+            self.assertEqual(connection.exec_driver_sql('SELECT version_num FROM alembic_version').scalar_one(),prior)
+            self.assertFalse(any(name.startswith('access_photo_stack_') for name in inspect(connection).get_table_names()))
+        self.upgrade()
+        from app.access.bootstrap import bootstrap_owner
+        from test_access_foundation import OWNER,PASSWORD
+        with closing(sqlite3.connect(self.path)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            bootstrap_owner(db,phone=OWNER,password=PASSWORD,library_id='synthetic')
+            db.execute("INSERT INTO access_photo_stack_indexes VALUES('synthetic','generation','digest',0,0)");db.commit()
+        with self.assertRaisesRegex(RuntimeError,'Photo stack records require reviewed offline backup restoration'):
+            with self.engine.begin() as connection:
+                cfg=config();cfg.attributes['connection']=connection
+                command.downgrade(cfg,prior)
+        with self.engine.connect() as connection:
+            self.assertEqual(connection.exec_driver_sql('SELECT version_num FROM alembic_version').scalar_one(),ACCESS_HEAD)
+            self.assertEqual(connection.exec_driver_sql('SELECT count(*) FROM access_photo_stack_indexes').scalar_one(),1)
 
     def test_metadata_copy_cannot_enable_startup_security_schema_creation(self):
         before = set(Base.metadata.tables)

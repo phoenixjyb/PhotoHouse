@@ -46,7 +46,7 @@ def task(db, task_id, kind="face", payload='{"asset_id":1}', *, cancel=0):
 
 def test_schema_validates_exact_revision_tables_and_columns():
     db = fixture_db()
-    assert queue.REVISIONS == {"a8d4c2e6f901", "c3f7a91d5e20", "d4a7e3c9b821", "e6b2f8a1c903", "f7c3a9d2e614", "a0c9d2e4f817", "b1d7e4a9c230", "c2e6b8a1d490", "d1f6a8c3e920", "e7c1a9d5b304"}
+    assert queue.REVISIONS == {"a8d4c2e6f901", "c3f7a91d5e20", "d4a7e3c9b821", "e6b2f8a1c903", "f7c3a9d2e614", "a0c9d2e4f817", "b1d7e4a9c230", "c2e6b8a1d490", "d1f6a8c3e920", "e7c1a9d5b304", "f2a8c5d1e640"}
     queue.validate_schema(db)
     db.execute("UPDATE alembic_version SET version_num='a8d4c2e6f901'")
     queue.validate_schema(db)

@@ -10,6 +10,7 @@ from starlette.concurrency import run_in_threadpool
 from .access.transport import router as account_router
 from .access.media import router as media_router
 from .access.library import router as library_router
+from .access.photo_stack_transport import router as photo_stack_router
 from .access.members import router as member_router
 from .access.stories import router as story_router
 from .access.story_workspace import router as story_workspace_router
@@ -204,6 +205,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(account_router)
     app.include_router(media_router)
     app.include_router(library_router)
+    app.include_router(photo_stack_router)
     app.include_router(member_router)
     app.include_router(story_router)
     app.include_router(story_workspace_router)

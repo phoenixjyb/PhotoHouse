@@ -785,6 +785,34 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         return try { PhotoStacksWire.parse(result.bytes) }
         finally { result.bytes.fill(0) }
     }
+    override suspend fun libraryPhotoStackGallery(token: Bearer, library: String, page: Int, media: GalleryMedia): PhotoStackGallery {
+        require(PhoneDiscoveryWire.validLibrary(library) && page in 1..100000 && media in setOf(GalleryMedia.ALL, GalleryMedia.PHOTOS))
+        val target = origin.url.newBuilder().addPathSegments("photo-stacks/gallery")
+            .addQueryParameter("library", library).addQueryParameter("page", page.toString())
+            .addQueryParameter("media", media.wire).build()
+        val result = packet(target, token, limit = JSON_LIMIT, method = "GET", acceptedStatuses = setOf(400, 404))
+        if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json") {
+            result.bytes.fill(0)
+            throw ApiFailure(FailureKind.HTTP, result.code)
+        }
+        return try { PhotoStacksWire.parseLibrary(result.bytes) }
+        finally { result.bytes.fill(0) }
+    }
+    override suspend fun postPhotoStackPreference(
+        token: Bearer, library: String, mutation: PhotoStackPreferenceMutation,
+    ): PhotoStackPreferenceRevision {
+        require(PhoneDiscoveryWire.validLibrary(library))
+        val target = origin.url.newBuilder().addPathSegment("photo-stacks").addPathSegment("preferences")
+            .addQueryParameter("library", library).build()
+        val body = PhotoStacksWire.preferenceRequest(library, mutation)
+        val result = packet(target, token, body, limit = 4096, requestLimit = 2048, acceptedStatuses = setOf(409))
+        if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json") {
+            result.bytes.fill(0)
+            throw ApiFailure(FailureKind.HTTP, result.code)
+        }
+        return try { PhotoStacksWire.parsePreferenceRevision(result.bytes, mutation.indexRevision) }
+        finally { result.bytes.fill(0) }
+    }
     override suspend fun detail(token: Bearer, library: String, assetId: String) = datedJson(url("/assets/detail/${assetId(assetId)}", library), Detail.serializer(), token)
     override suspend fun captions(token: Bearer, library: String, assetId: String) = json(url("/assets/${assetId(assetId)}/captions", library), Captions.serializer(), token)
     override suspend fun thumbnail(token: Bearer, library: String, asset: Asset): ByteArray? {

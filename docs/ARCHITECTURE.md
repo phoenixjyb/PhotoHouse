@@ -193,15 +193,19 @@ invalid or unsupported metadata leaves every asset visible.
 These groups belong to a fetched page. Expansion, cover and separation choices
 are temporary client state, cleared on scope changes or reload. They do not
 change the shared-memory/story groups, another member's curation, or the separate
-anonymous Home TV catalog. Whole-library indexing and persistent preferences
-need their own pagination and storage contract.
+anonymous Home TV catalog. The following [library-wide indexed contract](LIBRARY_PHOTO_STACKS.md)
+adds a CPU-built atomic index, 12 collapsed positions per page and account-private
+revisioned cover/separation preferences. Its complete group metadata preserves
+full viewer navigation. Request-time authorization and source fingerprints dissolve
+stale groups; absent indexes negotiate v1. The new optional f2 schema and refresh
+entry point are source only, without a live migration or worker activation.
 
 The separate [upload preparation read](UPLOAD_PREPARATION.md) joins only the
 current account's receipt page with attributable processing evidence and current
 library access. It preserves the existing upload-history wire shape. Task state
 and record existence do not establish that preview/playback files are usable;
-those fields remain unknown until there is explicit delivery evidence. Client
-preparation-status presentation remains a follow-up.
+those fields remain unknown until there is explicit delivery evidence. Web and phone v74 deliver
+expandable preparation details; physical family acceptance remains open.
 
 ## Schema and release boundaries
 

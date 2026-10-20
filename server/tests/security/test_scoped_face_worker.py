@@ -81,7 +81,7 @@ class ScopedFaceWorkerTests(unittest.TestCase):
 
     def test_scoped_face_worker_keeps_old_revisions_and_accepts_policy_head(self):
         self.assertEqual(scoped_face_worker.REVISIONS,
-                         ('f2a6d8b4c915', 'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903'))
+                         ('f2a6d8b4c915', 'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'f2a8c5d1e640'))
 
     def _seed_faces(self):
         with Session(self.engine) as db:
