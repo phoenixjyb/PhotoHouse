@@ -52,6 +52,14 @@ the whole candidate. There is no DB insertion, migration or legacy fallback.
 Candidate files and failure evidence are retained for review rather than
 automatically removed or resumed. Windows power-loss durability is unqualified.
 
+Choose a short private staging root on Windows. Check the full derived-vector
+leaf path, including the canary's nested `fixture-vectors` copy, against the
+host's path-length policy before execution. The identity and record hashes
+each contribute a 64-character directory or filename. A valid output root
+alone does not establish that its nested artifact paths can be created. Keep a
+failed attempt intact and use a separately frozen new attempt after correcting
+the path; do not change machine-wide path policy as part of qualification.
+
 ## Explicit owner-only serving
 
 `server/scripts/serve_multilingual_semantic_text.py` provides plan, `probe` and
@@ -106,3 +114,61 @@ rechecks and serialization. They exclude TCP/TLS, phone networking, large-librar
 coverage, GPU performance, peak-memory/load acceptance and family relevance.
 Every result keeps `activation_approved: false`. Production cohort publication,
 account binding, serving installation and activation remain separate gates.
+
+## Native technical canary — October 20, 2026
+
+Source `578cecaff537cddf22eef844c2af7f028d4ee607` completed the Windows CPU
+index and protected ASGI canary with the pinned model and installed dependency
+versions. It created 16 unpublished, verified 768-component image artifacts.
+The photos are the previously reviewed public diagnostic cohort, with three
+previously measured positive scene descriptions in English, Chinese and mixed
+input: nine query variants, repeated three times. This is a technical regression,
+not a new holdout or human/family relevance acceptance.
+
+| Protected CPU request timing | Milliseconds |
+| --- | ---: |
+| Warmup, separate from repeated samples | 313 |
+| Median, 27 repeated samples | 187 |
+| p95, 27 repeated samples | 219 |
+| Maximum, 27 repeated samples | 234 |
+
+All nine variants returned their previously designated photo first on each
+repetition. Twelve protected checks passed: provider authentication, exact owner
+admission, other-user denial, exclusion clarification, hard date filtering,
+whole-cohort refusal for corrupt/missing eligible vectors, mid-request role and
+session revocation, and a new request after restoring generated fixture state.
+This does not repair the encoder's documented negation failures. The three
+exclusion probes were clarified before vectors/provider work rather than ranked.
+
+One Windows Job Object enforced an 8 GiB memory ceiling, four-process limit and
+600-second deadline, with a 16 GiB free-RAM floor. The child proved its Job
+before importing ML and used two CPU threads. Offline hub settings and Python
+non-loopback socket denial were enforced; this is not an OS-firewall test or a
+peak-memory/concurrency qualification. The canary started no listener; the
+existing API listener remained unchanged.
+
+The first attempt built the index but failed at a 269-character fixture-vector
+copy path. Its failure and candidate artifacts were retained. A separately
+frozen second attempt used a shorter private root (maximum vector path 248
+characters), the same source/cohort/queries, and completed. No machine path
+policy or runtime package was changed.
+
+Independent read-only verification checked all 261 packaged source hashes,
+the seven model artifacts, complete cohort and 16 vector files, 27 query/timing
+receipts, and the Job proof. It loaded no ML. Before/after checks found the live
+API task, listener, configuration and phone/TV feed pointers unchanged. Trusted
+HTTPS checks returned UI 200, anonymous session 401 and both update feeds 200.
+The live semantic flag remained false with no semantic provider configuration.
+Private inputs, vector files and operator evidence remain outside Git.
+
+The full API profile at that source passed **2,689 tests and 2,773 subtests**,
+plus the generated no-listener application demo. Source tests cover snapshot
+restoration separately from the native canary's disposable state restore.
+These source changes and candidate artifacts have not been deployed or enabled.
+
+Before an owner pilot can serve family photos, complete actual family-library
+768-component coverage, private account/cohort binding, protected HTTP/TLS and
+device latency, operational concurrency/memory/rollback checks, and family
+relevance review. Larger libraries also need a bounded coverage/serving plan:
+the current complete eligible-cohort cap is 512, and incomplete cohorts refuse.
+Semantic search remains **OFF**.

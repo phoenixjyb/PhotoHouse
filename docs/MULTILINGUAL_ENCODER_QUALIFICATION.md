@@ -131,7 +131,7 @@ provenance rests on the inspected runner, pinned dataset and source hashes.
 The worker denied Python socket connection/listening calls and used offline
 hub settings. This is not an OS-firewall qualification. These CPU measurement
 timings do not qualify serving/network latency, concurrency or peak memory.
-No serving binding or compatible immutable index was created. Live health
+Those earlier jobs created no serving binding or compatible immutable index. Live health
 checks before and after the runs confirmed the semantic flag off, no semantic
 provider configuration, healthy HTTPS and protected anonymous boundaries.
 
@@ -147,8 +147,10 @@ Conservative [exclusion and strict-condition admission/clarification](SCENE_QUER
 has since shipped in the October 20 API/Web release. Model-level negation,
 count, relationship and vague/contrast relevance remain qualification gates;
 refusing unsafe requests is reported separately from ranking correctness.
-Compatible 768-dimensional image coverage, protected serving integration,
-serving latency and family/device acceptance also remain outstanding.
+Production 768-dimensional image coverage, operational serving integration,
+network/device latency and family acceptance also remain outstanding. The later
+[public-image technical canary](MULTILINGUAL_PILOT_PREPARATION.md#native-technical-canary--october-20-2026)
+now qualifies the unpublished index and in-process protected ASGI path only.
 No GPU, ASR or Shanxi dialect acceptance is claimed.
 
 ## Work needed before an owner pilot
@@ -159,16 +161,17 @@ the offline runner can approve.
 
 | Area | Existing source behavior | Remaining work |
 | --- | --- | --- |
-| Joint image/text identity | `JointSpaceBinding` requires equal vector space, dimension and normalization. The new SigLIP2 adapter derives role-specific recipe identities in one pinned 768-component space. | Qualify the new adapter/index together before binding a production cohort. |
-| Text serving | The legacy OpenCLIP CLI requires 512 components. A separate pinned SigLIP2 CPU CLI now uses the authenticated loopback transport. | Native integration and operational serving checks remain separate from source implementation; no production provider is installed. |
-| Image coverage | The new unpublished builder validates the frozen expected roster and complete 768-component artifacts. Semantic retrieval refuses incomplete/corrupt eligible vectors and caps the cohort at 512. | Qualify candidate artifacts and plan actual family-library coverage before publication; source tools do not establish production coverage. |
-| Authorization | Runtime configuration v2 and direct 768-component runtimes require an exact current owner principal, checked before reads and before releasing cards. Hard filters remain in force. | Qualify the new gate in the protected canary; actual family account binding remains private and pending. |
+| Joint image/text identity | `JointSpaceBinding` requires equal vector space, dimension and normalization. The new SigLIP2 adapter derives role-specific recipe identities in one pinned 768-component space; the native technical canary exercised that adapter/index pair. | Bind and review an actual family cohort separately. |
+| Text serving | The legacy OpenCLIP CLI requires 512 components. A separate pinned SigLIP2 CPU CLI uses the authenticated loopback transport; native ASGI integration passed. | Actual HTTP/TLS and operational serving checks remain; no production provider is installed. |
+| Image coverage | The unpublished builder validated 16 public-image 768-component artifacts. Semantic retrieval refuses incomplete/corrupt eligible vectors and caps the cohort at 512. | Prepare complete actual family-library coverage and a larger-library plan before publication; the public candidate does not establish production coverage. |
+| Authorization | Runtime configuration v2 and direct 768-component runtimes require an exact current owner principal, checked before reads and before releasing cards. Twelve native protection checks passed; hard filters remain in force. | Actual family account binding remains private and pending. |
 | Unsupported meanings | Exclusion/strict-condition guards require clarification before vector reads or encoding. | Keep refusal evidence separate from encoder ranking. Qualify varied count, relationship, vague and contrast queries. |
-| Operational acceptance | Offline jobs have CPU, process, memory, timeout and input/source checks. | Qualify protected end-to-end serving latency, concurrency, memory, revocation and rollback; CPU batch timings do not establish these. |
+| Operational acceptance | Offline jobs have CPU, process, memory, timeout and input/source checks. The 27-request native protected ASGI canary measured median 187 ms, p95 219 ms and maximum 234 ms, with mid-request revocation checks. | Qualify network/device latency, concurrency, peak memory and operational rollback; in-process CPU timings do not establish these. |
 
-The first serving milestone should therefore combine an explicit owner boundary,
-one compatible image/text identity, complete pilot coverage and protected
-integration checks. Deployment and activation remain separate operations.
+The technical canary now combines an explicit generated owner boundary,
+one compatible image/text identity, complete public-cohort coverage and protected
+integration checks. Family cohort preparation, deployment and activation remain
+separate operations.
 Semantic search remains disabled while this work is incomplete.
 See [multilingual pilot preparation](MULTILINGUAL_PILOT_PREPARATION.md) for the
 new source contracts and the isolated ASGI measurement boundary.

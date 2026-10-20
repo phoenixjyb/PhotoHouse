@@ -26755,6 +26755,26 @@
       "production_index_published": false,
       "actual_family_account_bound": false,
       "activation_approved": false
+    },
+    {
+      "feature": "native-multilingual-image-index-protected-asgi-canary-results",
+      "files": [
+        {
+          "path": "docs/MULTILINGUAL_ENCODER_QUALIFICATION.md",
+          "before_sha256": "56359e845765bb071f2c60716131c41b19297788609798f17fc959d9b707ddc7",
+          "sha256": "5fd36c814811a8208abdc2667097f891ea7759c5eaa24d269f0bd54ca7e156d2"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "1697955cc7e15425a0ee89eb7b290c5ff8ba4c4ae1580b0c818df7f0dc59cad3",
+          "sha256": "6358c1bc1ae82e6a252f91ec8d3ee130dd18569f6fc61e95d7b62887ffbac4da"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "actual_family_account_bound": false,
+      "activation_approved": false
     }
   ]
 }
