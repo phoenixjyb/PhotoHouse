@@ -15,6 +15,10 @@ selected-source drafting contract; it is not implemented by this search lane.
 [PH-A0 qualification](LOCAL_AGENT_QUALIFICATION.md) records a failed stock
 runtime capability ceiling. This application boundary remains usable with
 synthetic adapters; no real runtime is activated by that finding.
+The revised [household plan](LOCAL_AGENT_DEVELOPMENT_PLAN.md) treats this exact
+three-tool v1 contract as a frozen integration fixture. Later workflow profiles
+have their own reviewed capabilities and shared inference admission; they do
+not silently change this wire profile or its current nonqueued lane.
 
 ## Injection and negotiation
 
@@ -140,7 +144,9 @@ Use the locked Python 3.12 environment and run:
 git diff --check
 ```
 
-PH-A0 exact-build/local-model qualification, PH-A2 stdio/MCP integration, PH-U0
-measured benefit, client delivery, native Windows evidence and family/device
-acceptance remain separate. This source increment changes no database schema,
+PH-A0 exact-build/local-model qualification, any selected PH-A2 coordinator
+integration, workflow-specific measured benefit, client delivery, native Windows
+evidence and family/device acceptance remain separate. The revised plan does
+not require stdio/MCP for a direct narrative-generation workflow.
+This source increment changes no database schema,
 worker, runtime configuration, household data, release signing or deployment.

@@ -26572,6 +26572,52 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Developer-only synthetic real-binary PH-A0 capability probe, scoped tests and failed-stock-ceiling record. Application/client source is unchanged; no real model, PH-A2 activation, deployment or publication."
+    },
+    {
+      "feature": "household-agent-workflow-and-overlap-plan",
+      "source_commit": "0bcd859b5c4bc004a3c80d528a3b418175dfb70a",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": null,
+          "sha256": "14f6df49b4d986b2376311609e3b18e8aa4e09d10f683d3bf98f769b5e319e8e"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_QUALIFICATION.md",
+          "before_sha256": "56c081e627738f6c4852234f756231f51494dcb6663ccb0ed46ed0340aa30236",
+          "sha256": "82454b24efc099fdf78b9cbbb2e8fe5510d7313dc1cf5103fa087d03f49f2061"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_RUNTIME.md",
+          "before_sha256": "ddb893c553d5055c5cd434a34c31fb2012684a5654c14b744f83b183ac21f9e8",
+          "sha256": "a56fdc2187f946e5f2ddc428206deb453a67c579ede444e9ff5d03d651d0a1ce"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_ACCEPTANCE.md",
+          "before_sha256": "5443f5e57046e819a5f28c3ed8b2e86a469ed7874a07ff5f8d09caf13d3654fe",
+          "sha256": "4ed5a5b8aa09158fd3802b7c39d712ad97ab6d94b623e213082d9b1fbfd6ddc8"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "5c9b92802de62cb5dcdb779d86612e02c056db54cdde42d7fdc46465b4486532",
+          "sha256": "be2b39454a52e554cc04b202d9193e767949a53baa4e7401be284c2b49219a66"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "ecce732adc4f2e92a3504ee6b991c186ceb06fb671b6c9f1dace8ecb0b8efe68",
+          "sha256": "e254b802ad02b72e8fe686eb78ecc6d083b2e654c034d4d4d9af3a700b420bc8"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "758239b241467b992432801fa84477e540b727792d936293f8064db19904bf3b",
+          "sha256": "cd1f75f1cd2470426817b86fab9b8cc7f2c0d01113b8473ca4c31f95e5ec37ea"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Documentation-only PhotoHouse plan revision: workflow-specific capabilities, independent family conversations, proposed bounded shared inference scheduling and story-first evaluation. Original PH-A1/probe source and frozen oracles remain unchanged; waiting, generation capacity and native suitability are not implemented or measured by this revision."
     }
   ]
 }

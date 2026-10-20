@@ -16,6 +16,10 @@ depend on PH-A1's media-search tools, final-selector format, or runtime. The
 service receives only an explicit authorized snapshot and returns an ephemeral
 proposal. It has no save, publish, source-search or authorization-changing
 operation.
+The revised [household plan](LOCAL_AGENT_DEVELOPMENT_PLAN.md) makes this a first
+product-value candidate alongside the existing saved-story drafting path. It
+does not require a general agent loop or PH-A1's three-tool ceiling. Reconcile
+shared provider admission and the story-specific baseline before implementation.
 
 ## Existing source and save behavior
 
@@ -130,6 +134,12 @@ strong ownership of the operation and its child resources until they stop or
 are reconciled; do not release the lane while cleanup is uncertain. If a child
 cannot be confirmed stopped, mark the optional lane unavailable for new work.
 These are proposed PH-A4 limits, not current PhotoHouse runtime behavior.
+The household revision requires this generation slot to share ownership with
+other optional assistant profiles rather than use an independent lock. Its
+future bounded waiting profile needs a separate negotiated contract and starts
+no workspace lease while waiting. Until that contract is implemented, the v1
+nonqueued behavior and this generation deadline remain unchanged; an existing
+saved-story job keeps its own established queue/lease semantics.
 
 The server resolves the request into an immutable `SourceSnapshot` before
 preparation. The proposed request envelope is capped at 32 KiB; it contains
@@ -372,9 +382,13 @@ change originals, sources or saved stories.
 
 ## Acceptance cases and dependencies
 
-PH-A4 is ready for implementation only after its benefit comparison, runtime
-boundary and client review path are approved for the actual host. Its essential
-synthetic acceptance cases are:
+Default-off PH-A4 source work requires a frozen benefit comparison, exact
+request/result and runtime boundary, and client review path under the revised
+household plan. It may use injected synthetic providers before a native host is
+available. Exact local provider, resource, retention and native lifecycle
+qualification are required before household inference or client activation;
+isolated qualification canaries need their own authorized scope. A source
+fixture does not establish those gates. Essential synthetic acceptance cases are:
 
 | Case | Expected behavior |
 | --- | --- |

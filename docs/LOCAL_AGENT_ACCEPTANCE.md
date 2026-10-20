@@ -13,6 +13,15 @@ task with fewer hands-on actions or less active time while preserving every
 authorization, source, filter, clarification and recovery boundary. Waiting for
 the local model is recorded separately from hands-on time.
 
+The revised [household plan](LOCAL_AGENT_DEVELOPMENT_PLAN.md) preserves these
+frozen search cases. PH-A1 v1 cannot change the host interpretation, question
+or final result, so it is an integration candidate with limited room to improve
+this task. Its seam checks are not proof of product benefit. Evaluate the
+selected-source story workflow against manual and existing saved-story drafting
+separately; use the household plan's overlapping-session/admission cases in
+addition to each workflow's correctness cases. Do not pool story benefit with
+search parity or count idle conversations as concurrent inference.
+
 ## Synthetic fixture
 
 The fixture contains one authorized library, synthetic people, and these

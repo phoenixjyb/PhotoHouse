@@ -1,5 +1,14 @@
 # Product roadmap
 
+**October 20 local-agent plan, source only:** the
+[household AI revision](LOCAL_AGENT_DEVELOPMENT_PLAN.md) targets several
+independent family conversations with bounded shared inference scheduling.
+Workflow-specific capabilities replace a permanent three-tool product ceiling;
+the PH-A1 v1 fixture is preserved. Evaluate selected-source story preparation
+against existing drafting before committing to a general runtime. Provider
+qualification, source implementation and deployment remain distinct; existing
+upload/indexing priorities below are unchanged.
+
 **October 20 next increment:** [Library-wide indexed stacks](LIBRARY_PHOTO_STACKS.md)
 are implemented in source, including consistent collapsed pagination, private
 saved covers/separations and a CPU refresh entry point. Finish source/CI review,

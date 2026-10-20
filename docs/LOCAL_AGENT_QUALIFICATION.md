@@ -1,12 +1,18 @@
 # PH-A0: local agent runtime qualification
 
 **October 20, 2026 finding: the tested stock Codex configuration fails the
-exact three-tool capability ceiling. It is ineligible for PH-A2 activation.**
+original exact three-tool policy. This record does not qualify activation.**
 This is a developer-only synthetic protocol finding, not a local-model or
 Windows runtime qualification. The [PH-A1 application boundary](LOCAL_AGENT_RUNTIME.md)
 remains default off; [PH-U0](LOCAL_AGENT_ACCEPTANCE.md) is unmeasured and the
 [PH-A4 story draft contract](SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md) remains a
 proposal.
+
+The revised [household development plan](LOCAL_AGENT_DEVELOPMENT_PLAN.md)
+replaces a fixed product tool count with workflow-specific capabilities and
+helper review. The original failure evidence below is retained unchanged. A
+policy mismatch is not itself proof of unauthorized disclosure, and revising
+the policy does not turn this run into a pass under a new profile.
 
 The source increment is based on PH-A1 freeze
 `23733e2eb4f94a4ee474ea0746b0633b12589c9f`, itself based on main
@@ -137,15 +143,17 @@ signals, resource admission against competing GPU jobs, actual model tool
 competence/latency, PH-U0 product benefit and family/device acceptance are all
 unqualified. The application lane remains off.
 
-The stock ordinary-MCP adapter cannot be activated on this evidence. Viable next
-source designs are a narrowly pinned Codex build exposing/enforcing its tool
-policy, a separately qualified dynamic-tools redesign, or a smaller
-application-owned local Responses loop. The latter is the smallest dependency
-surface for only three operations; this is an architectural judgment, not a
-completed implementation or compatibility claim. Keep the PH-A1 supervisor,
-domain facade and selector validation in every design, and qualify both visible
-tools and forced dispatch again. Dynamic tools must be declared as a design
-change; they are not ordinary MCP callbacks.
+The stock ordinary-MCP adapter cannot be activated on this evidence. Runtime
+selection stays open under the revised household plan. Define the useful
+workflow and its permitted domain operations/helpers before comparing a stock
+runtime, narrowly modified build or application-owned loop. A selected-source
+story task may use the existing direct narrative adapter without a general
+agent loop. Do not build a replacement merely to remove extra tool names.
+Preserve application authorization, source/replay fencing and shared resource
+ownership in every design, and qualify actual dispatch under its exact profile.
+Dynamic tools, if selected, are a separate design rather than ordinary MCP
+callbacks. Direct narrative output uses its own validator; it does not inherit
+the PH-A1 search selector grammar.
 
 No push, merge, deployment, runtime activation or release publication is part of
 this increment. App-server remains an experimental integration surface under
