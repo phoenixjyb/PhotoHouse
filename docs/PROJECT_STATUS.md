@@ -1,5 +1,15 @@
 # Current project status
 
+**October 20 local semantic qualification:** source `3d572c3` adds complete
+private coverage planning and an explicit temporary HTTPS/TCP canary. A partial
+32-photo candidate produced 22/24 first-place relevance hits across English,
+Chinese and mixed input; all 12 protected checks passed, with 500 ms median /
+578 ms p95 host-loopback CPU latency. This is assistant-reviewed diagnostic
+evidence, with a known bilingual failure, incomplete coverage and a 512-candidate
+serving cap. The full API profile passed 2,713 tests / 2,786 subtests. These
+changes are local, unmerged and undeployed; semantic search remains **OFF**. See
+the [coverage and relevance record](FAMILY_SEMANTIC_COVERAGE.md).
+
 **October 20 guarded-search delivery — verified 10:49 Asia/Shanghai:**
 [PR #101](https://github.com/phoenixjyb/PhotoHouse/pull/101) is merged as `a4e3922`;
 API/Web serves qualified source `b170a97`, whose Git tree matches that merge.

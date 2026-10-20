@@ -1,7 +1,8 @@
 # Multilingual image index and owner pilot preparation
 
 Semantic search remains disabled. This source provides a CPU SigLIP2 adapter,
-an unpublished image-index builder and a protected ASGI qualification canary.
+an unpublished image-index builder and protected ASGI/explicit loopback-network
+qualification canaries.
 It does not install a service, publish vectors into the production database,
 bind a family account or enable a feature. Model acquisition remains a separate
 Windows operation; no model weights belong in the Mac source checkout.
@@ -178,3 +179,7 @@ device latency, operational concurrency/memory/rollback checks, and family
 relevance review. Larger libraries also need a bounded coverage/serving plan:
 the current complete eligible-cohort cap is 512, and incomplete cohorts refuse.
 Semantic search remains **OFF**.
+
+The following [private family coverage and network diagnostic](FAMILY_SEMANTIC_COVERAGE.md#native-family-diagnostic--october-20-2026)
+qualifies a partial 32-photo cohort and actual loopback HTTPS/TCP transport. It
+adds no production coverage or activation and retains the bilingual ranking gap.

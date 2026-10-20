@@ -3,7 +3,7 @@
 Semantic search remains disabled. The image builder, coverage planner and
 temporary network canary prepare evidence; none publishes production vectors,
 binds a real account or enables search. Household rosters, paths, queries,
-review labels and measurements remain in private operator storage on the
+review labels and detailed measurements remain in private operator storage on the
 data-owning host. No family media or model weights belong in the Mac checkout.
 
 ## Complete coverage planning
@@ -95,3 +95,87 @@ inventory or index does not remove that cap. Whole-library serving needs a
 separately qualified scaling design, complete current coverage, relevance,
 operational and device checks before activation. See the
 [pilot preparation record](MULTILINGUAL_PILOT_PREPARATION.md).
+
+## Native family diagnostic — October 20, 2026
+
+Qualified source `3d572c3fd2ec636efb473a1c59f4cfa038cfd516` built an
+unpublished 32-photo, 768-component Windows index from a frozen current-catalog
+selection. Exact source hashes and private input copies were verified; originals
+and their permissions were unchanged. A complete catalog inventory and bounded
+batch plan retain missing, oversized and invalid images as blockers. The exact
+household counts, catalog roster, paths and proposed batches remain private.
+This cohort is partial coverage, not a production index.
+
+An assistant visually reviewed the cohort and froze eight literal, vague and
+contrast cases in English, Chinese and mixed input before text encoding. Two
+translation wording differences were corrected and a new plan frozen before
+scoring; the superseded plan was retained. No identity or kinship assignment was
+inferred from the scene review. Labels are assistant-reviewed; human/family
+acceptance remains false, and the small selected set is not a blind benchmark.
+
+| Relevance diagnostic | English | Chinese | Mixed |
+| --- | ---: | ---: | ---: |
+| First relevant photo ranked first | 8/8 | 7/8 | 7/8 |
+| First relevant photo within five | 8/8 | 8/8 | 8/8 |
+| Mean relevant-image recall within five | 100% | 93.75% | 96.875% |
+
+Overall, 22/24 queries ranked a designated relevant photo first, and 24/24
+included one within five. Mean relevant-image recall at five was 96.875%; this
+is distinct from the fraction of queries with any relevant hit. One literal
+costume/color case ranked first in English, fifth in Chinese and second in mixed
+input. Seven of eight cases ranked first across all three languages. These
+results establish a bilingual consistency gap, not an activation pass. Near
+duplicates and multiple relevant photos were included in the frozen labels.
+
+The explicit version-2 canary used the real protected API over temporary
+loopback HTTPS and the authenticated provider over loopback TCP. Twelve query
+variants were repeated three times; their rankings also retained the same
+bilingual failure (30/36 first-place hits). All twelve protected checks passed,
+including denial before provider/vector work, exclusion clarification, hard date
+filtering, whole-cohort corruption/missing-vector refusal and mid-request role
+or session revocation. Exclusions were clarified before inference; this does not
+qualify the model's negation ranking.
+
+| Protected host-loopback CPU timing | Milliseconds |
+| --- | ---: |
+| First successful model request, separate warmup | 719 |
+| Median, 36 repeated requests | 500 |
+| p95, 36 repeated requests | 578 |
+| Maximum, 36 repeated requests | 579 |
+
+The API client trusted only the private per-run CA with hostname verification;
+no system trust was changed. API connections were reused after admission probes;
+the production encoder opened a new provider connection per encode. These
+host-loopback timings include authorization, vector reads, CPU encoding and
+ranking. They do not measure phone/Mac network latency, production serving,
+full-library scaling, concurrency or peak memory.
+
+The native child proved an 8 GiB/four-process Job Object before ML imports,
+with a 600-second deadline, 16 GiB free-RAM floor and two CPU threads. Offline
+hub settings and Python non-loopback connect/bind/listen/DNS guards were used;
+this was not an OS-firewall qualification. Both temporary servers closed before
+the successful measurement was written. The first index attempt failed because
+its private configuration fell within the extracted source boundary; it was
+retained, and a separately frozen attempt corrected only the staging layout.
+No runtime dependency upgrade, production listener/configuration change, index
+publication or real account binding was performed.
+
+Independent read-only verification checked all 263 packaged source files, seven
+model artifacts, ten package versions, the current catalog/selected original and
+private-copy hashes, complete 32-vector artifacts, frozen query receipts and TLS
+pins. It recalculated network timing percentiles without loading ML; it did not
+independently recompute model ranking scores. Postflight found both owned ports
+closed and the live API task/listener/configuration and phone/TV feed pointers
+unchanged. Trusted HTTPS returned UI 200, anonymous session 401 and both update
+feeds 200. Semantic remained disabled with no semantic provider configuration.
+
+The full API profile passed **2,713 tests and 2,786 subtests** plus the generated
+no-listener demo. Focused planner/provider/network tests passed 41 tests and 13
+subtests; seven package tests also passed. The 263-file source package and native
+candidate remain separate from deployment. Semantic search remains **OFF**.
+
+Next qualify complete compatible coverage, a serving design beyond the current
+512-candidate cap, a broader human-reviewed relevance set and bilingual failures,
+then protected remote-device latency, resource/concurrency and rollback behavior.
+Account binding, index publication and activation require their own concrete
+reviewed operation. This round grants none of them.

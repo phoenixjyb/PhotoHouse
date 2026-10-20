@@ -26840,6 +26840,33 @@
       "production_index_published": false,
       "actual_family_account_bound": false,
       "activation_approved": false
+    },
+    {
+      "feature": "private-family-coverage-relevance-and-loopback-network-qualification-record",
+      "files": [
+        {
+          "path": "docs/FAMILY_SEMANTIC_COVERAGE.md",
+          "before_sha256": "0d26599ac62f81a49a7ad18dc05eafad9d588c272fceb32b9cbd401a8991cdf3",
+          "sha256": "1d7265411b9fff92bf834eff24c4b50cb63fefa00f07aa596fe3ba3c24ff0417"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "0fd23206da15ada6103a82fe8a332fe2b49c1fd0b2d9ef058f430ce615b52801",
+          "sha256": "2484a9153c23eefe30dd659b853d1c8598d5f30fe30adda8d5ed49f7355fa046"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "984905d457f9dd6dfa418dd4a546db1b8d083d43eb5cebcb6ff9d5bf4c60948e",
+          "sha256": "64dbf355cc3d96336e13f4a3586fc1807c536069ab8bffe1faa4760b8b311298"
+        }
+      ],
+      "qualified_source_commit": "3d572c3fd2ec636efb473a1c59f4cfa038cfd516",
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "actual_family_account_bound": false,
+      "human_relevance_accepted": false,
+      "activation_approved": false
     }
   ]
 }
