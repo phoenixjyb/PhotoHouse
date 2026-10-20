@@ -124,6 +124,50 @@ bounded to 4,096 covers/separations and 256 KiB per account/library.
 The complete source/hosted profiles remain release gates, distinct from these
 focused results. No real household database, model, media or device was used.
 
+## Generated Windows rehearsal
+
+PR #99 merged the optional library index and clients into main. Its source and
+hosted checks do not activate the schema or index on a household installation.
+The follow-up qualifier is available at
+[`qualify_library_photo_stacks.py`](../server/scripts/qualify_library_photo_stacks.py).
+It accepts only `--out`, an absent absolute directory beneath an existing private
+parent. It has no real-database, media, library, provider or service argument.
+
+```sh
+python -B server/scripts/qualify_library_photo_stacks.py --out /absolute/private/new-rehearsal
+```
+
+On Windows use the corresponding absolute Windows paths and an already qualified
+Python environment. The CLI supervises its generated-data child in a Windows Job:
+240 seconds, 2 GiB per process tree, eight processes and an 8 GiB free-RAM admission
+floor. It passes a minimal environment, uses isolated Python and refuses a failed,
+missing, oversized or inexact success receipt. There is no child-bypass CLI flag.
+Portable runs exercise source behavior; only a completed native run establishes
+Windows acceptance of this qualifier and its resource controller.
+
+The rehearsal verifies:
+
+- Interrupted a0→f2 DDL rolls back schema, rows and revision; the completed chain
+  preserves existing rows, raw generated text/audio, caption, upload receipt and
+  task evidence, adding exactly the thirteen expected tables.
+- e7→f2 adds four empty index/preference tables and preserves older objects/rows.
+- A V1 journal containing a valid deletion record upgrades to V2 with the same
+  head and original data. Before/after primary-journal backups restore into
+  separate files with matching history; every retained backup remains unchanged.
+  This checks consistent pairs, not replay into a stale pair or power-loss recovery.
+- Complete groups occupy one visible position across gallery pages; new assets
+  remain visible before refresh. The one-shot synthetic worker waits for runnable
+  hash work, refreshes after it finishes, and retains failed-task evidence.
+- Cover/separation/reset choices stay private, stale preferences return conflict,
+  changed similarity dissolves stale groups, and revoked members cannot read.
+- Missing deletion guards and old restored metadata paired with newer deletion
+  history cannot publish even a no-op index. Populated f2 downgrade is refused.
+
+Only generated databases, audio bytes and receipts are written. No image/video
+file is decoded; this is not codec, GPU, family similarity or device acceptance.
+No scheduler or production worker is installed or started. Reports name production
+state separately from the synthetic task and worker exercised by the rehearsal.
+
 ## Qualification and delivery gates
 
 The generated-data checks exercise actual migrations, routes, index publication,
