@@ -26434,6 +26434,96 @@
       "routes_added": false,
       "deployed_or_published": false,
       "notes": "Bind corrupt-artifact replay no-encoder assertion to the immediate call count, independent of earlier exclusion admission."
+    },
+    {
+      "feature": "photo-stack-guarded-migration-and-one-sweep-host",
+      "source_commit": "a4e39221a3dab8ee84bacc7c9226e7b3a71b112b",
+      "files": [
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "eab668ff9630941df556c8bfa06cb57a96ffcc9f176505d3fc55d057e08a4f59",
+          "before_sha256": "9f6406074491b133940c6192c2cb3bd9cc3510bd190ff45f54ed86aa868f89c1"
+        },
+        {
+          "path": "docs/LIBRARY_PHOTO_STACKS.md",
+          "sha256": "da0acb559e327d8a6b648d9a61f8f91ec45b3b0f54735174820241db94459696",
+          "before_sha256": "b2507f0eeb0ea5042ef4ab58e08210a79319048b707e42f836163b3c454b1807"
+        },
+        {
+          "path": "docs/PHOTO_STACK_OPERATIONS.md",
+          "sha256": "d558b063a7897b303e5c3bc3e62ef23df85be85d06c07a0ad760b3d6c5cc4e84"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "8398b3153eebfcabcae43664e77cf4a0d5b19729cbc8af32a52b531d091f3cf6",
+          "before_sha256": "9502f407fb1d8a020c752700a55e430ffb47bcba561046b7bf91b07e04abebaa"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "6f82d1b06342c3fd9c6fbf925b493cf337ac4971a62eefa2b666e7d40c4156c6",
+          "before_sha256": "758239b241467b992432801fa84477e540b727792d936293f8064db19904bf3b"
+        },
+        {
+          "path": "server/backend/app/access/library_photo_stacks.py",
+          "sha256": "d4f6ac15751a98484a495297395d6e626ae34c28dc7d4e18bbc18ebb8f11f002",
+          "before_sha256": "f3494d70da489ddbaf74667d4498f69a0cde0990fea3ee2ffbf36373674d04c2"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_index.py",
+          "sha256": "8e3b65187dc10f9adc6c9b1decdb215bc61c08cb3f3df39f1a3c250500ce8723",
+          "before_sha256": "3221f85e912cf4576673c20f95bdca71f8364ff48640146e9ae07946cdcd5143"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_worker.py",
+          "sha256": "097c776399807f3f72132d0a0fb4a3c76390fc57632c2410ff643b30c3b73583",
+          "before_sha256": "5f27f8bce052a6431c169e38d3129ba634ab6f657d348e6b44349bdfe147256e"
+        },
+        {
+          "path": "server/scripts/apply_library_photo_stack_schema.py",
+          "sha256": "19e23a79838b3a463a9ab3acb2111db18ea34c3a5c7deca54b69031b4dced714"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "f11193da9f507de1e1da80f475f93d8700e2b71fc34dcd6b46232eab916793ce",
+          "before_sha256": "5bf82874c26c69d750a994584bcfe89c0bc3beb0dc6f8e90b152cc4375c208a4"
+        },
+        {
+          "path": "server/scripts/qualify_library_photo_stacks.py",
+          "sha256": "cca62a75ec77e3a54ae86f04cac682ccd207a1f7ba27f280ac214d538e2ebc8b",
+          "before_sha256": "339bbd10a96f9dd2fbb99d9a4970a333d6fd0089a9aace0edaba72908262133e"
+        },
+        {
+          "path": "server/scripts/run_photo_stack_worker.py",
+          "sha256": "badf0036f3881a17c98559bf4fadaec18368751e8cdb00f3e5d21ec4b226942c"
+        },
+        {
+          "path": "server/tests/security/test_apply_library_photo_stack_schema.py",
+          "sha256": "8edb4122b75757a74116f7d2235eb2981729730603bd6c1408845306001322e9"
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_worker_host.py",
+          "sha256": "027dc97ee56a937235aca5c6b11a80e12eee708231de4ffa8e7f357de2792d63"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "a5424163979379ff1eafba22818913843135a2efc1e7744041bfa8a76a9918ef",
+          "before_sha256": "7dcc9bd44dcb9cebb074c3d1a0020ac0d7e96bf07dcb88fb9c0decd81413e9ae"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "a4d860ccbac20ba9024396e5b819967bcf3b7aad81a21a62c476a2f4a3db87d5",
+          "before_sha256": "45ae8c2730ccb3e29c5a17a5f5e50f0e76e927c40dd118878304d97b61e9293f"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "sha256": "7a8b563f5a06248c2466391250e7d0b69178dcafece96afbe7fb606b204912e7",
+          "before_sha256": "0807d6197278b73bf0050d9e1f649f7d78453a418e71d4b0977f1c5bd912ddbc"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "production_activation": false,
+      "notes": "Prepare explicit a0/e7-to-f2 paired-backup migration with bounded readonly V1-V4 history, one-sweep CPU host with private direct inputs/lock/cancellation/Windows supervision, and generated qualification through both real controller paths. Preserve originals, preferences and failed tasks; current search session owns API deployment. No production/native operation or APK publication."
     }
   ]
 }

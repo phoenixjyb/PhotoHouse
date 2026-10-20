@@ -5,7 +5,11 @@ add one stack per collapsed page position, full member viewing and persistent
 per-account cover/separation choices on Web and phone. An optional CPU index
 refresh entry point and additive `f2a8c5d1e640` schema are implemented; no migration,
 index refresh, Windows switch or APK publication has occurred for this increment.
-The delivered v74/API remains on its page-local grouping contract.
+The delivered v74/API remains on its page-local grouping contract. PRs #99/#100
+are merged and their earlier generated native rehearsal passed; the following
+[operations preparation](PHOTO_STACK_OPERATIONS.md) adds the guarded migration and
+cancellable one-sweep host. This new package is not yet natively qualified or
+activated. The separate search session owns the current API/Web cutover.
 
 **October 20 preparation-status delivery:** PR #97 is merged, and Windows API/Web
 serves fixed source `9e39ebd`, retaining the newer search source and private runtime

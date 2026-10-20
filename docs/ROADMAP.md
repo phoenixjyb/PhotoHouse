@@ -2,9 +2,12 @@
 
 **October 20 next increment:** [Library-wide indexed stacks](LIBRARY_PHOTO_STACKS.md)
 are implemented in source, including consistent collapsed pagination, private
-saved covers/separations and a CPU refresh entry point. Finish source/CI review,
-then separately qualify the actual schema upgrade, Windows resource-bounded
-refresh host, migration/rollback and paired client delivery. Family burst-quality
+saved covers/separations and a CPU refresh entry point. PRs #99/#100 are merged;
+the preceding native generated rehearsal passed. The new
+[guarded migration and one-sweep host](PHOTO_STACK_OPERATIONS.md) are following
+source preparation, with private paired-backup checks and cancellable publication.
+Qualify this changed operations package, then the actual live migration/rollback
+and paired client delivery against the completed search API release. Family burst-quality
 and Samsung acceptance remain required. This increment is not live.
 
 **October 19 delivery:** [similar-photo stacks](SIMILAR_PHOTO_STACKS.md) add

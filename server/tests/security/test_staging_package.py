@@ -141,6 +141,8 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/qualify_vector_erasure.py',
             'scripts/qualify_memory_groups.py',
             'scripts/qualify_library_photo_stacks.py',
+            'scripts/apply_library_photo_stack_schema.py',
+            'scripts/run_photo_stack_worker.py',
             'scripts/qualify_memory_group_workers.py',
             'scripts/apply_memory_group_schema.py',
             'scripts/run_approved_cpu_worker.py',

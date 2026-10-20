@@ -28,6 +28,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import URL
 
 import apply_memory_group_schema as group_upgrade
+import apply_library_photo_stack_schema as stack_upgrade
+import run_photo_stack_worker as worker_host
 import qualify_memory_groups as fixture
 import rehearse_fullsize_database as full
 import upgrade_original_deletion_journal as journal_upgrade
@@ -35,7 +37,6 @@ from app.access.annotations import Annotations
 from app.access.library_photo_stacks import LibraryPhotoStacks, rebuild_photo_stack_index
 from app.access.original_deletions import OriginalDeletionError, OriginalDeletionJournal
 from app.access.photo_stack_schema import REVISION, TABLES
-from app.access.photo_stack_worker import PhotoStackRefreshWorker
 from app.access.private_storage import require_private_directory, require_private_file
 from app.access.runtime import AccessConnection
 from app.access.service import AccessDenied, AccessService
@@ -49,14 +50,14 @@ CASES = (
     "complete_cross_page_groups", "private_cover_separation_reset_and_conflicts",
     "new_asset_refresh_waits_for_hash_and_retains_failures",
     "stale_sources_and_revoked_access", "missing_and_stale_deletion_history_refused",
-    "nonempty_downgrade_refused",
+    "nonempty_downgrade_refused", "guarded_schema_application", "one_sweep_host_lifecycle",
 )
 FILE_NAMES = (
     "primary.sqlite", "journal.sqlite", "a0-backup.sqlite", "v1-backup.sqlite",
     "a0-restored.sqlite", "v1-restored.sqlite", "f2-before-journal.sqlite",
     "f2-backup.sqlite", "v2-backup.sqlite", "f2-restored.sqlite", "v2-restored.sqlite",
     "stale-restored.sqlite", "e7-edge.sqlite", "qualification-report.json",
-    "qualification-failure.json",
+    "qualification-failure.json", "primary.sqlite.photo-stack-refresh.lock",
 )
 
 
@@ -212,8 +213,12 @@ def _gallery_lifecycle(primary, journal):
         with connect() as db:
             domain(db).update(fixture.TOKEN, fixture.LIBRARY, body)
         return body
-    worker = PhotoStackRefreshWorker(connect, (fixture.LIBRARY,))
-    _require(worker.run_once()[0]["status"] == "updated", "initial_index_failed")
+    def refresh():
+        report = worker_host.execute_once(primary, journal.path, journal.namespace,
+            (fixture.LIBRARY,), primary.parent/'refresh.stop')
+        _require(report['status'] == 'completed', 'host_sweep_not_completed')
+        return report['results']
+    _require(refresh()[0]["status"] == "updated", "initial_index_failed")
     pages = [page(number=1), page()]
     ids = [a["id"] for p in pages for a in p["items"]]
     _require(all(p["total"] == 15 for p in pages) and len(ids) == len(set(ids)) == 16
@@ -228,7 +233,7 @@ def _gallery_lifecycle(primary, journal):
             _require(error.status == 409, "wrong_preference_conflict")
         else:
             raise RuntimeError("synthetic_stale_preference_accepted")
-    _require(worker.run_once()[0]["status"] == "unchanged", "noop_changed_index")
+    _require(refresh()[0]["status"] == "unchanged", "noop_changed_index")
     with connect() as db:
         db.execute('''INSERT INTO assets(id,path,hash_sha256,status,mime,taken_at,perceptual_hash)
             VALUES(104,'generated-not-a-media-file-104',?,'active','image/jpeg','2026-01-01 10:00:45',?)''', ("f"*64, "0"*16))
@@ -236,11 +241,11 @@ def _gallery_lifecycle(primary, journal):
         task = db.execute("INSERT INTO tasks(type,state,payload_json) VALUES('phash','pending','{\"asset_id\":104}')").lastrowid
         db.commit()
     _require(page()["total"] == 16 and group()["count"] == 2, "new_unindexed_asset_hidden")
-    _require(worker.run_once()[0]["status"] == "waiting", "runnable_hash_not_waited")
+    _require(refresh()[0]["status"] == "waiting", "runnable_hash_not_waited")
     with connect() as db:
         db.execute("UPDATE tasks SET state='failed',retry_count=2,last_error='synthetic retained failure' WHERE id=?", (task,))
         db.commit()
-    _require(worker.run_once()[0]["status"] == "updated" and group()["count"] == 3
+    _require(refresh()[0]["status"] == "updated" and group()["count"] == 3
              and group()["cover_asset_id"] == "101", "refresh_lost_choice")
     choose(separate_asset_id="101")
     _require(group()["id"] == "101" and set(group()["asset_ids"]) == {"103", "104"}
@@ -301,7 +306,15 @@ def run(output):
         else:
             raise RuntimeError("synthetic_interruption_not_reached")
         _require(fixture._snapshot(primary) == before and fixture._revision(primary) == [(FROM,)], "migration_rollback_failed")
-        _migrate(primary, REVISION)
+        budget = full.Budget(128*1024**2, 120)
+        with full.read_source(primary, budget, offline=True) as source:
+            digest = full.fingerprint(source, full.schema(source), budget)[0]
+        applied = stack_upgrade.apply(primary, target/'a0-backup.sqlite', journal_path,
+            target/'v1-backup.sqlite', digest, *head, hashlib.sha256(journal_bytes).hexdigest(),
+            budget, execute=True, all_writers_stopped=True, from_revision=FROM)
+        _require(applied['applied'] and applied['new_tables_created'] == 13
+                 and not applied['journal_format_upgrade_required'] and not applied['journal_upgrade_performed'],
+                 'guarded_schema_application_failed')
         after = fixture._snapshot(primary)
         _require(set(after[1]) - set(before[1]) == set(group_upgrade._additions(FROM)) | set(TABLES), "unexpected_migration_tables")
         _require(_preserved(before, after) and fixture._revision(primary) == [(REVISION,)]

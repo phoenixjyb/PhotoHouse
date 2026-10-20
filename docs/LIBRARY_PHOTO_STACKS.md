@@ -168,6 +168,15 @@ file is decoded; this is not codec, GPU, family similarity or device acceptance.
 No scheduler or production worker is installed or started. Reports name production
 state separately from the synthetic task and worker exercised by the rehearsal.
 
+## Migration and refresh-host preparation
+
+[The operations plan](PHOTO_STACK_OPERATIONS.md) defines the separate guarded
+migration library and one-sweep CPU host. The current source extends the generated
+qualifier to exercise those paths, preserving any supported journal format and
+original rows. This changed package needs new native qualification before live
+activation. The search release owns the current API/Web cutover; group activation
+uses its completed delivery as the later baseline.
+
 ## Qualification and delivery gates
 
 The generated-data checks exercise actual migrations, routes, index publication,
