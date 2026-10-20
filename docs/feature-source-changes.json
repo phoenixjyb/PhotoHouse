@@ -25870,6 +25870,35 @@
       "routes_added": false,
       "schema_changed": false,
       "notes": "Make the pure index test independently importable, qualify all five approved worker readers against actual f2 migration, and update exact admitted-revision assertions while retaining E7 coverage. Test/profile changes only; no production activation."
+    },
+    {
+      "feature": "library-photo-stack-deletion-history-fence-and-source-evidence",
+      "source_commit": "5eda35f2ad355649d198a8d8a2b74de92e25f23c",
+      "files": [
+        {
+          "path": "docs/LIBRARY_PHOTO_STACKS.md",
+          "sha256": "dd0dfa2e2b943f5575fca681e2b1116fc40854a2092e075b68f7bc9fab174237",
+          "before_sha256": "9a72ee4635c80866ea981148e274432b182f077ba10e0a2ad6cc6357da1ed3fe"
+        },
+        {
+          "path": "server/backend/app/access/library_photo_stacks.py",
+          "sha256": "f3494d70da489ddbaf74667d4498f69a0cde0990fea3ee2ffbf36373674d04c2",
+          "before_sha256": "2c4f7ec1f6f35df27e134a3cc3fa78dec9b7d31d1369ee8f22794f68fb8ade2d"
+        },
+        {
+          "path": "server/tests/security/test_library_photo_stacks.py",
+          "sha256": "e548de9c2b9b6bf15f7f9eedc5bd36bc8fd9e0e29c3142efc4da6f5765bbfdc9",
+          "before_sha256": "99c0c642fb464afbbe7c007f243d7a7b1545193d2f1fb1cbd17336361dea18db"
+        },
+        {
+          "path": "server/tests/security/test_orm_migrations.py",
+          "sha256": "9d5d0624c349544b4814704efc93ae1d97390bf678a85994c0d2f5ff86d93960",
+          "before_sha256": "d8480ac998fac8475ea95b2f0960a3b0859834af7778e1a5a8c3ae5096c8bdc6"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "notes": "Refuse index refresh/no-op on a bound primary without a current external deletion-history guard; preserve prior generation on refusal. Close synthetic SQLite handles explicitly for native cleanup and record the focused source/browser/QA-emulator evidence. No runtime activation or publication."
     }
   ]
 }

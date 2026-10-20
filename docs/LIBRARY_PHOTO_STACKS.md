@@ -92,7 +92,9 @@ explicit tuple of 1–32 libraries, using fresh foreign-key-enabled connections.
 It does not start a thread, scheduler, service or task. Runnable scoped pHash work
 postpones a refresh; failed tasks are preserved. Unchanged input is a no-op.
 Clustering runs outside the write transaction. Atomic publication rechecks the
-source digest, generation and any attached deletion-history guard; concurrent
+source digest, generation and any attached deletion-history guard. A bound primary
+requires its current external deletion-history guard, including on no-op refresh;
+an unguarded raw connection is refused. Concurrent
 changes preserve the previous index and preferences.
 
 Every gallery read rechecks library access and current member metadata/mapping.
@@ -102,6 +104,25 @@ individually. No index/schema or a library above the asset cap yields 404 for
 fallback. Indexed SQL is additionally limited to three seconds and 20 million
 SQLite VM steps, with an unavailable response when interrupted. Preferences are
 bounded to 4,096 covers/separations and 256 KiB per account/library.
+
+## Local source evidence — October 20
+
+- 22 migrated-database/API cases, ten pure index cases and 14 migration checks
+  pass, including atomic upgrade/downgrade refusal and bound-history rejection.
+- 93 worker-admission cases pass; all five approved worker readers and exact
+  candidate scope are checked on a generated f2 database without model execution.
+- Both generated Chromium 151 gallery journeys pass: v1 temporary choices and
+  v2 cross-page groups/private preferences, including 409/uncertain outcome
+  read-reconciliation without write replay, single-flight writes, scope fencing
+  and denied-access recovery. Chinese/English 150% phone and desktop renders
+  were inspected.
+- 1,156 Android live-core cases, connected lint and instrumentation compilation
+  pass. Two separate QA-app emulator UI cases pass: enlarged v1 stack controls
+  and v2 reset availability when no groups remain. The existing AVD was shut down
+  after the run. These are synthetic fixtures, not a Samsung/family-photo trial.
+
+The complete source/hosted profiles remain release gates, distinct from these
+focused results. No real household database, model, media or device was used.
 
 ## Qualification and delivery gates
 

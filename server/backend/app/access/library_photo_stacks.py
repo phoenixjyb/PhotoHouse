@@ -76,6 +76,8 @@ def _source(db, library):
     if db.execute("SELECT 1 FROM access_libraries WHERE id=? AND state='active'", (library,)).fetchone() is None:
         raise ValueError('active_library_required')
     history=getattr(db,'original_deletions',None)
+    if history is None and db.execute('SELECT 1 FROM access_original_deletion_state LIMIT 1').fetchone():
+        raise ValueError('deletion_history_guard_required')
     if history is not None:history.assert_current(db)
     rows = db.execute('SELECT '+_INPUT+SOURCE+GALLERY_ORDER+' LIMIT ?', (library,MAX_ASSETS+1)).fetchall()
     if len(rows)>MAX_ASSETS:

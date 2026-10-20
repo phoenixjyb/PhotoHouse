@@ -1,4 +1,5 @@
 """Actual SQLAlchemy/Alembic against temporary synthetic SQLite; no runtime config."""
+from contextlib import closing
 import os
 from pathlib import Path
 import sqlite3
@@ -102,10 +103,10 @@ class OrmMigrationTests(unittest.TestCase):
         self.upgrade()
         from app.access.bootstrap import bootstrap_owner
         from test_access_foundation import OWNER,PASSWORD
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db:
             db.execute('PRAGMA foreign_keys=ON')
             bootstrap_owner(db,phone=OWNER,password=PASSWORD,library_id='synthetic')
-            db.execute("INSERT INTO access_photo_stack_indexes VALUES('synthetic','generation','digest',0,0)")
+            db.execute("INSERT INTO access_photo_stack_indexes VALUES('synthetic','generation','digest',0,0)");db.commit()
         with self.assertRaisesRegex(RuntimeError,'Photo stack records require reviewed offline backup restoration'):
             with self.engine.begin() as connection:
                 cfg=config();cfg.attributes['connection']=connection

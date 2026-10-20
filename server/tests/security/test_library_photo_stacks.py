@@ -1,4 +1,5 @@
 """Actual indexed gallery and private choices against fully migrated fixtures."""
+from contextlib import closing
 import json
 import re
 import sqlite3
@@ -226,11 +227,30 @@ class LibraryPhotoStacksTests(unittest.TestCase):
         scans=[q for q in self.f.trace if q.startswith('WITH live(')]
         self.assertEqual(len(scans),1)
 
+    def test_index_builder_refuses_bound_primary_without_current_deletion_history(self):
+        from app.access.runtime import AccessConnection
+        with self.f.connection() as db:
+            db.execute('INSERT INTO access_original_deletion_state(id,namespace,applied_seq,applied_digest) VALUES(1,?,0,?)',
+                       ('123e4567-e89b-42d3-a456-426614174000','0'*64));db.commit()
+            with self.assertRaisesRegex(ValueError,'deletion_history_guard_required'):
+                rebuild_photo_stack_index(db,'family-a',expected_generation=self.built['index_revision'])
+            self.assertFalse(db.in_transaction)
+            self.assertEqual(db.execute('SELECT generation FROM access_photo_stack_indexes').fetchone()[0],self.built['index_revision'])
+        class StaleGuard:
+            def assert_current(self,db):raise RuntimeError('Synthetic stale deletion history')
+        with closing(sqlite3.connect(self.f.path,factory=AccessConnection)) as db:
+            db.execute('PRAGMA foreign_keys=ON');db.original_deletions=StaleGuard()
+            with self.assertRaisesRegex(RuntimeError,'Synthetic stale deletion history'):
+                rebuild_photo_stack_index(db,'family-a',expected_generation=self.built['index_revision'])
+            self.assertFalse(db.in_transaction)
+            self.assertEqual(db.execute('SELECT generation FROM access_photo_stack_indexes').fetchone()[0],self.built['index_revision'])
+
     def test_optimistic_builder_preserves_previous_index_when_source_changes(self):
         from app.access.photo_stack_index import build_library_photo_stacks
         with self.f.connection() as db:db.execute('UPDATE assets SET width=800 WHERE id=101');db.commit()
         def changed(rows):
-            with sqlite3.connect(self.f.path) as db:db.execute('UPDATE assets SET width=900 WHERE id=101')
+            with closing(sqlite3.connect(self.f.path)) as db:
+                db.execute('UPDATE assets SET width=900 WHERE id=101');db.commit()
             return build_library_photo_stacks(rows)
         with self.f.connection() as db,patch('app.access.photo_stack_index.build_library_photo_stacks',side_effect=changed):
             with self.assertRaises(Conflict):rebuild_photo_stack_index(db,'family-a',expected_generation=self.built['index_revision'])
