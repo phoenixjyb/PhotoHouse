@@ -177,7 +177,7 @@ class SemanticStreamingEndpointTests(unittest.TestCase):
         return self.client.post(BASE, headers={'Authorization': 'Bearer ' + token},
             json={'query': query, 'filters': filters or {}, **kwargs})
 
-    def add_generated_cohort(self, count=513):
+    def add_generated_cohort(self, count=513, *, final_vector=None, final_component_hash=None):
         with closing(sqlite3.connect(self.fixture.database)) as db, db:
             holder = SimpleNamespace(db=db, root=self.root)
             for offset in range(count):
@@ -193,8 +193,11 @@ class SemanticStreamingEndpointTests(unittest.TestCase):
                 db.execute('INSERT INTO captions VALUES(?,?,?,0,0)',
                            (2000 + offset, aid, 'generated searchable family scene'))
                 vector = (1.0, 0.0) if offset % 2 == 0 else (0.0, 1.0)
+                if offset == count - 1 and final_vector is not None:
+                    vector = final_vector
                 path, record = vector_fixtures.VisualVectorLoaderTests.add_vector(
-                    holder, aid, vector, source_hash=source_hash)
+                    holder, aid, vector, source_hash=source_hash,
+                    component_hash=final_component_hash if offset == count - 1 else None)
                 self.files[str(aid)] = (path, record)
         self._install_runtime()
 
@@ -233,6 +236,22 @@ class SemanticStreamingEndpointTests(unittest.TestCase):
         with patch('app.access.semantic_search.MAX_VECTOR_READ_BYTES', 1):
             response = self.query()
         self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(self.calls, [])
+
+    def test_valid_container_with_wrong_component_checksum_refuses_before_provider(self):
+        self.add_generated_cohort(final_component_hash='f' * 64)
+        # The original NPY and its container checksum remain valid. Metadata
+        # claims a different component checksum when the artifact is created.
+        response = self.query()
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
+        self.assertEqual(self.calls, [])
+
+    def test_matching_container_and_component_checksums_do_not_admit_nonunit_tail(self):
+        self.add_generated_cohort(final_vector=(2.0, 0.0))
+        response = self.query()
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
         self.assertEqual(self.calls, [])
 
     def test_scene_context_above_512_restores_without_provider_replay(self):

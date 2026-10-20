@@ -27106,6 +27106,35 @@
       "production_runtime_changed": false,
       "production_index_published": false,
       "activation_approved": false
+    },
+    {
+      "feature": "profiled-library-vector-validation-without-duplicate-checksum-packing",
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "b7936bdc30395f388fb2a5fb944cb03ecb54db59de9bd1a3755f93be96936781",
+          "sha256": "4eb0f57e0f408e815ea0f9701cf603988980e9d6f0665a9bf7868061bfb05f05"
+        },
+        {
+          "path": "server/backend/app/access/visual_candidates.py",
+          "before_sha256": "8e40c95babcfe35c6f611dcc73c127ee264283e4b6541530b26fb18eaaef0d5f",
+          "sha256": "bbd44ca7f280ee2cd114d08a3238ed71d4e7cfaf641c32ed9c51b5d129f98fb0"
+        },
+        {
+          "path": "server/tests/security/test_semantic_streaming_search.py",
+          "before_sha256": "38df73afc6a9f47dd1e75b269ca53ca68ccd4dc2b1a5fa232ec1421939143997",
+          "sha256": "6a312e75c9bb7915827842ea7c816478b42ff8f65461fec6c28b1dac8c36f296"
+        },
+        {
+          "path": "server/tests/security/test_visual_candidates.py",
+          "before_sha256": "e9c4074f355917d6093e8caef79625433637a6a26cdb5283327b1f8bb473a211",
+          "sha256": "18906595e1f58b59354c0ac6be01808fa3d4ca402eb578f54bfbe030f9a8c3a6"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "activation_approved": false
     }
   ]
 }

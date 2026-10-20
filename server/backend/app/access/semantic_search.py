@@ -15,7 +15,7 @@ from .discovery_transport import DiscoveryRuntime
 from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, SemanticUnsupported, rank_semantic
 from .service import AccessDenied, AccessService
 from .search_exclusions import EXCLUSION_POLICY_VERSION, requires_semantic_clarification
-from .visual_candidates import MAX_CANDIDATES, VectorRecord, _canonical_components, canonical_vector_checksum
+from .visual_candidates import MAX_CANDIDATES, VectorRecord, _canonical_components
 from .visual_vector_artifacts import identity_sha256
 from .visual_vector_loader import _COLUMNS, _checked_root, _read_vector, _validated_rows
 from .visual_vector_schema import verify_visual_vector_schema
@@ -108,11 +108,14 @@ class SemanticSearchReads(AssistantSearchReads):
             vector = (_read_vector(root, artifact, charge=self._charge_vector_bytes)
                       if self.serving_limits else _read_vector(root, artifact))
             check()
-            if vector is None or canonical_vector_checksum(vector) != artifact.component_sha256:
+            if vector is None:
                 raise d.DiscoveryUnavailable()
             record = VectorRecord(aid, self.encoder.binding.image_identity,
                                   vector, artifact.component_sha256)
             try:
+                # This verifies the component checksum, canonical float32
+                # values and unit norm together; do not pack each vector a
+                # second time immediately before the same validation.
                 _canonical_components(record, self.encoder.binding.image_identity)
             except (ValueError, TypeError, OverflowError):
                 raise d.DiscoveryUnavailable() from None

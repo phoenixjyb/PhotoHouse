@@ -121,22 +121,15 @@ def canonical_vector_checksum(vector: tuple[float, ...] | list[float]) -> str:
 def _packed_vector(vector: tuple[float, ...] | list[float]) -> bytes:
     if type(vector) not in (tuple, list) or not 1 <= len(vector) <= MAX_DIMENSION:
         raise ValueError("invalid_vector")
-    values = []
-    for component in vector:
-        if type(component) not in (int, float):
-            raise ValueError("invalid_vector")
-        try:
-            value = float(component)
-        except OverflowError:
-            raise ValueError("invalid_vector") from None
-        if not math.isfinite(value):
-            raise ValueError("invalid_vector")
-        values.append(value)
+    if any(type(component) not in (int, float) for component in vector):
+        raise ValueError("invalid_vector")
     try:
-        packed = struct.pack(f">{len(values)}f", *values)
+        # struct performs builtin int/float conversion while packing, avoiding
+        # a second Python list of converted components on large vectors.
+        packed = struct.pack(f">{len(vector)}f", *vector)
     except (OverflowError, struct.error):
         raise ValueError("invalid_vector") from None
-    if any(not math.isfinite(value) for value in struct.unpack(f">{len(values)}f", packed)):
+    if any(not math.isfinite(value) for value in struct.unpack(f">{len(vector)}f", packed)):
         raise ValueError("invalid_vector")
     return packed
 
