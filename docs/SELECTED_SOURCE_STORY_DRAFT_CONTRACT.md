@@ -2,8 +2,9 @@
 
 This contract defines a bounded, review-only operation for preparing a story
 from media and source evidence the author selected. The end-to-end PH-A4 service
-is a proposal; its internal snapshot core, narrative input and operation owner
-are implemented with optional app/session wiring and no preparation endpoint. It leaves story ownership,
+now has a default-off prepare/cancel API, authorized snapshot core, narrative
+input and app/session operation owner. Client and native-provider integration
+remain separate. It leaves story ownership,
 current source authorization, revision checks and explicit save in PhotoHouse.
 The current application facts below were checked against
 [`story_workspace.py`](../server/backend/app/access/story_workspace.py),
@@ -24,7 +25,7 @@ shared provider admission and the story-specific baseline before implementation.
 The [PH-P2 acceptance contract](SELECTED_SOURCE_STORY_ACCEPTANCE.md) freezes that
 comparison and specifies the required internal draft-bundle variant. The
 [PH-C0 admission contract](HOUSEHOLD_INFERENCE_ADMISSION.md) defines the process-local
-capacity primitive; it is not a queue added to this proposal's HTTP API.
+capacity primitive; this HTTP profile adds no application waiting queue.
 
 ## Existing source and save behavior
 
@@ -138,7 +139,8 @@ invalidation, revoke the operation capability and fence all late output. Keep
 strong ownership of the operation and its child resources until they stop or
 are reconciled; do not release the lane while cleanup is uncertain. If a child
 cannot be confirmed stopped, mark the optional lane unavailable for new work.
-These are proposed PH-A4 limits, not current PhotoHouse runtime behavior.
+These bounds are implemented in the default-off selected-source operation
+owner; they do not qualify a native runtime or govern nonparticipating workers.
 The household revision requires this generation slot to share ownership with
 other optional assistant profiles rather than use an independent lock. Its
 future bounded waiting profile needs a separate negotiated contract and starts
@@ -450,9 +452,10 @@ implements `DraftOperations` with injected protected `SelectedStorySources`,
 an asynchronous provider and the application's shared `InferenceAdmission`.
 The optional app lifecycle constructs it only after explicit async provider
 injection; the default app has no owner. It is included in the source-only API
-runtime package. No preparation route, public state/error enum, model runner,
-new database write, saved-story job, background restart recovery or native
-capacity claim is added.
+runtime package. No model runner, new database write, saved-story job,
+background restart recovery or native
+capacity claim is added by that owner. Its default-off HTTP transport is defined
+below.
 
 The default household bounds are one admitted generation, no application
 waiting, 60 seconds of work from permit grant, ten seconds to confirm cleanup,
@@ -527,8 +530,10 @@ across processes, real cancellation or household client acceptance.
 `AccessRuntime`, collaboration opt-in and async `prepare`/`stop_and_reconcile`
 methods. There is no settings/environment fallback or installed native adapter.
 The app's memory-group flag is copied into its protected source runtime, matching
-existing workspace source resolution. No preparation HTTP route or client is
-activated, and saved-memory generation flags and PH-A1 remain independent.
+existing workspace source resolution. The separate `selected_story_drafts_enabled`
+flag controls HTTP preparation and cancellation; provider injection alone leaves
+those routes unavailable. No client or native provider is activated, and
+saved-memory generation flags and PH-A1 remain independent.
 
 [`SelectedStoryLifecycle`](../server/backend/app/access/selected_story_lifecycle.py)
 constructs one `DraftOperations` at startup and owns one `InferenceAdmission`
@@ -556,14 +561,91 @@ account/library after the authorized commit. Denied or conflicting revocation
 requests cannot cancel another member's work. Existing final authorization and
 source revalidation remain required. Account switch uses logout plus the new
 session's ordinary authorization; independent sessions and conversations do not
-cancel each other. Controller wiring for a newer editor intent and a public
-prepare/cancel protocol remain separate.
+cancel each other. Controller wiring for a newer editor intent and client
+integration remain separate.
 
 The [lifecycle tests](../server/tests/security/test_selected_story_lifecycle.py)
 use generated SQLite accounts/sessions and injected synthetic providers. They
 qualify local app/session ownership only, not an installed provider, Windows
 runtime, physical device or household usability. Package checks separately
 verify extracted source dependency closure; building an archive does not deploy it.
+
+
+## Protected HTTP v1
+
+The [transport](../server/backend/app/access/selected_story_transport.py) is
+registered in the explicit closed boundary and route capability inventory.
+`create_app(selected_story_drafts_enabled=True, selected_story_provider=...)`
+requires both a boolean opt-in and an explicit async provider; the default is
+false. Collaboration opt-in, a protected access runtime and a started app
+lifecycle are also required. No settings/environment fallback or native adapter
+is selected. This source implementation is tested with synthetic providers;
+native qualification is required before household activation.
+
+Both operations are POST requests with exactly one `library` query parameter.
+No token, prompt, source text, request ID or extra query parameter is accepted
+in the URL. Existing reviewed HTTPS/Host/Origin/Fetch-Metadata checks, explicit
+native bearer or web cookie credentials, and same-origin cookie CSRF apply.
+Responses use the existing private no-store headers. Wrong methods and
+unreviewed/shadowing handlers remain denied by the closed boundary.
+
+| Path | Request | Successful response |
+| --- | --- | --- |
+| `/story-workspace/drafts/prepare?library=...` | The exact nested version-1 reference-only request above, streamed UTF-8 JSON capped at 32 KiB | HTTP 200 with the host-assembled `needs_review` result and its fixed expiry |
+| `/story-workspace/drafts/cancel?library=...` | Exactly `{"version":1,"request_id":"<canonical lowercase UUID>"}`, capped at 512 bytes | HTTP 200 with `{"version":1,"request_id":"...","matched":true}` or `matched:false` |
+
+Require `application/json`, reject content encoding, duplicate keys at every
+object depth, non-object envelopes, nonfinite constants, malformed UTF-8, and
+missing/extra/version-invalid fields. The raw streamed cap applies even without
+Content-Length, and a supplied length must match the captured bytes. Media,
+evidence, account, session, saved-target ownership and current revision checks
+remain in the protected operation/source services before provider work and on
+result delivery. The API accepts no caller-supplied source corpus or provider
+configuration, and never saves a story.
+
+Prepare waits for the bounded operation outcome; it creates no polling resource,
+background durable job or waiting queue. The 60-second work deadline starts at
+admission; an error response may additionally wait up to ten seconds for bounded
+cleanup. A successful proposal must still meet the work deadline. A disconnected response waiter detaches
+without cancelling the owned generation. A same-ID/same-body retry joins or
+recovers the result after fresh authorization; a changed body conflicts. Busy
+before provider work permits a later exact retry, but this is not an instruction
+to retry model failures automatically. After fixed result expiry, an exact retry
+requires a matching fresh snapshot and returns a new draft ID for full review.
+
+Cancel requires current `story.write` and the exact account/library/request and
+session binding. `matched:true` acknowledges that a registered matching
+operation's output was fenced, including retained prose; it is **not** proof
+that native work stopped or that inference admission has been released.
+Repeated matched cancellation is safe. `matched:false` means no operation was
+registered under that authorized identity at the lookup instant. It creates no
+cancellation tombstone and cannot fence a prepare that registers later. A future
+client must invalidate its own logical intent immediately, ignore stale
+responses and reconcile/repeat cancellation if its first prepare is still
+unresolved. Never interpret either response as permission to expose a late
+proposal or start work outside shared admission.
+
+Operation errors have fixed bodies `{"detail":"...","code":"..."}` with no
+provider exception, prompt, source words, source/snapshot hash or internal ID.
+Existing transport-level malformed-request/credential failures retain their
+ordinary fixed `detail` response and HTTP status.
+
+| HTTP status | Operation code | Client meaning |
+| --- | --- | --- |
+| 400 | `draft_invalid_request` | Reject the invalid reference/cancel envelope; do not invoke inference |
+| 401 | `draft_access_denied` | Current account/session/library write authority is unavailable |
+| 409 | `draft_conflict` | The request meaning or selected source/target state changed |
+| 409 | `draft_scope_changed` | The session, operation or review scope is no longer valid |
+| 409 | `draft_cancelled` | This request identity was cancelled and is terminal |
+| 429 | `draft_busy` | Shared inference/read capacity is occupied; `Retry-After: 2` is advisory for an explicit exact retry |
+| 429 | `draft_capacity` | Bounded request/result registry is full; no identity is silently evicted and no automatic retry is requested |
+| 503 | `draft_unavailable` | HTTP opt-in/lifecycle/provider cleanup health is unavailable; no fallback provider or fresh gate is created |
+| 504 | `draft_timed_out` | The bounded operation deadline elapsed; late prose remains fenced |
+
+The [HTTP tests](../server/tests/security/test_selected_story_transport.py)
+cover the protected application flow with synthetic providers and generated
+SQLite data. They do not establish a deployed endpoint, native cancellation,
+model quality, physical voice interaction or family/device acceptance.
 
 ## Acceptance cases and dependencies
 

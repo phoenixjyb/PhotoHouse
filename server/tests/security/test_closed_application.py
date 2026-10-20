@@ -59,7 +59,8 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIsNone(main.app.state.semantic_search_runtime)
                 self.assertIsNone(main.app.state.assistant_agent_supervisor)
                 self.assertIs(main.app.state.assistant_semantic_search_enabled, False)
-                self.assertEqual(len(main.app.routes), 176)
+                self.assertIs(main.app.state.selected_story_drafts_enabled, False)
+                self.assertEqual(len(main.app.routes), 178)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])
                 self.assertEqual(logging.getLogger().handlers, handlers)
@@ -202,7 +203,7 @@ class ClosedApplicationTests(unittest.TestCase):
         actual = [(method, route.path) for route in self.app.routes for method in route.methods]
         self.assertEqual(len(actual), len(set(actual)))
         self.assertEqual(set(actual), expected)
-        self.assertEqual(len(actual), 176)
+        self.assertEqual(len(actual), 178)
         for method, path in actual:
             sample = (path.replace('{ident}', '11111111-1111-4111-8111-111111111111')
                       .replace('{upload_id}', '1'*32)

@@ -26889,6 +26889,83 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Optional explicit async selected-story provider injection creates one app-owned nonqueued inference gate and draft owner. Startup failure/shutdown fence output and retain unresolved ownership. Bounded shielded logout writes hold transient session barriers; authorized committed membership revocation fences only its account/library. Defaults remain off. Adds source-only dependency closure (262 runtime package inputs), synthetic app/session checks and real SQLite authorization. No preparation route/client, installed native provider, cross-process GPU qualification or deployment."
+    },
+    {
+      "feature": "protected-selected-story-prepare-cancel-http-v1",
+      "source_commit": "4e7db1b0b31a196c1117d2f5fd03d4f07857ef6e",
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_transport.py",
+          "before_sha256": null,
+          "sha256": "44cea4cbff4be345150834efc7a5558a73db7624000f6be3212f5d8642d04ef4"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "9fe87a7448341a9fceb69ff58c8c69f5afe71c5fc51397b12d3f0725618a6fcb",
+          "sha256": "28b9c25088a69f95eb3a71444500ea1de2cd59b8a943e3a9a3cc0cab2b403e34"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "8df9f0f97666341033fe076a5ee870c8f5e39a780b224eb3c9158d7ba58cbaf4",
+          "sha256": "6af1ed0ff78a472902657cb1882047c46b3ae290ee9ffab2dcc6567dbbbda2f9"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "a70081111eefbcc0bed56b2bfa45b736c800fa8f79557b89aaf91b38277263e0",
+          "sha256": "ff8a4e546977a9bb9c2de20ffc0bfcadf111660f26a8688c00ef67fbb5189ee3"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "62c413b8d309374ee6be3c4373aa6201401475e4d584e5ce9e709c0167c0a874",
+          "sha256": "6500cf85e69588e7175bd3ada5e4359d6b489c60a4812d3879c74d5e1c470777"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_transport.py",
+          "before_sha256": null,
+          "sha256": "8b52f2b3ba21800f4aa6f5936e14f4f4c39debfab75fc535adcb61b0d3b98de4"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "7dac47edc41b26d1e71ec226bdf9d870a38f58e8c1a4608aa293efa6390ec8c6",
+          "sha256": "fdb83d04999a7b146cfdb349a73a9e14758060b5d6a58baa450fcc7ea7e398a6"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "6f47b4f7ebe0d62b7736f87d9c14657750893140f93a21cada8c25632da61517",
+          "sha256": "c181a9e79dfc6cf1008ced7eb5e425fef80eb87418e0ef5f00b897e142ec96e1"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "f7c4791b4d87ecb2a228fd4c4631133a04d4510fd2d33c5662a051274a47d10b",
+          "sha256": "935fe31000175f9483fcf63bd600b3839120acb79689ca1dff1efa0a40d461c6"
+        },
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "2be9dae31c8cc1d53efafabd981a3ec95ded7b2cc027ec9949e9626ab12639e9",
+          "sha256": "24f3cefc1eeef3d9c8811ba02c3a95d8a2ce2d04eeb831adf70a6afdf1181ae9"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "dab6251d4f4f20545e27aeb0bb9ab177991b02df246580e209d0d3425d2ede91",
+          "sha256": "750c19f11ed29b4fedcfecfb7bcc3a38abf47a6aa0503ec80aa2a9ad22551db3"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "dfd2474b15dca81c2f46662ae616ec88ceca50556f1d95d0ab4929b7287b7b82",
+          "sha256": "97a4b2abebdc1b2629c92d4e29b1191e0a23491a72686b70d60f1442517f6b72"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "7316e7588f17ef3806a6a9950ecc96675506d4f0ab41f77def454752e9749eea",
+          "sha256": "34885bae1b4a3c8ea7b48f3bdaf49746513bf35bb57176325a0eb20e2996f86b"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Default-off protected prepare/cancel HTTP v1 with separate explicit bool opt-in and injected async provider requirement. Closed route inventory, bearer/cookie CSRF, strict bounded UTF-8 JSON, exact retries, fixed expiry and source revalidation use the existing app-owned lifecycle/shared gate. Cancel matched is an output fence, not native stop proof, and absent identities receive no future tombstone. Fixed errors omit diagnostics. Synthetic providers and generated SQLite only, including real source resolution/foreign media denial. Source-only API package has 263 inputs. No client, native provider installation, live activation, save authority or deployment."
     }
   ]
 }

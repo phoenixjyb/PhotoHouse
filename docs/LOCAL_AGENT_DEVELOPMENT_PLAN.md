@@ -235,9 +235,10 @@ measurements yet. The narrative-only bundle version 3 and isolated authorized
 snapshot core are implemented with synthetic checks. The isolated PH-A4
 operation owner now adds exact retries, fixed expiry and injected shared
 admission. Optional app startup/shutdown, logout and membership revocation
-wiring now retain that owner and its shared gate. Preparation routes, client
-integration, native stop proof and cross-process resource coordination remain
-separate; no native provider is installed or selected.
+wiring now retain that owner and its shared gate. The protected prepare/cancel
+HTTP v1 routes now have a separate default-off opt-in and synthetic-provider
+coverage. Client integration, native stop proof and cross-process resource
+coordination remain separate; no native provider is installed or selected.
 
 PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access

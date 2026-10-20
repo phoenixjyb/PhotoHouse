@@ -63,6 +63,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/selected_story_snapshot.py',
             'backend/app/access/selected_story_operations.py',
             'backend/app/access/selected_story_lifecycle.py',
+            'backend/app/access/selected_story_transport.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
             'backend/app/access/family_note_deletions.py',

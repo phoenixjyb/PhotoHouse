@@ -12,9 +12,11 @@ The [selected-source draft owner](SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md#implem
 adds process-local retry/expiry/session ownership and explicit cleanup proof.
 Its [app lifecycle](../server/backend/app/access/selected_story_lifecycle.py)
 retains the shared instance in `app.state.inference_admission`, closes it at
-shutdown and never replaces a closed or quarantined owner on app reuse. Other
-runtime consumers below remain independent until their native integration is
-qualified. This does not establish GPU exclusion across processes.
+shutdown and never replaces a closed or quarantined owner on app reuse. The
+protected prepare/cancel API has a separate default-off opt-in and uses
+that same owner; it adds no waiting or save authority. Other runtime consumers
+below remain independent until their native integration is qualified. This
+does not establish GPU exclusion across processes.
 
 ## Ownership and API
 

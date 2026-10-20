@@ -33,6 +33,7 @@ FILES = (
     'backend/app/access/selected_story_snapshot.py',
     'backend/app/access/selected_story_operations.py',
     'backend/app/access/selected_story_lifecycle.py',
+    'backend/app/access/selected_story_transport.py',
     'backend/app/access/assistant_search.py',
     'backend/app/access/assistant_scene_search.py',
     'backend/app/access/assistant_query_plan.py',

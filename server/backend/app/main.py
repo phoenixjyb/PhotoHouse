@@ -14,6 +14,7 @@ from .access.photo_stack_transport import router as photo_stack_router
 from .access.members import router as member_router
 from .access.stories import router as story_router
 from .access.story_workspace import router as story_workspace_router
+from .access.selected_story_transport import router as selected_story_router
 from .access.memory_group_transport import router as memory_group_router, GroupVectorConfiguration
 from .access.memory_stories import router as memory_router
 from .access.memory_transport import router as memory_community_router
@@ -50,7 +51,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False,
                assistant_semantic_search_enabled=False,
                assistant_agent_runtime=None, assistant_agent_budget=None,
-               selected_story_provider=None):
+               selected_story_provider=None, selected_story_drafts_enabled=False):
     if semantic_search_runtime is not None and (
             type(semantic_search_runtime) is not SemanticSearchRuntime or
             semantic_search_runtime.access is not access_runtime or
@@ -115,6 +116,9 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     if (memory_originals_enabled or memory_generation_enabled or memory_editorial_enabled or
             memory_editions_enabled) and not memory_collaboration_enabled:
         raise ValueError('Memory contributions/generation require collaboration opt-in')
+    if (type(selected_story_drafts_enabled) is not bool or
+            (selected_story_drafts_enabled and selected_story_provider is None)):
+        raise ValueError('Explicit selected-story API opt-in and provider required')
     selected_story_lifecycle = None
     if selected_story_provider is not None:
         if not memory_collaboration_enabled:
@@ -197,6 +201,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None,
                   redirect_slashes=False, lifespan=lifespan)
     app.state.access_runtime = access_runtime
+    app.state.selected_story_drafts_enabled = selected_story_drafts_enabled
     app.state.selected_story_lifecycle = selected_story_lifecycle
     app.state.selected_story_operations = None
     app.state.inference_admission = (selected_story_lifecycle.admission
@@ -242,6 +247,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(member_router)
     app.include_router(story_router)
     app.include_router(story_workspace_router)
+    app.include_router(selected_story_router)
     app.include_router(memory_group_router)
     app.include_router(memory_router)
     app.include_router(memory_edition_router)
