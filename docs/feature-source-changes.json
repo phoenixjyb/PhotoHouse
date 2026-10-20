@@ -25915,6 +25915,72 @@
       "notes": "Match the generated current-head journal fixture assertion to the additive photo-stack revision. No journal/runtime behavior change, production operation or publication."
     },
     {
+      "feature": "library-photo-stack-generated-migration-lifecycle-rehearsal",
+      "source_commit": "fc4384061ff3c423c428bac459f21d0ca4e4839a",
+      "files": [
+        {
+          "path": "docs/LIBRARY_PHOTO_STACKS.md",
+          "sha256": "b2507f0eeb0ea5042ef4ab58e08210a79319048b707e42f836163b3c454b1807",
+          "before_sha256": "dd0dfa2e2b943f5575fca681e2b1116fc40854a2092e075b68f7bc9fab174237"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "1ea823e9c4df94fe5753b3aea6b53a9693f838cb2ef9bd07ce41704443873c1a",
+          "before_sha256": "a5346cb45c188740425b556de61486e5e5d9917a78427b200c0601a81dc37337"
+        },
+        {
+          "path": "server/scripts/qualify_library_photo_stacks.py",
+          "sha256": "339bbd10a96f9dd2fbb99d9a4970a333d6fd0089a9aace0edaba72908262133e"
+        },
+        {
+          "path": "server/tests/security/test_library_photo_stacks_qualification.py",
+          "sha256": "f5094d6609dbda8ea73cd6fa71bb017df9554f3863addc1483f651454679d236"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "f4638ae14680d78f57c8885346a5bb3666e2a75a5459cc169bc318f3edc86b39",
+          "before_sha256": "d1262adc637c8dc63041b62712bb583b4ad7a4bb9d99fdbb65715e96a0117db7"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "0a0dbb69c98b138bdf3b0b1ff5a5c395b7d322df8fe3255c11e8533eea583089",
+          "before_sha256": "327632ebb7f4a1bfdd85c5c6303e62119d9c9493d48d90ed6ed67c3bf8a78ed0"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "sha256": "0807d6197278b73bf0050d9e1f649f7d78453a418e71d4b0977f1c5bd912ddbc",
+          "before_sha256": "7239074f1f123df9397b1397d8e85a1e4b2db344e7f82525d880ed474d30c8c3"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "notes": "Add generated-only a0-to-f2/e7-to-f2 migration, nonempty V1 journal upgrade and paired backup, private index-choice/refresh/history-fence qualification. Windows CLI bounds its generated child; no production runtime operation or device publication."
+    },
+    {
+      "feature": "guarded-search-release-parallel-branch-provenance-2a6aa44",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "1ea823e9c4df94fe5753b3aea6b53a9693f838cb2ef9bd07ce41704443873c1a",
+          "sha256": "a5346cb45c188740425b556de61486e5e5d9917a78427b200c0601a81dc37337"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "f4638ae14680d78f57c8885346a5bb3666e2a75a5459cc169bc318f3edc86b39",
+          "sha256": "d1262adc637c8dc63041b62712bb583b4ad7a4bb9d99fdbb65715e96a0117db7"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "0a0dbb69c98b138bdf3b0b1ff5a5c395b7d322df8fe3255c11e8533eea583089",
+          "sha256": "327632ebb7f4a1bfdd85c5c6303e62119d9c9493d48d90ed6ed67c3bf8a78ed0"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Preserve current-main and search branch ledger records unchanged. These virtual provenance transitions return shared file expectations to the development fork before replaying search overlays; no working file or runtime is reverted."
+    },
+    {
       "feature": "guarded-search-release-parallel-branch-provenance",
       "files": [
         {
@@ -26296,6 +26362,30 @@
           "path": "tools/check.py",
           "before_sha256": "9f5b73a1eb1cf61d3611f0abbc5cb49019d8d8c72ec1efc01799793c468d41af",
           "sha256": "d8923a5e9a5244a29a72a27e47dffebdd7809555460501dc4f407f9cd0100066"
+        }
+      ],
+      "schema_changed": false,
+      "routes_added": false,
+      "deployed_or_published": false,
+      "notes": "Record the composed files after merging current gallery/upload main with guarded search. Preserve both source histories, no semantic activation or schema application."
+    },
+    {
+      "feature": "guarded-search-release-main-composition-2a6aa44",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "0556c425df97ea6610c0e97dd683247fec4ab9f5c10b834ad6285bc7d26bd7b3",
+          "sha256": "5bf82874c26c69d750a994584bcfe89c0bc3beb0dc6f8e90b152cc4375c208a4"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "6e0bcdf3fc6c0bf16493b343b73b94bdb0a9656065f0c98bed4c01bef2f1139c",
+          "sha256": "7dcc9bd44dcb9cebb074c3d1a0020ac0d7e96bf07dcb88fb9c0decd81413e9ae"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d8923a5e9a5244a29a72a27e47dffebdd7809555460501dc4f407f9cd0100066",
+          "sha256": "45ae8c2730ccb3e29c5a17a5f5e50f0e76e927c40dd118878304d97b61e9293f"
         }
       ],
       "schema_changed": false,
