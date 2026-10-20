@@ -74,8 +74,8 @@ the current authorized library, not bearer capabilities.
     "selection_revision": "<64 lowercase hex characters>",
     "source_policy": "chapter_sources_v1",
     "chapters": [
-      {"id": "chapter-1", "asset_ids": ["17000017"], "evidence_ids": ["family-synthetic-note-4"]},
-      {"id": "chapter-2", "asset_ids": ["23000023"], "evidence_ids": ["caption-synthetic-8"]}
+      {"id": "chapter-1", "title": "Preparing the bed", "asset_ids": ["17000017"], "evidence_ids": ["family-synthetic-note-4"]},
+      {"id": "chapter-2", "title": "Watering the plants", "asset_ids": ["23000023"], "evidence_ids": ["caption-synthetic-8"]}
     ]
   },
   "theme": "everyday",
@@ -95,14 +95,23 @@ required for this reviewed workflow. These limits align with the existing
 story/source contracts; the service must reuse current validators where their
 meaning matches.
 
+Each chapter's required `title` comes from the current editable preview outline,
+including any author edits. `build_outline` supplies the initial wording.
+Capture that exact title in the request and snapshot, and copy it unchanged to
+the client draft. The narrative adapter has no chapter-title output field and
+cannot invent or replace those titles. Each is nonblank, at most 160 Unicode
+scalar values and 512 UTF-8 bytes, compatible with the narrative bundle and save
+contracts.
+
 `author_direction` is a required string, empty when unused, and limited to
 8,192 UTF-8 bytes to match the existing narrative bundle's `instructions`
 bound. It can guide style or focus only; it cannot add evidence, authority or
 actions.
 
 Bind `request_id` to a canonical digest of the authenticated account, library,
-target story/base revision, ordered media, source policy, chapter partitions
-and evidence IDs, language, theme, title, and any bounded author direction.
+target story/base revision, ordered media, source policy, chapter partitions,
+chapter titles and evidence IDs, language, theme, title, and any bounded author
+direction.
 Within that scope, an identical ID and digest joins the active operation or
 recovers its retained ephemeral result. Reusing the ID with a different digest
 returns a conflict; it never changes the operation's source snapshot. After an
@@ -148,6 +157,7 @@ requests before invoking a model or coordinator.
   "chapters": [
     {
       "id": "chapter-1",
+      "title": "Preparing the bed",
       "asset_ids": ["17000017"],
       "sources": [
         {"source_id": "family-synthetic-note-4", "selected_asset_ids": ["17000017"], "source_kind": "family_note", "source_revision": 3, "source_digest": "<sha256>", "byline": "Synthetic Aunt", "text": "We planted beans together."}
@@ -155,6 +165,7 @@ requests before invoking a model or coordinator.
     },
     {
       "id": "chapter-2",
+      "title": "Watering the plants",
       "asset_ids": ["23000023"],
       "sources": [
         {"source_id": "caption-synthetic-8", "selected_asset_ids": ["23000023"], "source_kind": "ai_caption", "source_revision": null, "source_digest": "<sha256>", "byline": null, "text": "A green watering can beside the raised bed."}
@@ -206,9 +217,11 @@ with `id`, `narration` and `source_ids`, `questions`, and
 `needs_review: true`. Its source bundle uses the current narrative validator's
 closed bundle types. The host validates this output against the exact selected
 chapter evidence IDs, then enriches it into the client result below. The model
-does not author citations, chapter media, source metadata, IDs, revisions,
-expiry, or the review state. This keeps the current validator useful while
-making the returned citation record server-derived.
+echoes only supplied chapter IDs and selected source IDs in that closed output
+grammar; the host validates and resolves those references. It cannot mint or
+change identities, supply chapter titles, author citation metadata, choose
+chapter media, or set revisions, expiry or review state. This keeps the current
+validator useful while making the returned citation record server-derived.
 
 Use these compatible limits, with PH-A4's story-specific bounds where they
 are narrower: one to six chapters; no more than 24 selected media items; one

@@ -26515,6 +26515,27 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Default-off injected PH-A1 supervision and exact v2 domain tools, generated HTTP lifecycle/recovery tests, CPU/staging closure, PH-U0 acceptance sheet and proposed PH-A4 selected-source story contract."
+    },
+    {
+      "feature": "local-agent-contract-fixture-identity-and-chapter-titles",
+      "source_commit": "4dbe2971dbaa4339b9ae94f7b4a712c827317829",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_ACCEPTANCE.md",
+          "before_sha256": "9c5db7a00e744295c26776a590f36dc9b264dd917d2ac8534eaa7a830d4a6fe1",
+          "sha256": "5443f5e57046e819a5f28c3ed8b2e86a469ed7874a07ff5f8d09caf13d3654fe"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "adcbc1b0fbe15ba80052226f10b6a649541c3066a13a4cde8961d6019e3fc20f",
+          "sha256": "5c9b92802de62cb5dcdb779d86612e02c056db54cdde42d7fdc46465b4486532"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Documentation-only clarification of canonical synthetic asset/person mappings and author-owned chapter titles; application, tests, provider and package-builder bytes remain unchanged."
     }
   ]
 }
