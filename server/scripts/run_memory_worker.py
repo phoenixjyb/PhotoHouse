@@ -20,7 +20,7 @@ from app.access.memory_narrative import LocalMemoryNarrator  # noqa: E402
 from app.access.memory_processing import process_contribution, process_job  # noqa: E402
 from app.access.runtime import (ExistingDatabase, COLLABORATION_REVISIONS,
                                 SOURCE_REFERENCE_REVISIONS, EDITORIAL_REVISIONS, IDENTITY_REVISIONS)  # noqa: E402
-from app.access.memory_group_schema import GROUP_REVISION  # noqa: E402
+from app.access.memory_group_schema import GROUP_REVISION, GROUP_REVISIONS  # noqa: E402
 
 
 MAX_CONFIG_BYTES = 16 * 1024
@@ -163,7 +163,7 @@ def _check_schema(db, *, editorial_enabled=False, groups_enabled=False):
         if type(groups_enabled) is not bool:
             return False
         if (len(versions) != 1 or
-                (versions[0][0] != GROUP_REVISION if groups_enabled
+                (versions[0][0] not in GROUP_REVISIONS if groups_enabled
                  else versions[0][0] not in COLLABORATION_REVISIONS)):
             return False
         from app.access.family_note_identity_schema import IDENTITY_REVISION
@@ -175,7 +175,7 @@ def _check_schema(db, *, editorial_enabled=False, groups_enabled=False):
             except TransportError:
                 return False
         from app.access.memory_group_schema import verify_memory_group_schema
-        if (versions[0][0] == GROUP_REVISION and not verify_memory_group_schema(db)):
+        if (versions[0][0] in GROUP_REVISIONS and not verify_memory_group_schema(db)):
             return False
         tables = {row[0] for row in db.execute(
             "SELECT name FROM sqlite_master WHERE type='table'")}

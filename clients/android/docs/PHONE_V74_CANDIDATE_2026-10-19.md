@@ -1,7 +1,8 @@
-# Phone v74 preparation-status candidate
+# Phone v74 preparation-status source qualification
 
-Version: **74 / `0.74-upload-preparation`**. This is source and local qualification,
-not a signed or published release. The current delivered phone remains v73.
+Version: **74 / `0.74-upload-preparation`**. This records the October 19 source
+qualification. [Signing and OTA delivery passed on October 20](PHONE_V74_RELEASE_2026-10-20.md);
+physical Samsung acceptance remains separate.
 
 ## Change
 
@@ -32,7 +33,7 @@ or unrelated evidence. Nothing is added to persistent client storage.
   28 subtests passed. These do not prove real upload processing or model quality.
 
 The [preparation contract and Chinese trial](../../../docs/UPLOAD_PREPARATION.md)
-also describes the Web candidate. Review/CI, pinned configured unsigned build,
-original-certificate signing, OTA publication and a real Samsung trial remain
-separate delivery gates. No physical phone was installed or controlled by this
+also describes the matching Web presentation. Review/CI, configured build,
+original-certificate signing and OTA publication subsequently passed. A real Samsung
+trial remains a separate acceptance gate. No physical phone was installed or controlled by this
 candidate's checks.

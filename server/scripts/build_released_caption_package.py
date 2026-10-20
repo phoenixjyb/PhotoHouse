@@ -19,7 +19,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SCHEMA_REVISION = 'a0c9d2e4f817'
-TARGET_SCHEMA_REVISIONS = (DEFAULT_SCHEMA_REVISION, 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304')
+TARGET_SCHEMA_REVISIONS = (DEFAULT_SCHEMA_REVISION, 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304', 'f2a8c5d1e640')
 from build_staging_package import FILES as API_FILES
 
 # The runtime's guarded ExistingDatabase dependency closure is the same reviewed

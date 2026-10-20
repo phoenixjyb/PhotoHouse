@@ -8,7 +8,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .library import LibraryRoute, _integer, _query
 from .memory_groups import MemoryGroups, MEMORY_GROUP_FIELDS, _csv
-from .memory_group_schema import GROUP_REVISION, verify_memory_group_schema
+from .memory_group_schema import GROUP_REVISIONS, verify_memory_group_schema
 from .service import AccessService
 from .stories import _uuid
 from .transport import TransportError, _body, _runtime, credentials_from_request
@@ -36,8 +36,8 @@ def capabilities(runtime, token, library, enabled, vectors):
         access = AccessService(db, clock=runtime.clock)
         with access._transaction():
             member = access._require(token, library, 'library.read')
-            ready = (enabled and [tuple(row) for row in db.execute(
-                'SELECT version_num FROM alembic_version')] == [(GROUP_REVISION,)]
+            versions=[tuple(row) for row in db.execute('SELECT version_num FROM alembic_version')]
+            ready = (enabled and len(versions)==1 and versions[0][0] in GROUP_REVISIONS
                 and verify_memory_group_schema(db))
             return {'version': 1, 'enabled': bool(ready),
                     'manual': bool(ready and member['role'] in {'owner', 'contributor'}),

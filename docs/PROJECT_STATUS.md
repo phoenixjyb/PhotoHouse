@@ -1,5 +1,23 @@
 # Current project status
 
+**October 20 following source:** [Library-wide photo stacks](LIBRARY_PHOTO_STACKS.md)
+add one stack per collapsed page position, full member viewing and persistent
+per-account cover/separation choices on Web and phone. An optional CPU index
+refresh entry point and additive `f2a8c5d1e640` schema are implemented; no migration,
+index refresh, Windows switch or APK publication has occurred for this increment.
+The delivered v74/API remains on its page-local grouping contract.
+
+**October 20 preparation-status delivery:** PR #97 is merged, and Windows API/Web
+serves fixed source `9e39ebd`, retaining the newer search source and private runtime
+configuration. [Phone v74](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md)
+is published on HTTPS OTA with the original certificate and icon. Native Windows
+and independent Mac readbacks verified all three served UI files and the complete
+APK. Four stopped-writer backups and four disk restore rehearsals passed; all nine
+runtime states and the other 78 task definitions were preserved. TV stays v30.
+No schema migration, production database restore or physical phone installation.
+The expandable processing details are delivered; Samsung and signed-in family
+acceptance remain open. Earlier dated snapshots below retain their scope.
+
 **October 19 gallery delivery:** PR #94 merged after all five CI jobs passed.
 The Windows API/Web now serves immutable source `f2041c1`; native and independent
 Mac HTTPS checks verified the served HTML, JavaScript and CSS. Four stopped-writer
@@ -24,7 +42,7 @@ visual/release gates remained open; the delivery above closes those release gate
 Native qualification alone is not a live deployment. See the
 [photo-stack qualification record](SIMILAR_PHOTO_STACKS.md#visual-review-integration-qualification--october-19).
 
-## October 19 next development candidate
+## October 19 preparation-status qualification (delivered October 20)
 
 The [upload-preparation endpoint](UPLOAD_PREPARATION.md) is included in the live
 API above. New Web and [phone v74 source](../clients/android/docs/PHONE_V74_CANDIDATE_2026-10-19.md) now presents account-owned stage
@@ -36,7 +54,7 @@ activation is added.
 The candidate passed 1,146 core JVM tests, debug build/lint, 13 QA-emulator
 import/preparation tests, the focused preparation browser journey and existing
 Web upload-history regression. Chinese/English 150% renders were inspected.
-These checks are separate from the live v73 delivery. It has not yet been signed, published or served; real
+The subsequent October 20 delivery above closes signing, OTA and Web serving gates; real
 Samsung upload/background-transfer acceptance remains open. Similar-photo stacks
 are already delivered as recorded above, and remain distinct from editorial
 shared-memory groups or any model activation.

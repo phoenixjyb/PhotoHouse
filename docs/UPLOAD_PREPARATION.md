@@ -44,7 +44,7 @@ upload-history workspace. Older clients keep the unchanged history contract. Thi
 or prepared item, retry a failed task, or activate a worker.
 
 
-## Web and phone presentation candidate
+## Web and phone presentation (delivered October 20)
 
 Web and phone v74 source read processing details after a successful receipt-history
 read, when opening history or explicitly refreshing it. There is no polling,
@@ -64,9 +64,9 @@ responses leave the original receipts visible with a neutral status. Expired
 sessions use the existing recovery flow; loss of library access clears protected
 details. Closing history or changing page/account/library discards delayed replies.
 
-This candidate is not the currently published v73 APK or served Web bundle.
-Signing, OTA publication, Web deployment and real Samsung acceptance remain
-separate delivery gates.
+[Phone v74 and the matching Web bundle](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md)
+are delivered. Native Windows and independent HTTPS source/APK checks passed.
+Real Samsung, signed-in family and actual media-viewing acceptance remain separate.
 
 ## Chinese acceptance guide
 

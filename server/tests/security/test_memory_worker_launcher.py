@@ -268,6 +268,10 @@ class MemoryWorkerLauncherTests(unittest.TestCase):
                 patch('app.access.memory_group_schema.verify_memory_group_schema', return_value=False) as verify:
             self.assertFalse(worker._check_schema(VersionDb(worker.GROUP_REVISION), groups_enabled=True))
         verify.assert_called_once()
+        with patch('app.access.family_note_identity.verify_family_note_identity_schema'), \
+                patch('app.access.memory_group_schema.verify_memory_group_schema', return_value=False) as verify:
+            self.assertFalse(worker._check_schema(VersionDb('f2a8c5d1e640'), groups_enabled=True))
+        verify.assert_called_once()
         self.assertFalse(worker._check_schema(VersionDb(worker.GROUP_REVISION), groups_enabled=1))
 
     def test_process_job_passes_explicit_group_flag_to_access_service(self):

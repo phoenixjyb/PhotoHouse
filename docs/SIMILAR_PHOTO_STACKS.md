@@ -6,6 +6,10 @@ The dated qualification records below describe their original gates; the later
 delivery closes the API rollout and phone publication gates, while family
 similarity quality, physical device acceptance and persistent curation remain open.
 
+**Following source — October 20:** [Library-wide indexed stacks](LIBRARY_PHOTO_STACKS.md)
+add consistent collapsed pagination and saved account-private choices. This is
+source work only; the delivered gallery described below still uses page-local v1.
+
 ## Purpose
 
 A sequence of near-identical photos should occupy one gallery position until a

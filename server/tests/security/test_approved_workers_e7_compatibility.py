@@ -25,40 +25,43 @@ E7 = 'e7c1a9d5b304'
 class ApprovedWorkersE7CompatibilityTests(unittest.TestCase):
     """Reuse the D1 worker fixture, then apply the actual E7 migration."""
 
+    schema_revision = E7
+
     def setUp(self):
         self.worker_fixture = d1_compatibility.ApprovedWorkersD1CompatibilityTests()
         self.worker_fixture.setUp()
         self.addCleanup(self.worker_fixture.doCleanups)
-        self.worker_fixture.fixture.migration.upgrade(E7)
+        self.worker_fixture.fixture.migration.upgrade(self.schema_revision)
 
-    def test_all_approved_worker_preflights_and_face_queue_accept_e7(self):
+    def test_all_approved_worker_preflights_and_face_queue_accept_selected_revision(self):
+        revision = self.schema_revision
         fixture = self.worker_fixture
         with closing(sqlite3.connect(fixture.database)) as db:
-            self.assertEqual(db.execute('SELECT version_num FROM alembic_version').fetchone()[0], E7)
+            self.assertEqual(db.execute('SELECT version_num FROM alembic_version').fetchone()[0], revision)
             groups = {row[0] for row in db.execute(
                 "SELECT name FROM sqlite_master WHERE type='table'")}
             self.assertTrue({'access_memory_groups', 'access_memory_group_revisions'} <= groups)
 
         before = fixture._snapshot()
         cpu = cpu_worker.preflight(fixture.database, fixture.originals, fixture.derived, fixture.stop)
-        self.assertEqual((cpu['preflight'], cpu['schema_revision']), ('pass', E7))
+        self.assertEqual((cpu['preflight'], cpu['schema_revision']), ('pass', revision))
         self.assertEqual(cpu['approved_claimable'], 1)
 
         image = image_worker.preflight(
             fixture.database, fixture.originals, fixture.derived, fixture.checkpoint,
             fixture.checkpoint_sha256, 'clip-synthetic', 'synthetic-v1', 'cpu')
-        self.assertEqual((image['preflight'], image['schema_revision']), ('pass', E7))
+        self.assertEqual((image['preflight'], image['schema_revision']), ('pass', revision))
         self.assertEqual(image['approved_claimable'], 1)
 
         video_embed = video_embed_worker.preflight(
             fixture.database, fixture.originals, fixture.derived, fixture.checkpoint,
             fixture.checkpoint_sha256, 'clip-synthetic', 'synthetic-v1', 'cpu')
-        self.assertEqual((video_embed['preflight'], video_embed['schema_revision']), ('pass', E7))
+        self.assertEqual((video_embed['preflight'], video_embed['schema_revision']), ('pass', revision))
         self.assertEqual(video_embed['approved_claimable'], 1)
 
         face_worker = d1_compatibility._face_worker_without_numpy()
         face = face_worker.preflight(fixture.database, fixture.originals, fixture.derived, fixture.stop)
-        self.assertEqual((face['preflight'], face['schema_revision']), ('pass', E7))
+        self.assertEqual((face['preflight'], face['schema_revision']), ('pass', revision))
         self.assertFalse(face['activated'])
 
         # The video worker constructor validates the schema through its
@@ -67,7 +70,7 @@ class ApprovedWorkersE7CompatibilityTests(unittest.TestCase):
             fixture.database, fixture.derived, (fixture.originals,),
             ffprobe=str(fixture._executable('ffprobe-e7.exe')),
             ffmpeg=str(fixture._executable('ffmpeg-e7.exe')), once=True)
-        self.assertEqual(video.schema_revision, E7)
+        self.assertEqual(video.schema_revision, revision)
 
         with closing(sqlite3.connect(fixture.database)) as db:
             db.execute('PRAGMA query_only=ON')
@@ -76,7 +79,7 @@ class ApprovedWorkersE7CompatibilityTests(unittest.TestCase):
             self.assertEqual(selected['asset_id'], 101)
             self.assertEqual(selected['library_id'], fixture.library)
 
-        # Existing claims still resolve only approved media. The additive E7
+        # Existing claims still resolve only approved media. The additive revision
         # tables do not alter worker query results or schema during preflight.
         with closing(cpu_worker.connect(fixture.database)) as db:
             self.assertEqual([row[0] for row in cpu_worker.matching_candidates(db)], [1])
@@ -87,13 +90,13 @@ class ApprovedWorkersE7CompatibilityTests(unittest.TestCase):
             candidates, _skipped = video_embed_worker.matching_candidates(db, fixture.derived)
             self.assertEqual([item['asset_id'] for item in candidates], [102])
         self.assertEqual(fixture._snapshot(), before)
-        self.assertIn(E7, worker_package.TARGET_SCHEMA_REVISIONS)
-        self.assertIn(E7, windows_qualification.SUPPORTED_SCHEMA_REVISIONS)
+        self.assertIn(revision, worker_package.TARGET_SCHEMA_REVISIONS)
+        self.assertIn(revision, windows_qualification.SUPPORTED_SCHEMA_REVISIONS)
         package_files = {name: b'synthetic worker source' for name in worker_package.FILES}
         with zipfile.ZipFile(io.BytesIO(worker_package.package_bytes(
-                'a' * 40, package_files, schema_revision=E7))) as archive:
+                'a' * 40, package_files, schema_revision=revision))) as archive:
             manifest = json.loads(archive.read('manifest.json'))
-            self.assertEqual(manifest['schema_revision'], E7)
+            self.assertEqual(manifest['schema_revision'], revision)
             self.assertFalse(manifest['activated'])
 
 

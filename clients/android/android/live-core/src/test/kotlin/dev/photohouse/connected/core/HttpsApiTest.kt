@@ -92,6 +92,39 @@ class HttpsApiTest {
             assertEquals("/assets/1/thumbnail?library=family", missing.path)
         }
     }
+    @Test fun libraryPhotoStacksUseSeparateBoundedRouteAndRevisionedPreferenceWrite() = runBlocking {
+        val revision = "123e4567-e89b-42d3-a456-426614174000"
+        val gallery = """{"library_id":"family","page":1,"page_size":12,"total":1,"originals_allowed":false,"items":[{"id":"1","kind":"image","width":null,"height":null,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/1/thumbnail?library=family"},{"id":"2","kind":"image","width":null,"height":null,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/2/thumbnail?library=family"}],"photo_stacks":{"version":2,"scope":"library","index_revision":"$revision","preference_revision":3,"groups":[{"id":"1","cover_asset_id":"2","asset_ids":["1","2"],"count":2,"reason":"same_upload"}]}}"""
+        TlsFixture().use { f ->
+            val api = HttpsPhotoHouseApi(f.origin, f.client)
+            f.server.enqueue(json(gallery))
+            val response = api.libraryPhotoStackGallery(token, "family", 1, GalleryMedia.ALL)
+            assertEquals("library", response.scope)
+            assertEquals(revision, response.indexRevision)
+            assertEquals(3L, response.preferenceRevision)
+            val read = f.server.takeRequest()
+            assertEquals("GET", read.method)
+            assertEquals("/photo-stacks/gallery", read.requestUrl!!.encodedPath)
+            assertEquals("family", read.requestUrl!!.queryParameter("library"))
+            assertEquals("1", read.requestUrl!!.queryParameter("page"))
+            assertEquals("all", read.requestUrl!!.queryParameter("media"))
+            assertNull(read.requestUrl!!.queryParameter("page_size"))
+            assertEquals(token.header(), read.getHeader("Authorization"))
+
+            f.server.enqueue(json("""{"index_revision":"$revision","preference_revision":4}"""))
+            val mutation = PhotoStackPreferenceMutation(revision, 3, groupId = "1", coverAssetId = "2")
+            assertEquals(4L, api.postPhotoStackPreference(token, "family", mutation).revision)
+            val write = f.server.takeRequest()
+            assertEquals("POST", write.method)
+            assertEquals("/photo-stacks/preferences", write.requestUrl!!.encodedPath)
+            assertEquals("family", write.requestUrl!!.queryParameter("library"))
+            assertEquals(token.header(), write.getHeader("Authorization"))
+            val request = Json.parseToJsonElement(write.body.readUtf8()).jsonObject
+            assertEquals(setOf("index_revision", "revision", "group_id", "cover_asset_id", "separate_asset_id", "reset"), request.keys)
+            assertEquals(JsonPrimitive("3"), request["revision"])
+            assertEquals(JsonPrimitive("0"), request["reset"])
+        }
+    }
     @Test fun unsupportedStacksDoNotDisableLegacyDateHints() = runBlocking {
         val legacy = """{"library_id":"family","page":1,"page_size":50,"total":1,"originals_allowed":false,"items":[{"id":"1","kind":"image","width":null,"height":null,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/1/thumbnail?library=family","date_hint":{"value":"2024-05-12","source":"filename"}}]}"""
         TlsFixture().use { f ->

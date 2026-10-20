@@ -27,6 +27,7 @@ from test_access_foundation import OWNER, MEMBER, PASSWORD, NOW
 
 
 from app.access.memory_group_schema import GROUP_REVISION
+from app.access.photo_stack_schema import REVISION as PHOTO_STACK_REVISION,TABLES as PHOTO_STACK_TABLES
 
 
 class RuntimeAdapterTests(unittest.TestCase):
@@ -329,8 +330,20 @@ class RuntimeAdapterTests(unittest.TestCase):
         with self.assertRaises(sqlite3.ProgrammingError):db.execute('SELECT 1')
         self.assertEqual(self.client.get('/assets?library=family-a',headers=self.headers()).status_code,200)
 
+    def test_photo_stack_head_requires_complete_optional_schema_and_old_group_head_survives(self):
+        with ExistingDatabase(self.path)() as db:
+            self.assertEqual(db.execute('SELECT version_num FROM alembic_version').fetchone()[0],PHOTO_STACK_REVISION)
+        # Removing one declared optional table must not silently admit an f2 DB.
+        self.mutate('DROP TABLE '+PHOTO_STACK_TABLES[-1])
+        with self.assertRaises(RuntimeUnavailable):
+            with ExistingDatabase(self.path)():pass
+        # e7 remains supported without photo-stack storage; this is not an upgrade.
+        self.mutate('UPDATE alembic_version SET version_num=?',(GROUP_REVISION,))
+        with ExistingDatabase(self.path)() as db:
+            self.assertNotIn(PHOTO_STACK_TABLES[-1],{row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")})
+
     def test_adapter_revision_pin_matches_actual_migration_head(self):
-        self.assertEqual(ScriptDirectory.from_config(config()).get_heads(),[GROUP_REVISION])
+        self.assertEqual(ScriptDirectory.from_config(config()).get_heads(),[PHOTO_STACK_REVISION])
         for invalid in (Path('relative.sqlite'),':memory:'):
             with self.assertRaises(ValueError):ExistingDatabase(invalid)
         for timeout in (0,-1,11,float('nan'),True):

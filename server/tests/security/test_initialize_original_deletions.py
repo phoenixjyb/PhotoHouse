@@ -1,4 +1,4 @@
-"""Offline original-deletion journal bootstrap CLI against disposable e7 SQLite."""
+"""Offline original-deletion journal bootstrap CLI against disposable migrated SQLite."""
 from contextlib import closing, redirect_stderr, redirect_stdout
 import io
 import json
@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 import test_library_reads as fixture
 from app.access.original_deletions import OriginalDeletionJournal
+from app.access.photo_stack_schema import REVISION as PHOTO_STACK_REVISION
 from app.access.memory_book_edition_schema import EDITION_TABLE, SOURCES_TABLE
 from app.access.family_note_identity_schema import IDENTITY_REVISION, IDENTITIES, SCOPES
 from scripts import initialize_original_deletions as bootstrap
@@ -338,7 +339,7 @@ class InitializeOriginalDeletionCliTests(unittest.TestCase):
         code, report, _ = self.cli('--execute', '--all-writers-stopped')
         self.assertEqual(code, 0)
         self.assertEqual(report['status'], 'bound')
-        self.assertEqual(report['schema_revision'], 'e7c1a9d5b304')
+        self.assertEqual(report['schema_revision'], PHOTO_STACK_REVISION)
         self.assertGreater(report['primary_rows'], report['original_rows'])
         with closing(sqlite3.connect(self.primary)) as db:
             self.assertEqual(db.execute(

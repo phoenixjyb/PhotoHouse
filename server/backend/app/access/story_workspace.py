@@ -178,9 +178,9 @@ def collect_items(db, library, ids, *, memory_groups_enabled=False, group_depend
         raise TransportError(503, 'Shared memory evidence unavailable')
     shared = {}
     if memory_groups_enabled:
-        from .memory_group_schema import GROUP_REVISION, verify_memory_group_schema
-        if ([tuple(row) for row in db.execute('SELECT version_num FROM alembic_version')]
-                != [(GROUP_REVISION,)] or not verify_memory_group_schema(db)):
+        from .memory_group_schema import GROUP_REVISIONS, verify_memory_group_schema
+        versions=[tuple(row) for row in db.execute('SELECT version_num FROM alembic_version')]
+        if (len(versions)!=1 or versions[0][0] not in GROUP_REVISIONS or not verify_memory_group_schema(db)):
             raise TransportError(503, 'Shared memory evidence unavailable')
         from .shared_memory_evidence import shared_notes
         shared = shared_notes(db, library, ids, dependencies=group_dependencies)

@@ -1,16 +1,24 @@
 # Product roadmap
 
+**October 20 next increment:** [Library-wide indexed stacks](LIBRARY_PHOTO_STACKS.md)
+are implemented in source, including consistent collapsed pagination, private
+saved covers/separations and a CPU refresh entry point. Finish source/CI review,
+then separately qualify the actual schema upgrade, Windows resource-bounded
+refresh host, migration/rollback and paired client delivery. Family burst-quality
+and Samsung acceptance remain required. This increment is not live.
+
 **October 19 delivery:** [similar-photo stacks](SIMILAR_PHOTO_STACKS.md) add
 conservative, page-local suggestions from existing perceptual hashes and capture
 times, with a stricter same-upload fallback for undated photos. Web and phone
 controls preserve every original and the complete viewer sequence. This is a
-live API/Web release with phone v73 available on HTTPS OTA. Whole-library
-indexing, saved cover/separation preferences and family visual calibration remain
-later work.
+live API/Web release, retained in the current phone v74 HTTPS OTA release. Whole-library
+indexing and saved cover/separation preferences are now a separate source
+increment above; native activation and family visual calibration remain open.
 
 The separate [upload-preparation read](UPLOAD_PREPARATION.md) is also in the live API;
-Web and phone v74 source now add negotiated, expandable stage labels.
-Candidate release and physical upload acceptance remain outstanding.
+Web and [phone v74](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md) now deliver
+negotiated, expandable stage labels. Native and independent HTTPS delivery passed
+on October 20; physical upload and signed-in family acceptance remain outstanding.
 Do not label previews or video playback ready from task completion alone.
 
 **October 18 API/CPU qualification:** the [R5 native synthetic trial](API_CPU_OVERLAY_QUALIFICATION_2026-10-18.md)

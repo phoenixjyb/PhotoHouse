@@ -29,7 +29,7 @@ TABLES = {'face_assignment_events', 'face_embedding_artifacts', 'person_embeddin
           'access_person_libraries', 'access_asset_libraries', 'access_accounts',
           'access_libraries', 'access_memberships', 'access_operators', 'access_audit',
           'persons', 'face_detections', 'assets', 'tasks'}
-REVISIONS = ('f2a6d8b4c915', 'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614')
+REVISIONS = ('f2a6d8b4c915', 'a8d4c2e6f901', 'c3f7a91d5e20', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'f2a8c5d1e640')
 
 
 def _payload(value, kind):
