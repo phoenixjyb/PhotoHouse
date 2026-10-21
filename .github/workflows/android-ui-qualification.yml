@@ -1,0 +1,81 @@
+name: Android UI qualification
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: android-ui-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  api34-fixture-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.12'
+      - name: Verify UI qualification guards
+        run: python -m unittest tools.tests.test_android_ui_qualification
+      - name: Install explicit API 34 emulator components
+        shell: bash
+        run: |
+          set -euo pipefail
+          ph_sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          test -n "$ph_sdk_root"
+          ph_sdk_manager="$ph_sdk_root/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$ph_sdk_manager"
+          set +o pipefail
+          yes | "$ph_sdk_manager" --sdk_root="$ph_sdk_root" --licenses >/dev/null
+          set -o pipefail
+          "$ph_sdk_manager" --sdk_root="$ph_sdk_root" --install \
+            'platforms;android-34' 'build-tools;34.0.0' 'platform-tools' 'emulator' \
+            'system-images;android-34;google_apis;x86_64'
+          test -e /dev/kvm
+          sudo chmod 0666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+      - name: Build only the unconfigured QA APKs
+        working-directory: clients/android/android
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e local.properties
+          env -u ORG_GRADLE_PROJECT_photohouseOrigin \
+              -u ORG_GRADLE_PROJECT_photohousePhoneHomeOrigin \
+              -u ORG_GRADLE_PROJECT_photohousePhoneHomeLanAddress \
+            ./gradlew --no-daemon --max-workers=2 --console=plain \
+              -PphotohousePhoneUiQa=true \
+              -PphotohouseOrigin= \
+              -PphotohousePhoneHomeOrigin= \
+              -PphotohousePhoneHomeLanAddress= \
+              -PphotohousePhoneHomeDiscoveryEnabled=false \
+              :connected:assembleDebug :connected:assembleDebugAndroidTest
+      - name: Run exact fixture UI cases and collect app-private screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          ph_sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          python tools/android_ui_qualification.py \
+            --sdk-root "$ph_sdk_root" \
+            --app-apk clients/android/android/connected/build/outputs/apk/debug/connected-debug.apk \
+            --test-apk clients/android/android/connected/build/outputs/apk/androidTest/debug/connected-debug-androidTest.apk \
+            --artifacts "$RUNNER_TEMP/photohouse-android-ui-artifacts" \
+            --avd-home "$RUNNER_TEMP/photohouse-android-ui-avd" \
+            --avd-name "PhotoHouseUi${GITHUB_RUN_ID}${GITHUB_RUN_ATTEMPT}" \
+            --boot-timeout 420
+      - name: Upload fixture-only UI evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: photohouse-android-ui-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/photohouse-android-ui-artifacts/
+          if-no-files-found: warn
+          retention-days: 3

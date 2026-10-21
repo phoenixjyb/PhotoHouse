@@ -6,6 +6,8 @@ Importing this module or serving gallery requests never starts the worker.
 from .library_photo_stacks import rebuild_photo_stack_index
 from .photo_stack_schema import available
 from .service import Conflict
+from .photo_stack_index import PhotoStackCancelled
+import sqlite3
 
 
 class PhotoStackRefreshWorker:
@@ -39,7 +41,13 @@ class PhotoStackRefreshWorker:
                 current=db.execute('SELECT generation FROM access_photo_stack_indexes WHERE library_id=?',(library,)).fetchone()
                 if self.stopped():break
                 try:
-                    result=rebuild_photo_stack_index(db,library,expected_generation=current[0] if current else None)
+                    result=rebuild_photo_stack_index(db,library,expected_generation=current[0] if current else None,
+                                                     stopped=self.stopped)
+                except PhotoStackCancelled:
+                    results.append({'library_id':library,'status':'cancelled'});break
+                except sqlite3.OperationalError as error:
+                    if str(error)!='interrupted' or not self.stopped():raise
+                    results.append({'library_id':library,'status':'cancelled'});break
                 except Conflict:
                     results.append({'library_id':library,'status':'changed_retry'});continue
                 results.append({'library_id':library,'status':'updated' if result['changed'] else 'unchanged',**result})

@@ -44,8 +44,10 @@ class InspectApiPackageTests(unittest.TestCase):
         self.archive.chmod(384)
         self.digest = hashlib.sha256(raw).hexdigest()
 
-    def inspect(self, commit=None, digest=None):
-        return tool.inspect(self.archive, self.commit if commit is None else commit, self.digest if digest is None else digest, self.git, self.git_sha)
+    def inspect(self, commit=None, digest=None, schema_revision='a0c9d2e4f817'):
+        return tool.inspect(self.archive, self.commit if commit is None else commit,
+                            self.digest if digest is None else digest, self.git, self.git_sha,
+                            schema_revision=schema_revision)
 
     def test_exact_immutable_source_is_read_only(self):
         before = set(self.root.rglob('*'))
@@ -57,6 +59,27 @@ class InspectApiPackageTests(unittest.TestCase):
         self.assertEqual(self.archive.read_bytes(), self.raw)
         for key in ('extracted', 'packaged_code_executed', 'database_opened', 'models_called', 'services_changed', 'published', 'private_configuration_included', 'dependencies_included'):
             self.assertIs(r[key], False)
+
+    def test_explicit_schema_target_reconstructs_exact_archive(self):
+        for revision in ('e7c1a9d5b304', 'f2a8c5d1e640'):
+            with self.subTest(revision=revision):
+                raw = self.builder.package_bytes(self.commit,
+                    self.builder.source_files(self.commit), schema_revision=revision)
+                self.write(raw)
+                report = self.inspect(schema_revision=revision)
+                self.assertEqual(report['status'], 'verified')
+                self.assertEqual(report['target_schema_revision'], revision)
+
+    def test_schema_target_mismatch_and_unknown_target_are_refused(self):
+        raw = self.builder.package_bytes(self.commit,
+            self.builder.source_files(self.commit), schema_revision='f2a8c5d1e640')
+        self.write(raw)
+        with self.assertRaisesRegex(tool.Refused, 'archive_source_mismatch'):
+            self.inspect()
+        with self.assertRaisesRegex(tool.Refused, 'archive_source_mismatch'):
+            self.inspect(schema_revision='e7c1a9d5b304')
+        with self.assertRaisesRegex(tool.Refused, 'schema_revision_invalid'):
+            self.inspect(schema_revision='unsupported')
 
     def test_dirty_worktree_does_not_replace_committed_source(self):
         (self.repo / 'server/a.py').write_text('UNREVIEWED = True\n')
@@ -253,8 +276,30 @@ class InspectApiPackageTests(unittest.TestCase):
         with redirect_stdout(output):
             code = tool.main(['--archive', str(self.archive), '--commit', self.commit, '--sha256', self.digest, '--git', str(self.git), '--git-sha256', self.git_sha])
         self.assertEqual(code, 0)
-        self.assertEqual(json.loads(output.getvalue())['status'], 'verified')
+        report = json.loads(output.getvalue())
+        self.assertEqual(report['status'], 'verified')
+        self.assertEqual(report['target_schema_revision'], 'a0c9d2e4f817')
         self.assertNotIn(str(self.root), output.getvalue())
+
+    def test_cli_schema_revision_binds_inspection_target(self):
+        raw = self.builder.package_bytes(self.commit,
+            self.builder.source_files(self.commit), schema_revision='f2a8c5d1e640')
+        self.write(raw)
+        output = StringIO()
+        with redirect_stdout(output):
+            code = tool.main(['--archive', str(self.archive), '--commit', self.commit,
+                '--sha256', self.digest, '--git', str(self.git), '--git-sha256', self.git_sha,
+                '--schema-revision', 'f2a8c5d1e640'])
+        self.assertEqual(code, 0)
+        report = json.loads(output.getvalue())
+        self.assertEqual(report['status'], 'verified')
+        self.assertEqual(report['target_schema_revision'], 'f2a8c5d1e640')
+        output = StringIO()
+        with redirect_stdout(output):
+            code = tool.main(['--archive', str(self.archive), '--commit', self.commit,
+                '--sha256', self.digest, '--git', str(self.git), '--git-sha256', self.git_sha])
+        self.assertEqual(code, 2)
+        self.assertEqual(json.loads(output.getvalue())['error_code'], 'archive_source_mismatch')
 
     def test_unknown_exception_message_is_never_echoed(self):
         output = StringIO()

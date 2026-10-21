@@ -199,6 +199,13 @@ revisioned cover/separation preferences. Its complete group metadata preserves
 full viewer navigation. Request-time authorization and source fingerprints dissolve
 stale groups; absent indexes negotiate v1. The new optional f2 schema and refresh
 entry point are source only, without a live migration or worker activation.
+The [operations layer](PHOTO_STACK_OPERATIONS.md) now prepares an explicit paired-
+backup migration and a one-sweep host: read-only preflight, private direct inputs,
+current external deletion history, exclusive worker lock, CPU/SQL cancellation
+and bounded Windows execution. The host never installs a scheduler or opens a
+model/original media. Its guarded schema change and derived index publication
+preserve originals and failed processing evidence; native/live acceptance remains
+separate from generated source qualification.
 
 The separate [upload preparation read](UPLOAD_PREPARATION.md) joins only the
 current account's receipt page with attributable processing evidence and current

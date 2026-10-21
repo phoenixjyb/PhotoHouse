@@ -9,12 +9,27 @@ against existing drafting before committing to a general runtime. Provider
 qualification, source implementation and deployment remain distinct; existing
 upload/indexing priorities below are unchanged.
 
+**October 20 search release and next work:** [Guarded bilingual search](SEARCH_RELEASE_2026-10-20.md)
+is merged in PR #101 and API/Web source `b170a97` was deployed and verified.
+Exclusion/strict-condition admission and clarification recovery have shipped;
+**semantic search remains OFF**. Next qualify multilingual visual relevance
+(including vague, contrast, absence, count and relationship cases), report refused
+requests separately from ranking quality, and verify translation meaning before
+any semantic activation proposal. In parallel, audit authorized reviewed-person,
+capture-date/video-date and text coverage. Family/device acceptance and Shanxi/Jin
+dialect/ASR quality remain separate gates. Merged Android changes require their
+own later APK; this release preserved phone v74 / TV v30.
+
 **October 20 next increment:** [Library-wide indexed stacks](LIBRARY_PHOTO_STACKS.md)
 are implemented in source, including consistent collapsed pagination, private
-saved covers/separations and a CPU refresh entry point. Finish source/CI review,
-then separately qualify the actual schema upgrade, Windows resource-bounded
-refresh host, migration/rollback and paired client delivery. Family burst-quality
-and Samsung acceptance remain required. This increment is not live.
+saved covers/separations and a CPU refresh entry point. Their initial source/CI
+integration is included in PR #101. PR #102 adds the [guarded migration and
+one-sweep host](PHOTO_STACK_OPERATIONS.md); its pinned candidate has passed a
+Windows-private copy rehearsal and native controller qualification. Resolve source
+integration/CI, then perform the approved schema/compatible-worker rollout and
+selected-library refresh. The search release did not activate library-wide grouping.
+Family burst-quality, Samsung acceptance and any later APK publication remain
+separate gates; this source-integration checkpoint does not claim live activation.
 
 **October 19 delivery:** [similar-photo stacks](SIMILAR_PHOTO_STACKS.md) add
 conservative, page-local suggestions from existing perceptual hashes and capture
@@ -61,7 +76,7 @@ records the source fix, guards and remaining delivery gates. The general API
 repair remains a source candidate; the offline batch operation did not deploy it.
 Earlier delivery snapshots below retain their dated scope.
 
-Active priorities after the **October 17 phone v70 and October 16 API/Web deliveries**. [Features](FEATURES.md)
+Earlier delivery context after the **October 17 phone v70 and October 16 API/Web deliveries**. [Features](FEATURES.md)
 lists existing capabilities, [Project Status](PROJECT_STATUS.md) records current
 release and runtime evidence, and [the architecture review](ARCHITECTURE_REVIEW_2026-10-14.md)
 records maintainability findings. Dated implementation and delivery history is
@@ -116,20 +131,21 @@ APK and are included in phone v67 with server capability negotiation. Scene
 search remains default-off; no scene provider or story-generation model was
 activated by the phone or API/Web releases.
 
-## Current priority: accept folder upload, then voice, search and story linking
+## Device acceptance alongside search qualification
 
-V72 is published. Retry the same existing batch after updating, rather than
-reselecting a folder whose server receipt is already complete. Receipt,
-assignment, queue release, per-stage processing and visible previews are separate
-acceptance steps. The observed v71 batch is accepted and processing has started;
-its final previews, faces and captions must be verified independently.
+Use the published phone v74 for the remaining physical upload/voice/search trials.
+If a current authorized batch still needs recovery, check its receipt and resume
+that batch rather than reselecting a folder whose server receipt is already
+complete. Receipt, assignment, queue release,
+per-stage processing and visible previews remain separate acceptance steps;
+the earlier dated batch records are not a current processing inventory.
 
 Follow the [import/folder-upload trial](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md)
 for a genuinely new upload: picker return, bounded recovery and explicit Retry,
 reviewed destination/count/size, metered-network consent and Start. Do not create
 duplicate transfers to repair a processing failure.
 
-Using v71, also run the retained v68 recovery/voice continuation trial on the physical
+Using v74, also run the retained v68 recovery/voice continuation trial on the physical
 phone, then compare the served Web experience. Separately run owner/member acceptance journeys for
 the delivered bilingual search clarification, v65 chapter-source chooser and
 v66 proposal adoption. Confirm source attribution, explicit
@@ -150,18 +166,17 @@ separate resource/lifecycle qualification and operation authority.
 The generic legacy worker remains incompatible with the current parallel lanes.
 Do not reset completed work or use downloaded comparison models implicitly.
 
-## Current candidate: expose actual import preparation evidence
+## Delivered preparation evidence: physical acceptance remains
 
 The [import workspace](PHONE_IMPORT_STATUS.md) reuses the existing upload queue
 and account-owned history. The live [preparation endpoint](UPLOAD_PREPARATION.md)
-and new Web/phone v74 source distinguish receipt, library approval, processing
+and delivered Web/phone v74 distinguish receipt, library approval, processing
 and unverified media availability. Details are folded by default and refresh
 only after explicit history reads. Older-server/error fallback preserves receipts;
 stale account/library/page responses cannot repopulate protected details.
 
-**Next gates:** finish generated delayed/failed/access-changed journeys and
-Chinese/English large-text inspection; review/merge source; prepare pinned Web
-and phone artifacts for authorized deployment/publication. Then validate a real
+Source checks, Chinese/English large-text inspection, merge and API/Web/phone v74
+delivery have passed at their dated release checkpoints. **Next gate:** validate a real
 Samsung upload through receipt, processing and gallery/video opening. Finished
 tasks alone never establish preview or playback readiness. Do not add a second
 queue or repeat an upload to recover derived processing.

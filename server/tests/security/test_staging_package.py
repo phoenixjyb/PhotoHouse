@@ -48,6 +48,7 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/search_intent_cases.py',
             'scripts/check_private_search.py',
             'scripts/semantic_scene_cases.py',
+            'scripts/semantic_exclusion_cases.py',
             'scripts/semantic_scene_translation.py',
             'scripts/semantic_scene_translation_fidelity.py',
             'scripts/qualify_multilingual_scenes.py',
@@ -152,6 +153,8 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/qualify_vector_erasure.py',
             'scripts/qualify_memory_groups.py',
             'scripts/qualify_library_photo_stacks.py',
+            'scripts/apply_library_photo_stack_schema.py',
+            'scripts/run_photo_stack_worker.py',
             'scripts/qualify_memory_group_workers.py',
             'scripts/apply_memory_group_schema.py',
             'scripts/run_approved_cpu_worker.py',
@@ -225,6 +228,8 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.visual_vector_erasure_catalog import VectorErasureCatalog\n'
                 'from app.access.asset_tombstones import prepare_asset_tombstone, plan_durable_asset_vector_cleanup\n'
                 'import qualify_oral_history\n'
+                'import apply_library_photo_stack_schema, run_photo_stack_worker\n'
+                'assert callable(apply_library_photo_stack_schema.apply) and callable(run_photo_stack_worker.preflight)\n'
                 'import check_private_search\n'
                 'import export_visual_people_review, inspect_reviewed_people_readiness, reviewed_people_source\n'
                 'from app.access.search_evaluation import evaluate_cases\n'
@@ -239,7 +244,7 @@ class StagingPackageTests(unittest.TestCase):
                 'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'bounded_windows_job'):\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"
@@ -263,8 +268,8 @@ class StagingPackageTests(unittest.TestCase):
                 'import sys\nfrom pathlib import Path\n'
                 f'root=Path({str(root)!r})\n'
                 "sys.path.insert(0,str(root/'scripts'))\n"
-                'import qualify_multilingual_scenes,semantic_scene_translation_fidelity,qualify_semantic_scenes,semantic_scene_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes\n'
-                'for module in (qualify_multilingual_scenes,semantic_scene_translation_fidelity,qualify_semantic_scenes,semantic_scene_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes):\n'
+                'import qualify_multilingual_scenes,semantic_scene_translation_fidelity,qualify_semantic_scenes,semantic_scene_cases,semantic_exclusion_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes\n'
+                'for module in (qualify_multilingual_scenes,semantic_scene_translation_fidelity,qualify_semantic_scenes,semantic_scene_cases,semantic_exclusion_cases,semantic_scene_translation,semantic_scene_comparison,semantic_reviewed_projection,serve_reviewed_semantic_text,qualify_reviewed_semantic_scenes):\n'
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'
@@ -310,6 +315,8 @@ class StagingPackageTests(unittest.TestCase):
     def test_archive_is_deterministic_complete_and_contains_no_private_discovery(self):
         files={name:('synthetic source '+name).encode() for name in package.FILES}
         first=package.package_bytes('a'*40,files)
+        self.assertEqual(first,package.package_bytes('a'*40,files,
+                                                     schema_revision=package.DEFAULT_MIGRATION_REVISION))
         self.assertEqual(first,package.package_bytes('a'*40,dict(reversed(list(files.items())))))
         with zipfile.ZipFile(io.BytesIO(first)) as archive:
             self.assertEqual(set(archive.namelist()),set(package.FILES)|{'manifest.json'})
@@ -330,6 +337,34 @@ class StagingPackageTests(unittest.TestCase):
             self.assertNotIn('backend/app/config.py',archive.namelist())
             self.assertNotIn('backend/app/legacy_main.py',archive.namelist())
             self.assertFalse(any(name.endswith(('.sqlite','.pem','.env','.pt')) for name in archive.namelist()))
+
+    def test_explicit_supported_schema_targets_are_bound_in_manifest(self):
+        files={name:('synthetic source '+name).encode() for name in package.FILES}
+        for revision in ('e7c1a9d5b304','f2a8c5d1e640'):
+            with self.subTest(revision=revision):
+                archive_bytes=package.package_bytes('a'*40,files,schema_revision=revision)
+                with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+                    manifest=json.loads(archive.read('manifest.json'))
+                self.assertEqual(manifest['migration_revision'],revision)
+                self.assertFalse(manifest['dependencies_included'] or
+                                 manifest['private_configuration_included'])
+
+    def test_unknown_schema_target_is_refused(self):
+        files={name:b'synthetic' for name in package.FILES}
+        for revision in ('unknown','a0c9d2e4f817x',None):
+            with self.subTest(revision=revision), self.assertRaises(ValueError):
+                package.package_bytes('a'*40,files,schema_revision=revision)
+
+    def test_cli_schema_revision_is_recorded_in_archive_manifest(self):
+        files={name:('synthetic source '+name).encode() for name in package.FILES}
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory).resolve()/'f2-source.zip'
+            with patch.object(package,'source_files',return_value=files):
+                self.assertEqual(package.main(['--commit','a'*40,'--out',str(output),
+                    '--schema-revision','f2a8c5d1e640']),0)
+            with zipfile.ZipFile(output) as archive:
+                manifest=json.loads(archive.read('manifest.json'))
+            self.assertEqual(manifest['migration_revision'],'f2a8c5d1e640')
 
     def test_extra_missing_or_traversal_files_are_refused(self):
         files={name:b'synthetic' for name in package.FILES}

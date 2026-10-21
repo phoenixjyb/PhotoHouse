@@ -20,6 +20,30 @@ documents the private offline runner, generated fixtures and small video-worker
 test dependency overlay. The ordinary API profile includes readiness/evaluator/
 CLI checks without importing legacy workers or requiring FFmpeg.
 
+## October 20 guarded-search release qualification
+
+[PR #101](https://github.com/phoenixjyb/PhotoHouse/pull/101) merged as `a4e3922`;
+its tree matches qualified/deployed source `b170a97`. The full local API profile
+passed **2,647 tests and 2,764 subtests** plus the generated no-listener demo,
+with identical start/end commits and input hashes. All five jobs in
+[hosted run 39359164477](https://github.com/phoenixjyb/PhotoHouse/actions/runs/39359164477)
+passed. The focused scene browser journey passed eight checkpoints, and Chinese/
+English phone-width 150% text renders were inspected. The final browser fixtures
+require exclusion refusal before encoding and separately retain provider-refusal
+and GET-only recovery coverage.
+
+Native bounded/read-only qualification and archive/Git attestation passed for
+the 256-file API package. The separately authorized cutover completed four
+stopped-writer backups and four disk restore rehearsals, restored all nine scoped
+task states, and preserved the other 78 task definitions. Native source/listener
+checks and independent Mac HTTPS asset/access/feed checks passed at the October
+20 10:49 Asia/Shanghai release checkpoint. Semantic search remained OFF;
+configuration, private search artifacts and schema were unchanged. No APK was
+published; phone v74 and TV v30 were retained. See the
+[release record](SEARCH_RELEASE_2026-10-20.md) for scope and remaining semantic,
+coverage and family/device gates. Documentation updates do not repeat these
+runtime operations or turn these dated results into a fresh service probe.
+
 ## Explicit emulator instrumentation
 
 Build the unconfigured QA variant with `-PphotohousePhoneUiQa=true`; its app ID

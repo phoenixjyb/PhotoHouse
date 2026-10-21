@@ -14,6 +14,15 @@ _EPOCH_NAIVE = datetime(1970, 1, 1)
 _EPOCH_UTC = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
+class PhotoStackCancelled(RuntimeError):
+    """An explicitly stopped build must not publish a partial index."""
+
+
+def check_stopped(stopped):
+    if stopped is not None and stopped():
+        raise PhotoStackCancelled('photo_stack_refresh_cancelled')
+
+
 def _bands(value, count):
     """Return disjoint bit bands; distance < count guarantees a shared band."""
     width, extra = divmod(64, count)
@@ -112,13 +121,16 @@ class _CandidateIndex:
 
 
 def build_library_photo_stacks(rows, *, maximum_assets=100000,
-                               maximum_comparisons=10000000):
+                               maximum_comparisons=10000000, stopped=None):
     """Build deterministic complete-link stacks across one authorized library.
 
     Candidate discovery uses seven pHash bands for near-capture pairs and
     three for same-upload pairs. Every tested pair consumes the comparison
     budget; exceeding it rejects the whole build with ``ValueError``.
     """
+    if stopped is not None and not callable(stopped):
+        raise ValueError('stopped must be callable')
+    check_stopped(stopped)
     if type(maximum_assets) is not int or maximum_assets < 0:
         raise ValueError('maximum_assets must be a nonnegative integer')
     if type(maximum_comparisons) is not int or maximum_comparisons < 0:
@@ -131,6 +143,7 @@ def build_library_photo_stacks(rows, *, maximum_assets=100000,
     prepared = []
     seen_ids = set()
     for row in rows:
+        check_stopped(stopped)
         if not isinstance(row, (list, tuple)):
             continue
         if row and type(row[0]) is int and 1 <= row[0] <= _MAX_ID:
@@ -169,12 +182,14 @@ def build_library_photo_stacks(rows, *, maximum_assets=100000,
     index = _CandidateIndex()
     comparisons = 0
     for item in prepared:
+        check_stopped(stopped)
         if item.get('unmatchable_time'):
             clusters.append({'members': [item], 'reason': None})
             indexed_keys.append([])
             continue
         selected = None
         for cluster_id in sorted(index.candidates(item)):
+            check_stopped(stopped)
             cluster = clusters[cluster_id]
             if len(cluster['members']) >= _GROUP_LIMIT:
                 continue
@@ -205,6 +220,7 @@ def build_library_photo_stacks(rows, *, maximum_assets=100000,
 
     groups = []
     for cluster in clusters:
+        check_stopped(stopped)
         members = cluster['members']
         if len(members) < 2:
             continue

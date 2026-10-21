@@ -16,6 +16,8 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 GIT_PREFIX = 'server/'
+DEFAULT_MIGRATION_REVISION = 'a0c9d2e4f817'
+MIGRATION_REVISIONS = (DEFAULT_MIGRATION_REVISION, 'e7c1a9d5b304', 'f2a8c5d1e640')
 FILES = (
     'backend/alembic.ini',
     'backend/app/__init__.py',
@@ -258,6 +260,8 @@ FILES = (
     'scripts/qualify_vector_erasure.py',
     'scripts/qualify_memory_groups.py',
     'scripts/qualify_library_photo_stacks.py',
+    'scripts/apply_library_photo_stack_schema.py',
+    'scripts/run_photo_stack_worker.py',
     'scripts/qualify_memory_group_workers.py',
     'scripts/apply_memory_group_schema.py',
     'scripts/run_approved_cpu_worker.py',
@@ -274,6 +278,7 @@ FILES = (
     'scripts/semantic_pair_cases.py',
     'scripts/qualify_semantic_pair.py',
     'scripts/semantic_scene_cases.py',
+    'scripts/semantic_exclusion_cases.py',
     'scripts/semantic_scene_translation.py',
     'scripts/semantic_scene_translation_fidelity.py',
     'scripts/qualify_multilingual_scenes.py',
@@ -313,11 +318,13 @@ def source_files(commit):
     return {name:git('cat-file','blob',entries[name]) for name in FILES}
 
 
-def package_bytes(commit, files):
+def package_bytes(commit, files, *, schema_revision=DEFAULT_MIGRATION_REVISION):
     if set(files) != set(FILES):
         raise ValueError('Exact source allowlist required')
+    if type(schema_revision) is not str or schema_revision not in MIGRATION_REVISIONS:
+        raise ValueError('Explicit supported migration revision required')
     manifest = {'format_version':1,'source_commit':commit,'artifact_kind':'source_only_not_deployed',
-        'migration_revision':'a0c9d2e4f817','dependencies_included':False,'private_configuration_included':False,
+        'migration_revision':schema_revision,'dependencies_included':False,'private_configuration_included':False,
         'files':{name:hashlib.sha256(files[name]).hexdigest() for name in FILES}}
     output=io.BytesIO()
     with zipfile.ZipFile(output,'w',compression=zipfile.ZIP_STORED) as archive:
@@ -328,16 +335,19 @@ def package_bytes(commit, files):
     return output.getvalue()
 
 
-def main():
+def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--commit',required=True)
     parser.add_argument('--out',type=Path,required=True)
-    args=parser.parse_args()
+    parser.add_argument('--schema-revision', choices=MIGRATION_REVISIONS,
+                        default=DEFAULT_MIGRATION_REVISION,
+                        help='Target API schema contract recorded in the source-only manifest')
+    args=parser.parse_args(argv)
     try:
         if (not args.out.is_absolute() or '..' in args.out.parts
                 or args.out.parent.resolve(strict=True) != args.out.parent):
             raise ValueError('Explicit direct output required')
-        data=package_bytes(args.commit,source_files(args.commit))
+        data=package_bytes(args.commit,source_files(args.commit),schema_revision=args.schema_revision)
         flags=os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_BINARY',0)
         with os.fdopen(os.open(args.out,flags,0o600),'wb') as stream:
             stream.write(data); stream.flush(); os.fsync(stream.fileno())
