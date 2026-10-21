@@ -27827,6 +27827,65 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Close the synthetic SQLite initialization connection explicitly after its transaction instead of relying on sqlite3 context-manager or garbage-collection behavior. A retained-connection regression verifies closure and committed sessions; fixes Windows temporary-directory teardown. No product database/lifecycle behavior changes."
+    },
+    {
+      "feature": "selected-story-private-ipc-and-native-windows-qualification",
+      "source_commit": "31083f72b0d20e7c0c55f2faea5e4181eea1ff2e",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "85094e9bc5a7563876104904ab0c990a28eb018887850c5080d94e5d08359dde",
+          "sha256": "5e1b7844d769474f08459a8a29021d9aa343537bfe58075cda1c5628276c2de2"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_WINDOWS_QUALIFICATION.md",
+          "before_sha256": null,
+          "sha256": "420a6730e6232eded60a111ae9b45aebc5850a143457193cc53425772dc6d0fd"
+        },
+        {
+          "path": "docs/WINDOWS_CPU_CHECKS.md",
+          "before_sha256": "32bb8ebee6f7aa157bca025e9c5cfe55a31fe514f329fb8513bc93d08d85d44e",
+          "sha256": "e0b53259570fe2e21d791473ef7ad9aba742049ba2672ad477b9ccc00e7f7c99"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": "6679016c39ba5861ebf65ffd8940d1f8a395ab0066b4840ba9351aedfd4d5de5",
+          "sha256": "a3588e77f1c970801a84c1ed3629d8c9668d3a996d7185241b29a789c1965d41"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "a284ae980e96870d3eb729b5ff862ddd36752b9adac7581693d145f4b20ef34f",
+          "sha256": "85c7fc415ad7c6a66cdec892e272c8da1ed7c649e1758b23815122c1f11aacca"
+        },
+        {
+          "path": "server/scripts/qualify_selected_story.py",
+          "before_sha256": null,
+          "sha256": "228fa44143b58cd7f2efc9af274efdf7646fd95d43a173ab49d320400a9a0295"
+        },
+        {
+          "path": "server/tests/security/test_qualify_selected_story.py",
+          "before_sha256": null,
+          "sha256": "4ccc574fdbde539ff02d807f6497260e0706878b49221f50da2eadd83bc51cf7"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": "2a29cd82c8bf33affbb95a744b27636455736ae84ba3cb602039cf437700df0b",
+          "sha256": "992a1cd0e7b784f5b835277f599fa64acbd31a73365ca647a20f72734a380d19"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "09c214ff1d727d6a49f673ef5714caf044cce1a4d4aa34c888898bf1e01eac51",
+          "sha256": "2a3c8496a3e30d94bc891581048c5fa1fcf0c9a133ae8499911d45ba2709ed42"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d30b7be4ddad50b4dbe35cb812a1e79ca76e943593d5daac249ff481caabbd9a",
+          "sha256": "1507a1425fe625fe75be05f27957befb4f33a6b7045b9dc3f0d0afd52552bdf9"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Check actual private Windows owner/DACL before request text write and response read; preserve native cancellation category. Add explicit default-off source-package native Job and file-IPC synthetic qualification, portable refusal tests and operator runbook. No model worker, provider activation or production deployment."
     }
   ]
 }

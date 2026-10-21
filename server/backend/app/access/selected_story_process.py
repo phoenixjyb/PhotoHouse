@@ -17,8 +17,9 @@ from .memory_narrative import (
     MAX_OUTPUT_BYTES, MAX_PROVIDER_BYTES, _generation_payload, _json_bytes,
     _strict_loads, _validate_bundle, validate_narrative,
 )
+from .private_storage import require_private_directory, require_private_file
 from .selected_story_local import _MODEL
-from .selected_story_native import NativeStoryLaunch, NativeStoryProcessOwner
+from .selected_story_native import NativeStoryLaunch, NativeStoryOwnerError, NativeStoryProcessOwner
 from .selected_story_operations import PreparationScope
 
 REQUEST_ENV = 'PHOTOHOUSE_NATIVE_STORY_REQUEST'
@@ -54,6 +55,8 @@ def _regular(path):
             or hasattr(os, 'getuid') and value.st_uid != os.getuid()
             or getattr(value, 'st_file_attributes', 0) & 0x400):
         raise ValueError('Invalid exchange file')
+    if os.name == 'nt':
+        require_private_file(path)
     return value
 
 
@@ -64,6 +67,7 @@ def _directory(call):
             or (value.st_dev, value.st_ino) != call.identity
             or os.name == 'posix' and (value.st_uid != os.getuid() or value.st_mode & 0o077)):
         raise ValueError('Invalid exchange directory')
+    require_private_directory(call.directory)
 
 
 class ProcessSelectedStoryProvider:
@@ -113,6 +117,7 @@ class ProcessSelectedStoryProvider:
         request = call.directory / 'request.json'
         descriptor = os.open(request, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, 'wb') as stream:
+            _regular(request)  # Verify inherited Windows DACL before source words.
             stream.write(payload)
         environment = dict(self.launch.environment)
         environment.update({REQUEST_ENV: str(request),
@@ -196,6 +201,8 @@ class ProcessSelectedStoryProvider:
             raise ProcessSelectedStoryError('cancelled') from None
         except (ValueError, TypeError, UnicodeError, RecursionError, OverflowError):
             raise ProcessSelectedStoryError('invalid_response') from None
+        except NativeStoryOwnerError as error:
+            raise ProcessSelectedStoryError('cancelled' if error.category == 'cancelled' else 'worker') from None
         except Exception:
             raise ProcessSelectedStoryError('worker') from None
         finally:

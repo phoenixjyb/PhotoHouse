@@ -296,3 +296,51 @@ class ProcessSelectedStoryTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(ValueError, 'Qualified provider-to-process binding required'):
             LocalSelectedStoryProvider('http://127.0.0.1:11434', MODEL,
                                        enabled=True, native_owner=provider)
+
+    async def test_private_storage_refusal_precedes_payload_write_and_native_launch(self):
+        for guard in ('require_private_directory', '_regular'):
+            with self.subTest(guard=guard):
+                provider, kernel, factories = self.provider()
+                scope = make_scope()
+                observed = []
+                def refuse(path):
+                    path = Path(path)
+                    observed.append(path)
+                    if guard == '_regular':
+                        self.assertEqual(b'', path.read_bytes())
+                    raise ValueError('Synthetic private storage refusal')
+                with patch('backend.app.access.selected_story_process.' + guard, side_effect=refuse):
+                    with self.assertRaises(ProcessSelectedStoryError):
+                        await provider.prepare(bundle(), scope)
+                self.assertEqual([], factories)
+                self.assertEqual(1, len(observed))
+                self.assertTrue(await provider.stop_and_reconcile(scope))
+                self.assertIsNone(provider._active)
+
+    def test_windows_regular_file_guard_checks_private_acl(self):
+        import types
+        from backend.app.access import selected_story_process as module
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'synthetic.json'
+            path.write_bytes(b'{}')
+            native_os = types.SimpleNamespace(name='nt', getuid=os.getuid) if hasattr(os, 'getuid') else types.SimpleNamespace(name='nt')
+            with patch.object(module, 'os', native_os), patch.object(module, 'require_private_file') as check:
+                module._regular(path)
+                check.assert_called_once_with(path)
+
+    async def test_running_native_invalidation_has_cancelled_category_and_cleans_up(self):
+        written = threading.Event()
+        def writer(environment):
+            Path(environment[RESPONSE_ENV]).write_bytes(encoded_response())
+            written.set()
+        kernel = FileKernel(writer, exited=False)
+        provider, _, _ = self.provider(kernel=kernel)
+        scope = make_scope()
+        pending = asyncio.create_task(provider.prepare(bundle(), scope))
+        self.assertTrue(await asyncio.to_thread(written.wait, 2))
+        scope._invalidation.set()
+        with self.assertRaises(ProcessSelectedStoryError) as caught:
+            await asyncio.wait_for(pending, 2)
+        self.assertEqual('cancelled', caught.exception.category)
+        self.assertTrue(await provider.stop_and_reconcile(scope))
+        self.assertIsNone(provider._active)

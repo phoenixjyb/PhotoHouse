@@ -69,6 +69,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/selected_story_native.py',
             'backend/app/access/selected_story_process.py',
             'scripts/selected_story_native_owner.py',
+            'scripts/qualify_selected_story.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
             'backend/app/access/family_note_deletions.py',
@@ -210,6 +211,9 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.selected_story_local import LocalSelectedStoryProvider\n'
                 'from app.access.selected_story_native import NativeStoryLaunch\n'
                 'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider\n'
+                'import qualify_selected_story, json\n'
+                "manifest=json.loads((root/'manifest.json').read_text())\nassert qualify_selected_story._source_identity(manifest['source_commit'])==manifest['source_commit']\n"
+                "assert not hasattr(qualify_selected_story, 'WindowsAPI')\n"
                 "exe=r'C:\\synthetic\\worker.exe'\n"
                 "spec=NativeStoryLaunch(exe, '0'*64, (exe,), r'C:\\synthetic', {'PATH':r'C:\\synthetic'})\n"
                 "owner=windows_story_process_owner(spec)\nassert owner.enabled is False\nassert owner._active is None\n"
@@ -244,7 +248,7 @@ class StagingPackageTests(unittest.TestCase):
                 'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker'):\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker', 'qualify_selected_story'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"

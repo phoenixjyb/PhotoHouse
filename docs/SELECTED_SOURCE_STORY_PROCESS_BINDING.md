@@ -120,3 +120,8 @@ the source protocol and lifecycle behavior, not native Windows containment,
 GPU/model behavior, secure filesystem ACLs or family/device acceptance.
 Deployment and activation remain separate decisions. Existing API and Web UI
 flags, local HTTP adapter and native/process providers remain default-off.
+
+The separate [Windows native qualification](SELECTED_SOURCE_STORY_WINDOWS_QUALIFICATION.md)
+now supplies an explicit inert-by-default runner for real Job/IPC cases. Its
+results must be pinned to the package, interpreter and intended account; the
+remaining model/runtime/deployment gates above still apply.
