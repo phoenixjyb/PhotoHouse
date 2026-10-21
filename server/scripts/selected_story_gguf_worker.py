@@ -48,6 +48,7 @@ class WorkerSettings:
     context_tokens: int = 8192
     threads: int = 2
     gpu_layers: int = 0
+    gpu_device: int | None = None
 
     def __post_init__(self):
         if (type(self.model_file) is not str or not self.model_file
@@ -57,7 +58,10 @@ class WorkerSettings:
                 or '://' in self.model
                 or type(self.context_tokens) is not int or not 4096 <= self.context_tokens <= 16384
                 or type(self.threads) is not int or not 1 <= self.threads <= 8
-                or type(self.gpu_layers) is not int or not 0 <= self.gpu_layers <= 128):
+                or type(self.gpu_layers) is not int or not 0 <= self.gpu_layers <= 128
+                or (self.gpu_layers == 0 and self.gpu_device is not None)
+                or (self.gpu_layers > 0 and (type(self.gpu_device) is not int
+                    or not 0 <= self.gpu_device <= 15))):
             _refuse()
 
 
@@ -180,7 +184,8 @@ class _LlamaEngine:
         from llama_cpp import Llama, LLAMA_SPLIT_MODE_NONE
         self.model = Llama(model_path=settings.model_file, n_ctx=settings.context_tokens,
             n_threads=settings.threads, n_threads_batch=settings.threads,
-            n_gpu_layers=settings.gpu_layers, main_gpu=0, tensor_split=None,
+            n_gpu_layers=settings.gpu_layers,
+            main_gpu=settings.gpu_device if settings.gpu_device is not None else 0, tensor_split=None,
             split_mode=LLAMA_SPLIT_MODE_NONE, offload_kqv=settings.gpu_layers > 0,
             op_offload=False, n_batch=256, n_ubatch=256,
             use_mmap=False, use_mlock=False, seed=0, verbose=False)
@@ -262,11 +267,13 @@ def main(argv=None):
     parser.add_argument('--context-tokens', type=int, default=8192)
     parser.add_argument('--threads', type=int, default=2)
     parser.add_argument('--gpu-layers', type=int, default=0)
+    parser.add_argument('--gpu-device', type=int, default=None,
+                        help='explicit qualified backend ordinal, required with GPU layers')
     args = parser.parse_args(argv)
     if not args.execute:
         _refuse()
     settings = WorkerSettings(args.model_file, args.model_sha256, args.model_label,
-                              args.context_tokens, args.threads, args.gpu_layers)
+                              args.context_tokens, args.threads, args.gpu_layers, args.gpu_device)
     return run(settings, enabled=True)
 
 

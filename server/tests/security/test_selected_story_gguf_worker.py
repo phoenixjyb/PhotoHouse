@@ -231,6 +231,9 @@ class GGUFWorkerTests(unittest.TestCase):
     def test_config_resource_limits_reject_bool_and_unbounded_values(self):
         for change in ({'context_tokens':0},{'context_tokens':32768},{'threads':True},
                        {'threads':9},{'gpu_layers':-1},{'gpu_layers':129},
+                       {'gpu_layers':1},{'gpu_device':0},
+                       {'gpu_layers':1,'gpu_device':True},
+                       {'gpu_layers':1,'gpu_device':16},
                        {'model':'https://remote.invalid/model'}):
             with self.subTest(change=change):
                 with self.assertRaises(worker.WorkerUnavailable):replace(self.settings,**change)
@@ -257,6 +260,28 @@ class GGUFWorkerTests(unittest.TestCase):
         self.assertEqual(generation['format'],json.loads(grammar.from_json_schema.call_args.args[0]))
         native.close.assert_called_once()
 
+    def test_gpu_offload_requires_explicit_backend_ordinal(self):
+        binding=SimpleNamespace(Llama=Mock(),LLAMA_SPLIT_MODE_NONE=0)
+        settings=replace(self.settings,gpu_layers=8,gpu_device=1)
+        with patch.dict(sys.modules,{'llama_cpp':binding}):
+            engine=worker._LlamaEngine(settings)
+            engine.close()
+        options=binding.Llama.call_args.kwargs
+        self.assertEqual(1,options['main_gpu'])
+        self.assertEqual(8,options['n_gpu_layers'])
+        self.assertEqual(0,options['split_mode'])
+        self.assertTrue(options['offload_kqv'])
+        # An ordinal is configuration, not a claim about physical GPU identity.
+
+    def test_worker_environment_keeps_windows_basics_and_excludes_provider_secrets(self):
+        from test_selected_story_process_lifecycle import worker_environment
+        with patch.dict(os.environ,{'SystemRoot':r'C:\Windows',
+                'PHOTOHOUSE_PROVIDER_TOKEN':'synthetic-secret',
+                'OLLAMA_HOST':'http://untrusted.invalid'},clear=True):
+            env=worker_environment()
+        self.assertEqual(r'C:\Windows',env['SYSTEMROOT'])
+        self.assertEqual({'PATH','PHOTOHOUSE_NO_DOTENV','SYSTEMROOT'},set(env))
+
     def test_context_boundary_and_truncated_completion_refused(self):
         native=Mock();native.n_ctx.return_value=4096
         native.create_completion.return_value={'choices':[{'text':'{}','finish_reason':'stop'}], 'usage':{'prompt_tokens':2048,'completion_tokens':1}}
@@ -277,7 +302,7 @@ class GGUFWorkerTests(unittest.TestCase):
 
 class GGUFWorkerProcessTests(unittest.IsolatedAsyncioTestCase):
     async def test_real_worker_protocol_roundtrip_with_synthetic_engine(self):
-        from test_selected_story_process_lifecycle import WorkerKernel
+        from test_selected_story_process_lifecycle import WorkerKernel, worker_environment
         from backend.app.access.selected_story_native import NativeStoryLaunch
         from backend.app.access.selected_story_process import ProcessSelectedStoryProvider
         with tempfile.TemporaryDirectory() as folder:
@@ -290,7 +315,7 @@ class GGUFWorkerProcessTests(unittest.IsolatedAsyncioTestCase):
                 f"E=type('SyntheticEngine',(),{{'__init__':lambda self,s:None,'complete':lambda self,g,s:{json.dumps(narrative())!r},'close':lambda self:None}});"
                 "w['run'](s,enabled=True,backend_factory=E)")
             spec=NativeStoryLaunch(sys.executable,hashlib.sha256(Path(sys.executable).read_bytes()).hexdigest(),
-                (sys.executable,'-I','-B','-c',code),str(root),{'PATH':os.defpath},minimum_free_ram=0)
+                (sys.executable,'-I','-B','-c',code),str(root),worker_environment(),minimum_free_ram=0)
             kernel=WorkerKernel(helpers=0)
             self.addCleanup(kernel.finish)
             provider=ProcessSelectedStoryProvider(spec,MODEL,kernel_factory=lambda:kernel,enabled=True)

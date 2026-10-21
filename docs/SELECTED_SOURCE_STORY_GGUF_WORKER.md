@@ -57,8 +57,13 @@ prompt/schema/options and uses those reconstructed values. Input cannot supply
 arbitrary grammar references, executable/import paths or generation settings.
 
 The default context is 8,192 tokens (explicit range 4,096–16,384), two CPU threads
-(range 1–8) and zero GPU layers (explicit range 0–128). GPU splitting is disabled;
-an explicit GPU configuration targets device zero. CPU configuration disables
+(range 1–8) and zero GPU layers (explicit range 0–128). GPU splitting is disabled.
+GPU layers require an explicit `--gpu-device`
+backend ordinal (0–15); omitting it is refused. CPU mode rejects a GPU selector.
+The operator must qualify the mapping from that ordinal to the intended physical
+GPU/UUID under the exact backend build and visible-device environment. NVIDIA
+monitoring indices are not assumed to match backend ordinals. CPU configuration
+disables
 KV and operation offloading. These are requested bounds, not measured runtime
 capacity, latency, GPU isolation or proof that a native build touches no GPU.
 No inference admission is added here: retain the existing shared application
@@ -107,3 +112,43 @@ support, Chinese/English quality, input limits and load latency, memory/VRAM
 admission across processes, crash/restart behavior and disk/erasure policy.
 Deployment and family/device acceptance remain separate. Both story flags,
 all provider factories and this worker remain default-off.
+
+## Windows source repair and next admission contract
+
+The synthetic worker process initially failed on Windows while importing
+`asyncio` because the test launch contained only PATH. Its minimal test
+environment now preserves Windows platform basics (including SYSTEMROOT) and
+excludes live provider settings. The real-process expiry fixture now observes
+a resumed/live worker before advancing its injected monotonic clock past the
+operation deadline; it retains the no-publication, reaping, exchange-disposal
+and admission-release assertions. It gives native cleanup two seconds inside
+a separate four-second operation cleanup allowance. Product deadline and
+cleanup/quarantine rules are unchanged.
+
+These source repairs were developed in a separate Windows source export and
+tested with synthetic providers and an actual bounded outer Job. They are
+interactive-development checks, not SYSTEM service, real GGUF/backend or GPU
+qualification. No existing environment, service, task or model was changed. The final Windows
+run completed 118 affected cases: 115 passed and three platform-specific cases
+were skipped. All ten committed-source package/import checks also passed. These
+final runs used the unmodified subprocess class; optional binding calls were
+mocked and worker protocol roundtrips used a synthetic engine.
+
+The next host admission layer is a draft contract, not implemented coordination:
+
+- Start with one active story generation and a small bounded wait policy, using
+  existing operation IDs and explicit busy/unavailable responses.
+- Require a maintenance-clear decision before launch. Ownership of another
+  task's recovery, databases or worker lifecycle never transfers to this layer.
+- Bind any host permit to the exact operation, process owner and qualified GPU
+  identity; release only after existing reconciliation proves cleanup. Expiry
+  alone must not free uncertain capacity or break another owner's lease.
+- Include CPU, RAM and disk-I/O overlap as well as VRAM. An idle GPU sample or
+  process-local semaphore is not whole-host admission proof.
+- Treat uncoordinated Windows/WSL model services and existing indexing jobs as
+  external workloads. Enforce their agreed busy/maintenance policy rather than
+  claiming a new mutex governs them or stopping them by name.
+
+Synthetic contention tests can precede a bounded native rehearsal. Actual
+coordination interfaces, resource bounds and a testing window must be settled
+with the existing workload owners before activating inference.

@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -36,6 +37,14 @@ sys.exit(int(sys.argv[2]))
 '''
 
 
+def worker_environment():
+    # Native Windows extension imports need platform basics, never provider config.
+    env = {'PATH': os.defpath, 'PHOTOHOUSE_NO_DOTENV': '1'}
+    env.update({key.upper(): value for key, value in os.environ.items()
+                if key.upper() in {'SYSTEMROOT', 'WINDIR', 'SYSTEMDRIVE', 'COMSPEC'}})
+    return env
+
+
 class WorkerKernel(ProcessKernel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -56,7 +65,7 @@ class WorkerKernel(ProcessKernel):
 
 
 class ProcessStoryLifecycleTests(unittest.IsolatedAsyncioTestCase):
-    def service(self, *, kernel=None, delay=0, sources=None, work_seconds=5, exit_status=0):
+    def service(self, *, kernel=None, delay=0, sources=None, work_seconds=5, exit_status=0, clock=time.monotonic):
         kernel = kernel or WorkerKernel(helpers=0)
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
@@ -64,14 +73,14 @@ class ProcessStoryLifecycleTests(unittest.IsolatedAsyncioTestCase):
         spec = NativeStoryLaunch(sys.executable,
             hashlib.sha256(Path(sys.executable).read_bytes()).hexdigest(),
             (sys.executable, '-I', '-B', '-c', 'exec(' + repr(WORKER) + ')', str(delay), str(exit_status)),
-            folder.name, {'PATH': os.defpath}, minimum_free_ram=0)
+            folder.name, worker_environment(), minimum_free_ram=0)
         provider = ProcessSelectedStoryProvider(spec, 'synthetic-local', kernel_factory=lambda: kernel,
-                                               enabled=True, cleanup_seconds=0.05)
+                                               enabled=True, cleanup_seconds=2)
         self.addAsyncCleanup(provider.close)
         admission = InferenceAdmission(max_waiting=4)
         sources = sources or SyntheticSources()
         service = DraftOperations(sources, provider, admission, work_seconds=work_seconds,
-                                  cleanup_seconds=2)
+                                  cleanup_seconds=4, monotonic=clock)
         self.addAsyncCleanup(service.close)
         return service, provider, kernel, admission, sources
 
@@ -123,9 +132,16 @@ class ProcessStoryLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(p.poll() is not None for p in kernel.children))
 
     async def test_expiry_stops_worker_without_publishing_response(self):
-        service, provider, kernel, gate, _ = self.service(delay=120, work_seconds=0.5)
+        now = [time.monotonic()]
+        service, provider, kernel, gate, _ = self.service(
+            delay=120, work_seconds=30, clock=lambda: now[0])
+        pending = asyncio.create_task(service.prepare(TOKEN_A, LIBRARY, request()))
+        self.assertTrue(await asyncio.to_thread(kernel.resumed.wait, 5))
+        self.assertFalse(pending.done())
+        self.assertGreater(kernel.active_processes(kernel.jobs[-1]), 0)
+        now[0] += 31  # Expire only after observing a resumed, live worker.
         with self.assertRaises(DraftOperationError) as caught:
-            await service.prepare(TOKEN_A, LIBRARY, request())
+            await asyncio.wait_for(pending, 5)
         self.assertEqual('timed_out', caught.exception.reason)
         record = service._records[('account-a', LIBRARY, REQUEST_ID)]
         await asyncio.wait_for(asyncio.shield(record.task), 3)

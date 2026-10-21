@@ -27958,6 +27958,35 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Add an explicit one-request optional local llama-cpp-python GGUF worker within the existing owned-process protocol. Reconstruct canonical request/schema/options, preflight explicit local single-file model digest, refuse context/output truncation, validate narrative, close model before private exclusive response. Include inert package imports and synthetic backend/process tests. No model/binary selected or installed, no GPU/native-loader qualification, no app/provider activation or deployment."
+    },
+    {
+      "feature": "selected-story-windows-fixture-repair-explicit-gpu",
+      "source_commit": "9a9edd0e2d3cb229b64efc342c90654824606597",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "6fb48ee982ff5e71fa11186ef96f86bb837d782ff58888ef5461b29f326be639",
+          "sha256": "fbfb6cff65e0c6f54b653128cde87c592e0420bf0b577784ddf1242aceec15ee"
+        },
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": "2a409b0568098b82cab2bb9a3b6393e973358d82dd9ae1a306aa82df01d31319",
+          "sha256": "c81ef67bfac1f06f4100a34be686859fb64addb3d781e74fb14dd441c03dcd14"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "4c6d157841869f6a8cc425ff947804c5a90952808976fa41fc9afcc15a1a3416",
+          "sha256": "53971656c494980b6a58232405f89580b6f3f8732ba8f7823ecc1eca90baa8b1"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process_lifecycle.py",
+          "before_sha256": "e718df565889bb30a22807c827bf3c9db31a14cda159b30ec8d07d8eb94b09e4",
+          "sha256": "e6e40522040932c8417949de6d027e2e7d81236a20aaf9d2553910c7443029fe"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Develop source repair in an isolated Windows export: preserve platform basics in synthetic child launches and expire only after resumed/live process proof. Require explicit bounded backend GPU ordinal for nonzero GPU layers; physical GPU identity remains unqualified. Windows interactive bounded-Job checks: 115 affected cases passed with three platform skips; ten committed-package checks passed. Synthetic processes/providers, no model/backend loading or production activation. Record a draft shared-host admission contract without implementing coordination."
     }
   ]
 }
