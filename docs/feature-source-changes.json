@@ -27656,6 +27656,25 @@
       "routes_added": false,
       "live_schema_changed": false,
       "semantic_search_enabled": false
+    },
+    {
+      "feature": "semantic-eligibility-qualification-record-r55",
+      "source_commit": "7be2f7b6f27ec038353e835114b98b54ecf8f9a2",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "7854a4748ef72e123fb1919e3f82da315f803121c7f4dfbb4163ed471fe3d0b1",
+          "sha256": "897cc2be3cf5861caa4955c9092eaa3448122ea24a711d3ee1564d7b1a359123"
+        },
+        {
+          "path": "docs/SEMANTIC_ELIGIBILITY_DESIGN.md",
+          "before_sha256": "fbcd84e3d2c9e27730e738b8b35d37ef3a2f29618b3151e8622f3bdf5f6f9255",
+          "sha256": "79c63daeb311ea032770d2df8e4af3867fe31dcddd64c6aefde7b4bfc0319add"
+        }
+      ],
+      "routes_added": false,
+      "live_schema_changed": false,
+      "semantic_search_enabled": false
     }
   ]
 }

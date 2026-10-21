@@ -12,8 +12,10 @@ their strict missing-vector behavior. This is local development: no household
 policy was approved or installed and semantic remains **OFF**. See the
 [eligibility contract](SEMANTIC_ELIGIBILITY_DESIGN.md) for checks and remaining
 native, refresh/retirement, latency and owner/family/device gates.
-The focused core/endpoint cohort passed 23 tests / 45 subtests, Web wire checks
-passed 22 tests, and all 1,157 live-core JVM tests passed. Coverage and legacy Web
+At `7be2f7b`, the complete API profile passed **2,891 tests / 3,703 subtests** plus
+the generated demo, with unchanged source and revision. All seven isolated API
+archive checks passed. Web wire checks passed 22 tests, and all 1,157 live-core
+JVM tests passed. Coverage and legacy Web
 journeys passed nine and eight checkpoints respectively; enlarged bilingual replies
 were inspected.
 

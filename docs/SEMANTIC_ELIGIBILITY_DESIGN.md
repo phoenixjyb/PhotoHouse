@@ -113,9 +113,10 @@ refusal, and unchanged legacy configuration behavior. Ordinary literal search
 retains all 65 generated omissions. Endpoint tests cover hard filters, empty
 eligible subsets, corrupt bulk refusal even for empty subsets, policy/source/
 membership changes, page receipts, bilingual disclosure and no-inference recovery.
-The focused core/endpoint cohort passed **23 tests / 45 subtests**; the earlier
-broader semantic cohort passed **88 tests / 77 subtests** before the last added
-boundary cases. These overlapping cohorts are not summed. Web wire validation
+Source `7be2f7b` passed the complete API profile: **2,891 tests / 3,703 subtests**
+plus the generated no-listener demo, with unchanged revision and profile inputs.
+All seven isolated archive checks passed; the new module is included in the
+explicit API package and imported without checkout fallback. Web wire validation
 passed **22 tests**; all **1,157 live-core JVM tests in 95 suites** passed. The
 generated coverage browser journey passed **nine checkpoints**; the unchanged
 legacy journey passed **eight**. Chinese/English full disclosure paragraphs were inspected
