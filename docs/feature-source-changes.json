@@ -27750,6 +27750,71 @@
       "live_schema_changed": false,
       "semantic_search_enabled": false,
       "production_policy_created": false
+    },
+    {
+      "feature": "semantic-request-validation-latency-and-full-catalog-native-record-r57",
+      "source_commit": "a46d9f551277b8b0fb8444ce965154f89aa5f2d3",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "452bdb39538e950ae4dfe7348773fb7d3f1aa90f82fef55c0b3c8d915cb1526f",
+          "sha256": "b8413a177ec8e5815f630e5bfbcb33e62fc561b59e60253305290f6acd8b30e0"
+        },
+        {
+          "path": "docs/SEMANTIC_ELIGIBILITY_DESIGN.md",
+          "before_sha256": "348ef69cbf60123fc035e7e7c4faf2eaaa351571a199ae2eb09cafcce3ff1f07",
+          "sha256": "0f0f44812fba163200e9c0771893d34baaa73fa8d07e340def6d0b0d3f7f11c9"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "6adb0dc94b8c4544bd18a2ebd06a2aba27e72be96fbb6d89fcf6d2a3b2624caf",
+          "sha256": "09f0ce38f814392096f2f98870d6aa5458810ae5925ea727b18573f4a1a2fc9f"
+        },
+        {
+          "path": "docs/SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md",
+          "before_sha256": "c7b09e916343b83708759f4c1e6780e32d2f59249a3b96b9e4142104ab13759b",
+          "sha256": "7e7df3714024318a99f669ab57db2c0cb64cb160755993595ccd66705cf7d373"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": null,
+          "sha256": "01802e76e1f37fad0cece950a533f48a1f5e0b1b47c930d65c76f6f86283335a"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "89924425708da5965645d3e1ce2264e967ebce9143a94818a4882360954c8c68",
+          "sha256": "5a9cbfd562b51edf7ed5be4c825e666059c3b66b38a673d51e2e25622e931e6c"
+        },
+        {
+          "path": "server/backend/app/access/visual_vector_artifacts.py",
+          "before_sha256": "bfab78ba6ad90507d795ba2e96903f73ee88c06bb0775ea0cf1c97e1878acee2",
+          "sha256": "f864cfcdbcc46e4d13e288fc59f21bb535c7dfe08e4e9aa911e468049e67f4b0"
+        },
+        {
+          "path": "server/backend/app/access/visual_vector_loader.py",
+          "before_sha256": "83659d9bb4256679db24eec36953502b6189afab855fa9169d2a75e7ccd9c435",
+          "sha256": "6a8d95b6f65df51d9b73d5599c25137719afe3646caf5d3abbf2aa8290e81d1d"
+        },
+        {
+          "path": "server/tests/security/test_semantic_eligibility_search.py",
+          "before_sha256": "2a75f0f2845dd91119aafa4475b88a53c0368cf0c61c8bed7911e96e8569b5db",
+          "sha256": "a1391ae792ba85b1f3eaaf5f29ac9546317788ec931af0b0c354679d3c98cf41"
+        },
+        {
+          "path": "server/tests/security/test_visual_vector_artifacts.py",
+          "before_sha256": "ff7f60927a077239f0b88704e459527a5a5d0f0f89636f1c8c3d77e39286ec1e",
+          "sha256": "72a2ac00c7acd674bae904372f2dc768f86754b4a8f6eac6527cf8baf535531b"
+        },
+        {
+          "path": "server/tests/security/test_visual_vector_loader.py",
+          "before_sha256": "f4706f5b3cc4ae83a95473e607d85e5cc4ac183cc1ee5468da2ac74a1040e54a",
+          "sha256": "198b25a76081fdd9cb10765c11861e87ce6dde04fdaca99c16c690aa18c5292c"
+        }
+      ],
+      "routes_added": false,
+      "live_schema_changed": false,
+      "semantic_search_enabled": false,
+      "production_policy_created": false
     }
   ]
 }

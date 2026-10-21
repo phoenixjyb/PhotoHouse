@@ -3,6 +3,27 @@
 Semantic search stays OFF. These tools prepare private candidates and an explicit
 owner-only runtime; they do not publish vectors, create accounts or change services.
 
+## Full-catalog native qualification — October 22, 2026
+
+The [reviewed full-catalog qualifier](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md)
+now passes all **15 protection checks** with 23,696 ready vectors and 65 reviewed
+omissions across 23,761 synthetic catalog entries. The real Windows CPU run
+used the existing local model and a read-only candidate index. Nine loopback
+HTTPS/TCP samples measured **14.516 seconds median / 17.281 seconds maximum**,
+with a **24.984-second cold request** and zero individual NPY query reads.
+Fine request profiling identifies repeated metadata validation/source reads as
+substantial costs. The 2-second backend target remains unmet.
+
+At source `a46d9f5`, full API passed **2,916 tests / 3,703 subtests** plus the
+generated demo; seven archive checks passed. Independent native readback verified
+the reviewed omissions, all staged pins, both complete index audits, results and
+Job proof. Processes/listeners closed; production API/config/task/feed pins and
+the current catalog remained unchanged. The window was released. These are
+synthetic-account, instrumented loopback checks, not broad family relevance,
+phone/WAN, concurrency, refresh/swap/retirement or activation acceptance. No
+controlled speedup ratio is claimed against the older ready-only workload.
+Semantic remains **OFF**, with no production policy/index publication or deployment.
+
 ## Multi-batch indexing
 
 Keep the existing builder's 512-image/256 MiB batch limits. Use the complete
@@ -42,7 +63,7 @@ search. Coverage metadata and bilingual replies disclose reviewed omissions;
 unaccounted or stale assets still refuse. The implementation is unactivated and
 the frozen omissions are approved for isolated qualification only. The
 [full-catalog qualifier and private phase profiler](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md)
-are implemented locally; native qualification and serving-policy approval remain pending.
+are implemented locally; the isolated native canary passed; serving-policy approval remains pending.
 
 Semantic runtime configuration version 3 extends version 2 with `serving_limits`:
 exactly `candidate_limit`, `source_rows`, `source_bytes`, `search_seconds`.

@@ -73,7 +73,52 @@ Sample ordinals link timings to their private request summaries.
 Generated tests cover 515 ready vectors plus 65 omissions, review/pin mutation,
 size refusal, concurrent isolation, exact patch restoration and measurement
 publication failure. Focused qualification/profiler suites passed **33 tests**.
-A full API receipt and native phase measurements are pending for this revision.
-No speedup or activation readiness is claimed. See the
+At source `a46d9f5`, the full API profile passed **2,916 tests / 3,703 subtests**
+plus the generated demo, with unchanged source/revision. Seven isolated archive
+checks passed for the 274-file package. See the
 [eligibility contract](SEMANTIC_ELIGIBILITY_DESIGN.md) and
 [library qualification record](SEMANTIC_LIBRARY_SCALE.md).
+
+## Native result, October 21–22, 2026
+
+The one-shot CPU qualification completed in **1,427.812 seconds** under the
+1,800-second / 8 GiB / four-process Job. Both full index audits passed and took
+985.121 seconds in total; they verified vector/metadata payloads and original
+stat identities without rehashing original media bytes. The synthetic catalog
+retained 23,761 entries: 23,696 ready vectors and all 65 reviewed omissions.
+All **15 protection checks** passed, with zero individual NPY query reads.
+Nine English/Chinese/mixed loopback HTTPS/TCP samples measured **14.516 seconds
+median / 17.281 seconds maximum**; the cold request took **24.984 seconds**.
+Sixteen model encodes took 2.192 seconds total (about 137 ms average).
+
+The new request profiler recorded these median warm-sample phase totals. Values
+are nested; exclusive time excludes instrumented child phases. Per-phase medians
+do not necessarily sum to the median request.
+
+| Phase | Calls per sample | Inclusive time | Exclusive time |
+| --- | ---: | ---: | ---: |
+| Source extension | 3 | 6.124 s | 3.983 s |
+| Bounded source reads and packing | 27 | 2.088 s | 2.088 s |
+| Artifact selection/validation | 1 | 1.366 s | 1.366 s |
+| Bulk snapshot | 2 | 1.955 s | 1.955 s |
+| Eligibility validation | 3 | 0.817 s | 0.817 s |
+| Canonical hashing | 23,774 | 1.013 s | 1.013 s |
+| Encoder round trip | 1 | 0.384 s | 0.384 s |
+| Ranking | 1 | 5.445 s | 1.752 s |
+
+Independent Windows readback verified all 11 staged input pins, the exact
+reviewed omission document, full-catalog counts, all checks, warmup and nine
+request-profile ordinals, both audit calls, measurement hash and Job proof.
+No candidate process or test-port listener remained. Postflight retained the
+production API task/action/entry/config/listener and phone/TV feed pins. A fresh
+read-only production comparison still matched all frozen catalog rows and hashes.
+The Windows execution window was released after verification.
+
+Semantic remains **OFF**. No production policy was installed and no index,
+configuration, account, service, task or feed was changed. The socket guard and
+observed loopback transport are qualified; no OS-firewall claim is made.
+These are synthetic-account/catalog loopback measurements using real existing
+model/vectors, not family-caption relevance, phone/WAN, concurrent-load or
+service-SLO acceptance. The 2-second backend target remains unmet. No controlled
+speedup ratio is claimed against the older ready-only run: catalog/policy and
+workload differ, and observer overhead is included.

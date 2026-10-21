@@ -229,7 +229,7 @@ def _valid_root_argument(root: object) -> bool:
     return isinstance(root, Path) and root.is_absolute() and ".." not in root.parts
 
 
-def _artifact_from_row(row) -> ImmutableVectorArtifact | None:
+def _artifact_from_row(row, expected_identity=None) -> ImmutableVectorArtifact | None:
     try:
         if (len(row) != 16 or type(row[1]) is not int or row[1] <= 0
                 or row[1] > 2**63 - 1):
@@ -239,15 +239,14 @@ def _artifact_from_row(row) -> ImmutableVectorArtifact | None:
         artifact = ImmutableVectorArtifact(*values)
     except (TypeError, ValueError):
         return None
-    return artifact if validate_artifact(artifact) else None
+    return artifact if validate_artifact(artifact, expected_identity) else None
 
 
 def _validated_rows(rows, expected_identity):
     result: dict[str, ImmutableVectorArtifact] = {}
     for row in rows:
-        artifact = _artifact_from_row(row)
-        if (artifact is None or not validate_artifact(artifact, expected_identity)
-                or artifact.asset_id in result):
+        artifact = _artifact_from_row(row, expected_identity)
+        if artifact is None or artifact.asset_id in result:
             return {}
         result[artifact.asset_id] = artifact
     return result

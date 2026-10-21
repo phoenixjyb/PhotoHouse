@@ -1,6 +1,7 @@
 # Semantic eligibility and visible coverage
 
-Status: implemented in local source, October 21, 2026; runtime qualification is
+Status: implemented in local source, October 21, 2026; the isolated full-catalog
+native canary passed on October 22. Production serving-policy integration is
 pending. Semantic search remains OFF. This implementation does not approve the
 family serving policy, publish an index, enable a provider or change ordinary
 discovery. Refresh, swap and retirement below remain future requirements.
@@ -8,10 +9,12 @@ discovery. Refresh, swap and retirement below remain future requirements.
 ## Why this is needed
 
 The completed candidate has 23,696 ready vectors and 65 recorded failures across
-23,761 frozen photos. The current semantic reader correctly refuses a candidate
-set containing an image without a compatible ready vector. The performance
-canary builds its synthetic catalog from ready records only, so a successful
-benchmark cannot establish how production's failed inputs are handled.
+23,761 frozen photos. The older strict semantic reader correctly refuses a candidate
+set containing an image without a compatible ready vector. The earlier
+performance canary built its synthetic catalog from ready records only. The
+reviewed full-catalog qualifier now retains every frozen entry and passes the
+coverage/refusal checks; production installation and remaining pilot gates are
+still open.
 
 `ReviewedIndex.scope_ids` must match the full current discovery source. Its
 `indexed_ids` control metadata availability, not semantic-only eligibility;
@@ -133,8 +136,9 @@ the ordinary journey still tests the legacy configuration without this flag.
 
 The owner has approved the frozen 65 omissions for isolated qualification only.
 The [full-catalog qualifier](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md) validates
-that private review and constructs only a synthetic-library policy. Native
-qualification and a separately authorized serving-policy preparation remain open.
+that private review and constructs only a synthetic-library policy. The native
+canary passed all 15 checks with every frozen catalog entry retained. A separately
+authorized serving-policy preparation and remaining pilot gates stay open.
 Qualify generation refresh, removal/retirement and rollback
 without changing originals or silently deleting failed evidence.
 

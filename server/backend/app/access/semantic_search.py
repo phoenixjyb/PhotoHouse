@@ -56,13 +56,19 @@ class SemanticSearchReads(AssistantSearchReads):
         self._eligibility_policy = None
         self._policy_read_bytes = 0
         self._matched_omitted_count = 0
+        self._eligibility_bulk_generation = None
 
     def _extra_source(self, index, source, read, check):
+        # A new generation belongs only to this exact fresh source read. Clear
+        # it before any work so a failed read or policy check cannot leave an
+        # earlier cohort available to _artifacts.
+        self._eligibility_bulk_generation = None
         extra = super()._extra_source(index, source, read, check)
         check()
         if not verify_visual_vector_schema(self.access.db):
             raise d.DiscoveryUnavailable()
         image_identity = self.encoder.binding.image_identity
+        image_identity_digest = identity_sha256(image_identity)
         # Metadata participates in the same opaque source binding. Current
         # library scope and active status apply before any vector file is read.
         columns = ','.join('v.' + column for column in _COLUMNS.split(','))
@@ -71,7 +77,7 @@ class SemanticSearchReads(AssistantSearchReads):
             JOIN access_asset_libraries m ON m.asset_id=a.id
             WHERE m.library_id=? AND (a.status IS NULL OR a.status='active')
             AND a.mime GLOB 'image/*' AND v.status='ready' AND v.identity_sha256=?
-            ORDER BY v.asset_id,v.record_id''', (index.library_id, identity_sha256(image_identity)))
+            ORDER BY v.asset_id,v.record_id''', (index.library_id, image_identity_digest))
         hashes = read('''SELECT a.id,a.hash_sha256 FROM assets a
             JOIN access_asset_libraries m ON m.asset_id=a.id WHERE m.library_id=?
             AND (a.status IS NULL OR a.status='active') AND a.mime GLOB 'image/*'
@@ -90,6 +96,9 @@ class SemanticSearchReads(AssistantSearchReads):
             except SemanticEligibilityUnavailable:
                 raise d.DiscoveryUnavailable() from None
             self._bulk_artifacts = tuple(sorted(records.values(), key=lambda item: int(item.asset_id)))
+            if self.bulk_vectors is not None:
+                self._eligibility_bulk_generation = (
+                    image_identity_digest, tuple(tuple(row) for row in rows), records)
         return {**extra, 'semantic_policy': (6 if self.eligibility else 5 if self.bulk_vectors else 4 if self.serving_limits else 3),
                 **({'semantic_eligibility': self.eligibility.descriptor} if self.eligibility else {}),
                 **({'bulk_vectors': self.bulk_vectors.descriptor} if self.bulk_vectors else {}),
@@ -117,11 +126,31 @@ class SemanticSearchReads(AssistantSearchReads):
             return None, ()
         ids = {item['id'] for item in found}
         selected = []
-        for row in self._vector_rows:
+        generation = self._eligibility_bulk_generation
+        generation_matches = generation is not None
+        if generation_matches:
+            try:
+                current_identity = identity_sha256(self.encoder.binding.image_identity)
+            except (ValueError, TypeError, AttributeError):
+                raise d.DiscoveryUnavailable() from None
+            if generation[0] != current_identity:
+                raise d.DiscoveryUnavailable()
+        if generation_matches and len(generation[1]) != len(self._vector_rows):
+            generation_matches = False
+        for position, row in enumerate(self._vector_rows):
             check()
             if self.bulk_vectors is not None or str(row[1]) in ids:
                 selected.append(row)
-        records = _validated_rows(selected, self.encoder.binding.image_identity)
+                if generation_matches and (
+                        position >= len(generation[1]) or tuple(row) != generation[1][position]):
+                    generation_matches = False
+        if generation is not None and not generation_matches:
+            # A cache miss means the rows or identity no longer match the
+            # generation whose complete eligibility partition was checked.
+            # Do not pair fresh rows with that older partition.
+            raise d.DiscoveryUnavailable()
+        records = (generation[2] if generation_matches else
+                   _validated_rows(selected, self.encoder.binding.image_identity))
         if self.bulk_vectors is not None:
             # The explicit bulk artifact is authoritative for this complete
             # current library cohort. Old individual NPYs are build provenance.

@@ -17,7 +17,7 @@ from app.access.bootstrap import bootstrap_owner
 from app.access.service import AccessDenied, AccessService
 from app.access.visual_candidates import VectorSpaceIdentity, canonical_vector_checksum
 from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256
-from app.access.visual_vector_loader import VisualVectorReads
+from app.access.visual_vector_loader import VisualVectorReads, _artifact_from_row, _validated_rows
 from app.access.visual_vector_schema import create_visual_vector_schema, sqlite_visual_vector_contract
 
 
@@ -97,6 +97,47 @@ class VisualVectorLoaderTests(unittest.TestCase):
                 record.created_at, record.status))
         self.db.commit()
         return path, record
+
+    @staticmethod
+    def artifact_row(record):
+        values = [record.record_id, int(record.asset_id), record.source_sha256,
+                  record.model_name, record.artifact_sha256, record.preprocessing_sha256,
+                  record.vector_space_id, record.model_version, record.dimension,
+                  record.normalization, record.identity_sha256, record.relative_path,
+                  record.file_sha256, record.component_sha256, record.created_at,
+                  record.status]
+        return tuple(values)
+
+    def test_validated_rows_checks_identity_once_and_still_rejects_bad_rows(self):
+        _path, record = self.add_vector(101, (1.0, 0.0))
+        row = self.artifact_row(record)
+        from app.access import visual_vector_loader as loader
+        with patch.object(loader, "validate_artifact", wraps=loader.validate_artifact) as validate:
+            result = _validated_rows((row,), IDENTITY)
+        self.assertEqual(result, {record.asset_id: record})
+        validate.assert_called_once_with(record, IDENTITY)
+
+        # The private constructor's default remains self-validating for callers
+        # that do not have an expected identity.
+        with patch.object(loader, "validate_artifact", wraps=loader.validate_artifact) as validate:
+            self.assertEqual(_artifact_from_row(row), record)
+        validate.assert_called_once_with(record, None)
+
+        wrong_identity = VectorSpaceIdentity(ARTIFACT_SHA, PREPROCESS_SHA,
+                                             "synthetic-space", "v2", 2, "unit_l2")
+        with patch.object(loader, "validate_artifact", wraps=loader.validate_artifact) as validate:
+            self.assertEqual(_validated_rows((row,), wrong_identity), {})
+        validate.assert_called_once_with(record, wrong_identity)
+
+        malformed = list(row)
+        malformed[2] = "not-a-sha256"
+        with patch.object(loader, "validate_artifact", wraps=loader.validate_artifact) as validate:
+            self.assertEqual(_validated_rows((tuple(malformed),), IDENTITY), {})
+        self.assertEqual(validate.call_count, 1)
+
+        with patch.object(loader, "validate_artifact", wraps=loader.validate_artifact) as validate:
+            self.assertEqual(_validated_rows((row, row), IDENTITY), {})
+        self.assertEqual(validate.call_count, 2)
 
     def clear_artifacts(self):
         delete_trigger = next(ddl for kind, name, ddl in sqlite_visual_vector_contract()

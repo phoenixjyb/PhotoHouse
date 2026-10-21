@@ -1,12 +1,26 @@
 # Current project status
 
-**October 21 full-catalog qualification preparation:** local source now builds a
-reviewed omission policy only for disposable qualification accounts and retains
-all frozen catalog entries. The owner approved 65 omissions for qualification
-only; a fresh read-only catalog comparison matched all 23,761 rows. Private
-request-phase profiling will distinguish validation, hashing, encoding and
-ranking costs. Focused suites pass 33 tests; full API and native timing remain
-pending. No production policy is installed and semantic remains **OFF**. See
+**October 22 request-performance development:** local source removes duplicate
+artifact validation, reuses a validated cohort only within the same fresh source
+read, and bounds memoization of the pure canonical model-identity hash. Current
+source/policy/file checks and final authorization remain mandatory. The
+[latency follow-up](SEMANTIC_REQUEST_LATENCY.md) records the invariants and tests;
+its full API/native performance qualification is pending. Semantic stays **OFF**.
+
+**October 22 full-catalog native qualification:** source `a46d9f5` passed the
+full API profile (**2,916 tests / 3,703 subtests** plus the generated demo) and
+seven archive checks. The owner approved the frozen 65 omissions for isolated
+qualification only. The real Windows CPU canary retained all **23,761 catalog
+entries**, with 23,696 ready vectors, and passed **all 15 protection checks**.
+Nine loopback HTTPS/TCP samples measured **14.516 seconds median / 17.281 seconds
+maximum**; cold latency was **24.984 seconds**. No individual NPY query reads
+occurred. Repeated metadata validation and source reads are substantial costs;
+the 2-second backend target remains unmet. Independent readback verified the
+review, inputs, both complete audits and process/listener closure. Production
+API/task/config/feed pins stayed unchanged, and the current catalog still matched
+the frozen roster. Semantic remains **OFF**; no production policy, publication,
+deployment or activation occurred. Broad family relevance, phone/WAN, concurrency
+and refresh/retirement remain separate gates. See
 [the full-catalog qualification guide](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md).
 
 **October 21 semantic coverage development:** local source adds optional private

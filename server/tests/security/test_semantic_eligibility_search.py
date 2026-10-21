@@ -82,6 +82,85 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
         for secret in (str(self.policy_path), str(self.bulk_path), 'source_missing', 'source_sha256'):
             self.assertNotIn(secret, response.text)
 
+    def test_exact_current_eligibility_rows_are_reused_only_within_each_source_read(self):
+        from app.access import semantic_search
+        with patch.object(semantic_search, '_validated_rows',
+                          wraps=semantic_search._validated_rows) as validate:
+            response = self.query()
+        self.assertEqual(response.status_code, 200, response.text)
+        # Binding, search, and final source recheck each validate their newly
+        # read cohort. _artifacts reuses the search generation after policy
+        # validation instead of parsing those exact rows a second time.
+        self.assertEqual(validate.call_count, 3)
+        self.assertTrue(all(len(call.args[0]) == len(self.records)
+                            for call in validate.call_args_list))
+
+    def test_changed_rows_and_failed_fresh_source_cannot_reuse_prior_generation(self):
+        from app.access import semantic_search
+        original = semantic_search.SemanticSearchReads._extra_source
+        calls = [0]
+
+        def changed_row(reader, *args, **kwargs):
+            result = original(reader, *args, **kwargs)
+            calls[0] += 1
+            if calls[0] == 2:
+                rows = list(reader._vector_rows)
+                changed = list(rows[0])
+                changed[14] += 1
+                rows[0] = tuple(changed)
+                reader._vector_rows = rows
+            return result
+
+        with patch.object(semantic_search.SemanticSearchReads, '_extra_source', changed_row):
+            refused = self.query()
+        self.assertEqual(refused.status_code, 503, refused.text)
+        self.assertEqual(self.calls, [])
+
+        original = semantic_search.SemanticSearchReads._extra_source
+        calls = [0]
+        readers = []
+
+        def fail_fresh_source(reader, *args, **kwargs):
+            readers.append(reader)
+            calls[0] += 1
+            if calls[0] == 2:
+                with patch.object(semantic_search, 'verify_visual_vector_schema',
+                                  return_value=False):
+                    return original(reader, *args, **kwargs)
+            return original(reader, *args, **kwargs)
+
+        with patch.object(semantic_search.SemanticSearchReads, '_extra_source', fail_fresh_source):
+            failed = self.query()
+        self.assertEqual(failed.status_code, 503, failed.text)
+        self.assertEqual(self.calls, [])
+        self.assertIsNone(readers[-1]._eligibility_bulk_generation)
+
+    def test_current_identity_change_cannot_reuse_generation_or_open_bulk(self):
+        from app.access import semantic_search
+        original = semantic_search.SemanticSearchReads._extra_source
+        calls = [0]
+        changed = []
+
+        def change_identity(reader, *args, **kwargs):
+            result = original(reader, *args, **kwargs)
+            calls[0] += 1
+            if calls[0] == 2:
+                identity = reader.encoder.binding.image_identity
+                changed.append((identity, identity.model_version))
+                object.__setattr__(identity, 'model_version', 'changed-generation')
+            return result
+
+        try:
+            with patch.object(semantic_search.SemanticSearchReads, '_extra_source', change_identity), \
+                    patch.object(semantic_search.BulkVectorStore, 'snapshot') as snapshot:
+                refused = self.query()
+            self.assertEqual(refused.status_code, 503, refused.text)
+            snapshot.assert_not_called()
+            self.assertEqual(self.calls, [])
+        finally:
+            for identity, version in changed:
+                object.__setattr__(identity, 'model_version', version)
+
     def test_legacy_strict_runtime_still_refuses_unindexed_candidates(self):
         self.client = self._client(self.strict_runtime)
         self.assertEqual(self.query().status_code, 503)
