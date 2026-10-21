@@ -1,16 +1,22 @@
 # Current project status
 
-**October 21 indexing recovery preparation:** a private guarded recovery core
-passed **10 local and 10 native Windows fixture tests**, plus actual private-ACL,
-file-identity, controller-lease collision and replay-refusal checks in a
-120-second / 2 GiB / four-process child Job. The family index was not used by
-those fixtures. Independent readback confirms **16,595 ready / 29 failed**, with
-**7,137 unprocessed assets** and all 27 retained preparation-copy hashes intact.
-A frozen one-shot resume package is prepared; actual full-prefix verification,
-folder quarantine and model/index continuation have **not run**. Real resume is
-held while a separate API/task recovery window is active. This round changes no
-API, task, database or original media. Semantic remains **OFF**. See the
+**October 21 indexing recovery follow-up:** the separate service-recovery window
+is closed. The revised private controller passed **29 local and 29 native
+Windows tests**, with independent staged-file and completion readback. Its
+native rehearsal used the indexing child’s **8 GiB / four-process** Job profile
+under a 120-second limit and verified the owned Windows Python launcher pair.
+The previous prefix reader was deliberately stopped before any folder move or
+model child; **2,078 batches, 16,595 ready / 29 failed, and 27 retained copies**
+were unchanged. A fresh attempt shares a six-hour budget across verification and
+one indexing child, with a three-hour pre-child cap and 120-second postflight
+reserve. Parent deadline checks are cooperative; the child has a Job timeout.
+Full verification hashes **62.7 GB per pass**, so unchanged checkpoint counts
+during verification do not imply a stalled indexer. At 15:03 China time, the new
+controller was admitted and verifying the existing prefix, with no quarantine
+intent or model child. See the
 [recovery qualification record](SEMANTIC_LIBRARY_SCALE.md#guarded-index-recovery-preparation--october-21-2026).
+Semantic remains **OFF**; no production API, task, database or original media
+changes are part of this recovery.
 
 **October 21 bulk-serving follow-up:** local source `e4f06a5` adds an explicit
 bulk vector container and immutable scoring snapshot; `f5018e4` also captures one
@@ -26,7 +32,8 @@ with a fake encoder and index inspector, not native or device acceptance; the
 The private index stopped at **16,595 ready photos and 29 failures**, after
 16,624 of the frozen 23,761 assets. Its nonempty preparation folder correctly
 prevented another chunk. All 27 retained copies and failure records are preserved;
-a guarded recovery proposal is prepared, but no quarantine or resume has run.
+a guarded recovery controller is qualified; full verification must pass before
+quarantine or model continuation.
 The remaining 7,137 assets, failure resolution, current-roster coverage, real
 Windows/model/network latency, relevance review and family/device acceptance are
 still open. Bulk lifecycle/refresh/deletion integration also needs qualification.

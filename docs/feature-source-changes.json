@@ -27423,6 +27423,33 @@
       "family_index_restarted": false,
       "production_runtime_changed": false,
       "activation_approved": false
+    },
+    {
+      "feature": "private-index-shared-budget-native-qualification-and-prefix-verification-start",
+      "source_commit": "1efc6ac6eb95cc9f0e7cbbfebb200de24a74bd0f",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "c971c57fd4f2abee4c068c51f458a8647a2cafe866f8fef243e60a27fc8fcb06",
+          "sha256": "960766edbd4b283de1209ebde7baea41cd6d81f5521da4add5ac188f2268b720"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "f4235e143a3adc8be1d10722437ea6a68bb7c513919e845489e2fd3617bba0f4",
+          "sha256": "ca936b62ce72cd0470e2ceb0e6484d9ac1797db2caa6ce82c49cf3561f3d4da5"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "af190df5202f98390eb722136595cf3d3d185b8209624c5ae8429b08828b9fba",
+          "sha256": "fdd83c5a1748453278003758c6de9efb6d22011e3a3b9699d060785b328105ad"
+        }
+      ],
+      "documentation_only": true,
+      "semantic_search_enabled": false,
+      "family_index_verifier_started": true,
+      "family_index_model_child_started": false,
+      "production_runtime_changed": false,
+      "activation_approved": false
     }
   ]
 }

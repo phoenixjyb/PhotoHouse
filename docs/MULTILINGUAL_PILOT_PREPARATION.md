@@ -230,10 +230,15 @@ unmerged and undeployed; semantic search remains **OFF**.
 
 
 The [guarded recovery follow-up](SEMANTIC_LIBRARY_SCALE.md#guarded-index-recovery-preparation--october-21-2026)
-qualifies the private folder-preservation protocol on generated Windows files
-(10 tests plus ACL, identity, lease and replay checks). It does not qualify a real
-resume or change semantic readiness. The real index remains at 16,595 ready /
-29 failed, with 7,137 unprocessed assets; all 27 retained copy hashes are intact.
-The one-shot resume package is prepared but held during a separate service
-recovery window. Full-prefix proof, quarantine, actual indexing, complete
-coverage and native serving acceptance remain pending. Semantic remains OFF.
+now has **29 local and 29 native tests**, including strict Windows launcher
+identity and shared-budget checks. The service-recovery window is closed. An
+owned prefix reader was stopped before mutation after measuring 62.7 GB of
+original bytes per full pass; the fresh controller shares six hours across
+verification and one indexing child. Its native fixture Job used the actual
+8 GiB / four-process indexing profile. The real index still has 16,595 ready /
+29 failed and 7,137 unprocessed assets, with all 27 retained copies unchanged.
+At 15:03 China time on October 21, the fresh real controller was admitted and
+performing full-prefix verification; it had no quarantine intent or model child.
+Full-prefix proof, quarantine, actual indexing, complete coverage and native
+serving acceptance remain pending.
+Semantic remains OFF.

@@ -511,11 +511,47 @@ full real-prefix verification is still required before quarantine. The frozen
 roster has **7,137 unprocessed assets**. Neither the family-folder quarantine nor
 the actual model/index continuation has run.
 
-The real candidate operation remains unstaged and unstarted while a separate
-API/task recovery window is active. The dispatcher requires an explicit verified
-window-closure record before staging or running it; no recurring automation was
-created. Once that window closes, recheck runtime/resource pins, run the full
-prefix/scratch proof, then perform the reviewed quarantine and one bounded child.
+The separate API/task recovery window subsequently closed. An initial real
+admission refused the coordinator’s own Windows virtual-environment launcher.
+The corrected guard exempts only the immediate owned launcher after matching
+its PID relationship, owner SID, executable, creation order and exact decoded
+arguments; other candidate or unreadable Python processes still refuse admission.
+Twelve generated process-scope tests and native launcher readback qualify this
+exception. No source or model recipe changed.
+
+The admitted prefix reader was deliberately stopped before any quarantine intent,
+folder move or model child. Its read-only workload established that a full prefix
+pass hashes **62,666,621,494 original bytes**; the earlier 30-minute parent budget
+was inadequate for two full passes. Post-stop readback verified the same 2,078
+batches and all 27 retained scratch hashes. Its stage is preserved and cannot be
+replayed.
+
+A fresh controller now shares **six hours** between all pre-child work and one
+bounded indexing child, caps pre-child work at **three hours**, and reserves
+**120 seconds** for postflight. The parent deadline is checked cooperatively;
+this is not an OS-enforced deadline on blocked parent I/O. The child receives
+only the remaining budget through its Job timeout. File, vector, media, recipe,
+ACL, scratch and process checks are unchanged. The three-hour cap also covers
+artifact checks and guards before child admission. Seven fake-clock cases add
+deadline, invalid-clock and backward-clock coverage.
+
+The fresh packet passed **29 local and 29 native Windows tests**, plus the actual
+ACL, inode, lease, replay and owned-launcher checks. This new native rehearsal
+uses the actual indexing Job profile: flags `0x2208`, **8 GiB / four processes**,
+a 16 GiB free-RAM admission floor and a 120-second generated-fixture timeout.
+Independent readback verified all ten staged inputs, completion and child exit
+zero. It opened no family media or index contents and loaded no model. The
+original 10-test / 2 GiB rehearsal above remains historical evidence.
+
+At **15:03 China time on October 21**, independent readback confirmed the fresh
+coordinator admitted with the exact owned launcher pair and no other candidate
+processes. It had read about **8.37 GB**, used about **68 MB** of working memory,
+and was performing the full-prefix verification. There was no quarantine intent,
+folder move, model child, final manifest or failure receipt. All 2,078 batches
+and 27 preparation files remained in place. These are verification reads, not
+newly indexed images; checkpoint counts will remain unchanged in this phase. The frozen roster still has 7,137
+unprocessed assets. Every real phase requires fresh config/resource checks and
+the verified window-closure record. No recurring automation was created.
 Final coverage, failed-input disposition, current-roster and relevance checks,
 real protected latency, bulk lifecycle and family/device acceptance remain open.
 Semantic search remains **OFF**. These private controls add no public runtime
