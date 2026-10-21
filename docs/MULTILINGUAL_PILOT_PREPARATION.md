@@ -221,24 +221,23 @@ limit these diagnostics. The 2-second backend target and real native/model/
 network/device performance are unqualified. Full API at `f5018e4` passed
 **2,866 tests and 3,651 subtests** plus the demo with unchanged source.
 
-Indexing is now stopped at **16,595 ready / 29 failed**; 7,137 roster assets remain
-unprocessed. A private recovery proposal preserves all retained copies and
-failure evidence, but no quarantine or resume has run. Complete coverage,
-failed-input resolution, current-roster/relevance review, bulk lifecycle
-qualification and family/device acceptance remain open. Source is local,
-unmerged and undeployed; semantic search remains **OFF**.
+The guarded continuation has now processed the entire frozen roster:
+**23,696 indexed photos and 65 explicit failures** out of 23,761. The failures
+remain visible: 64 preparation failures and one missing source. A fresh read-only
+catalog comparison found the same IDs, hashes and complete catalog digest, with
+no additions or removals. This is a point-in-time roster check; all photos have
+been attempted, but semantic coverage is incomplete.
 
-
-The [guarded recovery follow-up](SEMANTIC_LIBRARY_SCALE.md#guarded-index-recovery-preparation--october-21-2026)
-now has **29 local and 29 native tests**, including strict Windows launcher
-identity and shared-budget checks. The service-recovery window is closed. An
-owned prefix reader was stopped before mutation after measuring 62.7 GB of
-original bytes per full pass; the fresh controller shares six hours across
-verification and one indexing child. Its native fixture Job used the actual
-8 GiB / four-process indexing profile. The real index still has 16,595 ready /
-29 failed and 7,137 unprocessed assets, with all 27 retained copies unchanged.
-At 15:03 China time on October 21, the fresh real controller was admitted and
-performing full-prefix verification; it had no quarantine intent or model child.
-Full-prefix proof, quarantine, actual indexing, complete coverage and native
-serving acceptance remain pending.
-Semantic remains OFF.
+The [completed-index and lifecycle follow-up](SEMANTIC_LIBRARY_SCALE.md#completed-index-and-lifecycle-qualification--october-21-2026)
+adds synthetic-account revocation, soft-deletion and library-scope removal probes
+before inference, plus stale-cache fault injection. Full API at `3aa43c6` passed
+**2,867 tests / 3,651 subtests** plus the demo. A private real-model bulk HTTPS/TCP
+benchmark is running. Its initial audit passed all 23,696 vector payloads and
+metadata plus source stat identities, without rehashing original bytes; no new
+latency or relevance acceptance is claimed yet.
+The benchmark uses only ready artifacts; production candidate sets containing
+a missing embedding still refuse. A reviewed semantic-only eligibility policy
+with visible partial coverage is required without narrowing ordinary discovery.
+Refresh/swap/retirement packaging, failure disposition, integration/deployment,
+owner-only activation review and family/device acceptance remain pending.
+Source is local, unmerged and undeployed; semantic search remains **OFF**.

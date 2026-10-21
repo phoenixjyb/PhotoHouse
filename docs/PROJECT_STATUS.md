@@ -1,22 +1,32 @@
 # Current project status
 
-**October 21 indexing recovery follow-up:** the separate service-recovery window
-is closed. The revised private controller passed **29 local and 29 native
-Windows tests**, with independent staged-file and completion readback. Its
-native rehearsal used the indexing child’s **8 GiB / four-process** Job profile
-under a 120-second limit and verified the owned Windows Python launcher pair.
-The previous prefix reader was deliberately stopped before any folder move or
-model child; **2,078 batches, 16,595 ready / 29 failed, and 27 retained copies**
-were unchanged. A fresh attempt shares a six-hour budget across verification and
-one indexing child, with a three-hour pre-child cap and 120-second postflight
-reserve. Parent deadline checks are cooperative; the child has a Job timeout.
-Full verification hashes **62.7 GB per pass**, so unchanged checkpoint counts
-during verification do not imply a stalled indexer. At 15:03 China time, the new
-controller was admitted and verifying the existing prefix, with no quarantine
-intent or model child. See the
-[recovery qualification record](SEMANTIC_LIBRARY_SCALE.md#guarded-index-recovery-preparation--october-21-2026).
-Semantic remains **OFF**; no production API, task, database or original media
-changes are part of this recovery.
+**October 21 semantic readiness follow-up:** the frozen family roster is fully
+processed: **23,696 indexed photos + 65 explicit failures = 23,761 attempts**.
+This is not complete searchable coverage: 64 inputs failed preparation and one
+source is missing. All failure records remain; 27 earlier preparation copies are
+retained separately and 36 later copies remain in the index scratch directory.
+No original was deleted, repaired or overwritten. The native completion receipt,
+final manifest and process closure were independently read back; the Mac transport
+itself timed out, so terminal success comes from the Windows receipts.
+
+A fresh read-only catalog comparison found **no added or removed photos and no
+changed source hashes**; its complete catalog digest matches the frozen roster.
+That is a point-in-time check, not an ongoing freshness guarantee. The new bulk
+canary checks owner revocation and stale cohorts after soft deletion or library
+scope removal before inference. Injecting unsafe reuse of a cached snapshot is
+caught by the qualification harness. Full API at `3aa43c6` passed **2,867 tests /
+3,651 subtests** plus the generated demo, with unchanged source and revision.
+The native audit verified all 23,696 vector payloads/metadata and current original
+stat identities, with all 65 failures accounted for; it did not rehash original
+media bytes. Real-model Windows bulk HTTPS/TCP measurement is running with
+synthetic accounts; no latency result is claimed yet. See the
+[readiness qualification record](SEMANTIC_LIBRARY_SCALE.md#completed-index-and-lifecycle-qualification--october-21-2026).
+The real benchmark uses a ready-only synthetic catalog. Production searches
+whose candidates include one of the 65 missing embeddings still refuse; a
+reviewed semantic-only eligibility and visible coverage policy is required.
+Semantic remains **OFF**. Current-roster relevance, failure disposition,
+refresh/swap/retirement packaging, protected latency and owner/family/device
+acceptance remain activation gates.
 
 **October 21 bulk-serving follow-up:** local source `e4f06a5` adds an explicit
 bulk vector container and immutable scoring snapshot; `f5018e4` also captures one
@@ -29,16 +39,12 @@ with a fake encoder and index inspector, not native or device acceptance; the
 2-second backend target remains unmet. Full API at `f5018e4`: **2,866 tests /
 3,651 subtests** plus the generated demo, with unchanged source.
 
-The private index stopped at **16,595 ready photos and 29 failures**, after
-16,624 of the frozen 23,761 assets. Its nonempty preparation folder correctly
-prevented another chunk. All 27 retained copies and failure records are preserved;
-a guarded recovery controller is qualified; full verification must pass before
-quarantine or model continuation.
-The remaining 7,137 assets, failure resolution, current-roster coverage, real
-Windows/model/network latency, relevance review and family/device acceptance are
-still open. Bulk lifecycle/refresh/deletion integration also needs qualification.
-Semantic remains **OFF**; this source is local, unmerged and undeployed, and the
-private index is unpublished. See the [bulk-serving record](SEMANTIC_LIBRARY_SCALE.md#bulk-serving-and-request-budget-follow-up--october-21-2026).
+The private index now has **23,696 ready photos and 65 explicit failures** after
+all 23,761 frozen-roster assets were attempted. The guarded recovery completed
+with all retained evidence preserved. Native bulk-serving measurements and
+operational lifecycle qualification remain open. Semantic remains **OFF**; the
+serving source is local, unmerged and undeployed, and the index is unpublished.
+See the [completed-index record](SEMANTIC_LIBRARY_SCALE.md#completed-index-and-lifecycle-qualification--october-21-2026).
 
 **October 21 morning search qualification:** generated 23,761-vector checks now
 pass all seven protection checks at **13.7 seconds median / 15.0 seconds p95**;

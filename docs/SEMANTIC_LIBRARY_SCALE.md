@@ -557,3 +557,76 @@ real protected latency, bulk lifecycle and family/device acceptance remain open.
 Semantic search remains **OFF**. These private controls add no public runtime
 code, deployment or new API regression claim; the last behavioral API evidence
 remains **2,866 tests / 3,651 subtests** at `f5018e4` plus the generated demo.
+
+
+## Completed index and lifecycle qualification — October 21, 2026
+
+The guarded continuation completed natively after about **3 hours 16 minutes**
+including verification and indexing. Independent receipt readback found the final
+manifest and **23,696 indexed / 65 failed / 23,761 roster assets**, with no failure
+receipt or remaining controller processes. Job proof remained `0x2208`, 8 GiB and
+four processes. The local SSH transport timed out; this completion claim relies
+on independently read Windows terminal receipts, not transport exit zero. The
+readback itself did not rehash all originals or vectors. The original 27 scratch
+copies were retained by the completed folder-preservation operation, and 36 new
+copies remain in the index preparation directory. None was deleted or retried.
+Failure codes are **64 preparation_unavailable + 1 source_missing**. File suffixes
+are diagnostic only; these codes do not establish corruption or a repair recipe.
+Processing is complete; searchable coverage is incomplete.
+
+A separate fresh read-only production-catalog audit used `mode=ro`, `query_only`,
+a bounded transaction/progress deadline and a 100,001-row admission ceiling. All
+23,761 active family images matched the frozen IDs and source hashes, with zero
+additions/removals and the exact original catalog digest. It read database rows,
+not original media or vector payloads, and wrote no production data. Its first
+read-only attempt refused before opening the database because the diagnostic
+used the wrong Unicode JSON canonicalization; the corrected ASCII canonical
+form matched the frozen contract. Both attempts are retained. This is a current
+roster observation, not ongoing monitoring or authorization for activation.
+
+Source `3aa43c6` adds bulk-specific lifecycle checks to the generated-account
+qualification harness. Revoking its synthetic owner's membership must return
+401/403 before any provider, vector or bulk reads, and exact restoration must
+recover. A synthetic soft deletion or removal of a library scope link advances
+only that harness's reviewed source receipt; the unchanged bulk container must
+then refuse the stale complete cohort before inference or cards. The omission
+case uses a date-filtered subset to check library-wide validation. All changed
+synthetic rows and the old reviewed provider are restored in `finally`. Immutable
+vector rows and supplied index files remain unchanged. A fault-injection test
+makes the store reuse a stale cached snapshot and confirms qualification fails;
+this is evidence that the validator catches the intended failure.
+
+Focused qualification passed **53 tests / 24 subtests**. Full API at the exact
+unchanged `3aa43c6` source passed **2,867 tests / 3,651 subtests** plus the generated
+no-listener demo. These checks qualify refusal/recovery, not an implemented
+refresh, atomic swap or retirement workflow.
+
+A fresh source-only private packet stages the real bulk canary with 271 pinned
+source files, unchanged model/preparation sources, a 30-minute / 8 GiB /
+four-process Job, a 16 GiB free-RAM floor and two CPU threads. It validates the
+completed index, builds a separate derived bulk file and synthetic database, then
+measures three language queries three times through temporary loopback HTTPS API
+and authenticated TCP provider listeners. No existing index is modified. The
+packet's source/control compatibility was independently reviewed. The child’s initial full-index audit has passed: all 23,696 vector payloads and
+metadata, complete checkpoint inventory, original-source stat identities and all
+65 failure records verified. It did not rehash original bytes. The real-model
+query benchmark and final postflight are still running; no latency result is
+claimed yet.
+
+The serving canary's synthetic catalog intentionally contains only the 23,696
+ready artifacts. It does not prove serving behavior for the actual catalog's
+65 missing embeddings. Current semantic ranking refuses a candidate set that
+contains an image without a compatible ready vector; narrowing ordinary
+`ReviewedIndex` scope would alter or invalidate normal discovery rather than
+provide a semantic-only coverage policy. The shared `indexed_ids` field is not
+such a policy. A reviewed, library/source-bound semantic eligibility cohort and
+visible partial-coverage/failure receipt are still needed before a pilot can
+serve incomplete coverage. Ordinary discovery scope and privacy gates must
+remain intact; benchmark success must not be treated as resolving this gap.
+
+Semantic remains **OFF**. No production API, task, configuration, database write,
+account creation, index publication or activation is included. Remaining gates
+include real-model/network measurement completion, broad
+family relevance and explicit failed-input disposition, refresh/swap/retirement
+packaging, controlled source integration/deployment and an owner-only activation
+proposal. Family/device acceptance remains separate.
