@@ -181,6 +181,7 @@ class StagingPackageTests(unittest.TestCase):
                          'backend/migrations/versions/f2a8c5d1e640_library_photo_stacks.py',
                          'backend/app/access/semantic_configuration.py',
                          'backend/app/access/semantic_streaming.py',
+                         'backend/app/access/semantic_eligibility.py',
                          'scripts/multilingual_index_collection.py',
                          'scripts/semantic_bilingual_clothing.py',
                          'backend/app/access/people_review.py',
@@ -224,6 +225,7 @@ class StagingPackageTests(unittest.TestCase):
                 "assert requires_exclusion_clarification('不在grass上的dog')\n"
                 'from app.access.semantic_configuration import load_semantic_runtime\n'
                 'from app.access.semantic_streaming import SemanticServingLimits\n'
+                'from app.access.semantic_eligibility import SemanticEligibilityStore\n'
                 'import multilingual_index_collection, semantic_bilingual_clothing\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'

@@ -27637,6 +27637,25 @@
       "live_schema_changed": false,
       "semantic_search_enabled": false,
       "production_policy_created": false
+    },
+    {
+      "feature": "semantic-eligibility-api-archive-closure-r55",
+      "source_commit": "638245f153dfdc469b8d5abd74c2ea5bf2b8ce1c",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "7a09e2631eb918eb69daab23f2d7f044f8af1be7db90815efa28aa19948cc311",
+          "sha256": "e671e8e4204cae66d43aafe43596572b23efa0159b80c86a2d82fe6ab4d54b33"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "ea6fe09b99735923b782c12630f2186f35881d7806fe714c68638f82a4471e31",
+          "sha256": "25a2ee0f4ab3c7eaf9071edf41d68c885cf165dc961701acd95adec80ad94714"
+        }
+      ],
+      "routes_added": false,
+      "live_schema_changed": false,
+      "semantic_search_enabled": false
     }
   ]
 }
