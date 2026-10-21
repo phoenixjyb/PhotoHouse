@@ -11,9 +11,12 @@ SHA-256 verified. The original English trial failed with generic exit code 2
 after 6.578 seconds. A separately reviewed phase-aware diagnostic at `a6b27df`
 then failed inside generation (exit 17) after 6.344 seconds. A later sanitized
 diagnostic narrowed the completion failure to `OSError` during native sampler
-setup (6.453 seconds); its exact native call/cause is still unknown. No close
-failure was reported. None of these attempts produced a qualified draft; the other four planned cases remain unrun. See the
-[candidate checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#sanitized-sampler-diagnostic-2026-10-22).
+setup (6.453 seconds). A further unchanged-model diagnostic identified a native
+stack overflow (`0xC00000FD`) during `grammar_init` (6.829 seconds). No close
+failure was reported. None produced a qualified draft; the other four planned
+cases remain unrun. The default-off bounded-grammar source correction has
+model-free evidence and still needs native qualification. See the
+[candidate checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#measured-grammar-initialization-failure-and-source-correction).
 
 The default-off synthetic application, protected prepare/cancel, review/save and
 `RuntimeConfiguration` injection seams are implemented. Windows completed 12
@@ -26,6 +29,10 @@ with zero skips after a portable test-only correction. Its optional `exchange_ro
 was packaged but not used by this diagnostic, so its Windows replacement/ACL
 behavior remains separate qualification. No serialized provider selection or
 application activation exists. Keep both flags off.
+
+The next diagnostic tooling passed 54 Windows operator checks with no skips,
+including the actual binding patch/restore and owned Job memory canary. The
+source correction is separate from that unchanged-baseline diagnostic.
 
 The sections below retain the proposed limits and trial procedure. They do not
 authorize another attempt; the recorded run stopped at the first English failure.

@@ -41,6 +41,7 @@ FILES = (
     'backend/app/access/selected_story_local.py',
     'backend/app/access/selected_story_native.py',
     'backend/app/access/selected_story_process.py',
+    'backend/app/access/selected_story_grammar.py',
     'backend/app/access/assistant_search.py',
     'backend/app/access/assistant_scene_search.py',
     'backend/app/access/assistant_query_plan.py',

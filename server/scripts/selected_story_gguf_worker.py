@@ -26,6 +26,7 @@ from app.access.memory_narrative import (
 from app.access.private_storage import (
     require_private_directory, require_private_file, stable_stat_identity,
 )
+from app.access.selected_story_grammar import bounded_schema_to_gbnf
 from app.access.selected_story_local import _MODEL
 from app.access.selected_story_native import OPERATION_ENV
 from app.access.selected_story_process import MAX_REQUEST_BYTES, REQUEST_ENV, RESPONSE_ENV
@@ -232,7 +233,10 @@ class _LlamaEngine:
                     or not tokens or len(tokens) + limit > actual_context):
                 _refuse(phase)  # Never shorten source text or silently reduce output budget.
             phase = 'grammar'
-            grammar = LlamaGrammar.from_json_schema(json.dumps(generation['format']), verbose=False)
+            from llama_cpp import llama_grammar
+            grammar = LlamaGrammar.from_string(
+                bounded_schema_to_gbnf(json.dumps(generation['format']), llama_grammar),
+                verbose=False)
             phase = 'generation'
             result = self.model.create_completion(prompt=tokens, max_tokens=limit,
                 temperature=generation['options']['temperature'], seed=0,

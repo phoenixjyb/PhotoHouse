@@ -56,6 +56,10 @@ class GGUFWorkerTests(unittest.TestCase):
         self.body = {'version': 1, 'operation_id': OPERATION_ID,
                      'generation': worker._generation_payload(bundle(), 'narrative', MODEL)}
         self.write_request()
+        self.grammar_backend = object()
+        compiler_patch = patch.object(worker, 'bounded_schema_to_gbnf', return_value='synthetic bounded GBNF')
+        self.grammar_compile = compiler_patch.start()
+        self.addCleanup(compiler_patch.stop)
         self.engine = SyntheticEngine(self.settings)
         self.factory = Mock(return_value=self.engine)
 
@@ -227,15 +231,15 @@ class GGUFWorkerTests(unittest.TestCase):
                 native.create_completion.return_value={
                     'choices':[{'text':'{}','finish_reason':'stop'}],
                     'usage':{'prompt_tokens':3,'completion_tokens':1}}
-                grammar=SimpleNamespace(from_json_schema=Mock(return_value='grammar'))
+                grammar=SimpleNamespace(from_string=Mock(return_value='grammar'))
                 binding=SimpleNamespace(Llama=Mock(return_value=native), LlamaGrammar=grammar,
-                                        LLAMA_SPLIT_MODE_NONE=0)
+                                        LLAMA_SPLIT_MODE_NONE=0,llama_grammar=self.grammar_backend)
                 if failing_stage == 'tokenize':
                     native.tokenize.side_effect=RuntimeError('/private/token words')
                 elif failing_stage == 'context':
                     native.n_ctx.return_value=0
                 elif failing_stage == 'grammar':
-                    grammar.from_json_schema.side_effect=RuntimeError('private grammar words')
+                    grammar.from_string.side_effect=RuntimeError('private grammar words')
                 elif failing_stage == 'generation':
                     native.create_completion.side_effect=RuntimeError('private generated words')
                 else:
@@ -296,8 +300,8 @@ class GGUFWorkerTests(unittest.TestCase):
 
     def test_optional_binding_refuses_out_of_budget_or_invalid_usage(self):
         native=Mock();native.n_ctx.return_value=8192;native.tokenize.return_value=[1,2,3]
-        binding=SimpleNamespace(Llama=Mock(return_value=native),LLAMA_SPLIT_MODE_NONE=0,
-            LlamaGrammar=SimpleNamespace(from_json_schema=Mock()))
+        binding=SimpleNamespace(Llama=Mock(return_value=native),LLAMA_SPLIT_MODE_NONE=0,llama_grammar=self.grammar_backend,
+            LlamaGrammar=SimpleNamespace(from_string=Mock()))
         with patch.dict(sys.modules,{'llama_cpp':binding}):
             engine=worker._LlamaEngine(self.settings)
             for usage in ({'prompt_tokens':3,'completion_tokens':2049},
@@ -322,8 +326,8 @@ class GGUFWorkerTests(unittest.TestCase):
     def test_optional_binding_uses_local_cpu_and_full_tokens_with_closed_schema(self):
         native=Mock();native.tokenize.return_value=[1,2,3];native.n_ctx.return_value=8192
         native.create_completion.return_value={'choices':[{'text':json.dumps(narrative()),'finish_reason':'stop'}], 'usage':{'prompt_tokens':3,'completion_tokens':100}}
-        grammar=SimpleNamespace(from_json_schema=Mock(return_value='synthetic-grammar'))
-        binding=SimpleNamespace(Llama=Mock(return_value=native),LlamaGrammar=grammar,LLAMA_SPLIT_MODE_NONE=0)
+        grammar=SimpleNamespace(from_string=Mock(return_value='synthetic-grammar'))
+        binding=SimpleNamespace(Llama=Mock(return_value=native),LlamaGrammar=grammar,LLAMA_SPLIT_MODE_NONE=0,llama_grammar=self.grammar_backend)
         generation=self.body['generation']
         with patch.dict(sys.modules,{'llama_cpp':binding}):
             engine=worker._LlamaEngine(self.settings)
@@ -338,11 +342,48 @@ class GGUFWorkerTests(unittest.TestCase):
         completion=native.create_completion.call_args.kwargs
         self.assertEqual([1,2,3],completion['prompt']);self.assertEqual(2048,completion['max_tokens'])
         self.assertFalse(completion['stream']);self.assertFalse(completion['echo'])
-        self.assertEqual(generation['format'],json.loads(grammar.from_json_schema.call_args.args[0]))
+        self.grammar_compile.assert_called_once_with(json.dumps(generation['format']), self.grammar_backend)
+        grammar.from_string.assert_called_once_with('synthetic bounded GBNF', verbose=False)
+        self.assertEqual('synthetic-grammar', completion['grammar'])
         native.close.assert_called_once()
 
+    def test_bounded_grammar_failure_closes_model_without_generation_or_response(self):
+        native = Mock()
+        native.tokenize.return_value = [1, 2, 3]
+        native.n_ctx.return_value = 8192
+        grammar = SimpleNamespace(from_string=Mock())
+        binding = SimpleNamespace(Llama=Mock(return_value=native), LlamaGrammar=grammar,
+            LLAMA_SPLIT_MODE_NONE=0, llama_grammar=self.grammar_backend)
+        self.grammar_compile.side_effect = ValueError('private schema words')
+        with patch.dict(sys.modules, {'llama_cpp': binding}):
+            with self.assertRaises(worker.WorkerUnavailable) as caught:
+                worker.run(self.settings, enabled=True, environment=self.env,
+                    backend_factory=worker._LlamaEngine)
+        self.assertEqual('grammar', caught.exception.phase)
+        self.assertEqual('Selected-story worker unavailable', str(caught.exception))
+        grammar.from_string.assert_not_called()
+        native.create_completion.assert_not_called()
+        native.close.assert_called_once()
+        self.assertFalse(self.response.exists())
+
+    def test_missing_optional_converter_interface_fails_closed_without_fallback(self):
+        native = Mock()
+        native.tokenize.return_value = [1, 2, 3]
+        native.n_ctx.return_value = 8192
+        binding = SimpleNamespace(Llama=Mock(return_value=native),
+            LlamaGrammar=SimpleNamespace(from_string=Mock()), LLAMA_SPLIT_MODE_NONE=0)
+        with patch.dict(sys.modules, {'llama_cpp': binding}):
+            with self.assertRaises(worker.WorkerUnavailable) as caught:
+                worker.run(self.settings, enabled=True, environment=self.env,
+                    backend_factory=worker._LlamaEngine)
+        self.assertEqual('grammar', caught.exception.phase)
+        self.grammar_compile.assert_not_called()
+        native.create_completion.assert_not_called()
+        native.close.assert_called_once()
+        self.assertFalse(self.response.exists())
+
     def test_gpu_offload_requires_explicit_backend_ordinal(self):
-        binding=SimpleNamespace(Llama=Mock(),LLAMA_SPLIT_MODE_NONE=0)
+        binding=SimpleNamespace(Llama=Mock(),LLAMA_SPLIT_MODE_NONE=0,llama_grammar=self.grammar_backend)
         settings=replace(self.settings,gpu_layers=8,gpu_device=1)
         with patch.dict(sys.modules,{'llama_cpp':binding}):
             engine=worker._LlamaEngine(settings)
@@ -367,7 +408,7 @@ class GGUFWorkerTests(unittest.TestCase):
         native=Mock();native.n_ctx.return_value=4096
         native.create_completion.return_value={'choices':[{'text':'{}','finish_reason':'stop'}], 'usage':{'prompt_tokens':2048,'completion_tokens':1}}
         binding=SimpleNamespace(Llama=Mock(return_value=native),
-            LlamaGrammar=SimpleNamespace(from_json_schema=Mock()),LLAMA_SPLIT_MODE_NONE=0)
+            LlamaGrammar=SimpleNamespace(from_string=Mock()),LLAMA_SPLIT_MODE_NONE=0,llama_grammar=self.grammar_backend)
         with patch.dict(sys.modules,{'llama_cpp':binding}):
             engine=worker._LlamaEngine(self.settings)
             native.tokenize.return_value=[1]*2048

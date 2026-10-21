@@ -257,7 +257,10 @@ observer checks. The exact candidate GGUF is acquired and full-size/SHA-256
 verified. The later `a6b27df` package passed 22 revised operator/binding-canary
 checks, then its one phase-aware English diagnostic failed inside generation
 (exit 17, 6.344 seconds). A later private diagnostic passed 37 operator checks and narrowed the failure to `OSError` during
-native sampler setup; the exact native call/cause remains unknown. Successful
+native sampler setup. The next 54-check diagnostic identified a native stack
+overflow during grammar initialization. A default-off source correction replaces
+deep bounded-string nesting while preserving the existing serialized grammar
+language and source constraints; it still needs native qualification. Successful
 completion and the other four real-model cases remain unqualified. Independent
 cleanup, source/model pins and live gateway/site/API/feed preservation passed;
 the coordinated lane was released. The optional exchange parent was packaged

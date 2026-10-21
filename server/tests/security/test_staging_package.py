@@ -70,6 +70,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/selected_story_local.py',
             'backend/app/access/selected_story_native.py',
             'backend/app/access/selected_story_process.py',
+            'backend/app/access/selected_story_grammar.py',
             'scripts/selected_story_native_owner.py',
             'scripts/qualify_selected_story.py',
             'scripts/selected_story_gguf_worker.py',
@@ -213,6 +214,7 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.selected_story_lifecycle import SelectedStoryLifecycle\n'
                 'from app.access.selected_story_local import LocalSelectedStoryProvider\n'
                 'from app.access.selected_story_native import NativeStoryLaunch\n'
+                'from app.access.selected_story_grammar import bounded_schema_to_gbnf\n'
                 'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider\n'
                 'import qualify_selected_story, selected_story_gguf_worker, json\n'
                 "assert 'llama_cpp' not in sys.modules\n"

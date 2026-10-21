@@ -280,3 +280,73 @@ processes, listeners and two feed hashes were preserved. All 69 report assets
 matched before/after endpoint checks. The Windows lane was explicitly released
 after verification. Production activation, deployment, GPU use, model/backend
 substitution and parameter tuning were outside this diagnostic.
+
+## Native diagnostic preflight, 2026-10-22
+
+A new private diagnostic tracks eleven explicit native sampler calls, initializer
+pointer presence and numeric exception metadata. It forwards the original calls
+unchanged, restores the binding and completion attributes, and writes only a
+closed, canonical report of at most 512 bytes. Job memory counters are observed
+through the retained owned Job handle; they neither change its limits nor prove
+that an allocation was denied.
+
+The first 53-check Windows gate stopped because its multiline canary argument
+violated the native launch contract before child creation. That failed evidence
+was retained. A fresh test-only packet encoded the same canary as a control-free
+argument and added a regression through the actual launch validator. All **54
+checks passed with zero skips**, including installation/restoration against the
+real binding, pinned core DLL mappings, Job memory observation, root exit, Job
+drainage, reconciliation and owner close. No model was loaded by these checks.
+
+The model diagnostic was deferred because the remaining lane could not fit its
+full admitted budget and independent cleanup reserve. No model clearance,
+control store or model output directory was created. Independent readback
+verified the source/model/DLL pins and zero owned Python/control observers.
+The same runtime identities, task/configuration pins, feeds and all 69 report
+assets were preserved, then the lane was explicitly released. This qualifies
+the diagnostic tooling; at that checkpoint, the sampler failure above remained
+the latest model result.
+
+A separate model-free source characterization used the pinned Python
+[grammar converter](https://github.com/abetlen/llama-cpp-python/blob/1652066e0af45f2313b339670ef9555e8a54e545/llama_cpp/llama_grammar.py)
+and the exact generated English schema. It emitted 54,885 grammar bytes, with
+6,000 nested optional groups in the narration rule. This Python path emits
+parenthesized groups rather than counted repetition tokens, so a native parser
+optimization for counted repetitions does not remove that nesting. It is a
+specific lead for the next diagnostic, not proof of the Windows exception cause.
+Any replacement must preserve the existing bounds and source constraints and
+receive separate source and native qualification.
+
+## Measured grammar initialization failure and source correction
+
+After fresh coordination and pin/capacity checks, one unchanged English
+diagnostic identified `grammar_init` with numeric exception `0xC00000FD`
+([Windows `STATUS_STACK_OVERFLOW`](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debugging-a-stack-overflow)).
+It exited 17 after 6.829 seconds (outer: 20.063 seconds); no draft or close
+failure was reported and no retry occurred. The owned Job observed a peak of
+1,878,482,944 bytes within its unchanged 4 GiB limit. These counters do not prove
+whether an allocation was denied. The exception site/code is measured; the
+6,000-level converter expansion is separately reproduced source evidence.
+
+The failed case drained its Job, disposed its exchange and left zero claims with
+maintenance closed. Independent final readback found zero owned Python/control
+observers and unchanged source/model/DLL pins. All 25 runtime identities, 11 file
+pins, two tasks, four gateway/site/API processes, listeners, two feeds and 69
+report assets were preserved. The lane was explicitly released.
+
+The new default-off worker source replaces only plain bounded-string rules with
+an acyclic, logarithmic helper graph. Other schema rules and the backend's JSON
+character rule use the original converter. Counts preserve its serialized
+character-token language, including existing surrogate-pair escape behavior;
+the narrative validator remains authoritative after decoding. This is not a
+general JSON Schema implementation. Schema bytes, depth, nodes, emitted rules
+and grammar bytes have fixed aggregate limits; conversion failure stops before
+generation and still closes the model.
+
+With the exact generated English schema, the corrected source emits 10,052
+bytes, 93 rules and six levels of parentheses. Only title, narration and question
+string productions differ. A canonical six-chapter case with twelve sources per
+chapter stays within the caps: 43,037 bytes and 298 rules, with other productions
+unchanged. These are model-free source/converter checks. The corrected worker
+has not yet passed native generation, language-quality, cancellation or expiry
+qualification and does not activate either application flag.
