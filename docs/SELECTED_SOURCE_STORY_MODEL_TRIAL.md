@@ -1,12 +1,26 @@
 # First local story model trial
 
-The next runtime milestone is one generated-source request through the optional
+This record covers the bounded generated-source trial through the optional
 [GGUF worker](SELECTED_SOURCE_STORY_GGUF_WORKER.md), owned by the existing native
-process provider. Keep the application and both story flags off. This trial does
+process provider. The application and both story flags remain off. The trial does
 not deploy the feature or use family photos, memories, accounts or databases.
 
 A [pinned CPU candidate](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) now records the
-proposed artifacts and limits. It has not been acquired or qualified.
+candidate artifacts and limits. The model has been acquired and its full size and
+SHA-256 verified. The first real English trial failed with generic exit code 2
+after 6.578 seconds; model construction, generation and close are not qualified,
+and the other four planned cases did not run.
+
+The default-off synthetic application, protected prepare/cancel, review/save and
+`RuntimeConfiguration` injection seams are implemented. Windows completed 12
+synthetic native cases for the pinned source and 18 binding-observer checks.
+These checks do not qualify the real model. Later source changes add fixed worker
+phase codes and optional `exchange_root`; they have synthetic coverage but were
+not in the staged trial package or native-qualified. No serialized provider
+selection or application activation exists. Keep both flags off.
+
+The sections below retain the proposed limits and trial procedure. They do not
+authorize another attempt; the recorded run stopped at the first English failure.
 
 ## Small first slice
 

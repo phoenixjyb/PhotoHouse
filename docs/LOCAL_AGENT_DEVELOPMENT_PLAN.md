@@ -246,8 +246,20 @@ seam, with synthetic checks only. A [default-off native process owner](SELECTED_
 now retains private containment through cancellation and cleanup. Its synthetic
 checks do not qualify Windows containment. A [default-off process binding](SELECTED_SOURCE_STORY_PROCESS_BINDING.md)
 now ties a private request/response exchange to that owner, with synthetic
-worker/lifecycle acceptance. A production model worker and Windows qualification
-remain separate. No native owner/provider is installed or selected.
+worker/lifecycle acceptance. `RuntimeConfiguration` now accepts an already
+constructed provider with separate default-off API and UI flags; its integration
+tests cover generated migrated storage, protected ASGI prepare/cancel/logout and
+a real synthetic child. The injected object is not loaded or called at app build.
+There is no serialized provider selection or automatic activation.
+
+The pinned Windows source passed 12 synthetic native cases, and its binding
+observer passed 18 checks. The exact candidate GGUF is acquired and full-size and
+SHA-256 verified. The first real English trial failed with generic exit code 2
+after 6.578 seconds, before model construction, generation or close was
+qualified; the other four planned cases did not run. Later worker phase-code and
+`exchange_root` source changes have synthetic coverage but were not staged or
+native-qualified. Both story flags and provider factories remain off. The trial
+record retains the detailed checkpoint and remaining gates.
 
 PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access

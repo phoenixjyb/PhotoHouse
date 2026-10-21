@@ -28450,6 +28450,23 @@
         }
       ],
       "notes": "An in-flight prepare may encounter the logout barrier before revocation commit or revoked authentication after it; both fixed refusals must fence output. A fresh exact retry after completed logout must be unauthorized. Clarify current verified model acquisition and preserve historical checkpoint evidence. No production behavior or Windows runtime changed."
+    },
+    {
+      "feature": "selected-story-roadmap-current-source-and-runtime-gates",
+      "source_commit": "613fe731c6d471d82d3140348235902b6213d3b2",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "f61eedba73c3fdae2df5f4d8f5ac3c43b0cfea53d2ee9a5614191a8feb2850ea",
+          "sha256": "78e7c0f1f2bd456667553908050b1069b748850f1eb7d01fddde8a34af1ec1d9"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "1e9a685c1423acefe22c29a240454256c5af74e7edd373cea22dd435b0ae7548",
+          "sha256": "338d94a7dd8c1779c563b1ae20686e83d9f80be648ef902e96b884f7e68fcd7f"
+        }
+      ],
+      "notes": "Align the plan and trial overview with synthetic runtime injection, pinned Windows synthetic/binding evidence, verified model acquisition and the first failed real trial. Preserve the proposed qualification procedure and separate later source, real model success, production activation and deployment."
     }
   ]
 }
