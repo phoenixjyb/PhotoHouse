@@ -168,3 +168,19 @@ exchange/child setup. Reconciliation releases it only after native cleanup and
 exchange disposal succeed. It is default-off and does not automatically govern
 existing Windows/WSL services; native resource probing and qualified activation
 remain separate gates.
+
+
+The [runtime/process integration tests](../server/tests/security/test_selected_story_runtime_process.py)
+build the actual runtime and protected ASGI routes against generated migrated
+SQLite. A real stdlib synthetic child reads the file protocol under the test
+kernel, with an explicit private exchange parent and synthetic host admission.
+They verify that an exact retry starts one child and saves no story, a second
+request gets immediate busy admission, cancellation fences wording and releases
+the claim only after cleanup, and another session cannot cancel the owner.
+Owner logout fences the response and reaps the child. Source/evidence preview
+and authentication use the generated stores rather than a replacement resolver.
+
+These tests pin the actual base interpreter for the fixture and create no helper
+descendants. Their Job membership/resource limits are simulated: they prove the
+app/session/process integration, not native Windows containment, real model
+behavior or deployment readiness.

@@ -28409,6 +28409,30 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Integrate merged main fe47cec without dropping selected-story UI/runtime work or upstream photo-stack browsing and keyboard behavior. Retain both parent feature histories verbatim with an explicit replay bridge and final combined-source hashes. No Windows runtime or deployment change."
+    },
+    {
+      "feature": "selected-story-protected-runtime-process-integration",
+      "source_commit": "a6b27df0f539a1b592b7c10e301a5d1e9338e11c",
+      "files": [
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "before_sha256": null,
+          "sha256": "829fe1237a626bbf26340768750e49406ba7f270aca541fc5ed9b4e6d90a0528"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "e7038c125e7578d68ef514a3891a684bd5d34d229d2c73bc2d9b55b8c5a9a572",
+          "sha256": "f011f1964b9ecf9e60a543313faef6d4746e0c2b424b5fb858f7ccf80f8a02af"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "5071526bce752dfa357bea7213c670e2d4c39f0d2a8ce4dab4e4a063e1cadb43",
+          "sha256": "6f11d6b881bb378384917161f335223cf0ca4370952e424865a0be83a0ea5297"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add three generated-store integration tests through actual RuntimeConfiguration, source/evidence preview, protected prepare/cancel/logout ASGI routes and a real stdlib synthetic file-protocol child. Verify exact retry causes one child/no save, immediate busy admission, cancellation fences wording until reaping/exchange disposal/claim release, and foreign-session refusal followed by owner logout cleanup. Pin actual base interpreter and disable helper descendants. OS Job/resource limits remain simulated; no Windows/model/deployment acceptance claimed. Register in API/memory/Windows CPU profiles."
     }
   ]
 }
