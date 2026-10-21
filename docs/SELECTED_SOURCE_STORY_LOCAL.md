@@ -98,7 +98,10 @@ and never stops or restarts a shared model service. Native-owner implementation
 and qualification remain separate. The new [process owner](SELECTED_SOURCE_STORY_NATIVE_OWNER.md)
 is default-off and proves only its private process tree. This adapter refuses
 that containment-only owner as direct endpoint proof; a qualified provider-to-process
-binding is still required. No always-true owner is supplied in product source.
+binding is still required for HTTP. The separate
+[process provider](SELECTED_SOURCE_STORY_PROCESS_BINDING.md) now binds generation
+to a private owned file exchange, with synthetic acceptance only; it is also
+refused as proof for an independent HTTP endpoint. No always-true owner is supplied.
 
 False, exceptional or overdue cleanup retains ownership. The application
 quarantines its shared admission gate and does not publish a result. Explicit

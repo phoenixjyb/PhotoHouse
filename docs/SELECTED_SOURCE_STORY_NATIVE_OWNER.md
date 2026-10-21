@@ -53,9 +53,11 @@ as its direct native owner. An arbitrary loopback model endpoint may run outside
 that Job or forward elsewhere. Emptying this Job cannot prove that endpoint's
 inference stopped.
 
-A future qualified provider must bind generation to the owned containment, own
-all helpers and IPC, and reconcile their work on success, cancellation, expiry,
-logout and shutdown. No such production provider bridge is installed here.
+The [default-off process provider](SELECTED_SOURCE_STORY_PROCESS_BINDING.md) now
+binds a bounded private file exchange to this owner and reconciles it on success,
+cancellation, expiry, logout and shutdown. It has synthetic source acceptance;
+a production model worker, Windows IPC/containment and native inference still
+require separate qualification. It does not change the HTTP adapter restriction.
 Keep the prepare API, Web UI, local adapter and native owner default-off pending
 that qualification and a separate activation decision.
 

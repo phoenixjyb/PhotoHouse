@@ -2,6 +2,7 @@
 import ntpath
 
 from app.access.selected_story_native import NativeStoryLaunch, NativeStoryProcessOwner
+from app.access.selected_story_process import ProcessSelectedStoryProvider
 from bounded_windows_job import WindowsAPI
 
 
@@ -16,3 +17,10 @@ def windows_story_process_owner(launch, *, enabled=False, cleanup_seconds=5):
     # is created suspended and assigned before any thread is resumed.
     return NativeStoryProcessOwner(launch, kernel_factory=WindowsAPI,
                                   enabled=enabled, cleanup_seconds=cleanup_seconds)
+
+
+def windows_story_process_provider(launch, model, *, enabled=False, timeout=45, cleanup_seconds=5):
+    # Reuse the explicit Windows-path check; construction remains inert.
+    windows_story_process_owner(launch, cleanup_seconds=cleanup_seconds)
+    return ProcessSelectedStoryProvider(launch, model, kernel_factory=WindowsAPI,
+        enabled=enabled, timeout=timeout, cleanup_seconds=cleanup_seconds)

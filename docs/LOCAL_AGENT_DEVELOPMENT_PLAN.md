@@ -244,8 +244,10 @@ family/device qualification remain separate. A [default-off local adapter](SELEC
 now provides the async narrative transport and explicit native-reconciliation
 seam, with synthetic checks only. A [default-off native process owner](SELECTED_SOURCE_STORY_NATIVE_OWNER.md)
 now retains private containment through cancellation and cleanup. Its synthetic
-checks do not qualify Windows containment or bind a production provider. No
-native owner/provider is installed or selected.
+checks do not qualify Windows containment. A [default-off process binding](SELECTED_SOURCE_STORY_PROCESS_BINDING.md)
+now ties a private request/response exchange to that owner, with synthetic
+worker/lifecycle acceptance. A production model worker and Windows qualification
+remain separate. No native owner/provider is installed or selected.
 
 PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access

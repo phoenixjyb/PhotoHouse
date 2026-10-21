@@ -66,6 +66,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/selected_story_transport.py',
             'backend/app/access/selected_story_local.py',
             'backend/app/access/selected_story_native.py',
+            'backend/app/access/selected_story_process.py',
             'scripts/selected_story_native_owner.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
@@ -205,10 +206,11 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.selected_story_lifecycle import SelectedStoryLifecycle\n'
                 'from app.access.selected_story_local import LocalSelectedStoryProvider\n'
                 'from app.access.selected_story_native import NativeStoryLaunch\n'
-                'from selected_story_native_owner import windows_story_process_owner\n'
+                'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider\n'
                 "exe=r'C:\\synthetic\\worker.exe'\n"
                 "spec=NativeStoryLaunch(exe, '0'*64, (exe,), r'C:\\synthetic', {'PATH':r'C:\\synthetic'})\n"
                 "owner=windows_story_process_owner(spec)\nassert owner.enabled is False\nassert owner._active is None\n"
+                "bound=windows_story_process_provider(spec, 'synthetic-local-model')\nassert bound.enabled is False\nassert bound._active is None\n"
                 "try: windows_story_process_owner(NativeStoryLaunch('/synthetic/worker', '0'*64, ('/synthetic/worker',), '/synthetic', {'PATH':'/synthetic'}))\n"
                 "except ValueError: pass\nelse: raise AssertionError('non-Windows path accepted')\n"
                 "provider=LocalSelectedStoryProvider('http://127.0.0.1:11434', 'synthetic-local-model')\nassert provider.enabled is False\n"

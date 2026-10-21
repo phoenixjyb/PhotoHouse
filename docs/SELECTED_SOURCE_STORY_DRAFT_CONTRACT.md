@@ -501,7 +501,9 @@ no synchronous thread wrapper or native owner is installed by default. The
 [default-off native process owner](SELECTED_SOURCE_STORY_NATIVE_OWNER.md) retains
 private containment and requires root exit plus zero members before release.
 Its process-tree proof cannot directly certify an HTTP endpoint; provider binding
-and native Windows qualification remain separate.
+now has a [default-off owned process exchange](SELECTED_SOURCE_STORY_PROCESS_BINDING.md)
+with synthetic acceptance. Production worker and native Windows qualification
+remain separate.
 
 `cancel(token, library, request_id)` requires current matching account/session
 authority. Trusted `invalidate_session(token)` and `close()` fence output and

@@ -91,6 +91,7 @@ class _NativeCall:
     close_failed: bool = False
     launch: asyncio.Task | None = None
     cleanup: asyncio.Task | None = None
+    waiting: asyncio.Task | None = None
 
 
 class NativeStoryProcessOwner:
@@ -159,6 +160,36 @@ class NativeStoryProcessOwner:
                                         else 'launch_failed')
         self._allowed(call)
         return True  # Launch readiness, never endpoint binding or cleanup proof.
+
+    async def _wait_exit(self, call):
+        await asyncio.shield(call.launch)
+        while True:
+            self._allowed(call)
+            try:
+                state = await asyncio.to_thread(call.api.wait_process, call.process, 0)
+            except Exception:
+                raise NativeStoryOwnerError('launch_failed') from None
+            self._allowed(call)
+            if state == 'exited':
+                try:
+                    code = await asyncio.to_thread(call.api.exit_code, call.process)
+                except Exception:
+                    raise NativeStoryOwnerError('launch_failed') from None
+                if type(code) is not int or code != 0:
+                    raise NativeStoryOwnerError('launch_failed')
+                return True  # Root readiness only; not Job drain or cleanup proof.
+            if state != 'timeout':
+                raise NativeStoryOwnerError('launch_failed')
+            await asyncio.sleep(0.025)
+
+    async def wait_for_exit(self, scope):
+        self._bind()
+        call = self._active
+        if call is None or call.scope is not scope or call.stop.is_set():
+            raise NativeStoryOwnerError('invalid_scope')
+        if call.waiting is None:
+            call.waiting = asyncio.create_task(self._wait_exit(call))
+        return await asyncio.shield(call.waiting)
 
     def _launch(self, call):
         try:
@@ -255,6 +286,11 @@ class NativeStoryProcessOwner:
 
     async def _cleanup(self, call):
         await asyncio.shield(call.launch)  # A cancelled waiter cannot abandon launch.
+        if call.waiting is not None:
+            try:
+                await asyncio.shield(call.waiting)
+            except Exception:
+                pass
         proof = await asyncio.to_thread(self._stop_native, call)
         if proof is True and self._active is call:
             self._active = None

@@ -1,0 +1,122 @@
+# Selected-story provider bound to an owned process
+
+The [process provider](../server/backend/app/access/selected_story_process.py)
+binds one selected-source generation request to the exact worker launched by
+its private [native owner](SELECTED_SOURCE_STORY_NATIVE_OWNER.md). It implements
+`prepare(bundle, scope)` and `stop_and_reconcile(scope)` for the existing app and
+session lifecycle. The [Windows factory](../server/scripts/selected_story_native_owner.py)
+adds an explicit `windows_story_process_provider(launch, model)` constructor.
+Both constructors default to disabled and perform no I/O or kernel construction.
+No app configuration, feature flag, route or default provider activates them.
+
+This is a source binding with synthetic acceptance, not a qualified Windows
+model runtime. It contains no model loader or production worker executable. A
+host must supply reviewed worker code that implements the protocol and runs all
+inference/helpers inside the owned Job. A worker that calls an independent
+HTTP service or cloud model is outside this contract. Neither loopback nor
+repeating a model label proves local execution or owned inference.
+
+## One private exchange per operation
+
+Before any file or process work, the provider checks the selected-source v3
+bundle, exact scope UUID, model identifier and deadline. Saved-story/book inputs
+are refused. It reuses the unchanged narrative prompt/schema helper and bounded
+source limits. There is no model tool, source lookup, URL fetch, shell command
+proposal, sharing, persistence into the family library or automatic retry.
+
+For each accepted call, the host creates a fresh private temporary directory,
+requests mode 0700, and writes `request.json` exclusively with mode 0600. It copies
+the explicit launch configuration and injects two reserved environment variables:
+
+| Variable | Host value |
+| --- | --- |
+| `PHOTOHOUSE_NATIVE_STORY_REQUEST` | Absolute private request-file path |
+| `PHOTOHOUSE_NATIVE_STORY_RESPONSE` | Absolute private response-file path |
+| `PHOTOHOUSE_NATIVE_STORY_OPERATION` | Exact opaque scope UUID, supplied by native owner |
+
+The caller cannot prepopulate those reserved keys, including case variants.
+Arguments and environment contain no selected source words or generated prose.
+The parent does not execute a worker-supplied command, path or endpoint. Only a
+trusted, explicit launch description chooses executable/arguments/dependencies.
+Native process count, host memory, RAM preflight, suspended assignment before
+resume and handle retention remain enforced by the native owner/kernel.
+
+Request JSON is strict UTF-8, at most 128 KiB, with exactly:
+
+```json
+{"version":1,"operation_id":"host UUID","generation":{"model":"explicit model","prompt":"bounded data and instructions","stream":false,"think":false,"truncate":false,"format":{},"options":{}}}
+```
+
+The `generation` object is the existing narrative payload, including its actual
+closed response schema and generation options. It does not authorize an HTTP
+call; the worker must perform inference within its containment.
+
+The worker reads this request once, validates correlation against the operation
+environment, writes only `response.json`, closes it and exits with status zero.
+It must not create extra exchange entries or persist source/result copies.
+Response JSON has exactly these fields:
+
+```json
+{"version":1,"operation_id":"same UUID","model":"same explicit model","result":{"version":1,"title":"draft","chapters":[],"questions":[],"needs_review":true}}
+```
+
+`result` must satisfy the existing narrative validator for the exact input
+chapters/evidence. The illustrative empty chapter list is not valid for a
+nonempty request. Unknown/missing fields, wrong UUID/model/version, duplicate
+keys, nonfinite JSON, invalid UTF-8 and oversized/truncated output are refused.
+Total response is bounded at 128 KiB; narrative result is bounded at 64 KiB.
+Citations and human review remain host-owned and do not establish factual truth.
+
+## Completion and cleanup
+
+`wait_for_exit(scope)` waits only for that owner's root, requires exit status
+zero and retains its task through cancellation of a waiter. It does not release
+handles or certify descendants. The provider then requires exact `True` native
+reconciliation before reading output. A root that has exited while a helper is
+still running cannot cause early response consumption. Failed exit status,
+missing output, failed drain or timeout cannot publish a draft.
+
+Response reads require a regular single-link file and stable open identity;
+symlinks/reparse points are refused, with no-follow/nonblocking flags where
+available. POSIX owner identity/private directory permissions are checked.
+Reads happen only after native cleanup, in retained off-loop tasks. The
+provider's work timeout is at most 60 seconds and is also limited by the host
+scope deadline. The operation lifecycle fences/cancels `prepare` before calling
+cleanup on failure, cancellation, expiry, logout or shutdown.
+
+Cleanup waits for retained setup/read work, closes the native owner and removes
+only the two known regular files and directory. It never recursively deletes
+unexpected contents. Unknown entries, unsafe links, failed deletion or uncertain
+native cleanup retain the exchange and return false. Shared admission stays
+held/quarantined and words remain fenced. A later exact proof can release
+capacity without clearing sticky quarantine or regenerating. A fresh owner is
+not recovery proof. Explicit `close()` blocks new preparation; the host must
+first fence/cancel active preparation through the operation lifecycle.
+
+The exchange temporarily contains source words and generated text on disk. A
+failed cleanup deliberately retains those private files as unsettled state;
+this is not a content-free transport or secure erasure guarantee. No file path
+or content is returned in public errors, and no payload logs/cache are added.
+
+## Qualification still separate
+
+Before any household activation, separately qualify Windows temporary-directory
+ACLs, ownership and reparse protections, disk quota/retention/erasure, protected
+executable/dependency/environment identity, actual Job containment and process
+exit behavior, native/GPU driver drainage and crash/restart reconciliation.
+The preflight executable hash is still not an atomic image identity mechanism.
+Measure model locality (no cloud or independent-server fallback), quality,
+latency, memory/VRAM and participating cross-process inference admission. This
+binding does not sandbox arbitrary code or prevent a trusted worker from
+violating its declared contract. A production worker and model integration
+remain to be implemented and qualified separately.
+
+[Fault tests](../server/tests/security/test_selected_story_process.py) use fake
+kernel handles and synthetic response files. [Lifecycle tests](../server/tests/security/test_selected_story_process_lifecycle.py)
+run actual synthetic Python workers that read the exact injected request and
+write the response. Their startup gate and Job membership list are simulated;
+helper members are test-created rather than OS-verified descendants. They prove
+the source protocol and lifecycle behavior, not native Windows containment,
+GPU/model behavior, secure filesystem ACLs or family/device acceptance.
+Deployment and activation remain separate decisions. Existing API and Web UI
+flags, local HTTP adapter and native/process providers remain default-off.

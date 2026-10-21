@@ -27217,6 +27217,93 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Default-off single-scope private process containment controller with retained shielded launch/cleanup, suspended root assignment before resume, root-exit plus zero-member reconciliation, sticky uncertain receipts/close failures, bounded polling and explicit shutdown. Windows factory reuses existing verified non-breakaway Job kernel; no app binding. HTTP adapter refuses this containment-only proof domain pending qualified provider-to-process binding. Fake-kernel and real synthetic subprocess tests with simulated Job membership exercise cancellation, expiry, cleanup and sticky shared admission quarantine; no Windows containment/GPU/model qualification. Hash is preflight only; protected path/identity qualification remains required. No weights, production data, runtime control, activation, deployment or publication."
+    },
+    {
+      "feature": "selected-story-owned-process-provider-binding-default-off",
+      "source_commit": "aa00fa9888882279ef23bbc18eab5c9fe321bc88",
+      "files": [
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "0090058cbabd1d92d2e1fef9caffc3f5e027b8619b213beb19b00ec5a54c096e",
+          "sha256": "66e03eb3f854a95fdc08bb0a2cab42c83152a391f191a8b93a5cbc41e5ec183e"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "3924dcc2272c8eea76d598699e42c2e8860fd4a049437d59ae1598908e3c4a4c",
+          "sha256": "f61eedba73c3fdae2df5f4d8f5ac3c43b0cfea53d2ee9a5614191a8feb2850ea"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "434f2c79b0b45b02021e5306a713266bea52afe964f1d2bcf1657bceecf80a0e",
+          "sha256": "92d4941e97e290e0b191dbbdf6ce6dad6f73349b38d0a44a71bb570fa8aac82b"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_LOCAL.md",
+          "before_sha256": "3c4f35170e65c6e78eb3de59fbcfd4e8f67462339f6004fb3e3343775fd351dc",
+          "sha256": "59b35e5a73a330df1f6717afdbf42cccea158171ff9adc284c898865a4623be6"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_NATIVE_OWNER.md",
+          "before_sha256": "763e3ddc3d7220c72173522c73c0b1d1f407aa3c717e72443b80d17808cc5c67",
+          "sha256": "04f9f5470a6a981648d7d69beb0a5929cc74b873746bb38298549be9da5916bd"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": null,
+          "sha256": "85094e9bc5a7563876104904ab0c990a28eb018887850c5080d94e5d08359dde"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_local.py",
+          "before_sha256": "eaf951a28ec55c514ac8a65827baa6b2d9fd989cfb7a3d4ee8ee1883b4da7ba4",
+          "sha256": "df3ce35dff807efb40d4dbcbd1fab4642a97e809d31afc3d09c5f5ecf689e4c9"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_native.py",
+          "before_sha256": "49f1351cabaf84c3cfa46a0f3ec022d02d88f6b37861e1e6796de15710400434",
+          "sha256": "4d236a2ccdafe230291c262c0e2df858d5ee349f1e40e9d5d9bcf83d60309c20"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": null,
+          "sha256": "6679016c39ba5861ebf65ffd8940d1f8a395ab0066b4840ba9351aedfd4d5de5"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "209f4b588215914f477fe962ef0580aa72777b9bf16562e5e9b7122cca95826f",
+          "sha256": "6820289c29a01e10e787bef2e2f8ddcb1a50102e6e97f38096d168f256f218cf"
+        },
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "before_sha256": "3ba838b80ce847576dcc7d95a4a696c8b5971625dd443ff40b44e7bac543d5bb",
+          "sha256": "859837e2ef4beb143dd1bf8de9018ca45a8dff94dee3388560dae8ea80fdc4a7"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": null,
+          "sha256": "2a29cd82c8bf33affbb95a744b27636455736ae84ba3cb602039cf437700df0b"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process_lifecycle.py",
+          "before_sha256": null,
+          "sha256": "e718df565889bb30a22807c827bf3c9db31a14cda159b30ec8d07d8eb94b09e4"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "ab66f0fac0ac9f61c7c956e3fe12a444323dbf3fd64911f5cba0f60106a49ea7",
+          "sha256": "00479d3d13b78dec682c0015289d19cf555531e19bea0a3dce364c1cf0464720"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d0fcc141b384fa2174ff716050ec8f4cf67ac2a0126f71c56c1b130f095fd516",
+          "sha256": "c32e10bf187eeaeedb545de40c94636b1f51dee1e6d97cb9cda6d7ad473ec749"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Default-off selected-source v3 narrative provider bound to a private per-operation file exchange and explicit owned native process. Reserved request/response environment paths, scope UUID correlation, unchanged generation prompt/schema, bounded strict closed response validation; root zero exit and exact native cleanup before reading. Retained setup/read/cleanup work, known-file-only deletion, uncertain native/filesystem cleanup holds shared admission quarantine. Explicit inert Windows factory, no HTTP binding/fallback/model loader/app settings. Fake-kernel filesystem refusal tests and real synthetic worker/lifecycle tests with simulated Job membership only. Windows ACL/reparse/quota/erasure, image/dependency identity, actual containment/GPU/crash recovery and production model worker remain unqualified. No weights, production media/data, runtime actions, deployment or publication."
     }
   ]
 }
