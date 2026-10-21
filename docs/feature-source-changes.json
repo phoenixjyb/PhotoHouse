@@ -27397,6 +27397,32 @@
       "semantic_search_enabled": false,
       "production_runtime_changed": false,
       "activation_approved": false
+    },
+    {
+      "feature": "guarded-private-index-recovery-native-rehearsal-status",
+      "source_commit": "b9fbc377e271e6e7c3e09df536c30ec5a31f699d",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "b02c435be787c51982d107fbcd3563ddcce5269e2cc23021e8229e8e681c985c",
+          "sha256": "c971c57fd4f2abee4c068c51f458a8647a2cafe866f8fef243e60a27fc8fcb06"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "52a6542329770ff165ea2eeb6d63c8f5ee4892cd673f4a91109c7070b70d7606",
+          "sha256": "f4235e143a3adc8be1d10722437ea6a68bb7c513919e845489e2fd3617bba0f4"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "9cce76ca40cd20c39f56f915b3f792111fe9054b42eb2a8e1591c3ce7651b30e",
+          "sha256": "af190df5202f98390eb722136595cf3d3d185b8209624c5ae8429b08828b9fba"
+        }
+      ],
+      "documentation_only": true,
+      "semantic_search_enabled": false,
+      "family_index_restarted": false,
+      "production_runtime_changed": false,
+      "activation_approved": false
     }
   ]
 }

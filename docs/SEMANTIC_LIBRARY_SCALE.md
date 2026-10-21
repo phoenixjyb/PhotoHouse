@@ -455,3 +455,69 @@ semantic search remains **OFF**. Remaining work includes safe indexing recovery,
 failed-input disposition, final current-roster coverage and relevance, bulk
 refresh/retirement/deletion integration, real protected latency and family/device
 acceptance before any activation proposal.
+
+
+## Guarded index recovery preparation — October 21, 2026
+
+A private recovery implementation now preserves a failed preparation folder by
+moving the entire directory into a fresh, separate private control stage on the
+same volume. It creates an exclusive flushed intent before the rename, verifies
+retained bytes and file identities, creates a private empty replacement, and
+rechecks the unchanged committed prefix before writing completion. Any unknown
+control file, prior receipt, stale scratch, lost controller lease or interrupted
+operation stops for manual inspection. No rollback, deletion or automatic replay
+is implemented. The file is fsynced; this does not claim Windows parent-directory
+fsync or protection from storage failure. Fresh stage, claim, destination and
+cohort checks provide separate replay guards.
+
+The native controls validate canonical non-reparse ancestors, private ACLs on
+executable source files, the exact frozen source-file set, source/archive hashes,
+old Windows controls, complete scratch ownership and the expected model recipe.
+Scratch hashes use bounded reads through a checked file handle with before/after
+metadata checks. A named mutex serializes cooperating controllers through the
+child's completion, supplemented by checks for old candidate Python processes.
+It is not an OS-wide write lock against uncooperative privileged processes.
+
+The proposed real operation invokes the frozen normal committed-prefix verifier;
+that verifier reads and hashes original media on Windows and validates all ready
+vectors and metadata. It does not copy originals or models to the Mac. The
+resume targets the existing private index, retains all old failed rows, and
+starts exactly one child for at most 8,192 new assets. The existing recipe and
+six-hour / 8 GiB / four-process child Job with a 16 GiB free-RAM floor remain
+unchanged. There is no production database, API, task, service or activation path.
+Python socket guards include datagram sends; this is not OS firewall isolation.
+
+The generated core suite passed **10 local tests**. A fresh Windows rehearsal
+passed the same **10 tests**, plus actual private ACL/canonical-path checks,
+whole-folder inode/content preservation, named-lease collision and replay refusal.
+Its real child Job proved flags `0x2208`, 2 GiB memory and four processes under a
+120-second limit. Those are rehearsal limits, not the proposed indexing limits.
+No model, family media, committed family-index contents or production database
+was opened by the rehearsal. It did stat the candidate index directory and read
+frozen source, reference controls and the pinned semantic-off configuration.
+
+Two earlier rehearsal attempts are preserved. The first refused before child
+creation because a Mac-only controller was incorrectly listed as a native file.
+The second child refused before its fixture tests because its restricted
+environment omitted a computer-name variable. The corrected packet separates
+local and native pins, queries the actual hostname, and records child exit and
+failure evidence. A separate readback verified all final staged input hashes,
+the native completion receipt and child exit zero.
+
+Independent lightweight candidate readback confirms **2,078 batches / 16,624
+processed = 16,595 ready + 29 failed**, no final manifest and all **27 retained
+copy hashes** unchanged. It did not revalidate vector payloads or original bytes;
+full real-prefix verification is still required before quarantine. The frozen
+roster has **7,137 unprocessed assets**. Neither the family-folder quarantine nor
+the actual model/index continuation has run.
+
+The real candidate operation remains unstaged and unstarted while a separate
+API/task recovery window is active. The dispatcher requires an explicit verified
+window-closure record before staging or running it; no recurring automation was
+created. Once that window closes, recheck runtime/resource pins, run the full
+prefix/scratch proof, then perform the reviewed quarantine and one bounded child.
+Final coverage, failed-input disposition, current-roster and relevance checks,
+real protected latency, bulk lifecycle and family/device acceptance remain open.
+Semantic search remains **OFF**. These private controls add no public runtime
+code, deployment or new API regression claim; the last behavioral API evidence
+remains **2,866 tests / 3,651 subtests** at `f5018e4` plus the generated demo.

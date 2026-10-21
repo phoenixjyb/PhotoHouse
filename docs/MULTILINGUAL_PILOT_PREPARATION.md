@@ -227,3 +227,13 @@ failure evidence, but no quarantine or resume has run. Complete coverage,
 failed-input resolution, current-roster/relevance review, bulk lifecycle
 qualification and family/device acceptance remain open. Source is local,
 unmerged and undeployed; semantic search remains **OFF**.
+
+
+The [guarded recovery follow-up](SEMANTIC_LIBRARY_SCALE.md#guarded-index-recovery-preparation--october-21-2026)
+qualifies the private folder-preservation protocol on generated Windows files
+(10 tests plus ACL, identity, lease and replay checks). It does not qualify a real
+resume or change semantic readiness. The real index remains at 16,595 ready /
+29 failed, with 7,137 unprocessed assets; all 27 retained copy hashes are intact.
+The one-shot resume package is prepared but held during a separate service
+recovery window. Full-prefix proof, quarantine, actual indexing, complete
+coverage and native serving acceptance remain pending. Semantic remains OFF.

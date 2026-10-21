@@ -1,5 +1,17 @@
 # Current project status
 
+**October 21 indexing recovery preparation:** a private guarded recovery core
+passed **10 local and 10 native Windows fixture tests**, plus actual private-ACL,
+file-identity, controller-lease collision and replay-refusal checks in a
+120-second / 2 GiB / four-process child Job. The family index was not used by
+those fixtures. Independent readback confirms **16,595 ready / 29 failed**, with
+**7,137 unprocessed assets** and all 27 retained preparation-copy hashes intact.
+A frozen one-shot resume package is prepared; actual full-prefix verification,
+folder quarantine and model/index continuation have **not run**. Real resume is
+held while a separate API/task recovery window is active. This round changes no
+API, task, database or original media. Semantic remains **OFF**. See the
+[recovery qualification record](SEMANTIC_LIBRARY_SCALE.md#guarded-index-recovery-preparation--october-21-2026).
+
 **October 21 bulk-serving follow-up:** local source `e4f06a5` adds an explicit
 bulk vector container and immutable scoring snapshot; `f5018e4` also captures one
 budget view per request. Current membership, source/cohort, file integrity,
