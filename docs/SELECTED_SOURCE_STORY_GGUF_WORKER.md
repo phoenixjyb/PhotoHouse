@@ -142,6 +142,9 @@ until native cleanup and exchange disposal both succeed. There is no automatic
 expiry, stale-claim clearing or adoption of another process's work. The existing
 application queue and quarantine remain in place.
 
-Synthetic Windows tests qualify the coordinator and ownership integration. A
-bounded native capacity probe, agreement with external workload owners, actual
-backend/GPU mapping and a testing window remain required before activation.
+Synthetic Windows tests qualify the coordinator and ownership integration. The
+[native capacity probe](SELECTED_SOURCE_STORY_WINDOWS_CAPACITY.md) now implements
+read-only metrics and bound clearance checks. Actual workload-owner agreement,
+backend/model qualification and an approved window remain required before
+activation. Follow the [first CPU model trial](SELECTED_SOURCE_STORY_MODEL_TRIAL.md)
+before considering GPU mapping or application activation.

@@ -114,3 +114,32 @@ This closes the isolated native Job/ACL/file-IPC and installed-interpreter
 compatibility rehearsal. The activation and deployment gates listed above
 remain open, especially the production model worker, resource coordination,
 API crash/restart behavior and model/GPU/quality acceptance.
+
+## Composed GGUF and host-admission rehearsal
+
+The qualifier now includes three further cases, for 12 named cases in total:
+blocked host admission before exchange/child allocation, successful generated
+GGUF protocol execution, and failed synthetic model close with no response.
+These use the actual Windows native owner, private exchange checks, persistent
+host store and native CPU capacity probe. The engine is synthetic and the GGUF
+file contains generated fixture bytes. No optional inference binding is imported.
+A private, empty close-called marker and observed child resume distinguish the
+close-failure case from a startup failure. Both outcomes must keep the host claim
+until Job drain and exchange disposal, then allow an independent coordinator to
+claim. The generated clearance covers only the synthetic fixture; it does not
+establish agreement from external workload owners.
+
+The updated cases passed in an isolated interactive-user Windows source export
+on 2026-10-21 under a 180-second, 2 GiB, eight-process outer Job with an 8 GiB free
+RAM floor and independent native membership/limit proof. All 12 native cases
+passed. The focused portable suites ran 46 cases: 44 passed, two platform skips,
+no errors or failures. All ten committed-source package/import checks also
+passed. The initial composed attempt refused before the GGUF
+worker because the qualifier passed an immutable environment to launch
+construction; that qualifier-only bug was corrected and the final source was
+retested. Private failed-attempt and successful reports were retained.
+
+This interactive result does not replace the earlier SYSTEM result or qualify
+new layers under SYSTEM. Reports and dependency/source hashes remain private.
+Actual backend/model installation, loading and inference are still separate;
+use the [first model trial contract](SELECTED_SOURCE_STORY_MODEL_TRIAL.md).

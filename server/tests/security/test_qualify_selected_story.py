@@ -62,6 +62,19 @@ class SelectedStoryQualificationTests(unittest.TestCase):
             self.assertEqual('{"status":"failed","synthetic_only":true}',
                              result.stderr.strip())
 
+    def test_synthetic_gguf_commands_compile_without_optional_backend_import(self):
+        for fail_close in (False, True):
+            code = qualifier._gguf_worker_code(
+                '/synthetic/worker.py', '/synthetic/model.gguf', 'a' * 64,
+                'synthetic-gguf', '/synthetic/close-called', fail_close=fail_close)
+            compile(code, '<synthetic-qualification>', 'exec')
+            self.assertFalse(any(ord(c) < 32 for c in code))
+            self.assertNotIn('import llama_cpp', code)
+            self.assertIn('backend_factory=E', code)
+            self.assertIn("open('/synthetic/close-called','xb').close()", code)
+            self.assertEqual(fail_close, 'synthetic_close_failure' in code)
+        self.assertEqual(12, len(qualifier.CASES))
+
     def test_existing_output_directory_is_refused(self):
         with tempfile.TemporaryDirectory() as root:
             with self.assertRaises(ValueError):
