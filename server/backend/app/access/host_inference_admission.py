@@ -42,6 +42,7 @@ class HostResourceProfile:
     minimum_free_ram: int
     minimum_free_disk: int
     minimum_free_vram: int = 0
+    capacity_sha256: str | None = None
 
     def __post_init__(self):
         if (not _resource(self.resource_id) or type(self.launch_sha256) is not str
@@ -50,10 +51,18 @@ class HostResourceProfile:
                 or not 0 < self.minimum_free_ram <= 256 * 1024**3
                 or type(self.minimum_free_disk) is not int
                 or not 0 < self.minimum_free_disk <= 1024**4
+                or (self.capacity_sha256 is not None and (type(self.capacity_sha256) is not str
+                    or re.fullmatch(r'[0-9a-f]{64}', self.capacity_sha256) is None))
                 or type(self.minimum_free_vram) is not int
                 or (self.resource_id == 'cpu' and self.minimum_free_vram != 0)
                 or (self.resource_id != 'cpu' and not 0 < self.minimum_free_vram <= 96 * 1024**3)):
             raise ValueError('Invalid host resource profile')
+
+
+def resource_profile_digest(profile):
+    if type(profile) is not HostResourceProfile:
+        raise ValueError('Invalid host resource profile')
+    return hashlib.sha256(json.dumps(vars(profile), sort_keys=True).encode()).hexdigest()
 
 
 @dataclass(frozen=True, repr=False)
@@ -102,7 +111,7 @@ class HostInferenceAdmission:
         self._identity = None
 
     def _profile_digest(self):
-        return hashlib.sha256(json.dumps(vars(self.profile), sort_keys=True).encode()).hexdigest()
+        return resource_profile_digest(self.profile)
 
     def _storage(self):
         require_private_directory(self.directory)

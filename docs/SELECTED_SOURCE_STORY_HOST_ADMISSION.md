@@ -38,9 +38,12 @@ missing, stale, busy or failed evidence denies launch. Probe completion must
 fall within half a second. The probe implementation itself must be bounded:
 Python cannot interrupt an arbitrary blocked thread. A stuck probe retains its
 setup task and SQLite lock, and starts no child; it does not establish timely
-maintenance closure. Native probe implementation and measurement are separate
-qualification work. Free capacity samples are point-in-time evidence; they do
-not reserve resources against uncooperative programs or prove CPU/I/O isolation.
+maintenance closure. The
+[native Windows probe](SELECTED_SOURCE_STORY_WINDOWS_CAPACITY.md) now implements
+counter reads and pinned owner-clearance checks. SYSTEM/service, model and
+competing-workload qualification remain separate work. Free capacity samples
+are point-in-time evidence; they do not reserve resources against uncooperative
+programs or prove CPU/I/O isolation.
 
 ## Ownership and cleanup
 
@@ -102,3 +105,10 @@ or real model/GPU qualification. No production workload was controlled.
 
 All **14 check-runner tests also passed on Windows**, including a portable
 assertion for Windows environment-key normalization.
+
+Windows-specific profiles now bind `capacity_sha256` to the native probe's
+immutable host/account/volume/driver/owner configuration and trusted receipt pin.
+Receipt rotation changes that full profile and requires explicit renewed
+clearance. Plain synthetic profiles can retain `None`; Windows probes require
+the binding. Fingerprints from earlier source versions must be reconciled
+explicitly; no store migration, stale-claim clearing or activation is automatic.

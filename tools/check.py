@@ -14,7 +14,7 @@ else:
 
 ROOT = Path(__file__).resolve().parents[1]
 API_TESTS = (
-    "test_inference_admission.py", "test_host_inference_admission.py",
+    "test_inference_admission.py", "test_host_inference_admission.py", "test_windows_story_capacity.py",
     "test_assistant_agent_tools.py", "test_assistant_agent_workspace.py",
     "test_discovery_text_validation.py",
     "test_refreshing_people.py", "test_refreshing_people_http.py",
@@ -93,7 +93,7 @@ API_TESTS = (
     "test_editorial_rehearsal_database_guard.py",
 )
 MEMORY_TESTS = (
-    "test_host_inference_admission.py",
+    "test_host_inference_admission.py", "test_windows_story_capacity.py",
     "test_private_storage.py", "test_oral_history_intake.py", "test_oral_history_withdrawal.py", "test_qualify_oral_history.py", "test_memory_contributions.py", "test_memory_contribution_refs.py", "test_memory_contribution_candidates.py",
     "test_memory_books.py", "test_memory_book_editorial_service.py", "test_memory_book_editorial_http.py",
     "test_family_note_identity.py", "test_family_note_identity_migration.py",
@@ -109,7 +109,7 @@ MEMORY_TESTS = (
     "test_memory_jobs.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_memory_narrative.py", "test_selected_story_narrative.py", "test_selected_story_snapshot.py", "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_selected_story_ui_capabilities.py", "test_selected_story_local.py", "test_selected_story_local_lifecycle.py", "test_selected_story_native.py", "test_selected_story_native_processes.py", "test_qualify_selected_story.py", "test_selected_story_gguf_worker.py", "test_selected_story_process.py", "test_selected_story_process_lifecycle.py", "test_memory_processing.py", "test_memory_transport.py",
 )
 WINDOWS_CPU_TESTS = (
-    "test_inference_admission.py", "test_host_inference_admission.py",
+    "test_inference_admission.py", "test_host_inference_admission.py", "test_windows_story_capacity.py",
     "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_selected_story_ui_capabilities.py", "test_selected_story_local.py", "test_selected_story_local_lifecycle.py", "test_selected_story_native.py", "test_selected_story_native_processes.py", "test_qualify_selected_story.py", "test_selected_story_gguf_worker.py", "test_selected_story_process.py", "test_selected_story_process_lifecycle.py",
     "test_approved_workers_f2_compatibility.py",
     "test_photo_stack_index.py", "test_library_photo_stacks.py", "test_library_photo_stacks_qualification.py", "test_photo_stack_worker_host.py", "test_apply_library_photo_stack_schema.py",

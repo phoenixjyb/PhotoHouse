@@ -28051,6 +28051,55 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Add default-off private local SQLite coordination for one cooperating host generation, maintenance closure and explicit full-profile clearance, fresh trusted RAM/disk/VRAM/external workload evidence, exact operation/owner release and durable crash quarantine. Optional owned-process integration retains acquisition and releases only after process/exchange cleanup; preserve protected busy retries. Developed and checked in isolated Windows source: 115 affected tests passed, two platform skips, ten committed-package tests passed. Synthetic processes/providers only; native probe, shared external workload agreement, actual model/GPU qualification and deployment remain separate. All 14 runner tests passed on Windows; normalize only a test assertion for platform environment-key casing."
+    },
+    {
+      "feature": "selected-story-native-windows-capacity-and-pinned-clearance",
+      "source_commit": "83ee0c58a4e0393566a9fb1482606f86e7d526a8",
+      "files": [
+        {
+          "path": "server/backend/app/access/windows_story_capacity.py",
+          "before_sha256": null,
+          "sha256": "38e644c5432b4e0817a539242d0923630bb30e0f6ad0a97937f9afbb5334b973"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_capacity.py",
+          "before_sha256": null,
+          "sha256": "522c690195b141aa1d6c746b26afa0001cd65fb1d73f8852e82199b9c7dc53ba"
+        },
+        {
+          "path": "server/backend/app/access/host_inference_admission.py",
+          "before_sha256": "e3cf522c46a9c17b2596aff1412129a473fa3ae0f43e28726bae6c46922500b2",
+          "sha256": "1ecabaebd4c15d7c6685ef297662bc6468a2c48c3de0e96b5e506a06815f9c0e"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d53527f7481b395d0cc861cfa0b6c7b12c642d3f71a368baca8e4ac9825453ac",
+          "sha256": "e440a58158d844cc1dfe862100cbac41f0afd341520798a3eac4c52bdd56d09e"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "1e8c3ac6e5b5a4740528ffa239df5d17a73f9b25984929b3ec2075a83c683155",
+          "sha256": "d5570cc974b4e43461a2165d6654744ebc8967ee21dde4c6a5871ff8026724be"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "770e9cb8dddc21b7bb665c0f67d0597f2d378d6dfb8c422c7f92fae8db9d1396",
+          "sha256": "6b65b31426f8ac714d06036b37983fdaf0550c8fb915c90c5548974ec40415a9"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_HOST_ADMISSION.md",
+          "before_sha256": "be3beec2aab36f6eedf90c0b041096a17e5f8d0c779fad02e5e8ff01844a56d8",
+          "sha256": "25255a72eafa4f6f13b01e7a4031e9f2c283d1b1509bd5dff9abdbef5e9e3049"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_WINDOWS_CAPACITY.md",
+          "before_sha256": null,
+          "sha256": "937afd52ae8d1d1269228325dab8ea91ca953a8a4979f4423777f4124248e7fa"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add default-off native Windows RAM/caller-disk/host-SID-volume and explicit UUID NVML counter reads. Bind sealed probe configuration and receipt SHA/UUID into full host profile; require exact trusted owner roster, pre/post private receipt, bounded age/window, boot/timing checks and refuse native/config errors. Resolve actual mountpoint; pin system-driver link count; verify loaded module path, require shutdown and DLL reference release. Isolated Windows:153 affected passed with3platform skips,10committed-package checks passed,2read-only native checks passed with generated CPU clearance and actual pinned UUID/VRAM counters. No real inference clearance, model/backend load, service/task/data mutation, activation or deployment."
     }
   ]
 }
