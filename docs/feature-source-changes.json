@@ -28173,6 +28173,20 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Pin optional WindowsCPython3.12 CPUtrial wheel set and single Qwen2.5-1.5B Q4_K_M candidate from primary publisher metadata, with exact versions/URLs/sizes/hashes, separate optional lock and declared license notices. Source API review and compatible-tag/Python-version/transitive-dependency closure pass for25wheels+oneGGUF. No candidate artifacts acquired/installed/loaded; no appdefault/profile/provider orruntime changed. Runtime approval, actual artifact/native DLL inspection, fresh ownerwindow and measured model behavior remain separate. Private default-off acquisition/trial operators prepared;13preparation tests pass on Mac/Windows under bounded native outerJob, using mocked executor/network paths and actual generated-bundle validator. This is not installer/native-model execution qualification; fresh target absent and zero owned test Python processes."
+    },
+    {
+      "feature": "selected-story-isolated-cpu-binding-and-acquisition-checkpoint",
+      "source_commit": "bb9e0d6eb23dce57cfbb9685a026b8ce7c279b6f",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "e949f2d621bec1439b3052116ab1b762416f7d15c1860d1796411f810a853700",
+          "sha256": "8699f3d4c4b58c2f2482536e6363a46ffc13771e5643812828bb2cd579ccec8b"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Record approved isolated Windows results at runtime source 8dc4147: all25 wheels size/SHA verified and installed offline in a new private environment; pip check passed; all12 synthetic native lifecycle cases and seven PE-parser tests passed; bounded CPU binding-only import passed with expected core DLL path/file pins and no model construction. Auxiliary llama-common.dll OpenSSL imports remain unqualified and were not mapped. Acquisition stopped before model-file creation; original child exception unavailable because native launcher discarded streams; separate bounded HEAD check timed out. No acquisition retry/mirror/provider substitution, real model trial/window/receipt, GPU inference, production DB/media, service/task control, activation or deployment. Final readback: no owned Python processes, zero synthetic claims with maintenance closed, all274 source-file hashes intact. Disk hashes/module-path snapshot are not atomic mapped-image proof."
     }
   ]
 }
