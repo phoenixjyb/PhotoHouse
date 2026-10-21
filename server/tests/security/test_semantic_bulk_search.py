@@ -14,6 +14,8 @@ import test_semantic_streaming_search as legacy
 from app.main import create_app
 from app.access.semantic_bulk_vectors import write_bulk_vectors, BulkVectorStore
 from app.access.semantic_search import SemanticSearchRuntime
+from app.access.semantic_streaming import SemanticServingLimits
+from app.access import discovery as discovery_module
 from app.access.visual_vector_loader import _COLUMNS, _validated_rows
 from phone_discovery_fixture import TOKEN, OTHER, SECOND
 
@@ -175,3 +177,32 @@ class SemanticBulkEndpointTests(unittest.TestCase):
                                 replace(legacy.IDENTITY, model_version='different'))
         with self.assertRaises(ValueError):
             replace(self.runtime, bulk_vectors=wrong)
+
+    def test_each_direct_request_uses_one_fresh_budget_and_retains_deadline_and_cancellation(self):
+        views = []
+        original = SemanticServingLimits.budget
+
+        def observed(limits, discovery_budget):
+            view = original(limits, discovery_budget)
+            views.append(view)
+            self.assertIs(view.slots, discovery_budget.slots)
+            return view
+
+        values = {'query': 'family garden', 'filters': {}}
+        with patch.object(SemanticServingLimits, 'budget', observed):
+            for _ in range(2):
+                result = self.runtime.call('search', SECOND, 'family-a', lambda: False, values)
+                self.assertEqual(result['total'], 2)
+            self.assertEqual(len(views), 2)
+            self.assertIsNot(views[0], views[1])
+            self.assertIsNot(views[0], self.runtime.discovery.budget)
+            with self.assertRaises(discovery_module.DiscoveryCancelled):
+                self.runtime.call('search', SECOND, 'family-a', lambda: True, values)
+            self.assertEqual(len(views), 3)
+            calls = len(self.calls)
+            ticks = iter((0.0, self.runtime.serving_limits.search_seconds + 1))
+            self.runtime.discovery.budget.clock = lambda: next(ticks)
+            with self.assertRaises(discovery_module.DiscoveryUnavailable):
+                self.runtime.call('search', SECOND, 'family-a', lambda: False, values)
+            self.assertEqual(len(views), 4)
+            self.assertEqual(len(self.calls), calls)

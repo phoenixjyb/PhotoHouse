@@ -296,13 +296,16 @@ class SemanticSearchRuntime:
         # Authorization precedes query validation, metadata and provider I/O
         # for direct callers as well as the HTTP admission check.
         self.authorize(token, library)
-        started = self.budget.clock()
+        # Keep one request-local limits view; repeated row checks must not copy
+        # it. The view retains the discovery runtime's admission semaphore.
+        budget = self.budget
+        started = budget.clock()
         previous_clock = started
         def bounded_cancelled():
             nonlocal previous_clock
-            current = self.budget.clock()
+            current = budget.clock()
             if (not math.isfinite(started) or not math.isfinite(current) or current < previous_clock
-                    or current - started > self.budget.search_seconds):
+                    or current - started > budget.search_seconds):
                 raise d.DiscoveryUnavailable()
             previous_clock = current
             return cancelled()
@@ -320,7 +323,7 @@ class SemanticSearchRuntime:
         filters = {**filters, 'media': ['image']}
         with self.access.connection_factory() as connection:
             reader = SemanticSearchReads(AccessService(connection, clock=self.access.clock),
-                self.discovery.provider, self.budget, vector_root=self.vector_root,
+                self.discovery.provider, budget, vector_root=self.vector_root,
                 encoder=self.encoder, query=query, server_snapshot=server_snapshot,
                 serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors)
             binding = values.get('binding')

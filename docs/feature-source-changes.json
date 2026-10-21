@@ -27354,6 +27354,24 @@
       "production_runtime_changed": false,
       "production_index_published": false,
       "activation_approved": false
+    },
+    {
+      "feature": "semantic-request-local-budget-view-with-shared-admission-and-current-deadline",
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "3c30d880d6534ec816f46654a0b2d094d120b2d52739522ccccb955a6d6f9fa8",
+          "sha256": "c93fe4948bbe5e85e0d95d17ded33a8b4f91b46c19021cffd6d6c3c3108ee747"
+        },
+        {
+          "path": "server/tests/security/test_semantic_bulk_search.py",
+          "before_sha256": "8cb16af3fa6e3a52d6e039677a694315512cdfcbc1ebbbe497683cf4597b1e5e",
+          "sha256": "f82473bf76fa438328a11539feb64484576c000519cc23e9337c1c8707f62a8c"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "activation_approved": false
     }
   ]
 }
