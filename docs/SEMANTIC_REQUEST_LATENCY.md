@@ -91,6 +91,16 @@ Native performance qualification remains pending, separate from the R58 receipt.
 
 ## Qualification and remaining work
 
+R60 additionally bounds pure identity grammar validation to 128 copied primitive
+tuples. Each call still checks the exact identity type and current field types,
+lengths and ranges before looking up regex validity. Oversized values, subclasses
+and boolean dimensions bypass the cache and refuse. Mutation produces a new key;
+artifact metadata, source hashes, files, permissions and eligibility are never
+cached by this change. Focused tests compare complete cached and uncached endpoint
+responses and exercise mutation, invalid values and eviction. A generated
+4,098-candidate local experiment suggested a modest improvement; it is separate
+from native qualification and does not establish the 2-second target.
+
 Freeze the committed source and exact candidate inputs before a new native run.
 Use the same reviewed omission document only while index/snapshot/current-catalog
 pins remain valid. Retain all 15 protection checks, three languages, cold/warm

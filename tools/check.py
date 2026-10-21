@@ -87,7 +87,7 @@ API_TESTS = (
     "test_approved_face_queue.py", "test_approved_worker_package.py",
     "test_approved_worker_failure_reports.py",
     "test_image_worker_claims.py", "test_visual_vector_publication.py", "test_visual_vector_cleanup.py",
-    "test_visual_vector_erasure.py",
+    "test_visual_vector_erasure.py", "test_visual_vector_identity_cache.py",
     "test_visual_vector_erasure_catalog.py", "test_vector_erasure_qualification.py",
     "test_image_embedding_receipts.py", "test_image_preprocessing_receipts.py",
     "test_visual_vector_worker.py", "test_immutable_image_worker.py",

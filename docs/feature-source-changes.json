@@ -28402,6 +28402,35 @@
       "live_runtime_changed": false,
       "apk_publication": false,
       "notes": "Modestly relax near-capture/same-upload pHash limits to8/4 with unchanged300-second/time-reliability/complete-link guards. Exact stored bands and one-bit probes retain candidate completeness under the comparison budget. Bind refresh digests to the grouping policy; preserve originals and private display choices. Local generated checks only; not included in the separately sealed fe47 Windows rehearsal or a live release."
+    },
+    {
+      "feature": "bounded-pure-vector-identity-validity-cache-r60",
+      "source_commit": "962c23a16f9a69bd0fc4ade167b9dc77deeb92b9",
+      "files": [
+        {
+          "path": "server/backend/app/access/visual_vector_artifacts.py",
+          "before_sha256": "f864cfcdbcc46e4d13e288fc59f21bb535c7dfe08e4e9aa911e468049e67f4b0",
+          "sha256": "d14a7e8672a5845e8b67615e387220cab91575d3f5301a490aa7d912574f05b8"
+        },
+        {
+          "path": "server/tests/security/test_visual_vector_identity_cache.py",
+          "before_sha256": null,
+          "sha256": "55db62f327cb140abb138c7cee726523fbfbc13af573ab0bda4e1d143eaef4b5"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "7c7e93dedca0a32cbf0347468ef4897b66df3bef6fbd01132bafa778d8893e09",
+          "sha256": "e837a8e58c1ff08003c8624749fdf12db0771a998ae526d5003b1ba81c2556e8"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "29d79d8d04717e1842892ddade7b2a4b44d2ed21d3e3950c8a077eaa33f2d4ac",
+          "sha256": "5ede5ffaed0159aac5cf421ae68e60a29f197e2bb9067cb23ff8106c460e9bf4"
+        }
+      ],
+      "live_runtime_changed": false,
+      "semantic_search_enabled": false,
+      "notes": "Reuse only bounded primitive model identity grammar validity after fresh type/size checks. Keep artifact, source, file and permission validation current; register focused cache/equivalence tests in the API profile. Native latency remains unqualified."
     }
   ]
 }
