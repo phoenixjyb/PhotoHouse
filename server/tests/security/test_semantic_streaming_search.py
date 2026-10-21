@@ -272,6 +272,22 @@ class SemanticStreamingEndpointTests(unittest.TestCase):
         self.assertEqual([x['id'] for x in restored['items']], [x['id'] for x in result['items']])
         self.assertEqual(len(self.calls), before)
 
+    def test_vector_change_during_encode_refuses_and_exact_restoration_recovers(self):
+        self.add_generated_cohort()
+        path, _ = self.files['1512']
+        original = path.read_bytes()
+        self.during_encode = lambda: path.write_bytes(b'changed after pre-inference checks')
+        response = self.query()
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
+        self.assertEqual(len(self.calls), 1)
+        path.write_bytes(original)
+        self.during_encode = None
+        restored = self.query()
+        self.assertEqual(restored.status_code, 200, restored.text)
+        self.assertEqual(restored.json()['semantic']['candidate_count'], 515)
+        self.assertEqual(len(self.calls), 2)
+
     def test_corrupt_tail_refuses_before_provider_and_revocation_during_encode_withholds_cards(self):
         self.add_generated_cohort()
         final_path, _ = self.files['1512']

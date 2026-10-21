@@ -27178,6 +27178,48 @@
       "production_runtime_changed": false,
       "production_index_published": false,
       "activation_approved": false
+    },
+    {
+      "feature": "large-library-path-validation-and-standalone-mpo-primary-qualification",
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "sha256": "1ab334a9d2efa350bc376be246f7419a955012bd772d36d47675dc0f68244f31",
+          "before_sha256": "4eb0f57e0f408e815ea0f9701cf603988980e9d6f0665a9bf7868061bfb05f05"
+        },
+        {
+          "path": "server/backend/app/access/visual_vector_loader.py",
+          "sha256": "83659d9bb4256679db24eec36953502b6189afab855fa9169d2a75e7ccd9c435",
+          "before_sha256": "4c4829dbb16c1a222f1d15fe880ae96d7ffc2e539ba4b2af778a14237a3155b1"
+        },
+        {
+          "path": "server/tests/security/test_semantic_streaming_search.py",
+          "sha256": "0bc3ccc8bc0ebd658cb2f16289ae04fbba614f5fe532dffee789ade4073d0377",
+          "before_sha256": "6a312e75c9bb7915827842ea7c816478b42ff8f65461fec6c28b1dac8c36f296"
+        },
+        {
+          "path": "server/tests/security/test_visual_vector_loader.py",
+          "sha256": "f4706f5b3cc4ae83a95473e607d85e5cc4ac183cc1ee5468da2ac74a1040e54a",
+          "before_sha256": "4da7d15c36aede9e9e61af0cbdc71a7a0a641b80998ccedbd14646a8019c4c27"
+        },
+        {
+          "path": "server/scripts/library_mpo_inputs.py",
+          "sha256": "07a6a76df02e4772077aafb433d0e19353ad12d36fe9e920eeb8d7f801ff361c"
+        },
+        {
+          "path": "server/tests/security/test_library_mpo_inputs.py",
+          "sha256": "f8db0f7470bc3ce1acfb019d85a8e31d21cd70e5f907f263a4dac186b29a3f22"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "c2ecd5abc27fb3f2fb814f446f94523818cf1c4094935d0c7f350d5877f9155d",
+          "before_sha256": "f96be9f5b04f8cb80e50e83ae22b72ec906e1e1a41a669f33b8cfa3a0fb48243"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "activation_approved": false
     }
   ]
 }

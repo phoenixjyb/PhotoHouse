@@ -267,6 +267,28 @@ class VisualVectorLoaderTests(unittest.TestCase):
             self.assertEqual(self.reader.candidates(self.member_token, "family-a", ["101"]).status,
                              "unavailable")
 
+    def test_direct_file_reader_refuses_aliased_or_nondirectory_ancestors(self):
+        import app.access.visual_vector_loader as loader
+        path, artifact = self.add_vector(101, (1.0, 0.0))
+        parent = path.parent
+        moved = parent.with_name('preserved-vector-parent')
+        parent.rename(moved)
+        parent.symlink_to(moved, target_is_directory=True)
+        self.assertIsNone(loader._read_vector(self.root, artifact))
+        parent.unlink()
+        parent.write_bytes(b'not a directory')
+        self.assertIsNone(loader._read_vector(self.root, artifact))
+
+    def test_direct_file_reader_refuses_reparse_parent_before_payload_io(self):
+        import app.access.visual_vector_loader as loader
+        path, artifact = self.add_vector(101, (1.0, 0.0))
+        parent_inode = path.parent.stat().st_ino
+        with patch('app.access.visual_vector_loader._is_reparse',
+                   side_effect=lambda info: info.st_ino == parent_inode), patch(
+                       'app.access.visual_vector_loader.os.open',
+                       side_effect=AssertionError('payload opened through reparse parent')):
+            self.assertIsNone(loader._read_vector(self.root, artifact))
+
     def test_nonimage_seed_and_invalid_seed_count_are_unavailable_without_schema_probe(self):
         self.db.execute("UPDATE assets SET mime='video/mp4' WHERE id=101")
         self.db.commit()

@@ -98,7 +98,7 @@ class SemanticSearchReads(AssistantSearchReads):
         if self._vector_read_bytes > MAX_VECTOR_READ_BYTES:
             raise d.DiscoveryUnavailable()
 
-    def _vector_records(self, root, records):
+    def _vector_records(self, root, records, *, validate_components=True):
         check = self._check
         for artifact in records:
             aid = artifact.asset_id
@@ -112,13 +112,11 @@ class SemanticSearchReads(AssistantSearchReads):
                 raise d.DiscoveryUnavailable()
             record = VectorRecord(aid, self.encoder.binding.image_identity,
                                   vector, artifact.component_sha256)
-            try:
-                # This verifies the component checksum, canonical float32
-                # values and unit norm together; do not pack each vector a
-                # second time immediately before the same validation.
-                _canonical_components(record, self.encoder.binding.image_identity)
-            except (ValueError, TypeError, OverflowError):
-                raise d.DiscoveryUnavailable() from None
+            if validate_components:
+                try:
+                    _canonical_components(record, self.encoder.binding.image_identity)
+                except (ValueError, TypeError, OverflowError):
+                    raise d.DiscoveryUnavailable() from None
             yield record
 
     def _vectors(self, found):
@@ -165,7 +163,10 @@ class SemanticSearchReads(AssistantSearchReads):
         else:
             def batches():
                 batch = []
-                for record in self._vector_records(root, artifacts):
+                # The ranker performs component checksum/norm validation for
+                # every freshly re-read record. Retain the pre-inference pass
+                # above without duplicating the ranker's second-pass work.
+                for record in self._vector_records(root, artifacts, validate_components=False):
                     batch.append(record)
                     if len(batch) == VECTOR_BATCH_SIZE:
                         yield tuple(batch)

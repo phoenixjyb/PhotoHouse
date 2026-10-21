@@ -280,20 +280,16 @@ def _is_reparse(info) -> bool:
 
 def _read_vector(root: Path, artifact: ImmutableVectorArtifact, *, charge=None) -> tuple[float, ...] | None:
     """Read one tightly bounded NPY payload without shape-driven allocation."""
-    root = _checked_root(root)
-    if root is None:
+    if not _valid_root_argument(root):
         return None
     relative = Path(artifact.relative_path)
     if relative.is_absolute() or ".." in relative.parts or len(relative.parts) != 3:
         return None
     target = root.joinpath(*relative.parts)
-    parent = root
     try:
-        for part in relative.parts[:-1]:
-            parent = parent / part
-            info = os.lstat(parent)
-            if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or _is_reparse(info):
-                return None
+        # One complete lexical ancestor walk subsumes both the root check and
+        # relative-directory walk. Keep its identity snapshot through the read;
+        # no path decisions are cached across files, passes or requests.
         path_snapshot = _root_snapshot(target.parent)
         if path_snapshot is None:
             return None
@@ -381,13 +377,16 @@ def _same_file(left, right) -> bool:
 
 def _root_snapshot(root: Path):
     """Capture every lexical ancestor so persistent parent swaps are refused."""
-    current = Path(root.anchor)
+    # Operate on native lexical strings during the walk. Constructing a new
+    # lazy Path for every ancestor repeatedly reparses and formats the same
+    # components across large cohorts; no resolution or alias following is needed.
+    current = root.anchor
     observed = []
     try:
         for part in root.parts[1:]:
-            current = current / part
+            current = os.path.join(current, part)
             info = os.lstat(current)
-            if stat.S_ISLNK(info.st_mode) or _is_reparse(info):
+            if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or _is_reparse(info):
                 return None
             observed.append((info.st_dev, info.st_ino, info.st_mode))
         return tuple(observed)
