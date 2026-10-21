@@ -9,9 +9,10 @@ and family-memory text; it does not read original photos or perform new visual
 recognition. The application remains responsible for identity, current source
 access/revisions, final citation validation, review and explicit save.
 
-This is optional source implementation with synthetic tests. No GGUF model,
-backend wheel/build, language quality, Windows loader or GPU profile is selected
-or qualified. The ordinary CPU requirements do not install `llama-cpp-python`.
+This is optional source implementation with synthetic tests. A separate
+[CPU trial candidate](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) pins proposed
+artifacts; none has been acquired, installed or loaded. Actual model/backend
+behavior, language quality, Windows loader and GPU profiles remain unqualified. The ordinary CPU requirements do not install `llama-cpp-python`.
 Imports load neither that optional binding nor a model. `run()` defaults to
 disabled; the CLI requires `--execute`. No app configuration, API route, feature
 flag or environment variable automatically selects this worker.

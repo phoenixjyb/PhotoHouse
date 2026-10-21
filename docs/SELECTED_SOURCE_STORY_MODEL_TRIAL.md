@@ -5,6 +5,9 @@ The next runtime milestone is one generated-source request through the optional
 process provider. Keep the application and both story flags off. This trial does
 not deploy the feature or use family photos, memories, accounts or databases.
 
+A [pinned CPU candidate](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) now records the
+proposed artifacts and limits. It has not been acquired or qualified.
+
 ## Small first slice
 
 Start with an explicitly selected CPU build and one model. Use two CPU threads,

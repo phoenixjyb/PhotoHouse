@@ -1,0 +1,111 @@
+# Optional CPU story trial candidate
+
+This is a pinned candidate for the [first generated-source model trial](SELECTED_SOURCE_STORY_MODEL_TRIAL.md).
+It changes no application provider, feature flag, deployment or default dependency
+profile. No candidate wheel or model has been downloaded, installed or loaded.
+The first trial measures the existing worker and containment path; it does not
+select this small model as the family's production storyteller.
+
+## Exact artifacts
+
+The [candidate manifest](../config/selected-story-cpu-trial-candidate.json) lists
+all artifact URLs, byte counts and published SHA-256 pins. The separate
+[optional lock](../config/requirements-selected-story-cpu-trial.lock) is for
+Windows x64 CPython 3.12 only; it is not included by the API/development locks.
+
+| Item | Candidate |
+| --- | --- |
+| Runtime source | `8dc414788a522aa0d9cbf6ea3f37a60828991d24` |
+| CPU binding | Official `llama_cpp_python-0.3.36-py3-none-win_amd64.whl`, 7,767,370 bytes |
+| Binding SHA-256 | `ae5e88a2cf464e5a2dde7c8898c2d5c71cc24d03cac6396bf7509456bde0b9fb` |
+| Binding source | `1652066e0af45f2313b339670ef9555e8a54e545`, MIT |
+| Model | Qwen's `Qwen2.5-1.5B-Instruct-GGUF`, `qwen2.5-1.5b-instruct-q4_k_m.gguf` |
+| Model revision | `91cad51170dc346986eccefdc2dd33a9da36ead9` |
+| Model SHA-256 | `6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e` |
+| Model bytes/license | 1,117,320,736 bytes; Apache-2.0 |
+| Complete download set | 25 wheels plus one model, 1,144,386,947 bytes |
+
+These digests are publisher metadata, not hashes of locally acquired bytes.
+Download verification must check exact size and SHA-256 before installation or
+loading. See the [dependency notices](../third_party/selected-story-cpu-trial.md).
+Keep the single GGUF alone in its dedicated protected directory;
+license records, wheels, reports and other files belong outside that directory.
+
+Primary sources: [official CPU release](https://github.com/abetlen/llama-cpp-python/releases/tag/v0.3.36),
+[CPU wheel index](https://abetlen.github.io/llama-cpp-python/whl/cpu/llama-cpp-python/),
+[pinned binding project metadata](https://github.com/abetlen/llama-cpp-python/blob/1652066e0af45f2313b339670ef9555e8a54e545/pyproject.toml),
+[official model revision](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/tree/91cad51170dc346986eccefdc2dd33a9da36ead9),
+and [model license](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/blob/91cad51170dc346986eccefdc2dd33a9da36ead9/LICENSE).
+
+## Checks completed before acquisition
+
+The source review confirms the pinned binding exposes the worker's constructor
+options, context/tokenizer calls, JSON-schema grammar, token-list completion and
+model close. This is source API compatibility, not native ABI/DLL compatibility.
+The [base instruction model card](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct)
+describes Chinese/English support; that is not evidence of this quantization's behavior under our plain
+prompt and grammar. The trial must measure it.
+
+Metadata checks resolved the repository's pinned API contract imports plus NumPy
+2.3.4, diskcache 5.6.3 and Jinja2 3.1.6. Each chosen wheel has a compatible Windows
+CPython 3.12 tag and Python requirement, every applicable non-extra dependency
+is present at a matching version, and existing API wheel hashes match the API
+lock. Wheel METADATA and native DLL contents still require post-acquisition
+inspection; publisher metadata alone does not prove the artifact contents.
+
+The worker currently imports application contract modules, so its dedicated
+trial environment includes the pinned API runtime dependencies. Installing these
+packages does not authorize starting an API, database migration or model server.
+Use no shared site-packages, existing environment upgrades, source builds,
+provider substitutions or automatic dependency resolution during installation.
+Acquire only the closed wheel set, inspect it, then install offline with hashes,
+`--no-index`, `--no-deps` and `--only-binary=:all:`. Do not resolve `latest`.
+
+## Proposed bounded Windows operation
+
+The private operator record pins paths, account/interpreter identity, source and
+script hashes, actual capacity/owner evidence and fresh output directory. Those
+household details are deliberately absent from this public manifest.
+
+- Acquire the exact closed set and create a new dedicated environment under a
+  new private root. Do not modify an existing service environment or model store.
+  Acquisition/installation is separately bounded to 900 seconds, 2 GiB and eight
+  processes. A failed/partial download is retained; do not retry or use a mirror.
+- Inspect installed wheel metadata, native DLL inventory/dependencies and pins
+  before importing the optional binding. Refuse unexpected files or dependency
+  drift. A valid artifact hash is not complete native dependency qualification.
+- With a fresh approved workload window, use one CPU generation slot, two threads,
+  context 8,192, zero GPU layers and no GPU selector. Keep the 60-second operation
+  deadline, including hashing/cold load/generation/close. Each model Job is capped
+  at 4 GiB and four processes. Require 12 GiB free RAM and 8 GiB caller-available
+  disk before admission. These are proposed limits, not measured sufficiency.
+- The complete sequential trial has a maximum 360-second, 6 GiB, eight-process
+  outer Job, shortened to fit the remaining approved window and cleanup reserve.
+  Use generated English, Chinese and mixed-language sources, then cancellation
+  after observed native resume and a shorter expiry. Stop on the first failure.
+  Native resume does not prove the model reached active token generation.
+- Retain generated outputs privately for prose review only after native and
+  exchange cleanup. Keep shared reports content-free. Require exact host claim
+  release and zero owned descendants before another operation. Unknown cleanup
+  keeps admission closed; no age/PID-based reclaim or deletion of its store.
+
+No real family data, GPU inference, service control, feature activation or
+deployment is included. Capacity samples and idle-looking processes do not clear
+other Windows/WSL owners. Installation/loading requires runtime authority; the
+first model trial does not close the later service, egress/retention, quality,
+GPU or family/device acceptance gates.
+
+## Preparation validation
+
+Thirteen operator preparation checks passed on Mac and Windows, with zero skips,
+errors or failures. They cover inert defaults, artifact/source pin refusal, ZIP
+bounds and owned partial files, CLI forwarding, receipt/window/deadline checks
+and all three generated bundles against the real product validator. Windows
+ran these under an actual 180-second / 2 GiB / eight-process outer Job with a
+12 GiB RAM floor and native limit/membership proof. Final operator/source input
+hashes match; the new environment directory is absent and no owned test Python
+process remains.
+
+These are preparation tests. They do not execute the installer, optional binding
+or real model runner, and they grant no workload clearance. Real artifact and
+native/model qualification remain the next separately approved operation.
