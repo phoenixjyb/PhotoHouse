@@ -10,9 +10,11 @@ recognition. The application remains responsible for identity, current source
 access/revisions, final citation validation, review and explicit save.
 
 This is optional source implementation with synthetic tests. A separate
-[CPU trial candidate](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) pins proposed
-artifacts; none has been acquired, installed or loaded. Actual model/backend
-behavior, language quality, Windows loader and GPU profiles remain unqualified. The ordinary CPU requirements do not install `llama-cpp-python`.
+[CPU trial candidate](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) records pinned
+artifacts and separate acquisition/native checkpoints. The first real trial
+failed before publishing a draft; model behavior and language quality remain
+unqualified. Windows loader observations do not qualify GPU profiles. The
+ordinary CPU requirements do not install `llama-cpp-python`.
 Imports load neither that optional binding nor a model. `run()` defaults to
 disabled; the CLI requires `--execute`. No app configuration, API route, feature
 flag or environment variable automatically selects this worker.
@@ -93,6 +95,34 @@ the file is flushed, synced and closed before zero exit. A late collision is
 preserved. Any failure exits nonzero with a fixed content-free CLI error; the
 parent fences the output, drains its Job and disposes only known exchange files.
 A failed write can leave a partial private file for that existing cleanup path.
+
+Worker failures now have a closed internal phase and stable nonzero exit code,
+so a qualified process observer can diagnose the step without recording words,
+paths, backend messages or tracebacks. Public provider errors stay generic.
+Default/configuration refusal retains exit 2 and the existing fixed CLI record;
+operational CLI records add only the fixed `phase` value.
+
+| Exit | Phase |
+| --- | --- |
+| 10 | exchange |
+| 11 | request |
+| 12 | model_pin |
+| 13 | backend_load |
+| 14 | tokenize |
+| 15 | context |
+| 16 | grammar |
+| 17 | generation |
+| 18 | completion |
+| 19 | narrative |
+| 20 | model_close |
+| 21 | source_recheck |
+| 22 | response_write |
+
+A close failure overrides an earlier generation/validation failure and prevents
+publication. Only a successfully constructed engine is closed by the worker;
+a partially failed backend construction still requires native Job cleanup.
+An exit phase identifies a failing step, not successful model construction,
+active generation, exact cause, native drainage or permission to retry.
 
 ## Evidence and remaining gates
 

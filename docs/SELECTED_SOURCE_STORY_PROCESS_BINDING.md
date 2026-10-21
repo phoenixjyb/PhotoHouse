@@ -7,7 +7,7 @@ its private [native owner](SELECTED_SOURCE_STORY_NATIVE_OWNER.md). It implements
 session lifecycle. The [Windows factory](../server/scripts/selected_story_native_owner.py)
 adds an explicit `windows_story_process_provider(launch, model)` constructor.
 Both constructors default to disabled and perform no I/O or kernel construction.
-No app configuration, feature flag, route or default provider activates them.
+Staged JSON configuration and default application construction do not select them.
 
 This binding has synthetic and separately pinned native acceptance. The optional
 [GGUF worker](SELECTED_SOURCE_STORY_GGUF_WORKER.md) now implements local model
@@ -16,6 +16,22 @@ review and qualify the exact worker/model/dependency installation and run all
 inference/helpers inside the owned Job. A worker that calls an independent
 HTTP service or cloud model is outside this contract. Neither loopback nor
 repeating a model label proves local execution or owned inference.
+
+## Explicit runtime injection
+
+`RuntimeConfiguration` can now receive an already constructed
+`selected_story_provider`, with separate `selected_story_drafts_enabled` and
+`selected_story_ui_enabled` flags, both false by default. A provider requires
+memory collaboration; API opt-in requires a provider, and UI opt-in requires the
+API. Invalid flags/dependencies fail before runtime storage construction. The
+builder forwards the exact object to the existing app/session lifecycle without
+calling it, loading a model, selecting a factory or changing host admission.
+
+This is a Python injection seam. It adds no serialized recipe, environment
+activation, model discovery or download. A Windows owner receipt remains a
+short qualification window; the runtime does not create, renew or clear one.
+The current receipt policy and participating workload ownership still need an
+explicit long-running operator design before household service activation.
 
 ## One private exchange per operation
 

@@ -31,13 +31,43 @@ from app.access.selected_story_native import OPERATION_ENV
 from app.access.selected_story_process import MAX_REQUEST_BYTES, REQUEST_ENV, RESPONSE_ENV
 
 
+FAILURE_EXIT_CODES = {
+    'exchange': 10,
+    'request': 11,
+    'model_pin': 12,
+    'backend_load': 13,
+    'tokenize': 14,
+    'context': 15,
+    'grammar': 16,
+    'generation': 17,
+    'completion': 18,
+    'narrative': 19,
+    'model_close': 20,
+    'source_recheck': 21,
+    'response_write': 22,
+}
+DEFAULT_FAILURE_PHASE = 'default'
+
+
 class WorkerUnavailable(RuntimeError):
-    def __init__(self):
+    def __init__(self, phase=DEFAULT_FAILURE_PHASE):
+        if type(phase) is not str or phase not in (DEFAULT_FAILURE_PHASE, *FAILURE_EXIT_CODES):
+            phase = DEFAULT_FAILURE_PHASE
+        self.phase = phase
         super().__init__('Selected-story worker unavailable')
 
 
-def _refuse():
-    raise WorkerUnavailable()
+def _refuse(phase=DEFAULT_FAILURE_PHASE):
+    raise WorkerUnavailable(phase)
+
+
+def _failure_record(error):
+    """Return fixed, content-free CLI diagnostics and a stable exit code."""
+    phase = getattr(error, 'phase', DEFAULT_FAILURE_PHASE) if isinstance(error, WorkerUnavailable) else DEFAULT_FAILURE_PHASE
+    if type(phase) is not str or phase not in FAILURE_EXIT_CODES:
+        return 2, '{"status":"failed","category":"worker_unavailable"}'
+    record = {'status': 'failed', 'category': 'worker_unavailable', 'phase': phase}
+    return FAILURE_EXIT_CODES[phase], json.dumps(record, separators=(',', ':'))
 
 
 @dataclass(frozen=True, repr=False)
@@ -191,29 +221,41 @@ class _LlamaEngine:
             use_mmap=False, use_mlock=False, seed=0, verbose=False)
 
     def complete(self, generation, settings):
-        from llama_cpp import LlamaGrammar
-        tokens = self.model.tokenize(generation['prompt'].encode('utf-8'), add_bos=True, special=False)
-        limit = generation['options']['num_predict']
-        actual_context = self.model.n_ctx()
-        if (type(actual_context) is not int or not 0 < actual_context <= settings.context_tokens
-                or not tokens or len(tokens) + limit > actual_context):
-            _refuse()  # Never shorten source text or silently reduce output budget.
-        grammar = LlamaGrammar.from_json_schema(json.dumps(generation['format']), verbose=False)
-        result = self.model.create_completion(prompt=tokens, max_tokens=limit,
-            temperature=generation['options']['temperature'], seed=0,
-            stream=False, echo=False, grammar=grammar)
-        choices = result.get('choices') if type(result) is dict else None
-        usage = result.get('usage') if type(result) is dict else None
-        if (type(usage) is not dict or type(usage.get('completion_tokens')) is not int
-                or not 0 <= usage['completion_tokens'] <= limit
-                or type(usage.get('prompt_tokens')) is not int
-                or usage['prompt_tokens'] != len(tokens)):
-            _refuse()
-        if (type(choices) is not list or len(choices) != 1 or type(choices[0]) is not dict
-                or choices[0].get('finish_reason') != 'stop'
-                or type(choices[0].get('text')) is not str):
-            _refuse()
-        return choices[0]['text']
+        phase = 'tokenize'
+        try:
+            from llama_cpp import LlamaGrammar
+            tokens = self.model.tokenize(generation['prompt'].encode('utf-8'), add_bos=True, special=False)
+            limit = generation['options']['num_predict']
+            phase = 'context'
+            actual_context = self.model.n_ctx()
+            if (type(actual_context) is not int or not 0 < actual_context <= settings.context_tokens
+                    or not tokens or len(tokens) + limit > actual_context):
+                _refuse(phase)  # Never shorten source text or silently reduce output budget.
+            phase = 'grammar'
+            grammar = LlamaGrammar.from_json_schema(json.dumps(generation['format']), verbose=False)
+            phase = 'generation'
+            result = self.model.create_completion(prompt=tokens, max_tokens=limit,
+                temperature=generation['options']['temperature'], seed=0,
+                stream=False, echo=False, grammar=grammar)
+            phase = 'completion'
+            choices = result.get('choices') if type(result) is dict else None
+            usage = result.get('usage') if type(result) is dict else None
+            if (type(usage) is not dict or type(usage.get('completion_tokens')) is not int
+                    or not 0 <= usage['completion_tokens'] <= limit
+                    or type(usage.get('prompt_tokens')) is not int
+                    or usage['prompt_tokens'] != len(tokens)):
+                _refuse(phase)
+            if (type(choices) is not list or len(choices) != 1 or type(choices[0]) is not dict
+                    or choices[0].get('finish_reason') != 'stop'
+                    or type(choices[0].get('text')) is not str):
+                _refuse(phase)
+            return choices[0]['text']
+        except WorkerUnavailable as error:
+            if error.phase == DEFAULT_FAILURE_PHASE:
+                raise WorkerUnavailable(phase) from None
+            raise
+        except Exception:
+            raise WorkerUnavailable(phase) from None
 
     def close(self):
         self.model.close()
@@ -223,27 +265,45 @@ def run(settings, *, enabled=False, environment=None, backend_factory=None):
     """One request; injected backends are for source tests, never a CLI option."""
     if enabled is not True or type(settings) is not WorkerSettings:
         _refuse()
+    phase = 'exchange'
+    engine = None
     try:
         environment = dict(os.environ if environment is None else environment)
         request, response, operation = _exchange(environment)
+        phase = 'request'
         raw = _private_read(request)
         generation, bundle = _request(raw, operation, settings.model)
+        phase = 'model_pin'
         model_path, model_identity = _model_pin(settings)
+        phase = 'backend_load'
         engine = (backend_factory or _LlamaEngine)(settings)
         try:
+            phase = 'generation'
             text = engine.complete(generation, settings)
+            phase = 'narrative'
             if type(text) is not str or len(text.encode('utf-8', errors='strict')) > MAX_OUTPUT_BYTES:
                 _refuse()
             result = validate_narrative(_strict_loads(text.encode('utf-8')), bundle)
             payload = _json_bytes({'version': 1, 'operation_id': operation,
                 'model': settings.model, 'result': result}, 'response', MAX_PROVIDER_BYTES)
+        except WorkerUnavailable:
+            raise
+        except Exception:
+            raise WorkerUnavailable(phase) from None
         finally:
-            engine.close()  # Failure cannot publish even otherwise valid output.
+            # A close failure takes precedence over inference/validation failures and
+            # prevents publication. Only successfully constructed engines are closed.
+            try:
+                engine.close()
+            except Exception:
+                raise WorkerUnavailable('model_close') from None
+        phase = 'source_recheck'
         if (_local_file(settings.model_file) != model_path
                 or stable_stat_identity(_direct(model_path, False)) != model_identity):
             _refuse()
         if _exchange(environment) != (request, response, operation) or _private_read(request) != raw:
             _refuse()
+        phase = 'response_write'
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
         with os.fdopen(os.open(response, flags, 0o600), 'wb') as stream:
             require_private_file(response)  # Check inherited DACL before words.
@@ -251,8 +311,12 @@ def run(settings, *, enabled=False, environment=None, backend_factory=None):
             stream.flush()
             os.fsync(stream.fileno())
         return 0
+    except WorkerUnavailable as error:
+        if error.phase == DEFAULT_FAILURE_PHASE:
+            raise WorkerUnavailable(phase) from None
+        raise
     except Exception:
-        raise WorkerUnavailable() from None
+        raise WorkerUnavailable(phase) from None
 
 
 def main(argv=None):
@@ -280,6 +344,7 @@ def main(argv=None):
 if __name__ == '__main__':
     try:
         raise SystemExit(main())
-    except Exception:
-        print('{"status":"failed","category":"worker_unavailable"}', file=sys.stderr)
-        raise SystemExit(2) from None
+    except Exception as error:
+        code, record = _failure_record(error)
+        print(record, file=sys.stderr)
+        raise SystemExit(code) from None

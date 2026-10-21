@@ -28245,6 +28245,64 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Forward optional host admission and explicit exchange parent through inert default-off Windows provider factory. Preserve existing Windows launch-path validation. Four synthetic tests cover disabled defaults, exact forwarding, mismatched profile refusal and matching profile construction without native API, capacity, filesystem or store-control actions. Dispatcher includes checks in API/memory/Windows CPU profiles. Staged app binding, native qualification of this source and deployment remain separate."
+    },
+    {
+      "feature": "selected-story-content-free-worker-failure-phases",
+      "source_commit": "afe1f99b7fefbd932ac7f6d7ac24c4747ba06c39",
+      "files": [
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": "c81ef67bfac1f06f4100a34be686859fb64addb3d781e74fb14dd441c03dcd14",
+          "sha256": "437ecf89e1c4daaed6d1aaa2f7fa6b6d51be7d6f4019c144d2aebaf81382abb0"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "53971656c494980b6a58232405f89580b6f3f8732ba8f7823ecc1eca90baa8b1",
+          "sha256": "7e64fb77926e384b45d01469dd6d0d59790ad7f0b3b599f2b24188d40d0d72e4"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "526bddaf0f27d6a7e6144cc6b16568ccfced9b373890aaf2bb90c02900c45ad1",
+          "sha256": "b3ee4e3319d1d309caeb33be976a11bf7982f3abb2f5fefa96286b7b3a0f5e5c"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "8699f3d4c4b58c2f2482536e6363a46ffc13771e5643812828bb2cd579ccec8b",
+          "sha256": "ec477ff7cd2c6015c6f574a45c8af083c125a80a33fb80272a0b9b41300a17cb"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add closed worker failure phases/stable exit10-22; retain generic public error and default/config exit2. Track load/context/grammar/generation/validation/close without paths, words or raw backend errors; close failure overrides and prevents publication. Synthetic worker/protocol tests pass. Record separately pinned Windows model acquisition,18-check binding canary and first real English trial failure(exit2); successful model construction/generation/quality/cancel/expiry remain unqualified. Zero claims/native processes and closed maintenance verified; runtime8dc unchanged."
+    },
+    {
+      "feature": "selected-story-explicit-runtime-provider-injection",
+      "source_commit": "afe1f99b7fefbd932ac7f6d7ac24c4747ba06c39",
+      "files": [
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "e600b2eb885c68b1942fb9c1953f55bc8bf8f304936141d0d8ebfa2d4c26ccfb",
+          "sha256": "0fc3f60264b3a5fbfd7b420d77269be593fddf7290baa7d1af0c645951801a72"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_runtime_binding.py",
+          "before_sha256": null,
+          "sha256": "af7c4d1d37aa931dea266a2c1de235b30f1907935a5148c6de1f7e43bd80ead9"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "0c952a8b35085879d33d3f3760f1689649e8a41aa8d920df66e64f9fbf13f4be",
+          "sha256": "e7038c125e7578d68ef514a3891a684bd5d34d229d2c73bc2d9b55b8c5a9a572"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "b432d916d92dc4588c4f8a58dbe688d37c3efe4e17c1b9dfb0acdfb3c00f7624",
+          "sha256": "5071526bce752dfa357bea7213c670e2d4c39f0d2a8ce4dab4e4a063e1cadb43"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Forward an explicitly injected provider through RuntimeConfiguration into existing app/session lifecycle. Separate API/UI flags remain false; validate booleans/provider/collaboration dependencies before storage construction. Generated-store tests verify defaults, dependency refusal, exact object forwarding and app lifespan ownership without build-time provider calls. No serialized recipe, model selection/load, Windows access, store clearance or automatic receipt renewal. Long-running operator policy and activation/deployment remain separate."
     }
   ]
 }

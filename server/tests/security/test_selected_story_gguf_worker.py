@@ -89,6 +89,27 @@ class GGUFWorkerTests(unittest.TestCase):
         self.assertEqual('{"status":"failed","category":"worker_unavailable"}', out.stderr.strip())
         self.assertFalse(self.response.exists())
 
+    def test_failure_phase_exit_map_and_fixed_cli_records(self):
+        expected = {'exchange': 10, 'request': 11, 'model_pin': 12, 'backend_load': 13,
+            'tokenize': 14, 'context': 15, 'grammar': 16, 'generation': 17,
+            'completion': 18, 'narrative': 19, 'model_close': 20,
+            'source_recheck': 21, 'response_write': 22}
+        self.assertEqual(expected, worker.FAILURE_EXIT_CODES)
+        for phase, code in expected.items():
+            with self.subTest(phase=phase):
+                exit_code, record = worker._failure_record(worker.WorkerUnavailable(phase))
+                self.assertEqual(code, exit_code)
+                self.assertEqual({'status': 'failed', 'category': 'worker_unavailable', 'phase': phase},
+                                 json.loads(record))
+                self.assertNotIn('private', record)
+                self.assertNotIn('source words', record)
+        self.assertEqual((2, '{"status":"failed","category":"worker_unavailable"}'),
+                         worker._failure_record(worker.WorkerUnavailable()))
+        self.assertEqual('default', worker.WorkerUnavailable('../private/path').phase)
+        corrupted = worker.WorkerUnavailable('generation'); corrupted.phase = ['private']
+        self.assertEqual((2, '{"status":"failed","category":"worker_unavailable"}'),
+                         worker._failure_record(corrupted))
+
     def test_success_closes_before_private_response_and_keeps_request_unchanged(self):
         before = self.request.read_bytes()
         check = worker.require_private_file
@@ -118,7 +139,8 @@ class GGUFWorkerTests(unittest.TestCase):
         for mutate in mutations:
             with self.subTest(mutate=mutate):
                 self.body = json.loads(json.dumps(baseline));mutate(self.body);self.write_request()
-                with self.assertRaises(worker.WorkerUnavailable):self.run_worker()
+                with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+                self.assertEqual('request', caught.exception.phase)
                 self.factory.assert_not_called()
                 self.assertFalse(self.response.exists())
 
@@ -138,11 +160,13 @@ class GGUFWorkerTests(unittest.TestCase):
             {worker.RESPONSE_ENV:'//remote/share/response.json'}):
             with self.subTest(change=change):
                 self.env = {**original, **change}
-                with self.assertRaises(worker.WorkerUnavailable):self.run_worker()
+                with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+                self.assertEqual('exchange', caught.exception.phase)
                 self.factory.assert_not_called()
         self.env=original
         self.response.write_bytes(b'preserve existing')
-        with self.assertRaises(worker.WorkerUnavailable):self.run_worker()
+        with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+        self.assertEqual('exchange', caught.exception.phase)
         self.assertEqual(b'preserve existing',self.response.read_bytes())
         self.factory.assert_not_called()
 
@@ -157,7 +181,8 @@ class GGUFWorkerTests(unittest.TestCase):
     def test_bad_model_hash_magic_split_and_sidecar_refused_before_backend(self):
         original=self.settings
         self.settings=replace(original, model_sha256='0'*64)
-        with self.assertRaises(worker.WorkerUnavailable):self.run_worker()
+        with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+        self.assertEqual('model_pin', caught.exception.phase)
         self.model.write_bytes(b'not a GGUF fixture')
         self.settings=replace(original, model_sha256=hashlib.sha256(self.model.read_bytes()).hexdigest())
         with self.assertRaises(worker.WorkerUnavailable):self.run_worker()
@@ -178,12 +203,66 @@ class GGUFWorkerTests(unittest.TestCase):
         for text in variants:
             with self.subTest(text=text[:20]):
                 self.engine.text=text
-                with self.assertRaises(worker.WorkerUnavailable):self.run_worker()
+                with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+                self.assertEqual('narrative', caught.exception.phase)
                 self.assertTrue(self.engine.closed)
                 self.assertFalse(self.response.exists())
         self.engine.text=json.dumps(narrative());self.engine.fail_close=True
         with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+        self.assertEqual('model_close', caught.exception.phase)
         self.assertNotIn('source words',str(caught.exception))
+        self.assertFalse(self.response.exists())
+
+    def test_backend_load_and_each_native_completion_stage_have_fixed_phases(self):
+        self.factory.side_effect = RuntimeError('/private/model/path with generated words')
+        with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+        self.assertEqual('backend_load', caught.exception.phase)
+        self.assertNotIn('/private', str(caught.exception))
+        self.assertFalse(self.response.exists())
+        self.factory.side_effect = None; self.factory.return_value = self.engine
+
+        for failing_stage in ('tokenize', 'context', 'grammar', 'generation', 'completion'):
+            with self.subTest(stage=failing_stage):
+                native=Mock();native.tokenize.return_value=[1,2,3];native.n_ctx.return_value=8192
+                native.create_completion.return_value={
+                    'choices':[{'text':'{}','finish_reason':'stop'}],
+                    'usage':{'prompt_tokens':3,'completion_tokens':1}}
+                grammar=SimpleNamespace(from_json_schema=Mock(return_value='grammar'))
+                binding=SimpleNamespace(Llama=Mock(return_value=native), LlamaGrammar=grammar,
+                                        LLAMA_SPLIT_MODE_NONE=0)
+                if failing_stage == 'tokenize':
+                    native.tokenize.side_effect=RuntimeError('/private/token words')
+                elif failing_stage == 'context':
+                    native.n_ctx.return_value=0
+                elif failing_stage == 'grammar':
+                    grammar.from_json_schema.side_effect=RuntimeError('private grammar words')
+                elif failing_stage == 'generation':
+                    native.create_completion.side_effect=RuntimeError('private generated words')
+                else:
+                    native.create_completion.return_value={
+                        'choices':[{'text':'{}','finish_reason':'stop'}],
+                        'usage':{'prompt_tokens':3,'completion_tokens':True}}
+                with patch.dict(sys.modules, {'llama_cpp':binding}):
+                    engine=worker._LlamaEngine(self.settings)
+                    with self.assertRaises(worker.WorkerUnavailable) as caught:
+                        engine.complete(self.body['generation'],self.settings)
+                    engine.close()
+                self.assertEqual(failing_stage, caught.exception.phase)
+                self.assertEqual('Selected-story worker unavailable', str(caught.exception))
+
+    def test_completion_failure_closes_once_and_cleanup_failure_overrides_phase(self):
+        with patch.object(self.engine, 'complete', side_effect=RuntimeError('private completion words')):
+            close=Mock(wraps=self.engine.close)
+            with patch.object(self.engine, 'close', close):
+                with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+        self.assertEqual('generation', caught.exception.phase)
+        close.assert_called_once_with()
+        self.assertFalse(self.response.exists())
+
+        self.engine.fail_close=True
+        with patch.object(self.engine, 'complete', side_effect=RuntimeError('private generation words')):
+            with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+        self.assertEqual('model_close', caught.exception.phase)
         self.assertFalse(self.response.exists())
 
     def test_request_or_model_mutation_during_inference_refuses_result(self):
@@ -194,7 +273,8 @@ class GGUFWorkerTests(unittest.TestCase):
                     path.write_bytes(before+b' ')
                     return json.dumps(narrative())
                 with patch.object(self.engine,'complete',side_effect=complete):
-                    with self.assertRaises(worker.WorkerUnavailable):self.run_worker()
+                    with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+                    self.assertEqual('source_recheck', caught.exception.phase)
                 self.assertFalse(self.response.exists());path.write_bytes(before)
 
     def test_late_response_collision_is_preserved_and_private_write_refuses_before_words(self):
@@ -210,7 +290,8 @@ class GGUFWorkerTests(unittest.TestCase):
             if Path(path)==self.response:raise ValueError('not private')
             return check(path)
         with patch.object(worker,'require_private_file',side_effect=deny_response):
-            with self.assertRaises(worker.WorkerUnavailable):self.run_worker()
+            with self.assertRaises(worker.WorkerUnavailable) as caught:self.run_worker()
+        self.assertEqual('response_write', caught.exception.phase)
         self.assertEqual(b'',self.response.read_bytes())
 
     def test_optional_binding_refuses_out_of_budget_or_invalid_usage(self):

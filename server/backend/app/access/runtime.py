@@ -212,6 +212,9 @@ class RuntimeConfiguration:
     assistant_intent_timeout_seconds: float = 20
     semantic_configuration_path: Path | None = None
     assistant_semantic_search_enabled: bool = False
+    selected_story_provider: object = None
+    selected_story_drafts_enabled: bool = False
+    selected_story_ui_enabled: bool = False
 
     def with_model_deployment(self, deployment, *, platform, credential_values=None, rollback=False):
         """Return explicit provider settings only; never build/serve or enable features."""
@@ -249,6 +252,19 @@ class RuntimeConfiguration:
         here, which refuses an incoming root that overlaps an original root — the invariant
         that keeps an unassigned upload unservable.
         """
+        # Validate this boundary before storage is opened or optional providers
+        # are constructed. This mirrors create_app while keeping this a pure
+        # object-injection point.
+        if (type(self.selected_story_drafts_enabled) is not bool or
+                (self.selected_story_drafts_enabled and self.selected_story_provider is None)):
+            raise ValueError('Explicit selected-story API opt-in and provider required')
+        if (type(self.selected_story_ui_enabled) is not bool or
+                (self.selected_story_ui_enabled and not self.selected_story_drafts_enabled)):
+            raise ValueError('Explicit selected-story UI and API opt-in required')
+        if type(self.memory_collaboration_enabled) is not bool:
+            raise ValueError('Explicit memory opt-in required')
+        if self.selected_story_provider is not None and not self.memory_collaboration_enabled:
+            raise ValueError('Selected-story provider requires collaboration opt-in')
         if (type(self.assistant_semantic_search_enabled) is not bool or
                 (self.semantic_configuration_path is not None and
                  not self.assistant_semantic_search_enabled)):
@@ -448,4 +464,7 @@ class RuntimeConfiguration:
                           assistant_saved_memory_cards_enabled=self.assistant_saved_memory_cards_enabled,
                           semantic_search_runtime=semantic_search_runtime,
                           assistant_semantic_search_enabled=self.assistant_semantic_search_enabled,
+                          selected_story_provider=self.selected_story_provider,
+                          selected_story_drafts_enabled=self.selected_story_drafts_enabled,
+                          selected_story_ui_enabled=self.selected_story_ui_enabled,
                           update_root=self.update_root)

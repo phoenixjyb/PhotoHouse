@@ -172,3 +172,43 @@ same pinned model is the next blocker, followed by a freshly confirmed workload
 window. Application flags remain off. No production database, family media,
 GPU inference, service/task control, deployment or activation was part of these
 operations.
+
+## Model acquisition and first real trial, 2026-10-22
+
+A separately initiated, model-only acquisition obtained the same pinned GGUF:
+1,117,320,736 bytes, with the candidate SHA-256 verified in full. The Windows
+origin connection timed out; a headers-only request to the immutable publisher
+URL supplied its official CDN redirect, which the bounded Windows downloader
+used without changing OS networking, mirrors, models or providers. There was no
+automatic retry or reinstall. The license remains outside the single-file model
+directory. No model bytes were copied to the Mac source workspace.
+
+The revised private observer passed all 18 operator checks on Windows, with no
+skips. Its binding-only canary used no GGUF and reconciled the native Job. It
+observes only process handles verified as members of the exact owned Job,
+including the Python child behind the virtual-environment launcher. It does not
+scan for processes to adopt. Core library paths and installation file pins were
+observed; this is not atomic mapped-image or network-egress proof.
+
+Fresh status reads showed grouping and retrieval working locally after closing
+their previous Windows runs. The native preflight found no candidate-related
+Python process, about 40.9 GiB free RAM and 144 GB caller-available disk. These
+were observations, not a future resource reservation. A new, at-most-300-second
+owner receipt bound the exact interpreter, runtime source `8dc4147`, model and
+launch recipe for the generated-source trial.
+
+The first real trial stopped at its English case: the worker exited with code
+2 after 6.578 seconds. The inner trial took 12.891 seconds and the complete
+bounded invocation took 19.172 seconds. All four expected core libraries were
+observed with no module-policy violation. The generic exit does not establish
+which model step failed; model construction, context fit, successful generation
+and model close are not qualified. Chinese, mixed-language, cancellation and
+expiry cases did not run after that first failure. No automatic replay occurred.
+
+Independent readback found no owned Python processes, disposed exchange files,
+zero host claims, maintenance closed and all 274 staged source hashes unchanged.
+The failed receipt, packet and reports are retained. The source now has fixed, content-free
+failure phases for a further diagnostic; that change is separate from the
+recorded runtime source. Application flags remain
+off; production databases/media, GPU inference, tasks/services, activation and
+deployment were outside this trial.
