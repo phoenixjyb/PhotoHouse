@@ -257,6 +257,43 @@ class SemanticConfigurationTests(unittest.TestCase):
         self.assertIs(create_app.call_args.kwargs['semantic_search_runtime'], semantic)
         self.assertTrue(create_app.call_args.kwargs['assistant_semantic_search_enabled'])
 
+    def test_bulk_version_four_is_explicit_pinned_and_does_not_load_vectors(self):
+        from app.access.semantic_bulk_vectors import BulkVectorStore
+        self.write_credential()
+        parent = self.root / 'bulk-serving'
+        parent.mkdir(mode=0o700)
+        bulk_path = parent / 'verified.phbv'
+        document = self.document | {
+            'format_version': 4, 'pilot_owner_account_id': 'pilot.owner-1',
+            'serving_limits': {'candidate_limit': 100000, 'source_rows': 1000000,
+                'source_bytes': 256 * 1024**2, 'search_seconds': 120.0},
+            'bulk_vectors': {'path': str(bulk_path), 'file_sha256': 'f' * 64,
+                             'library_id': 'family-test'}}
+        self.write(document)
+        with patch.object(BulkVectorStore, 'snapshot', side_effect=AssertionError('config must not load vectors')):
+            runtime = load_semantic_runtime(self.config_path,
+                discovery=DiscoveryRuntime.__new__(DiscoveryRuntime), source_root=ROOT.parent)
+        self.assertIs(type(runtime.bulk_vectors), BulkVectorStore)
+        self.assertEqual(runtime.bulk_vectors.path, bulk_path)
+        self.assertFalse(bulk_path.exists())
+        self.assertEqual(runtime.bulk_vectors.identity, self.binding.image_identity)
+        for field in ({'file_sha256': 'f' * 63}, {'library_id': '../other'},
+                      {'path': str(self.vector_root / 'overlap.phbv')}, {'extra': True}):
+            with self.subTest(field=field):
+                self.write(document | {'bulk_vectors': document['bulk_vectors'] | field})
+                with self.assertRaises(SemanticConfigurationError):
+                    load_semantic_runtime(self.config_path,
+                        discovery=DiscoveryRuntime.__new__(DiscoveryRuntime), source_root=ROOT.parent)
+        self.write(document | {'format_version': 3})
+        with self.assertRaises(SemanticConfigurationError):
+            load_semantic_runtime(self.config_path,
+                discovery=DiscoveryRuntime.__new__(DiscoveryRuntime), source_root=ROOT.parent)
+        self.write(document)
+        with self.assertRaises(SemanticConfigurationError):
+            load_semantic_runtime(self.config_path,
+                discovery=DiscoveryRuntime.__new__(DiscoveryRuntime), source_root=ROOT.parent,
+                protected_paths=(parent,))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -307,3 +307,19 @@ def test_bind_failure_after_socket_reservation_closes_both_sockets_and_preserves
     assert not (output / "measurement.json").exists()
     assert model.bind_count == 0
     assert model.binding is None
+
+
+def test_explicit_bulk_canary_keeps_protection_checks_and_old_vectors_unchanged(generated_index, tmp_path):
+    index_path, model, manifest, records, vector_root = generated_index
+    before = {record.relative_path: hashlib.sha256((vector_root / record.relative_path).read_bytes()).hexdigest()
+              for record in records}
+    result = subject.measure(index_path, tmp_path / 'bulk-canary', model=model,
+        queries=[{'id': 'en', 'language': 'en', 'text': 'a garden scene'}], bulk_vectors=True)
+    assert result['vector_storage'] == 'pinned_bulk_v1'
+    assert result['vector_reads'] == 0
+    assert result['bulk_snapshot_calls'] > 0
+    assert result['available_image_count'] == 515
+    assert len(result['protected_checks']) == 7
+    assert result['activation_performed'] is False
+    assert before == {record.relative_path: hashlib.sha256((vector_root / record.relative_path).read_bytes()).hexdigest()
+                      for record in records}

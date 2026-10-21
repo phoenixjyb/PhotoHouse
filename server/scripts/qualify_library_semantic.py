@@ -105,7 +105,8 @@ def _network_files(network, source_root):
     return result
 
 
-def measure(index_path, output_directory, *, model, queries, repetitions=1, network=None):
+def measure(index_path, output_directory, *, model, queries, repetitions=1, network=None,
+            bulk_vectors=False):
     """Run a bounded synthetic-account canary over a verified immutable index.
 
     ``model`` must be the caller's real, loaded, UNBOUND LibrarySiglipModel.
@@ -130,6 +131,7 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
     from library_semantic_index import inspect_library_index
     from qualify_semantic_pair import canonical, output_target, write_record
 
+    _require(type(bulk_vectors) is bool)
     _require(type(repetitions) is int and 1 <= repetitions <= 10)
     query_plan = _valid_queries(queries)
     _require(model is not None and all(hasattr(model, name) for name in (
@@ -180,6 +182,12 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
     database.chmod(0o600)
     require_private_file(database)
     library = manifest["library_id"]
+    bulk_store = None
+    if bulk_vectors:
+        from app.access.semantic_bulk_vectors import write_bulk_vectors
+        bulk_store = write_bulk_vectors(output / "bulk-vectors.phbv", index_root,
+            tuple(sorted(records, key=lambda item: int(item.asset_id))),
+            identities["image"], library)
     now = int(time.time())
     tokens = {name: secrets.token_urlsafe(32)
         for name in ("pilot-owner", "pilot-viewer", "pilot-other")}
@@ -204,7 +212,7 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
     network_enabled = net_files is not None
     provider_socket = api_socket = None
     loopback = None
-    counters = {"provider_calls": 0, "vector_reads": 0, "model_encode_calls": 0}
+    counters = {"provider_calls": 0, "vector_reads": 0, "model_encode_calls": 0, "bulk_snapshot_calls": 0}
     protected = []
     denial_latencies = []
     rows = []
@@ -263,7 +271,7 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
             denial_latencies=denial_latencies, rows=rows, index_path=index_path,
             index_root=index_root, index_hash=index_hash, manifest=manifest,
             original_vector_hashes=original_vector_hashes, net_files=net_files,
-            warmup_holder=[None])
+            warmup_holder=[None], bulk_store=bulk_store)
 
     # Only publish the report after all temporary clients/listeners have closed.
     model.verify()
@@ -289,6 +297,9 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
         "provider_calls": counters["provider_calls"],
         "model_encode_calls": counters["model_encode_calls"],
         "vector_reads": counters["vector_reads"],
+        "bulk_snapshot_calls": counters["bulk_snapshot_calls"],
+        "vector_storage": "pinned_bulk_v1" if bulk_vectors else "individual_npy",
+        "bulk_descriptor": bulk_store.descriptor if bulk_store else None,
         "read_limits": {
             "candidate_limit": limits.candidate_limit,
             "source_rows": limits.source_rows,
@@ -322,7 +333,7 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
                 database, library, tokens, records, ids, *, queries, repetitions,
                 origin, api_socket, provider_token, port, counters, protected,
                 denial_latencies, rows, index_path, index_root, index_hash,
-                manifest, original_vector_hashes, net_files, warmup_holder):
+                manifest, original_vector_hashes, net_files, warmup_holder, bulk_store=None):
     import httpx
     from app.access.semantic_encoder import LocalSemanticEncoder
     from app.access.semantic_search import SemanticSearchRuntime
@@ -346,7 +357,7 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
     encoder = LocalSemanticEncoder(binding, provider_url, bearer_token=provider_token,
         transport=None if network_enabled else httpx.MockTransport(forward))
     runtime = SemanticSearchRuntime(discovery, index_root, encoder,
-        pilot_owner_account_id="pilot-owner", serving_limits=limits)
+        pilot_owner_account_id="pilot-owner", serving_limits=limits, bulk_vectors=bulk_store)
     runtime_budget = runtime.budget
     _require(runtime_budget.slots is base_budget.slots, "admission_pool_not_shared")
     app = create_app(access_runtime=access, discovery_runtime=discovery,
@@ -362,7 +373,15 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
         counters["vector_reads"] += 1
         return _read_vector(*args, **kwargs)
 
-    with patch("app.access.semantic_search._read_vector", count_read):
+    with ExitStack() as observations:
+        observations.enter_context(patch("app.access.semantic_search._read_vector", count_read))
+        if bulk_store is not None:
+            from app.access.semantic_bulk_vectors import BulkVectorStore
+            original_snapshot = BulkVectorStore.snapshot
+            def observed_snapshot(store, *args, **kwargs):
+                counters["bulk_snapshot_calls"] += 1
+                return original_snapshot(store, *args, **kwargs)
+            observations.enter_context(patch.object(BulkVectorStore, "snapshot", observed_snapshot))
         before = dict(counters)
         bad = provider_context.post("/v1/encode-text", json={"version": 1,
             "binding_sha256": binding.binding_sha256, "query": queries[0]["text"]},

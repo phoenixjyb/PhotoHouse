@@ -5,6 +5,7 @@ authorization, reviewed metadata and hard-filter implementation, then ranks a
 complete bounded cohort using a separately qualified joint text/image space.
 """
 from dataclasses import asdict, dataclass
+import hashlib
 import math
 from pathlib import Path
 import re
@@ -12,7 +13,7 @@ import re
 from . import discovery as d
 from .assistant_search import AssistantSearchReads
 from .discovery_transport import DiscoveryRuntime
-from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, SemanticUnsupported, rank_semantic
+from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, SemanticUnsupported, TextVector, rank_semantic
 from .service import AccessDenied, AccessService
 from .search_exclusions import EXCLUSION_POLICY_VERSION, requires_semantic_clarification
 from .visual_candidates import MAX_CANDIDATES, VectorRecord, _canonical_components
@@ -20,6 +21,7 @@ from .visual_vector_artifacts import identity_sha256
 from .visual_vector_loader import _COLUMNS, _checked_root, _read_vector, _validated_rows
 from .visual_vector_schema import verify_visual_vector_schema
 from .semantic_streaming import SemanticServingLimits, VECTOR_BATCH_SIZE, MAX_VECTOR_READ_BYTES, rank_semantic_batches
+from .semantic_bulk_vectors import BulkVectorStore, BulkVectorUnavailable
 
 
 def _valid_pilot_owner_account_id(value):
@@ -28,7 +30,7 @@ def _valid_pilot_owner_account_id(value):
 
 class SemanticSearchReads(AssistantSearchReads):
     def __init__(self, access, provider, budget, *, vector_root, encoder, query,
-                 server_snapshot=None, serving_limits=None):
+                 server_snapshot=None, serving_limits=None, bulk_vectors=None):
         # This reader belongs to exactly one runtime call. Reuse derived facts
         # for an identical opaque binding during that call, while every _run
         # still reauthorizes and reads/validates the complete current source.
@@ -40,6 +42,9 @@ class SemanticSearchReads(AssistantSearchReads):
         self._candidate_count = 0
         self._server_snapshot = server_snapshot
         self.serving_limits = serving_limits
+        self.bulk_vectors = bulk_vectors
+        self._bulk_artifacts = ()
+        self._library_id = None
         self._vector_read_bytes = 0
 
     def _extra_source(self, index, source, read, check):
@@ -62,8 +67,10 @@ class SemanticSearchReads(AssistantSearchReads):
             AND (a.status IS NULL OR a.status='active') AND a.mime GLOB 'image/*'
             ORDER BY a.id''', (index.library_id,))
         self._vector_rows = rows
+        self._library_id = index.library_id
         self._source_hashes = {str(aid): digest for aid, digest in hashes}
-        return {**extra, 'semantic_policy': (4 if self.serving_limits else 3),
+        return {**extra, 'semantic_policy': (5 if self.bulk_vectors else 4 if self.serving_limits else 3),
+                **({'bulk_vectors': self.bulk_vectors.descriptor} if self.bulk_vectors else {}),
                 **({'serving_limits': asdict(self.serving_limits)} if self.serving_limits else {}),
                 'exclusion_policy': EXCLUSION_POLICY_VERSION,
                 'joint_space_binding': self.encoder.binding.binding_sha256,
@@ -82,9 +89,20 @@ class SemanticSearchReads(AssistantSearchReads):
         selected = []
         for row in self._vector_rows:
             check()
-            if str(row[1]) in ids:
+            if self.bulk_vectors is not None or str(row[1]) in ids:
                 selected.append(row)
         records = _validated_rows(selected, self.encoder.binding.image_identity)
+        if self.bulk_vectors is not None:
+            # The explicit bulk artifact is authoritative for this complete
+            # current library cohort. Old individual NPYs are build provenance.
+            # Match every ready row and current source hash, even for a filter
+            # that will score only a subset. No scope is inferred from the file.
+            if (len(records) != len(selected) or not ids <= set(records)
+                    or any(artifact.source_sha256 != self._source_hashes.get(aid)
+                           for aid, artifact in records.items())):
+                raise d.DiscoveryUnavailable()
+            self._bulk_artifacts = tuple(sorted(records.values(), key=lambda item: int(item.asset_id)))
+            return None, tuple(records[aid] for aid in sorted(ids, key=int))
         # Missing, stale, duplicate or corrupt eligible vectors refuse the
         # whole search; top-k must not conceal incomplete candidate coverage.
         if set(records) != ids or len(selected) != len(ids):
@@ -127,13 +145,27 @@ class SemanticSearchReads(AssistantSearchReads):
         root, records = self._artifacts(found)
         return list(self._vector_records(root, records))
 
+    def _bulk_snapshot(self):
+        try:
+            return self.bulk_vectors.snapshot(self._bulk_artifacts,
+                library_id=self._library_id, check=self._check,
+                charge=self._charge_vector_bytes)
+        except BulkVectorUnavailable:
+            raise d.DiscoveryUnavailable() from None
+
     def _rank(self, found):
         # _run has already checked membership, filters and the current source
         # binding. Refuse before opening vectors, encoding, or restoring scores.
         if requires_semantic_clarification(self.query):
             raise SemanticUnsupported()
         check = self._check
-        if self.serving_limits is None:
+        bulk_snapshot = None
+        if self.bulk_vectors is not None:
+            root, artifacts = self._artifacts(found)
+            if artifacts:
+                bulk_snapshot = self._bulk_snapshot()
+            vectors = None
+        elif self.serving_limits is None:
             vectors = self._vectors(found)
             root, artifacts = None, ()
         else:
@@ -162,7 +194,26 @@ class SemanticSearchReads(AssistantSearchReads):
         if not found:
             return []
         query_vector = self.encoder.encode(self.query, check=check)
-        if self.serving_limits is None:
+        if self.bulk_vectors is not None:
+            # Read/hash the pinned container again after provider execution.
+            # Reusing canonical immutable bytes never bypasses current files.
+            bulk_snapshot = self._bulk_snapshot()
+            try:
+                if (type(query_vector) is not TextVector
+                        or query_vector.binding_sha256 != self.encoder.binding.binding_sha256
+                        or query_vector.query_sha256 != hashlib.sha256(self.query.encode('utf-8')).hexdigest()):
+                    raise ValueError('invalid_query_vector')
+                query = _canonical_components(VectorRecord('1',
+                    self.encoder.binding.text_identity, query_vector.vector,
+                    query_vector.checksum_sha256), self.encoder.binding.text_identity)
+            except (TypeError, ValueError, OverflowError):
+                raise d.DiscoveryUnavailable() from None
+            try:
+                ranked = bulk_snapshot.rank(query,
+                    tuple(artifact.asset_id for artifact in artifacts), check=check)
+            except BulkVectorUnavailable:
+                raise d.DiscoveryUnavailable() from None
+        elif self.serving_limits is None:
             ranked = rank_semantic(query_vector, self.encoder.binding, tuple(vectors), check=check)
         else:
             def batches():
@@ -191,6 +242,7 @@ class SemanticSearchRuntime:
     encoder: LocalSemanticEncoder
     pilot_owner_account_id: str | None = None
     serving_limits: SemanticServingLimits | None = None
+    bulk_vectors: BulkVectorStore | None = None
 
     def __post_init__(self):
         if (type(self.discovery) is not DiscoveryRuntime or
@@ -206,6 +258,10 @@ class SemanticSearchRuntime:
         if self.serving_limits is not None and (type(self.serving_limits) is not SemanticServingLimits
                 or self.pilot_owner_account_id is None):
             raise ValueError('Explicit serving limits require an exact pilot owner')
+        if self.bulk_vectors is not None and (type(self.bulk_vectors) is not BulkVectorStore
+                or self.serving_limits is None
+                or self.bulk_vectors.identity != self.encoder.binding.image_identity):
+            raise ValueError('Bulk vectors require explicit owner limits and matching image identity')
 
     @property
     def access(self):
@@ -266,7 +322,7 @@ class SemanticSearchRuntime:
             reader = SemanticSearchReads(AccessService(connection, clock=self.access.clock),
                 self.discovery.provider, self.budget, vector_root=self.vector_root,
                 encoder=self.encoder, query=query, server_snapshot=server_snapshot,
-                serving_limits=self.serving_limits)
+                serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors)
             binding = values.get('binding')
             if binding is None:
                 # presentation intentionally omits the internal binding; use

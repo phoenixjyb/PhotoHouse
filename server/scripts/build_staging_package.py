@@ -44,6 +44,7 @@ FILES = (
     'backend/app/access/semantic_encoder.py',
     'backend/app/access/semantic_search.py',
     'backend/app/access/semantic_streaming.py',
+    'backend/app/access/semantic_bulk_vectors.py',
     'backend/app/access/semantic_search_transport.py',
     'backend/app/access/semantic_provider_transport.py',
     'backend/app/access/search_text.py',
