@@ -1,5 +1,19 @@
 # Current project status
 
+**October 21 morning search qualification:** generated 23,761-vector checks now
+pass all seven protection checks at **13.7 seconds median / 15.0 seconds p95**;
+these fake-model diagnostics still leave interactive/native latency unqualified.
+Request-local metadata reuse and builtin vector arithmetic preserve fresh source
+and authorization checks. A separate v2 MPO primary-frame profile qualified the
+blocked original on Windows in **2.5 seconds**, preserving its hash/stat and all
+failure evidence; it is not integrated with the running index. The unchanged
+JPEG/PNG worker resumed from 8,431 ready photos plus one failure and reached
+1,166 committed batches at the latest observation; full coverage is pending.
+Focused MPO/legacy input checks: **46 passed**. Full API at earlier `5da29ba`:
+**2,829 tests / 3,628 subtests** plus demo; the newer increment awaits its full run.
+Semantic remains **OFF**, with local source unmerged/undeployed and index unpublished.
+See the [morning qualification record](SEMANTIC_LIBRARY_SCALE.md#latency-and-mpo-qualification--october-21-2026).
+
 **October 21 full-family candidate indexing:** local source now prepares bounded,
 metadata-stripped image inputs and checkpoints a frozen **23,761-photo** family
 roster. Six native extreme-image probes passed, including about 200 megapixels;

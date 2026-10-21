@@ -27220,6 +27220,60 @@
       "production_runtime_changed": false,
       "production_index_published": false,
       "activation_approved": false
+    },
+    {
+      "feature": "request-local-semantic-facts-and-equivalent-vector-arithmetic-with-bounded-mpo-v2",
+      "files": [
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "042593876c067f851ea4ccfc0c41797463a23694faee6d484fb99ed8302a93e4",
+          "sha256": "a38202a484e6bed0121cf27a44d6ed151e339be04f2434c5e038130a7db16d73"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "11f2ced67f52f90a4046f080973be363a6aae8e1c273801197820c756c5b4b28",
+          "sha256": "49edcfa37f543fe07f770e700804d6d587b1a22a249dd48441d279eb303c2c52"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "092d1a5e07995617f9b931c4b2edacb647f569a76dd8806645c12074b8108426",
+          "sha256": "b82816bd1200607ce09dfc054b2d94ec1c0fd0212b24c93ef82ee8017fe249cd"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "1ab334a9d2efa350bc376be246f7419a955012bd772d36d47675dc0f68244f31",
+          "sha256": "0285f26bde25bae51ce25fe0c084ea33ef6406f6542c643903b76c7efeacbf54"
+        },
+        {
+          "path": "server/backend/app/access/visual_candidates.py",
+          "before_sha256": "55eb961c64893a17c9b07cac0c23833549a08b14b6853b52ffb63419fd5f44af",
+          "sha256": "067722ed9ccaf3224146e925b85a311f7d75e5f5427e63cbe6801443f6b660d6"
+        },
+        {
+          "path": "server/scripts/library_mpo_inputs.py",
+          "before_sha256": "07a6a76df02e4772077aafb433d0e19353ad12d36fe9e920eeb8d7f801ff361c",
+          "sha256": "d2c58e7f90adba6bc0a483954b073e2c554c472e3cdc53eb4c4727ca3cb6427e"
+        },
+        {
+          "path": "server/tests/security/test_library_mpo_inputs.py",
+          "before_sha256": "f8db0f7470bc3ce1acfb019d85a8e31d21cd70e5f907f263a4dac186b29a3f22",
+          "sha256": "51ba66977ca29875758ee9b1efd8ff5ea3c430aae4719485e5aa0eb03e5571e7"
+        },
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": "d78c59392414a7ce425aa86761022f5070357f9bc0310bbabc1543f339fc5f19",
+          "sha256": "fb1a28b7c91039e66124ae5cc9fc5f65e40b27ab3684bab945c0d1143b35f1f5"
+        },
+        {
+          "path": "server/tests/security/test_visual_candidates.py",
+          "before_sha256": "4f86707a8d2532603a3abdf8b6e68ac0c070b0829ccac674e38befd2b317d989",
+          "sha256": "027255ae5306a8e61fd0db0ee7b6652734b0d6e6cfc85830fcdae6c2841e2dbc"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "activation_approved": false
     }
   ]
 }

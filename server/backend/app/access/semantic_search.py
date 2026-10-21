@@ -29,7 +29,11 @@ def _valid_pilot_owner_account_id(value):
 class SemanticSearchReads(AssistantSearchReads):
     def __init__(self, access, provider, budget, *, vector_root, encoder, query,
                  server_snapshot=None, serving_limits=None):
-        super().__init__(access, provider, budget)
+        # This reader belongs to exactly one runtime call. Reuse derived facts
+        # for an identical opaque binding during that call, while every _run
+        # still reauthorizes and reads/validates the complete current source.
+        # Never share this cache between readers, queries or requests.
+        super().__init__(access, provider, budget, facts_cache={})
         self.vector_root, self.encoder, self.query = vector_root, encoder, query
         self._vector_rows = ()
         self._source_hashes = {}

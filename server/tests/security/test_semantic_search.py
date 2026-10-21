@@ -253,6 +253,21 @@ class SemanticSearchTests(unittest.TestCase):
         self.assertEqual(response.status_code, 409, response.text)
         self.assertNotIn('items', response.json())
 
+    def test_new_request_rebuilds_literal_facts_and_refuses_previous_source_binding(self):
+        first = self.query(filters={'text': 'secret memory phrase'})
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual([item['id'] for item in first.json()['items']], ['101'])
+        self.fixture.mutate("UPDATE access_stories SET text='fresh garden phrase',revision=2 WHERE id='note-101'")
+        stale = self.query(filters={'text': 'secret memory phrase'}, binding=first.json()['binding'])
+        self.assertEqual(stale.status_code, 409, stale.text)
+        self.assertNotIn('items', stale.json())
+        old = self.query(filters={'text': 'secret memory phrase'})
+        self.assertEqual(old.status_code, 200, old.text)
+        self.assertEqual(old.json()['items'], [])
+        current = self.query(filters={'text': 'fresh garden phrase'})
+        self.assertEqual(current.status_code, 200, current.text)
+        self.assertEqual([item['id'] for item in current.json()['items']], ['101'])
+
     def test_aggregate_deadline_and_cancellation_apply_before_provider(self):
         cancelled = lambda: True
         with self.assertRaises(d.DiscoveryCancelled):

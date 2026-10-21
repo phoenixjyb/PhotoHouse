@@ -273,3 +273,101 @@ measuring protected Windows and device latency, and qualifying current-library
 refresh, concurrency and broader family relevance. The generated large-library
 checks demonstrate capacity and protection, while their request times still leave
 a substantial serving-performance gap. Semantic search remains OFF.
+
+
+## Latency and MPO qualification — October 21, 2026
+
+Source `5da29ba` removes repeated root/ancestor walks inside each vector read and
+uses native lexical path strings for the remaining before/after walks. Each
+ancestor still must be a directory without a symlink or Windows reparse point.
+File identity, size, bounded reads and full container digest checks remain in
+both passes. Streaming ranking no longer repeats component validation immediately
+before the ranker performs the same checksum, dimension, finiteness, identity and
+unit-norm validation. The complete pre-inference validation pass remains, as do
+current source and membership checks before releasing results.
+
+A sequential generated 23,761-vector comparison used the same fixture, fake model
+and index inspector for baseline and changed code, with one sample for each of
+English, Chinese and mixed input. All seven protection checks and complete
+candidate counts passed in both runs. Median request time fell from **21.3 to
+17.3 seconds** (18.7%); p95/max fell from **23.1 to 17.5 seconds**. These are three
+samples per version, baseline first, without randomized order or controlled
+filesystem/thermal conditions. The earlier 48–55-second samples ran under a
+different competing workload and are not the comparison baseline.
+
+The next source increment reuses derived metadata only within one request and
+only for an identical freshly computed opaque source binding. Every read still
+reauthorizes and validates the complete current source; a new reader has a new
+cache. A changed note invalidates the old binding and new requests rebuild their
+literal facts. Component arithmetic now uses builtin iterators with unchanged
+float32 packing, checksum, finiteness, norm and identity checks; differential
+tests compare normalized components and scores bit for bit with the old path.
+No authorization, path or vector validation decision is cached across requests.
+
+A further generated 23,761-vector canary passed all seven protection checks with
+complete counts across three language samples: **13.7 seconds median, 15.0 seconds
+p95/max**. Its receipt records the actual modified source hashes. This invocation
+followed a Mac reboot and may have briefly overlapped focused tests; it is not a
+controlled cross-version speedup measurement. Phase profiling found substantial
+component and repeated metadata work as well as file access costs. These checks
+use a fake encoder and index inspector; actual model, Windows, network, device and
+concurrent-load acceptance remain separate. Interactive serving is still too slow.
+
+The full API profile at `5da29ba` passed **2,829 tests and 3,628 subtests**, plus
+the generated no-listener demo. The packaging inspector passed **26 tests and
+seven subtests**. The next increment passed the combined focused retrieval/MPO
+checks and expanded exact-boundary input tests; its full API profile is pending.
+Independent review found no protection regression in the request-local cache.
+
+`library_mpo_inputs.py` adds a separate worker-only primary-frame preparation
+profile. It bounds the MPF table to 2–16 entries before Pillow opens the file,
+checks all declared image ranges and overlap before scanning, and prepares only
+frame zero as metadata-stripped RGB PNG. Auxiliary pictures are never sought or
+decoded. The original-copy/hash/stat and resource-cap requirements remain. The
+base JPEG/PNG preparation module, model adapter and index source are unchanged.
+This standalone profile is not integrated with the current model, index, serving
+configuration or activation path. Existing vectors cannot be silently relabeled.
+
+The initial strict profile refused the actual eight-picture MPO because the
+primary length field was 4,195 bytes short. Separate bounded diagnostics found
+that strict whole-container frame-zero decoding succeeds, and the first physical
+JPEG EOI ends exactly at the earliest auxiliary start. All seven auxiliary ranges
+have exact JPEG framing. This establishes a length discrepancy, not its cause;
+no original metadata was repaired or rewritten.
+
+The new **v2 recipe** accepts an undercount only when the first primary EOI is
+at or after its declared end, at or before the earliest auxiliary, and within
+**65,537 bytes** (one maximum JPEG segment including its marker). Scanning stops
+at the smaller bound. Declared and actual primary sizes are both recorded.
+Auxiliary framing remains exact, permissive Pillow truncation mode is refused,
+and all table/range checks precede image decoding. The MPO and unchanged legacy
+input suites passed **46 tests**, including the exact undercount bound, one byte
+over it, corrupt tables, overlap, truncation, primary-only pixels and cleanup
+ownership refusals.
+
+A fresh Windows/Pillow 11.3 worker qualified that actual file under v2 in **2.5
+seconds**, with a mandatory 120-second / 2 GiB / two-process Job. Strict primary
+pixels produced a 1,536 × 2,048 metadata-free PNG, with zero auxiliary seeks.
+Original hash/stat, control/source hashes and semantic-off configuration were
+unchanged. The worker loaded no model, opened no database and reported no socket
+attempts; its process-local socket denial does not establish OS firewall isolation.
+The private derivative and all earlier failures are retained. This qualifies one
+input preparation, not an indexed vector or general MPO library coverage.
+
+Index recovery preserved the original candidate and its failed scratch instead
+of relaxing its nonempty-scratch guard. Only the verified committed prefix was
+copied into a fresh private candidate: **8,431 ready photos and one failure**.
+A transport timeout and Mac reboot interrupted local observation; independent
+native readback confirmed the copy had completed before indexing resumed once.
+The latest observation has **1,166 committed batches** and no new child failure.
+The frozen 23,761-photo roster and original JPEG/PNG worker identity remain;
+MPO v2 is not spliced into that running index. Full indexing, final current-roster
+coverage and full-library relevance remain unfinished. No recurring automation
+or scheduled task was installed for this work.
+
+The separate recovery task reports and records its completed exclusive window,
+with original worker states restored and the incumbent API/schema unchanged.
+Protected native serving checks still require fresh runtime pins, completed index
+receipts and current-roster readback. This search round changed no production
+database, original media, account, task or service. Source remains local, unmerged
+and undeployed; the private index remains unpublished. Semantic search is **OFF**.

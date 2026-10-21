@@ -59,6 +59,17 @@ def _mp_entry_field(raw, index, field_offset):
     return tiff_start + table_relative + index * 16 + field_offset
 
 
+def _insert_com_segments_before_mpf(raw, payload_sizes):
+    """Insert legal JPEG COM segments while preserving TIFF-relative MP offsets."""
+    mpf_signature = raw.index(b"MPF\x00")
+    mpf_marker_start = mpf_signature - 4
+    segments = bytearray()
+    for payload_size in payload_sizes:
+        payload = b"x" * payload_size
+        segments.extend(b"\xff\xfe" + struct.pack(">H", len(payload) + 2) + payload)
+    return raw[:mpf_marker_start] + bytes(segments) + raw[mpf_marker_start:], len(segments)
+
+
 def _prepare(raw, source, root, scratch):
     source.write_bytes(raw)
     return mpo.prepare_mpo_image(source, hashlib.sha256(raw).hexdigest(), [root], scratch)
@@ -92,7 +103,9 @@ def test_primary_only_profile_prepares_frame_zero_and_cleans_only_owned_files(tm
     assert prepared.recipe_sha256 == mpo.RECIPE_SHA256
     assert prepared.recipe["candidate_policy"] == "frame_zero_baseline_mp_primary_only"
     assert prepared.recipe["base_recipe_sha256"] == mpo.base.RECIPE_SHA256
+    assert prepared.recipe["schema"] == "photohouse.library_mpo_primary_input_profile.v2"
     assert prepared.recipe_sha256 != mpo.base.RECIPE_SHA256
+    assert prepared.declared_primary_bytes == prepared.actual_primary_bytes
     assert source.read_bytes() == raw
     assert source.stat().st_mtime_ns == original_stat.st_mtime_ns
     with Image.open(prepared.derived_path) as image:
@@ -105,6 +118,60 @@ def test_primary_only_profile_prepares_frame_zero_and_cleans_only_owned_files(tm
     derivative = prepared.derived_path
     mpo.cleanup_mpo_prepared(prepared, scratch)
     assert not original_copy.exists() and not derivative.exists()
+    assert source.read_bytes() == raw
+
+
+@pytest.mark.parametrize("payload_size", [29, 65533])
+def test_underreported_primary_size_accepts_bounded_com_segment_and_records_receipt(tmp_path, payload_size):
+    from PIL import Image
+
+    original = mpo_bytes()
+    raw, inserted_bytes = _insert_com_segments_before_mpf(original, [payload_size])
+    root, scratch, source = fixture_paths(tmp_path)
+    prepared = _prepare(raw, source, root, scratch)
+
+    assert prepared.declared_primary_bytes < prepared.actual_primary_bytes
+    assert prepared.actual_primary_bytes - prepared.declared_primary_bytes == inserted_bytes
+    assert prepared.recipe["mpf"]["primary_size_policy"]["maximum_undercount_bytes"] == 65537
+    assert source.read_bytes() == raw
+    assert prepared.private_original_copy.read_bytes() == raw
+    with Image.open(prepared.derived_path) as image:
+        assert image.mode == "RGB" and image.getexif() == {}
+        red, green, blue = image.resize((1, 1)).getpixel((0, 0))
+        assert red > 200 and blue < 50 and green < 50
+    mpo.cleanup_mpo_prepared(prepared, scratch)
+
+
+@pytest.mark.parametrize("case", ["undercount_over_limit", "undercount_one_byte_over_limit", "declared_crosses_auxiliary", "primary_truncated"])
+def test_primary_boundary_mismatches_are_rejected_before_pillow_decode(tmp_path, monkeypatch, case):
+    from PIL import ImageFile
+
+    original = mpo_bytes()
+    if case == "undercount_over_limit":
+        raw, _ = _insert_com_segments_before_mpf(original, [32760, 32760, 32760])
+    elif case == "undercount_one_byte_over_limit":
+        raw, _ = _insert_com_segments_before_mpf(original, [65530, 0])
+    elif case == "declared_crosses_auxiliary":
+        raw = bytearray(original)
+        primary_size_position = _mp_entry_field(original, 0, 4)
+        auxiliary_start = mpo._parse_mpf(original)[0][1].start
+        struct.pack_into("<I", raw, primary_size_position, auxiliary_start + 1)
+        raw = bytes(raw)
+    else:
+        entries, _actual_primary_end = mpo._parse_mpf(original)
+        raw = _mutate(original, lambda data: data.__setitem__(slice(
+            entries[0].end - 2, entries[0].end,
+        ), b"\xff\xd8"))
+    root, scratch, source = fixture_paths(tmp_path)
+    source.write_bytes(raw)
+
+    def pixel_decode_must_not_run(*_args, **_kwargs):
+        pytest.fail("invalid primary boundary reached Pillow pixel decode")
+
+    monkeypatch.setattr(ImageFile.ImageFile, "load", pixel_decode_must_not_run)
+    with pytest.raises(mpo.MpoImageInputUnavailable):
+        mpo.prepare_mpo_image(source, hashlib.sha256(raw).hexdigest(), [root], scratch)
+    assert not list(scratch.glob("*.derived.png"))
     assert source.read_bytes() == raw
 
 
@@ -226,6 +293,7 @@ def test_overlapping_ranges_refuse_before_any_jpeg_framing_scan(tmp_path, monkey
         pytest.fail("JPEG framing scan ran before overlap rejection")
 
     monkeypatch.setattr(mpo, "_jpeg_has_exact_eoi", framing_scan_must_not_run)
+    monkeypatch.setattr(mpo, "_jpeg_first_eoi_end", framing_scan_must_not_run)
     with pytest.raises(mpo.MpoImageInputUnavailable):
         mpo.prepare_mpo_image(source, hashlib.sha256(malformed).hexdigest(), [root], scratch)
     assert len(list(scratch.glob("*.original"))) == 1
@@ -304,7 +372,7 @@ def test_cleanup_refuses_modified_private_copy_without_deleting_either_file(tmp_
 
 
 def _add_malformed_nested_mpf_to_auxiliary(raw):
-    entries = mpo._parse_mpf(raw)
+    entries, _actual_primary_end = mpo._parse_mpf(raw)
     nested_payload = b"MPF\x00" + b"not-a-tiff-index"
     nested_segment = b"\xff\xe2" + struct.pack(">H", len(nested_payload) + 2) + nested_payload
     data = bytearray(raw[:entries[1].start + 2] + nested_segment + raw[entries[1].start + 2:])
@@ -330,3 +398,16 @@ def test_auxiliary_nested_mpf_marker_is_opaque_and_never_decoded(tmp_path, monke
     prepared = mpo.prepare_mpo_image(source, hashlib.sha256(raw).hexdigest(), [root], scratch)
     assert prepared.frame_count == 2
     mpo.cleanup_mpo_prepared(prepared, scratch)
+
+
+def test_permissive_global_decoder_policy_is_refused_before_open(tmp_path, monkeypatch):
+    from PIL import Image, ImageFile
+
+    raw = mpo_bytes()
+    root, scratch, source = fixture_paths(tmp_path)
+    monkeypatch.setattr(ImageFile, "LOAD_TRUNCATED_IMAGES", True)
+    monkeypatch.setattr(Image, "open", lambda *_args, **_kwargs: pytest.fail("permissive decoder reached open"))
+    with pytest.raises(mpo.MpoImageInputUnavailable):
+        _prepare(raw, source, root, scratch)
+    assert not list(scratch.glob("*.derived.png"))
+    assert source.read_bytes() == raw

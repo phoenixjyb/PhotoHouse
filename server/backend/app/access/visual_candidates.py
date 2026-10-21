@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import itertools
 import math
+import operator
 import re
 import struct
 from typing import Literal
@@ -134,7 +136,7 @@ def _packed_vector(vector: tuple[float, ...] | list[float]) -> bytes:
         packed = struct.pack(f">{len(vector)}f", *vector)
     except (OverflowError, struct.error):
         raise ValueError("invalid_vector") from None
-    if any(not math.isfinite(value) for value in struct.unpack(f">{len(vector)}f", packed)):
+    if not all(map(math.isfinite, struct.unpack(f">{len(vector)}f", packed))):
         raise ValueError("invalid_vector")
     return packed
 
@@ -152,13 +154,13 @@ def _canonical_components(record: VectorRecord, identity: VectorSpaceIdentity) -
     if checksum != record.checksum_sha256:
         raise ValueError("invalid_vector_record")
     values = struct.unpack(f">{len(record.vector)}f", packed)
-    norm = math.sqrt(math.fsum(value * value for value in values))
+    norm = math.sqrt(math.fsum(map(operator.mul, values, values)))
     if (not math.isfinite(norm) or norm == 0.0
             or abs(norm - 1.0) > UNIT_NORM_TOLERANCE):
         raise ValueError("invalid_vector_record")
     # Scoring uses unit-normalized canonical components. Keep the checksum
     # bound to the original float32 bytes above, before normalization.
-    return tuple(value / norm for value in values)
+    return tuple(map(operator.truediv, values, itertools.repeat(norm)))
 
 
 def _valid_identity(identity: object) -> bool:
@@ -184,7 +186,7 @@ def _asset_id(value: object) -> bool:
 
 def _score(left: tuple[float, ...], right: tuple[float, ...]) -> float:
     """Cosine score over canonical, unit-normalized float32 components."""
-    return math.fsum(a * b for a, b in zip(left, right))
+    return math.fsum(map(operator.mul, left, right))
 
 
 def rank_visual_candidates(

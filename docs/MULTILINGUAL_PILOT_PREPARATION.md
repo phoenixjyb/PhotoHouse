@@ -196,3 +196,12 @@ preserve exclusions, authorization and hard date constraints, but expose latency
 that is still unsuitable for declaring an interactive search release ready.
 The final real-library Windows measurement, failure resolution, current-roster
 readback and broader relevance/device acceptance remain open. Semantic stays OFF.
+
+The [latency and MPO follow-up](SEMANTIC_LIBRARY_SCALE.md#latency-and-mpo-qualification--october-21-2026)
+passes all seven generated full-cohort protection checks at 13.7 seconds median
+and 15.0 seconds p95/max with a fake model; native interactive performance remains
+unqualified. A standalone v2 primary-only profile now qualifies the blocked MPO
+as a private derivative while preserving originals and failure evidence. It is
+not integrated into the frozen worker's resumed index. Full coverage, current-
+roster/relevance checks, native performance and family/device acceptance remain
+open. Semantic search remains OFF.

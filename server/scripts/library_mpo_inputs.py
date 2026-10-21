@@ -23,20 +23,28 @@ import threading
 import library_image_inputs as base
 
 
-PROFILE_SCHEMA = "photohouse.library_mpo_primary_input_profile.v1"
+PROFILE_SCHEMA = "photohouse.library_mpo_primary_input_profile.v2"
 MAX_MPO_FRAMES = 16
+MAX_PRIMARY_UNDERCOUNT_BYTES = 65537
 _BASE_RECIPE = copy.deepcopy(base.PROFILE_RECIPE)
 _BASE_RECIPE_SHA256 = base.RECIPE_SHA256
 PROFILE_RECIPE = {
     "schema": PROFILE_SCHEMA,
     "candidate_policy": "frame_zero_baseline_mp_primary_only",
     "auxiliary_policy": "validate_mpf_ranges_but_never_open_or_decode",
+    "truncation_policy": "require_pillow_load_truncated_images_false",
     "mpf": {
         "minimum_frames": 2,
         "maximum_frames": MAX_MPO_FRAMES,
         "required_primary_mp_type": "0x030000",
         "image_data_format": "JPEG",
         "reject_overlaps_and_out_of_bounds_ranges": True,
+        "primary_size_policy": {
+            "comparison": "actual_first_jpeg_eoi_exclusive_end_minus_declared_primary_size",
+            "maximum_undercount_bytes": MAX_PRIMARY_UNDERCOUNT_BYTES,
+            "minimum_undercount_bytes": 0,
+            "must_end_at_or_before_earliest_auxiliary": True,
+        },
     },
     "base_recipe_schema": base.PROFILE_SCHEMA,
     "base_recipe_sha256": _BASE_RECIPE_SHA256,
@@ -70,6 +78,8 @@ class MpoPreparedImage:
     private_original_copy: Path
     derived_path: Path
     original_bytes: int
+    declared_primary_bytes: int
+    actual_primary_bytes: int
     observed_format: str
     frame_count: int
     observed_width: int
@@ -118,10 +128,10 @@ def _find_scan_marker(raw: bytes, start: int, end: int, check) -> int:
     return -1
 
 
-def _jpeg_has_exact_eoi(raw: bytes, start: int, end: int, check) -> bool:
-    """Check JPEG marker framing without decoding pixels or following MPF data."""
+def _jpeg_first_eoi_end(raw: bytes, start: int, end: int, check) -> int | None:
+    """Return the first EOI's exclusive end without decoding JPEG pixels."""
     if end - start < 4 or raw[start:start + 2] != b"\xff\xd8":
-        return False
+        return None
     position = start + 2
     next_check = position + _SCAN_CHECK_BYTES
     in_scan = False
@@ -129,7 +139,7 @@ def _jpeg_has_exact_eoi(raw: bytes, start: int, end: int, check) -> bool:
         if in_scan:
             marker_start = _find_scan_marker(raw, position, end, check)
             if marker_start < 0:
-                return False
+                return None
             marker_position = marker_start + 1
             fill_check = marker_position + _SCAN_CHECK_BYTES
             while marker_position < end and raw[marker_position] == 0xFF:
@@ -138,7 +148,7 @@ def _jpeg_has_exact_eoi(raw: bytes, start: int, end: int, check) -> bool:
                     base._check(check)
                     fill_check = marker_position + _SCAN_CHECK_BYTES
             if marker_position >= end:
-                return False
+                return None
             marker = raw[marker_position]
             if marker == 0x00 or 0xD0 <= marker <= 0xD7:
                 position = marker_position + 1
@@ -146,7 +156,7 @@ def _jpeg_has_exact_eoi(raw: bytes, start: int, end: int, check) -> bool:
             position = marker_start
             in_scan = False
         if raw[position] != 0xFF:
-            return False
+            return None
         fill_check = position + _SCAN_CHECK_BYTES
         while position < end and raw[position] == 0xFF:
             position += 1
@@ -154,25 +164,30 @@ def _jpeg_has_exact_eoi(raw: bytes, start: int, end: int, check) -> bool:
                 base._check(check)
                 fill_check = position + _SCAN_CHECK_BYTES
         if position >= end:
-            return False
+            return None
         marker = raw[position]
         position += 1
         if marker == 0xD9:
-            return position == end
+            return position
         if marker in (0x00, 0xD8) or 0xD0 <= marker <= 0xD7 or marker == 0x01:
-            return False
+            return None
         if position > end - 2:
-            return False
+            return None
         segment_length = struct.unpack_from(">H", raw, position)[0]
         if segment_length < 2 or position + segment_length > end:
-            return False
+            return None
         position += segment_length
         if position >= next_check:
             base._check(check)
             next_check = position + _SCAN_CHECK_BYTES
         if marker == 0xDA:
             in_scan = True
-    return False
+    return None
+
+
+def _jpeg_has_exact_eoi(raw: bytes, start: int, end: int, check) -> bool:
+    """Check that a JPEG's first EOI ends exactly at its declared boundary."""
+    return _jpeg_first_eoi_end(raw, start, end, check) == end
 
 
 def _mpf_segment(raw: bytes, check) -> tuple[int, int]:
@@ -212,7 +227,7 @@ def _mpf_segment(raw: bytes, check) -> tuple[int, int]:
     return found
 
 
-def _parse_mpf(raw: bytes, check=lambda: None) -> tuple[_MpEntry, ...]:
+def _parse_mpf(raw: bytes, check=lambda: None) -> tuple[tuple[_MpEntry, ...], int]:
     """Bound and validate the MP Index before Pillow parses the container."""
     tiff_start, tiff_end = _mpf_segment(raw, check)
     _need(tiff_end - tiff_start >= 8)
@@ -291,19 +306,34 @@ def _parse_mpf(raw: bytes, check=lambda: None) -> tuple[_MpEntry, ...]:
     # Complete all arithmetic/range/overlap checks before scanning any JPEG
     # bytes. The disjoint intervals make total framing work no greater than the
     # original file size even when the table is attacker supplied.
-    for start, end in intervals:
+    # The primary entry may under-report the first JPEG's byte length. Scan
+    # only through the smaller of the earliest auxiliary boundary and the
+    # declared end plus the maximum possible JPEG segment (including marker).
+    earliest_auxiliary = min(entry.start for entry in entries[1:])
+    declared_primary_end = entries[0].end
+    primary_scan_end = min(
+        earliest_auxiliary,
+        declared_primary_end + MAX_PRIMARY_UNDERCOUNT_BYTES,
+    )
+    actual_primary_end = _jpeg_first_eoi_end(raw, entries[0].start, primary_scan_end, check)
+    _need(actual_primary_end is not None)
+    _need(actual_primary_end >= declared_primary_end)
+    _need(actual_primary_end - declared_primary_end <= MAX_PRIMARY_UNDERCOUNT_BYTES)
+    _need(actual_primary_end <= earliest_auxiliary)
+    for start, end in intervals[1:]:
         base._check(check)
         _need(_jpeg_has_exact_eoi(raw, start, end, check))
-    return tuple(entries)
+    return tuple(entries), actual_primary_end
 
 
 def _decode_primary(raw: bytes, entries: tuple[_MpEntry, ...], check):
     # MPF parsing above imposes the frame/table bound before this Pillow open.
     try:
-        from PIL import Image, ImageOps
+        from PIL import Image, ImageFile, ImageOps
     except Exception:
         raise MpoImageInputUnavailable() from None
     try:
+        _need(ImageFile.LOAD_TRUNCATED_IMAGES is False)
         with base._bounded_pillow_profile(Image):
             with Image.open(io.BytesIO(raw)) as opened:
                 if opened.format != "MPO" or opened.n_frames < 2 or opened.n_frames > MAX_MPO_FRAMES:
@@ -377,7 +407,7 @@ def prepare_mpo_image(source_path, expected_sha256, original_roots, private_scra
         raw = private_copy.read_bytes()
         if not raw or len(raw) > base.MAX_ORIGINAL_BYTES:
             raise MpoImageInputUnavailable()
-        entries = _parse_mpf(raw, check)
+        entries, actual_primary_end = _parse_mpf(raw, check)
         width, height, orientation, prepared_width, prepared_height, encoded = _decode_primary(raw, entries, check)
         if len(entries) < 2 or original_bytes + len(encoded) > base.MAX_COMBINED_BYTES:
             raise MpoImageInputUnavailable()
@@ -393,10 +423,24 @@ def prepare_mpo_image(source_path, expected_sha256, original_roots, private_scra
             raise MpoImageInputUnavailable()
         base._check(check)
         result = MpoPreparedImage(
-            source_sha, derived_sha, source, source_stat_identity,
-            private_copy, derived, original_bytes, "MPO", len(entries), width, height,
-            orientation, prepared_width, prepared_height, RECIPE_SHA256,
-            copy.deepcopy(PROFILE_RECIPE),
+            source_sha256=source_sha,
+            derived_sha256=derived_sha,
+            original_path=source,
+            original_stat_identity=source_stat_identity,
+            private_original_copy=private_copy,
+            derived_path=derived,
+            original_bytes=original_bytes,
+            declared_primary_bytes=entries[0].size,
+            actual_primary_bytes=actual_primary_end - entries[0].start,
+            observed_format="MPO",
+            frame_count=len(entries),
+            observed_width=width,
+            observed_height=height,
+            orientation=orientation,
+            prepared_width=prepared_width,
+            prepared_height=prepared_height,
+            recipe_sha256=RECIPE_SHA256,
+            recipe=copy.deepcopy(PROFILE_RECIPE),
         )
         with _LOCK:
             _OWNED[id(result)] = (str(scratch), str(private_copy), source_sha, str(derived), derived_sha)
