@@ -5,18 +5,23 @@ This record covers the bounded generated-source trial through the optional
 process provider. The application and both story flags remain off. The trial does
 not deploy the feature or use family photos, memories, accounts or databases.
 
-A [pinned CPU candidate](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) now records the
-candidate artifacts and limits. The model has been acquired and its full size and
-SHA-256 verified. The original English trial failed with generic exit code 2
-after 6.578 seconds. A separately reviewed phase-aware diagnostic at `a6b27df`
-then failed inside generation (exit 17) after 6.344 seconds. A later sanitized
-diagnostic narrowed the completion failure to `OSError` during native sampler
-setup (6.453 seconds). A further unchanged-model diagnostic identified a native
-stack overflow (`0xC00000FD`) during `grammar_init` (6.829 seconds). No close
-failure was reported. None produced a qualified draft; the other four planned
-cases remain unrun. The default-off bounded-grammar source correction has
-model-free evidence and still needs native qualification. See the
-[candidate checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#measured-grammar-initialization-failure-and-source-correction).
+A [pinned CPU candidate](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) records the
+candidate artifacts and limits. The initial English runs failed before returning
+a draft; the unchanged baseline was eventually measured failing during native
+`grammar_init` with `0xC00000FD` (`STATUS_STACK_OVERFLOW`). The separate bounded-
+grammar correction at source `8055183` has now completed **one generated English
+case** through the real process provider: 32.031 seconds for the case and 44.766
+seconds for the outer bounded run. The returned draft passed the existing
+validators and requires review; nothing was saved. The same model/backend,
+options, context, two CPU threads and 4 GiB limit were retained.
+
+All 54 operator checks passed with zero skips before that run. Independent
+source/model/DLL checks, Job and exchange cleanup, zero host claims, preserved
+live services/feeds/report assets and explicit lane release followed it. This is
+one isolated generation result, with no accepted prose-quality review or native
+Chinese/mixed, active-cancellation or expiry result. Both application flags stay
+off. See the [corrected-grammar checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#corrected-grammar-first-generated-english-case-2026-10-22)
+for measured evidence and the earlier retained failures.
 
 The default-off synthetic application, protected prepare/cancel, review/save and
 `RuntimeConfiguration` injection seams are implemented. Windows completed 12
@@ -35,7 +40,8 @@ including the actual binding patch/restore and owned Job memory canary. The
 source correction is separate from that unchanged-baseline diagnostic.
 
 The sections below retain the proposed limits and trial procedure. They do not
-authorize another attempt; the recorded run stopped at the first English failure.
+authorize another attempt. Each native window needs fresh owner agreement and
+controls; the latest run covered English only, with no automatic replay.
 
 ## Small first slice
 

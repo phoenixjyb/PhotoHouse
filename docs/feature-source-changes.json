@@ -28593,6 +28593,30 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Measure native grammar_init STATUS_STACK_OVERFLOW with fixed numeric diagnostic, then replace plain bounded-string expansion by an acyclic disjoint-length helper graph. Preserve backend serialized character-token language and all other schema rules; keep decoded validators authoritative. Add aggregate caps, worker grammar-failure close/no-publication tests and source-package closure. New source is synthetic/pure-converter checked, not yet native-model-qualified; model/backend/options/resources and application flags unchanged."
+    },
+    {
+      "feature": "selected-story-first-native-english-success-checkpoint",
+      "source_commit": "8055183a40a8d9470d7c36bb4ffa0148638601f0",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "c8644eeeb7e8e906f64852b1422d37800e69dd401968aba4fa1479e948b04b51",
+          "sha256": "5697edd676a802c7621b9adda045ec030744f9521a28a4d72bf07750eaedd94a"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "a7018c4be8a2f50539d93d8e31bc414699f9a1cbe2ef9a010ab37df8208494c6",
+          "sha256": "7f638278df949a0c6077a4b330b186f4b0cc2de4bb07006aeceadb7a293a3e19"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "dd586ff7421dd845fbce817eedad3f09369f6d69cb3f14dc0d5e5fab035e0802",
+          "sha256": "b069c379677fa97ec28278330018375c9505d7ca0a3c4d8f5c7508d402088c6c"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Record exact805 native54/zero-skip gate and one generated English success32.031s/44.766s outer with unchanged model/backend/options/CPU2/4GiB; validated needs_review draft, no save/replay. Independent source/model/DLL/Job/exchange/host/process/service/feed/report preservation and explicit lane release. Language quality, Chinese/mixed, native cancellation/expiry/recovery and deployment remain separate open gates. Documentation only; application source unchanged."
     }
   ]
 }

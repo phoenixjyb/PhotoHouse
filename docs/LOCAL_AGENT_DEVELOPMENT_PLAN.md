@@ -260,11 +260,15 @@ checks, then its one phase-aware English diagnostic failed inside generation
 native sampler setup. The next 54-check diagnostic identified a native stack
 overflow during grammar initialization. A default-off source correction replaces
 deep bounded-string nesting while preserving the existing serialized grammar
-language and source constraints; it still needs native qualification. Successful
-completion and the other four real-model cases remain unqualified. Independent
-cleanup, source/model pins and live gateway/site/API/feed preservation passed;
-the coordinated lane was released. The optional exchange parent was packaged
-but not exercised by that diagnostic. Both story flags and provider factories
+language and source constraints. Source `8055183` then passed 54 Windows operator
+checks with zero skips and one real generated English case (32.031 seconds;
+44.766 seconds for the outer bounded run), using the same pinned candidate and
+limits. Its validated draft still requires review and was not saved. Chinese/
+mixed generation, active cancellation/expiry, recovery and prose quality remain
+unqualified. Independent cleanup, source/model pins and live gateway/site/API/
+feed/report preservation passed; the coordinated lane was explicitly released.
+The optional exchange parent was packaged but not exercised by these trials.
+Both story flags and provider factories
 remain off. The [trial record](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) retains
 all recorded attempts and the separate service, quality and family/device gates.
 

@@ -347,6 +347,52 @@ With the exact generated English schema, the corrected source emits 10,052
 bytes, 93 rules and six levels of parentheses. Only title, narration and question
 string productions differ. A canonical six-chapter case with twelve sources per
 chapter stays within the caps: 43,037 bytes and 298 rules, with other productions
-unchanged. These are model-free source/converter checks. The corrected worker
-has not yet passed native generation, language-quality, cancellation or expiry
-qualification and does not activate either application flag.
+unchanged. These are model-free source/converter checks; the following checkpoint
+records the separate native result. Neither application flag is activated.
+
+
+## Corrected grammar: first generated English case, 2026-10-22
+
+The reviewed source `8055183a40a8d9470d7c36bb4ffa0148638601f0` was staged
+into a new private source directory containing 275 pinned runtime files. The
+existing sources, dedicated environment, model, backend, context, generation
+options, two CPU threads, zero GPU layers and 4 GiB Job limit were unchanged.
+All 54 Windows operator checks passed with zero skips before model execution,
+including the binding patch/restore, core DLL mapping, bounded-grammar canary,
+Job drainage, reconciliation and owner close. No model was loaded by that gate.
+
+After fresh workload-owner holds, host/pin checks and a short bound clearance,
+one generated-source English case completed successfully. The process provider
+returned a validated draft marked `needs_review`; no story was saved. The case
+took **32.031 seconds**, with **44.766 seconds** for the outer bounded run. These
+include the recorded cold-start/integrity/cleanup path and are not token-only
+inference timings or a repeated-use latency distribution. The worker exited
+zero, its Job reached zero members, and the private exchange was disposed. The
+owned Job recorded a peak of **1,980,739,584 bytes** under the unchanged 4 GiB
+limit; this sampled counter does not establish a general capacity guarantee.
+The baseline grammar-initialization failure did not recur in this case. There
+was one model attempt, with no automatic replay, tuning or provider substitution.
+
+Independent readback verified the new 275-file source, both retained 274-file
+sources, full model size/hash and 13 installed DLL pins. The host store had zero
+claims and maintenance closed. Final independent process readback found zero
+owned Python processes or control observers. All 25 existing runtime identities,
+11 protected file pins, two tasks, four gateway/site/API processes and listeners,
+two update feeds and all 69 report assets matched their before/after checks.
+Endpoint checks do not establish continuous availability or browser acceptance.
+The Windows lane was explicitly released after verified cleanup.
+
+This qualifies one generated English case for this exact isolated candidate.
+Chinese and mixed-language generation, native active-inference cancellation and
+expiry, restart recovery, broader contexts and repeated-use latency remain open.
+No human or family quality review of the generated prose has been accepted.
+The default-off application/provider injection and explicit review/save rules
+remain unchanged; no serialized production recipe, service/task/configuration
+change, family-data access, GPU qualification, activation or deployment occurred.
+
+The next bounded native window should use fresh controls and owner evidence to
+qualify Chinese/mixed generation and active cancellation/expiry with the same
+pinned candidate. Keep one generation slot and immediate busy behavior for the
+small family setup. Quality/latency review, protected UI/device acceptance and a
+separate activation decision follow that evidence; successful generation alone
+does not authorize enabling the feature.
