@@ -623,6 +623,8 @@ such a policy. A reviewed, library/source-bound semantic eligibility cohort and
 visible partial-coverage/failure receipt are still needed before a pilot can
 serve incomplete coverage. Ordinary discovery scope and privacy gates must
 remain intact; benchmark success must not be treated as resolving this gap.
+The [proposed eligibility and coverage contract](SEMANTIC_ELIGIBILITY_DESIGN.md)
+records the next implementation and acceptance checks; it is not implemented.
 
 Semantic remains **OFF**. No production API, task, configuration, database write,
 account creation, index publication or activation is included. Remaining gates

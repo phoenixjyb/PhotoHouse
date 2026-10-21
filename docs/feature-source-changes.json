@@ -27496,6 +27496,25 @@
       "semantic_search_enabled": false,
       "production_runtime_changed": false,
       "activation_approved": false
+    },
+    {
+      "feature": "proposed-semantic-only-eligibility-and-visible-partial-coverage-contract",
+      "files": [
+        {
+          "path": "docs/SEMANTIC_ELIGIBILITY_DESIGN.md",
+          "before_sha256": null,
+          "sha256": "dc7192ca266ec55f9c263b5f09fe8ebeb08cb07cafa4478f8fdf00a22210d459"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "e65963124a6fe0f3048efceba408d143a734115e45c65b6a965d8ce228e5d28f",
+          "sha256": "ee00dee78bb81e1d372a4d6b3a34c7bee330ff8802f54d9dcfce82ae082184dd"
+        }
+      ],
+      "documentation_only": true,
+      "implementation_complete": false,
+      "semantic_search_enabled": false,
+      "activation_approved": false
     }
   ]
 }
