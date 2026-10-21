@@ -28433,6 +28433,23 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Add three generated-store integration tests through actual RuntimeConfiguration, source/evidence preview, protected prepare/cancel/logout ASGI routes and a real stdlib synthetic file-protocol child. Verify exact retry causes one child/no save, immediate busy admission, cancellation fences wording until reaping/exchange disposal/claim release, and foreign-session refusal followed by owner logout cleanup. Pin actual base interpreter and disable helper descendants. OS Job/resource limits remain simulated; no Windows/model/deployment acceptance claimed. Register in API/memory/Windows CPU profiles."
+    },
+    {
+      "feature": "selected-story-logout-race-contract-and-current-trial-checkpoint",
+      "source_commit": "2fb8febf5d81b2e4a9ff0640c42b6169d30b9d6e",
+      "files": [
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "before_sha256": "829fe1237a626bbf26340768750e49406ba7f270aca541fc5ed9b4e6d90a0528",
+          "sha256": "e7b225fb90fec61af5236b5cc5b9d239614d6db57700cb2128601cad79fb2072"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "ec477ff7cd2c6015c6f574a45c8af083c125a80a33fb80272a0b9b41300a17cb",
+          "sha256": "40b235911f9b8bb7c0d6ead1959faa311207189a8662f5dfc9f87ac2f5dda300"
+        }
+      ],
+      "notes": "An in-flight prepare may encounter the logout barrier before revocation commit or revoked authentication after it; both fixed refusals must fence output. A fresh exact retry after completed logout must be unauthorized. Clarify current verified model acquisition and preserve historical checkpoint evidence. No production behavior or Windows runtime changed."
     }
   ]
 }

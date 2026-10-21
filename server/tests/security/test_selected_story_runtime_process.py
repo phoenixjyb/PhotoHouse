@@ -229,9 +229,18 @@ class SelectedStoryRuntimeProcessIntegrationTests(unittest.IsolatedAsyncioTestCa
                     logout = await client.post('/auth/logout', headers={
                         'Authorization': 'Bearer ' + library_fixture.LibraryReadTests.owner_token})
                     self.assertEqual(logout.status_code, 200, logout.text)
-                    response, _ = await asyncio.wait_for(pending, 5)
-                    self.assertEqual(response.status_code, 401, response.text)
-                    self.assertEqual(response.json()['code'], 'draft_access_denied')
+                    response, body = await asyncio.wait_for(pending, 5)
+                    # The logout barrier fences before the revocation commit.
+                    # An in-flight delivery can observe either fixed refusal;
+                    # after logout completes, the same request must fail auth.
+                    self.assertIn((response.status_code, response.json()['code']), {
+                        (401, 'draft_access_denied'), (409, 'draft_scope_changed')})
+                    self.assertEqual(set(response.json()), {'detail', 'code'})
+                    retry = await client.post('/story-workspace/drafts/prepare?library=' + LIBRARY,
+                        headers={'Authorization': 'Bearer ' + library_fixture.LibraryReadTests.owner_token},
+                        json=body)
+                    self.assertEqual(retry.status_code, 401, retry.text)
+                    self.assertEqual(retry.json()['code'], 'draft_access_denied')
         self.assertTrue(all(child.poll() is not None for child in self.kernel.children))
         self.assertTrue(all(not directory.exists() for directory in self.kernel.exchanges))
         self.assertEqual(self.claim_count(), 0)

@@ -2,8 +2,9 @@
 
 This is a pinned candidate for the [first generated-source model trial](SELECTED_SOURCE_STORY_MODEL_TRIAL.md).
 It changes no application provider, feature flag, deployment or default dependency
-profile. The Windows checkpoint below records the acquired wheels, isolated
-installation and binding import; the real model remains unavailable.
+profile. The latest Windows checkpoint below records verified model acquisition
+and a first real trial that failed before generation was qualified. Earlier
+checkpoints are retained as historical evidence.
 The first trial measures the existing worker and containment path; it does not
 select this small model as the family's production storyteller.
 
@@ -27,9 +28,9 @@ Windows x64 CPython 3.12 only; it is not included by the API/development locks.
 | Complete download set | 25 wheels plus one model, 1,144,386,947 bytes |
 
 The 25 wheel sizes and SHA-256 values have now been verified against acquired
-Windows bytes. The model digest remains publisher metadata: its bytes have not
-been acquired or verified. Download verification must check exact size and
-SHA-256 before loading. See the [dependency notices](../third_party/selected-story-cpu-trial.md).
+Windows bytes. The later model-only acquisition also verified the exact GGUF
+size and SHA-256. Artifact verification permits the bounded trial; successful
+model construction, generation and cleanup need their own evidence. See the [dependency notices](../third_party/selected-story-cpu-trial.md).
 Keep the single GGUF alone in its dedicated protected directory;
 license records, wheels, reports and other files belong outside that directory.
 
@@ -112,7 +113,7 @@ These are preparation tests. They do not execute the installer, optional binding
 or real model runner, and they grant no workload clearance. Real artifact and
 native/model qualification require their own runtime evidence.
 
-## Windows acquisition and partial qualification, 2026-10-21
+## Historical Windows acquisition and partial qualification, 2026-10-21
 
 The owner approved the pinned acquisition, new private environment, native
 inspection and generated-source CPU trial. The operation acquired all 25 wheels
@@ -159,14 +160,14 @@ engine and GGUF bytes were generated fixtures; it did not import the real
 binding or load the real model. This was an interactive-user run, not SYSTEM
 qualification or installed-service acceptance.
 
-Final readback found no owned Python processes, zero claims in both synthetic
+At that checkpoint, final readback found no owned Python processes, zero claims in both synthetic
 host stores with maintenance closed, an empty real-model directory and all
 274 staged source-file hashes unchanged. All six mapped candidate DLL file
 hashes matched their installation pins. These are endpoint observations, not
 continuous service availability or atomic mapped-image verification.
 
-The real English/Chinese/mixed generation and real-model cancellation/expiry
-trial did not run. No real-trial owner receipt, admission window or packet was
+At that checkpoint, the real English/Chinese/mixed generation and real-model
+cancellation/expiry trial had not run. No real-trial owner receipt, admission window or packet was
 issued. Preserve the acquisition failure and private reports; obtaining the
 same pinned model is the next blocker, followed by a freshly confirmed workload
 window. Application flags remain off. No production database, family media,
