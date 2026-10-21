@@ -27200,7 +27200,7 @@
         {
           "path": "server/tests/security/test_visual_vector_loader.py",
           "sha256": "f4706f5b3cc4ae83a95473e607d85e5cc4ac183cc1ee5468da2ac74a1040e54a",
-          "before_sha256": "4da7d15c36aede9e9e61af0cbdc71a7a0a641b80998ccedbd14646a8019c4c27"
+          "prior_git_sha256": "4da7d15c36aede9e9e61af0cbdc71a7a0a641b80998ccedbd14646a8019c4c27"
         },
         {
           "path": "server/scripts/library_mpo_inputs.py",
