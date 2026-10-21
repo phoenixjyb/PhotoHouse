@@ -28428,6 +28428,35 @@
       "live_runtime_changed": false,
       "semantic_search_enabled": false,
       "notes": "Record completed e85 full-catalog synthetic-account native qualification and independently verified closure/preservation. Distinguish later R61 source-only validation, unmet backend target, and production/relevance/device gates."
+    },
+    {
+      "feature": "immutable-bulk-cohort-cache-key-r62",
+      "source_commit": "7ae5d2118836555c510554bea4d007da27286d5a",
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "before_sha256": "8122ee5e0f9b3317af0868e17c77fa274764f77a07dacd5078b0ba3747636d87",
+          "sha256": "e9971843a851534957db137a255986791d79654821a3615396a851a619fe40a6"
+        },
+        {
+          "path": "server/tests/security/test_semantic_bulk_vectors.py",
+          "before_sha256": "cf794b0c2e05eec3cc437988611c4304eb90f58131429a8897206f3b211a0159",
+          "sha256": "c5ef235f11938924042a869793aaee051f302f9136f8c5f34277b619be6ac021"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "c3e848a9c2e396e18f75c5eb94beffc072b2c7d783a869de238d4bc798f617c5",
+          "sha256": "0c7f45e1aed354c9c2ae348981034945cc619ce6ca4e9cbc80f4cc9109e38abc"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "f85885b1382ed0e187bd5b047468232fce2d147a1bf83d1e906da227aaf170bc",
+          "sha256": "e46db0f80de45d4723e6411fd6e1c891f334ca79fb970f6c54ebf5b3c4d65008"
+        }
+      ],
+      "live_runtime_changed": false,
+      "semantic_search_enabled": false,
+      "notes": "Fix warm-cache retained-reference metadata aliasing with immutable primitive keys for every artifact field. Preserve current file/hash/header checks, locking, complete-cohort validation, cancellation and exact score arithmetic. Native qualification remains pending."
     }
   ]
 }

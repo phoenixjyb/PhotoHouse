@@ -1,5 +1,19 @@
 # Current project status
 
+**October 22 bulk-cache correctness follow-up:** R62 fixes retained-reference
+aliasing in the bulk store's metadata key. It now copies all 16 validated artifact
+fields into immutable primitive tuples before cache comparison. Grammar-valid
+changes to retained artifact objects refuse on warm and cold stores; restoring
+metadata permits matrix reuse only after a fresh secure file read. Ranking
+arithmetic, full file/header checks and authorization remain unchanged. The
+focused bulk-vector suite passed 18 tests; independent related checks passed 33.
+The full API profile passed **3,000 tests / 3,732 subtests** plus the generated
+demo, with unchanged source during the receipt. This correction is source-only and
+was not in the native `e85c6e4` package; its native behavior/performance still
+needs qualification. All 11 hosted functional checks for the preceding R61
+`7ae5d21` passed; GitGuardian's historical fixture finding remains unadjudicated.
+Semantic stays **OFF**, with no merge, deployment or activation.
+
 **October 22 latest native search qualification:** frozen source `e85c6e4`
 passed all **15 protection checks** across 23,761 catalog entries (23,696 vectors
 and 65 omissions approved for qualification only). Nine English/Chinese/mixed

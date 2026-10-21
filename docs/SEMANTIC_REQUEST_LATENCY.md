@@ -139,6 +139,17 @@ generated demo with unchanged source during the receipt. Independent focused
 review passed 55 tests. **R61 is not part of the measured e85c6e4 native run**;
 its native latency and memory impact remain unqualified.
 
+R62 separately fixes a warm bulk-store metadata alias: its cache key now copies
+all 16 artifact fields into immutable primitive tuples rather than retaining
+artifact-object references. A grammar-valid mutation must refuse on both warm
+and cold stores. Restoring exact metadata may reuse the verified matrix only
+after a fresh secure file read. The 18-test bulk suite covers these cases and
+unchanged exact ranking; ranking arithmetic and file/header checks are unchanged.
+The full API profile passed **3,000 tests / 3,732 subtests** plus the generated
+demo, with unchanged source; independent related checks passed 33 tests. This is
+a correctness fix, not a measured latency improvement. **R62 is also
+outside the native e85c6e4 package** and needs native qualification.
+
 The next measured priorities are ranking CPU work, both protected bulk snapshots,
 and fresh SQL/fact construction. The request-local metadata increment may save
 only a fraction of the remaining gap. A synthetic Mac subphase experiment is not

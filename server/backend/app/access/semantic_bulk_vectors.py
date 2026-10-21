@@ -35,6 +35,12 @@ _ASSET_ID = re.compile(r"[1-9][0-9]{0,18}\Z", re.ASCII)
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 _READ_CHUNK = 1024 * 1024
 _CACHE_BLOCK_BYTES = 4 * 1024 * 1024
+_ARTIFACT_COHORT_FIELDS = (
+    "record_id", "asset_id", "source_sha256", "model_name", "artifact_sha256",
+    "preprocessing_sha256", "vector_space_id", "model_version", "dimension",
+    "normalization", "identity_sha256", "relative_path", "file_sha256",
+    "component_sha256", "created_at", "status",
+)
 
 
 class BulkVectorUnavailable(ValueError):
@@ -124,6 +130,22 @@ def _cohort_digest(artifacts, check) -> str:
         digest.update(struct.pack(">I", len(encoded)))
         digest.update(encoded)
     return digest.hexdigest()
+
+
+def _artifact_cohort_key(artifacts, check):
+    """Copy validated cohort metadata into immutable primitive tuples."""
+    rows = []
+    for artifact in artifacts:
+        _check_callback(check)
+        # validate_artifact has already enforced exact builtin field types.
+        # Store values rather than frozen dataclass references: object.__setattr__
+        # can still mutate a retained dataclass instance after this snapshot.
+        row = tuple(getattr(artifact, name) for name in _ARTIFACT_COHORT_FIELDS)
+        if any(type(value) is not (int if name in ("dimension", "created_at") else str)
+               for name, value in zip(_ARTIFACT_COHORT_FIELDS, row)):
+            _unavailable()
+        rows.append(row)
+    return tuple(rows)
 
 
 def _safe_file_parent(path: Path):
@@ -341,11 +363,11 @@ class BulkVectorStore:
         identity_digest, artifacts = _valid_artifact_cohort(artifacts, self.identity, library_id, check)
         if library_id != self.library_id or identity_digest != identity_sha256(self.identity):
             _unavailable()
+        cohort_key = _artifact_cohort_key(artifacts, check)
         cached = self._cache
-        # Equality covers all immutable current row fields after validation;
-        # this reuses only their deterministic digest, never authorization or
-        # current file checks. Any changed row recomputes and refuses below.
-        cohort_digest = (cached[0][1] if cached is not None and cached[1] == artifacts
+        # Reuse only the digest for an exact copy of the freshly validated
+        # primitive fields; never retain mutable artifact objects in the cache.
+        cohort_digest = (cached[0][1] if cached is not None and cached[1] == cohort_key
                          else _cohort_digest(artifacts, check))
         raw, _ = _read_secure_file(self.path, self.file_sha256, check, charge)
         header, payload = _decode_container(raw)
@@ -356,7 +378,7 @@ class BulkVectorStore:
             _unavailable()
         key = (self.file_sha256, cohort_digest, library_id, identity_digest)
         cached = self._cache
-        if cached is not None and cached[0] == key and cached[1] == artifacts:
+        if cached is not None and cached[0] == key and cached[1] == cohort_key:
             canonical_matrix = cached[2]
         else:
             # One lock owns cold verification and cache publication. Waiters
@@ -366,12 +388,12 @@ class BulkVectorStore:
             try:
                 _check_callback(check)
                 cached = self._cache
-                if cached is not None and cached[0] == key and cached[1] == artifacts:
+                if cached is not None and cached[0] == key and cached[1] == cohort_key:
                     canonical_matrix = cached[2]
                 else:
                     canonical_matrix = _canonical_matrix(payload, artifacts, self.identity, check)
                     _check_callback(check)
-                    object.__setattr__(self, "_cache", (key, artifacts, canonical_matrix))
+                    object.__setattr__(self, "_cache", (key, cohort_key, canonical_matrix))
             finally:
                 self._cache_lock.release()
         return BulkVectorSnapshot(artifacts, self.identity, canonical_matrix)
