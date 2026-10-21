@@ -9,7 +9,9 @@ A separate [provider-only readiness check](SEMANTIC_PROVIDER_READINESS.md) verif
 an externally pinned private configuration and one synthetic local encode without
 changing provider protocols/model recipes, opening a database or activating search.
 The loader checks the actual configuration document before credential reads.
-Focused generated checks passed; integrated source/native qualification is pending.
+Source `265034e` passed **2,989 tests / 3,717 subtests** plus the generated demo
+with an unchanged source receipt. All ten archive checks and the nine-checkpoint
+coverage browser journey passed. Native optimized performance qualification is pending.
 Semantic stays **OFF**, with no native speedup or production-deployment claim.
 
 **October 22 integrated request-performance source qualification:** source

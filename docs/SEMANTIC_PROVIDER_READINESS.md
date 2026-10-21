@@ -53,3 +53,13 @@ and latency checks, immutable index generation/refresh/retirement, rollback and
 explicit activation authority. Preserve every existing live wrapper/route when
 preparing a later API deployment. These source tools do not reserve a Windows
 window or manage another session's processes.
+
+## Source qualification
+
+Source `265034e` passed the complete API profile (2,989 tests / 3,717 subtests plus
+the generated no-listener demo), with unchanged source throughout the receipt.
+All ten archive checks passed, including extracted no-argument planning without
+optional ML imports or checkout fallback. Focused fixtures cover pin mismatch
+before credentials, a configuration-read race, credential/config changes during
+the exchange, malformed responses, unsupported input and timeout redaction.
+No native provider-readiness invocation or production activation is claimed.

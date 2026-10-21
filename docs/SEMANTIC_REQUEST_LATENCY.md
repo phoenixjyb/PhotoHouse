@@ -82,8 +82,12 @@ response must pass a final comparison against that binding. A missing captured
 binding fails closed. Mid-request source or membership changes still withhold cards.
 Generated tests verify source-read counts, identical current binding/fingerprint,
 provider and heuristic refusals after mutation, retained page guards and recovery
-without another model call. Integrated source and native qualification of R59 are
-pending; it is separate from the fixed R58 receipt above.
+without another model call. Source `265034e` passed the integrated API profile:
+2,989 tests / 3,717 subtests plus the generated demo, with unchanged source. All
+ten archive checks and the nine-checkpoint partial-coverage browser journey passed.
+The first integrated run caught a profiler assertion that still expected three
+policy validations; the corrected contract requires ranking plus final validation.
+Native performance qualification remains pending, separate from the R58 receipt.
 
 ## Qualification and remaining work
 
