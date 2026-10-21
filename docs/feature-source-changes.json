@@ -27752,6 +27752,27 @@
       "production_policy_created": false
     },
     {
+      "feature": "existing-vector-artifact-source-ledger-registration-r57",
+      "source_commit": "a46d9f551277b8b0fb8444ce965154f89aa5f2d3",
+      "files": [
+        {
+          "path": "server/backend/app/access/visual_vector_artifacts.py",
+          "before_sha256": null,
+          "sha256": "bfab78ba6ad90507d795ba2e96903f73ee88c06bb0775ea0cf1c97e1878acee2"
+        },
+        {
+          "path": "server/tests/security/test_visual_vector_artifacts.py",
+          "before_sha256": null,
+          "sha256": "ff7f60927a077239f0b88704e459527a5a5d0f0f89636f1c8c3d77e39286ec1e"
+        }
+      ],
+      "source_ledger_registration_only": true,
+      "existing_git_tracked_files": true,
+      "routes_added": false,
+      "live_schema_changed": false,
+      "semantic_search_enabled": false
+    },
+    {
       "feature": "semantic-request-validation-latency-and-full-catalog-native-record-r57",
       "source_commit": "a46d9f551277b8b0fb8444ce965154f89aa5f2d3",
       "files": [
