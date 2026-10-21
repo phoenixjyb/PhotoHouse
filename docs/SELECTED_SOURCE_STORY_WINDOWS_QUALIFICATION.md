@@ -80,3 +80,37 @@ cross-process inference coordination, production model-worker implementation,
 locality/retention, GPU/driver behavior, quality/latency or family/device
 acceptance. Those remain activation/deployment gates. An inactive source package
 may be a deployable candidate while real AI generation remains unqualified.
+
+## Recorded isolated rehearsal: 2026-10-21
+
+Pinned source `0e218ece143cca299704c2c6b4513bffa9051da1` passed on
+Windows 11 with the existing Python 3.12.10 environment, executed as SYSTEM.
+The source-only ZIP contained 271 files; its SHA-256 was
+`df9040f245625a07a049c1fb7d99dc4be472b1cedf605a140fb95e057b6d70fb`.
+The complete closed manifest and extracted file hashes were verified before
+execution. Reports, interpreter digest and host identity remain private.
+
+All 12 generated-data application/schema checks and all nine native story cases
+passed. Default application imports left both story flags off and constructed
+no agent supervisor or story lifecycle. The native canary used real Windows
+Jobs, independent outer membership/limit proof, actual exchange owner/DACL
+checks, resumed synthetic workers and a real lingering descendant.
+
+The manually started qualification task had no triggers, ran as SYSTEM and
+completed with result zero. It was removed after completion. All 79 existing
+PhotoHouse task definitions, enabled states and principals matched the before
+snapshot exactly; the active API launcher hash, interpreter and inspected
+dependency versions were unchanged. The API was running before and after.
+This establishes those observed preservation checks, not continuous service
+availability. No production data, family media or model was used.
+
+A transfer attempt stopped before writing files. A first operator-wrapper run
+refused a duplicate environment key before launching the generated application
+check. The corrected wrapper used the same immutable package in a fresh private
+directory; failed-attempt evidence was retained. Neither attempt qualified the
+feature. The successful report above belongs only to the recorded source pin.
+
+This closes the isolated native Job/ACL/file-IPC and installed-interpreter
+compatibility rehearsal. The activation and deployment gates listed above
+remain open, especially the production model worker, resource coordination,
+API crash/restart behavior and model/GPU/quality acceptance.

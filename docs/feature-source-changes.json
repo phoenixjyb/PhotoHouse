@@ -27886,6 +27886,20 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Check actual private Windows owner/DACL before request text write and response read; preserve native cancellation category. Add explicit default-off source-package native Job and file-IPC synthetic qualification, portable refusal tests and operator runbook. No model worker, provider activation or production deployment."
+    },
+    {
+      "feature": "selected-story-isolated-windows-rehearsal-evidence",
+      "source_commit": "0e218ece143cca299704c2c6b4513bffa9051da1",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_WINDOWS_QUALIFICATION.md",
+          "before_sha256": "420a6730e6232eded60a111ae9b45aebc5850a143457193cc53425772dc6d0fd",
+          "sha256": "9f214640683b9005e6bb11c09942f9fd937885efefe7362cba0a6eabd92b9edd"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Record the separately authorized isolated SYSTEM synthetic qualification: 12 generated application cases and 9 real Windows Job/ACL/file-IPC cases passed on the pinned source-only package. Owned one-off task removed; existing definitions and launcher verified unchanged. No production data/model use, feature activation or deployment."
     }
   ]
 }
