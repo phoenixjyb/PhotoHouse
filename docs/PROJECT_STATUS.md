@@ -18,8 +18,14 @@ caught by the qualification harness. Full API at `3aa43c6` passed **2,867 tests 
 3,651 subtests** plus the generated demo, with unchanged source and revision.
 The native audit verified all 23,696 vector payloads/metadata and current original
 stat identities, with all 65 failures accounted for; it did not rehash original
-media bytes. Real-model Windows bulk HTTPS/TCP measurement is running with
-synthetic accounts; no latency result is claimed yet. See the
+media bytes. The real-model Windows bulk canary passed **all 10 protection checks**
+with **zero individual NPY query reads**: nine loopback HTTPS/TCP samples measured
+**9.78 seconds median / 10.16 seconds maximum**, with an **18.30-second cold
+request**. This misses the 2-second backend target. Model encoding averaged
+about 145 ms; more granular request-pipeline profiling is needed. Independent
+readback verified inputs/results and process/listener closure; API/config/OTA
+pins stayed unchanged. These are synthetic-account loopback measurements, not
+phone/WAN, concurrent-load or relevance acceptance. See the
 [readiness qualification record](SEMANTIC_LIBRARY_SCALE.md#completed-index-and-lifecycle-qualification--october-21-2026).
 The real benchmark uses a ready-only synthetic catalog. Production searches
 whose candidates include one of the 65 missing embeddings still refuse; a

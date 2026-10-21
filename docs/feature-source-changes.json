@@ -27515,6 +27515,33 @@
       "implementation_complete": false,
       "semantic_search_enabled": false,
       "activation_approved": false
+    },
+    {
+      "feature": "native-real-model-bulk-latency-and-readiness-qualification-results",
+      "source_commit": "3aa43c6cf12c6c4e1d6139d975374cc823cc9cc0",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "4869643735105e4d363602095ee63283c072a9434954cbfa14327a60421a361d",
+          "sha256": "b7949c277d28c654e40983bdb37c98bc71a4c33af34c7c2ee4757b3a59af3c0f"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "ee00dee78bb81e1d372a4d6b3a34c7bee330ff8802f54d9dcfce82ae082184dd",
+          "sha256": "3705767172262fb8db41630863ef8441528ec2ec018bcee533990f61c805f103"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "f24ded85bab1ba8d889fed951b67633bd7464289ae5ef6cd99bebd29118ba709",
+          "sha256": "ad4045d492ed74f7f3afdf540114a623138232f7f9a12ddaf650550f93ba92a3"
+        }
+      ],
+      "documentation_only": true,
+      "native_qualification_completed": true,
+      "performance_target_met": false,
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "activation_approved": false
     }
   ]
 }

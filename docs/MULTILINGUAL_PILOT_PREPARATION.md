@@ -231,10 +231,14 @@ been attempted, but semantic coverage is incomplete.
 The [completed-index and lifecycle follow-up](SEMANTIC_LIBRARY_SCALE.md#completed-index-and-lifecycle-qualification--october-21-2026)
 adds synthetic-account revocation, soft-deletion and library-scope removal probes
 before inference, plus stale-cache fault injection. Full API at `3aa43c6` passed
-**2,867 tests / 3,651 subtests** plus the demo. A private real-model bulk HTTPS/TCP
-benchmark is running. Its initial audit passed all 23,696 vector payloads and
-metadata plus source stat identities, without rehashing original bytes; no new
-latency or relevance acceptance is claimed yet.
+**2,867 tests / 3,651 subtests** plus the demo. The real-model Windows bulk HTTPS/TCP
+canary passed all 10 protection checks with no individual NPY query reads. Nine
+loopback samples measured **9.78 seconds median / 10.16 seconds maximum**, and
+**18.30 seconds cold**. The initial audit passed all vector payloads and metadata
+plus source stat identities without rehashing original bytes. Independent
+receipts and process closure passed; API/config/OTA pins remained unchanged.
+The 2-second backend target is unmet; actual phone/WAN and broad relevance
+acceptance remain unqualified.
 The benchmark uses only ready artifacts; production candidate sets containing
 a missing embedding still refuse. A reviewed semantic-only eligibility policy
 with visible partial coverage is required without narrowing ordinary discovery.

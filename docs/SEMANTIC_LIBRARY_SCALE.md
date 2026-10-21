@@ -607,11 +607,36 @@ four-process Job, a 16 GiB free-RAM floor and two CPU threads. It validates the
 completed index, builds a separate derived bulk file and synthetic database, then
 measures three language queries three times through temporary loopback HTTPS API
 and authenticated TCP provider listeners. No existing index is modified. The
-packet's source/control compatibility was independently reviewed. The child’s initial full-index audit has passed: all 23,696 vector payloads and
-metadata, complete checkpoint inventory, original-source stat identities and all
-65 failure records verified. It did not rehash original bytes. The real-model
-query benchmark and final postflight are still running; no latency result is
-claimed yet.
+packet's source/control compatibility was independently reviewed. The initial full-index audit passed: all 23,696 vector payloads and metadata,
+complete checkpoint inventory, original-source stat identities and all 65 failure
+records verified. It did not rehash original bytes. The native real-model canary
+then completed successfully in about 29 minutes 41 seconds, including extensive
+setup and before/after full-index verification. Nine fixed query samples (three
+languages, three repetitions) measured **9.781 seconds median / 10.156 seconds
+maximum**; its cold request took **18.297 seconds**. All **10 protected checks**
+passed, including the three new lifecycle probes, with **zero individual NPY
+reads during queries** and 30 bulk snapshots. Fifteen provider/model encodes
+across queries, filters and recovery checks took 2.179 seconds in total (about
+145 ms average). The two instrumented full-index inspections took about 991
+seconds in total; that setup/qualification cost is separate from query latency.
+Observer overhead is included.
+
+Independent readback verified all nine staged inputs, the measurement hash and
+native receipt agreement, original index-manifest hash and Job proof. It also
+confirmed zero remaining candidate processes and test listeners. Postflight
+preserved the exact API task/action/entry/config/listener identity and phone/TV
+feed pointers. The Mac operator and its temporary sleep inhibitor exited. No
+production services or tasks were controlled. A first readback diagnostic had a
+template syntax error before executing its verification body; a fresh AST-checked
+read-only diagnostic passed. The original failure evidence remains retained.
+
+These measurements use the real Windows CPU model and completed family-derived
+vectors, but synthetic accounts/catalog data and server-loopback HTTPS/TCP. They
+are not phone/WAN, concurrency, broad relevance or service-SLO acceptance. The
+**2-second backend target remains unmet**. The model encode timings point to
+remaining request processing/validation/scoring cost; finer profiling is still
+needed before attributing the delay to a specific function. No controlled
+speedup ratio is claimed against earlier different/uncontrolled runs.
 
 The serving canary's synthetic catalog intentionally contains only the 23,696
 ready artifacts. It does not prove serving behavior for the actual catalog's
@@ -628,7 +653,7 @@ records the next implementation and acceptance checks; it is not implemented.
 
 Semantic remains **OFF**. No production API, task, configuration, database write,
 account creation, index publication or activation is included. Remaining gates
-include real-model/network measurement completion, broad
+include finer request-performance qualification, broad
 family relevance and explicit failed-input disposition, refresh/swap/retirement
 packaging, controlled source integration/deployment and an owner-only activation
 proposal. Family/device acceptance remains separate.
