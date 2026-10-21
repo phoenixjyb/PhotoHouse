@@ -132,3 +132,9 @@ search. No source or synthetic pass establishes those results.
 The separate [generated pair measurement](SEMANTIC_PAIR_QUALIFICATION.md)
 reuses one full checkpoint to measure simple image/text retrieval in English
 and Chinese. Its results do not approve a binding or qualify legacy vectors.
+
+For an already running direct/library 768-dimensional provider, the separate
+[provider-only readiness CLI](SEMANTIC_PROVIDER_READINESS.md) verifies an externally
+pinned private configuration and one fixed synthetic response. It does not apply
+to this older 512-dimensional OpenCLIP path, manage the process or replace native
+lifecycle and activation checks.

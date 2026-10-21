@@ -63,6 +63,7 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/qualify_library_semantic.py',
             'scripts/semantic_coverage_qualification.py',
             'scripts/semantic_request_profile.py',
+            'scripts/semantic_provider_readiness.py',
             'scripts/semantic_loopback_network.py',
             'scripts/semantic_scene_comparison.py',
             'scripts/semantic_reviewed_projection.py',
@@ -271,8 +272,8 @@ class StagingPackageTests(unittest.TestCase):
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'
-                'import semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network\n'
-                'for module in (semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network):\n'
+                'import semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness\n'
+                'for module in (semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness):\n'
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 'for module in (build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot):\n'
                 ' captured=io.StringIO()\n'
@@ -288,6 +289,10 @@ class StagingPackageTests(unittest.TestCase):
                 'with redirect_stdout(captured): assert qualify_multilingual_scenes.run([])==0\n'
                 "assert json.loads(captured.getvalue())['private_files_read'] is False\n"
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
+                'captured=io.StringIO()\n'
+                'with redirect_stdout(captured): assert semantic_provider_readiness.main([])==0\n'
+                "assert json.loads(captured.getvalue())['status']=='plan_only'\n"
+                "assert json.loads(captured.getvalue())['private_file_reads'] is False\n"
                 'raise SystemExit(qualify_semantic_scenes.run([]))\n'
             )
             result = subprocess.run([sys.executable, '-I', '-B', '-c', program],

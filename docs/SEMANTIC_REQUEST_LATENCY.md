@@ -29,8 +29,8 @@ read's authority or policy decision:
   unchanged. Artifact IDs, source hashes, policy/approval, file and permission
   state never enter this pure computation cache.
 
-All three fresh source/policy passes, per-row cancellation checks, candidate/source
-hash checks, both bulk-file snapshots and final authorization remain. The bulk
+Each ranking pass retains full fresh source/policy validation, per-row cancellation
+checks, candidate/source hash checks, both bulk-file snapshots and final authorization. The bulk
 file is still securely reopened and hashed around encoding. Ordinary discovery
 and older strict configurations keep their existing behavior.
 
@@ -58,8 +58,32 @@ Unsupported or larger chunks use the original per-row path. The actual byte
 limit, row limit, cancellation cadence and shared admission slots remain intact.
 Regression checks compare exact bytes for Unicode, control characters and numeric
 boundaries, exercise real SQLite at exact and one-byte-short budgets, and retain
-binary/nonfinite errors and cancellation. Integrated checks and native latency
-measurement are required before claiming an interactive improvement.
+binary/nonfinite errors and cancellation. Source `e37c97c` passed the integrated
+API profile (2,969 tests / 3,717 subtests plus the generated demo), ten archive
+checks, the nine-checkpoint partial-coverage browser journey, and the integrated
+photo-stack browser journey. Source stayed unchanged during the API receipt.
+The Chinese/English phone disclosures were inspected at 390 pixels and 150% text.
+Native latency measurement remains required before claiming an interactive gain.
+
+## First-page binding in the ranking read
+
+R59 removes the separate binding-only source read for a new unbound first page:
+exact integer page 1, no fingerprint and no server-owned recovery snapshot. The
+ranking transaction derives its current binding after complete source, cohort and
+eligibility validation. The final fresh source/policy read and exact-owner
+authorization still precede release. This reduces that path from three complete
+source reads to two without changing the binding or fingerprint format.
+
+A private search-action factory preserves ordinary discovery's supplied-binding
+requirement. Supplied bindings, fingerprint and pagination cases, and trusted
+conversation recovery keep their existing paths. The refusal path captures the
+ranking generation's binding before inference; even a provider's unsupported-query
+response must pass a final comparison against that binding. A missing captured
+binding fails closed. Mid-request source or membership changes still withhold cards.
+Generated tests verify source-read counts, identical current binding/fingerprint,
+provider and heuristic refusals after mutation, retained page guards and recovery
+without another model call. Integrated source and native qualification of R59 are
+pending; it is separate from the fixed R58 receipt above.
 
 ## Qualification and remaining work
 

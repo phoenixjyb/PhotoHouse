@@ -88,10 +88,10 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
                           wraps=semantic_search._validated_rows) as validate:
             response = self.query()
         self.assertEqual(response.status_code, 200, response.text)
-        # Binding, search, and final source recheck each validate their newly
-        # read cohort. _artifacts reuses the search generation after policy
-        # validation instead of parsing those exact rows a second time.
-        self.assertEqual(validate.call_count, 3)
+        # The ranking generation and final source recheck each validate their
+        # newly read cohort. _artifacts reuses the ranking generation after
+        # policy validation instead of parsing those exact rows a second time.
+        self.assertEqual(validate.call_count, 2)
         self.assertTrue(all(len(call.args[0]) == len(self.records)
                             for call in validate.call_args_list))
 
@@ -103,7 +103,9 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
         def changed_row(reader, *args, **kwargs):
             result = original(reader, *args, **kwargs)
             calls[0] += 1
-            if calls[0] == 2:
+            # Mutate the rows after eligibility validation in the ranking
+            # generation, before _artifacts can pair them with that policy.
+            if calls[0] == 1:
                 rows = list(reader._vector_rows)
                 changed = list(rows[0])
                 changed[14] += 1
@@ -119,11 +121,16 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
         original = semantic_search.SemanticSearchReads._extra_source
         calls = [0]
         readers = []
+        prior_generations = []
 
         def fail_fresh_source(reader, *args, **kwargs):
             readers.append(reader)
             calls[0] += 1
+            # The ranking pass has populated a valid generation. Fail the
+            # subsequent fresh source reread and prove it is cleared.
             if calls[0] == 2:
+                prior_generations.append(reader._eligibility_bulk_generation)
+                self.assertIsNotNone(reader._eligibility_bulk_generation)
                 with patch.object(semantic_search, 'verify_visual_vector_schema',
                                   return_value=False):
                     return original(reader, *args, **kwargs)
@@ -132,7 +139,9 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
         with patch.object(semantic_search.SemanticSearchReads, '_extra_source', fail_fresh_source):
             failed = self.query()
         self.assertEqual(failed.status_code, 503, failed.text)
-        self.assertEqual(self.calls, [])
+        self.assertNotIn('items', failed.json())
+        self.assertEqual(len(self.calls), 1)
+        self.assertEqual(len(prior_generations), 1)
         self.assertIsNone(readers[-1]._eligibility_bulk_generation)
 
     def test_current_identity_change_cannot_reuse_generation_or_open_bulk(self):
@@ -144,7 +153,9 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
         def change_identity(reader, *args, **kwargs):
             result = original(reader, *args, **kwargs)
             calls[0] += 1
-            if calls[0] == 2:
+            # Change the bound identity after the ranking generation captures
+            # it, before artifacts or the provider can be used.
+            if calls[0] == 1:
                 identity = reader.encoder.binding.image_identity
                 changed.append((identity, identity.model_version))
                 object.__setattr__(identity, 'model_version', 'changed-generation')

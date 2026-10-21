@@ -1,5 +1,6 @@
 """Private semantic runtime configuration stays explicit and fail closed."""
 from dataclasses import asdict, replace
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -13,6 +14,7 @@ sys.path[:0] = [str(ROOT / 'backend'), str(ROOT / 'tests/security')]
 
 from app.access.semantic_configuration import (SemanticConfigurationError,
     _require_semantic_paths_disjoint, load_semantic_runtime)
+from app.access import semantic_configuration
 from app.access.semantic_encoder import JointSpaceBinding, LocalSemanticEncoder
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.semantic_search import SemanticSearchRuntime
@@ -67,6 +69,32 @@ class SemanticConfigurationTests(unittest.TestCase):
         self.assertIs(runtime.discovery, discovery)
         self.assertEqual(runtime.encoder.binding.binding_sha256, self.binding.binding_sha256)
         self.assertEqual(runtime.encoder._bearer_token, 'a' * 40)
+
+    def test_expected_document_pin_is_checked_inside_loader_before_credential_read(self):
+        self.write()
+        self.write_credential()
+        pinned = json.dumps(self.document, sort_keys=True, separators=(',', ':'),
+                            ensure_ascii=False, allow_nan=False).encode('utf-8')
+        expected = hashlib.sha256(pinned).hexdigest()
+        changed = self.document | {'encoder_timeout_seconds': 1.4}
+        discovery = DiscoveryRuntime.__new__(DiscoveryRuntime)
+        with patch.object(semantic_configuration, '_load_private_document',
+                          return_value=changed) as read_private:
+            with self.assertRaises(SemanticConfigurationError):
+                load_semantic_runtime(self.config_path, discovery=discovery,
+                    source_root=ROOT.parent, expected_document_sha256=expected)
+        # The changed config document is the only private read; the credential
+        # loader is never reached after the in-loader pin mismatch.
+        read_private.assert_called_once_with(self.config_path, source_root=ROOT.parent)
+
+    def test_malformed_expected_document_pin_refuses_before_private_file_read(self):
+        with patch.object(semantic_configuration, '_load_private_document',
+                          side_effect=AssertionError('pin syntax must precede file reads')) as read_private:
+            with self.assertRaises(SemanticConfigurationError):
+                load_semantic_runtime(self.config_path,
+                    discovery=DiscoveryRuntime.__new__(DiscoveryRuntime),
+                    source_root=ROOT.parent, expected_document_sha256='A' * 64)
+        read_private.assert_not_called()
 
     def test_loader_refuses_missing_secret_malformed_pin_and_unreviewed_binding(self):
         self.write()

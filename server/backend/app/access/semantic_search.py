@@ -25,7 +25,8 @@ from .semantic_bulk_vectors import BulkVectorStore, BulkVectorUnavailable
 from .semantic_eligibility import SemanticEligibilityStore, SemanticEligibilityUnavailable
 
 
-# The policy is reread for initial binding, ranking and the final source check.
+# The policy is reread on each source pass; an unbound first page derives its
+# binding in the ranking pass and keeps the final fresh source check.
 # Keep its private-file budget separate from the vector payload allowance.
 MAX_POLICY_READ_BYTES = 64 * 1024 * 1024
 
@@ -398,19 +399,40 @@ class SemanticSearchRuntime:
                 serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors,
                 eligibility=self.eligibility)
             binding = values.get('binding')
-            if binding is None:
+            page = values.get('page', 1)
+            page_size = values.get('page_size', 20)
+            fingerprint = values.get('fingerprint')
+            unbound_first_page = (binding is None and type(page) is int and page == 1
+                                  and fingerprint is None and server_snapshot is None)
+            ranking_binding = None
+
+            def observe_binding(context):
+                nonlocal ranking_binding
+                ranking_binding = context
+
+            if binding is None and not unbound_first_page:
                 # presentation intentionally omits the internal binding; use
-                # the same authorized source read to obtain it directly.
+                # an authorized source read to obtain it before pagination,
+                # fingerprint validation, or server-owned recovery.
                 binding = reader._run(token, library, None,
                     lambda _index, _facts, context, _member, _check: context, bounded_cancelled)
             try:
-                result = reader.search(token, library, binding=binding, filters=filters,
-                    page=values.get('page', 1), page_size=values.get('page_size', 20),
-                    fingerprint=values.get('fingerprint'), cancelled=bounded_cancelled)
+                if unbound_first_page:
+                    action = reader._search_action(library, None, filters, page, page_size,
+                        fingerprint, allow_unbound_first_page=True,
+                        binding_observer=observe_binding)
+                    result = reader._run(token, library, None, action, bounded_cancelled)
+                else:
+                    result = reader.search(token, library, binding=binding, filters=filters,
+                        page=page, page_size=page_size, fingerprint=fingerprint,
+                        cancelled=bounded_cancelled)
             except SemanticUnsupported:
                 # A refusal is meaningful only while this authorized cohort is
                 # still current. Re-read after the provider transaction unwinds.
-                reader._run(token, library, binding,
+                expected_binding = ranking_binding if unbound_first_page else binding
+                if expected_binding is None:
+                    raise d.DiscoveryUnavailable() from None
+                reader._run(token, library, expected_binding,
                     lambda _index, _facts, _context, _member, _check: None, bounded_cancelled)
                 raise d.DiscoveryQueryUnsupported() from None
             # A provider call can outlive a concurrent membership or source

@@ -580,9 +580,16 @@ class DiscoveryReads:
                     'items': [item] if item is not None else []}
         return self._run(token, library, binding, action, cancelled)
 
-    def search(self, token, library, *, binding, filters, page=1, page_size=50, fingerprint=None, cancelled=lambda:False):
+    def _search_action(self, library, binding, filters, page=1, page_size=50, fingerprint=None,
+                       *, allow_unbound_first_page=False, binding_observer=None):
         def action(index,facts,context,member,check):
-            require(binding is not None and type(page) is int and 1<=page<=100000 and type(page_size) is int and 1<=page_size<=100)
+            unbound_first_page = binding is None and allow_unbound_first_page
+            require((binding is not None or
+                     (unbound_first_page and type(page) is int and page == 1 and fingerprint is None))
+                    and type(page) is int and 1<=page<=100000
+                    and type(page_size) is int and 1<=page_size<=100)
+            if binding_observer is not None:
+                binding_observer(context)
             require(type(filters) is dict and set(filters)<=self._search_fields(index))
             require(len(packed(filters))<=16384)
             assets,rows,facets,coverage=facts;normalized={}
@@ -634,4 +641,8 @@ class DiscoveryReads:
                     'total':len(found),'has_more':offset+page_size<len(found),'originals_allowed':bool(member['originals']),
                     'items':found[offset:offset+page_size],
                     **self._search_presentation(facets, normalized)}
+        return action
+
+    def search(self, token, library, *, binding, filters, page=1, page_size=50, fingerprint=None, cancelled=lambda:False):
+        action = self._search_action(library, binding, filters, page, page_size, fingerprint)
         return self._run(token,library,binding,action,cancelled)

@@ -28217,6 +28217,102 @@
       "live_runtime_changed": false,
       "semantic_search_enabled": false,
       "notes": "Preserve exact canonical source byte charges and all existing source read limits; bound aggregate serialization before allocation and retain per-row fallback."
+    },
+    {
+      "feature": "protected-initial-semantic-binding-and-pinned-provider-readiness-r59",
+      "source_commit": "e37c97c7b0aa812d51c1563d35e826337c82b77b",
+      "files": [
+        {
+          "path": "docs/LOCAL_SEMANTIC_TEXT_PROVIDER.md",
+          "before_sha256": "1eecdc51d9845b385921baef0c0a709653aec152b051a835e31637f9f4dd8fa3",
+          "sha256": "6bd4ff5f58dce8ca9de279bf93f2b16736347390de09f375cadbc4a48ddf6939"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "27a6bdec98c99306055c1e48efc0c4465045c802e611e6a127531fd0073b45d3",
+          "sha256": "9bd9b81ebf82f2eec3413b94b0e911e6e3ee1c90a41059dc908a662e37775795"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "09f0ce38f814392096f2f98870d6aa5458810ae5925ea727b18573f4a1a2fc9f",
+          "sha256": "51c3e19a7b431fccd3f4eb6a16b57ed903d58742a974ab01ca23c34b7ea76c0f"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "d4088c63010af22e3b7fb7479088625859fe22750e07615764d76f3b2f6d365e",
+          "sha256": "c7c1d1a492d61a75dbc38533df129ffecbbce30d28b44df790eb945ff16cf7b1"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": "16f514114e93b6afaad386a79f5f43c7e7b1f97191462725cd4fba24614c9cd7",
+          "sha256": "a35838b6557aaea2799139d5ba6414c094b82c5233dcbf0f263944df886ff6f6"
+        },
+        {
+          "path": "docs/SEMANTIC_PROVIDER_READINESS.md",
+          "before_sha256": null,
+          "sha256": "8c7c67c8da52eeae3797289de92acd8a2e8faf7b52f7a6af25e88f090cc79e18"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "f778ac06a3d22d4d94276a3741f9fc882ab875f5640c820993ee1cf9dbb1a838",
+          "sha256": "ee26145c4b861e2e9ccab3f17b833eda0bd9ff30af5283ba9f3fbacdc33849af"
+        },
+        {
+          "path": "server/backend/app/access/semantic_configuration.py",
+          "before_sha256": "05957b9bb69b88d86f88dfd917a9c1ced3aca8b0249e9c7625d5c1699afebf9e",
+          "sha256": "850cbaa79706890ee8d050264d6f9d73ed52ce8137f407b3f965b61f8070fbf2"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "5a9cbfd562b51edf7ed5be4c825e666059c3b66b38a673d51e2e25622e931e6c",
+          "sha256": "23f492fd4eeb664e897968e69d37227e9d43b715cd5471b8cbe3f1fb37390de4"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "7c15b9f9b5a0abfb4b4d3e5a7591e75b99af89a2873297c64a1b98a81ea9f546",
+          "sha256": "4ac9f1893c0e55c69f979df9c812ebf9c14c05166b9b4fa258dda5676f33affa"
+        },
+        {
+          "path": "server/scripts/semantic_provider_readiness.py",
+          "before_sha256": null,
+          "sha256": "56070b7838211ed69bd16a4578131e80a12f62dde2d1097430110f49cdec93f7"
+        },
+        {
+          "path": "server/tests/security/test_semantic_configuration.py",
+          "before_sha256": "ec1e28eb8d5b19831df8b630dd7869884d6a486f9836d188172472d6b6bd0412",
+          "sha256": "6140f5c3128d8548e13101068e0bd07ad5f6707f4fd8c774de28524702972f76"
+        },
+        {
+          "path": "server/tests/security/test_semantic_eligibility_search.py",
+          "before_sha256": "a1391ae792ba85b1f3eaaf5f29ac9546317788ec931af0b0c354679d3c98cf41",
+          "sha256": "421e1c76c39160470e74c69dd2c831f7b2cc522434747db409b697de7592be28"
+        },
+        {
+          "path": "server/tests/security/test_semantic_initial_search.py",
+          "before_sha256": null,
+          "sha256": "0e2c4a2534d93c8aa7f0d08d013f83ac90c59ac7b86b9be67b643d92aabe5b69"
+        },
+        {
+          "path": "server/tests/security/test_semantic_provider_readiness.py",
+          "before_sha256": null,
+          "sha256": "e97cb86f5bbdd4f6f93a3f8c4eddaddd3c9896b446983e2670488a8ea8b2925c"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "365e1c0ea100efbbbff40a623c2decd5de2adf0231601b20a7c137d36445015b",
+          "sha256": "ac985d839737d43f9d33e2c1b04d293f6e2f0464c8621cf62c8235e75cb211db"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "44a570bfa0c1eda3f73f4e6c1de69ce24dba51c9fa9e973f1f6a5e5a62b331c5",
+          "sha256": "7c7e93dedca0a32cbf0347468ef4897b66df3bef6fbd01132bafa778d8893e09"
+        }
+      ],
+      "routes_added": false,
+      "live_runtime_changed": false,
+      "semantic_search_enabled": false,
+      "provider_model_recipes_changed": false,
+      "notes": "Use one authorized ranking generation for an unbound first page while retaining final fresh checks; add provider-only synthetic readiness with per-load configuration pinning before credential reads. Record fixed R58 integrated source evidence without claiming native optimization qualification."
     }
   ]
 }

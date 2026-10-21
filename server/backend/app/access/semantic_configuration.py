@@ -5,7 +5,10 @@ measure model compatibility or establish multilingual retrieval quality.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
+import re
 import stat
 
 from .model_deployment import DeploymentError, _load_private_document
@@ -88,14 +91,32 @@ def _require_semantic_paths_disjoint(semantic_paths, protected_paths):
             raise SemanticConfigurationError()
 
 
-def load_semantic_runtime(path, *, discovery, source_root, protected_paths=()):
+def _canonical_document_sha256(document):
+    try:
+        payload = json.dumps(document, sort_keys=True, separators=(',', ':'),
+            ensure_ascii=False, allow_nan=False).encode('utf-8', errors='strict')
+    except (TypeError, ValueError, UnicodeError, RecursionError):
+        raise SemanticConfigurationError() from None
+    return hashlib.sha256(payload).hexdigest()
+
+
+def load_semantic_runtime(path, *, discovery, source_root, protected_paths=(),
+                          expected_document_sha256=None):
     """Load one bounded private manifest and build a loopback encoder runtime.
 
     Call only after an explicit semantic opt-in. The separately selected token
     file and vector root are checked only on this enabled path.
     """
     try:
+        if (expected_document_sha256 is not None and
+                (type(expected_document_sha256) is not str or
+                 re.fullmatch(r'[0-9a-f]{64}', expected_document_sha256,
+                              flags=re.ASCII) is None)):
+            raise SemanticConfigurationError()
         doc = _load_private_document(path, source_root=source_root)
+        if (expected_document_sha256 is not None and
+                _canonical_document_sha256(doc) != expected_document_sha256):
+            raise SemanticConfigurationError()
         if type(doc) is not dict or type(doc.get('format_version')) is not int:
             raise SemanticConfigurationError()
         version = doc['format_version']

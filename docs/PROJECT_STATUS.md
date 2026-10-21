@@ -1,11 +1,31 @@
 # Current project status
 
-**October 22 request-performance development:** local source removes duplicate
-artifact validation, reuses a validated cohort only within the same fresh source
-read, and bounds memoization of the pure canonical model-identity hash. Current
-source/policy/file checks and final authorization remain mandatory. The
-[latency follow-up](SEMANTIC_REQUEST_LATENCY.md) records the invariants and tests;
-its full API/native performance qualification is pending. Semantic stays **OFF**.
+**October 22 first-page and provider-readiness development:** new unbound semantic
+first pages derive their binding inside the authorized ranking read, reducing
+three complete source reads to two. A final fresh source/policy check and exact
+owner authorization remain mandatory; unsupported queries compare against the
+captured pre-provider binding. Ordinary discovery still requires a binding.
+A separate [provider-only readiness check](SEMANTIC_PROVIDER_READINESS.md) verifies
+an externally pinned private configuration and one synthetic local encode without
+changing provider protocols/model recipes, opening a database or activating search.
+The loader checks the actual configuration document before credential reads.
+Focused generated checks passed; integrated source/native qualification is pending.
+Semantic stays **OFF**, with no native speedup or production-deployment claim.
+
+**October 22 integrated request-performance source qualification:** source
+`e37c97c` integrates main `fe47cec` and preserves its grouping tooling and explicit
+schema-target packaging. It removes duplicate artifact validation, reuses a
+validated cohort only within the same fresh source read, bounds the pure canonical
+model-identity cache, and batches exact source-byte accounting within a bounded
+serialization. The fixed-source API receipt passed **2,969 tests / 3,717 subtests**
+plus the generated demo; all ten archive checks passed. The semantic coverage
+browser journey passed nine checkpoints, and the integrated photo-stack browser
+journey passed with no page errors or outside-origin requests. Enlarged bilingual
+phone disclosures were inspected. These are generated-data source checks, not
+native speedup, family relevance or device acceptance. The
+[latency follow-up](SEMANTIC_REQUEST_LATENCY.md) records the invariants and tests.
+Native measurement of these optimizations remains pending. Semantic stays **OFF**;
+no production deployment or activation occurred.
 
 **October 22 full-catalog native qualification:** source `a46d9f5` passed the
 full API profile (**2,916 tests / 3,703 subtests** plus the generated demo) and

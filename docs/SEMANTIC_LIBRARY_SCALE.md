@@ -681,7 +681,8 @@ remain intact; benchmark success must not be treated as resolving this gap.
 The [proposed eligibility and coverage contract](SEMANTIC_ELIGIBILITY_DESIGN.md)
 records the now locally implemented coverage contract. The
 [full-catalog qualification follow-up](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md)
-retains all omissions and adds private request timing; native evidence is pending.
+retains all omissions and adds private request timing; its October 22 native
+canary passed all 15 protection checks, as recorded at the start of this document.
 
 Semantic remains **OFF**. No production API, task, configuration, database write,
 account creation, index publication or activation is included. Remaining gates
