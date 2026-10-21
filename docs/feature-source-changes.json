@@ -28187,6 +28187,35 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Record approved isolated Windows results at runtime source 8dc4147: all25 wheels size/SHA verified and installed offline in a new private environment; pip check passed; all12 synthetic native lifecycle cases and seven PE-parser tests passed; bounded CPU binding-only import passed with expected core DLL path/file pins and no model construction. Auxiliary llama-common.dll OpenSSL imports remain unqualified and were not mapped. Acquisition stopped before model-file creation; original child exception unavailable because native launcher discarded streams; separate bounded HEAD check timed out. No acquisition retry/mirror/provider substitution, real model trial/window/receipt, GPU inference, production DB/media, service/task control, activation or deployment. Final readback: no owned Python processes, zero synthetic claims with maintenance closed, all274 source-file hashes intact. Disk hashes/module-path snapshot are not atomic mapped-image proof."
+    },
+    {
+      "feature": "selected-story-private-exchange-parent",
+      "source_commit": "0dd46babbaea04c994a302ecec96ab87f18bde8d",
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": "1b3ad06e8a0f30fbef6cb71c9526b2e0701277189843b533750adc0a63c68cd2",
+          "sha256": "b192cc9511f0362b02b7f8fb91adbb514ab3a9a19dd6f21f57d5f5e9350362f5"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_exchange_root.py",
+          "before_sha256": null,
+          "sha256": "07f3ab89895670e3b9e1ae38d0f4506c5b91930c1afa3652b9f2b50d6cb9bcd4"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "e440a58158d844cc1dfe862100cbac41f0afd341520798a3eac4c52bdd56d09e",
+          "sha256": "559b9c1b9785e32004cebbcd2c7e502f0504f00dab39eefd4da9a3d670af280f"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "afa396d8d71943e9a9c187f197f38136029d09706515accc02175a29758ccda2",
+          "sha256": "41a37c3e13029e0eb0f1034ec94ffdf7d3c9817862cff155d09a09fee211a23b"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add explicit optional existing private local IPC parent without process-global TEMP changes. Validate spelling without I/O during construction; check parent identity, canonical path and private permissions after admission and before exchange reads/disposal. Parent replacement retains exchange and host claim. Explicit parent is included in launch digest; None preserves legacy digest. Synthetic tests cover containment/sibling preservation, missing/unsafe/replaced parents and recovery. Staged app/factory activation and native Windows qualification remain separate; immutable runtime source 8dc4147 is unchanged."
     }
   ]
 }

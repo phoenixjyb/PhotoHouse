@@ -35,6 +35,22 @@ the explicit launch configuration and injects two reserved environment variables
 | `PHOTOHOUSE_NATIVE_STORY_RESPONSE` | Absolute private response-file path |
 | `PHOTOHOUSE_NATIVE_STORY_OPERATION` | Exact opaque scope UUID, supplied by native owner |
 
+An optional `exchange_root` selects an existing private local directory without
+changing process-wide temporary-directory settings. Construction only validates
+its spelling; after host admission, setup checks its canonical path, permissions
+and identity before creating a fresh operation directory beneath it. The provider
+never creates or deletes this configured parent. Reads and cleanup recheck its
+identity and direct containment; a replaced or uncertain parent retains the
+exchange and host claim for reconciliation. These checks do not make filesystem
+operations atomic against concurrent replacement.
+
+`exchange_root=None` preserves the existing temporary-directory behavior and
+launch digest. An explicit root becomes part of `process_launch_digest` and must
+match the host admission profile. A caller cannot reuse a receipt for a different
+IPC parent. The Windows convenience factory and staged application configuration
+do not yet expose this option; this source change has synthetic qualification
+and needs separate native ACL/replacement checks.
+
 The caller cannot prepopulate those reserved keys, including case variants.
 Arguments and environment contain no selected source words or generated prose.
 The parent does not execute a worker-supplied command, path or endpoint. Only a

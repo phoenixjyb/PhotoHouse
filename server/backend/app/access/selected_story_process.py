@@ -10,6 +10,7 @@ from dataclasses import dataclass, field, replace
 import math
 import hashlib
 import json
+import ntpath
 import os
 from pathlib import Path
 import stat
@@ -42,6 +43,8 @@ class ProcessSelectedStoryError(RuntimeError):
 @dataclass(repr=False)
 class _Exchange:
     scope: PreparationScope
+    exchange_root: Path | None = None
+    parent_identity: tuple | None = None
     directory: Path | None = None
     identity: tuple | None = None
     owner: NativeStoryProcessOwner | None = None
@@ -72,16 +75,61 @@ def _directory(call):
             or os.name == 'posix' and (value.st_uid != os.getuid() or value.st_mode & 0o077)):
         raise ValueError('Invalid exchange directory')
     require_private_directory(call.directory)
+    if call.exchange_root is not None:
+        _private_exchange_root(call)
+        if call.directory.parent != call.exchange_root:
+            raise ValueError('Invalid exchange parent')
 
 
-def process_launch_digest(launch):
-    """Pin the explicit launch recipe, before per-operation IPC is appended."""
+def _exchange_root_path(value):
+    """Validate an explicit root's spelling without touching the filesystem."""
+    if not isinstance(value, (str, Path)) or not value:
+        raise ValueError('Invalid exchange root')
+    raw = os.fspath(value)
+    if (type(raw) is not str or not raw or raw.startswith(('\\\\', '//'))
+            or any(ord(character) < 32 for character in raw)):
+        raise ValueError('Invalid exchange root')
+    path = Path(raw)
+    if (not path.is_absolute() or path == Path(path.anchor) or '..' in path.parts
+            or ntpath.splitdrive(raw)[0].startswith('\\\\')):
+        raise ValueError('Invalid exchange root')
+    return path
+
+
+def _private_exchange_root(call):
+    """Require the same private, canonical configured parent on every use."""
+    root = call.exchange_root
+    if root is None:
+        return None
+    try:
+        info = root.lstat()
+        resolved = root.resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise ValueError('Invalid exchange root') from None
+    if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+            or getattr(info, 'st_file_attributes', 0) & 0x400
+            or os.path.normcase(os.path.abspath(str(resolved))) !=
+               os.path.normcase(os.path.abspath(str(root)))):
+        raise ValueError('Invalid exchange root')
+    require_private_directory(root)
+    identity = (info.st_dev, info.st_ino)
+    if call.parent_identity is None:
+        call.parent_identity = identity
+    elif call.parent_identity != identity:
+        raise ValueError('Changed exchange root')
+    return identity
+
+
+def process_launch_digest(launch, *, exchange_root=None):
+    """Pin the launch recipe and, when explicit, its private IPC parent."""
     if type(launch) is not NativeStoryLaunch:
         raise ValueError('Invalid process launch')
     value = {key: getattr(launch, key) for key in (
         'executable', 'executable_sha256', 'argv', 'cwd', 'memory_limit',
         'process_limit', 'minimum_free_ram')}
     value['environment'] = dict(launch.environment)
+    if exchange_root is not None:
+        value['exchange_root'] = str(_exchange_root_path(exchange_root))
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=True,
         separators=(',', ':')).encode('utf-8')).hexdigest()
 
@@ -95,7 +143,7 @@ class ProcessSelectedStoryProvider:
     proof_domain = 'owned_story_exchange'
 
     def __init__(self, launch, model, *, kernel_factory, enabled=False, timeout=45,
-                 cleanup_seconds=5, host_admission=None):
+                 cleanup_seconds=5, host_admission=None, exchange_root=None):
         if (type(launch) is not NativeStoryLaunch or not callable(kernel_factory)
                 or type(model) is not str or not _MODEL.fullmatch(model) or '://' in model
                 or type(enabled) is not bool or type(timeout) not in (int, float)
@@ -103,14 +151,17 @@ class ProcessSelectedStoryProvider:
                 or len(launch.environment) > 62
                 or {REQUEST_ENV, RESPONSE_ENV} & {k.upper() for k in launch.environment}):
             raise ValueError('Invalid process selected-story configuration')
+        selected_root = None if exchange_root is None else _exchange_root_path(exchange_root)
         if host_admission is not None and (type(host_admission) is not HostInferenceAdmission
-                or host_admission.profile.launch_sha256 != process_launch_digest(launch)):
+                or host_admission.profile.launch_sha256 != process_launch_digest(
+                    launch, exchange_root=selected_root)):
             raise ValueError('Host admission launch binding mismatch')
         self.host_admission = host_admission
         # Validate cleanup configuration without constructing a native kernel.
         NativeStoryProcessOwner(launch, kernel_factory=kernel_factory,
                                 cleanup_seconds=cleanup_seconds)
         self.launch, self.model, self.kernel_factory = launch, model, kernel_factory
+        self.exchange_root = selected_root
         self.enabled, self.timeout, self.cleanup_seconds = enabled, float(timeout), cleanup_seconds
         self._loop = self._active = self._last_settled_scope = None
         self._closed = False
@@ -133,7 +184,13 @@ class ProcessSelectedStoryProvider:
             call.host_permit = self.host_admission.acquire(call.scope.operation_id)
         self._check(call.scope)
         # Recorded immediately; retained task owns all setup even if waiter leaves.
-        call.directory = Path(tempfile.mkdtemp(prefix='photohouse-story-'))
+        call.exchange_root = self.exchange_root
+        if call.exchange_root is None:
+            call.directory = Path(tempfile.mkdtemp(prefix='photohouse-story-'))
+        else:
+            _private_exchange_root(call)
+            call.directory = Path(tempfile.mkdtemp(prefix='photohouse-story-',
+                                                   dir=str(call.exchange_root)))
         value = call.directory.lstat()
         call.identity = (value.st_dev, value.st_ino)
         os.chmod(call.directory, 0o700)
@@ -247,7 +304,11 @@ class ProcessSelectedStoryProvider:
             for path in entries:
                 _regular(path)
             for path in entries:
+                if call.exchange_root is not None:
+                    _directory(call)
                 path.unlink()
+            if call.exchange_root is not None:
+                _directory(call)
             call.directory.rmdir()
             call.directory = None
             return True
