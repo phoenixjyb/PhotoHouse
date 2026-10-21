@@ -2799,3 +2799,40 @@ and both reviewed-people operator CLIs' deletion-history refusal checks. See
 [reviewed people refresh](REFRESHING_REVIEWED_PEOPLE_SEARCH.md#deletion-history-during-offline-preparation)
 for paired journal arguments and source-bound preparation. Candidate generation
 does not activate a runtime, enlarge reviewed face coverage or reactivate media.
+
+
+## October 21 local Web stack contact sheet
+
+Expanded similar-photo stacks share one named inline region, heading and
+collapse control in both page-local and indexed-library galleries. Keyboard
+expansion/collapse preserves a clear focus destination. Escape inside the group
+collapses it; Escape inside the modal viewer leaves its gallery group expanded.
+The region heading scrolls below the measured sticky navigation and exposes the
+first previews, including Chinese/English 390 px layouts at 150% text.
+
+The two focused generated Chromium journeys are the acceptance checks:
+
+```sh
+node server/tests/security/test_photo_stacks_browser.cjs
+node server/tests/security/test_library_photo_stacks_browser.cjs
+```
+
+Use the existing Python/Playwright/Chromium environment described in
+[Web development](WEB_DEVELOPMENT.md); no model or household service is used.
+They retain strict assertions for originals, full viewer sequence, malformed
+metadata/404 fallback, account scope, denied writes, single-flight saved choices
+and uncertain-outcome reconciliation. The indexed journey also checks the
+owner's transfer selection through nested member cards and local collapse.
+
+The first indexed run exposed a newly introduced global-busy guard swallowing
+an otherwise valid local Expand click during account startup. Removing that
+unneeded guard retained current-scope/locked checks and restored the journey.
+Rendered review then found sticky navigation obscuring the heading; the final
+scroll behavior is guarded by heading visibility, preview visibility and overflow
+assertions. The screenshot fixture now waits for lazy images to finish loading before decoding
+them; calling decode before that readiness point had rejected while the images
+were still pending. Both final journeys passed with zero page errors and zero
+external requests on Node 22.17.0, Playwright Core 1.55.0, Chromium 140.0.7339.16
+and Python 3.12.12. Desktop and bilingual enlarged phone renders were inspected.
+These are local source/browser results. No Windows runtime,
+production migration, Android artifact or physical-device acceptance is implied.

@@ -48,17 +48,18 @@ with fixture.connection() as db:
     rebuild_photo_stack_index(db, 'family-a', expected_generation=None, clock=lambda: fixture.now)
     rebuild_photo_stack_index(db, 'family-b', expected_generation=None, clock=lambda: fixture.now)
 
-# One local generated preview exercises the normal cover/count card appearance.
+# Generated previews exercise the cover and expanded contact sheet appearance.
 # It contains no household media and is served through the existing authorized route.
 media_root = Path(fixture.path.parent) / 'photo-stack-media'
 derived_root = media_root / 'derived'
 thumbnail_dir = derived_root / 'thumbnails' / '256'
 thumbnail_dir.mkdir(parents=True)
 media_root.mkdir(parents=True, exist_ok=True)
-preview = Image.new('RGB', (480, 320), '#d2ad89')
-ImageDraw.Draw(preview).rectangle((28, 28, 452, 292), outline='#fff9ed', width=5)
-ImageDraw.Draw(preview).text((170, 150), 'SYNTHETIC 102', fill='#302c28')
-preview.save(thumbnail_dir / '102.jpg', format='JPEG')
+for asset_id, color in ((100, '#bdc9b5'), (101, '#c2c8d2'), (102, '#d2ad89')):
+    preview = Image.new('RGB', (480, 320), color)
+    ImageDraw.Draw(preview).rectangle((28, 28, 452, 292), outline='#fff9ed', width=5)
+    ImageDraw.Draw(preview).text((170, 150), f'SYNTHETIC {asset_id}', fill='#302c28')
+    preview.save(thumbnail_dir / f'{asset_id}.jpg', format='JPEG')
 fixture.client.app.state.media_runtime = MediaRuntime((media_root,), derived_root)
 
 print(json.dumps({'ready': True}), flush=True)

@@ -67,7 +67,7 @@ async function signIn(){
   await page.locator('#library').waitFor({state:'visible',timeout:15000});
   await page.locator('.asset').first().waitFor({timeout:15000});
 }
-const cards=()=>page.locator('#grid>.asset');
+const cards=()=>page.locator('#grid .asset');
 const check=message=>console.log('PASS '+message);
 (async()=>{
   await ready;
