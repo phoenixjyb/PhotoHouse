@@ -245,6 +245,7 @@ FILES = (
     'scripts/bounded_windows_job.py',
     'scripts/selected_story_native_owner.py',
     'scripts/qualify_selected_story.py',
+    'scripts/selected_story_gguf_worker.py',
     'scripts/initialize_original_deletions.py',
     'scripts/prepare_access_database.py',
     'scripts/prepare_access_discovery_index.py',

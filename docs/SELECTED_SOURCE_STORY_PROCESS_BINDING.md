@@ -9,9 +9,10 @@ adds an explicit `windows_story_process_provider(launch, model)` constructor.
 Both constructors default to disabled and perform no I/O or kernel construction.
 No app configuration, feature flag, route or default provider activates them.
 
-This is a source binding with synthetic acceptance, not a qualified Windows
-model runtime. It contains no model loader or production worker executable. A
-host must supply reviewed worker code that implements the protocol and runs all
+This binding has synthetic and separately pinned native acceptance. The optional
+[GGUF worker](SELECTED_SOURCE_STORY_GGUF_WORKER.md) now implements local model
+loading inside the owned process, with synthetic tests only. A host must still
+review and qualify the exact worker/model/dependency installation and run all
 inference/helpers inside the owned Job. A worker that calls an independent
 HTTP service or cloud model is outside this contract. Neither loopback nor
 repeating a model label proves local execution or owned inference.
@@ -108,8 +109,9 @@ The preflight executable hash is still not an atomic image identity mechanism.
 Measure model locality (no cloud or independent-server fallback), quality,
 latency, memory/VRAM and participating cross-process inference admission. This
 binding does not sandbox arbitrary code or prevent a trusted worker from
-violating its declared contract. A production worker and model integration
-remain to be implemented and qualified separately.
+violating its declared contract. The optional GGUF worker is implemented
+separately; its actual backend build, model integration and runtime remain
+to be qualified.
 
 [Fault tests](../server/tests/security/test_selected_story_process.py) use fake
 kernel handles and synthetic response files. [Lifecycle tests](../server/tests/security/test_selected_story_process_lifecycle.py)

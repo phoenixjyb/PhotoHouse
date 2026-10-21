@@ -27914,6 +27914,50 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Clarify that the 271 selected source files are accompanied by a separate manifest ZIP entry; qualification pins and behavior unchanged."
+    },
+    {
+      "feature": "selected-story-optional-owned-gguf-worker",
+      "source_commit": "8c49e76fe32d04fce9385887b0b7d5be0309c0df",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": null,
+          "sha256": "6fb48ee982ff5e71fa11186ef96f86bb837d782ff58888ef5461b29f326be639"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "5e1b7844d769474f08459a8a29021d9aa343537bfe58075cda1c5628276c2de2",
+          "sha256": "8f9bcf668ac705330661f13e122778fd0464a46a3bfaa8f913d233899cd381bb"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "85c7fc415ad7c6a66cdec892e272c8da1ed7c649e1758b23815122c1f11aacca",
+          "sha256": "8d214769500202a90b75d1c4ac72d44d26fea32b16aa59e887cd0056395b1a15"
+        },
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": null,
+          "sha256": "2a409b0568098b82cab2bb9a3b6393e973358d82dd9ae1a306aa82df01d31319"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": null,
+          "sha256": "4c6d157841869f6a8cc425ff947804c5a90952808976fa41fc9afcc15a1a3416"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "2a3c8496a3e30d94bc891581048c5fa1fcf0c9a133ae8499911d45ba2709ed42",
+          "sha256": "b035b12e27741db243191b14d35e327a3e193fa3877636ed9b213bb92715891c"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "1507a1425fe625fe75be05f27957befb4f33a6b7045b9dc3f0d0afd52552bdf9",
+          "sha256": "113818f76e4f2250fc7cea5c7e0859061fedcc5c5af02a5c9ccb10a3271da1dc"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add an explicit one-request optional local llama-cpp-python GGUF worker within the existing owned-process protocol. Reconstruct canonical request/schema/options, preflight explicit local single-file model digest, refuse context/output truncation, validate narrative, close model before private exclusive response. Include inert package imports and synthetic backend/process tests. No model/binary selected or installed, no GPU/native-loader qualification, no app/provider activation or deployment."
     }
   ]
 }
