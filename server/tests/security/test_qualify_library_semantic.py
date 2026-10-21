@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import sqlite3
 import struct
 import subprocess
 import sys
@@ -16,6 +17,7 @@ sys.path[:0] = [str(ROOT / "backend"), str(ROOT / "scripts")]
 
 import qualify_library_semantic as subject
 from app.access.semantic_encoder import TextVector
+from app.access.semantic_bulk_vectors import BulkVectorStore, BulkVectorUnavailable
 from app.access.visual_candidates import VectorSpaceIdentity, canonical_vector_checksum
 from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256
 
@@ -319,7 +321,55 @@ def test_explicit_bulk_canary_keeps_protection_checks_and_old_vectors_unchanged(
     assert result['vector_reads'] == 0
     assert result['bulk_snapshot_calls'] > 0
     assert result['available_image_count'] == 515
-    assert len(result['protected_checks']) == 7
+    assert {
+        'owner_revocation_denied_before_bulk_provider_or_vector_io_and_restore_succeeded',
+        'soft_deleted_asset_refused_by_stale_bulk_cohort_before_inference',
+        'scoped_artifact_removal_refused_by_stale_bulk_cohort_before_inference',
+    } <= set(result['protected_checks'])
     assert result['activation_performed'] is False
     assert before == {record.relative_path: hashlib.sha256((vector_root / record.relative_path).read_bytes()).hexdigest()
                       for record in records}
+
+
+def test_bulk_canary_rejects_an_injected_stale_cohort_serving_bug(generated_index, tmp_path,
+        monkeypatch):
+    index_path, model, _manifest, records, vector_root = generated_index
+    index_hash = hashlib.sha256(index_path.read_bytes()).hexdigest()
+    vector_hashes = {row.relative_path: hashlib.sha256(
+        (vector_root / row.relative_path).read_bytes()).hexdigest() for row in records}
+    original_snapshot = BulkVectorStore.snapshot
+    good_snapshots = {}
+    stale_acceptances = []
+
+    def incorrectly_accept_stale_cohort(store, artifacts, **kwargs):
+        try:
+            snapshot = original_snapshot(store, artifacts, **kwargs)
+        except BulkVectorUnavailable:
+            # Simulate a serving regression that reuses a previously validated
+            # full snapshot after the live cohort has changed.
+            if store not in good_snapshots:
+                raise
+            stale_acceptances.append(True)
+            return good_snapshots[store]
+        good_snapshots[store] = snapshot
+        return snapshot
+
+    monkeypatch.setattr(BulkVectorStore, 'snapshot', incorrectly_accept_stale_cohort)
+    with pytest.raises(subject.LibrarySemanticRefused,
+            match='synthetic_asset_soft_delete_stale_bulk_cohort_reached_inference_or_released_cards'):
+        subject.measure(index_path, tmp_path / 'stale-cohort-injection', model=model,
+            queries=[{'id': 'en', 'language': 'en', 'text': 'a garden scene'}],
+            bulk_vectors=True)
+    assert stale_acceptances
+    # The harness owns only its temporary synthetic DB and always restores the
+    # source revision before it raises; the supplied index remains untouched.
+    assert model.encode_count > 0
+    assert all((vector_root / row.relative_path).is_file() for row in records)
+    with sqlite3.connect(tmp_path / 'stale-cohort-injection' / 'synthetic.sqlite') as db:
+        assert db.execute("SELECT status FROM assets WHERE id=1").fetchone() == ('active',)
+        assert db.execute("SELECT status FROM access_memberships WHERE account_id='pilot-owner'").fetchone() == ('approved',)
+        assert db.execute("SELECT count(*) FROM image_vector_artifacts WHERE status='ready'").fetchone() == (515,)
+        assert db.execute("SELECT count(*) FROM access_asset_libraries WHERE asset_id=1").fetchone() == (1,)
+    assert hashlib.sha256(index_path.read_bytes()).hexdigest() == index_hash
+    assert vector_hashes == {row.relative_path: hashlib.sha256(
+        (vector_root / row.relative_path).read_bytes()).hexdigest() for row in records}

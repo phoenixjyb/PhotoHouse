@@ -437,6 +437,115 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
             "synthetic_hard_date_filter_failed")
         protected.append("synthetic_date_filter_remains_hard_filter")
 
+        if bulk_store is not None:
+            from app.access.discovery_provider import MemoryIndexProvider, ReviewedIndex
+            from app.access import discovery as discovery_module
+
+            def replace_reviewed_source():
+                # This models an operator-reviewed source revision after a
+                # synthetic lifecycle change. It does not refresh the pinned
+                # bulk container; the next search must still refuse its stale
+                # cohort before inference.
+                with closing(sqlite3.connect(database, timeout=0.25)) as db:
+                    with base_budget.attempt(db, lambda: False) as (_check, read):
+                        source = discovery_module.scoped_source(library, read)
+                current = discovery.provider.get(library)
+                scope = tuple(str(row[0]) for row in source["assets"])
+                revision = str(int(current.revision) + 1)
+                object.__setattr__(discovery, "provider", MemoryIndexProvider((ReviewedIndex(
+                    library, revision, scope, scope, discovery_module.digest(source)),)))
+
+            # Owner authorization is checked independently of the shared
+            # library reader and again after provider execution. Revocation
+            # must stop at admission, before any vector/container/provider IO.
+            before = dict(counters)
+            with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
+                prior_status = db.execute(
+                    "SELECT status FROM access_memberships WHERE account_id='pilot-owner' AND library_id=?",
+                    (library,)).fetchone()[0]
+                db.execute("UPDATE access_memberships SET status='revoked' "
+                    "WHERE account_id='pilot-owner' AND library_id=?", (library,))
+            try:
+                response, _elapsed = request(queries[0]["text"])
+                _require(response.status_code in (401, 403) and counters == before
+                    and "items" not in response.json(), "revoked_owner_reached_semantic_io")
+            finally:
+                with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
+                    db.execute("UPDATE access_memberships SET status=? "
+                        "WHERE account_id='pilot-owner' AND library_id=?",
+                        (prior_status, library))
+            restored, _elapsed = request(queries[0]["text"])
+            _require(restored.status_code == 200, "owner_membership_restore_failed")
+            protected.append("owner_revocation_denied_before_bulk_provider_or_vector_io_and_restore_succeeded")
+
+            def assert_stale_bulk_refuses(label, mutate, restore, *, filters=None):
+                prior_provider = discovery.provider
+                before = dict(counters)
+                try:
+                    mutate()
+                    replace_reviewed_source()
+                    response, _elapsed = request(queries[0]["text"], filters=filters)
+                    _require(response.status_code == 503 and "items" not in response.json()
+                        and counters["provider_calls"] == before["provider_calls"]
+                        and counters["model_encode_calls"] == before["model_encode_calls"]
+                        and counters["vector_reads"] == before["vector_reads"],
+                        label + "_stale_bulk_cohort_reached_inference_or_released_cards")
+                finally:
+                    try:
+                        restore()
+                    finally:
+                        object.__setattr__(discovery, "provider", prior_provider)
+                recovered, _elapsed = request(queries[0]["text"])
+                _require(recovered.status_code == 200, label + "_restore_failed")
+
+            # A soft-deleted image leaves the old immutable bulk cohort stale.
+            # Advance only the synthetic reviewed source so the request reaches
+            # the pinned bulk validation path instead of stopping at 409.
+            with closing(sqlite3.connect(database, timeout=0.25)) as db:
+                prior_asset_status = db.execute(
+                    "SELECT status FROM assets WHERE id=?", (int(records[0].asset_id),)).fetchone()[0]
+
+            def delete_asset():
+                with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
+                    db.execute("UPDATE assets SET status='deleted' WHERE id=?",
+                        (int(records[0].asset_id),))
+
+            def restore_asset():
+                with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
+                    db.execute("UPDATE assets SET status=? WHERE id=?",
+                        (prior_asset_status, int(records[0].asset_id)))
+
+            assert_stale_bulk_refuses("synthetic_asset_soft_delete", delete_asset, restore_asset)
+            protected.append("soft_deleted_asset_refused_by_stale_bulk_cohort_before_inference")
+
+            with closing(sqlite3.connect(database, timeout=0.25)) as db:
+                prior_vector_scope = db.execute(
+                    "SELECT asset_id,library_id FROM access_asset_libraries "
+                    "WHERE asset_id=? AND library_id=?",
+                    (int(records[0].asset_id), library)).fetchone()
+
+            def remove_scoped_artifact():
+                with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
+                    # Vector artifacts are immutable by schema. Retirement from
+                    # the current library cohort is represented by removing its
+                    # synthetic scope link; the immutable artifact and file stay.
+                    db.execute("DELETE FROM access_asset_libraries WHERE asset_id=? AND library_id=?",
+                        (int(records[0].asset_id), library))
+
+            def restore_scoped_artifact():
+                with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
+                    db.execute("INSERT INTO access_asset_libraries(asset_id,library_id) VALUES(?,?)",
+                        prior_vector_scope)
+
+            # Asset 1 is outside this date-filtered result set, so removing its
+            # current library-scope link reaches the full-cohort snapshot check
+            # without becoming a missing per-result vector refusal. The
+            # container must reject stale library-wide membership before encoding.
+            assert_stale_bulk_refuses("synthetic_scoped_artifact_removal", remove_scoped_artifact,
+                restore_scoped_artifact,
+                filters={"date": {"from": "2026-01-02", "to": "2026-01-02"}})
+            protected.append("scoped_artifact_removal_refused_by_stale_bulk_cohort_before_inference")
+
     # Mutate and restore only synthetic caption state. The next request proves
     # source-change refusal did not leave stale source binding behind.
     with closing(sqlite3.connect(database, timeout=0.25)) as db, db:

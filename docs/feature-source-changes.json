@@ -27450,6 +27450,25 @@
       "family_index_model_child_started": false,
       "production_runtime_changed": false,
       "activation_approved": false
+    },
+    {
+      "feature": "bulk-qualification-owner-revocation-deletion-and-cohort-removal-refusal",
+      "files": [
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "before_sha256": "9e0a8bbbb49de243f8b048e78f93260d535441d6869e8a72721541823a430917",
+          "sha256": "a4430ff4fd4b31f3af64df4e85f16c4ad92c69797a5c54bbb9ea2e9c1801a3fd"
+        },
+        {
+          "path": "server/tests/security/test_qualify_library_semantic.py",
+          "before_sha256": "ff6f5e439d51bdf0d912013920775818979d9daae6ba213e84f9832470de63d7",
+          "sha256": "943b27be88cec1520eb55edc9fe9e2cdaad5d07c3f896742559df205ff9f8e3c"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "qualification_harness_only": true,
+      "production_runtime_changed": false,
+      "activation_approved": false
     }
   ]
 }
