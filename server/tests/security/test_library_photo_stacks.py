@@ -1,5 +1,6 @@
 """Actual indexed gallery and private choices against fully migrated fixtures."""
 from contextlib import closing
+import hashlib
 import json
 import re
 import sqlite3
@@ -74,6 +75,38 @@ class LibraryPhotoStacksTests(unittest.TestCase):
         self.build(self.built['index_revision'])
         group=self.get().json()['photo_stacks']['groups'][0]
         self.assertEqual(group['count'],3);self.assertEqual(group['cover_asset_id'],'101')
+
+    def test_legacy_source_digest_refreshes_without_rewriting_assets_or_choices(self):
+        from app.access.library_photo_stacks import _source
+        self.assertEqual(self.post(self.body(cover_asset_id='101')).status_code,200)
+        previous=self.built['index_revision']
+        with self.f.connection() as db:
+            rows,current_digest=_source(db,'family-a')
+            legacy_digest=hashlib.sha256(json.dumps(rows,separators=(',',':'),ensure_ascii=True).encode()).hexdigest()
+            self.assertNotEqual(current_digest,legacy_digest)
+            originals=db.execute('SELECT * FROM assets ORDER BY id').fetchall()
+            choices=db.execute('SELECT * FROM access_photo_stack_preferences ORDER BY account_id').fetchall()
+            db.execute('UPDATE access_photo_stack_indexes SET source_digest=? WHERE library_id=?',
+                       (legacy_digest,'family-a'));db.commit()
+        refreshed=self.build(previous)
+        self.assertTrue(refreshed['changed'])
+        self.assertNotEqual(refreshed['index_revision'],previous)
+        self.assertEqual(self.get().json()['photo_stacks']['groups'][0]['cover_asset_id'],'101')
+        with self.f.connection() as db:
+            self.assertEqual(db.execute('SELECT * FROM assets ORDER BY id').fetchall(),originals)
+            self.assertEqual(db.execute('SELECT * FROM access_photo_stack_preferences ORDER BY account_id').fetchall(),choices)
+        self.assertFalse(self.build(refreshed['index_revision'])['changed'])
+
+    def test_policy_change_rebuilds_unchanged_rows_and_refuses_old_revision(self):
+        from app.access.photo_stack_index import build_library_photo_stacks
+        previous=self.built['index_revision'];old_choice=self.body(cover_asset_id='101')
+        with patch('app.access.library_photo_stacks.grouping_policy_fingerprint',return_value=['different-policy']), \
+                patch('app.access.photo_stack_index.build_library_photo_stacks',wraps=build_library_photo_stacks) as build:
+            refreshed=self.build(previous)
+            self.assertTrue(refreshed['changed']);self.assertEqual(build.call_count,1)
+            self.assertNotEqual(refreshed['index_revision'],previous)
+            self.assertFalse(self.build(refreshed['index_revision'])['changed'])
+        self.assertEqual(self.post(old_choice).status_code,409)
 
     def test_separate_and_reset_do_not_change_another_member_or_originals(self):
         self.assertEqual(self.post(self.body(separate_asset_id='101')).status_code,200)

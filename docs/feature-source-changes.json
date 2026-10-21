@@ -26916,6 +26916,57 @@
       "live_runtime_changed": false,
       "apk_publication": false,
       "notes": "Named inline contact sheet for expanded v1/v2 stacks, keyboard focus return and measured sticky-navigation clearance. Saved preferences, authorization and full viewer sequence retain their existing contracts. Mac-local generated browser acceptance only; Windows indexing and runtime remain separately owned."
+    },
+    {
+      "feature": "photo-stack-relaxed-similarity-policy-20261022",
+      "source_commit": "d29ce0bedabb88cc037f49911ce3b25d786649de",
+      "files": [
+        {
+          "path": "docs/LIBRARY_PHOTO_STACKS.md",
+          "before_sha256": "4267392d40d79ae58c4d1e36d68a4a5a79b7aee8159a0c1f8fdb5bf18c8007bd",
+          "sha256": "b8ba0faedae26a957b967f5ec8eb6fc690e6f28585dab0e708761552995d9903"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": "81fc317d234c9ece2cd951ffbd8fe04e3f5672c3e00159121eb562ebaf66e3b7",
+          "sha256": "3f413c376fb8e47a26775e0bd7dde722be2036c9c8540832ff627f62aee4ad04"
+        },
+        {
+          "path": "server/backend/app/access/library_photo_stacks.py",
+          "before_sha256": "d4f6ac15751a98484a495297395d6e626ae34c28dc7d4e18bbc18ebb8f11f002",
+          "sha256": "7c745ac20d1ece4465b0cba38962febf3adee87ae02b27389761f99030f769a2"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_index.py",
+          "before_sha256": "8e3b65187dc10f9adc6c9b1decdb215bc61c08cb3f3df39f1a3c250500ce8723",
+          "sha256": "bee3e8fc356054f166d12baea7487e93eea00ae39a8c4e679979a7cc67ce53e1"
+        },
+        {
+          "path": "server/backend/app/access/photo_stacks.py",
+          "before_sha256": "e0dd009b0c25c0c54182d601e00eb17dff0a02e3dfe17a8bfc171250d9dc3e88",
+          "sha256": "27ad10b6aa653d04c351c3da87b1c1d7a0f80f5ba570ec0705de67022d4ee178"
+        },
+        {
+          "path": "server/tests/security/test_library_photo_stacks.py",
+          "before_sha256": "e548de9c2b9b6bf15f7f9eedc5bd36bc8fd9e0e29c3142efc4da6f5765bbfdc9",
+          "sha256": "b6cf96f2b7992834f65c2f7b47d89b6422816535885762ae61556b0740377ff9"
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_index.py",
+          "before_sha256": "8457e340e99751e56ac4702ec9de7a0ec3ec6010e12ad2621a8511fb5489e840",
+          "sha256": "ce8c6387fcc5173a94737913a4431f85dbff83e995e768d62ac783cfbe4d1596"
+        },
+        {
+          "path": "server/tests/security/test_photo_stacks.py",
+          "before_sha256": "863793dc53d9723a84aa522e5beac2b54ca625ebafcd0948077227d1d7f6d338",
+          "sha256": "4000981f6d93f8c43299a4bc3eca21a847b5a90e4addf73bca4ea1163d67a246"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "apk_publication": false,
+      "notes": "Modestly relax near-capture/same-upload pHash limits to8/4 with unchanged300-second/time-reliability/complete-link guards. Exact stored bands and one-bit probes retain candidate completeness under the comparison budget. Bind refresh digests to the grouping policy; preserve originals and private display choices. Local generated checks only; not included in the separately sealed fe47 Windows rehearsal or a live release."
     }
   ]
 }

@@ -13,6 +13,12 @@ _FULL_CAPTURE_TIME = re.compile(
 _RECORDED_DAY = re.compile(r'\A([0-9]{4}-[0-9]{2}-[0-9]{2})(?:[ T].*)?\Z', re.ASCII)
 _PHASH = re.compile(r'\A[0-9a-fA-F]{16}\Z', re.ASCII)
 
+NEAR_CAPTURE_HASH_MAX_DISTANCE = 8
+SAME_UPLOAD_HASH_MAX_DISTANCE = 4
+CAPTURE_WINDOW_SECONDS = 300
+GROUP_LIMIT = 24
+GROUPING_ALGORITHM_VERSION = 'complete-link-v1'
+
 
 def _capture_time(value):
     """Parse only a full recorded datetime; date-only values are unknown."""
@@ -48,7 +54,8 @@ def _pair_reason(left, right):
     """Return the one relation supported by both items, or no relation."""
     left_time, right_time = left['capture_time'], right['capture_time']
     if left_time is not None and right_time is not None:
-        if (left['phash'] ^ right['phash']).bit_count() > 6:
+        if ((left['phash'] ^ right['phash']).bit_count()
+                > NEAR_CAPTURE_HASH_MAX_DISTANCE):
             return None
         left_aware = left_time.utcoffset() is not None
         right_aware = right_time.utcoffset() is not None
@@ -60,7 +67,9 @@ def _pair_reason(left, right):
                 right_time = right_time.astimezone(timezone.utc)
             except (OverflowError, ValueError):
                 return None
-        return 'near_capture' if abs((left_time - right_time).total_seconds()) <= 300 else None
+        return ('near_capture'
+                if abs((left_time - right_time).total_seconds()) <= CAPTURE_WINDOW_SECONDS
+                else None)
     if left_time is not None or right_time is not None:
         return None
     left_day, right_day = left['capture_day'], right['capture_day']
@@ -69,7 +78,8 @@ def _pair_reason(left, right):
     if (left['upload_account'] and left['upload_batch']
             and left['upload_account'] == right['upload_account']
             and left['upload_batch'] == right['upload_batch']
-            and (left['phash'] ^ right['phash']).bit_count() <= 2):
+            and (left['phash'] ^ right['phash']).bit_count()
+            <= SAME_UPLOAD_HASH_MAX_DISTANCE):
         return 'same_upload'
     return None
 

@@ -20,7 +20,9 @@ class PhotoStackAlgorithmTests(unittest.TestCase):
                                           phash='000000000000003f'))['groups'][0]['reason'],
                          'near_capture')
         self.assertEqual(stacks(row(1), row(2, taken_at='2026-04-05 12:05:01'))['groups'], [])
-        self.assertEqual(stacks(row(1), row(2, phash='000000000000007f'))['groups'], [])
+        self.assertEqual(stacks(row(1), row(2, phash='00000000000000ff'))['groups'][0]['reason'],
+                         'near_capture')
+        self.assertEqual(stacks(row(1), row(2, phash='00000000000001ff'))['groups'], [])
 
     def test_timezone_awareness_must_match_and_offsets_compare_as_instants(self):
         same_instant = stacks(row(1, taken_at='2026-04-05T12:00:00Z'),
@@ -38,7 +40,10 @@ class PhotoStackAlgorithmTests(unittest.TestCase):
         result = stacks(first, second)
         self.assertEqual(result['groups'][0]['reason'], 'same_upload')
         self.assertEqual(stacks(first, row(2, taken_at='2026-04-05',
-            phash='0000000000000007', account='account-a', batch='batch-a'))['groups'], [])
+            phash='000000000000000f', account='account-a', batch='batch-a'))['groups'][0]['reason'],
+                         'same_upload')
+        self.assertEqual(stacks(first, row(2, taken_at='2026-04-05',
+            phash='000000000000001f', account='account-a', batch='batch-a'))['groups'], [])
         self.assertEqual(stacks(first, row(2, taken_at=None, phash=second[6],
             account='account-a', batch=None))['groups'], [])
 
@@ -66,7 +71,7 @@ class PhotoStackAlgorithmTests(unittest.TestCase):
     def test_complete_link_prevents_similarity_chains(self):
         result = stacks(row(9, phash='0000000000000000'),
                         row(4, phash='000000000000003f'),
-                        row(2, phash='00000000000000ff'))
+                        row(2, phash='00000000000003ff'))
         self.assertEqual(result['groups'], [{
             'id': '4', 'cover_asset_id': '9', 'asset_ids': ['9', '4'],
             'count': 2, 'reason': 'near_capture'}])
