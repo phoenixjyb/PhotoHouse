@@ -1,5 +1,26 @@
 # Current project status
 
+**October 21 bulk-serving follow-up:** local source `e4f06a5` adds an explicit
+bulk vector container and immutable scoring snapshot; `f5018e4` also captures one
+budget view per request. Current membership, source/cohort, file integrity,
+permissions and deadline checks remain mandatory. Generated 23,761-vector checks
+pass all seven protection checks at **3.93 seconds median / 3.98 seconds maximum**
+across English, Chinese and mixed input, with **zero individual NPY query reads**.
+The first cold request took **6.73 seconds**. These are three shared-Mac samples
+with a fake encoder and index inspector, not native or device acceptance; the
+2-second backend target remains unmet. Full API at `f5018e4`: **2,866 tests /
+3,651 subtests** plus the generated demo, with unchanged source.
+
+The private index stopped at **16,595 ready photos and 29 failures**, after
+16,624 of the frozen 23,761 assets. Its nonempty preparation folder correctly
+prevented another chunk. All 27 retained copies and failure records are preserved;
+a guarded recovery proposal is prepared, but no quarantine or resume has run.
+The remaining 7,137 assets, failure resolution, current-roster coverage, real
+Windows/model/network latency, relevance review and family/device acceptance are
+still open. Bulk lifecycle/refresh/deletion integration also needs qualification.
+Semantic remains **OFF**; this source is local, unmerged and undeployed, and the
+private index is unpublished. See the [bulk-serving record](SEMANTIC_LIBRARY_SCALE.md#bulk-serving-and-request-budget-follow-up--october-21-2026).
+
 **October 21 morning search qualification:** generated 23,761-vector checks now
 pass all seven protection checks at **13.7 seconds median / 15.0 seconds p95**;
 these fake-model diagnostics still leave interactive/native latency unqualified.
@@ -17,7 +38,8 @@ See the [morning qualification record](SEMANTIC_LIBRARY_SCALE.md#latency-and-mpo
 **October 21 full-family candidate indexing:** local source now prepares bounded,
 metadata-stripped image inputs and checkpoints a frozen **23,761-photo** family
 roster. Six native extreme-image probes passed, including about 200 megapixels;
-the long indexing job is still running, with explicit preparation failures retained.
+the long indexing job was still running at that earlier observation, with explicit
+preparation failures retained.
 Missing-original handling, an unsupported MPO container and final coverage remain open. Protected generated
 23,761-vector checks exposed slow request latency; source removes duplicate
 checksum packing and preserves canonical numeric/type checks. The full API profile

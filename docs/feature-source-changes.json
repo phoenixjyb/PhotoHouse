@@ -27372,6 +27372,31 @@
       "semantic_search_enabled": false,
       "production_runtime_changed": false,
       "activation_approved": false
+    },
+    {
+      "feature": "bulk-serving-latency-and-stopped-index-status-record",
+      "source_commit": "f5018e477f3fc89eee2dfa804ddffac7067e1b18",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "4466fddfb4ea2fe605b98721f15365fda47da63b8129267814635d3c68463e91",
+          "sha256": "b02c435be787c51982d107fbcd3563ddcce5269e2cc23021e8229e8e681c985c"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "b43f2bdfb992696402074253ce02281bd806c64d04716f76b0cd54f07ba0f785",
+          "sha256": "52a6542329770ff165ea2eeb6d63c8f5ee4892cd673f4a91109c7070b70d7606"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "579c04463af4fff8427bd91819022e6d9f7037822b37dcca29e556541d629c73",
+          "sha256": "9cce76ca40cd20c39f56f915b3f792111fe9054b42eb2a8e1591c3ce7651b30e"
+        }
+      ],
+      "documentation_only": true,
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "activation_approved": false
     }
   ]
 }

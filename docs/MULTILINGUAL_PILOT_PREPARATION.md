@@ -209,3 +209,21 @@ open. Semantic search remains OFF.
 Full API qualification at `a61de0d` passed **2,838 tests and 3,630 subtests** plus
 the generated no-listener demo, with identical source at both invocation boundaries.
 This establishes local regression evidence; the activation gates above remain.
+
+
+The [bulk-serving follow-up](SEMANTIC_LIBRARY_SCALE.md#bulk-serving-and-request-budget-follow-up--october-21-2026)
+adds an explicitly configured, owner-only pinned bulk container and immutable
+scoring blocks, plus one budget view per request. Generated 23,761-vector checks
+passed all seven protections with zero NPY query reads at **3.93 seconds median /
+3.98 seconds maximum** across three language samples; the cold request was
+**6.73 seconds**. Fake encoder/inspector, shared host and uncontrolled cache/order
+limit these diagnostics. The 2-second backend target and real native/model/
+network/device performance are unqualified. Full API at `f5018e4` passed
+**2,866 tests and 3,651 subtests** plus the demo with unchanged source.
+
+Indexing is now stopped at **16,595 ready / 29 failed**; 7,137 roster assets remain
+unprocessed. A private recovery proposal preserves all retained copies and
+failure evidence, but no quarantine or resume has run. Complete coverage,
+failed-input resolution, current-roster/relevance review, bulk lifecycle
+qualification and family/device acceptance remain open. Source is local,
+unmerged and undeployed; semantic search remains **OFF**.

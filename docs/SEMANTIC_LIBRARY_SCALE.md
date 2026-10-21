@@ -361,7 +361,7 @@ of relaxing its nonempty-scratch guard. Only the verified committed prefix was
 copied into a fresh private candidate: **8,431 ready photos and one failure**.
 A transport timeout and Mac reboot interrupted local observation; independent
 native readback confirmed the copy had completed before indexing resumed once.
-The latest observation has **1,218 committed batches** and no new child failure.
+That earlier observation had **1,218 committed batches** and no new child failure.
 The frozen 23,761-photo roster and original JPEG/PNG worker identity remain;
 MPO v2 is not spliced into that running index. Full indexing, final current-roster
 coverage and full-library relevance remain unfinished. No recurring automation
@@ -373,3 +373,85 @@ Protected native serving checks still require fresh runtime pins, completed inde
 receipts and current-roster readback. This search round changed no production
 database, original media, account, task or service. Source remains local, unmerged
 and undeployed; the private index remains unpublished. Semantic search is **OFF**.
+
+
+## Bulk serving and request budget follow-up — October 21, 2026
+
+Local source `e4f06a5` introduces a separate, explicitly selected bulk-vector
+format. It builds from validated image artifacts without replacing their NPY
+files or changing the index recipe. The serving container is authoritative when
+selected; the NPY files remain build provenance, with no query-time fallback.
+Version-4 runtime configuration requires an exact owner, explicit serving limits,
+a matching image-space identity, a private disjoint container path and a pinned
+whole-file checksum. Existing versions and semantic-off defaults are unchanged.
+
+Every snapshot validates the complete current ready-artifact cohort, library,
+image identity and current asset source hashes. The private container is read and
+hashed before and after encoding, with regular-file, link/reparse, ancestor,
+permission and identity checks. Immutable canonical vector blocks may be reused
+only for the same validated cohort and file; membership and source decisions are
+not cached across requests. File reads are charged before their payload is read.
+The file is capped at 128 MiB, retained canonical blocks at 256 MiB, and the
+configured cohort at 100,000 candidates; a container that exceeds its byte bound
+refuses even if its candidate count is otherwise permitted.
+
+Scoring retains exact legacy normalized components, `math.fsum` results and
+numeric-ID tie order across all eligible candidates. Hard people, date, tag,
+place and literal-text filters remain gates. Unsupported exclusions clarify
+before vector/provider reads; this does not claim exclusion filtering is
+implemented by visual ranking. Authorization and current-source reads still run
+before cards are released. Corruption, changed cohorts, revoked membership,
+source changes during encoding and exceeded budgets refuse without NPY fallback.
+
+Source `f5018e4` additionally captures one limits view per request instead of
+copying it during each row's deadline checks. The view and reader preserve the
+original admission semaphore. Focused checks verify a fresh view on the next
+request, cancellation and elapsed-time refusal before provider execution.
+Independent read-only reviews found no material issue in either implementation.
+
+A generated 23,761-vector diagnostic on a shared Mac measured **6.32 seconds
+median / 7.20 seconds maximum** for the initial bulk path. The follow-up with
+request-local budget capture measured **3.93 seconds median / 3.98 seconds
+maximum**, with a **6.73-second cold request**. Each invocation used one timed
+sample per English, Chinese and mixed query; all seven protection checks and
+complete candidate counts passed, with zero individual NPY query reads. Earlier
+attempts include a refused baseline and a highly variable 23.8-second bulk
+median; those artifacts remain retained. Order, host load, swap and filesystem
+cache were uncontrolled, so these observations establish no controlled speedup
+ratio or p95 service SLO. The encoder and index inspector were mocked. The
+2-second backend target and actual Windows/model/network/device latency remain
+unqualified.
+
+Full API qualification at `e4f06a5` passed **2,865 tests and 3,651 subtests** plus
+the generated no-listener demo. At `f5018e4`, **2,866 tests and 3,651
+subtests** plus the demo passed with identical source and commit identities at
+both invocation boundaries. Bulk, endpoint, configuration, packaging and
+qualification checks are included in that profile. These are local CPU fixture
+checks, not deployed or hardware acceptance.
+
+A newer private index observation supersedes the earlier running count:
+**2,078 committed batches / 16,624 processed assets = 16,595 ready + 29 failed**.
+A new chunk refused at the frozen worker's nonempty-preparation guard. Inspection
+found 27 retained private original copies totaling about 13 MiB, all matching
+committed preparation-failure source hashes. Signature-only inspection found
+23 JPEG-unclassified copies and four unknown 4,096-byte files; none was decoded,
+repaired or retried. These failures must not be assumed to be the already
+qualified MPO case. Originals, ready vectors, failure rows and old controls are
+preserved.
+
+A private recovery proposal describes a durable intent, same-volume rename of
+the whole failed preparation folder into a fresh private control stage, an empty
+replacement folder, unchanged-prefix verification and a one-shot continuation
+for the remaining **7,137 assets**. It is a proposal with local decision-rule
+tests, not an executed quarantine or runnable continuation. Current native
+process closure, exclusive ownership, ACL/link/stat checks, complete committed
+inventory and fresh input pins must be established first; partial journals must
+never trigger automatic replay. The frozen JPEG/PNG model recipe remains
+unchanged, and MPO v2 remains separate.
+
+No production database, account, media, service, scheduled task or runtime
+configuration changed in this source round. The private index is unpublished;
+semantic search remains **OFF**. Remaining work includes safe indexing recovery,
+failed-input disposition, final current-roster coverage and relevance, bulk
+refresh/retirement/deletion integration, real protected latency and family/device
+acceptance before any activation proposal.
