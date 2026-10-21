@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 import unittest
+import uuid
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -20,6 +21,7 @@ import test_library_reads as library_fixture
 from app.access.host_inference_admission import (
     HostCapacity, HostInferenceAdmission, HostResourceProfile, initialize_host_admission,
 )
+from app.access.credentials import session_digest
 from app.access.runtime import RuntimeConfiguration
 from app.access.service import AccessService
 from app.access.selected_story_native import NativeStoryLaunch
@@ -102,12 +104,13 @@ class SelectedStoryRuntimeProcessIntegrationTests(unittest.IsolatedAsyncioTestCa
     async def client(self):
         return httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url=ORIGIN)
 
-    async def prepare_request(self, client, request_id=REQUEST_ID, token=None):
+    async def prepare_request(self, client, request_id=REQUEST_ID, token=None,
+                              title='Synthetic family day'):
         token = token or library_fixture.LibraryReadTests.owner_token
         headers = {'Authorization': 'Bearer ' + token}
         preview = await client.post('/story-workspace/preview?library=' + LIBRARY,
             headers=headers, json={'asset_ids': '101', 'theme': 'everyday',
-                                   'language': 'en', 'title': 'Synthetic family day'})
+                                   'language': 'en', 'title': title})
         if preview.status_code != 200:
             return preview, None
         evidence = preview.json()['items'][0]['evidence']
@@ -123,7 +126,7 @@ class SelectedStoryRuntimeProcessIntegrationTests(unittest.IsolatedAsyncioTestCa
                 'chapters': [{'id': 'chapter-1', 'title': 'Family day',
                               'asset_ids': ['101'], 'evidence_ids': [source_id]}],
             },
-            'theme': 'everyday', 'language': 'en', 'title': 'Synthetic family day',
+            'theme': 'everyday', 'language': 'en', 'title': title,
             'author_direction': 'Keep the synthetic draft brief.',
         }
         response = await client.post('/story-workspace/drafts/prepare?library=' + LIBRARY,
@@ -244,6 +247,145 @@ class SelectedStoryRuntimeProcessIntegrationTests(unittest.IsolatedAsyncioTestCa
         self.assertTrue(all(child.poll() is not None for child in self.kernel.children))
         self.assertTrue(all(not directory.exists() for directory in self.kernel.exchanges))
         self.assertEqual(self.claim_count(), 0)
+
+    async def test_four_member_overlap_is_bounded_and_requires_explicit_retry(self):
+        # Seed valid accounts and sessions directly in this generated database. This
+        # exercises authenticated concurrency without spending time on password KDFs.
+        member_accounts = [library_fixture.LibraryReadTests.member_id]
+        member_tokens = [library_fixture.LibraryReadTests.member_token]
+        with closing(sqlite3.connect(self.database)) as db:
+            owner_id = db.execute('SELECT id FROM access_accounts WHERE phone_login=?',
+                                  (library_fixture.OWNER,)).fetchone()[0]
+            password_hash = db.execute('SELECT password_hash FROM access_accounts WHERE id=?',
+                                        (member_accounts[0],)).fetchone()[0]
+            db.execute("UPDATE access_memberships SET role='contributor' WHERE account_id=? AND library_id=?",
+                       (member_accounts[0], LIBRARY))
+            for index in range(3):
+                account_id = str(uuid.uuid4())
+                db.execute('''INSERT INTO access_accounts(id,phone_login,password_hash,state,display_name)
+                              VALUES (?,?,?,'active',?)''',
+                           (account_id, f'+1999000000{index + 1:02d}', password_hash,
+                            f'Synthetic contributor {index + 1}'))
+                db.execute('''INSERT INTO access_memberships
+                              (account_id,library_id,status,role,revision,approved_by)
+                              VALUES (?,?,'approved','contributor',1,?)''',
+                           (account_id, LIBRARY, owner_id))
+                member_accounts.append(account_id)
+                member_tokens.append(None)
+
+            # Four accounts each receive a usable token; fill to 32 active session
+            # rows total. The remaining authenticated sessions stay idle throughout.
+            session_tokens = []
+            for index, account_id in enumerate(member_accounts):
+                token = f'{index:043d}'
+                member_tokens[index] = token
+                session_tokens.append((token, account_id))
+            active_sessions = db.execute('SELECT count(*) FROM access_sessions WHERE revoked=0').fetchone()[0]
+            while active_sessions + len(session_tokens) < 32:
+                index = len(session_tokens) % len(member_accounts)
+                token = f'{len(session_tokens):043d}'
+                session_tokens.append((token, member_accounts[index]))
+            for token, account_id in session_tokens:
+                db.execute('INSERT INTO access_sessions(digest,account_id,expires_at) VALUES (?,?,?)',
+                           (session_digest(token), account_id, library_fixture.NOW + 86400))
+            db.commit()
+            self.assertEqual(db.execute('SELECT count(*) FROM access_sessions WHERE revoked=0').fetchone()[0], 32)
+
+        self.assertEqual(len(set(member_accounts)), 4)
+        before = self.saved_story_count()
+        self.assertEqual(self.claim_count(), 0)
+        self.assertEqual(self.kernel.children, [])
+        held_worker = WORKER.replace(
+            'time.sleep(float(sys.argv[1]))',
+            "time.sleep(120 if 'HOLD_FIRST_MEMBER' in g['prompt'] else 0)")
+        held_argv = self.launch.argv[:4] + ('exec(' + repr(held_worker) + ')',) + self.launch.argv[5:]
+        held_launch = NativeStoryLaunch(
+            self.launch.executable, self.launch.executable_sha256, held_argv,
+            self.launch.cwd, dict(self.launch.environment), minimum_free_ram=0)
+        self.bind_worker(held_launch)
+
+        with patch('app.access.memory_jobs.maintenance', return_value=None):
+            async with self.app.router.lifespan_context(self.app):
+                async with await self.client() as client:
+                    owner_id = str(uuid.uuid4())
+                    owner_pending = asyncio.create_task(self.prepare_request(
+                        client, owner_id, member_tokens[0], title='HOLD_FIRST_MEMBER'))
+                    self.assertTrue(await asyncio.to_thread(self.kernel.resumed.wait, 5))
+                    self.assertEqual(self.claim_count(), 1)
+                    self.assertEqual(sum(child.poll() is None for child in self.kernel.children), 1)
+
+                    request_ids = [str(uuid.uuid4()) for _ in range(3)]
+                    busy_started = time.monotonic()
+                    busy_attempts = await asyncio.gather(*(
+                        self.prepare_request(client, request_ids[index], member_tokens[index + 1])
+                        for index in range(3)))
+                    self.assertLess(time.monotonic() - busy_started, 10.0)
+                    for response, body in busy_attempts:
+                        self.assertEqual(response.status_code, 429, response.text)
+                        self.assertEqual(response.json()['code'], 'draft_busy')
+                        self.assertEqual(set(response.json()), {'detail', 'code'})
+                        self.assertEqual(sum(child.poll() is None for child in self.kernel.children), 1)
+                        self.assertEqual(self.claim_count(), 1)
+
+                    browse = await client.get('/assets?library=' + LIBRARY, headers={
+                        'Authorization': 'Bearer ' + member_tokens[2]})
+                    self.assertEqual(browse.status_code, 200, browse.text)
+                    preview = await client.post('/story-workspace/preview?library=' + LIBRARY,
+                        headers={'Authorization': 'Bearer ' + member_tokens[3]},
+                        json={'asset_ids': '101', 'theme': 'everyday', 'language': 'en',
+                              'title': 'Synthetic family day'})
+                    self.assertEqual(preview.status_code, 200, preview.text)
+
+                    foreign_body = busy_attempts[0][1] | {'request_id': owner_id}
+                    foreign_cancel = await self.cancel(client, owner_id, member_tokens[1])
+                    self.assertEqual(foreign_cancel.status_code, 200, foreign_cancel.text)
+                    self.assertFalse(foreign_cancel.json()['matched'])
+                    foreign_read = await client.post(
+                        '/story-workspace/drafts/prepare?library=' + LIBRARY,
+                        headers={'Authorization': 'Bearer ' + member_tokens[1]},
+                        json=foreign_body)
+                    # The provider's one active lane answers busy before this foreign
+                    # identity can read any owner-specific result. The body stays fixed.
+                    self.assertEqual(foreign_read.status_code, 429, foreign_read.text)
+                    self.assertEqual(foreign_read.json()['code'], 'draft_busy')
+                    self.assertEqual(set(foreign_read.json()), {'detail', 'code'})
+                    self.assertEqual(sum(child.poll() is None for child in self.kernel.children), 1)
+                    self.assertEqual(self.claim_count(), 1)
+
+                    cancelled = await self.cancel(client, owner_id, member_tokens[0])
+                    self.assertEqual(cancelled.status_code, 200, cancelled.text)
+                    self.assertTrue(cancelled.json()['matched'])
+                    owner_response, _ = await asyncio.wait_for(owner_pending, 5)
+                    self.assertEqual(owner_response.status_code, 409)
+                    self.assertEqual(owner_response.json()['code'], 'draft_cancelled')
+                    await asyncio.wait_for(asyncio.to_thread(
+                        self.kernel.children[0].wait, 5), 5)
+                    cleanup_deadline = time.monotonic() + 5
+                    while (any(directory.exists() for directory in self.kernel.exchanges)
+                           or self.claim_count() != 0):
+                        if time.monotonic() >= cleanup_deadline:
+                            self.fail('private exchange or host claim was not reconciled after owner cancel')
+                        await asyncio.sleep(0.01)
+                    self.assertEqual(sum(child.poll() is None for child in self.kernel.children), 0)
+                    self.assertTrue(all(not directory.exists() for directory in self.kernel.exchanges))
+                    self.assertEqual(self.claim_count(), 0)
+
+                    # A busy request is not queued or replayed. Only an explicit retry
+                    # by that member can launch the second child.
+                    _, retry_body = busy_attempts[0]
+                    retry = await client.post(
+                        '/story-workspace/drafts/prepare?library=' + LIBRARY,
+                        headers={'Authorization': 'Bearer ' + member_tokens[1]},
+                        json=retry_body)
+                    self.assertEqual(retry.status_code, 200, retry.text)
+                    self.assertEqual(retry.json()['state'], 'needs_review')
+                    self.assertEqual(len(self.kernel.children), 2)
+                    self.assertEqual(self.claim_count(), 0)
+
+        self.assertTrue(all(child.poll() is not None for child in self.kernel.children))
+        self.assertTrue(all(not directory.exists() for directory in self.kernel.exchanges))
+        self.assertEqual(self.claim_count(), 0)
+        self.assertEqual(self.saved_story_count(), before)
 
 
 if __name__ == '__main__':

@@ -180,6 +180,15 @@ the claim only after cleanup, and another session cannot cancel the owner.
 Owner logout fences the response and reaps the child. Source/evidence preview
 and authentication use the generated stores rather than a replacement resolver.
 
+A household overlap case seeds 32 active session records across four approved
+contributors, holds one child and submits the other three members concurrently.
+Busy replies contain only the fixed error; protected browsing/source preview
+still work, and another member cannot cancel or recover the active draft. After
+the owner cancels, the test waits for child/exchange/claim cleanup before an
+explicit member retry starts the second child and returns an unsaved proposal.
+There is no queued replay. Session rows are not 32 open clients or a native
+throughput measurement.
+
 These tests pin the actual base interpreter for the fixture and create no helper
 descendants. Their Job membership/resource limits are simulated: they prove the
 app/session/process integration, not native Windows containment, real model

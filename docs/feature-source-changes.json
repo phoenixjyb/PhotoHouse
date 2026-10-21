@@ -28491,6 +28491,25 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Record the separately staged a6b27df diagnostic: 22 native operator/binding-canary checks pass, real English generation exits 17, no qualified draft or remaining four cases. Record independent source/model/DLL/claims/process cleanup and live gateway/site/API/feed/report preservation, followed by explicit lane release. Preserve unknown exception, optional exchange-root qualification and production activation as open gates."
+    },
+    {
+      "feature": "selected-story-small-household-protected-process-overlap",
+      "source_commit": "c9e246321ed13fa9e3939c627749c9bb5ba3307d",
+      "files": [
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "before_sha256": "e7b225fb90fec61af5236b5cc5b9d239614d6db57700cb2128601cad79fb2072",
+          "sha256": "ce5af75336c6f3c283f218dbe4ea6949e15b2764b5e4bced4d828f9b9d9c69bb"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "6f11d6b881bb378384917161f335223cf0ca4370952e424865a0be83a0ea5297",
+          "sha256": "1cdc1a60dc6f9b9876ce5c62af24f916be556721eb16cc002a0d41756899585e"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add one generated-store/ASGI/real-stdlib-child fixture with four approved contributors and 32 active session rows. Exactly one child/claim; three concurrent submissions get immediate fixed busy, browsing/source preview remain available, foreign-member cancel/prepare cannot disclose or stop the owner, cancellation cleanup precedes explicit retry and no story is saved. Native containment remains simulated; this is not a client load or Windows capacity result."
     }
   ]
 }
