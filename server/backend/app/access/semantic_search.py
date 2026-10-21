@@ -17,7 +17,7 @@ from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, SemanticU
 from .service import AccessDenied, AccessService
 from .search_exclusions import EXCLUSION_POLICY_VERSION, requires_semantic_clarification
 from .visual_candidates import MAX_CANDIDATES, VectorRecord, _canonical_components
-from .visual_vector_artifacts import identity_sha256
+from .visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256
 from .visual_vector_loader import _COLUMNS, _checked_root, _read_vector, _validated_rows
 from .visual_vector_schema import verify_visual_vector_schema
 from .semantic_streaming import SemanticServingLimits, VECTOR_BATCH_SIZE, MAX_VECTOR_READ_BYTES, rank_semantic_batches
@@ -29,6 +29,59 @@ from .semantic_eligibility import SemanticEligibilityStore, SemanticEligibilityU
 # binding in the ranking pass and keeps the final fresh source check.
 # Keep its private-file budget separate from the vector payload allowance.
 MAX_POLICY_READ_BYTES = 64 * 1024 * 1024
+_ARTIFACT_FIELDS = tuple(_COLUMNS.split(','))
+
+
+def _typed_row_equal(current, previous):
+    """Compare one SQL row without Python's bool/int equality aliasing."""
+    return (type(current) is tuple and type(previous) is tuple
+            and len(current) == len(previous)
+            and all(type(left) is type(right) and left == right
+                    for left, right in zip(current, previous)))
+
+
+def _typed_rows_equal(rows, previous_rows, check):
+    """Check a fresh ordered SQL cohort against one immutable prior snapshot."""
+    if (type(rows) is not list or type(previous_rows) is not tuple
+            or len(rows) != len(previous_rows)):
+        return False
+    for row, previous in zip(rows, previous_rows):
+        check()
+        if not _typed_row_equal(row, previous):
+            return False
+    return True
+
+
+def _freeze_rows(rows, check):
+    """Keep one ordered primitive snapshot, checking cancellation per row."""
+    frozen = []
+    for row in rows:
+        check()
+        frozen.append(tuple(row))
+    return tuple(frozen)
+
+
+def _freeze_artifacts(records, check):
+    """Copy validated artifact fields into immutable, primitive-only tuples."""
+    frozen = []
+    for asset_id, record in records.items():
+        check()
+        frozen.append((asset_id, tuple(getattr(record, field) for field in _ARTIFACT_FIELDS)))
+    return tuple(frozen)
+
+
+def _thaw_artifacts(frozen_records, check):
+    """Rebuild a private mapping; cached mutable dataclass instances are never reused."""
+    records = {}
+    for asset_id, values in frozen_records:
+        check()
+        if type(asset_id) is not str or type(values) is not tuple or len(values) != 16:
+            return None
+        record = ImmutableVectorArtifact(*values)
+        if record.asset_id != asset_id or asset_id in records:
+            return None
+        records[asset_id] = record
+    return records
 
 
 def _valid_pilot_owner_account_id(value):
@@ -58,12 +111,31 @@ class SemanticSearchReads(AssistantSearchReads):
         self._policy_read_bytes = 0
         self._matched_omitted_count = 0
         self._eligibility_bulk_generation = None
+        self._eligibility_records_cache = None
 
     def _extra_source(self, index, source, read, check):
         # A new generation belongs only to this exact fresh source read. Clear
         # it before any work so a failed read or policy check cannot leave an
         # earlier cohort available to _artifacts.
         self._eligibility_bulk_generation = None
+        self._eligibility_policy = None
+        self._bulk_artifacts = ()
+        self._vector_rows = ()
+        self._source_hashes = {}
+        self._library_id = None
+        try:
+            return self._extra_source_fresh(index, source, read, check)
+        except BaseException:
+            self._eligibility_bulk_generation = None
+            self._eligibility_policy = None
+            self._eligibility_records_cache = None
+            self._bulk_artifacts = ()
+            self._vector_rows = ()
+            self._source_hashes = {}
+            self._library_id = None
+            raise
+
+    def _extra_source_fresh(self, index, source, read, check):
         extra = super()._extra_source(index, source, read, check)
         check()
         if not verify_visual_vector_schema(self.access.db):
@@ -87,19 +159,47 @@ class SemanticSearchReads(AssistantSearchReads):
         self._library_id = index.library_id
         self._source_hashes = {str(aid): digest for aid, digest in hashes}
         if self.eligibility is not None:
-            records = _validated_rows(rows, image_identity)
-            if len(records) != len(rows):
-                raise d.DiscoveryUnavailable()
+            snapshot = None
+            frozen_records = None
+            if self.bulk_vectors is not None:
+                cache = self._eligibility_records_cache
+                cache_matches = (cache is not None and cache[0] == image_identity_digest
+                                 and cache[1] == index.library_id
+                                 and _typed_rows_equal(rows, cache[2], check))
+                if cache_matches:
+                    snapshot = cache[2]
+                    frozen_records = cache[3]
+                    records = _thaw_artifacts(frozen_records, check)
+                    if records is None:
+                        raise d.DiscoveryUnavailable()
+                else:
+                    snapshot = _freeze_rows(rows, check)
+                    records = _validated_rows(rows, image_identity)
+                    if len(records) != len(rows):
+                        raise d.DiscoveryUnavailable()
+                    # Capture only primitive values before passing artifact
+                    # instances to policy validation or other callbacks.
+                    frozen_records = _freeze_artifacts(records, check)
+            else:
+                records = _validated_rows(rows, image_identity)
+                if len(records) != len(rows):
+                    raise d.DiscoveryUnavailable()
             try:
                 self._eligibility_policy = self.eligibility.read_and_validate(
                     self._source_hashes, records, library_id=index.library_id,
                     check=check, charge=self._charge_policy_bytes)
             except SemanticEligibilityUnavailable:
                 raise d.DiscoveryUnavailable() from None
+            if self.bulk_vectors is not None:
+                # Only fresh SQL rows, current identity, and this library scope
+                # select the immutable parsed values. Policy/source checks above
+                # still run for every pass before this cache is refreshed.
+                self._eligibility_records_cache = (
+                    image_identity_digest, index.library_id, snapshot, frozen_records)
             self._bulk_artifacts = tuple(sorted(records.values(), key=lambda item: int(item.asset_id)))
             if self.bulk_vectors is not None:
                 self._eligibility_bulk_generation = (
-                    image_identity_digest, tuple(tuple(row) for row in rows), records)
+                    image_identity_digest, snapshot, records)
         return {**extra, 'semantic_policy': (6 if self.eligibility else 5 if self.bulk_vectors else 4 if self.serving_limits else 3),
                 **({'semantic_eligibility': self.eligibility.descriptor} if self.eligibility else {}),
                 **({'bulk_vectors': self.bulk_vectors.descriptor} if self.bulk_vectors else {}),
@@ -143,7 +243,8 @@ class SemanticSearchReads(AssistantSearchReads):
             if self.bulk_vectors is not None or str(row[1]) in ids:
                 selected.append(row)
                 if generation_matches and (
-                        position >= len(generation[1]) or tuple(row) != generation[1][position]):
+                        position >= len(generation[1])
+                        or not _typed_row_equal(tuple(row), generation[1][position])):
                     generation_matches = False
         if generation is not None and not generation_matches:
             # A cache miss means the rows or identity no longer match the

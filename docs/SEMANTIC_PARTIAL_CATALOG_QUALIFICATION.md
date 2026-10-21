@@ -79,7 +79,38 @@ checks passed for the 274-file package. See the
 [eligibility contract](SEMANTIC_ELIGIBILITY_DESIGN.md) and
 [library qualification record](SEMANTIC_LIBRARY_SCALE.md).
 
-## Native result, October 21–22, 2026
+## Latest optimized native result, October 22, 2026
+
+The frozen `e85c6e4` source completed a new one-shot Windows CPU canary with the
+same 23,761-entry catalog, 23,696 vectors, 65 qualification-only omissions and
+15 protection checks. All checks passed. Nine English/Chinese/mixed loopback
+HTTPS/TCP samples measured **7.860 seconds median / 8.328 seconds maximum**;
+cold latency was **14.843 seconds**. There were zero individual NPY query reads.
+The earlier baseline below measured 14.516 / 17.281 / 24.984 seconds respectively.
+The observed warm-median reduction is about 46%; separate shared-host runs do not
+establish a controlled causal speedup or phone/WAN performance.
+
+Both complete vector/metadata/stat-identity audits passed and took 1,119.002
+seconds total. The complete canary took 1,409.515 seconds under the unchanged
+1,800-second / 8 GiB / four-process Job with CPU-only model execution. Sixteen
+encodes took 2.300 seconds total. Audit/setup time is separate from query latency.
+
+Independent completion readback verified all 12 staged inputs, source identity,
+reviewed omissions, measurement hash, nine sample/profile ordinals, both audits,
+Job limits and resource closure. No test process or test-port listener remained.
+Live API/gateway/site/task/feed pins stayed unchanged. A fresh read-only catalog
+comparison found no additions, removals or source-hash changes. All 69 assets of
+the separately hosted furniture report passed exact byte/hash/MIME checks before
+and after the run. These are sampled HTTP checks, not continuous uptime or browser
+rendering acceptance. The Windows lane was explicitly released after closure.
+
+Semantic remains **OFF**. The 2-second backend target is unmet. Production
+omission approval, family relevance, phone/WAN, concurrency, refresh/retirement
+and activation remain separate. The later R61 request-local parsed-row cache
+passed source checks but was not in this native package. See the
+[phase comparison and next work](SEMANTIC_REQUEST_LATENCY.md).
+
+## Earlier native baseline, October 21–22, 2026
 
 The one-shot CPU qualification completed in **1,427.812 seconds** under the
 1,800-second / 8 GiB / four-process Job. Both full index audits passed and took

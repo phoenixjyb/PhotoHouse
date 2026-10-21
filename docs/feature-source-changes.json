@@ -28380,6 +28380,54 @@
       "live_runtime_changed": false,
       "semantic_search_enabled": false,
       "notes": "Reuse only bounded primitive model identity grammar validity after fresh type/size checks. Keep artifact, source, file and permission validation current; register focused cache/equivalence tests in the API profile. Native latency remains unqualified."
+    },
+    {
+      "feature": "request-local-typed-semantic-artifact-reuse-r61",
+      "source_commit": "e85c6e41dc42f0f43e564892e0a7bd5e8769d005",
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "23f492fd4eeb664e897968e69d37227e9d43b715cd5471b8cbe3f1fb37390de4",
+          "sha256": "0b39acd7092785a389b1f9439211e812f2f3d4b967736a9c76cecc1974767962"
+        },
+        {
+          "path": "server/tests/security/test_semantic_eligibility_search.py",
+          "before_sha256": "421e1c76c39160470e74c69dd2c831f7b2cc522434747db409b697de7592be28",
+          "sha256": "f93210edb8f5942994ce5220f05c9dc289958c4844b2c292ba41e74a3ecf774d"
+        }
+      ],
+      "live_runtime_changed": false,
+      "semantic_search_enabled": false,
+      "notes": "Rebuild artifact objects from immutable primitive tuples after fresh typed ordered SQL-row/identity/library comparison. Retain both fresh SQL reads, policy read/validation/byte charging and final authorization/source checks. Source-only; R61 native latency is unqualified."
+    },
+    {
+      "feature": "native-r60-latency-and-r61-source-readiness-record",
+      "source_commit": "e85c6e41dc42f0f43e564892e0a7bd5e8769d005",
+      "files": [
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "5ede5ffaed0159aac5cf421ae68e60a29f197e2bb9067cb23ff8106c460e9bf4",
+          "sha256": "f85885b1382ed0e187bd5b047468232fce2d147a1bf83d1e906da227aaf170bc"
+        },
+        {
+          "path": "docs/SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md",
+          "before_sha256": "7e7df3714024318a99f669ab57db2c0cb64cb160755993595ccd66705cf7d373",
+          "sha256": "bfd8d1be281843adff6f5cf0b02e1339c86572bc6f3fb26a2ab0d64e9f10b0e8"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "51c3e19a7b431fccd3f4eb6a16b57ed903d58742a974ab01ca23c34b7ea76c0f",
+          "sha256": "20ab4c5ef25ddff752797efa8aafa11081cb906135d4331b8a404943d4d92cc6"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "68b00cc8df45bd8777c95b09932d6a3f345f84ad58831d1bd6d7c45101cbb233",
+          "sha256": "c3e848a9c2e396e18f75c5eb94beffc072b2c7d783a869de238d4bc798f617c5"
+        }
+      ],
+      "live_runtime_changed": false,
+      "semantic_search_enabled": false,
+      "notes": "Record completed e85 full-catalog synthetic-account native qualification and independently verified closure/preservation. Distinguish later R61 source-only validation, unmet backend target, and production/relevance/device gates."
     }
   ]
 }

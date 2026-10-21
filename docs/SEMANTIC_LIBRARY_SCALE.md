@@ -5,24 +5,22 @@ owner-only runtime; they do not publish vectors, create accounts or change servi
 
 ## Full-catalog native qualification — October 22, 2026
 
-The [reviewed full-catalog qualifier](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md)
-now passes all **15 protection checks** with 23,696 ready vectors and 65 reviewed
-omissions across 23,761 synthetic catalog entries. The real Windows CPU run
-used the existing local model and a read-only candidate index. Nine loopback
-HTTPS/TCP samples measured **14.516 seconds median / 17.281 seconds maximum**,
-with a **24.984-second cold request** and zero individual NPY query reads.
-Fine request profiling identifies repeated metadata validation/source reads as
-substantial costs. The 2-second backend target remains unmet.
+The latest [reviewed full-catalog qualifier](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md)
+at `e85c6e4` passed all **15 protection checks** with 23,696 vectors and 65
+qualification-only omissions across 23,761 catalog entries. Nine English/Chinese/
+mixed loopback HTTPS/TCP samples measured **7.860 seconds median / 8.328 seconds
+maximum**, with a **14.843-second cold request** and zero individual NPY query
+reads. The earlier same-catalog baseline was 14.516 / 17.281 / 24.984 seconds.
+The 2-second backend target remains unmet. See [request phases](SEMANTIC_REQUEST_LATENCY.md).
 
-At source `a46d9f5`, full API passed **2,916 tests / 3,703 subtests** plus the
-generated demo; seven archive checks passed. Independent native readback verified
-the reviewed omissions, all staged pins, both complete index audits, results and
-Job proof. Processes/listeners closed; production API/config/task/feed pins and
-the current catalog remained unchanged. The window was released. These are
-synthetic-account, instrumented loopback checks, not broad family relevance,
-phone/WAN, concurrency, refresh/swap/retirement or activation acceptance. No
-controlled speedup ratio is claimed against the older ready-only workload.
-Semantic remains **OFF**, with no production policy/index publication or deployment.
+Independent readback verified the 12 staged inputs, reviewed omissions, both full
+audits, measurements and Job proof. Test processes/listeners closed. Production
+API/gateway/site/task/feed pins and the current catalog remained unchanged;
+furniture-report assets passed 69/69 before and after. The window was explicitly
+released. These are synthetic-account checks using real existing model/vectors,
+not family relevance, phone/WAN, concurrency, refresh/retirement or service-SLO
+acceptance. R61's later parsed-row reuse passed source checks only. Semantic stays
+**OFF**; no production policy/index publication, deployment or activation occurred.
 
 ## Multi-batch indexing
 

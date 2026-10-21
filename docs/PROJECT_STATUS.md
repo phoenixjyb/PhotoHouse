@@ -1,5 +1,33 @@
 # Current project status
 
+**October 22 latest native search qualification:** frozen source `e85c6e4`
+passed all **15 protection checks** across 23,761 catalog entries (23,696 vectors
+and 65 omissions approved for qualification only). Nine English/Chinese/mixed
+loopback HTTPS/TCP samples measured **7.860 seconds median / 8.328 seconds maximum**;
+cold latency was **14.843 seconds**. The earlier same-catalog baseline was
+14.516 / 17.281 / 24.984 seconds. Both complete audits passed. Independent readback
+verified input/result pins and zero test processes/listeners; live API/gateway/
+site/task/feed pins and the catalog stayed unchanged. Furniture-report assets
+passed 69/69 before and after. The Windows lane was explicitly released.
+**Semantic remains OFF**, and the 2-second backend target remains unmet. This
+is qualification evidence, not production deployment or family relevance/device
+acceptance. See [native evidence](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md) and
+[remaining measured latency costs](SEMANTIC_REQUEST_LATENCY.md).
+
+**October 22 next source increment:** R61 reuses immutable parsed primitive
+metadata only within one request after exact typed current-row, library and
+identity comparison; artifact instances are reconstructed afresh. SQL, policy,
+source/file integrity and final authorization checks remain current. Full API
+passed **2,999 tests / 3,727 subtests** plus the generated demo; independent focused
+review passed 55 tests. This later increment was not in the native `e85c6e4`
+package and still needs native qualification. The search branch remains unmerged
+and undeployed; PR #107 remains a draft with its historical GitGuardian finding
+unadjudicated. No security bypass or production activation occurred.
+
+The dated entries below are historical source and qualification milestones;
+performance-pending statements for older source are superseded by the latest
+native result above.
+
 **October 22 first-page and provider-readiness development:** new unbound semantic
 first pages derive their binding inside the authorized ranking read, reducing
 three complete source reads to two. A final fresh source/policy check and exact
