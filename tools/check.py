@@ -14,7 +14,7 @@ else:
 
 ROOT = Path(__file__).resolve().parents[1]
 API_TESTS = (
-    "test_discovery_text_validation.py",
+    "test_discovery_text_validation.py", "test_discovery_chunk_accounting.py",
     "test_refreshing_people.py", "test_refreshing_people_http.py",
     "test_reviewed_people_readiness.py",
     "test_people_review_candidates.py", "test_people_visual_review.py",

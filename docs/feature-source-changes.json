@@ -28187,6 +28187,36 @@
       "live_runtime_changed": false,
       "semantic_search_enabled": false,
       "notes": "Retain current main grouping tooling and explicit schema-target packaging together with semantic qualification and protected metadata performance work. All parent feature entries remain verbatim."
+    },
+    {
+      "feature": "bounded-exact-source-row-chunk-accounting-r58",
+      "source_commit": "537ddb22112805a786a0b80ee9afab728fb5fd5e",
+      "files": [
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "aa2fd75fb77ffaf2d67bf8e2c2c7da093710952b68785bc9406e32a3169bd0f7",
+          "sha256": "f778ac06a3d22d4d94276a3741f9fc882ab875f5640c820993ee1cf9dbb1a838"
+        },
+        {
+          "path": "server/tests/security/test_discovery_chunk_accounting.py",
+          "before_sha256": null,
+          "sha256": "d0414e3db220cdc60c441216c9a1523ac59beb229bcc13bc83121bd9e6ec66ed"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "0440d630494c465ad07f7a496f9faaa8c5d9640e0e805ade44254fe7a4bee172",
+          "sha256": "44a570bfa0c1eda3f73f4e6c1de69ce24dba51c9fa9e973f1f6a5e5a62b331c5"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "01802e76e1f37fad0cece950a533f48a1f5e0b1b47c930d65c76f6f86283335a",
+          "sha256": "d4088c63010af22e3b7fb7479088625859fe22750e07615764d76f3b2f6d365e"
+        }
+      ],
+      "routes_added": false,
+      "live_runtime_changed": false,
+      "semantic_search_enabled": false,
+      "notes": "Preserve exact canonical source byte charges and all existing source read limits; bound aggregate serialization before allocation and retain per-row fallback."
     }
   ]
 }

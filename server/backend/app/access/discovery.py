@@ -54,6 +54,59 @@ def packed(value):
     except (ValueError,TypeError,UnicodeError,RecursionError): raise DiscoveryInvalid() from None
 
 
+_ACCOUNTING_CHUNK_ROWS = 128
+_ACCOUNTING_CHUNK_CELLS = 32
+_ACCOUNTING_CHUNK_BYTES = 2 * 1024**2
+
+
+def _packed_chunk_size(chunk, remaining_bytes):
+    """Return the exact sum of packed row sizes for a safely bounded chunk.
+
+    Unsupported values and chunks whose conservative encoded-size bound is too
+    large return None so callers can preserve the original per-row path.
+    """
+    if (type(chunk) is not list or not 1 <= len(chunk) <= _ACCOUNTING_CHUNK_ROWS
+            or type(remaining_bytes) is not int or remaining_bytes < 0):
+        return None
+    limit = min(remaining_bytes, _ACCOUNTING_CHUNK_BYTES)
+    row_count = len(chunk)
+    # A JSON list contributes two brackets and one comma between each row.
+    encoded_bound = row_count + 1
+    if encoded_bound > limit:
+        return None
+    for row in chunk:
+        if type(row) is not tuple or len(row) > _ACCOUNTING_CHUNK_CELLS:
+            return None
+        # The tuple is serialized as a JSON array. Empty tuples have brackets
+        # but no cell separators.
+        encoded_bound += 2 + max(0, len(row) - 1)
+        if encoded_bound > limit:
+            return None
+        for value in row:
+            value_type = type(value)
+            if value_type is str:
+                # ensure_ascii can expand an astral code point to two escapes.
+                encoded_bound += 12 * len(value) + 2
+            elif value_type is int:
+                if not -(2**63) <= value <= 2**63 - 1:
+                    return None
+                encoded_bound += 20
+            elif value_type is float:
+                if not math.isfinite(value):
+                    return None
+                encoded_bound += 32
+            elif value is None:
+                encoded_bound += 4
+            else:
+                return None
+            if encoded_bound > limit:
+                return None
+
+    # For a nonempty chunk, outer-list brackets and row commas add exactly
+    # row_count + 1 bytes to the individually packed row sizes.
+    return len(packed(chunk)) - (row_count + 1)
+
+
 def place_fold(value):
     # Ignore case, width and combining accents, preserving Chinese characters.
     return ' '.join(''.join(c for c in unicodedata.normalize('NFKD',value).casefold()
@@ -145,10 +198,16 @@ class ReadBudget:
                     if not chunk: break
                     check(); count+=len(chunk)
                     if count>self.rows: raise DiscoveryUnavailable()
-                    for row in chunk:
-                        size+=len(packed(row))
+                    chunk_size = _packed_chunk_size(chunk, self.source_bytes - size)
+                    if chunk_size is None:
+                        for row in chunk:
+                            size+=len(packed(row))
+                            if size>self.source_bytes: raise DiscoveryUnavailable()
+                            result.append(row)
+                    else:
+                        size+=chunk_size
                         if size>self.source_bytes: raise DiscoveryUnavailable()
-                        result.append(row)
+                        result.extend(chunk)
                 return result
             check(); connection.set_progress_handler(progress,1000)
             try: yield check,read

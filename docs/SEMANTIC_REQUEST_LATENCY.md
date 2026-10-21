@@ -39,8 +39,27 @@ failed next source read, a changed expected model identity before bulk I/O,
 changed/invalid warm hash inputs and bounded cache size. The loader's 23,761-row
 microbenchmark verifies identical complete outputs and halves full validation
 calls from 47,522 to 23,761. Timing this loop on a shared Mac does not establish
-end-to-end or native request improvement. Native qualification of these changes
-and a complete integrated API receipt remain pending.
+end-to-end or native request improvement. The R57 API receipt passed 2,922 tests
+and 3,703 subtests, plus the generated demo. Native qualification of the performance changes remains pending.
+
+## Bounded source-read accounting
+
+The full-catalog baseline also spent 2.088 seconds in source SQL and packing
+across 27 reads. R58 preserves the exact sum of canonical JSON row byte sizes,
+but eligible chunks use one serialization instead of one per row. A nonempty
+chunk of N tuple rows adds exactly N+1 outer-list bytes; those bytes are removed
+from the measured size. No database or source state is cached.
+
+Before allocating the serialized chunk, a conservative bound requires at most
+128 rows, 32 exact builtin cells per row, and the smaller of the remaining source
+budget and 2 MiB. Unicode strings include the worst-case ASCII escape expansion;
+integers are limited to SQLite's signed 64-bit range and floats must be finite.
+Unsupported or larger chunks use the original per-row path. The actual byte
+limit, row limit, cancellation cadence and shared admission slots remain intact.
+Regression checks compare exact bytes for Unicode, control characters and numeric
+boundaries, exercise real SQLite at exact and one-byte-short budgets, and retain
+binary/nonfinite errors and cancellation. Integrated checks and native latency
+measurement are required before claiming an interactive improvement.
 
 ## Qualification and remaining work
 
