@@ -2,7 +2,7 @@
 
 Status: implemented in local source, October 21, 2026; runtime qualification is
 pending. Semantic search remains OFF. This implementation does not approve the
-family index's omissions, publish an index, enable a provider or change ordinary
+family serving policy, publish an index, enable a provider or change ordinary
 discovery. Refresh, swap and retirement below remain future requirements.
 
 ## Why this is needed
@@ -131,8 +131,10 @@ with the existing documented browser/Python/artifact environment. The private
 bridge creates its owner and reviewed policy only in a disposable synthetic DB;
 the ordinary journey still tests the legacy configuration without this flag.
 
-The family policy still needs an explicit review and private preparation, followed
-by bounded native qualification against a catalog retaining the omitted assets.
+The owner has approved the frozen 65 omissions for isolated qualification only.
+The [full-catalog qualifier](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md) validates
+that private review and constructs only a synthetic-library policy. Native
+qualification and a separately authorized serving-policy preparation remain open.
 Qualify generation refresh, removal/retirement and rollback
 without changing originals or silently deleting failed evidence.
 

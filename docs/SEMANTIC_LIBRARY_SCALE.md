@@ -40,7 +40,9 @@ Local configuration version 5 adds the optional
 It partitions the full current active-image roster without narrowing ordinary
 search. Coverage metadata and bilingual replies disclose reviewed omissions;
 unaccounted or stale assets still refuse. The implementation is unactivated and
-the actual family failure disposition/native qualification remain pending.
+the frozen omissions are approved for isolated qualification only. The
+[full-catalog qualifier and private phase profiler](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md)
+are implemented locally; native qualification and serving-policy approval remain pending.
 
 Semantic runtime configuration version 3 extends version 2 with `serving_limits`:
 exactly `candidate_limit`, `source_rows`, `source_bytes`, `search_seconds`.
@@ -656,7 +658,9 @@ visible partial-coverage/failure receipt are still needed before a pilot can
 serve incomplete coverage. Ordinary discovery scope and privacy gates must
 remain intact; benchmark success must not be treated as resolving this gap.
 The [proposed eligibility and coverage contract](SEMANTIC_ELIGIBILITY_DESIGN.md)
-records the next implementation and acceptance checks; it is not implemented.
+records the now locally implemented coverage contract. The
+[full-catalog qualification follow-up](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md)
+retains all omissions and adds private request timing; native evidence is pending.
 
 Semantic remains **OFF**. No production API, task, configuration, database write,
 account creation, index publication or activation is included. Remaining gates

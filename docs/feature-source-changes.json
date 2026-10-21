@@ -27675,6 +27675,81 @@
       "routes_added": false,
       "live_schema_changed": false,
       "semantic_search_enabled": false
+    },
+    {
+      "feature": "semantic-full-catalog-qualification-and-private-request-profile-r56",
+      "source_commit": "257260ae0f439226feef6d732d1aa2747e5ec37b",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "897cc2be3cf5861caa4955c9092eaa3448122ea24a711d3ee1564d7b1a359123",
+          "sha256": "452bdb39538e950ae4dfe7348773fb7d3f1aa90f82fef55c0b3c8d915cb1526f"
+        },
+        {
+          "path": "docs/SEMANTIC_ELIGIBILITY_DESIGN.md",
+          "before_sha256": "79c63daeb311ea032770d2df8e4af3867fe31dcddd64c6aefde7b4bfc0319add",
+          "sha256": "348ef69cbf60123fc035e7e7c4faf2eaaa351571a199ae2eb09cafcce3ff1f07"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "27e60fac80dbffc8ff7dffc681ddca4535a023cdf3a49bb7faff89fc052b8e9c",
+          "sha256": "6adb0dc94b8c4544bd18a2ebd06a2aba27e72be96fbb6d89fcf6d2a3b2624caf"
+        },
+        {
+          "path": "docs/SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md",
+          "before_sha256": null,
+          "sha256": "c7b09e916343b83708759f4c1e6780e32d2f59249a3b96b9e4142104ab13759b"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "e671e8e4204cae66d43aafe43596572b23efa0159b80c86a2d82fe6ab4d54b33",
+          "sha256": "839dd52a953f997e19d14e5afc34a5f0c299193d672410ca9ed23ad8f83539a8"
+        },
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "before_sha256": "a4430ff4fd4b31f3af64df4e85f16c4ad92c69797a5c54bbb9ea2e9c1801a3fd",
+          "sha256": "08387cc542e77459a0c8fafd59cc18d815ba6763b361402c8dd06255c36a85bc"
+        },
+        {
+          "path": "server/scripts/semantic_coverage_qualification.py",
+          "before_sha256": null,
+          "sha256": "01bc379fcbf068e4247d14551a82e15b777ab8ebfe074b75e4ec9d0ab4de7401"
+        },
+        {
+          "path": "server/scripts/semantic_request_profile.py",
+          "before_sha256": null,
+          "sha256": "c3d33b639d70f938546b9413de660e2fa66f729a933da561f0e58abc80a40343"
+        },
+        {
+          "path": "server/tests/security/test_qualify_semantic_coverage.py",
+          "before_sha256": null,
+          "sha256": "5b8e207a6dbeab35f28e222ca3741257b62a1d6e54fee54db2c8d673cebd85ed"
+        },
+        {
+          "path": "server/tests/security/test_semantic_coverage_qualification.py",
+          "before_sha256": null,
+          "sha256": "59f6579fd4948b7527936552bf246b901b99d5f2dd653267ae0ff1cd0e7dea0e"
+        },
+        {
+          "path": "server/tests/security/test_semantic_request_profile.py",
+          "before_sha256": null,
+          "sha256": "37a57c7c562882ce35b8f0f1d18b5da41080b50574addc9fc6b55ff086522429"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "25a2ee0f4ab3c7eaf9071edf41d68c885cf165dc961701acd95adec80ad94714",
+          "sha256": "a0dc0163747361430f5ed8adc55188b934358a1010039c4142e0399d3fb2d5b3"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "e3cd8cafbc134abbfc996d8127783013c5f204d3f79cde3a65b765593ea98125",
+          "sha256": "a5aa100d75701d9a5240ad4e4e1dab2c09cda4f3afd11f1963d313bd86686b3e"
+        }
+      ],
+      "routes_added": false,
+      "live_schema_changed": false,
+      "semantic_search_enabled": false,
+      "production_policy_created": false
     }
   ]
 }

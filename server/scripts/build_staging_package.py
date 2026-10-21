@@ -279,6 +279,8 @@ FILES = (
             'scripts/library_siglip.py',
             'scripts/library_semantic_index.py',
             'scripts/qualify_library_semantic.py',
+            'scripts/semantic_coverage_qualification.py',
+            'scripts/semantic_request_profile.py',
     'scripts/multilingual_index_collection.py',
     'scripts/semantic_bilingual_clothing.py',
     'scripts/semantic_loopback_network.py',

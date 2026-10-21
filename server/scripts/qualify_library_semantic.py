@@ -9,7 +9,7 @@ already-loaded library SigLIP adapter. It never enables production search.
 from __future__ import annotations
 
 import argparse
-from contextlib import closing, ExitStack, contextmanager
+from contextlib import closing, ExitStack, contextmanager, nullcontext
 import hashlib
 import json
 import math
@@ -85,6 +85,21 @@ def _index_file_hashes(root, records):
     return hashes
 
 
+def _private_json_pin(path, limit):
+    """Bound the private document before hashing any newly supplied input."""
+    from library_semantic_index import _load_json
+    from qualify_semantic_pair import canonical
+    document = _load_json(Path(path), limit)
+    return document, hashlib.sha256(canonical(document) + b'\n').hexdigest()
+
+
+def _json_pin_matches(path, digest, limit):
+    try:
+        return _private_json_pin(path, limit)[1] == digest
+    except Exception:
+        return False
+
+
 def _network_files(network, source_root):
     if network is None:
         return None
@@ -105,8 +120,80 @@ def _network_files(network, source_root):
     return result
 
 
+def prepare_omission_review(index_path, output_directory):
+    """Prepare a private, unreviewed draft from an inspected frozen index.
+
+    This model-free operation verifies the candidate but never grants approval,
+    builds a serving policy, or opens a production database.
+    """
+    repo_backend = str(Path(__file__).parents[1] / 'backend')
+    if repo_backend not in sys.path:
+        sys.path.insert(0, repo_backend)
+    from library_semantic_index import inspect_library_index, MAX_MANIFEST_BYTES
+    from semantic_coverage_qualification import omission_review_draft
+    from qualify_semantic_pair import output_target, write_record, canonical
+
+    path = Path(index_path)
+    _require(path.is_absolute() and '..' not in path.parts and path.name == 'index.json')
+    _initial, before = _private_json_pin(path, MAX_MANIFEST_BYTES)
+    manifest, records, _identities = inspect_library_index(path)
+    snapshot_path = path.parent / 'snapshot.json'
+    snapshot, snapshot_pin = _private_json_pin(snapshot_path, MAX_MANIFEST_BYTES)
+    draft = omission_review_draft(manifest, records, snapshot, index_sha256=before)
+    output = output_target(output_directory)
+    resolved = output.resolve(strict=False)
+    index_root = path.parent.resolve(strict=True)
+    source_root = Path(__file__).resolve().parents[2]
+    _require(not any(resolved.is_relative_to(root) or root.is_relative_to(resolved)
+        for root in (index_root, source_root)), 'unsafe_draft_output')
+    _require(_json_pin_matches(path, before, MAX_MANIFEST_BYTES)
+        and _json_pin_matches(snapshot_path, snapshot_pin, MAX_MANIFEST_BYTES),
+        'draft_inputs_changed')
+    output.mkdir(mode=0o700)
+    write_record(output, 'omission-review.DRAFT.json', draft)
+    _require(_json_pin_matches(path, before, MAX_MANIFEST_BYTES)
+        and _json_pin_matches(snapshot_path, snapshot_pin, MAX_MANIFEST_BYTES),
+        'draft_inputs_changed')
+    summary = {'status': 'omission_review_draft_prepared', 'operator_reviewed': False,
+        'index_sha256': before, 'snapshot_sha256': manifest['snapshot_sha256'],
+        'catalog_images': manifest['snapshot_asset_count'], 'searchable_images': len(records),
+        'omitted_images': len(draft['omitted']),
+        'review_sha256': hashlib.sha256(canonical(draft) + b'\n').hexdigest(),
+        'models_loaded': False, 'production_database_opened': False,
+        'runtime_policy_created': False, 'activation_performed': False}
+    write_record(output, 'draft-summary.json', summary)
+    return summary
+
+
 def measure(index_path, output_directory, *, model, queries, repetitions=1, network=None,
-            bulk_vectors=False):
+            bulk_vectors=False, omission_review_path=None, profile_requests=False):
+    """Run the explicit canary, optionally observing private request phases.
+
+    A full-catalog run requires a separately reviewed omission document. No
+    builder promotes an unreviewed draft, and no production accounts are used.
+    """
+    _require(type(profile_requests) is bool)
+    repo_backend = str(Path(__file__).parents[1] / 'backend')
+    if repo_backend not in sys.path:
+        sys.path.insert(0, repo_backend)
+    if profile_requests:
+        from semantic_request_profile import instrument_requests
+        observation = instrument_requests()
+    else:
+        observation = nullcontext(None)
+    with observation as observer:
+        result = _measure(index_path, output_directory, model=model, queries=queries,
+            repetitions=repetitions, network=network, bulk_vectors=bulk_vectors,
+            omission_review_path=omission_review_path, request_observer=observer)
+    if observer is not None:
+        result['request_profile'] = observer.snapshot()
+    from qualify_semantic_pair import write_record
+    write_record(Path(output_directory), 'measurement.json', result)
+    return result
+
+
+def _measure(index_path, output_directory, *, model, queries, repetitions, network,
+             bulk_vectors, omission_review_path, request_observer):
     """Run a bounded synthetic-account canary over a verified immutable index.
 
     ``model`` must be the caller's real, loaded, UNBOUND LibrarySiglipModel.
@@ -168,6 +255,24 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
     index_hash = _record_digest(index_path)
     candidate_identity = identity_sha256(identities["image"])
     _require(all(record.identity_sha256 == candidate_identity for record in records))
+    omission_review = snapshot = None
+    omitted = ()
+    review_hash = snapshot_file_hash = None
+    if omission_review_path is not None:
+        from library_semantic_index import MAX_MANIFEST_BYTES
+        from semantic_coverage_qualification import validate_omission_review
+        _require(bulk_vectors, 'omission_review_requires_bulk')
+        omission_review_path = Path(omission_review_path)
+        _require(omission_review_path.is_absolute() and '..' not in omission_review_path.parts
+            and not omission_review_path.resolve().is_relative_to(source_root), 'unsafe_review_path')
+        require_private_directory(omission_review_path.parent)
+        snapshot_path = index_root / 'snapshot.json'
+        snapshot, snapshot_file_hash = _private_json_pin(snapshot_path, MAX_MANIFEST_BYTES)
+        omission_review, review_hash = _private_json_pin(omission_review_path, 16 * 1024**2)
+        omitted = validate_omission_review(omission_review, manifest, records, snapshot,
+                                          index_sha256=index_hash)
+        _require(_json_pin_matches(omission_review_path, review_hash, 16 * 1024**2)
+            and _json_pin_matches(snapshot_path, snapshot_file_hash, MAX_MANIFEST_BYTES), 'review_inputs_changed')
 
     output = output_target(output_directory)
     resolved_output = output.resolve(strict=False)
@@ -192,6 +297,17 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
     tokens = {name: secrets.token_urlsafe(32)
         for name in ("pilot-owner", "pilot-viewer", "pilot-other")}
     fixture_harness._fixture(database, records, library, tokens, now)
+    if omission_review is not None:
+        # Only this new synthetic DB receives full-roster failure rows. Its
+        # synthetic dates/text make omitted-only hard filters observable.
+        with closing(sqlite3.connect(database)) as db, db:
+            for number, item in enumerate(omitted, len(records) + 1):
+                db.execute('INSERT INTO assets VALUES(?,?,?,?,?,?,?,NULL,?)',
+                    (int(item.asset_id), 'synthetic-omitted-no-original', item.source_sha256,
+                     'active', 'image/jpeg', 16, 16, '2026-01-03'))
+                db.execute('INSERT INTO access_asset_libraries VALUES(?,?)', (int(item.asset_id), library))
+                db.execute('INSERT INTO captions VALUES(?,?,?,0,0)',
+                    (number, int(item.asset_id), 'Synthetic omitted fixture caption'))
 
     @contextmanager
     def connection():
@@ -217,6 +333,7 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
     denial_latencies = []
     rows = []
     provider_token = secrets.token_urlsafe(32)
+    during_encode = [None]
 
     with ExitStack() as resources:
         if network_enabled:
@@ -234,7 +351,7 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
         with closing(sqlite3.connect(database)) as db:
             with base_budget.attempt(db, lambda: False) as (_check, read):
                 source = d.scoped_source(library, read)
-        ids = tuple(record.asset_id for record in sorted(records, key=lambda item: int(item.asset_id)))
+        ids = tuple(str(row[0]) for row in source['assets'])
         reviewed = ReviewedIndex(library, "1", ids, ids, d.digest(source))
         technical_receipt = hashlib.sha256(canonical({
             "role": "synthetic_fixture_not_activation",
@@ -243,6 +360,18 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
             "index_sha256": index_hash,
         })).hexdigest()
         binding = JointSpaceBinding(identities["image"], identities["text"], technical_receipt)
+        eligibility = None
+        if omission_review is not None:
+            from semantic_coverage_qualification import runtime_policy
+            from app.access.semantic_eligibility import SemanticEligibilityStore
+            policy = runtime_policy(omission_review, manifest, records, snapshot,
+                index_sha256=index_hash, binding_sha256=binding.binding_sha256,
+                bulk_sha256=bulk_store.file_sha256)
+            policy_path = output / 'synthetic-eligibility.json'
+            write_record(output, policy_path.name, policy)
+            policy_hash = _record_digest(policy_path)
+            eligibility = SemanticEligibilityStore(policy_path, policy_hash, library,
+                binding.binding_sha256, bulk_store.file_sha256, source_root)
         model.bind(binding)
         model.verify()
 
@@ -252,6 +381,9 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
             def encode(self, query, *, check):
                 counters["provider_calls"] += 1
                 counters["model_encode_calls"] += 1
+                if during_encode[0] is not None:
+                    callback, during_encode[0] = during_encode[0], None
+                    callback()
                 return model.encode(query, check=check)
 
         access = AccessRuntime(connection, origin, clock=lambda: now)
@@ -271,7 +403,8 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
             denial_latencies=denial_latencies, rows=rows, index_path=index_path,
             index_root=index_root, index_hash=index_hash, manifest=manifest,
             original_vector_hashes=original_vector_hashes, net_files=net_files,
-            warmup_holder=[None], bulk_store=bulk_store)
+            warmup_holder=[None], bulk_store=bulk_store, eligibility=eligibility,
+            omitted=omitted, during_encode=during_encode, request_observer=request_observer)
 
     # Only publish the report after all temporary clients/listeners have closed.
     model.verify()
@@ -279,12 +412,21 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
     _require(_index_file_hashes(index_root, records) == original_vector_hashes,
         "candidate_vectors_changed_during_measurement")
     inspect_library_index(index_path, expected_snapshot=manifest["snapshot_sha256"])
+    if omission_review is not None:
+        _require(_json_pin_matches(omission_review_path, review_hash, 16 * 1024**2)
+            and _json_pin_matches(index_root / 'snapshot.json', snapshot_file_hash, MAX_MANIFEST_BYTES),
+            'review_inputs_changed')
     result.update({
         "schema": "photohouse.library_semantic_measurement.v1",
         "index_sha256": index_hash,
         "library_id": library,
         "snapshot_sha256": manifest["snapshot_sha256"],
         "available_image_count": len(records),
+        'catalog_mode': 'reviewed_full_frozen_catalog' if omission_review is not None else 'ready_only',
+        'catalog_image_count': len(records) + len(omitted),
+        'reviewed_omission_count': len(omitted),
+        'omission_review_sha256': review_hash,
+        'eligibility_scope': 'synthetic_accounts_only' if eligibility is not None else None,
         "index_failure_count": len(manifest["failures"]),
         "index_processing_complete": manifest["processing_complete"],
         "full_family_index_complete": manifest["complete"],
@@ -324,7 +466,6 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
         "human_relevance_measured": False,
         "family_relevance_accepted": False,
     })
-    write_record(output, "measurement.json", result)
     return result
 
 
@@ -333,7 +474,8 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
                 database, library, tokens, records, ids, *, queries, repetitions,
                 origin, api_socket, provider_token, port, counters, protected,
                 denial_latencies, rows, index_path, index_root, index_hash,
-                manifest, original_vector_hashes, net_files, warmup_holder, bulk_store=None):
+                manifest, original_vector_hashes, net_files, warmup_holder, bulk_store=None,
+                eligibility=None, omitted=(), during_encode=None, request_observer=None):
     import httpx
     from app.access.semantic_encoder import LocalSemanticEncoder
     from app.access.semantic_search import SemanticSearchRuntime
@@ -357,7 +499,8 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
     encoder = LocalSemanticEncoder(binding, provider_url, bearer_token=provider_token,
         transport=None if network_enabled else httpx.MockTransport(forward))
     runtime = SemanticSearchRuntime(discovery, index_root, encoder,
-        pilot_owner_account_id="pilot-owner", serving_limits=limits, bulk_vectors=bulk_store)
+        pilot_owner_account_id="pilot-owner", serving_limits=limits, bulk_vectors=bulk_store,
+        eligibility=eligibility)
     runtime_budget = runtime.budget
     _require(runtime_budget.slots is base_budget.slots, "admission_pool_not_shared")
     app = create_app(access_runtime=access, discovery_runtime=discovery,
@@ -391,12 +534,28 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
         protected.append("provider_bad_bearer_denied_before_model")
 
         endpoint = f"/libraries/{library}/semantic-search/v1/query"
+        last_profile_ordinal = [None]
         def request(text, *, token=None, filters=None):
+            before_profile = request_observer.request_count if request_observer else None
             started = time.monotonic()
             response = client.post(endpoint,
                 json={"query": text, "filters": filters or {}},
                 headers={"Authorization": "Bearer " + (token or tokens["pilot-owner"])})
+            after_profile = request_observer.request_count if request_observer else None
+            last_profile_ordinal[0] = (after_profile if before_profile is not None
+                and after_profile == before_profile + 1 and after_profile <= 256 else None)
             return response, (time.monotonic() - started) * 1000
+
+        def coverage(body, matched):
+            if eligibility is None:
+                _require('coverage_details' not in body.get('semantic', {}), 'legacy_coverage_changed')
+                return
+            _require(body.get('semantic', {}).get('coverage_details') == {
+                'version': 1, 'policy_sha256': eligibility.file_sha256,
+                'state': 'partial' if omitted else 'complete',
+                'catalog_images': len(records) + len(omitted),
+                'searchable_images': len(records), 'omitted_images': len(omitted),
+                'matched_omitted_images': matched}, 'partial_coverage_not_disclosed')
 
         for label, token in (("viewer", tokens["pilot-viewer"]),
                 ("other_owner", tokens["pilot-other"]), ("invalid", "invalid")):
@@ -416,6 +575,8 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
 
         warm, elapsed = request(queries[0]["text"])
         _require(warm.status_code == 200, "warmup_failed")
+        coverage(warm.json(), len(omitted))
+        warmup_profile_ordinal = last_profile_ordinal[0]
         warmup_holder[0] = elapsed
         for query in queries:
             for repetition in range(repetitions):
@@ -424,9 +585,11 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
                 body = response.json()
                 _require(body.get("semantic", {}).get("candidate_count") == len(records)
                     and body.get("total") == len(records), "candidate_cohort_incomplete")
+                coverage(body, len(omitted))
                 rows.append({"query_id": query["id"], "language": query["language"],
                     "query_sha256": hashlib.sha256(query["text"].encode("utf-8")).hexdigest(),
                     "repetition": repetition, "elapsed_ms": elapsed,
+                    **({'runtime_profile_ordinal': last_profile_ordinal[0]} if request_observer else {}),
                     "candidate_count": body["semantic"]["candidate_count"]})
 
         allowed = {record.asset_id for index, record in enumerate(records) if index % 2 == 1}
@@ -435,7 +598,73 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
         _require(response.status_code == 200 and response.json()["total"] == len(allowed)
             and {item["id"] for item in response.json()["items"]} <= allowed,
             "synthetic_hard_date_filter_failed")
+        coverage(response.json(), 0)
         protected.append("synthetic_date_filter_remains_hard_filter")
+
+        if eligibility is not None:
+            omitted_filter = {'date': {'from': '2026-01-03', 'to': '2026-01-03'}}
+            before = dict(counters)
+            empty, _elapsed = request(queries[0]['text'], filters=omitted_filter)
+            _require(empty.status_code == 200 and empty.json()['total'] == 0
+                and empty.json()['items'] == [] and counters['model_encode_calls'] == before['model_encode_calls'],
+                'omitted_only_scope_encoded_or_returned_cards')
+            coverage(empty.json(), len(omitted))
+            protected.append('omitted_only_hard_filter_disclosed_without_encoding')
+            ordinary = client.post('/assistant/v1/turns', json={'library_id': library,
+                'text': 'find photos containing "Synthetic omitted fixture caption"', 'context': None},
+                headers={'Authorization': 'Bearer ' + tokens['pilot-owner'],
+                         'X-PhotoHouse-Search-Version': '2'})
+            _require(ordinary.status_code == 200 and ordinary.json().get('total') == len(omitted)
+                and counters['model_encode_calls'] == before['model_encode_calls'],
+                'ordinary_search_lost_omitted_assets')
+            protected.append('ordinary_literal_search_retains_omitted_images')
+
+            policy_bytes = eligibility.path.read_bytes()
+            before = dict(counters)
+            try:
+                eligibility.path.write_bytes(policy_bytes + b' ')
+                damaged, _elapsed = request(queries[0]['text'])
+                _require(damaged.status_code == 503 and 'items' not in damaged.json()
+                    and counters == before, 'changed_policy_reached_semantic_io')
+            finally:
+                eligibility.path.write_bytes(policy_bytes)
+            restored, _elapsed = request(queries[0]['text'], filters=omitted_filter)
+            _require(restored.status_code == 200, 'synthetic_policy_restore_failed')
+            protected.append('changed_policy_refused_before_bulk_and_inference')
+
+            if omitted:
+                row = omitted[0]
+                def change_omitted_source():
+                    with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
+                        db.execute('UPDATE assets SET hash_sha256=? WHERE id=?',
+                            ('0' * 64 if row.source_sha256 != '0' * 64 else '1' * 64, int(row.asset_id)))
+                def restore_omitted_source():
+                    with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
+                        db.execute('UPDATE assets SET hash_sha256=? WHERE id=?',
+                                   (row.source_sha256, int(row.asset_id)))
+                before = dict(counters)
+                try:
+                    change_omitted_source()
+                    changed, _elapsed = request(queries[0]['text'],
+                        filters={'date': {'from': '2026-01-02', 'to': '2026-01-02'}})
+                    _require(changed.status_code == 503 and 'items' not in changed.json()
+                        and counters == before, 'filtered_omitted_source_change_reached_semantic_io')
+                finally:
+                    restore_omitted_source()
+                protected.append('filtered_out_omitted_source_change_refused_before_inference')
+                try:
+                    during_encode[0] = change_omitted_source
+                    changed, _elapsed = request(queries[0]['text'])
+                    _require(changed.status_code == 503 and 'items' not in changed.json()
+                        and counters['model_encode_calls'] == before['model_encode_calls'] + 1,
+                        'mid_encode_omitted_source_change_released_cards')
+                finally:
+                    during_encode[0] = None
+                    restore_omitted_source()
+                restored, _elapsed = request(queries[0]['text'], filters=omitted_filter)
+                _require(restored.status_code == 200, 'synthetic_omitted_source_restore_failed')
+                coverage(restored.json(), len(omitted))
+                protected.append('mid_encode_omitted_source_change_withheld_cards')
 
         if bulk_store is not None:
             from app.access.discovery_provider import MemoryIndexProvider, ReviewedIndex
@@ -563,6 +792,7 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
         and _index_file_hashes(index_root, records) == original_vector_hashes,
         "candidate_files_changed_during_canary")
     return {"warmup_ms": warmup_holder[0],
+        **({'warmup_profile_ordinal': warmup_profile_ordinal} if request_observer else {}),
         "shared_admission_pool": runtime_budget.slots is base_budget.slots}
 
 

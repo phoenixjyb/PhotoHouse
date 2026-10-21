@@ -1,5 +1,14 @@
 # Current project status
 
+**October 21 full-catalog qualification preparation:** local source now builds a
+reviewed omission policy only for disposable qualification accounts and retains
+all frozen catalog entries. The owner approved 65 omissions for qualification
+only; a fresh read-only catalog comparison matched all 23,761 rows. Private
+request-phase profiling will distinguish validation, hashing, encoding and
+ranking costs. Focused suites pass 33 tests; full API and native timing remain
+pending. No production policy is installed and semantic remains **OFF**. See
+[the full-catalog qualification guide](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md).
+
 **October 21 semantic coverage development:** local source adds optional private
 configuration version 5 for an explicitly reviewed semantic-only eligibility
 partition. It keeps ordinary discovery's full library scope, rechecks every
@@ -9,7 +18,7 @@ contract and bounded larger scene totals. A changed policy, unaccounted image,
 newly ready omitted artifact or corrupt bulk payload refuses before ranking;
 source/owner/policy are checked again before results escape. Versions 1–4 retain
 their strict missing-vector behavior. This is local development: no household
-policy was approved or installed and semantic remains **OFF**. See the
+serving policy was installed and semantic remains **OFF**. See the
 [eligibility contract](SEMANTIC_ELIGIBILITY_DESIGN.md) for checks and remaining
 native, refresh/retirement, latency and owner/family/device gates.
 At `7be2f7b`, the complete API profile passed **2,891 tests / 3,703 subtests** plus

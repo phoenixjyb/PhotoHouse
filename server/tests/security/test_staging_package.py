@@ -61,6 +61,8 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/library_siglip.py',
             'scripts/library_semantic_index.py',
             'scripts/qualify_library_semantic.py',
+            'scripts/semantic_coverage_qualification.py',
+            'scripts/semantic_request_profile.py',
             'scripts/semantic_loopback_network.py',
             'scripts/semantic_scene_comparison.py',
             'scripts/semantic_reviewed_projection.py',
@@ -227,6 +229,7 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.semantic_streaming import SemanticServingLimits\n'
                 'from app.access.semantic_eligibility import SemanticEligibilityStore\n'
                 'import multilingual_index_collection, semantic_bilingual_clothing\n'
+                'import semantic_coverage_qualification, semantic_request_profile\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'
                 'from app.access.photo_stacks import build_photo_stacks\n'
