@@ -28467,6 +28467,30 @@
         }
       ],
       "notes": "Align the plan and trial overview with synthetic runtime injection, pinned Windows synthetic/binding evidence, verified model acquisition and the first failed real trial. Preserve the proposed qualification procedure and separate later source, real model success, production activation and deployment."
+    },
+    {
+      "feature": "selected-story-phase-aware-cpu-trial-and-preservation-checkpoint",
+      "source_commit": "a580884f67a94154efb0a671262ea395a6bb2262",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "78e7c0f1f2bd456667553908050b1069b748850f1eb7d01fddde8a34af1ec1d9",
+          "sha256": "b8f131911cc5d6bb61716ce9ab9226eacb0a31c980b95d6d91cce9fdd2f36dfc"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "40b235911f9b8bb7c0d6ead1959faa311207189a8662f5dfc9f87ac2f5dda300",
+          "sha256": "c223cc6cca0757d1e950e43b0f7442ef0dd4b11f57239d5862c99db73340168e"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "338d94a7dd8c1779c563b1ae20686e83d9f80be648ef902e96b884f7e68fcd7f",
+          "sha256": "a20a590879405ddbcea18a5ea3d5aa713bd661037a66a22c0442e707a1a7ddfb"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Record the separately staged a6b27df diagnostic: 22 native operator/binding-canary checks pass, real English generation exits 17, no qualified draft or remaining four cases. Record independent source/model/DLL/claims/process cleanup and live gateway/site/API/feed/report preservation, followed by explicit lane release. Preserve unknown exception, optional exchange-root qualification and production activation as open gates."
     }
   ]
 }

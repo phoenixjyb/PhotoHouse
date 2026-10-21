@@ -213,3 +213,40 @@ failure phases for a further diagnostic; that change is separate from the
 recorded runtime source. Application flags remain
 off; production databases/media, GPU inference, tasks/services, activation and
 deployment were outside this trial.
+
+
+## Phase-aware diagnostic and preservation, 2026-10-22
+
+The separately reviewed `a6b27df` package was staged into a fresh isolated source
+folder; the original `8dc4147` package and reports were retained. All 22 revised
+operator checks passed on Windows with zero skips, including the binding-only
+native canary. That canary reconciled its owned Job without opening the GGUF.
+The base interpreter and its two Python DLLs matched their fixed file pins.
+
+One manually initiated diagnostic used a fresh owner receipt and the same model,
+backend, CPU/context settings and limits. Its English worker exited with code
+17 (`generation`) after 6.344 seconds; inner and outer elapsed times were 12.890
+and 19.234 seconds. The other four cases did not run, and no replay occurred.
+The fixed phase shows that construction, tokenization, the context check and
+Python grammar construction returned before the completion call failed. Model-bound
+grammar setup, evaluation, sampling and response construction still occur inside
+that call; the phase alone cannot identify its exception or root cause. No
+model-close failure was reported. Successful generation, real cancellation/expiry,
+language quality and normal completion remain unqualified.
+
+Independent readback verified both 274-file source packages, the model's full
+size/SHA-256 and all 13 recorded installed DLL pins. The failed case recorded zero
+Job members and exchange disposal; the independent store read showed zero claims
+and maintenance closed. A final independent process check found no owned Python
+or control observer. Existing runtime identities, tasks, gateway/site/API
+processes, listeners and phone/TV feed hashes matched their preservation baseline.
+All 69 furniture-report assets were available with matching hashes before and
+after the trial. These are endpoint checks, not continuous availability or browser
+rendering acceptance. The coordinated Windows lane was explicitly released only
+after cleanup verification.
+
+The source includes the optional exchange parent and runtime injection seams,
+but this diagnostic used the existing private-qualifier temporary-directory path.
+It does not qualify explicit exchange-parent replacement on Windows, a serialized
+provider recipe or household service activation. Production services, settings,
+databases/media and feature flags were not changed.

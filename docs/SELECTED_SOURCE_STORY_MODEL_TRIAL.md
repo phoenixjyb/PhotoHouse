@@ -7,17 +7,22 @@ not deploy the feature or use family photos, memories, accounts or databases.
 
 A [pinned CPU candidate](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) now records the
 candidate artifacts and limits. The model has been acquired and its full size and
-SHA-256 verified. The first real English trial failed with generic exit code 2
-after 6.578 seconds; model construction, generation and close are not qualified,
-and the other four planned cases did not run.
+SHA-256 verified. The original English trial failed with generic exit code 2
+after 6.578 seconds. A separately reviewed phase-aware diagnostic at `a6b27df`
+then failed inside generation (exit 17) after 6.344 seconds. The completion call's
+exception is still unknown; no close failure was reported. Neither attempt
+produced a qualified draft or ran its other four planned cases. See the
+[candidate checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#phase-aware-diagnostic-and-preservation-2026-10-22).
 
 The default-off synthetic application, protected prepare/cancel, review/save and
 `RuntimeConfiguration` injection seams are implemented. Windows completed 12
 synthetic native cases for the pinned source and 18 binding-observer checks.
-These checks do not qualify the real model. Later source changes add fixed worker
-phase codes and optional `exchange_root`; they have synthetic coverage but were
-not in the staged trial package or native-qualified. No serialized provider
-selection or application activation exists. Keep both flags off.
+These checks do not qualify the real model. The later `a6b27df` package and its
+fixed worker phase codes are now staged in the isolated candidate; all 22 revised
+operator/binding-canary checks passed with zero skips. Its optional `exchange_root`
+was packaged but not used by this diagnostic, so its Windows replacement/ACL
+behavior remains separate qualification. No serialized provider selection or
+application activation exists. Keep both flags off.
 
 The sections below retain the proposed limits and trial procedure. They do not
 authorize another attempt; the recorded run stopped at the first English failure.
