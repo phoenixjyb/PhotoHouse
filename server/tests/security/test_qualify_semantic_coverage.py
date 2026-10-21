@@ -119,7 +119,8 @@ def test_full_catalog_canary_preserves_65_omissions_and_profiles_actual_runtime(
     for sample in result['samples']:
         observation = requests[sample['runtime_profile_ordinal']]
         assert observation['phases']['encoder_roundtrip']['calls'] == 1
-        assert observation['phases']['eligibility_validation']['calls'] == 3
+        # One complete ranking generation and the final fresh source check.
+        assert observation['phases']['eligibility_validation']['calls'] == 2
         assert observation['phases']['source_sql']['calls'] > 0
     assert all(text not in json.dumps(profile) for text in ('garden scene', 'omitted-', 'source_sha256', str(tmp_path)))
     assert json.loads((output / 'measurement.json').read_bytes()) == result

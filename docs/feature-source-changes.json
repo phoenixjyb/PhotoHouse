@@ -28313,6 +28313,20 @@
       "semantic_search_enabled": false,
       "provider_model_recipes_changed": false,
       "notes": "Use one authorized ranking generation for an unbound first page while retaining final fresh checks; add provider-only synthetic readiness with per-load configuration pinning before credential reads. Record fixed R58 integrated source evidence without claiming native optimization qualification."
+    },
+    {
+      "feature": "qualify-initial-ranking-and-final-policy-passes-r59",
+      "source_commit": "a3d2d93e867dad9c8c32119f4602fec2723d3860",
+      "files": [
+        {
+          "path": "server/tests/security/test_qualify_semantic_coverage.py",
+          "before_sha256": "5b8e207a6dbeab35f28e222ca3741257b62a1d6e54fee54db2c8d673cebd85ed",
+          "sha256": "0c6463bb4aad7fefce2bf734596e02d991b1755579da2e093edac2bc357b6972"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "notes": "The optimized unbound first page validates the ranking generation and final fresh source, so the full-catalog profiler contract expects two complete policy validations."
     }
   ]
 }
