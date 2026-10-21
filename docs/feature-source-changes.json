@@ -27140,6 +27140,83 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Default-off explicit literal-loopback async narrative v3 adapter with bounded request/body/deadline, fixed errors, no proxy/redirect/fallback/retry, and shared unchanged narrative prompt/schema helper. Every dispatched request requires injected trusted native-owner exact-True reconciliation even after a completed HTTP response. Retained cleanup survives waiter cancellation and cannot release a newer scope; uncertain native work quarantines the existing shared gate. Source-only package closure adds the inactive adapter. Synthetic transport/native-owner unit, operation lifecycle and real protected ASGI/browser fixtures only; fake model completion is independent of HTTP close. No native-owner implementation/qualification, installed model, Windows/GPU data access, activation, deployment or publication."
+    },
+    {
+      "feature": "selected-story-private-native-process-owner-default-off",
+      "source_commit": "b89632e4e05006d44169d971c0e2acd3ce3ec092",
+      "files": [
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "d93e4a4eb0df4620c1113004a761865581b8ecb68b14e70cb2263f5ebed895b2",
+          "sha256": "0090058cbabd1d92d2e1fef9caffc3f5e027b8619b213beb19b00ec5a54c096e"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "614184d5055b65a7809623fb8f3506eff92df7ba42fc31254f1f8c6342a964d7",
+          "sha256": "3924dcc2272c8eea76d598699e42c2e8860fd4a049437d59ae1598908e3c4a4c"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "a53f7e9dee832346ea22da962acecb2cebaaa5e05bc0e114118810f967bf77d9",
+          "sha256": "434f2c79b0b45b02021e5306a713266bea52afe964f1d2bcf1657bceecf80a0e"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_LOCAL.md",
+          "before_sha256": "aaf4d6e9c5d41537d8ceadb38e2b624fdc699b4d9f407f3cbee6b61cc3f8522c",
+          "sha256": "3c4f35170e65c6e78eb3de59fbcfd4e8f67462339f6004fb3e3343775fd351dc"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_NATIVE_OWNER.md",
+          "before_sha256": null,
+          "sha256": "763e3ddc3d7220c72173522c73c0b1d1f407aa3c717e72443b80d17808cc5c67"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_local.py",
+          "before_sha256": "f889d8f00d35850c4789705f0a73927ae5b6d46f4886071fac11c00581d2a725",
+          "sha256": "eaf951a28ec55c514ac8a65827baa6b2d9fd989cfb7a3d4ee8ee1883b4da7ba4"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_native.py",
+          "before_sha256": null,
+          "sha256": "49f1351cabaf84c3cfa46a0f3ec022d02d88f6b37861e1e6796de15710400434"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "9937e1613d4e8b529c2c2217b44e2752db57544460f8a7459f4ae6c19d907f57",
+          "sha256": "209f4b588215914f477fe962ef0580aa72777b9bf16562e5e9b7122cca95826f"
+        },
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "before_sha256": null,
+          "sha256": "3ba838b80ce847576dcc7d95a4a696c8b5971625dd443ff40b44e7bac543d5bb"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_native.py",
+          "before_sha256": null,
+          "sha256": "de69471b15cd266b91f416c8532cae2818659372b91b060a3e4163527b9de9be"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_native_processes.py",
+          "before_sha256": null,
+          "sha256": "0700bf68fb9e68523ce8710a6e3e98fe99adf1e5f2e4c1b0b01ac40edbc72582"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "b9d6b45ebf7dd1a0a79fd7027767193fdf34b26943f789d290c826038c5394e9",
+          "sha256": "ab66f0fac0ac9f61c7c956e3fe12a444323dbf3fd64911f5cba0f60106a49ea7"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "dc6a259b3a1a4c57f18f5448d82d9995a6594719070da3a7cfb79f38b5d836a8",
+          "sha256": "d0fcc141b384fa2174ff716050ec8f4cf67ac2a0126f71c56c1b130f095fd516"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Default-off single-scope private process containment controller with retained shielded launch/cleanup, suspended root assignment before resume, root-exit plus zero-member reconciliation, sticky uncertain receipts/close failures, bounded polling and explicit shutdown. Windows factory reuses existing verified non-breakaway Job kernel; no app binding. HTTP adapter refuses this containment-only proof domain pending qualified provider-to-process binding. Fake-kernel and real synthetic subprocess tests with simulated Job membership exercise cancellation, expiry, cleanup and sticky shared admission quarantine; no Windows containment/GPU/model qualification. Hash is preflight only; protected path/identity qualification remains required. No weights, production data, runtime control, activation, deployment or publication."
     }
   ]
 }

@@ -65,6 +65,8 @@ class LocalSelectedStoryProvider:
         if ((enabled or native_owner is not None) and
                 not inspect.iscoroutinefunction(getattr(native_owner, 'stop_and_reconcile', None))):
             raise ValueError('Explicit async native work owner required')
+        if getattr(native_owner, 'proof_domain', None) == 'owned_process_tree':
+            raise ValueError('Qualified provider-to-process binding required')
         if transport is not None and not isinstance(transport, httpx.AsyncBaseTransport):
             raise ValueError('Async provider transport required')
         self.url = f'http://{match[1]}:{match[2]}/api/generate'

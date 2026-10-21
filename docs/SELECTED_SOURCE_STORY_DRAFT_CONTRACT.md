@@ -497,7 +497,11 @@ Python task, finished HTTP response or `asyncio.to_thread` wrapper is not that
 proof. The optional [async local adapter](SELECTED_SOURCE_STORY_LOCAL.md) reuses the
 narrative prompt/schema through a bounded async HTTP path. It requires an
 explicit injected native work owner, including on completed HTTP responses;
-no synchronous thread wrapper or native owner is installed by default.
+no synchronous thread wrapper or native owner is installed by default. The
+[default-off native process owner](SELECTED_SOURCE_STORY_NATIVE_OWNER.md) retains
+private containment and requires root exit plus zero members before release.
+Its process-tree proof cannot directly certify an HTTP endpoint; provider binding
+and native Windows qualification remain separate.
 
 `cancel(token, library, request_id)` requires current matching account/session
 authority. Trusted `invalidate_session(token)` and `close()` fence output and

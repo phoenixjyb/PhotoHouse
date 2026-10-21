@@ -242,7 +242,10 @@ sources, preparation, citation inspection, editing, explicit review and existing
 idempotent Save. Native stop proof, cross-process resource coordination and
 family/device qualification remain separate. A [default-off local adapter](SELECTED_SOURCE_STORY_LOCAL.md)
 now provides the async narrative transport and explicit native-reconciliation
-seam, with synthetic checks only. No native owner/provider is installed or selected.
+seam, with synthetic checks only. A [default-off native process owner](SELECTED_SOURCE_STORY_NATIVE_OWNER.md)
+now retains private containment through cancellation and cleanup. Its synthetic
+checks do not qualify Windows containment or bind a production provider. No
+native owner/provider is installed or selected.
 
 PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access

@@ -95,8 +95,10 @@ The native owner is trusted host code, not a model-produced receipt. It must
 correlate the exact operation with the execution it owns and reconcile all work
 and helpers within its authority. This adapter invents no native cancel endpoint
 and never stops or restarts a shared model service. Native-owner implementation
-and qualification remain separate; no always-true owner is supplied in product
-source.
+and qualification remain separate. The new [process owner](SELECTED_SOURCE_STORY_NATIVE_OWNER.md)
+is default-off and proves only its private process tree. This adapter refuses
+that containment-only owner as direct endpoint proof; a qualified provider-to-process
+binding is still required. No always-true owner is supplied in product source.
 
 False, exceptional or overdue cleanup retains ownership. The application
 quarantines its shared admission gate and does not publish a result. Explicit
