@@ -2,7 +2,8 @@
 
 This is a pinned candidate for the [first generated-source model trial](SELECTED_SOURCE_STORY_MODEL_TRIAL.md).
 It changes no application provider, feature flag, deployment or default dependency
-profile. No candidate wheel or model has been downloaded, installed or loaded.
+profile. The Windows checkpoint below records the acquired wheels, isolated
+installation and binding import; the real model remains unavailable.
 The first trial measures the existing worker and containment path; it does not
 select this small model as the family's production storyteller.
 
@@ -25,9 +26,10 @@ Windows x64 CPython 3.12 only; it is not included by the API/development locks.
 | Model bytes/license | 1,117,320,736 bytes; Apache-2.0 |
 | Complete download set | 25 wheels plus one model, 1,144,386,947 bytes |
 
-These digests are publisher metadata, not hashes of locally acquired bytes.
-Download verification must check exact size and SHA-256 before installation or
-loading. See the [dependency notices](../third_party/selected-story-cpu-trial.md).
+The 25 wheel sizes and SHA-256 values have now been verified against acquired
+Windows bytes. The model digest remains publisher metadata: its bytes have not
+been acquired or verified. Download verification must check exact size and
+SHA-256 before loading. See the [dependency notices](../third_party/selected-story-cpu-trial.md).
 Keep the single GGUF alone in its dedicated protected directory;
 license records, wheels, reports and other files belong outside that directory.
 
@@ -103,9 +105,70 @@ bounds and owned partial files, CLI forwarding, receipt/window/deadline checks
 and all three generated bundles against the real product validator. Windows
 ran these under an actual 180-second / 2 GiB / eight-process outer Job with a
 12 GiB RAM floor and native limit/membership proof. Final operator/source input
-hashes match; the new environment directory is absent and no owned test Python
-process remains.
+hashes matched; at that preparation checkpoint, the new environment directory
+was absent and no owned test Python process remained.
 
 These are preparation tests. They do not execute the installer, optional binding
 or real model runner, and they grant no workload clearance. Real artifact and
-native/model qualification remain the next separately approved operation.
+native/model qualification require their own runtime evidence.
+
+## Windows acquisition and partial qualification, 2026-10-21
+
+The owner approved the pinned acquisition, new private environment, native
+inspection and generated-source CPU trial. The operation acquired all 25 wheels
+with the exact candidate sizes and SHA-256 values. It stopped before creating
+the environment or model file. The bounded child's standard streams were
+discarded, so its original failure reason was not recovered. A separate bounded,
+headers-only request to the same pinned model endpoint timed out. That supports
+an acquisition blocker, but does not establish the original exception or cause.
+No download was retried and no mirror, alternate model or provider was used.
+
+The verified wheels allowed a first offline installation in the approved new
+environment without replaying acquisition. It used the closed hash lock,
+`--no-index`, `--no-deps`, `--no-compile` and `--only-binary=:all:`; `pip check`
+passed. This installation had a 360-second / 2 GiB / eight-process outer Job,
+independent native membership/limit proof and a 12 GiB free-RAM floor. The model
+directory remained empty. Existing environments and model stores were not used
+as installation targets.
+
+All seven synthetic PE-parser checks passed on Mac and Windows. Static inspection
+identified 42 AMD64 DLL/PYD files and no GPU-named static imports. The packaged
+auxiliary `bin/llama-common.dll` has unresolved `libcrypto-3-x64.dll` and
+`libssl-3-x64.dll` imports. It remains unqualified; no unrelated installation was
+searched for substitute DLLs. The five libraries in `llama_cpp/lib` have no
+unresolved static imports against the inspected candidate, base Python and
+System32 inventories. API-set names are Windows contracts, not resolved file
+paths; this scan is not a complete loader or egress qualification.
+
+A separate 60-second / 2 GiB / four-process Job imported binding version 0.3.36
+under the new interpreter, with independent native proof and no model
+construction. Its environment excluded CUDA/HIP and library-root overrides,
+and supplied only the private interpreter, base Python and System32 on `PATH`.
+Observed DLL-directory additions were limited to `llama_cpp/lib` and
+`numpy.libs`. The child module snapshot showed the expected core libraries at
+the candidate paths with matching installation hashes, no `llama-common.dll`
+and no GPU-named modules. The binding reported no GPU-offload support. On-disk
+hashes and a module-path snapshot are not atomic proof of mapped image bytes.
+No `Llama` object, GGUF, token generation or model close was exercised.
+
+The public synthetic qualifier also passed all 12 native cases under the new
+environment at runtime source `8dc414788a522aa0d9cbf6ea3f37a60828991d24`.
+This covers default-off behavior, cancellation, expiry, descendant cleanup,
+private exchanges and the composed host-admission/close-failure cases. Its
+engine and GGUF bytes were generated fixtures; it did not import the real
+binding or load the real model. This was an interactive-user run, not SYSTEM
+qualification or installed-service acceptance.
+
+Final readback found no owned Python processes, zero claims in both synthetic
+host stores with maintenance closed, an empty real-model directory and all
+274 staged source-file hashes unchanged. All six mapped candidate DLL file
+hashes matched their installation pins. These are endpoint observations, not
+continuous service availability or atomic mapped-image verification.
+
+The real English/Chinese/mixed generation and real-model cancellation/expiry
+trial did not run. No real-trial owner receipt, admission window or packet was
+issued. Preserve the acquisition failure and private reports; obtaining the
+same pinned model is the next blocker, followed by a freshly confirmed workload
+window. Application flags remain off. No production database, family media,
+GPU inference, service/task control, deployment or activation was part of these
+operations.
