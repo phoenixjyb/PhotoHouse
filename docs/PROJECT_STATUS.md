@@ -1,5 +1,22 @@
 # Current project status
 
+**October 21 semantic coverage development:** local source adds optional private
+configuration version 5 for an explicitly reviewed semantic-only eligibility
+partition. It keeps ordinary discovery's full library scope, rechecks every
+current image/source hash and ready artifact, and discloses global and filtered
+omissions in Chinese/English replies. Web/Android accept the closed coverage
+contract and bounded larger scene totals. A changed policy, unaccounted image,
+newly ready omitted artifact or corrupt bulk payload refuses before ranking;
+source/owner/policy are checked again before results escape. Versions 1–4 retain
+their strict missing-vector behavior. This is local development: no household
+policy was approved or installed and semantic remains **OFF**. See the
+[eligibility contract](SEMANTIC_ELIGIBILITY_DESIGN.md) for checks and remaining
+native, refresh/retirement, latency and owner/family/device gates.
+The focused core/endpoint cohort passed 23 tests / 45 subtests, Web wire checks
+passed 22 tests, and all 1,157 live-core JVM tests passed. Coverage and legacy Web
+journeys passed nine and eight checkpoints respectively; enlarged bilingual replies
+were inspected.
+
 **October 21 semantic readiness follow-up:** the frozen family roster is fully
 processed: **23,696 indexed photos + 65 explicit failures = 23,761 attempts**.
 This is not complete searchable coverage: 64 inputs failed preparation and one
@@ -27,9 +44,10 @@ readback verified inputs/results and process/listener closure; API/config/OTA
 pins stayed unchanged. These are synthetic-account loopback measurements, not
 phone/WAN, concurrent-load or relevance acceptance. See the
 [readiness qualification record](SEMANTIC_LIBRARY_SCALE.md#completed-index-and-lifecycle-qualification--october-21-2026).
-The real benchmark uses a ready-only synthetic catalog. Production searches
-whose candidates include one of the 65 missing embeddings still refuse; a
-reviewed semantic-only eligibility and visible coverage policy is required.
+The real benchmark uses a ready-only synthetic catalog. The existing strict path
+refuses candidates that include one of the 65 missing embeddings; a
+reviewed semantic-only eligibility and visible coverage policy must be qualified
+and deployed before these omissions can be disclosed and skipped for ranking.
 Semantic remains **OFF**. Current-roster relevance, failure disposition,
 refresh/swap/retirement packaging, protected latency and owner/family/device
 acceptance remain activation gates.

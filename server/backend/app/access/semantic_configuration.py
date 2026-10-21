@@ -13,6 +13,7 @@ from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder
 from .semantic_search import SemanticSearchRuntime, _valid_pilot_owner_account_id
 from .semantic_streaming import SemanticServingLimits
 from .semantic_bulk_vectors import BulkVectorStore
+from .semantic_eligibility import SemanticEligibilityStore
 from .visual_candidates import VectorSpaceIdentity
 
 _IDENTITY_KEYS = {'artifact_sha256', 'preprocessing_sha256', 'vector_space_id',
@@ -22,6 +23,7 @@ _FIELDS = {'format_version', 'vector_root', 'encoder_url', 'encoder_timeout_seco
 _OWNER_FIELDS = _FIELDS | {'pilot_owner_account_id'}
 _LARGE_FIELDS = _OWNER_FIELDS | {'serving_limits'}
 _BULK_FIELDS = _LARGE_FIELDS | {'bulk_vectors'}
+_ELIGIBILITY_FIELDS = _BULK_FIELDS | {'eligibility'}
 
 
 class SemanticConfigurationError(ValueError):
@@ -101,15 +103,16 @@ def load_semantic_runtime(path, *, discovery, source_root, protected_paths=()):
             if set(doc) != _FIELDS:
                 raise SemanticConfigurationError()
             owner_account_id = None
-        elif version in (2, 3, 4):
-            if (set(doc) != (_OWNER_FIELDS if version == 2 else _LARGE_FIELDS if version == 3 else _BULK_FIELDS) or
+        elif version in (2, 3, 4, 5):
+            fields = {2: _OWNER_FIELDS, 3: _LARGE_FIELDS, 4: _BULK_FIELDS, 5: _ELIGIBILITY_FIELDS}[version]
+            if (set(doc) != fields or
                     not _valid_pilot_owner_account_id(doc['pilot_owner_account_id'])):
                 raise SemanticConfigurationError()
             owner_account_id = doc['pilot_owner_account_id']
         else:
             raise SemanticConfigurationError()
         limits = None
-        if version in (3, 4):
+        if version in (3, 4, 5):
             value = doc['serving_limits']
             if type(value) is not dict or set(value) != {
                     'candidate_limit', 'source_rows', 'source_bytes', 'search_seconds'}:
@@ -130,7 +133,7 @@ def load_semantic_runtime(path, *, discovery, source_root, protected_paths=()):
         root = _vector_root(doc['vector_root'], source_root=source_root)
         semantic_paths = (manifest_path, credential_path, root)
         bulk = None
-        if version == 4:
+        if version in (4, 5):
             value = doc['bulk_vectors']
             if type(value) is not dict or set(value) != {'path', 'file_sha256', 'library_id'}:
                 raise SemanticConfigurationError()
@@ -142,6 +145,16 @@ def load_semantic_runtime(path, *, discovery, source_root, protected_paths=()):
             bulk = BulkVectorStore(bulk_path, value['file_sha256'],
                 value['library_id'], binding.image_identity)
             semantic_paths += (bulk_path,)
+        eligibility = None
+        if version == 5:
+            value = doc['eligibility']
+            if type(value) is not dict or set(value) != {'path', 'file_sha256'}:
+                raise SemanticConfigurationError()
+            policy_path = _checked_path(value['path'])
+            _vector_root(str(policy_path.parent), source_root=source_root)
+            eligibility = SemanticEligibilityStore(policy_path, value['file_sha256'],
+                bulk.library_id, binding.binding_sha256, bulk.file_sha256, Path(source_root))
+            semantic_paths += (policy_path,)
         _require_semantic_paths_disjoint(semantic_paths, protected_paths)
         credential = _load_private_document(credential_path, source_root=source_root)
         if (type(credential) is not dict or set(credential) != {'token'} or
@@ -153,7 +166,7 @@ def load_semantic_runtime(path, *, discovery, source_root, protected_paths=()):
             raise SemanticConfigurationError()
         encoder = LocalSemanticEncoder(binding, doc['encoder_url'], timeout=float(timeout),
                                        bearer_token=token)
-        return SemanticSearchRuntime(discovery, root, encoder, owner_account_id, limits, bulk)
+        return SemanticSearchRuntime(discovery, root, encoder, owner_account_id, limits, bulk, eligibility)
     except SemanticConfigurationError:
         raise
     except (DeploymentError, OSError, TypeError, ValueError, KeyError, OverflowError):

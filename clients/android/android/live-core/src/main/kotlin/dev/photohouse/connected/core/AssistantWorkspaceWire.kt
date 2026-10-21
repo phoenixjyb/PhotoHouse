@@ -557,8 +557,8 @@ object AssistantWorkspaceWire {
 
         val ids = context.getValue("visible_ids").array(20).map { it.str(19).also { id -> check(PhoneDiscoveryWire.validId(id)) } }
         check(ids.distinct().size == ids.size)
-        val total = raw.getValue("total").count(512)
-        check(context.getValue("total").integer(512).toInt() == total && total <= scopeTotal)
+        val total = raw.getValue("total").count(100000)
+        check(context.getValue("total").integer(100000).toInt() == total && total <= scopeTotal)
         val scores = scene.getValue("scores").array(20).map { score ->
             val primitive = score as? JsonPrimitive ?: bad()
             check(!primitive.isString)
@@ -571,12 +571,29 @@ object AssistantWorkspaceWire {
         val expectedFilters = JsonObject(scopeFilters + ("media" to JsonArray(listOf(JsonPrimitive("image")))))
         val filters = raw.getValue("filters") as? JsonObject ?: bad()
         check(filters == expectedFilters)
-        val semantic = raw.getValue("semantic").obj(setOf("mode", "score_kind", "candidate_count", "coverage", "needs_review"))
+        val semantic = raw.getValue("semantic").obj(setOf("mode", "score_kind", "candidate_count", "coverage", "needs_review"), setOf("coverage_details"))
         check(semantic.getValue("mode").str(32) == "text_to_image" &&
             semantic.getValue("score_kind").str(16) == "cosine" &&
-            semantic.getValue("candidate_count").count(512) == total &&
+            semantic.getValue("candidate_count").count(100000) == total &&
             semantic.getValue("coverage").str(32) == "complete_eligible_images" &&
             semantic.getValue("needs_review").bool())
+        semantic["coverage_details"]?.let { rawDetails ->
+            val details = rawDetails.obj(setOf("version", "policy_sha256", "state", "catalog_images", "searchable_images",
+                "omitted_images", "matched_omitted_images"))
+            check(details.getValue("version").count(1) == 1)
+            val policyHash = details.getValue("policy_sha256").str(64)
+            check(policyHash.matches(Regex("[0-9a-f]{64}")))
+            val state = details.getValue("state").str(16)
+            check(state == "complete" || state == "partial")
+            val catalog = details.getValue("catalog_images").count(100000)
+            val searchable = details.getValue("searchable_images").count(catalog)
+            val omitted = details.getValue("omitted_images").count(catalog)
+            val matchedOmitted = details.getValue("matched_omitted_images").count(omitted)
+            val candidates = semantic.getValue("candidate_count").count(100000)
+            check(catalog >= 1 && searchable >= 1 && searchable + omitted == catalog &&
+                (state == "partial") == (omitted > 0) && candidates <= searchable &&
+                candidates + matchedOmitted <= catalog)
+        }
 
         val rawItems = raw.getValue("items").array(20)
         check(rawItems.size == ids.size && rawItems.size == minOf(20, total) &&

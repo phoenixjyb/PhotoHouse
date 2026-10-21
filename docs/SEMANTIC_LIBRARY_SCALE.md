@@ -35,6 +35,13 @@ native work inside a resource/time-bounded Job; these functions are not a daemon
 
 ## Explicit large-cohort serving
 
+Local configuration version 5 adds the optional
+[reviewed semantic eligibility and coverage contract](SEMANTIC_ELIGIBILITY_DESIGN.md).
+It partitions the full current active-image roster without narrowing ordinary
+search. Coverage metadata and bilingual replies disclose reviewed omissions;
+unaccounted or stale assets still refuse. The implementation is unactivated and
+the actual family failure disposition/native qualification remain pending.
+
 Semantic runtime configuration version 3 extends version 2 with `serving_limits`:
 exactly `candidate_limit`, `source_rows`, `source_bytes`, `search_seconds`.
 The candidate limit is 513–100,000; metadata rows at most 1,000,000, packed SQLite

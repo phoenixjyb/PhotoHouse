@@ -1,8 +1,9 @@
-# Proposed semantic eligibility and visible coverage
+# Semantic eligibility and visible coverage
 
-Status: design only, October 21, 2026. Semantic search remains OFF. This document
-records the next source requirement; it does not approve omissions, publish an
-index, enable a provider or change ordinary discovery.
+Status: implemented in local source, October 21, 2026; runtime qualification is
+pending. Semantic search remains OFF. This implementation does not approve the
+family index's omissions, publish an index, enable a provider or change ordinary
+discovery. Refresh, swap and retirement below remain future requirements.
 
 ## Why this is needed
 
@@ -15,35 +16,47 @@ benchmark cannot establish how production's failed inputs are handled.
 `ReviewedIndex.scope_ids` must match the full current discovery source. Its
 `indexed_ids` control metadata availability, not semantic-only eligibility;
 media-only search still iterates the complete source. Narrowing these fields
-would alter ordinary discovery or invalidate its source receipt. The proposed
-policy must therefore apply only inside semantic search.
+would alter ordinary discovery or invalidate its source receipt. The policy
+therefore applies only inside semantic search.
 
 ## Reviewed policy contract
 
-Use an explicit optional semantic configuration version, preserving versions 1–4
-and their existing strict behavior. The new policy would require an owner-only
-bulk runtime and a separately pinned private eligibility document. Loading or
-building a candidate must not manufacture a review attestation.
+Optional semantic configuration version **5** preserves versions 1–4 and their
+existing strict behavior. It adds `eligibility`, exactly `{path,file_sha256}`,
+to version 4's owner-only bulk runtime. The separately pinned private document
+is read only after owner authorization. Loading or building a candidate does not
+manufacture a review attestation.
 
-The document should bind one library, image/text model identities, completed
-index evidence, bulk descriptor and a deterministic active-image cohort digest.
-It must partition every current image into exactly one of:
+The document has exactly `format_version` (1), `operator_reviewed` (true),
+`library_id`, `binding_sha256`, `bulk_sha256`, `index_evidence_sha256`, `eligible`
+and `omitted`. The joint binding pins both model identities; the bulk hash pins
+the complete ready-artifact payload. The full ID/source-SHA partition must match
+the deterministic current active-image roster on every request. Each image is
+in exactly one of:
 
 - Eligible: current asset ID and catalog source SHA, plus the exact reviewed
-  ready artifact identity/record ID.
+  ready record ID (`{asset_id,source_sha256,record_id}`). The bulk cohort binds
+  the full artifact metadata.
 - Omitted: current asset ID and catalog source SHA, an allowed failure reason
-  and pinned failure evidence. A missing original's catalog SHA remains bound
-  even when no observed original-byte SHA exists.
+  and pinned failure evidence (`{asset_id,source_sha256,reason}`). Allowed reasons
+  are `preparation_unavailable` and `source_missing`. A missing original's catalog
+  SHA remains bound even when no observed original-byte SHA exists. The evidence
+  hash is an operator attestation; this loader does not independently reopen or
+  diagnose failed originals.
 
+The private document is limited to 16 MiB and 100,000 images, with at least one
+eligible image. Strict JSON, current private permissions, canonical non-aliasing
+paths, single-link regular files and stable open/read/final identities are checked
+on every read. Reads reserve bytes before I/O and observe the request's deadline
+and cancellation; the separate aggregate policy allowance is 64 MiB per request.
 No duplicates, foreign IDs, unknown omissions or silently unindexed images are
 allowed. An omitted image remains available to ordinary search and existing media
 access rules. Omission is not deletion, identity review or permission to weaken
 people, date, location, literal-text or exclusion conditions.
 
-The active-image digest should bind image membership and source hashes rather
-than falsely freezing unrelated metadata forever. Normal discovery must still
-recheck its complete current source, reviewed identity layer and hard filters.
-The eligibility descriptor must also enter the opaque semantic request binding,
+The partition binds image membership and source hashes. Normal discovery still
+rechecks its complete current source, reviewed identity layer and hard filters.
+The eligibility descriptor also enters the opaque semantic request binding,
 including paging and trusted conversation recovery.
 
 ## Request behavior
@@ -61,9 +74,13 @@ for omitted candidates. Recheck membership, source and policy before releasing
 results. Do not use a narrower global discovery provider or fabricate scores for
 omitted images.
 
-Return an explicit coverage object with a policy receipt, complete/partial state,
-current authorized image count, searchable count and omitted count. Also disclose
-when the current filtered request has omitted candidates. Empty results under
+Return optional `semantic.coverage_details` with exactly `version` (1),
+`policy_sha256`, `state`, `catalog_images`, `searchable_images`, `omitted_images`
+and `matched_omitted_images`. State is `partial` whenever the library has any
+omissions, even if the current filters match none. Searchable plus omitted must
+equal catalog images; candidate count cannot exceed searchable images. Web and
+Android validate these closed fields and bounds. Chinese/English workspace
+replies disclose global and filtered omissions. Empty results under
 partial coverage must mean no matches in the searchable subset, rather than no
 matching photo exists in the library. Keep private paths, source hashes and
 failure traces out of user-visible responses.
@@ -88,17 +105,34 @@ The existing artifact schema and erasure rules need a reviewed retirement design
 a coverage document alone is not a refresh, atomic swap or deletion workflow.
 Production data changes and rollout remain separately authorized operations.
 
-## Acceptance checks before an owner-only pilot
+## Checks and remaining pilot gates
 
-Use generated complete and partial catalogs, including a 65-missing-shaped case.
-Verify exact partition/source/model/library binding, duplicate and unknown
-omission refusal, and unchanged legacy configuration behavior. Confirm that
-ordinary literal discovery still sees the full authorized roster.
+Generated checks cover complete and partial policies, including 65 omitted images,
+exact partition/source/model/library binding, duplicate and unknown omission
+refusal, and unchanged legacy configuration behavior. Ordinary literal search
+retains all 65 generated omissions. Endpoint tests cover hard filters, empty
+eligible subsets, corrupt bulk refusal even for empty subsets, policy/source/
+membership changes, page receipts, bilingual disclosure and no-inference recovery.
+The focused core/endpoint cohort passed **23 tests / 45 subtests**; the earlier
+broader semantic cohort passed **88 tests / 77 subtests** before the last added
+boundary cases. These overlapping cohorts are not summed. Web wire validation
+passed **22 tests**; all **1,157 live-core JVM tests in 95 suites** passed. The
+generated coverage browser journey passed **nine checkpoints**; the unchanged
+legacy journey passed **eight**. Chinese/English full disclosure paragraphs were inspected
+at desktop and 390-pixel / 150% text sizes without horizontal overflow. These
+checks use synthetic identities/photos, generated vectors and a mock encoder;
+they do not establish native or family relevance, latency or physical-device
+acceptance.
 
-Exercise people/date/text filters, zero matches with omitted candidates,
-English/Chinese coverage text, page binding and conversation recovery. Inject
-membership/source/policy changes during encoding and stale-cache reuse; no old
-cards may escape. Qualify generation refresh, removal/retirement and rollback
+To repeat the optional coverage Web journey, run
+`PH_SCENE_COVERAGE=1 node server/tests/security/test_assistant_scene_browser.cjs`
+with the existing documented browser/Python/artifact environment. The private
+bridge creates its owner and reviewed policy only in a disposable synthetic DB;
+the ordinary journey still tests the legacy configuration without this flag.
+
+The family policy still needs an explicit review and private preparation, followed
+by bounded native qualification against a catalog retaining the omitted assets.
+Qualify generation refresh, removal/retirement and rollback
 without changing originals or silently deleting failed evidence.
 
 After source and native checks pass, prepare an activation proposal with the

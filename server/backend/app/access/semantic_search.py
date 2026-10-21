@@ -22,6 +22,12 @@ from .visual_vector_loader import _COLUMNS, _checked_root, _read_vector, _valida
 from .visual_vector_schema import verify_visual_vector_schema
 from .semantic_streaming import SemanticServingLimits, VECTOR_BATCH_SIZE, MAX_VECTOR_READ_BYTES, rank_semantic_batches
 from .semantic_bulk_vectors import BulkVectorStore, BulkVectorUnavailable
+from .semantic_eligibility import SemanticEligibilityStore, SemanticEligibilityUnavailable
+
+
+# The policy is reread for initial binding, ranking and the final source check.
+# Keep its private-file budget separate from the vector payload allowance.
+MAX_POLICY_READ_BYTES = 64 * 1024 * 1024
 
 
 def _valid_pilot_owner_account_id(value):
@@ -30,7 +36,7 @@ def _valid_pilot_owner_account_id(value):
 
 class SemanticSearchReads(AssistantSearchReads):
     def __init__(self, access, provider, budget, *, vector_root, encoder, query,
-                 server_snapshot=None, serving_limits=None, bulk_vectors=None):
+                 server_snapshot=None, serving_limits=None, bulk_vectors=None, eligibility=None):
         # This reader belongs to exactly one runtime call. Reuse derived facts
         # for an identical opaque binding during that call, while every _run
         # still reauthorizes and reads/validates the complete current source.
@@ -46,6 +52,10 @@ class SemanticSearchReads(AssistantSearchReads):
         self._bulk_artifacts = ()
         self._library_id = None
         self._vector_read_bytes = 0
+        self.eligibility = eligibility
+        self._eligibility_policy = None
+        self._policy_read_bytes = 0
+        self._matched_omitted_count = 0
 
     def _extra_source(self, index, source, read, check):
         extra = super()._extra_source(index, source, read, check)
@@ -69,13 +79,33 @@ class SemanticSearchReads(AssistantSearchReads):
         self._vector_rows = rows
         self._library_id = index.library_id
         self._source_hashes = {str(aid): digest for aid, digest in hashes}
-        return {**extra, 'semantic_policy': (5 if self.bulk_vectors else 4 if self.serving_limits else 3),
+        if self.eligibility is not None:
+            records = _validated_rows(rows, image_identity)
+            if len(records) != len(rows):
+                raise d.DiscoveryUnavailable()
+            try:
+                self._eligibility_policy = self.eligibility.read_and_validate(
+                    self._source_hashes, records, library_id=index.library_id,
+                    check=check, charge=self._charge_policy_bytes)
+            except SemanticEligibilityUnavailable:
+                raise d.DiscoveryUnavailable() from None
+            self._bulk_artifacts = tuple(sorted(records.values(), key=lambda item: int(item.asset_id)))
+        return {**extra, 'semantic_policy': (6 if self.eligibility else 5 if self.bulk_vectors else 4 if self.serving_limits else 3),
+                **({'semantic_eligibility': self.eligibility.descriptor} if self.eligibility else {}),
                 **({'bulk_vectors': self.bulk_vectors.descriptor} if self.bulk_vectors else {}),
                 **({'serving_limits': asdict(self.serving_limits)} if self.serving_limits else {}),
                 'exclusion_policy': EXCLUSION_POLICY_VERSION,
                 'joint_space_binding': self.encoder.binding.binding_sha256,
                 'semantic_query': d.digest(self.query), 'image_vector_records': rows,
                 'image_source_hashes': hashes}
+
+    def _charge_policy_bytes(self, amount):
+        self._check()
+        if type(amount) is not int or amount <= 0:
+            raise d.DiscoveryUnavailable()
+        self._policy_read_bytes += amount
+        if self._policy_read_bytes > MAX_POLICY_READ_BYTES:
+            raise d.DiscoveryUnavailable()
 
     def _artifacts(self, found):
         check = self._check
@@ -160,9 +190,13 @@ class SemanticSearchReads(AssistantSearchReads):
             raise SemanticUnsupported()
         check = self._check
         bulk_snapshot = None
+        if self._eligibility_policy is not None:
+            self._matched_omitted_count = sum(
+                item['id'] in self._eligibility_policy.omitted_ids for item in found)
+            found = [item for item in found if item['id'] in self._eligibility_policy.eligible_ids]
         if self.bulk_vectors is not None:
             root, artifacts = self._artifacts(found)
-            if artifacts:
+            if artifacts or self.eligibility is not None:
                 bulk_snapshot = self._bulk_snapshot()
             vectors = None
         elif self.serving_limits is None:
@@ -243,6 +277,7 @@ class SemanticSearchRuntime:
     pilot_owner_account_id: str | None = None
     serving_limits: SemanticServingLimits | None = None
     bulk_vectors: BulkVectorStore | None = None
+    eligibility: SemanticEligibilityStore | None = None
 
     def __post_init__(self):
         if (type(self.discovery) is not DiscoveryRuntime or
@@ -262,6 +297,12 @@ class SemanticSearchRuntime:
                 or self.serving_limits is None
                 or self.bulk_vectors.identity != self.encoder.binding.image_identity):
             raise ValueError('Bulk vectors require explicit owner limits and matching image identity')
+        if self.eligibility is not None and (type(self.eligibility) is not SemanticEligibilityStore
+                or self.bulk_vectors is None
+                or self.eligibility.library_id != self.bulk_vectors.library_id
+                or self.eligibility.binding_sha256 != self.encoder.binding.binding_sha256
+                or self.eligibility.bulk_sha256 != self.bulk_vectors.file_sha256):
+            raise ValueError('Eligibility requires the exact owner bulk runtime and joint binding')
 
     @property
     def access(self):
@@ -325,7 +366,8 @@ class SemanticSearchRuntime:
             reader = SemanticSearchReads(AccessService(connection, clock=self.access.clock),
                 self.discovery.provider, budget, vector_root=self.vector_root,
                 encoder=self.encoder, query=query, server_snapshot=server_snapshot,
-                serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors)
+                serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors,
+                eligibility=self.eligibility)
             binding = values.get('binding')
             if binding is None:
                 # presentation intentionally omits the internal binding; use
@@ -353,4 +395,7 @@ class SemanticSearchRuntime:
             result.update(filters=filters, semantic={'mode': 'text_to_image',
                 'score_kind': 'cosine', 'candidate_count': reader._candidate_count,
                 'coverage': 'complete_eligible_images', 'needs_review': True})
+            if reader._eligibility_policy is not None:
+                result['semantic']['coverage_details'] = reader._eligibility_policy.coverage(
+                    reader._matched_omitted_count)
             return result

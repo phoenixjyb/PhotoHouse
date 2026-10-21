@@ -27542,6 +27542,101 @@
       "semantic_search_enabled": false,
       "production_runtime_changed": false,
       "activation_approved": false
+    },
+    {
+      "feature": "semantic-reviewed-eligibility-and-visible-coverage-r55",
+      "source_commit": "3bb7de407a845307c3a1680c78b236863ecc0302",
+      "files": [
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWire.kt",
+          "before_sha256": "ac1126fa336660fc4f832f31de80c84e58d1bc679bd4851bdf577b881af029d0",
+          "sha256": "e6064bb55bdbe55c2f492fff5103f0d91ecb253f673edd7a6959118c6ff719f0"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/AssistantWorkspaceWireTest.kt",
+          "before_sha256": "ce55b92d5a8ad6203373b1d53db954ded11dc608623d6885e4d36395488f714f",
+          "sha256": "e91fb6dd350210bfdea95f396200243b24a604f74d1a3057e222940f00ec9fd4"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "b7949c277d28c654e40983bdb37c98bc71a4c33af34c7c2ee4757b3a59af3c0f",
+          "sha256": "7854a4748ef72e123fb1919e3f82da315f803121c7f4dfbb4163ed471fe3d0b1"
+        },
+        {
+          "path": "docs/SEMANTIC_ELIGIBILITY_DESIGN.md",
+          "before_sha256": "dc7192ca266ec55f9c263b5f09fe8ebeb08cb07cafa4478f8fdf00a22210d459",
+          "sha256": "fbcd84e3d2c9e27730e738b8b35d37ef3a2f29618b3151e8622f3bdf5f6f9255"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "3705767172262fb8db41630863ef8441528ec2ec018bcee533990f61c805f103",
+          "sha256": "27e60fac80dbffc8ff7dffc681ddca4535a023cdf3a49bb7faff89fc052b8e9c"
+        },
+        {
+          "path": "server/backend/app/access/assistant_scene_search.py",
+          "before_sha256": "fb905fe51b20ed237cca083b1e53909b2a7e4d8a6cfece5d06e6278c25fc3a94",
+          "sha256": "d0e55a65c43fa66f518d48bf6fc01528a0a1c0208c28114ab66eefadf8f91839"
+        },
+        {
+          "path": "server/backend/app/access/semantic_configuration.py",
+          "before_sha256": "3406dab3ca8fb47ef553e953c050b4debaae101ad91aa117af3edd4f5dd3b8ba",
+          "sha256": "05957b9bb69b88d86f88dfd917a9c1ced3aca8b0249e9c7625d5c1699afebf9e"
+        },
+        {
+          "path": "server/backend/app/access/semantic_eligibility.py",
+          "before_sha256": null,
+          "sha256": "185b66c8aed84a7e04be2c570119ba65fa47cc0ec2d1b8bed39776c0fc4b6d93"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "c93fe4948bbe5e85e0d95d17ded33a8b4f91b46c19021cffd6d6c3c3108ee747",
+          "sha256": "89924425708da5965645d3e1ce2264e967ebce9143a94818a4882360954c8c68"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "7ebddbeac10846483514bbb593b3c5871157e25287cb8a2d5c94c6b8588dc55e",
+          "sha256": "05633a91eeb17ed312e91f2344c0120a1f68e754ddaa73e82f73e61d239ab0de"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "02b2e020511f3917f9e7b352983044eacc0dbaec19fb2cd57e582e9aa35f8a09",
+          "sha256": "fba5530673d91c7da79a6f248a157a02c12fd1a4afc4b228dabdd8b2d4733cba"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_browser.cjs",
+          "before_sha256": "6a235d3190ea012b29d888a5a3ad39cf1a4d8b654ba9d8e10918bce99d6cba05",
+          "sha256": "d608044bd5b84fe98b8d4729b9ba2ffc4e6c8faf3c732fb20b604d37c38ed5f6"
+        },
+        {
+          "path": "server/tests/security/test_semantic_configuration.py",
+          "before_sha256": "e7bc6a5e71993e2e441751cb5f0d3d61a1356ebae73270a31932294a767b6540",
+          "sha256": "ec1e28eb8d5b19831df8b630dd7869884d6a486f9836d188172472d6b6bd0412"
+        },
+        {
+          "path": "server/tests/security/test_semantic_eligibility.py",
+          "before_sha256": null,
+          "sha256": "3e289e6739ddeea889e1a4fe0f328a2956251a6958fedb925f5d34ac83baf483"
+        },
+        {
+          "path": "server/tests/security/test_semantic_eligibility_search.py",
+          "before_sha256": null,
+          "sha256": "2a75f0f2845dd91119aafa4475b88a53c0368cf0c61c8bed7911e96e8569b5db"
+        },
+        {
+          "path": "server/tests/ui/assistant-scene-workspace.test.mjs",
+          "before_sha256": "ba9c36515e7900f0ea11f78018fc57bb8664af3046527805b44c40f3911bd3e1",
+          "sha256": "1f46de095bb46321d95ecc11747d78bd5aed8685eada8bf81b14dd8512a4cd00"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "369875ec53b90db3d14de4fa736d9821bdce5e67a10cc96ae7d22b5e76ddc780",
+          "sha256": "e3cd8cafbc134abbfc996d8127783013c5f204d3f79cde3a65b765593ea98125"
+        }
+      ],
+      "routes_added": false,
+      "live_schema_changed": false,
+      "semantic_search_enabled": false,
+      "production_policy_created": false
     }
   ]
 }

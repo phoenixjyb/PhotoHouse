@@ -23,8 +23,17 @@ class AssistantWorkspaceWireTest {
     private fun savedMemoryResult(kind: String = "story", contextId: String = "11111111-1111-4111-8111-111111111111") =
         """{"version":1,"kind":"memory_cards","reply":"Found a saved memory.","context":{"kind":"saved_memory","library_id":"family-a","source_revision":"${"a".repeat(64)}","references":[{"kind":"$kind","id":"11111111-1111-4111-8111-111111111111","revision":"2","source_revision":"${"b".repeat(64)}"}]},"filters":null,"items":[],"total":1,"has_more":false,"effect":null,"memory_cards":[{"kind":"$kind","id":"$contextId","revision":"2","source_revision":"${"b".repeat(64)}","title":"Garden day","excerpt":"The family walked by the lake."}]}"""
 
-    private fun sceneResult(query: String = "a child beside a blue bridge", score: String = "0.75") =
-        """{"version":4,"kind":"results","reply":"Found one scene.","context":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{"media":["image"]},"visible_ids":["123"],"total":1,"search_version":4,"scene":{"version":1,"query":"$query","scope":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{},"visible_ids":["123"],"total":1,"search_version":2},"scores":[$score]}},"filters":{"media":["image"]},"items":[{"id":"123","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/123/thumbnail?library=family-a","semantic_score":$score}],"total":1,"has_more":false,"effect":null,"interpretation":{"date_basis":"capture","people":[],"tags":[],"locations":[],"perspective":null},"semantic":{"mode":"text_to_image","score_kind":"cosine","candidate_count":1,"coverage":"complete_eligible_images","needs_review":true}}"""
+    private fun sceneResult(query: String = "a child beside a blue bridge", score: String = "0.75", total: Int = 1,
+                            scopeTotal: Int = total, coverageDetails: String? = null): String {
+        val ids = (1..minOf(20, total)).map { (122 + it).toString() }
+        val visibleIds = ids.joinToString(",") { "\"$it\"" }
+        val scores = ids.joinToString(",") { score }
+        val items = ids.joinToString(",") { id ->
+            """{"id":"$id","kind":"image","width":640,"height":480,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/$id/thumbnail?library=family-a","semantic_score":$score}"""
+        }
+        val details = coverageDetails?.let { ",\"coverage_details\":$it" } ?: ""
+        return """{"version":4,"kind":"results","reply":"Found one scene.","context":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{"media":["image"]},"visible_ids":[$visibleIds],"total":$total,"search_version":4,"scene":{"version":1,"query":"$query","scope":{"library_id":"family-a","binding":"${"a".repeat(64)}","fingerprint":"${"b".repeat(64)}","filters":{},"visible_ids":[$visibleIds],"total":$scopeTotal,"search_version":2},"scores":[$scores]}},"filters":{"media":["image"]},"items":[$items],"total":$total,"has_more":${total > ids.size},"effect":null,"interpretation":{"date_basis":"capture","people":[],"tags":[],"locations":[],"perspective":null},"semantic":{"mode":"text_to_image","score_kind":"cosine","candidate_count":$total,"coverage":"complete_eligible_images","needs_review":true$details}}"""
+    }
 
     @Test fun sceneCapabilityAndSingleLineQueryAreStrict() {
         val parsed = AssistantWorkspaceWire.sceneSearchCapabilities(
@@ -64,6 +73,46 @@ class AssistantWorkspaceWireTest {
             recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, searchVersion = 4) }
         invalid { AssistantWorkspaceWire.turn(turn(sceneResult().replace("\"effect\":null", "\"effect\":{\"type\":\"open_asset\",\"asset_id\":\"123\"}"),
             recovered = false, error = "null").toByteArray(), "family-a", thread, request, false, searchVersion = 4) }
+    }
+
+    @Test fun semanticCoverageDetailsAreOptionalExactAndBoundedForLargeLibraries() {
+        val complete = """{"version":1,"policy_sha256":"${"c".repeat(64)}","state":"complete","catalog_images":100,"searchable_images":100,"omitted_images":0,"matched_omitted_images":0}"""
+        val partial = """{"version":1,"policy_sha256":"${"a".repeat(64)}","state":"partial","catalog_images":100,"searchable_images":90,"omitted_images":10,"matched_omitted_images":2}"""
+        val parsed = AssistantWorkspaceWire.turn(turn(sceneResult(coverageDetails = complete), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 4).result!!
+        assertEquals(1, parsed.sceneRanking!!.candidateCount)
+        val partialParsed = AssistantWorkspaceWire.turn(turn(sceneResult(coverageDetails = partial), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 4).result!!
+        assertEquals(1, partialParsed.sceneRanking!!.candidateCount)
+
+        val large = AssistantWorkspaceWire.turn(turn(sceneResult(total = 100000), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 4).result!!
+        assertEquals(100000, large.sceneRanking!!.candidateCount)
+        assertEquals(20, large.items.size)
+        invalid { AssistantWorkspaceWire.turn(turn(sceneResult(total = 100000, scopeTotal = 99999), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 4) }
+
+        val invalidDetails = listOf(
+            complete.replace("\"version\":1", "\"version\":2"),
+            complete.replace("${"c".repeat(64)}", "${"C".repeat(64)}"),
+            complete.replace("${"c".repeat(64)}", "${"c".repeat(63)}"),
+            partial.replace("\"state\":\"partial\"", "\"state\":\"complete\""),
+            partial.replace("\"omitted_images\":10", "\"omitted_images\":0"),
+            partial.replace("\"searchable_images\":90", "\"searchable_images\":91"),
+            complete.replace("\"searchable_images\":100", "\"searchable_images\":0"),
+            partial.replace("\"matched_omitted_images\":2", "\"matched_omitted_images\":11"),
+            partial.replace("\"catalog_images\":100", "\"catalog_images\":true"),
+            partial.replace("\"catalog_images\":100", "\"catalog_images\":100.5"),
+            partial.replace("\"catalog_images\":100", "\"catalog_images\":100001"),
+            partial.dropLast(1) + ",\"extra\":false}"
+        )
+        invalidDetails.forEach { details ->
+            invalid { AssistantWorkspaceWire.turn(turn(sceneResult(coverageDetails = details), recovered = false, error = "null").toByteArray(),
+                "family-a", thread, request, fromGet = false, searchVersion = 4) }
+        }
+        val candidatesTooMany = """{"version":1,"policy_sha256":"${"a".repeat(64)}","state":"partial","catalog_images":100,"searchable_images":0,"omitted_images":100,"matched_omitted_images":100}"""
+        invalid { AssistantWorkspaceWire.turn(turn(sceneResult(coverageDetails = candidatesTooMany), recovered = false, error = "null").toByteArray(),
+            "family-a", thread, request, fromGet = false, searchVersion = 4) }
     }
 
     @Test fun unsupportedSceneReceiptIsAcceptedOnlyAsFailedV4Envelope() {

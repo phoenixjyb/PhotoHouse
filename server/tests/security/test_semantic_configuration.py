@@ -162,6 +162,42 @@ class SemanticConfigurationTests(unittest.TestCase):
         runtime = SemanticSearchRuntime(discovery, self.vector_root, encoder, 'pilot.owner-1')
         self.assertEqual(runtime.pilot_owner_account_id, 'pilot.owner-1')
 
+    def test_v5_eligibility_is_explicit_pinned_disjoint_and_not_read_before_authorization(self):
+        from app.access.semantic_eligibility import SemanticEligibilityStore
+        self.write_credential()
+        discovery = DiscoveryRuntime.__new__(DiscoveryRuntime)
+        policy_path = self.root / 'eligibility.json'
+        document = self.document | {'format_version': 5, 'pilot_owner_account_id': 'pilot-owner',
+            'serving_limits': {'candidate_limit': 30000, 'source_rows': 500000,
+                              'source_bytes': 128 * 1024**2, 'search_seconds': 60},
+            'bulk_vectors': {'path': str(self.root / 'bulk.phbv'), 'file_sha256': 'a' * 64,
+                             'library_id': 'family-a'},
+            'eligibility': {'path': str(policy_path), 'file_sha256': 'b' * 64}}
+        self.write(document)
+        with patch.object(SemanticEligibilityStore, 'read_and_validate',
+                          side_effect=AssertionError('policy must be read only after owner authorization')):
+            runtime = load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+        self.assertEqual(runtime.eligibility.path, policy_path)
+        self.assertEqual(runtime.eligibility.bulk_sha256, runtime.bulk_vectors.file_sha256)
+        self.assertEqual(runtime.eligibility.binding_sha256, runtime.encoder.binding.binding_sha256)
+        for invalid in (None, {}, {'path': str(policy_path), 'file_sha256': 'invalid'},
+                        {'path': str(self.vector_root / 'policy.json'), 'file_sha256': 'b' * 64},
+                        {'path': str(self.credential_path), 'file_sha256': 'b' * 64},
+                        {'path': str(self.root / 'bulk.phbv'), 'file_sha256': 'b' * 64},
+                        {'path': str(policy_path), 'file_sha256': 'b' * 64, 'unknown': True}):
+            with self.subTest(invalid=invalid):
+                self.write(document | {'eligibility': invalid})
+                with self.assertRaises(SemanticConfigurationError):
+                    load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+        self.write(document)
+        with self.assertRaises(SemanticConfigurationError):
+            load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent,
+                                 protected_paths=(policy_path,))
+        for version in (1, 2, 3, 4):
+            self.write(document | {'format_version': version})
+            with self.assertRaises(SemanticConfigurationError):
+                load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+
     def test_loader_refuses_bad_endpoint_token_and_partial_credential_document(self):
         self.write_credential(token='a' * 40)
         for change in ({'encoder_url': 'https://encoder.example.test/v1/encode-text'},):

@@ -20,6 +20,22 @@ def scene_query(value):
     return value
 
 
+def _coverage_reply(reply, semantic, total, language):
+    coverage = semantic.get('coverage_details')
+    if coverage is None or coverage['state'] != 'partial':
+        return reply
+    searchable, omitted = coverage['searchable_images'], coverage['omitted_images']
+    matched = coverage['matched_omitted_images']
+    if language == 'zh':
+        lead = '在可语义检索的照片中未找到符合当前筛选条件的结果。' if total == 0 else reply
+        return (f'{lead} 语义检索覆盖 {searchable:,} 张照片；{omitted:,} 张尚未建立索引。'
+                f'当前筛选条件中有 {matched:,} 张未参与相似度排序。这些照片仍可通过普通搜索查找。')
+    lead = 'No matches in the searchable photos within your current filters.' if total == 0 else reply
+    return (f'{lead} Semantic search covers {searchable:,} photos; {omitted:,} are not indexed yet. '
+            f'{matched:,} photos within your current filters were not ranked. '
+            'You can still look for those photos using ordinary search.')
+
+
 def _scope(value, library):
     from .assistant_workspace_store import _context_value
     if type(value) is not dict or value.get('search_version') not in (2, 3):
@@ -127,6 +143,7 @@ class SceneSearchRuntime:
                  if lang == 'zh' else
                  'Photos ranked by scene similarity within your current filters. '
                  'Similarity is approximate; check the photos to confirm.')
+        reply = _coverage_reply(reply, found['semantic'], found['total'], lang)
         return {'version': 4, 'kind': 'results', 'reply': reply, 'context': ctx,
                 'filters': ctx['filters'], 'items': found['items'], 'total': found['total'],
                 'has_more': found['has_more'], 'effect': None,
