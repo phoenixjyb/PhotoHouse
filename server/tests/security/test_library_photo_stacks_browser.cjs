@@ -17,7 +17,7 @@ bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
 createInterface({input:bridge.stdout}).on('line',line=>{const message=JSON.parse(line);if(message.ready){readyResolve();return;}const item=pending.get(message.id);if(item){pending.delete(message.id);item.resolve(message);}});
 bridge.on('exit',code=>{if(code){readyReject(new Error('Synthetic gallery bridge exited '+code));for(const item of pending.values())item.reject(new Error('Synthetic gallery bridge exited'));}});
 function rpc(request){return new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({id,request})+'\n');});}
-let browser,context,page;const errors=[],outside=[],requests=[],preferenceBodies=[];
+let browser,context,page;const errors=[],outside=[],requests=[],preferenceBodies=[],mediaResponses=[];
 let unsupported=false,malformed=false,serverError=false,holdPreference=false,preferenceFailureStatus=0,preferenceUnknownStatus=0,heldResolve,releaseHeld;
 function release(){releaseHeld?.();releaseHeld=null;}
 async function startContext(){
@@ -34,6 +34,7 @@ async function startContext(){
     if(!headers['sec-fetch-site']){let origin='';try{origin=new URL(request.frame().url()).origin;}catch{}headers['sec-fetch-site']=origin===url.origin?'same-origin':'none';}
     delete headers['content-length'];
     let response=await rpc({method:request.method(),path:url.pathname+url.search,headers,body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
+    if(/^\/assets\/[0-9]+\/thumbnail$/.test(url.pathname))mediaResponses.push({path:url.pathname,status:response.status});
     if(request.method()==='GET'&&url.pathname==='/photo-stacks/gallery'&&malformed&&response.status===200){const body=JSON.parse(Buffer.from(response.body,'base64').toString());if(body.photo_stacks?.groups?.length)body.photo_stacks.groups[0].count+=1;response.body=Buffer.from(JSON.stringify(body)).toString('base64');}
     if(request.method()==='POST'&&url.pathname==='/photo-stacks/preferences'&&preferenceUnknownStatus){response.status=preferenceUnknownStatus;response.body=Buffer.from('{"detail":"synthetic lost response"}').toString('base64');preferenceUnknownStatus=0;}
     if(request.method()==='POST'&&url.pathname==='/photo-stacks/preferences'&&holdPreference){holdPreference=false;heldResolve?.();await new Promise(resolve=>releaseHeld=resolve);}
@@ -50,9 +51,22 @@ async function signIn(phone='+12025550102'){
   await page.locator('#login-tab').click();await page.locator('#phone').fill(phone);await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();
   await page.locator('#library').waitFor({state:'visible',timeout:15000});await page.locator('.asset').first().waitFor({timeout:15000});
 }
-const cards=()=>page.locator('#grid>.asset');
+const cards=()=>page.locator('#grid .asset');
 const groupMembers=['100','101','102'];
 const check=message=>console.log('PASS '+message);
+async function assertExpandedHeaderVisible(){
+  try{
+    await page.waitForFunction(()=>{const images=[...document.querySelectorAll('.photo-stack-members img')];return images.length===3&&images.every(image=>image.complete&&image.naturalWidth>0);});
+    await page.locator('.photo-stack-members img').evaluateAll(images=>Promise.all(images.map(image=>image.decode())));
+  }
+  catch(error){throw new Error('Synthetic member preview decode failed: '+JSON.stringify({images:await page.locator('.photo-stack-members img').evaluateAll(images=>images.map(image=>({asset:image.closest('.asset')?.dataset.assetId,complete:image.complete,width:image.naturalWidth,hidden:image.hidden}))),responses:mediaResponses.slice(-24)}));}
+  assert.equal(await page.locator('.photo-stack-heading').evaluate(node=>{
+    const box=node.getBoundingClientRect(),nav=document.querySelector('#memory-navigation').getBoundingClientRect();
+    return box.top>=Math.max(0,nav.bottom)&&box.bottom<=innerHeight;
+  }),true,'the whole expanded heading and collapse control stay below sticky navigation');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'expanded group does not overflow the viewport');
+  assert.equal(await page.locator('.photo-stack-members .asset-preview-wrap').first().evaluate(node=>node.getBoundingClientRect().top<innerHeight),true,'expansion reveals member previews along with the heading');
+}
 (async()=>{
   await ready;browser=await chromium.launch({headless:true,...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
   await startContext();await signIn();
@@ -71,10 +85,27 @@ const check=message=>console.log('PASS '+message);
   const currentCover=await page.locator('.photo-stack-count').locator('xpath=ancestor::article').getAttribute('data-asset-id');
   await page.locator(`#grid .asset[data-asset-id="${currentCover}"] .photo-stack-action[data-stack-action="expand"]`).click();
   for(const id of groupMembers)assert.equal(await page.locator(`#grid .asset[data-asset-id="${id}"]`).count(),1,`expanded stack member ${id} is visible exactly once`);
+  const expandedRegion=page.getByRole('region',{name:'3 张照片',exact:true});
+  assert.equal(await expandedRegion.locator('.asset').count(),3,'one named region contains every group member');
+  assert.equal(await cards().count(),14,'expansion keeps all unrelated gallery cards visible');
+  assert.equal(await expandedRegion.locator('.photo-stack-reason').count(),1,'the group reason is shown once in its heading');
+  const collapseControl=expandedRegion.getByRole('button',{name:'收起照片',exact:true});
+  assert.equal(await collapseControl.getAttribute('aria-controls'),await expandedRegion.locator('.photo-stack-members').getAttribute('id'));
+  assert.equal(await collapseControl.evaluate(node=>node===document.activeElement),true,'expansion moves keyboard focus to the region collapse control');
+  await expandedRegion.screenshot({path:path.join(artifacts,'library-photo-stacks-expanded-desktop-zh.png')});
+  await expandedRegion.locator('.asset-open').last().focus();await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.photo-stack-region').count(),0,'Escape collapses only the current expanded group');
+  assert.equal(await page.locator(`#grid .asset[data-asset-id="${currentCover}"] .photo-stack-action[data-stack-action="expand"]`).evaluate(node=>node===document.activeElement),true,'Escape returns focus to the current cover');
+  assert.equal(preferenceBodies.length,0,'expansion and keyboard collapse never write saved preferences');
+  await page.keyboard.press('Enter');
+  check('named inline group, preserved gallery cards and keyboard collapse with focus return');
   for(const id of groupMembers){
     await page.locator(`#grid .asset[data-asset-id="${id}"] .asset-open`).click();await page.locator('#viewer').waitFor({state:'visible'});
     assert.match(await page.locator('#view-position').textContent(),/\/ 14$/,'viewer keeps the full ordinary metadata sequence while showing a stack member');
-    await page.locator('#close-viewer').click();
+    if(id==='100'){
+      await page.keyboard.press('Escape');await page.locator('#viewer').waitFor({state:'hidden'});
+      assert.equal(await expandedRegion.count(),1,'Escape inside the modal viewer does not collapse its gallery group');
+    }else await page.locator('#close-viewer').click();
   }
   const member=page.locator('#grid .asset[data-asset-id="101"]');await member.locator('.photo-stack-action[data-stack-action="cover"]').click();
   await page.locator('#grid .asset[data-asset-id="101"] .photo-stack-count').waitFor();
@@ -84,6 +115,13 @@ const check=message=>console.log('PASS '+message);
   await page.locator('#refresh').click();await page.locator('#grid .asset[data-asset-id="101"] .photo-stack-count').waitFor();
   await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible'});await signIn('+12025550100');
   assert.equal(await page.locator('#grid .asset[data-asset-id="102"] .photo-stack-count').count(),1,'another account sees the indexed default cover, not the member saved choice');
+  await page.locator('#grid .asset[data-asset-id="102"] .photo-stack-action[data-stack-action="expand"]').click();
+  await page.locator('.photo-stack-region .asset-choice input[data-transfer-id="100"]').check();
+  assert.match(await page.locator('#transfer-count').textContent(),/^1 \/ 50/,'the owner can select a nested group member for the existing transfer workflow');
+  await page.locator('.photo-stack-region .photo-stack-action[data-stack-action="collapse"]').click();
+  await page.locator('#grid .asset[data-asset-id="102"] .photo-stack-action[data-stack-action="expand"]').click();
+  assert.equal(await page.locator('.photo-stack-region input[data-transfer-id="100"]').isChecked(),true,'selection survives local collapse and re-expansion');
+  await page.locator('#transfer-clear').click();
   await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible'});await signIn();
   assert.equal(await page.locator('#grid .asset[data-asset-id="101"] .photo-stack-count').count(),1,'the member choice is restored after signing in again');
   await page.locator('#grid .asset[data-asset-id="101"] .photo-stack-action[data-stack-action="expand"]').click();
@@ -129,7 +167,7 @@ const check=message=>console.log('PASS '+message);
   preferenceStart=preferenceBodies.length;preferenceFailureStatus=403;
   await page.locator('#grid .asset[data-asset-id="102"] .photo-stack-action[data-stack-action="expand"]').click();
   await page.locator('#grid .asset[data-asset-id="100"] .photo-stack-action[data-stack-action="separate"]').click();
-  await page.waitForFunction(()=>document.querySelectorAll('#grid>.asset').length===0);
+  await page.waitForFunction(()=>document.querySelectorAll('#grid .asset').length===0);
   await page.locator('#status').getByText(/访问权限已发生变化|access changed/).waitFor();
   assert.equal(await cards().count(),0,'denied preference writes clear the previously protected gallery during access recovery');
   assert.equal(preferenceBodies.length,preferenceStart+1,'the denied preference request was not retried');
@@ -140,6 +178,8 @@ const check=message=>console.log('PASS '+message);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Chinese controls fit at 150% text on a phone viewport');
   await page.locator('.photo-stack-count').locator('xpath=ancestor::article').locator('.photo-stack-action[data-stack-action="expand"]').click();
   await page.locator('#grid .asset[data-asset-id="100"]').waitFor();
+  await assertExpandedHeaderVisible();
+  await page.screenshot({path:path.join(artifacts,'library-photo-stacks-expanded-phone-zh-150.png')});
   await page.screenshot({path:path.join(artifacts,'library-photo-stacks-phone-zh-150.png'),fullPage:true});
   await page.locator('#language').click();await page.waitForFunction(()=>document.documentElement.lang==='en');
   await page.locator('#photo-stack-status').getByText(/only you/).waitFor();
@@ -147,6 +187,8 @@ const check=message=>console.log('PASS '+message);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'English controls fit at 150% text on a phone viewport');
   await page.locator('.photo-stack-count').locator('xpath=ancestor::article').locator('.photo-stack-action[data-stack-action="expand"]').click();
   await page.locator('#grid .asset[data-asset-id="100"]').waitFor();
+  await assertExpandedHeaderVisible();
+  await page.screenshot({path:path.join(artifacts,'library-photo-stacks-expanded-phone-en-150.png')});
   await page.screenshot({path:path.join(artifacts,'library-photo-stacks-phone-en-150.png'),fullPage:true});
   check('Chinese and English library-scope labels render at 150% text');
 

@@ -32,6 +32,25 @@ remain eligible when matching photos join the same canonical group; disappeared
 covers or changed group IDs revert to the default. Expanded/collapsed state stays
 local to the current view. Reset remains available when all groups have dissolved.
 
+### Web browsing refinement — October 21 local candidate
+
+Expanded photos now sit together in a named inline region with one count,
+one grouping explanation and a header collapse control. Other gallery positions
+remain visible outside that region. Each member keeps its original open,
+cover-selection and separation actions; the viewer still includes every original.
+This presentation also works with the page-local v1 fallback.
+
+Keyboard expansion focuses the collapse control. Collapse or Escape from inside
+the group returns focus to its current cover's expand button. Escape in the modal
+photo viewer closes that viewer without collapsing the group. The heading and
+returned button scroll clear of the sticky navigation, including at enlarged
+text sizes. Expand/collapse are local display actions and send no preference write.
+
+The two focused generated Chromium journeys cover these interactions alongside
+saved-choice, access-recovery and fallback regressions. Chinese/English phone
+renders at 150% text and the desktop contact sheet are checked separately.
+This is a Mac-local Web candidate, with no new Android build or live activation.
+
 ## Protected wire contract
 
 `GET /photo-stacks/gallery?library=<id>&page=1&media=all|image` returns ordinary
@@ -167,6 +186,15 @@ Only generated databases, audio bytes and receipts are written. No image/video
 file is decoded; this is not codec, GPU, family similarity or device acceptance.
 No scheduler or production worker is installed or started. Reports name production
 state separately from the synthetic task and worker exercised by the rehearsal.
+
+## Migration and refresh-host preparation
+
+[The operations plan](PHOTO_STACK_OPERATIONS.md) defines the separate guarded
+migration library and one-sweep CPU host. The current source extends the generated
+qualifier to exercise those paths, preserving any supported journal format and
+original rows. This changed package needs new native qualification before live
+activation. The search release owns the current API/Web cutover; group activation
+uses its completed delivery as the later baseline.
 
 ## Qualification and delivery gates
 

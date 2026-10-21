@@ -161,9 +161,15 @@ below retain their historical scope.
 add one stack per collapsed page position, full member viewing and persistent
 per-account cover/separation choices on Web and phone. An optional CPU index
 refresh entry point and additive `f2a8c5d1e640` schema are implemented; no migration,
-index refresh or APK publication has occurred for this increment. Its source is
-included in the search API/Web release above, with the older-schema page-local
-grouping fallback retained; library-wide activation remains separate.
+index refresh, Windows switch or APK publication has occurred for this increment.
+Its library-wide client/API source is included in PR #101, with the older-schema
+page-local fallback retained. PR #102 adds the [guarded migration and cancellable
+one-sweep host](PHOTO_STACK_OPERATIONS.md). On October 21, the pinned `d951b1b`
+operations candidate has passed Windows-private copy migration/grouping rehearsal
+and the native controller qualification (134 cases, three platform skips, plus
+18 in-memory PowerShell policy cases). Live maintenance has been approved, but
+has not run at this source-integration checkpoint. Phone v75 preparation/QA from
+PR #104 remains a separate publication and device-acceptance scope.
 
 **Earlier October 20 preparation-status delivery:** PR #97 merged, and Windows API/Web
 then served fixed source `9e39ebd`, retaining the newer search source and private runtime

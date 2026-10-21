@@ -16,6 +16,7 @@ from .library import FIELDS, HINT_FIELDS, SOURCE, GALLERY_ORDER, _asset
 from .photo_stack_schema import available
 from .service import Conflict
 from .transport import TransportError
+from .photo_stack_index import check_stopped
 
 PAGE_SIZE = 12
 MAX_MEMBERS = 24
@@ -86,13 +87,16 @@ def _source(db, library):
     return rows,digest
 
 
-def rebuild_photo_stack_index(db, library, *, expected_generation, clock=time.time):
+def rebuild_photo_stack_index(db, library, *, expected_generation, clock=time.time, stopped=None):
     """Offline worker entry: no implicit schema creation or runtime activation.
 
     CPU clustering runs outside a write transaction. Re-read source under the
     publication lock and refuse changes; previous index and choices survive any
     failure. Existing account preferences are never rewritten by this helper.
     """
+    if stopped is not None and not callable(stopped):
+        raise ValueError('explicit_stop_callback_required')
+    check_stopped(stopped)
     if db.in_transaction or db.execute('PRAGMA foreign_keys').fetchone()[0]!=1 or not available(db):
         raise ValueError('explicit_migrated_connection_required')
     if expected_generation is not None and not _generation(expected_generation):
@@ -100,6 +104,7 @@ def rebuild_photo_stack_index(db, library, *, expected_generation, clock=time.ti
     db.execute('BEGIN')
     try:
         rows,digest = _source(db,library)
+        check_stopped(stopped)
         current=db.execute('SELECT generation,source_digest FROM access_photo_stack_indexes WHERE library_id=?',(library,)).fetchone()
         if (current[0] if current else None)!=expected_generation:raise Conflict('Photo stack index changed')
         if current and current[1]==digest:
@@ -109,7 +114,9 @@ def rebuild_photo_stack_index(db, library, *, expected_generation, clock=time.ti
     except BaseException:
         db.rollback();raise
     from .photo_stack_index import build_library_photo_stacks
-    groups=build_library_photo_stacks(rows)
+    groups=(build_library_photo_stacks(rows) if stopped is None
+            else build_library_photo_stacks(rows,stopped=stopped))
+    check_stopped(stopped)
     by_id={r[0]:r for r in rows}
     db.execute('BEGIN IMMEDIATE')
     try:
@@ -127,6 +134,7 @@ def rebuild_photo_stack_index(db, library, *, expected_generation, clock=time.ti
             source_digest=excluded.source_digest,asset_count=excluded.asset_count,built_at=excluded.built_at''',
             (library,generation,digest,len(rows),int(clock())))
         for g in groups:
+            check_stopped(stopped)
             signature=hashlib.sha256(json.dumps([g['reason'],sorted(g['asset_ids'],key=int)],separators=(',',':')).encode()).hexdigest()
             db.execute('INSERT INTO access_photo_stack_groups VALUES (?,?,?,?,?,?)',
                 (library,g['id'],signature,int(g['asset_ids'][0]),g['reason'],g['count']))
@@ -136,6 +144,7 @@ def rebuild_photo_stack_index(db, library, *, expected_generation, clock=time.ti
                  for ordinal,ident in enumerate(g['asset_ids'])])
         history=getattr(db,'original_deletions',None)
         if history is not None:history.assert_current(db)
+        check_stopped(stopped)
         db.commit();return {'index_revision':generation,'groups':len(groups),'changed':True}
     except BaseException:
         db.rollback();raise
