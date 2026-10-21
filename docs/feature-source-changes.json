@@ -27799,6 +27799,20 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Integrate current main with the default-off agent/story feature branch. Preserve both roadmap sections, current photo-stack schema-target packaging and isolated-import checks, all inactive native/process provider files and all test cohorts. No provider activation, runtime changes, model loading, deployment or publication."
+    },
+    {
+      "feature": "memoir-font-browser-await-source-readiness",
+      "source_commit": "97aa275d3577c178e9442c1275e9cbf08ca3d875",
+      "files": [
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "f5dd7c8c4b6ad51e2e51eb3dba7c2219b4c7bc0592f544af99d0749ff7e3a61e",
+          "sha256": "e74efc61675a8f44b21a0fa26a1da411929f0e6d9b00faca81074c5c8aa88573"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Browser fixture only: wait for the visible chapter source-check completion before recording the strict no-network baseline for the local text-size control. Prose intentionally renders before the existing parent/child source reauthorization finishes. Preserve the all-request and no-write assertions; no product behavior or source authorization changes."
     }
   ]
 }
