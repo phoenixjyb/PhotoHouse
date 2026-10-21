@@ -27813,6 +27813,20 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Browser fixture only: wait for the visible chapter source-check completion before recording the strict no-network baseline for the local text-size control. Prose intentionally renders before the existing parent/child source reauthorization finishes. Preserve the all-request and no-write assertions; no product behavior or source authorization changes."
+    },
+    {
+      "feature": "selected-story-lifecycle-fixture-close-initialization-db",
+      "source_commit": "9cc7c3ed9309ba56da77bb0ead2fe69294ec5fae",
+      "files": [
+        {
+          "path": "server/tests/security/test_selected_story_lifecycle.py",
+          "before_sha256": "58fc7138c7cbd026b68d45e2af3818a652a2c81891d3ab8dcc14547cbe566f3e",
+          "sha256": "b4bbfa260e9111b9ea5c6cc864ab646620cf93995a4e8b69f404d16e305fafbf"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Close the synthetic SQLite initialization connection explicitly after its transaction instead of relying on sqlite3 context-manager or garbage-collection behavior. A retained-connection regression verifies closure and committed sessions; fixes Windows temporary-directory teardown. No product database/lifecycle behavior changes."
     }
   ]
 }

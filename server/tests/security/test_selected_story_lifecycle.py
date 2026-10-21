@@ -102,7 +102,7 @@ class Database:
     def __init__(self):
         self.temp = tempfile.TemporaryDirectory()
         self.path = Path(self.temp.name) / 'access.sqlite'
-        with self.connect() as db:
+        with self.connection() as db, db:
             db.execute('PRAGMA foreign_keys=ON')
             db.execute('CREATE TABLE assets(id INTEGER PRIMARY KEY)')
             apply_schema(db.execute)
@@ -143,6 +143,30 @@ class Database:
 
     def close(self):
         self.temp.cleanup()
+
+
+class DatabaseFixtureTests(unittest.TestCase):
+    def test_initialization_closes_its_connection_without_garbage_collection(self):
+        opened = []
+        connect = sqlite3.connect
+        def tracked_connect(*args, **kwargs):
+            db = connect(*args, **kwargs)
+            opened.append(db)  # Keep a strong reference after initialization.
+            return db
+        fixture = None
+        try:
+            with patch.object(sqlite3, 'connect', side_effect=tracked_connect):
+                fixture = Database()
+            self.assertEqual(1, len(opened))
+            with self.assertRaises(sqlite3.ProgrammingError):
+                opened[0].execute('SELECT 1')
+            with fixture.connection() as db:
+                self.assertEqual(3, db.execute('SELECT COUNT(*) FROM access_sessions').fetchone()[0])
+        finally:
+            for db in opened:
+                db.close()
+            if fixture is not None:
+                fixture.close()
 
 
 class SelectedStoryLifecycleAppTests(unittest.IsolatedAsyncioTestCase):
