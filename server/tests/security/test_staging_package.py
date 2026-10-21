@@ -52,6 +52,19 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/semantic_scene_translation.py',
             'scripts/semantic_scene_translation_fidelity.py',
             'scripts/qualify_multilingual_scenes.py',
+            'scripts/semantic_siglip.py',
+            'scripts/build_multilingual_image_index.py',
+            'scripts/serve_multilingual_semantic_text.py',
+            'scripts/qualify_multilingual_pilot.py',
+            'scripts/multilingual_library_coverage.py',
+            'scripts/library_image_inputs.py',
+            'scripts/library_siglip.py',
+            'scripts/library_semantic_index.py',
+            'scripts/qualify_library_semantic.py',
+            'scripts/semantic_coverage_qualification.py',
+            'scripts/semantic_request_profile.py',
+            'scripts/semantic_provider_readiness.py',
+            'scripts/semantic_loopback_network.py',
             'scripts/semantic_scene_comparison.py',
             'scripts/semantic_reviewed_projection.py',
             'scripts/serve_reviewed_semantic_text.py',
@@ -172,6 +185,10 @@ class StagingPackageTests(unittest.TestCase):
                          'backend/app/access/photo_stack_transport.py',
                          'backend/migrations/versions/f2a8c5d1e640_library_photo_stacks.py',
                          'backend/app/access/semantic_configuration.py',
+                         'backend/app/access/semantic_streaming.py',
+                         'backend/app/access/semantic_eligibility.py',
+                         'scripts/multilingual_index_collection.py',
+                         'scripts/semantic_bilingual_clothing.py',
                          'backend/app/access/people_review.py',
                          'scripts/export_visual_people_review.py',
                          'scripts/inspect_reviewed_people_readiness.py',
@@ -214,6 +231,10 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.search_exclusions import requires_exclusion_clarification\n'
                 "assert requires_exclusion_clarification('不在grass上的dog')\n"
                 'from app.access.semantic_configuration import load_semantic_runtime\n'
+                'from app.access.semantic_streaming import SemanticServingLimits\n'
+                'from app.access.semantic_eligibility import SemanticEligibilityStore\n'
+                'import multilingual_index_collection, semantic_bilingual_clothing\n'
+                'import semantic_coverage_qualification, semantic_request_profile\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'
                 'from app.access.photo_stacks import build_photo_stacks\n'
@@ -251,6 +272,13 @@ class StagingPackageTests(unittest.TestCase):
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'
+                'import semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness\n'
+                'for module in (semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness):\n'
+                ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
+                'for module in (build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot):\n'
+                ' captured=io.StringIO()\n'
+                ' with redirect_stdout(captured): assert module.run([])==0\n'
+                " assert json.loads(captured.getvalue())['private_files_read'] is False\n"
                 'captured=io.StringIO()\n'
                 'with redirect_stdout(captured): assert serve_reviewed_semantic_text.run([])==0\n'
                 "assert json.loads(captured.getvalue())['execution_performed'] is False\n"
@@ -261,6 +289,10 @@ class StagingPackageTests(unittest.TestCase):
                 'with redirect_stdout(captured): assert qualify_multilingual_scenes.run([])==0\n'
                 "assert json.loads(captured.getvalue())['private_files_read'] is False\n"
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
+                'captured=io.StringIO()\n'
+                'with redirect_stdout(captured): assert semantic_provider_readiness.main([])==0\n'
+                "assert json.loads(captured.getvalue())['status']=='plan_only'\n"
+                "assert json.loads(captured.getvalue())['private_file_reads'] is False\n"
                 'raise SystemExit(qualify_semantic_scenes.run([]))\n'
             )
             result = subprocess.run([sys.executable, '-I', '-B', '-c', program],

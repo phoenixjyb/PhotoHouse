@@ -110,10 +110,16 @@ The separate [offline exclusion scorecard](SEMANTIC_EXCLUSION_QUALIFICATION.md)
 now accepts explicit forbidden-image labels. It reports both forbidden images
 that tie or outrank the best relevant image and possible forbidden inclusion
 in the requested top-k, separately for English, Chinese and mixed queries.
-Generated-vector checks qualify this scoring logic only; the native model
-measurements above have not been rerun through it.
+Generated-vector checks qualified the scoring logic first. An October 20
+Windows rerun now applies content-bound labels to the same 16-photo,
+18-query diagnostic using the encoder's original in-memory vectors. Forbidden
+counterparts outranked or tied the intended image in 9/18 variants and could
+occur in the top five in 18/18. All nine negated variants failed that ordering
+check. The separate admission replay correctly required clarification for
+those nine variants; that is a safeguard, not encoder negation understanding.
+See the scorecard document for per-language results and scope limits.
 
-Four successful inference jobs used two CPU threads, an 8 GiB Job Object,
+The earlier four successful inference jobs used two CPU threads, an 8 GiB Job Object,
 four processes, a 600-second ceiling and a 16 GiB free-RAM floor per job.
 Each child proved its Job limits before model imports. Source files, model
 artifacts, images and dataset identities were checked around execution; an
@@ -125,7 +131,7 @@ provenance rests on the inspected runner, pinned dataset and source hashes.
 The worker denied Python socket connection/listening calls and used offline
 hub settings. This is not an OS-firewall qualification. These CPU measurement
 timings do not qualify serving/network latency, concurrency or peak memory.
-No serving binding or compatible immutable index was created. Live health
+Those earlier jobs created no serving binding or compatible immutable index. Live health
 checks before and after the runs confirmed the semantic flag off, no semantic
 provider configuration, healthy HTTPS and protected anonymous boundaries.
 
@@ -141,9 +147,34 @@ Conservative [exclusion and strict-condition admission/clarification](SCENE_QUER
 has since shipped in the October 20 API/Web release. Model-level negation,
 count, relationship and vague/contrast relevance remain qualification gates;
 refusing unsafe requests is reported separately from ranking correctness.
-Compatible 768-dimensional image coverage, protected serving integration,
-serving latency and family/device acceptance also remain outstanding.
+Production 768-dimensional image coverage, operational serving integration,
+network/device latency and family acceptance also remain outstanding. The later
+[public-image technical canary](MULTILINGUAL_PILOT_PREPARATION.md#native-technical-canary--october-20-2026)
+now qualifies the unpublished index and in-process protected ASGI path only.
 No GPU, ASR or Shanxi dialect acceptance is claimed.
+
+## Work needed before an owner pilot
+
+The October 20 source audit separates existing protections from unfinished
+model integration. These are release gates, not an activation checklist that
+the offline runner can approve.
+
+| Area | Existing source behavior | Remaining work |
+| --- | --- | --- |
+| Joint image/text identity | `JointSpaceBinding` requires equal vector space, dimension and normalization. The new SigLIP2 adapter derives role-specific recipe identities in one pinned 768-component space; the native technical canary exercised that adapter/index pair. | Bind and review an actual family cohort separately. |
+| Text serving | The legacy OpenCLIP CLI requires 512 components. A separate pinned SigLIP2 CPU CLI uses the authenticated loopback transport; native ASGI integration passed. | Actual HTTP/TLS and operational serving checks remain; no production provider is installed. |
+| Image coverage | The unpublished builder validated 16 public-image 768-component artifacts. Semantic retrieval refuses incomplete/corrupt eligible vectors and caps the cohort at 512. | Prepare complete actual family-library coverage and a larger-library plan before publication; the public candidate does not establish production coverage. |
+| Authorization | Runtime configuration v2 and direct 768-component runtimes require an exact current owner principal, checked before reads and before releasing cards. Twelve native protection checks passed; hard filters remain in force. | Actual family account binding remains private and pending. |
+| Unsupported meanings | Exclusion/strict-condition guards require clarification before vector reads or encoding. | Keep refusal evidence separate from encoder ranking. Qualify varied count, relationship, vague and contrast queries. |
+| Operational acceptance | Offline jobs have CPU, process, memory, timeout and input/source checks. The 27-request native protected ASGI canary measured median 187 ms, p95 219 ms and maximum 234 ms, with mid-request revocation checks. | Qualify network/device latency, concurrency, peak memory and operational rollback; in-process CPU timings do not establish these. |
+
+The technical canary now combines an explicit generated owner boundary,
+one compatible image/text identity, complete public-cohort coverage and protected
+integration checks. Family cohort preparation, deployment and activation remain
+separate operations.
+Semantic search remains disabled while this work is incomplete.
+See [multilingual pilot preparation](MULTILINGUAL_PILOT_PREPARATION.md) for the
+new source contracts and the isolated ASGI measurement boundary.
 
 Validation of the earlier screen/translation source passed 2,573 API tests and 2,520 subtests,
 including package dependency/planning checks, plus the generated no-listener

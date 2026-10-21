@@ -1,5 +1,6 @@
 """Private semantic runtime configuration stays explicit and fail closed."""
 from dataclasses import asdict, replace
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -13,7 +14,8 @@ sys.path[:0] = [str(ROOT / 'backend'), str(ROOT / 'tests/security')]
 
 from app.access.semantic_configuration import (SemanticConfigurationError,
     _require_semantic_paths_disjoint, load_semantic_runtime)
-from app.access.semantic_encoder import JointSpaceBinding
+from app.access import semantic_configuration
+from app.access.semantic_encoder import JointSpaceBinding, LocalSemanticEncoder
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.semantic_search import SemanticSearchRuntime
 from app.access.visual_candidates import VectorSpaceIdentity
@@ -68,6 +70,32 @@ class SemanticConfigurationTests(unittest.TestCase):
         self.assertEqual(runtime.encoder.binding.binding_sha256, self.binding.binding_sha256)
         self.assertEqual(runtime.encoder._bearer_token, 'a' * 40)
 
+    def test_expected_document_pin_is_checked_inside_loader_before_credential_read(self):
+        self.write()
+        self.write_credential()
+        pinned = json.dumps(self.document, sort_keys=True, separators=(',', ':'),
+                            ensure_ascii=False, allow_nan=False).encode('utf-8')
+        expected = hashlib.sha256(pinned).hexdigest()
+        changed = self.document | {'encoder_timeout_seconds': 1.4}
+        discovery = DiscoveryRuntime.__new__(DiscoveryRuntime)
+        with patch.object(semantic_configuration, '_load_private_document',
+                          return_value=changed) as read_private:
+            with self.assertRaises(SemanticConfigurationError):
+                load_semantic_runtime(self.config_path, discovery=discovery,
+                    source_root=ROOT.parent, expected_document_sha256=expected)
+        # The changed config document is the only private read; the credential
+        # loader is never reached after the in-loader pin mismatch.
+        read_private.assert_called_once_with(self.config_path, source_root=ROOT.parent)
+
+    def test_malformed_expected_document_pin_refuses_before_private_file_read(self):
+        with patch.object(semantic_configuration, '_load_private_document',
+                          side_effect=AssertionError('pin syntax must precede file reads')) as read_private:
+            with self.assertRaises(SemanticConfigurationError):
+                load_semantic_runtime(self.config_path,
+                    discovery=DiscoveryRuntime.__new__(DiscoveryRuntime),
+                    source_root=ROOT.parent, expected_document_sha256='A' * 64)
+        read_private.assert_not_called()
+
     def test_loader_refuses_missing_secret_malformed_pin_and_unreviewed_binding(self):
         self.write()
         with self.assertRaises(SemanticConfigurationError):
@@ -88,6 +116,115 @@ class SemanticConfigurationTests(unittest.TestCase):
         self.write(incomplete)
         with self.assertRaises(SemanticConfigurationError):
             load_semantic_runtime(self.config_path, discovery=DiscoveryRuntime.__new__(DiscoveryRuntime), source_root=ROOT.parent)
+
+    def test_v2_requires_a_safe_owner_and_v1_cannot_configure_768_dimensions(self):
+        self.write_credential()
+        discovery = DiscoveryRuntime.__new__(DiscoveryRuntime)
+        for bad_owner in (None, '', 'account/other', 'x' * 129, 7):
+            document = self.document | {'format_version': 2, 'pilot_owner_account_id': bad_owner}
+            self.write(document)
+            with self.assertRaises(SemanticConfigurationError):
+                load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+
+        image_identity = replace(vector_fixtures.IDENTITY, dimension=768)
+        text_identity = replace(self.binding.text_identity, dimension=768)
+        binding = JointSpaceBinding(image_identity, text_identity, 'e' * 64)
+        document = self.document | {'binding': {
+            'image_identity': asdict(image_identity), 'text_identity': asdict(text_identity),
+            'qualification_sha256': 'e' * 64}, 'binding_sha256': binding.binding_sha256}
+        self.write(document)
+        with self.assertRaises(SemanticConfigurationError):
+            load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+
+        document.update(format_version=2, pilot_owner_account_id='pilot-owner')
+        self.write(document)
+        runtime = load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+        self.assertEqual(runtime.pilot_owner_account_id, 'pilot-owner')
+
+    def test_v3_large_cohort_requires_closed_explicit_limits_and_retains_admission_pool(self):
+        from app.access.discovery import ReadBudget
+        self.write_credential()
+        discovery = DiscoveryRuntime.__new__(DiscoveryRuntime)
+        object.__setattr__(discovery, 'budget', ReadBudget(rows=100, seconds=1, concurrency=1))
+        limits = {'candidate_limit': 30000, 'source_rows': 500000,
+                  'source_bytes': 128 * 1024**2, 'search_seconds': 60}
+        document = self.document | {'format_version': 3,
+            'pilot_owner_account_id': 'pilot-owner', 'serving_limits': limits}
+        self.write(document)
+        runtime = load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+        self.assertEqual(runtime.serving_limits.candidate_limit, 30000)
+        self.assertIs(runtime.budget.slots, discovery.budget.slots)
+        self.assertEqual(runtime.budget.rows, 500000)
+        self.assertEqual(runtime.budget.search_source_bytes, 128 * 1024**2)
+        self.assertEqual(runtime.budget.search_seconds, 60)
+        self.assertEqual(discovery.budget.rows, 100)
+        self.assertEqual(discovery.budget.seconds, 1)
+        self.assertEqual(runtime.budget.response_bytes, discovery.budget.response_bytes)
+        for invalid in (None, {}, {**limits, 'candidate_limit': True},
+                        {**limits, 'candidate_limit': 100001},
+                        {**limits, 'candidate_limit': 512},
+                        {**limits, 'source_rows': 1000001},
+                        {**limits, 'source_bytes': 256 * 1024**2 + 1},
+                        {**limits, 'search_seconds': float('inf')},
+                        {**limits, 'search_seconds': 121},
+                        {**limits, 'search_seconds': True}, {**limits, 'unexpected': 1}):
+            self.write({**document, 'serving_limits': invalid})
+            with self.assertRaises(SemanticConfigurationError):
+                load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+        # Earlier versions cannot silently opt into a larger scope.
+        self.write({**document, 'format_version': 2})
+        with self.assertRaises(SemanticConfigurationError):
+            load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+
+    def test_direct_768_runtime_requires_owner_and_validates_owner_identifier(self):
+        image_identity = replace(vector_fixtures.IDENTITY, dimension=768)
+        text_identity = replace(self.binding.text_identity, dimension=768)
+        binding = JointSpaceBinding(image_identity, text_identity, 'e' * 64)
+        encoder = LocalSemanticEncoder(binding, 'http://127.0.0.1:43210/v1/encode-text')
+        discovery = DiscoveryRuntime.__new__(DiscoveryRuntime)
+        with self.assertRaises(ValueError):
+            SemanticSearchRuntime(discovery, self.vector_root, encoder)
+        for invalid in ('', 'pilot/owner', 'x' * 129):
+            with self.assertRaises(ValueError):
+                SemanticSearchRuntime(discovery, self.vector_root, encoder, invalid)
+        runtime = SemanticSearchRuntime(discovery, self.vector_root, encoder, 'pilot.owner-1')
+        self.assertEqual(runtime.pilot_owner_account_id, 'pilot.owner-1')
+
+    def test_v5_eligibility_is_explicit_pinned_disjoint_and_not_read_before_authorization(self):
+        from app.access.semantic_eligibility import SemanticEligibilityStore
+        self.write_credential()
+        discovery = DiscoveryRuntime.__new__(DiscoveryRuntime)
+        policy_path = self.root / 'eligibility.json'
+        document = self.document | {'format_version': 5, 'pilot_owner_account_id': 'pilot-owner',
+            'serving_limits': {'candidate_limit': 30000, 'source_rows': 500000,
+                              'source_bytes': 128 * 1024**2, 'search_seconds': 60},
+            'bulk_vectors': {'path': str(self.root / 'bulk.phbv'), 'file_sha256': 'a' * 64,
+                             'library_id': 'family-a'},
+            'eligibility': {'path': str(policy_path), 'file_sha256': 'b' * 64}}
+        self.write(document)
+        with patch.object(SemanticEligibilityStore, 'read_and_validate',
+                          side_effect=AssertionError('policy must be read only after owner authorization')):
+            runtime = load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+        self.assertEqual(runtime.eligibility.path, policy_path)
+        self.assertEqual(runtime.eligibility.bulk_sha256, runtime.bulk_vectors.file_sha256)
+        self.assertEqual(runtime.eligibility.binding_sha256, runtime.encoder.binding.binding_sha256)
+        for invalid in (None, {}, {'path': str(policy_path), 'file_sha256': 'invalid'},
+                        {'path': str(self.vector_root / 'policy.json'), 'file_sha256': 'b' * 64},
+                        {'path': str(self.credential_path), 'file_sha256': 'b' * 64},
+                        {'path': str(self.root / 'bulk.phbv'), 'file_sha256': 'b' * 64},
+                        {'path': str(policy_path), 'file_sha256': 'b' * 64, 'unknown': True}):
+            with self.subTest(invalid=invalid):
+                self.write(document | {'eligibility': invalid})
+                with self.assertRaises(SemanticConfigurationError):
+                    load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
+        self.write(document)
+        with self.assertRaises(SemanticConfigurationError):
+            load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent,
+                                 protected_paths=(policy_path,))
+        for version in (1, 2, 3, 4):
+            self.write(document | {'format_version': version})
+            with self.assertRaises(SemanticConfigurationError):
+                load_semantic_runtime(self.config_path, discovery=discovery, source_root=ROOT.parent)
 
     def test_loader_refuses_bad_endpoint_token_and_partial_credential_document(self):
         self.write_credential(token='a' * 40)
@@ -183,6 +320,43 @@ class SemanticConfigurationTests(unittest.TestCase):
         self.assertIs(create_app.call_args.kwargs['discovery_runtime'], discovery)
         self.assertIs(create_app.call_args.kwargs['semantic_search_runtime'], semantic)
         self.assertTrue(create_app.call_args.kwargs['assistant_semantic_search_enabled'])
+
+    def test_bulk_version_four_is_explicit_pinned_and_does_not_load_vectors(self):
+        from app.access.semantic_bulk_vectors import BulkVectorStore
+        self.write_credential()
+        parent = self.root / 'bulk-serving'
+        parent.mkdir(mode=0o700)
+        bulk_path = parent / 'verified.phbv'
+        document = self.document | {
+            'format_version': 4, 'pilot_owner_account_id': 'pilot.owner-1',
+            'serving_limits': {'candidate_limit': 100000, 'source_rows': 1000000,
+                'source_bytes': 256 * 1024**2, 'search_seconds': 120.0},
+            'bulk_vectors': {'path': str(bulk_path), 'file_sha256': 'f' * 64,
+                             'library_id': 'family-test'}}
+        self.write(document)
+        with patch.object(BulkVectorStore, 'snapshot', side_effect=AssertionError('config must not load vectors')):
+            runtime = load_semantic_runtime(self.config_path,
+                discovery=DiscoveryRuntime.__new__(DiscoveryRuntime), source_root=ROOT.parent)
+        self.assertIs(type(runtime.bulk_vectors), BulkVectorStore)
+        self.assertEqual(runtime.bulk_vectors.path, bulk_path)
+        self.assertFalse(bulk_path.exists())
+        self.assertEqual(runtime.bulk_vectors.identity, self.binding.image_identity)
+        for field in ({'file_sha256': 'f' * 63}, {'library_id': '../other'},
+                      {'path': str(self.vector_root / 'overlap.phbv')}, {'extra': True}):
+            with self.subTest(field=field):
+                self.write(document | {'bulk_vectors': document['bulk_vectors'] | field})
+                with self.assertRaises(SemanticConfigurationError):
+                    load_semantic_runtime(self.config_path,
+                        discovery=DiscoveryRuntime.__new__(DiscoveryRuntime), source_root=ROOT.parent)
+        self.write(document | {'format_version': 3})
+        with self.assertRaises(SemanticConfigurationError):
+            load_semantic_runtime(self.config_path,
+                discovery=DiscoveryRuntime.__new__(DiscoveryRuntime), source_root=ROOT.parent)
+        self.write(document)
+        with self.assertRaises(SemanticConfigurationError):
+            load_semantic_runtime(self.config_path,
+                discovery=DiscoveryRuntime.__new__(DiscoveryRuntime), source_root=ROOT.parent,
+                protected_paths=(parent,))
 
 
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ record.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import hashlib
 import json
 import re
@@ -65,14 +66,27 @@ def identity_sha256(identity: VectorSpaceIdentity) -> str:
     """Hash a versioned, canonical representation of vector-space identity."""
     if not _valid_identity(identity):
         raise ValueError("invalid_vector_identity") from None
+    # Only pure hash work is reused. Validate on every call and key by copied
+    # primitive values, so a changed identity cannot inherit an object's old
+    # digest. No artifact, source, authorization or file state enters this cache.
+    return _identity_fields_sha256(identity.artifact_sha256,
+        identity.preprocessing_sha256, identity.vector_space_id,
+        identity.model_version, identity.dimension, identity.normalization,
+        _IDENTITY_VERSION)
+
+
+@lru_cache(maxsize=128)
+def _identity_fields_sha256(artifact_sha256, preprocessing_sha256, vector_space_id,
+                           model_version, dimension, normalization, version):
+    """Memoize the canonical digest of at most 128 exact model identities."""
     payload = {
-        "artifact_sha256": identity.artifact_sha256,
-        "dimension": identity.dimension,
-        "model_version": identity.model_version,
-        "normalization": identity.normalization,
-        "preprocessing_sha256": identity.preprocessing_sha256,
-        "vector_space_id": identity.vector_space_id,
-        "version": _IDENTITY_VERSION,
+        "artifact_sha256": artifact_sha256,
+        "dimension": dimension,
+        "model_version": model_version,
+        "normalization": normalization,
+        "preprocessing_sha256": preprocessing_sha256,
+        "vector_space_id": vector_space_id,
+        "version": version,
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(encoded.encode("ascii")).hexdigest()

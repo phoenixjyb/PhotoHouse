@@ -1,13 +1,16 @@
 """Pure synthetic checks for bounded photo-vector candidate ranking."""
 from dataclasses import replace
+import hashlib
 import math
 from pathlib import Path
 import socket
 import sqlite3
+import struct
 import subprocess
 import sys
 import unittest
 from unittest.mock import patch
+import builtins
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
@@ -20,9 +23,11 @@ from app.access.visual_candidates import (
     AuthorizationSnapshot,
     VectorRecord,
     VectorSpaceIdentity,
+    _packed_vector,
     canonical_vector_checksum,
     rank_visual_candidates,
 )
+from app.access import visual_candidates as candidates
 
 
 IDENTITY = VectorSpaceIdentity(
@@ -59,6 +64,213 @@ def rank(seed_vectors, candidate_vectors, *, seed_ids=None, candidate_ids=None,
 
 
 class VisualCandidateRankingTests(unittest.TestCase):
+    def test_builtin_iterators_are_bitwise_legacy_equivalent(self):
+        def legacy_packed(vector):
+            if type(vector) not in (tuple, list) or not 1 <= len(vector) <= MAX_DIMENSION:
+                raise ValueError("invalid_vector")
+            vector = vector if type(vector) is tuple else tuple(vector[:MAX_DIMENSION + 1])
+            if not 1 <= len(vector) <= MAX_DIMENSION:
+                raise ValueError("invalid_vector")
+            if any(type(component) not in (int, float) for component in vector):
+                raise ValueError("invalid_vector")
+            try:
+                packed = struct.pack(f">{len(vector)}f", *vector)
+            except (OverflowError, struct.error):
+                raise ValueError("invalid_vector") from None
+            if any(not math.isfinite(value)
+                   for value in struct.unpack(f">{len(vector)}f", packed)):
+                raise ValueError("invalid_vector")
+            return packed
+
+        def legacy_components(vector_record, identity):
+            if (type(vector_record) is not VectorRecord
+                    or type(vector_record.identity) is not VectorSpaceIdentity
+                    or vector_record.identity != identity
+                    or type(vector_record.checksum_sha256) is not str
+                    or candidates._SHA256.fullmatch(vector_record.checksum_sha256) is None
+                    or type(vector_record.vector) is not tuple
+                    or len(vector_record.vector) != identity.dimension):
+                raise ValueError("invalid_vector_record")
+            packed = legacy_packed(vector_record.vector)
+            checksum = hashlib.sha256(
+                candidates._CHECKSUM_PREFIX
+                + struct.pack(">I", len(vector_record.vector)) + packed
+            ).hexdigest()
+            if checksum != vector_record.checksum_sha256:
+                raise ValueError("invalid_vector_record")
+            values = struct.unpack(f">{len(vector_record.vector)}f", packed)
+            norm = math.sqrt(math.fsum(value * value for value in values))
+            if (not math.isfinite(norm) or norm == 0.0
+                    or abs(norm - 1.0) > candidates.UNIT_NORM_TOLERANCE):
+                raise ValueError("invalid_vector_record")
+            return tuple(value / norm for value in values)
+
+        def legacy_score(left, right):
+            return math.fsum(a * b for a, b in zip(left, right))
+
+        identity768 = replace(IDENTITY, dimension=768)
+        raw = [math.sin(index * 0.017) + math.cos(index * 0.031) * 0.4
+               for index in range(768)]
+        raw_norm = math.sqrt(math.fsum(value * value for value in raw))
+        deterministic = struct.unpack(">768f", struct.pack(">768f",
+            *(value / raw_norm for value in raw)))
+        vectors = (
+            (IDENTITY, (1.0, -0.0, 2.0 ** -149)),
+            (IDENTITY, (-0.6, -0.8)),
+            (IDENTITY, (0.999, 0.0)),
+            (IDENTITY, (0.9989, 0.0)),  # Outside the accepted norm tolerance.
+            (IDENTITY, (1.001, 0.0)),   # Float32 rounding puts this above tolerance.
+            (identity768, deterministic),
+        )
+
+        canonical_outputs = []
+        for identity, vector in vectors:
+            vector_record = VectorRecord("7", identity, vector,
+                                         canonical_vector_checksum(vector))
+            outcomes = []
+            for canonicalize in (legacy_components, candidates._canonical_components):
+                try:
+                    normalized = canonicalize(vector_record, identity)
+                    outcomes.append(("ok", struct.pack(f">{len(normalized)}d", *normalized)))
+                    if len(normalized) == identity.dimension and math.isfinite(
+                            math.fsum(value * value for value in normalized)):
+                        canonical_outputs.append(normalized)
+                except (ValueError, TypeError, OverflowError) as error:
+                    outcomes.append(("error", type(error), str(error)))
+            self.assertEqual(outcomes[0], outcomes[1])
+
+        # A bad checksum and a mismatched identity must keep the old refusal.
+        valid = record("8", (0.6, -0.8))
+        invalid_records = (
+            replace(valid, checksum_sha256="0" * 64),
+            replace(valid, identity=replace(IDENTITY, model_version="other-v1")),
+        )
+        for invalid in invalid_records:
+            with self.subTest(record=invalid):
+                outcomes = []
+                for canonicalize in (legacy_components, candidates._canonical_components):
+                    try:
+                        value = canonicalize(invalid, IDENTITY)
+                        outcomes.append(("ok", struct.pack(f">{len(value)}d", *value)))
+                    except (ValueError, TypeError, OverflowError) as error:
+                        outcomes.append(("error", type(error), str(error)))
+                self.assertEqual(outcomes[0], outcomes[1])
+
+        score_pairs = [
+            ((-0.0, 2.0 ** -149, -0.75, 1.0), (1.0, -0.5, -0.25, -0.0)),
+            (canonical_outputs[-1], tuple(reversed(canonical_outputs[-1]))),
+            (canonical_outputs[1], canonical_outputs[2]),
+        ]
+        for left, right in score_pairs:
+            old = legacy_score(left, right)
+            new = candidates._score(left, right)
+            self.assertEqual(struct.pack(">d", old), struct.pack(">d", new))
+
+    def test_list_mutation_after_type_validation_cannot_invoke_custom_conversion(self):
+        class UnexpectedConversion:
+            def __float__(self):
+                self.fail = True
+                raise AssertionError("custom conversion must not run")
+
+        replacement = UnexpectedConversion()
+        source = [1.0]
+        def mutate_after_check(values):
+            result = builtins.any(values)
+            source[0] = replacement
+            return result
+        with patch.object(candidates, 'any', mutate_after_check, create=True):
+            self.assertEqual(bytes.fromhex('3f800000'), _packed_vector(source))
+        self.assertFalse(hasattr(replacement, 'fail'))
+
+    def test_checksum_dimension_is_bound_to_snapshot_when_original_list_grows(self):
+        source = [1.0]
+        expected = canonical_vector_checksum((1.0,))
+        def grow_after_check(values):
+            result = builtins.any(values)
+            source.append(2.0)
+            return result
+        with patch.object(candidates, 'any', grow_after_check, create=True):
+            self.assertEqual(expected, canonical_vector_checksum(source))
+        self.assertGreater(len(source), 1)
+
+    def test_vector_packing_preserves_canonical_float32_bytes_and_checksum(self):
+        # Includes negative zero, the smallest positive float32 subnormal, and
+        # a float64 halfway value that rounds to the even float32 mantissa.
+        vector = (1.0, -0.0, 2.0 ** -149, 1.0 + 2.0 ** -24)
+        self.assertEqual("3f80000080000000000000013f800000", _packed_vector(vector).hex())
+        self.assertEqual(
+            "1c861c7655086c5963ca014bd0886b0c09a64e4be945a116dfdd951654de8f74",
+            canonical_vector_checksum(vector),
+        )
+
+    def test_vector_packing_matches_legacy_conversion_for_edge_cases(self):
+        class IntChild(int):
+            pass
+
+        class FloatChild(float):
+            pass
+
+        class TupleChild(tuple):
+            pass
+
+        class ListChild(list):
+            pass
+
+        class FloatConvertible:
+            def __float__(self):
+                raise AssertionError("custom numeric conversion must not run")
+
+        def old_packed_vector(vector):
+            if type(vector) not in (tuple, list) or not 1 <= len(vector) <= MAX_DIMENSION:
+                raise ValueError("invalid_vector")
+            values = []
+            for component in vector:
+                if type(component) not in (int, float):
+                    raise ValueError("invalid_vector")
+                try:
+                    value = float(component)
+                except OverflowError:
+                    raise ValueError("invalid_vector") from None
+                if not math.isfinite(value):
+                    raise ValueError("invalid_vector")
+                values.append(value)
+            try:
+                packed = struct.pack(f">{len(values)}f", *values)
+            except (OverflowError, struct.error):
+                raise ValueError("invalid_vector") from None
+            if any(not math.isfinite(value)
+                   for value in struct.unpack(f">{len(values)}f", packed)):
+                raise ValueError("invalid_vector")
+            return packed
+
+        cases = [
+            (1, -0.0, 2.0 ** -149, 2.0 ** -150),
+            (1.0 + 2.0 ** -24, 1.0 + 3.0 * 2.0 ** -24, -1.25),
+            (10 ** 10000,),
+            (3.5e38,),
+            (math.nan,),
+            (math.inf,),
+            (-math.inf,),
+            (True,),
+            (IntChild(1),),
+            (FloatChild(1.0),),
+            (FloatConvertible(),),
+            TupleChild((1.0,)),
+            ListChild([1.0]),
+            (),
+            (1.0,) * (MAX_DIMENSION + 1),
+            [1, 0.5, -2],
+        ]
+        for index, vector in enumerate(cases):
+            with self.subTest(case=index):
+                outcomes = []
+                for pack in (old_packed_vector, _packed_vector):
+                    try:
+                        outcomes.append(("ok", pack(vector)))
+                    except ValueError as error:
+                        outcomes.append(("error", str(error)))
+                self.assertEqual(outcomes[0], outcomes[1])
+
     def test_cosine_ranking_uses_best_individual_seed_and_excludes_seeds(self):
         seeds = [record("1", (1.0, 0.0)), record("2", (0.0, 1.0))]
         candidates = [

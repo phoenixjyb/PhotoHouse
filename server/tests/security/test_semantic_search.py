@@ -29,7 +29,7 @@ from app.access.visual_vector_loader import _read_vector
 import test_assistant_joint_search as fixtures
 import test_visual_vector_loader as vector_fixtures
 IDENTITY = vector_fixtures.IDENTITY
-from phone_discovery_fixture import OTHER, TOKEN, NOW, reviewed
+from phone_discovery_fixture import OTHER, SECOND, TOKEN, NOW, reviewed
 
 BASE = '/libraries/family-a/semantic-search/v1/query'
 BINDING = JointSpaceBinding(IDENTITY, replace(IDENTITY, artifact_sha256='c'*64,
@@ -175,6 +175,60 @@ class SemanticSearchTests(unittest.TestCase):
         self.assertEqual(anonymous.status_code, 401, anonymous.text)
         self.assertEqual(self.calls, [])
 
+    def test_pilot_owner_requires_exact_approved_owner_before_provider(self):
+        self.runtime = replace(self.runtime, pilot_owner_account_id='two')
+        self.client.app.state.semantic_search_runtime = self.runtime
+        with patch.object(type(self.fixture.discovery_runtime.provider), 'get',
+                          side_effect=AssertionError('metadata before owner authorization')):
+            for token in (TOKEN, OTHER, 'invalid-token'):
+                response = self.query(token=token)
+                self.assertEqual(response.status_code, 401, response.text)
+            malformed = self.client.post(BASE,
+                headers={'Authorization': 'Bearer ' + TOKEN}, content=b'not-json')
+            self.assertEqual(malformed.status_code, 401, malformed.text)
+        self.assertEqual(self.calls, [])
+        self.fixture.mutate("UPDATE access_memberships SET role='owner' WHERE account_id='one'")
+        self.assertEqual(self.query(token=TOKEN).status_code, 401)
+        self.fixture.mutate("UPDATE access_memberships SET role='viewer' WHERE account_id='one'")
+        self.assertEqual(self.query(token=SECOND).status_code, 200)
+
+    def test_pilot_owner_session_revocation_and_role_downgrade_withhold_cards(self):
+        self.runtime = replace(self.runtime, pilot_owner_account_id='two')
+        self.client.app.state.semantic_search_runtime = self.runtime
+        self.during_encode = lambda: self.fixture.mutate(
+            "UPDATE access_memberships SET role='viewer' WHERE account_id='two'")
+        response = self.query(token=SECOND)
+        self.assertEqual(response.status_code, 401, response.text)
+        self.assertNotIn('items', response.json())
+        self.during_encode = None
+        self.fixture.mutate("UPDATE access_memberships SET role='owner' WHERE account_id='two'")
+        from app.access.credentials import session_digest
+        self.during_encode = lambda: self.fixture.mutate(
+            'UPDATE access_sessions SET revoked=1 WHERE digest=?', (session_digest(SECOND),))
+        revoked = self.query(token=SECOND)
+        self.assertEqual(revoked.status_code, 401, revoked.text)
+        self.assertNotIn('items', revoked.json())
+        self.assertEqual(len(self.calls), 2)
+
+    def test_restored_snapshot_rechecks_owner_before_releasing_ranking(self):
+        from app.access.service import AccessDenied
+        self.runtime = replace(self.runtime, pilot_owner_account_id='two')
+        original_authorize = self.runtime.authorize
+        checks = 0
+        def revoke_before_release(token, library):
+            nonlocal checks
+            checks += 1
+            if checks == 2:
+                self.fixture.mutate("UPDATE access_memberships SET role='viewer' WHERE account_id='two'")
+            return original_authorize(token, library)
+        with patch.object(type(self.runtime), 'authorize', autospec=True,
+                          side_effect=lambda _runtime, token, library: revoke_before_release(token, library)):
+            with self.assertRaises(AccessDenied):
+                self.runtime._restore_server_snapshot(SECOND, 'family-a', lambda: False,
+                    {'query': 'scene', 'filters': {}}, (('103', 0.9), ('101', 0.1)))
+        self.assertEqual(checks, 2)
+        self.assertEqual(self.calls, [])
+
     def test_pagination_is_bound_to_query_and_current_source(self):
         first = self.query(page_size=1).json()
         self.assertEqual(first['total'], 2)
@@ -198,6 +252,21 @@ class SemanticSearchTests(unittest.TestCase):
         response = self.query()
         self.assertEqual(response.status_code, 409, response.text)
         self.assertNotIn('items', response.json())
+
+    def test_new_request_rebuilds_literal_facts_and_refuses_previous_source_binding(self):
+        first = self.query(filters={'text': 'secret memory phrase'})
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual([item['id'] for item in first.json()['items']], ['101'])
+        self.fixture.mutate("UPDATE access_stories SET text='fresh garden phrase',revision=2 WHERE id='note-101'")
+        stale = self.query(filters={'text': 'secret memory phrase'}, binding=first.json()['binding'])
+        self.assertEqual(stale.status_code, 409, stale.text)
+        self.assertNotIn('items', stale.json())
+        old = self.query(filters={'text': 'secret memory phrase'})
+        self.assertEqual(old.status_code, 200, old.text)
+        self.assertEqual(old.json()['items'], [])
+        current = self.query(filters={'text': 'fresh garden phrase'})
+        self.assertEqual(current.status_code, 200, current.text)
+        self.assertEqual([item['id'] for item in current.json()['items']], ['101'])
 
     def test_aggregate_deadline_and_cancellation_apply_before_provider(self):
         cancelled = lambda: True

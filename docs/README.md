@@ -30,6 +30,7 @@ use dated release/qualification records as evidence for their exact revision.
 | AI-assisted story completion | [Drafting handoff, recovery and remaining model gates](AI_STORY_COMPLETION.md) |
 | Link an accepted family memory to a story chapter | [Web chooser and protected metadata contract](CHAPTER_FAMILY_MEMORY_CHOOSER.md) |
 | Compare synthetic story output with its sources | [Private operator review page](MEMOIR_QUALITY_REVIEW.md) |
+| Prepare multilingual vectors and an owner-only search pilot | [Index, provider and protected latency contract](MULTILINGUAL_PILOT_PREPARATION.md) |
 | Companion answer grounding | [Cited answers and clarification](STORY_COMPANION_GROUNDING.md) |
 | Review wording changes in story suggestions | [Review summary and local focus](STORY_PROPOSAL_WORDING_REVIEW.md) |
 | Title from authored chapter wording | [Chapter-opening title contract](CHAPTER_OPENING_TITLE.md) |

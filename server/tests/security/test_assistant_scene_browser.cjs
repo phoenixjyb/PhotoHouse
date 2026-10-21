@@ -6,6 +6,7 @@ const {createInterface}=require('node:readline');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||process.env.PLAYWRIGHT_MODULE_PATH||'playwright-core');
 const root=path.resolve(__dirname,'../..');
+const coverageMode=process.env.PH_SCENE_COVERAGE==='1';
 const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-assistant-workspace-'));
 fs.mkdirSync(artifacts,{recursive:true});console.log('ARTIFACTS_DIR '+artifacts);
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'../.venv/bin/python'),[path.join(__dirname,'assistant_workspace_browser_bridge.py')],{cwd:root,env:{...process.env,PH_SCENE_FIXTURE:'1'},stdio:['pipe','pipe','pipe']});
@@ -17,6 +18,7 @@ bridge.on('exit',code=>{if(code){readyReject(new Error(`Browser bridge exited ($
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pendingRpc.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const browserRequests=[],pageErrors=[],checkpoints=[],blockedOrigins=[];
 let loseNextTurn=false,loseNextTurnBeforeServer=false,loseNextCreationBeforeServer=false,holdNextTurn=null,releaseHeldTurn=null;
+let coverageSummary=null;
 function gateTurn(){let arrive,release;const seen=new Promise(resolve=>{arrive=resolve;});const released=new Promise(resolve=>{release=resolve;});releaseHeldTurn=release;holdNextTurn={arrive,released};return {seen,release:()=>{releaseHeldTurn=null;release();}};}
 function checkpoint(text){checkpoints.push(text);console.log('PASS '+text);}
 function body(response){return JSON.parse(Buffer.from(response.body,'base64').toString());}
@@ -82,6 +84,20 @@ async function installSyntheticTransport(targetContext){
     await page.locator('#assistant-scene-text').fill(text);await page.locator('#assistant-scene-confirm').check();await page.locator('#assistant-scene-send').click();
     await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);return turns().at(-1);
   };
+  const captureCoverageReply=async(label,width,fontSize)=>{
+    const height=width===390?845:900;
+    await page.setViewportSize({width,height});
+    await page.evaluate(size=>document.documentElement.style.fontSize=size,fontSize);
+    const content=page.locator('#assistant-workspace-content'),reply=page.locator('#assistant-reply');
+    await content.evaluate(element=>{element.scrollTop=element.scrollHeight;});
+    await reply.scrollIntoViewIfNeeded();
+    const bounds=await reply.boundingBox(),contentBounds=await content.boundingBox();
+    assert(bounds&&contentBounds&&bounds.y>=contentBounds.y&&bounds.y+bounds.height<=contentBounds.y+contentBounds.height,
+      `${label} full disclosure paragraph should be visible inside the assistant dialog`);
+    await page.screenshot({path:path.join(artifacts,`coverage-${label}.png`),fullPage:false});
+    if(width===390)assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,
+      `${label} viewport should not overflow horizontally`);
+  };
   await ordinary('找示例儿童在2026年的照片');
   await page.locator('#assistant-text').fill('unsent main search draft');
   await page.locator('#assistant-scene').waitFor({state:'visible'});await page.locator('#assistant-scene > summary').click();
@@ -94,12 +110,29 @@ async function installSyntheticTransport(targetContext){
   const search=await submitScene('孩子 flying a kite 蓝桥旁');
   assert.equal(search.status,200,JSON.stringify(search.response));assert.equal(search.headers['x-photohouse-search-version'],'4');assert.deepEqual(JSON.parse(search.body).accepts,['scene_search_v1']);
   assert.deepEqual(search.response.result.items.map(x=>x.id),['102','101']);assert.equal(search.response.result.filters.people.ids[0],'301');assert.equal(search.response.result.filters.date.from,'2026-01-01');
+  if(coverageMode){
+    const details=search.response.result.semantic.coverage_details;
+    assert.match(details.policy_sha256,/^[0-9a-f]{64}$/);
+    assert.deepEqual({...details,policy_sha256:'<pinned-policy>'},{version:1,policy_sha256:'<pinned-policy>',state:'partial',catalog_images:67,searchable_images:2,omitted_images:65,matched_omitted_images:0});
+    coverageSummary={state:details.state,catalog_images:details.catalog_images,searchable_images:details.searchable_images,omitted_images:details.omitted_images,matched_omitted_images:details.matched_omitted_images,reply_languages:[]};
+    const reply=search.response.result.reply;assert.match(reply,/65 张尚未建立索引/);assert.match(reply,/0 张未参与相似度排序/);assert.match(reply,/仍可通过普通搜索查找/);
+    await captureCoverageReply('zh-desktop',1280,'');await captureCoverageReply('zh-phone-150',390,'150%');
+    await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
+    coverageSummary.reply_languages.push('zh');
+  }
   await page.locator('#assistant-scene-ranking').waitFor({state:'visible'});assert.match(await page.locator('#assistant-scene-ranking').innerText(),/近似排序/);
   assert.equal(await page.locator('.assistant-scene-rank').count(),2);assert.equal(await page.locator('#assistant-speech').isVisible(),false);assert.equal(await page.locator('#viewer').isVisible(),false);
   assert.equal(await page.locator('#assistant-scene-confirm').isChecked(),false);
   await page.locator('#assistant-scene-ranking').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-desktop-zh.png'),fullPage:false});
   checkpoint('Explicit mixed-language scene turn preserves hard filters, shows approximate ranking separately, and performs no speech/open action');
   const english=await submitScene('a child flying a kite beside a blue bridge');assert.equal(english.response.result.context.scene.query,'a child flying a kite beside a blue bridge');
+  if(coverageMode){
+    const details=english.response.result.semantic.coverage_details;assert.deepEqual({...details,policy_sha256:'<pinned-policy>'},{version:1,policy_sha256:'<pinned-policy>',state:'partial',catalog_images:67,searchable_images:2,omitted_images:65,matched_omitted_images:0});
+    const reply=english.response.result.reply;assert.match(reply,/65 are not indexed yet/);assert.match(reply,/0 photos within your current filters were not ranked/);assert.match(reply,/You can still look for those photos using ordinary search/);
+    await captureCoverageReply('en-desktop',1280,'');await captureCoverageReply('en-phone-150',390,'150%');
+    await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
+    coverageSummary.reply_languages.push('en');checkpoint('Partial coverage metadata and Chinese/English ordinary-search disclosures render fully at desktop and 390px/150%');
+  }
   // Exclusions are refused before encoding; the durable refusal requires deliberate GET reload before rewording.
   const encoderBeforeRefusal=(await rpc({command:'scene-stats'})).calls,turnsBeforeRefusal=turns().length;
   const refusal=await submitScene('孩子在紫色桥边放风筝，但不要有红色汽车');
@@ -210,6 +243,6 @@ async function installSyntheticTransport(targetContext){
   assert.equal(await page.locator('#assistant-scene-ranking').isVisible(),false);
   checkpoint('Unresolved conditions block scene action; a complete ordinary search leaves the scene and resolves scope');
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);assert.equal(browserRequests.filter(r=>/\/speech$/.test(new URL(r.path,'https://photohouse.test').pathname)).length,0);
-  fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,pageErrors,blockedOrigins,generatedVectors:true,mockEncoder:true,modelRelevanceQualified:false},null,2));
+  fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,pageErrors,blockedOrigins,generatedVectors:true,mockEncoder:true,modelRelevanceQualified:false,coverage:coverageSummary},null,2));
   console.log(`Scene browser checks: ${checkpoints.length} passed. Artifacts: ${artifacts}`);
 })().catch(async error=>{console.error(error);try{await page?.screenshot({path:path.join(artifacts,'failure.png'),fullPage:false});console.error(JSON.stringify(browserRequests.slice(-5).map(x=>({path:x.path,status:x.status,response:x.response})),null,2));}catch{}process.exitCode=1;}).finally(async()=>{await context?.close();await browser?.close();try{bridge.stdin.write(JSON.stringify({command:'quit'})+'\n');}catch{}bridge.kill();});

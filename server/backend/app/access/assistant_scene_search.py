@@ -5,18 +5,35 @@ visual wording; only server-owned v2/v3 context supplies hard conditions.
 Recovery trusts the validated private store's first-page ranking, then checks
 the entire source/vector cohort again without re-encoding the user's query.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import math
 
 from . import discovery as d
 from .assistant_search import SearchRuntime, SearchPlan
 from .semantic_search import SemanticSearchRuntime
+from .semantic_streaming import MAX_LIBRARY_CANDIDATES
 
 
 def scene_query(value):
     d.text(value, 512)
     d.require(not any(ord(c) < 32 or 0x7f <= ord(c) < 0xa0 for c in value))
     return value
+
+
+def _coverage_reply(reply, semantic, total, language):
+    coverage = semantic.get('coverage_details')
+    if coverage is None or coverage['state'] != 'partial':
+        return reply
+    searchable, omitted = coverage['searchable_images'], coverage['omitted_images']
+    matched = coverage['matched_omitted_images']
+    if language == 'zh':
+        lead = '在可语义检索的照片中未找到符合当前筛选条件的结果。' if total == 0 else reply
+        return (f'{lead} 语义检索覆盖 {searchable:,} 张照片；{omitted:,} 张尚未建立索引。'
+                f'当前筛选条件中有 {matched:,} 张未参与相似度排序。这些照片仍可通过普通搜索查找。')
+    lead = 'No matches in the searchable photos within your current filters.' if total == 0 else reply
+    return (f'{lead} Semantic search covers {searchable:,} photos; {omitted:,} are not indexed yet. '
+            f'{matched:,} photos within your current filters were not ranked. '
+            'You can still look for those photos using ordinary search.')
 
 
 def _scope(value, library):
@@ -55,7 +72,7 @@ def context_value(value, library):
     scope = _scope(scene['scope'], library)
     scores = scene['scores']
     if (base['filters'] != {**scope['filters'], 'media': ['image']} or
-            base['total'] > min(512, scope['total']) or type(scores) is not list or
+            base['total'] > min(MAX_LIBRARY_CANDIDATES, scope['total']) or type(scores) is not list or
             len(scores) != len(base['visible_ids']) or
             any(type(x) not in (int, float) or not math.isfinite(x) or not -1 <= x <= 1
                 for x in scores)):
@@ -71,7 +88,9 @@ class SceneSearchRuntime:
     kinship_provider: object = None
 
     def base_engine(self, scope):
-        return SearchRuntime(self.semantic.discovery, self.kinship_provider,
+        discovery = (replace(self.semantic.discovery, budget=self.semantic.budget)
+                     if self.semantic.serving_limits else self.semantic.discovery)
+        return SearchRuntime(discovery, self.kinship_provider,
                              search_version=scope['search_version'])
 
     def scope_result(self, token, library, scope):
@@ -124,6 +143,7 @@ class SceneSearchRuntime:
                  if lang == 'zh' else
                  'Photos ranked by scene similarity within your current filters. '
                  'Similarity is approximate; check the photos to confirm.')
+        reply = _coverage_reply(reply, found['semantic'], found['total'], lang)
         return {'version': 4, 'kind': 'results', 'reply': reply, 'context': ctx,
                 'filters': ctx['filters'], 'items': found['items'], 'total': found['total'],
                 'has_more': found['has_more'], 'effect': None,

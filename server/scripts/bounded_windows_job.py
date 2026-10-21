@@ -68,6 +68,37 @@ def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: d
                 terminate_descendants_after_exit: bool = False,
                 require_child_job_proof: bool = False,
                 monotonic=time.monotonic, sleep=time.sleep) -> int:
+    """Run an offline qualification job with the established 900-second cap."""
+    return _run_bounded(api, executable, argv, environment, cwd,
+        timeout_seconds=timeout_seconds, timeout_ceiling=900, memory_limit=memory_limit,
+        process_limit=process_limit, minimum_free_ram=minimum_free_ram,
+        descendant_grace_seconds=descendant_grace_seconds,
+        terminate_descendants_after_exit=terminate_descendants_after_exit,
+        require_child_job_proof=require_child_job_proof, monotonic=monotonic, sleep=sleep)
+
+
+def run_bounded_library_index(api: NativeAPI, executable: str, argv: list[str],
+                              environment: dict[str, str], cwd: str, *, timeout_seconds: float,
+                              monotonic=time.monotonic, sleep=time.sleep) -> int:
+    """Explicit full-library worker profile, with at most six hours per job.
+
+    This entry point is only for authorized, checkpointed offline indexing. Its
+    fixed limits and child proof cannot be relaxed by a caller. It neither
+    schedules work nor changes any application service.
+    """
+    return _run_bounded(api, executable, argv, environment, cwd,
+        timeout_seconds=timeout_seconds, timeout_ceiling=21600,
+        memory_limit=8 * 1024**3, process_limit=4, minimum_free_ram=16 * 1024**3,
+        require_child_job_proof=True, monotonic=monotonic, sleep=sleep)
+
+
+def _run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: dict[str, str], cwd: str,
+                *, timeout_seconds: float, memory_limit: int = 2 * 1024**3,
+                process_limit: int = 16, minimum_free_ram: int = 8 * 1024**3,
+                descendant_grace_seconds: float = 5,
+                terminate_descendants_after_exit: bool = False,
+                require_child_job_proof: bool = False,
+                monotonic=time.monotonic, sleep=time.sleep, timeout_ceiling: int = 900) -> int:
     """Run an assigned child Job and retain it until descendants drain.
 
     Callers may explicitly enable ``terminate_descendants_after_exit`` only for
@@ -75,7 +106,9 @@ def run_bounded(api: NativeAPI, executable: str, argv: list[str], environment: d
     Callers must report this teardown policy and qualify it natively. Successful
     forced teardown does not establish that descendants shut down naturally.
     """
-    if not executable or not cwd or not argv or argv[0] != executable or not 0 < timeout_seconds <= 900:
+    if (not executable or not cwd or not argv or argv[0] != executable
+            or isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float))
+            or not math.isfinite(timeout_seconds) or not 0 < timeout_seconds <= timeout_ceiling):
         raise CheckRefused('invalid_launch')
     if memory_limit <= 0 or process_limit <= 0 or minimum_free_ram < 0:
         raise CheckRefused('invalid_limits')
