@@ -28303,6 +28303,112 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Forward an explicitly injected provider through RuntimeConfiguration into existing app/session lifecycle. Separate API/UI flags remain false; validate booleans/provider/collaboration dependencies before storage construction. Generated-store tests verify defaults, dependency refusal, exact object forwarding and app lifespan ownership without build-time provider calls. No serialized recipe, model selection/load, Windows access, store clearance or automatic receipt renewal. Long-running operator policy and activation/deployment remain separate."
+    },
+    {
+      "feature": "selected-story-main-fe47cec-provenance-replay",
+      "source_commit": "191534d3ef2e2739a4bb7b1badd42fc5df259684",
+      "merged_main_commit": "fe47cecd857206090b282723390b20c4a7830f10",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "0f2e5d70b2f2007f7f4a4bf708b21ea2ac63e90e8ba4cbeaa9929f213036fcfc",
+          "sha256": "b93b427926596f56490c55cc958c03ee819dfe896ed04eea47acd59f48778200"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "41e3010fadbb39c119fc07ff8d2c741a2534acafe0d6a8d006bfaabd74d25991",
+          "sha256": "c93ac1daa7e88df19ab6247a71939dbb6194f5d5365edfe96494060bd09aca2e"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "4502d2e0a54414bf6968c787cc2055196ad10a605ec654130f669378cc377d09",
+          "sha256": "7c39eae7a5c7f03e2b565972632e383f7611ab901ee57453c5cb7b188555161f"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Ledger replay bridge only: restore each overlapping common-source hash before retaining upstream feature records verbatim. This does not roll back working files; the combined-source overlay follows."
+    },
+    {
+      "feature": "photo-stack-expanded-web-regions-20261021",
+      "source_commit": "5f72004ad4692786516615d5c68ac8e1568ff2cf",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "afb76d3b616aec93a9e5bd2994dbca43fa1158231bfe9164a5c2deafcbda38e6",
+          "sha256": "4a27b57fd122e6f7054042b6726d9e70a49dd20bda7309ec5bb5133af7c5782c"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "04d05e5d29d356f651e45aa379fa23dff783ba95d033f43ba3a8b4f83d7d03cc",
+          "sha256": "00c84dfd11aa2ead674f72a79034e583946fadc715c010f6cf0442dd375d6c53"
+        },
+        {
+          "path": "docs/LIBRARY_PHOTO_STACKS.md",
+          "before_sha256": "da0acb559e327d8a6b648d9a61f8f91ec45b3b0f54735174820241db94459696",
+          "sha256": "4267392d40d79ae58c4d1e36d68a4a5a79b7aee8159a0c1f8fdb5bf18c8007bd"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "b93b427926596f56490c55cc958c03ee819dfe896ed04eea47acd59f48778200",
+          "sha256": "000f0a1d262e640569fd0e8e9d00e91cd1946b4c70e523d86dbed4d9fd501060"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "c93ac1daa7e88df19ab6247a71939dbb6194f5d5365edfe96494060bd09aca2e",
+          "sha256": "4c9bceea19cb413447c172bd35de551d0c90331920d67d2bd1c89225228ac348"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "7c39eae7a5c7f03e2b565972632e383f7611ab901ee57453c5cb7b188555161f",
+          "sha256": "efc47385c8972a7465fedd619e1b7502e813100d0e7667a897b9399a00db36ba"
+        },
+        {
+          "path": "server/tests/security/library_photo_stacks_browser_bridge.py",
+          "before_sha256": "e779b65779ee3646db6806d92db42f3ffbb476293890f6c8b1770d551f13323a",
+          "sha256": "7e2a024b9170cdd5c1fc8b0e6f1fca75c56387d6b52b206ee290c49247f6bce8"
+        },
+        {
+          "path": "server/tests/security/test_library_photo_stacks_browser.cjs",
+          "before_sha256": "c97c75bd3177a0f2456eeb1664aaddbaa8c38802e5ae2a79f7a44c4f7be0254b",
+          "sha256": "2f72c9316e828230312482e47759876abbb8a078ccb6721fdd303965313a00d6"
+        },
+        {
+          "path": "server/tests/security/test_photo_stacks_browser.cjs",
+          "before_sha256": "b413a89a21e3ec701d1faaf2a700dee3b8dc88c5792edc73ba49aa2ad90c3462",
+          "sha256": "6492badba41f244a4236ade006450fd6e03d4c8c64d0890b0f5ff98268ca521b"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "apk_publication": false,
+      "notes": "Named inline contact sheet for expanded v1/v2 stacks, keyboard focus return and measured sticky-navigation clearance. Saved preferences, authorization and full viewer sequence retain their existing contracts. Mac-local generated browser acceptance only; Windows indexing and runtime remain separately owned."
+    },
+    {
+      "feature": "selected-story-preserve-expanded-photo-stack-browsing",
+      "source_commit": "191534d3ef2e2739a4bb7b1badd42fc5df259684",
+      "merged_main_commit": "fe47cecd857206090b282723390b20c4a7830f10",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "000f0a1d262e640569fd0e8e9d00e91cd1946b4c70e523d86dbed4d9fd501060",
+          "sha256": "2307414a3b75b55a05a0c8c0bf2eb9b53e49356a3f13f4755e7512f6f541b171"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "4c9bceea19cb413447c172bd35de551d0c90331920d67d2bd1c89225228ac348",
+          "sha256": "b519097d421dfc247ce772656e49e3d5f21bb55faa547b6e64dd9dcf0dfe7db2"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "efc47385c8972a7465fedd619e1b7502e813100d0e7667a897b9399a00db36ba",
+          "sha256": "2ff6a299c6b0a50483dac3b1a766906642e2bcdcc970950435c347d40d784640"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Integrate merged main fe47cec without dropping selected-story UI/runtime work or upstream photo-stack browsing and keyboard behavior. Retain both parent feature histories verbatim with an explicit replay bridge and final combined-source hashes. No Windows runtime or deployment change."
     }
   ]
 }
