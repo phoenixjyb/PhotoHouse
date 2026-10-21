@@ -250,3 +250,33 @@ but this diagnostic used the existing private-qualifier temporary-directory path
 It does not qualify explicit exchange-parent replacement on Windows, a serialized
 provider recipe or household service activation. Production services, settings,
 databases/media and feature flags were not changed.
+
+
+## Sanitized sampler diagnostic, 2026-10-22
+
+A separate private wrapper kept the same public worker, GGUF, backend, CPU,
+context and generation settings. It forwarded the completion call unchanged and
+recorded only an allowlisted exception class and backend step, with private
+exclusive-file checks before bytes and original exception/close behavior retained.
+The first operator gate stopped on a Windows-incompatible test that attempted to
+unlink an open file; no model was started by that gate. Its evidence remains.
+A fresh test-only revision simulated changed file identity portably and all 37
+operator checks passed on Windows with zero skips, including the native canary.
+The diagnostic implementation and model recipe were unchanged.
+
+One English diagnostic then exited 17 after 6.453 seconds (outer: 19.719 seconds).
+Its closed report identified `OSError` during `sampler_setup`. This narrows the
+failure inside completion; it does not yet identify the native call, error code
+or cause, and it does not prove grammar setup or token evaluation succeeded.
+No draft was produced, no model-close failure was reported and no replay occurred.
+Successful generation, real cancellation/expiry and language quality remain open.
+
+Independent readback again verified both 274-file packages, all 155 acquisition
+inputs, full model size/hash and 13 installed DLL pins. The failed case recorded
+Job drainage and exchange disposal; the store had zero claims and maintenance
+closed. An independent process read found zero owned Python/control observers.
+All 25 runtime roster identities, 11 file pins, two tasks, four gateway/site/API
+processes, listeners and two feed hashes were preserved. All 69 report assets
+matched before/after endpoint checks. The Windows lane was explicitly released
+after verification. Production activation, deployment, GPU use, model/backend
+substitution and parameter tuning were outside this diagnostic.

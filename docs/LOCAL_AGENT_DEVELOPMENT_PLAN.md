@@ -256,13 +256,14 @@ The pinned Windows baseline passed 12 synthetic native cases and 18 binding
 observer checks. The exact candidate GGUF is acquired and full-size/SHA-256
 verified. The later `a6b27df` package passed 22 revised operator/binding-canary
 checks, then its one phase-aware English diagnostic failed inside generation
-(exit 17, 6.344 seconds). The exception/root cause remains unknown; successful
+(exit 17, 6.344 seconds). A later private diagnostic passed 37 operator checks and narrowed the failure to `OSError` during
+native sampler setup; the exact native call/cause remains unknown. Successful
 completion and the other four real-model cases remain unqualified. Independent
 cleanup, source/model pins and live gateway/site/API/feed preservation passed;
 the coordinated lane was released. The optional exchange parent was packaged
 but not exercised by that diagnostic. Both story flags and provider factories
 remain off. The [trial record](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) retains
-both attempts and the separate service, quality and family/device gates.
+all recorded attempts and the separate service, quality and family/device gates.
 
 PH-C0 integration and candidate qualification can proceed alongside fixture work.
 The first source implementation can remain synthetic while native host access

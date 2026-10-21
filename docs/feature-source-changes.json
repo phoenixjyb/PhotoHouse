@@ -28510,6 +28510,30 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Add one generated-store/ASGI/real-stdlib-child fixture with four approved contributors and 32 active session rows. Exactly one child/claim; three concurrent submissions get immediate fixed busy, browsing/source preview remain available, foreign-member cancel/prepare cannot disclose or stop the owner, cancellation cleanup precedes explicit retry and no story is saved. Native containment remains simulated; this is not a client load or Windows capacity result."
+    },
+    {
+      "feature": "selected-story-sanitized-native-sampler-checkpoint",
+      "source_commit": "e3b3cf5966ff26f7295113b9ea59fbdcc551e395",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "c223cc6cca0757d1e950e43b0f7442ef0dd4b11f57239d5862c99db73340168e",
+          "sha256": "dab2cc1a21fedfd7e3c6b43957798a74ecd6d7855d87c4f8b36a4056746def64"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "a20a590879405ddbcea18a5ea3d5aa713bd661037a66a22c0442e707a1a7ddfb",
+          "sha256": "6effa5d03bdaac77e1a36c37ad99cc1f24f582e7a58b16478464d51b6f09039b"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "b8f131911cc5d6bb61716ce9ab9226eacb0a31c980b95d6d91cce9fdd2f36dfc",
+          "sha256": "ff4204ed3a96980db0998de1f6fb06fa8f0cb711483439ce5bf49e4823134248"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Record same-recipe private English diagnostic with closed OSError/sampler_setup report, exit17/no draft/no replay, 37 Windows operator checks after test-only portability correction, independent cleanup/pin/service/feed/report preservation and explicit lane release. Exact native cause, successful model behavior and household activation remain unqualified."
     }
   ]
 }

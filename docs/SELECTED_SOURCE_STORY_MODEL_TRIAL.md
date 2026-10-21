@@ -9,17 +9,20 @@ A [pinned CPU candidate](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md) now records the
 candidate artifacts and limits. The model has been acquired and its full size and
 SHA-256 verified. The original English trial failed with generic exit code 2
 after 6.578 seconds. A separately reviewed phase-aware diagnostic at `a6b27df`
-then failed inside generation (exit 17) after 6.344 seconds. The completion call's
-exception is still unknown; no close failure was reported. Neither attempt
-produced a qualified draft or ran its other four planned cases. See the
-[candidate checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#phase-aware-diagnostic-and-preservation-2026-10-22).
+then failed inside generation (exit 17) after 6.344 seconds. A later sanitized
+diagnostic narrowed the completion failure to `OSError` during native sampler
+setup (6.453 seconds); its exact native call/cause is still unknown. No close
+failure was reported. None of these attempts produced a qualified draft; the other four planned cases remain unrun. See the
+[candidate checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#sanitized-sampler-diagnostic-2026-10-22).
 
 The default-off synthetic application, protected prepare/cancel, review/save and
 `RuntimeConfiguration` injection seams are implemented. Windows completed 12
 synthetic native cases for the pinned source and 18 binding-observer checks.
 These checks do not qualify the real model. The later `a6b27df` package and its
 fixed worker phase codes are now staged in the isolated candidate; all 22 revised
-operator/binding-canary checks passed with zero skips. Its optional `exchange_root`
+operator/binding-canary checks passed with zero skips. The later private
+sanitized diagnostic passed 37 operator checks, including the native canary,
+with zero skips after a portable test-only correction. Its optional `exchange_root`
 was packaged but not used by this diagnostic, so its Windows replacement/ACL
 behavior remains separate qualification. No serialized provider selection or
 application activation exists. Keep both flags off.
