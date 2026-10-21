@@ -8,9 +8,9 @@ and authorization checks. A separate v2 MPO primary-frame profile qualified the
 blocked original on Windows in **2.5 seconds**, preserving its hash/stat and all
 failure evidence; it is not integrated with the running index. The unchanged
 JPEG/PNG worker resumed from 8,431 ready photos plus one failure and reached
-1,166 committed batches at the latest observation; full coverage is pending.
-Focused MPO/legacy input checks: **46 passed**. Full API at earlier `5da29ba`:
-**2,829 tests / 3,628 subtests** plus demo; the newer increment awaits its full run.
+1,218 committed batches at the latest observation; full coverage is pending.
+Focused MPO/legacy input checks: **46 passed**. Full API at `a61de0d`:
+**2,838 tests / 3,630 subtests** plus the generated demo, with unchanged source.
 Semantic remains **OFF**, with local source unmerged/undeployed and index unpublished.
 See the [morning qualification record](SEMANTIC_LIBRARY_SCALE.md#latency-and-mpo-qualification--october-21-2026).
 

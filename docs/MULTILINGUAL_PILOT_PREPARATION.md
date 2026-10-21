@@ -205,3 +205,7 @@ as a private derivative while preserving originals and failure evidence. It is
 not integrated into the frozen worker's resumed index. Full coverage, current-
 roster/relevance checks, native performance and family/device acceptance remain
 open. Semantic search remains OFF.
+
+Full API qualification at `a61de0d` passed **2,838 tests and 3,630 subtests** plus
+the generated no-listener demo, with identical source at both invocation boundaries.
+This establishes local regression evidence; the activation gates above remain.

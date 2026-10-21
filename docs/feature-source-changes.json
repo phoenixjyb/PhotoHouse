@@ -27274,6 +27274,30 @@
       "production_runtime_changed": false,
       "production_index_published": false,
       "activation_approved": false
+    },
+    {
+      "feature": "record-completed-latency-mpo-v2-regression-and-index-continuation-status",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "49edcfa37f543fe07f770e700804d6d587b1a22a249dd48441d279eb303c2c52",
+          "sha256": "4466fddfb4ea2fe605b98721f15365fda47da63b8129267814635d3c68463e91"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "b82816bd1200607ce09dfc054b2d94ec1c0fd0212b24c93ef82ee8017fe249cd",
+          "sha256": "b43f2bdfb992696402074253ce02281bd806c64d04716f76b0cd54f07ba0f785"
+        },
+        {
+          "path": "docs/MULTILINGUAL_PILOT_PREPARATION.md",
+          "before_sha256": "a38202a484e6bed0121cf27a44d6ed151e339be04f2434c5e038130a7db16d73",
+          "sha256": "579c04463af4fff8427bd91819022e6d9f7037822b37dcca29e556541d629c73"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "production_runtime_changed": false,
+      "production_index_published": false,
+      "activation_approved": false
     }
   ]
 }

@@ -315,8 +315,10 @@ concurrent-load acceptance remain separate. Interactive serving is still too slo
 
 The full API profile at `5da29ba` passed **2,829 tests and 3,628 subtests**, plus
 the generated no-listener demo. The packaging inspector passed **26 tests and
-seven subtests**. The next increment passed the combined focused retrieval/MPO
-checks and expanded exact-boundary input tests; its full API profile is pending.
+seven subtests**. The next increment, `a61de0d`, passed **2,838 tests and 3,630 subtests** plus
+the generated demo, with matching start/end source and commit identities. Its
+combined focused retrieval checks and expanded exact-boundary input tests also
+passed.
 Independent review found no protection regression in the request-local cache.
 
 `library_mpo_inputs.py` adds a separate worker-only primary-frame preparation
@@ -359,7 +361,7 @@ of relaxing its nonempty-scratch guard. Only the verified committed prefix was
 copied into a fresh private candidate: **8,431 ready photos and one failure**.
 A transport timeout and Mac reboot interrupted local observation; independent
 native readback confirmed the copy had completed before indexing resumed once.
-The latest observation has **1,166 committed batches** and no new child failure.
+The latest observation has **1,218 committed batches** and no new child failure.
 The frozen 23,761-photo roster and original JPEG/PNG worker identity remain;
 MPO v2 is not spliced into that running index. Full indexing, final current-roster
 coverage and full-library relevance remain unfinished. No recurring automation
