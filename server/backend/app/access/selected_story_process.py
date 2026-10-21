@@ -8,6 +8,8 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field, replace
 import math
+import hashlib
+import json
 import os
 from pathlib import Path
 import stat
@@ -17,6 +19,7 @@ from .memory_narrative import (
     MAX_OUTPUT_BYTES, MAX_PROVIDER_BYTES, _generation_payload, _json_bytes,
     _strict_loads, _validate_bundle, validate_narrative,
 )
+from .host_inference_admission import HostAdmissionError, HostInferenceAdmission
 from .private_storage import require_private_directory, require_private_file
 from .selected_story_local import _MODEL
 from .selected_story_native import NativeStoryLaunch, NativeStoryOwnerError, NativeStoryProcessOwner
@@ -42,6 +45,7 @@ class _Exchange:
     directory: Path | None = None
     identity: tuple | None = None
     owner: NativeStoryProcessOwner | None = None
+    host_permit: object = None
     setup: asyncio.Task | None = None
     reading: asyncio.Task | None = None
     cleanup: asyncio.Task | None = None
@@ -70,6 +74,18 @@ def _directory(call):
     require_private_directory(call.directory)
 
 
+def process_launch_digest(launch):
+    """Pin the explicit launch recipe, before per-operation IPC is appended."""
+    if type(launch) is not NativeStoryLaunch:
+        raise ValueError('Invalid process launch')
+    value = {key: getattr(launch, key) for key in (
+        'executable', 'executable_sha256', 'argv', 'cwd', 'memory_limit',
+        'process_limit', 'minimum_free_ram')}
+    value['environment'] = dict(launch.environment)
+    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=True,
+        separators=(',', ':')).encode('utf-8')).hexdigest()
+
+
 class ProcessSelectedStoryProvider:
     """Trusted worker code must execute inference inside its owned containment.
 
@@ -79,7 +95,7 @@ class ProcessSelectedStoryProvider:
     proof_domain = 'owned_story_exchange'
 
     def __init__(self, launch, model, *, kernel_factory, enabled=False, timeout=45,
-                 cleanup_seconds=5):
+                 cleanup_seconds=5, host_admission=None):
         if (type(launch) is not NativeStoryLaunch or not callable(kernel_factory)
                 or type(model) is not str or not _MODEL.fullmatch(model) or '://' in model
                 or type(enabled) is not bool or type(timeout) not in (int, float)
@@ -87,6 +103,10 @@ class ProcessSelectedStoryProvider:
                 or len(launch.environment) > 62
                 or {REQUEST_ENV, RESPONSE_ENV} & {k.upper() for k in launch.environment}):
             raise ValueError('Invalid process selected-story configuration')
+        if host_admission is not None and (type(host_admission) is not HostInferenceAdmission
+                or host_admission.profile.launch_sha256 != process_launch_digest(launch)):
+            raise ValueError('Host admission launch binding mismatch')
+        self.host_admission = host_admission
         # Validate cleanup configuration without constructing a native kernel.
         NativeStoryProcessOwner(launch, kernel_factory=kernel_factory,
                                 cleanup_seconds=cleanup_seconds)
@@ -108,6 +128,10 @@ class ProcessSelectedStoryProvider:
             raise ProcessSelectedStoryError('cancelled')
 
     def _setup(self, call, payload):
+        self._check(call.scope)
+        if self.host_admission is not None:
+            call.host_permit = self.host_admission.acquire(call.scope.operation_id)
+        self._check(call.scope)
         # Recorded immediately; retained task owns all setup even if waiter leaves.
         call.directory = Path(tempfile.mkdtemp(prefix='photohouse-story-'))
         value = call.directory.lstat()
@@ -195,7 +219,7 @@ class ProcessSelectedStoryProvider:
                 result = validate_narrative(response['result'], clean)
                 self._check(scope)
                 return result
-        except ProcessSelectedStoryError:
+        except (ProcessSelectedStoryError, HostAdmissionError):
             raise
         except TimeoutError:
             raise ProcessSelectedStoryError('cancelled') from None
@@ -243,6 +267,11 @@ class ProcessSelectedStoryProvider:
         if call.disposal is None or call.disposal.done() and call.disposal.result() is not True:
             call.disposal = asyncio.create_task(asyncio.to_thread(self._dispose, call))
         proof = await asyncio.shield(call.disposal)
+        if proof is True and call.host_permit is not None:
+            try:
+                proof = await asyncio.to_thread(call.host_permit.finish, reconciled=True)
+            except Exception:
+                proof = False  # Durable claim stays occupied on uncertain settlement.
         if proof is True and self._active is call:
             self._active = None
             self._last_settled_scope = call.scope

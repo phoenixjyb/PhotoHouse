@@ -127,3 +127,11 @@ The separate [Windows native qualification](SELECTED_SOURCE_STORY_WINDOWS_QUALIF
 now supplies an explicit inert-by-default runner for real Job/IPC cases. Its
 results must be pinned to the package, interpreter and intended account; the
 remaining model/runtime/deployment gates above still apply.
+
+
+Optional [host admission](SELECTED_SOURCE_STORY_HOST_ADMISSION.md) injection
+now binds the launch recipe to a persistent cooperating-process claim before
+exchange/child setup. Reconciliation releases it only after native cleanup and
+exchange disposal succeed. It is default-off and does not automatically govern
+existing Windows/WSL services; native resource probing and qualified activation
+remain separate gates.

@@ -32,6 +32,7 @@ FILES = (
     'backend/app/access/assistant_agent.py',
     'backend/app/access/assistant_agent_tools.py',
     'backend/app/access/inference_admission.py',
+    'backend/app/access/host_inference_admission.py',
     'backend/app/access/selected_story_snapshot.py',
     'backend/app/access/selected_story_operations.py',
     'backend/app/access/selected_story_lifecycle.py',

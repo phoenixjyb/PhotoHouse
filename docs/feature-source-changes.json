@@ -27987,6 +27987,70 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Develop source repair in an isolated Windows export: preserve platform basics in synthetic child launches and expire only after resumed/live process proof. Require explicit bounded backend GPU ordinal for nonzero GPU layers; physical GPU identity remains unqualified. Windows interactive bounded-Job checks: 115 affected cases passed with three platform skips; ten committed-package checks passed. Synthetic processes/providers, no model/backend loading or production activation. Record a draft shared-host admission contract without implementing coordination."
+    },
+    {
+      "feature": "selected-story-maintenance-aware-shared-host-admission",
+      "source_commit": "acb2fd19f78241507e7da372fcba964916b486e9",
+      "files": [
+        {
+          "path": "server/backend/app/access/host_inference_admission.py",
+          "before_sha256": null,
+          "sha256": "e3cf522c46a9c17b2596aff1412129a473fa3ae0f43e28726bae6c46922500b2"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": "a3588e77f1c970801a84c1ed3629d8c9668d3a996d7185241b29a789c1965d41",
+          "sha256": "1b3ad06e8a0f30fbef6cb71c9526b2e0701277189843b533750adc0a63c68cd2"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_operations.py",
+          "before_sha256": "e157f181a2d899492f7d581eb6ba71899e4606394ea935324b44728f73f646cd",
+          "sha256": "98c631886aeb3895a041919d581e7401c522dfaf66eb185c7cc11e0c199f42a2"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "113818f76e4f2250fc7cea5c7e0859061fedcc5c5af02a5c9ccb10a3271da1dc",
+          "sha256": "d53527f7481b395d0cc861cfa0b6c7b12c642d3f71a368baca8e4ac9825453ac"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "8d214769500202a90b75d1c4ac72d44d26fea32b16aa59e887cd0056395b1a15",
+          "sha256": "1e8c3ac6e5b5a4740528ffa239df5d17a73f9b25984929b3ec2075a83c683155"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "b035b12e27741db243191b14d35e327a3e193fa3877636ed9b213bb92715891c",
+          "sha256": "770e9cb8dddc21b7bb665c0f67d0597f2d378d6dfb8c422c7f92fae8db9d1396"
+        },
+        {
+          "path": "server/tests/security/test_host_inference_admission.py",
+          "before_sha256": null,
+          "sha256": "9efade5c2d320f7607a4e681cd54074f112b62b72ebae18d7d0a312439190120"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_HOST_ADMISSION.md",
+          "before_sha256": null,
+          "sha256": "be3beec2aab36f6eedf90c0b041096a17e5f8d0c779fad02e5e8ff01844a56d8"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "fbfb6cff65e0c6f54b653128cde87c592e0420bf0b577784ddf1242aceec15ee",
+          "sha256": "82d81629b18c0357836d54c483554eca1d4e95d5e5fafb85167068427eaf7624"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "before_sha256": "7a8b563f5a06248c2466391250e7d0b69178dcafece96afbe7fb606b204912e7",
+          "sha256": "0e77f89b05b9b284680b71b66bf93a1eab7b65d009b26d13b6c51d7c3c6e7ba3"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "8f9bcf668ac705330661f13e122778fd0464a46a3bfaa8f913d233899cd381bb",
+          "sha256": "afa396d8d71943e9a9c187f197f38136029d09706515accc02175a29758ccda2"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add default-off private local SQLite coordination for one cooperating host generation, maintenance closure and explicit full-profile clearance, fresh trusted RAM/disk/VRAM/external workload evidence, exact operation/owner release and durable crash quarantine. Optional owned-process integration retains acquisition and releases only after process/exchange cleanup; preserve protected busy retries. Developed and checked in isolated Windows source: 115 affected tests passed, two platform skips, ten committed-package tests passed. Synthetic processes/providers only; native probe, shared external workload agreement, actual model/GPU qualification and deployment remain separate. All 14 runner tests passed on Windows; normalize only a test assertion for platform environment-key casing."
     }
   ]
 }

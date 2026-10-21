@@ -113,7 +113,7 @@ admission across processes, crash/restart behavior and disk/erasure policy.
 Deployment and family/device acceptance remain separate. Both story flags,
 all provider factories and this worker remain default-off.
 
-## Windows source repair and next admission contract
+## Windows source repair and host admission
 
 The synthetic worker process initially failed on Windows while importing
 `asyncio` because the test launch contained only PATH. Its minimal test
@@ -128,27 +128,20 @@ cleanup/quarantine rules are unchanged.
 These source repairs were developed in a separate Windows source export and
 tested with synthetic providers and an actual bounded outer Job. They are
 interactive-development checks, not SYSTEM service, real GGUF/backend or GPU
-qualification. No existing environment, service, task or model was changed. The final Windows
+qualification. No existing environment, service, task or model was changed. The Windows repair
 run completed 118 affected cases: 115 passed and three platform-specific cases
 were skipped. All ten committed-source package/import checks also passed. These
 final runs used the unmodified subprocess class; optional binding calls were
 mocked and worker protocol roundtrips used a synthetic engine.
 
-The next host admission layer is a draft contract, not implemented coordination:
+A separate default-off [host admission coordinator](SELECTED_SOURCE_STORY_HOST_ADMISSION.md)
+now implements one persistent claim across cooperating processes, maintenance
+closure, explicit profile clearance and fresh capacity evidence. Optional
+provider injection acquires before exchange/child setup and retains the claim
+until native cleanup and exchange disposal both succeed. There is no automatic
+expiry, stale-claim clearing or adoption of another process's work. The existing
+application queue and quarantine remain in place.
 
-- Start with one active story generation and a small bounded wait policy, using
-  existing operation IDs and explicit busy/unavailable responses.
-- Require a maintenance-clear decision before launch. Ownership of another
-  task's recovery, databases or worker lifecycle never transfers to this layer.
-- Bind any host permit to the exact operation, process owner and qualified GPU
-  identity; release only after existing reconciliation proves cleanup. Expiry
-  alone must not free uncertain capacity or break another owner's lease.
-- Include CPU, RAM and disk-I/O overlap as well as VRAM. An idle GPU sample or
-  process-local semaphore is not whole-host admission proof.
-- Treat uncoordinated Windows/WSL model services and existing indexing jobs as
-  external workloads. Enforce their agreed busy/maintenance policy rather than
-  claiming a new mutex governs them or stopping them by name.
-
-Synthetic contention tests can precede a bounded native rehearsal. Actual
-coordination interfaces, resource bounds and a testing window must be settled
-with the existing workload owners before activating inference.
+Synthetic Windows tests qualify the coordinator and ownership integration. A
+bounded native capacity probe, agreement with external workload owners, actual
+backend/GPU mapping and a testing window remain required before activation.

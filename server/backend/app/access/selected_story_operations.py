@@ -20,6 +20,7 @@ import time
 import uuid
 
 from .credentials import session_digest
+from .host_inference_admission import HostAdmissionError
 from .inference_admission import AdmissionError, AdmissionIdentity, InferenceAdmission
 from .memory_narrative import _canonical_uuid, _text, validate_narrative
 from .selected_story_snapshot import (
@@ -98,6 +99,8 @@ class _Operation:
 def _reason(error):
     if isinstance(error, DraftOperationError):
         return error.reason
+    if isinstance(error, HostAdmissionError):
+        return 'busy' if error.reason == 'busy' else 'unavailable'
     if isinstance(error, AccessDenied):
         return 'denied'
     if isinstance(error, TransportError):
@@ -307,7 +310,8 @@ class DraftOperations:
             self._fence(operation, 'cancelled')
         except Exception as error:
             operation.error = operation.error or _reason(error)
-            if operation.error == 'busy' and not operation.provider_started:
+            if operation.error == 'busy' and (not operation.provider_started
+                    or isinstance(error, HostAdmissionError)):
                 operation.state = 'retryable'
         finally:
             if operation.permit is not None:
