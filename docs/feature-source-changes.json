@@ -27900,6 +27900,20 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Record the separately authorized isolated SYSTEM synthetic qualification: 12 generated application cases and 9 real Windows Job/ACL/file-IPC cases passed on the pinned source-only package. Owned one-off task removed; existing definitions and launcher verified unchanged. No production data/model use, feature activation or deployment."
+    },
+    {
+      "feature": "selected-story-native-evidence-source-entry-count",
+      "source_commit": "7726fd61b7b5fe51ea1ac2bccb92b331a88d4826",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_WINDOWS_QUALIFICATION.md",
+          "before_sha256": "9f214640683b9005e6bb11c09942f9fd937885efefe7362cba0a6eabd92b9edd",
+          "sha256": "abdb8683eefc166b108d4b76fb3bdc9f3b34e6229fc047689f9640c8a85dd1fe"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Clarify that the 271 selected source files are accompanied by a separate manifest ZIP entry; qualification pins and behavior unchanged."
     }
   ]
 }

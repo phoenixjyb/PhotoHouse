@@ -85,7 +85,7 @@ may be a deployable candidate while real AI generation remains unqualified.
 
 Pinned source `0e218ece143cca299704c2c6b4513bffa9051da1` passed on
 Windows 11 with the existing Python 3.12.10 environment, executed as SYSTEM.
-The source-only ZIP contained 271 files; its SHA-256 was
+The source-only ZIP contained 271 source files plus its manifest; its SHA-256 was
 `df9040f245625a07a049c1fb7d99dc4be472b1cedf605a140fb95e057b6d70fb`.
 The complete closed manifest and extracted file hashes were verified before
 execution. Reports, interpreter digest and host identity remain private.
