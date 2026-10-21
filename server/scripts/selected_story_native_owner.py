@@ -19,8 +19,10 @@ def windows_story_process_owner(launch, *, enabled=False, cleanup_seconds=5):
                                   enabled=enabled, cleanup_seconds=cleanup_seconds)
 
 
-def windows_story_process_provider(launch, model, *, enabled=False, timeout=45, cleanup_seconds=5):
+def windows_story_process_provider(launch, model, *, enabled=False, timeout=45, cleanup_seconds=5,
+                                  host_admission=None, exchange_root=None):
     # Reuse the explicit Windows-path check; construction remains inert.
     windows_story_process_owner(launch, cleanup_seconds=cleanup_seconds)
     return ProcessSelectedStoryProvider(launch, model, kernel_factory=WindowsAPI,
-        enabled=enabled, timeout=timeout, cleanup_seconds=cleanup_seconds)
+        enabled=enabled, timeout=timeout, cleanup_seconds=cleanup_seconds,
+        host_admission=host_admission, exchange_root=exchange_root)

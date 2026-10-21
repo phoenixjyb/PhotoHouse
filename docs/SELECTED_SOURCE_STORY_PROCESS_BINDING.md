@@ -47,9 +47,10 @@ operations atomic against concurrent replacement.
 `exchange_root=None` preserves the existing temporary-directory behavior and
 launch digest. An explicit root becomes part of `process_launch_digest` and must
 match the host admission profile. A caller cannot reuse a receipt for a different
-IPC parent. The Windows convenience factory and staged application configuration
-do not yet expose this option; this source change has synthetic qualification
-and needs separate native ACL/replacement checks.
+IPC parent. The Windows convenience factory forwards this option and optional host admission
+without initializing a store, probing capacity or constructing a native kernel.
+Staged application configuration does not yet expose it. This source change has
+synthetic qualification and needs separate native ACL/replacement checks.
 
 The caller cannot prepopulate those reserved keys, including case variants.
 Arguments and environment contain no selected source words or generated prose.

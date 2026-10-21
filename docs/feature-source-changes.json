@@ -28216,6 +28216,35 @@
       "generation_enabled": false,
       "deployed_or_published": false,
       "notes": "Add explicit optional existing private local IPC parent without process-global TEMP changes. Validate spelling without I/O during construction; check parent identity, canonical path and private permissions after admission and before exchange reads/disposal. Parent replacement retains exchange and host claim. Explicit parent is included in launch digest; None preserves legacy digest. Synthetic tests cover containment/sibling preservation, missing/unsafe/replaced parents and recovery. Staged app/factory activation and native Windows qualification remain separate; immutable runtime source 8dc4147 is unchanged."
+    },
+    {
+      "feature": "selected-story-windows-factory-admission-and-exchange-forwarding",
+      "source_commit": "7ad4a478306d7d1902e8cfd9aca1b2bcebc932a2",
+      "files": [
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "before_sha256": "859837e2ef4beb143dd1bf8de9018ca45a8dff94dee3388560dae8ea80fdc4a7",
+          "sha256": "d57236dcee8e41e97a70a41d8ba1a6e2c6a30c8e34cc739555bbec2f8030a9c7"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_windows_factory.py",
+          "before_sha256": null,
+          "sha256": "4cb668fbeadc6e22ffca0ead9c55517c6c5fb5e4a9d88de898981e2efc113e68"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "559b9c1b9785e32004cebbcd2c7e502f0504f00dab39eefd4da9a3d670af280f",
+          "sha256": "0c952a8b35085879d33d3f3760f1689649e8a41aa8d920df66e64f9fbf13f4be"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "41a37c3e13029e0eb0f1034ec94ffdf7d3c9817862cff155d09a09fee211a23b",
+          "sha256": "b432d916d92dc4588c4f8a58dbe688d37c3efe4e17c1b9dfb0acdfb3c00f7624"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Forward optional host admission and explicit exchange parent through inert default-off Windows provider factory. Preserve existing Windows launch-path validation. Four synthetic tests cover disabled defaults, exact forwarding, mismatched profile refusal and matching profile construction without native API, capacity, filesystem or store-control actions. Dispatcher includes checks in API/memory/Windows CPU profiles. Staged app binding, native qualification of this source and deployment remain separate."
     }
   ]
 }
