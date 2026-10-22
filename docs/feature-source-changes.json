@@ -30277,6 +30277,110 @@
         }
       ],
       "notes": "Retain both reviewed parents, union their check suites and source-package payloads, and preserve all default-off inference/semantic flags. No runtime service, model, data, publication or provider activation. Two inherited trailing spaces in the qualification script were removed; script statements and runtime behavior are unchanged."
+    },
+    {
+      "feature": "combined-release-status-20261022",
+      "source_commit": "c5dd85018a36e9f574acabcd9ecaf47db609e051",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "8e0c03c03aa74168b421b9a3249bbd84684bef16d0fe03d79be3079c70d0becb",
+          "before_sha256": "2027d301965a5876bff11c33cbfe48e7a9b5dc46ab5108e77df8ffac4fdf7546"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "a252e3776217d926dc75e61204b3b6ad8c228278360f30396d02e2342cfeb54a",
+          "before_sha256": "d1c08c45f6413487f0bc2e73f1067d765607bd57d77c1df02ce6a2abcee3a577"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "9ef8620f3c1500b2539ebe5a83492f37853f38ca7bae3118b43fb7539dc731c6",
+          "before_sha256": "0c7f45e1aed354c9c2ae348981034945cc619ce6ca4e9cbc80f4cc9109e38abc"
+        },
+        {
+          "path": "docs/SEARCH_RELEASE_2026-10-22.md",
+          "sha256": "6894c17e4d9016ef9cf4694b50f6b64a288abed46d466915cf7f95272f1f0625"
+        }
+      ],
+      "schema_changed": false,
+      "production_activation": false,
+      "notes": "Record PR #108 source merge and qualification while Windows API deployment remains pending; prior phone v75 publication remains independent."
+    },
+    {
+      "feature": "combined-release-doc-clarification-20261022",
+      "source_commit": "c5dd85018a36e9f574acabcd9ecaf47db609e051",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "a18c50b9511955c6fc6b7924a70aa3056b9aa4de9bc4be92aa6f867d587bc220",
+          "before_sha256": "8e0c03c03aa74168b421b9a3249bbd84684bef16d0fe03d79be3079c70d0becb"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "79f2e3345ff3928873dc9a4dda795fc5fca6b9a2e8f994e5dec4ebd7dd9184ac",
+          "before_sha256": "a252e3776217d926dc75e61204b3b6ad8c228278360f30396d02e2342cfeb54a"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "3c84657131f45545bc6d0901af64b2e4c572342fe118f89983e5d6aed1176cb6",
+          "before_sha256": "9ef8620f3c1500b2539ebe5a83492f37853f38ca7bae3118b43fb7539dc731c6"
+        },
+        {
+          "path": "docs/SEARCH_RELEASE_2026-10-22.md",
+          "sha256": "49f63121f3246d6fae4473478fe8daf8c76de6383cd10d04d03aafeb15921aee",
+          "before_sha256": "6894c17e4d9016ef9cf4694b50f6b64a288abed46d466915cf7f95272f1f0625"
+        }
+      ],
+      "schema_changed": false,
+      "production_activation": false,
+      "notes": "Clarify phone v75 package/feed publication versus physical/family acceptance; record native API release R3 as executing pending independent postflight."
+    },
+    {
+      "feature": "combined-release-native-r3-deployment-20261022",
+      "source_commit": "c5dd85018a36e9f574acabcd9ecaf47db609e051",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "85b854cffd05793aeef2bdf102fcffbb6393c67d074c3fbc1b680486392f4b39",
+          "before_sha256": "a18c50b9511955c6fc6b7924a70aa3056b9aa4de9bc4be92aa6f867d587bc220"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "0441d8bf90bf1cdad27acc0adb4c86d3d4910dd89a6678835496debbf93a931a",
+          "before_sha256": "79f2e3345ff3928873dc9a4dda795fc5fca6b9a2e8f994e5dec4ebd7dd9184ac"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "0ceaedfb080f8ce7965eaf875a4476a59ef020b74eef0849a9e597f5d50a96e8",
+          "before_sha256": "3c84657131f45545bc6d0901af64b2e4c572342fe118f89983e5d6aed1176cb6"
+        },
+        {
+          "path": "docs/SEARCH_RELEASE_2026-10-22.md",
+          "sha256": "74783d542db00828e2451cddb6cdc082ae7598543833c2d7f5cc7a5c1effc0a6",
+          "before_sha256": "49f63121f3246d6fae4473478fe8daf8c76de6383cd10d04d03aafeb15921aee"
+        }
+      ],
+      "schema_changed": false,
+      "production_activation": false,
+      "notes": "Record independently verified R3 API deployment while semantic/local AI stay off and physical phone/family acceptance remains open."
+    },
+    {
+      "feature": "release-documentation-scope-precision-20261022",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "85b854cffd05793aeef2bdf102fcffbb6393c67d074c3fbc1b680486392f4b39",
+          "sha256": "9c2b51c038f0ae0184f69d49e6aeb0bd0897f8a43a90ff745591e0bc87eb6d0d"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "0441d8bf90bf1cdad27acc0adb4c86d3d4910dd89a6678835496debbf93a931a",
+          "sha256": "0d92245770d19f70ba66de2d45de1ab5cbe282088eca81371f51bdcfe31c84a9"
+        }
+      ],
+      "notes": "Clarify static asset count and selected-story generation/provider scope; speech and other existing local services are not described as disabled."
     }
   ]
 }
