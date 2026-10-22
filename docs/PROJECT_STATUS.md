@@ -1,5 +1,47 @@
 # Current project status
 
+**October 22 combined-source release:** PR [#108](https://github.com/phoenixjyb/PhotoHouse/pull/108)
+merged as `a6dfe31f7df1149170a01fc5a171867b2aea0584`; the merge tree is identical to reviewed
+source `c5dd85018a36e9f574acabcd9ecaf47db609e051`. Hosted functional API, browser, Windows CPU,
+Windows private-reader and Android checks passed in run `39705626876`; the independent Android
+fixture UI run `39705626811` passed. Exact-source local API passed 3,339 tests / 4,018 subtests
+plus the generated demo; the 1,718-file source package and 635 overlays were verified, and three
+generated browser journeys passed.
+
+Native release R3 deployed the exact merged source and passed independent postflight at
+**2026-10-22 11:48:33 Asia/Shanghai / 03:48:33 UTC** (observed epoch `1792640913.1490157`). The listener served the
+pinned source; 293 API source files were verified and non-action settings were preserved. All nine
+runtime states were restored, 80 other tracked task definitions stayed unchanged, and four stopped-writer
+backups plus four disk-restore rehearsals passed (955,863,040 backup bytes total). No database was restored
+to production and no schema migration occurred. R1 refused before maintenance/task changes; R2 staged
+19 immutable files and retired before execution. The independent postflight passed 11 protected-name and
+relationship checks plus three named parent plans; viewer kinship stayed excluded. Anonymous auth/upload
+and unauthenticated session/assistant requests returned 401, while trusted-TLS WebUI, script and phone/TV
+feed reads returned 200. The final public 125 after-check also returned 200 over trusted TLS, matched the
+before-check asset hashes and privacy headers, and created no accounts. The independently managed
+furniture static service's task XML, configuration, module and manifest were preserved. No auth session
+was created. Phone v75 / `0.75-gallery-search` was published
+independently as a release package/feed under PR #104 (`29f5d5d`); physical installation and family-device
+experience remain unaccepted. TV v30 is unchanged, and PR #108 published no Android package.
+
+Semantic search and local selected-story AI remain **OFF**. There is no F2 migration, index,
+identity or kinship expansion, or model change. A0 schema `a0c9d2e4f817` is unchanged. Default-off
+source and synthetic qualification do not prove runtime activation. The historical GitGuardian
+incident `38823392` concerns a synthetic URL test fixture retained in historical commits; it
+remains open because a human explicitly deferred disposition. No dismissal or security-setting
+change was made.
+
+The latest native semantic qualification remains the frozen `e85c6e4` result: 23,761 catalog
+entries (23,696 vectors and 65 qualification-only omissions), 15 protection checks and both
+audits passed. Median latency was 7.860 seconds, maximum 8.328 seconds, and cold latency 14.843
+seconds; the 2-second backend target remains unmet. R61/R62 source cache changes have not been
+native-performance-qualified. This qualification does not enable semantic search or establish
+family relevance/device acceptance. See [October 22 release record](SEARCH_RELEASE_2026-10-22.md).
+
+The dated entries below are historical milestones tied to their named source snapshots. Their
+older “unmerged,” “pending merge,” and “pending deployment” statements describe those snapshots
+and do not override the current PR #108 merge status above.
+
 **October 22 bulk-cache correctness follow-up:** R62 fixes retained-reference
 aliasing in the bulk store's metadata key. It now copies all 16 validated artifact
 fields into immutable primitive tuples before cache comparison. Grammar-valid
