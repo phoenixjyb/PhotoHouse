@@ -1,5 +1,5 @@
 """Synthetic integrity, cohort, and exact-ranking checks for bulk vectors."""
-from dataclasses import replace
+from dataclasses import fields, replace
 import hashlib
 import json
 from pathlib import Path
@@ -259,6 +259,55 @@ class SemanticBulkVectorTests(unittest.TestCase):
         self.assertFalse(hasattr(store, '__dict__'))
         with self.assertRaises(BulkVectorUnavailable):
             store.snapshot((replace(records[0], created_at=2),), library_id='family-a')
+
+    def test_warm_cache_uses_immutable_full_metadata_key_after_object_mutation(self):
+        from app.access import semantic_bulk_vectors as module
+        self.assertEqual(module._ARTIFACT_COHORT_FIELDS,
+                         tuple(field.name for field in fields(ImmutableVectorArtifact)))
+        store, records = self.build(((1, 'a', (1.0, 0.0)),))
+        store.snapshot(records, library_id='family-a')
+        original_matrix = store._cache[2]
+        original = records[0]
+        original_values = {name: getattr(original, name) for name in module._ARTIFACT_COHORT_FIELDS}
+        cached_rows = store._cache[1]
+        self.assertIs(type(cached_rows), tuple)
+        self.assertIs(type(cached_rows[0]), tuple)
+        self.assertNotIn(original, cached_rows)
+
+        mutations = (
+            {'created_at': 2},
+            {'source_sha256': 'd' * 64},
+            {'file_sha256': 'e' * 64},
+            {'component_sha256': 'f' * 64},
+            {'record_id': 'c' * 64,
+             'relative_path': f'image-vectors/{original.identity_sha256}/' + 'c' * 64 + '.npy'},
+        )
+        for changes in mutations:
+            with self.subTest(changes=changes):
+                for name, value in changes.items():
+                    object.__setattr__(original, name, value)
+                self.assertTrue(module.validate_artifact(original, identity()))
+                # A warm cache must not use old metadata just because the same
+                # dataclass object is still present in its old cohort tuple.
+                with self.assertRaises(BulkVectorUnavailable):
+                    store.snapshot((original,), library_id='family-a')
+
+                # The same mutated but grammar-valid cohort must also fail cold.
+                cold_store = BulkVectorStore(self.out, hashlib.sha256(self.out.read_bytes()).hexdigest(),
+                                             'family-a', identity())
+                with self.assertRaises(BulkVectorUnavailable):
+                    cold_store.snapshot((original,), library_id='family-a')
+
+                for name, value in original_values.items():
+                    object.__setattr__(original, name, value)
+                # Restoring the exact previously validated primitive key may
+                # reuse the matrix, but still passes fresh file verification.
+                with patch.object(module, '_cohort_digest', side_effect=AssertionError('digest rebuilt')), \
+                        patch.object(module, '_canonical_matrix', side_effect=AssertionError('matrix rebuilt')), \
+                        patch.object(module, '_read_secure_file', wraps=module._read_secure_file) as read:
+                    store.snapshot((original,), library_id='family-a')
+                self.assertEqual(read.call_count, 1)
+                self.assertIs(store._cache[2], original_matrix)
 
     def test_768d_scores_are_bitwise_legacy_equivalent_across_cached_blocks(self):
         import math

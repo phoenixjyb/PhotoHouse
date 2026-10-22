@@ -82,18 +82,197 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
         for secret in (str(self.policy_path), str(self.bulk_path), 'source_missing', 'source_sha256'):
             self.assertNotIn(secret, response.text)
 
-    def test_exact_current_eligibility_rows_are_reused_only_within_each_source_read(self):
+    def test_exact_current_eligibility_rows_are_reused_across_fresh_source_reads(self):
         from app.access import semantic_search
+        original_extra = semantic_search.SemanticSearchReads._extra_source
+        sql_reads = {'artifacts': 0, 'source_hashes': 0}
+        policy_reads = [0]
+        original_policy_read = SemanticEligibilityStore.read_and_validate
+
+        def count_reads(reader, index, source, read, check):
+            def counted_read(sql, args):
+                if 'FROM image_vector_artifacts v' in sql:
+                    sql_reads['artifacts'] += 1
+                elif 'SELECT a.id,a.hash_sha256 FROM assets a' in sql:
+                    sql_reads['source_hashes'] += 1
+                return read(sql, args)
+            return original_extra(reader, index, source, counted_read, check)
+
+        def count_policy_reads(store, *args, **kwargs):
+            policy_reads[0] += 1
+            return original_policy_read(store, *args, **kwargs)
+
         with patch.object(semantic_search, '_validated_rows',
-                          wraps=semantic_search._validated_rows) as validate:
+                          wraps=semantic_search._validated_rows) as validate, \
+                patch.object(semantic_search.SemanticSearchReads, '_extra_source', count_reads), \
+                patch.object(SemanticEligibilityStore, 'read_and_validate', count_policy_reads):
             response = self.query()
         self.assertEqual(response.status_code, 200, response.text)
-        # The ranking generation and final source recheck each validate their
-        # newly read cohort. _artifacts reuses the ranking generation after
-        # policy validation instead of parsing those exact rows a second time.
+        # Both source passes still perform both SQL reads and validate the
+        # current policy. Only deterministic artifact-row parsing is reused.
+        self.assertEqual(validate.call_count, 1)
+        self.assertEqual(sql_reads, {'artifacts': 2, 'source_hashes': 2})
+        self.assertEqual(policy_reads[0], 2)
+
+    def test_identity_change_between_passes_misses_row_cache_and_refuses(self):
+        from app.access import semantic_search
+        identity = self.encoder.binding.image_identity
+        original_version = identity.model_version
+        parse_calls = [0]
+        policy_reads = [0]
+        original_policy_read = SemanticEligibilityStore.read_and_validate
+
+        def count_policy_reads(store, *args, **kwargs):
+            policy_reads[0] += 1
+            return original_policy_read(store, *args, **kwargs)
+
+        original_rank = semantic_search.SemanticSearchReads._rank
+
+        def change_identity_after_rank(reader, found):
+            result = original_rank(reader, found)
+            object.__setattr__(identity, 'model_version', 'changed-generation')
+            return result
+
+        with patch.object(semantic_search.SemanticSearchReads, '_rank', change_identity_after_rank), \
+                patch.object(semantic_search, '_validated_rows',
+                             wraps=semantic_search._validated_rows) as validate, \
+                patch.object(SemanticEligibilityStore, 'read_and_validate', count_policy_reads):
+            response = self.query()
+            parse_calls[0] = validate.call_count
+            object.__setattr__(identity, 'model_version', original_version)
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
+        self.assertEqual(parse_calls[0], 2)
+        self.assertEqual(policy_reads[0], 2)
+
+    def test_current_eligible_source_hash_is_rechecked_on_cache_hit(self):
+        from app.access import semantic_search
+        asset_id = int(self.records[0].asset_id)
+        self.during_encode = lambda: self.fixture.mutate(
+            'UPDATE assets SET hash_sha256=? WHERE id=?', ('f' * 64, asset_id))
+        policy_reads = [0]
+        original_policy_read = SemanticEligibilityStore.read_and_validate
+
+        def count_policy_reads(store, *args, **kwargs):
+            policy_reads[0] += 1
+            return original_policy_read(store, *args, **kwargs)
+
+        try:
+            with patch.object(semantic_search, '_validated_rows',
+                              wraps=semantic_search._validated_rows) as validate, \
+                    patch.object(SemanticEligibilityStore, 'read_and_validate', count_policy_reads):
+                response = self.query()
+                parse_calls = validate.call_count
+        finally:
+            self.during_encode = None
+            with closing(sqlite3.connect(self.fixture.database)) as db, db:
+                db.execute('UPDATE assets SET hash_sha256=? WHERE id=?',
+                           (next(record.source_sha256 for record in self.records
+                                 if record.asset_id == str(asset_id)), asset_id))
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
+        self.assertEqual(parse_calls, 1)
+        self.assertEqual(policy_reads[0], 2)
+
+    def test_typed_row_change_misses_cache_and_invalid_row_refuses(self):
+        from app.access import semantic_search
+        original_extra = semantic_search.SemanticSearchReads._extra_source
+        passes = [0]
+
+        def change_dimension_type(reader, index, source, read, check):
+            passes[0] += 1
+            if passes[0] != 2:
+                return original_extra(reader, index, source, read, check)
+
+            def changed_read(sql, args):
+                result = read(sql, args)
+                if 'FROM image_vector_artifacts v' in sql and result:
+                    result = list(result)
+                    row = list(result[0])
+                    # 2.0 == 2 in Python, but SQLite metadata must retain the
+                    # exact integer type expected by artifact validation.
+                    row[8] = float(row[8])
+                    result[0] = tuple(row)
+                return result
+
+            return original_extra(reader, index, source, changed_read, check)
+
+        with patch.object(semantic_search.SemanticSearchReads, '_extra_source',
+                          change_dimension_type), \
+                patch.object(semantic_search, '_validated_rows',
+                             wraps=semantic_search._validated_rows) as validate:
+            response = self.query()
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
         self.assertEqual(validate.call_count, 2)
-        self.assertTrue(all(len(call.args[0]) == len(self.records)
-                            for call in validate.call_args_list))
+
+    def test_cached_artifact_object_mutation_cannot_poison_fresh_pass(self):
+        from app.access import semantic_search
+        original_extra = semantic_search.SemanticSearchReads._extra_source
+        old_artifacts = []
+        fresh_artifacts = []
+        passes = [0]
+
+        def retain_pass_artifacts(reader, *args, **kwargs):
+            result = original_extra(reader, *args, **kwargs)
+            passes[0] += 1
+            if passes[0] == 1:
+                old_artifacts.append(reader._bulk_artifacts[0])
+            elif passes[0] == 2:
+                fresh_artifacts.append(reader._bulk_artifacts[0])
+            return result
+
+        original_rank = semantic_search.SemanticSearchReads._rank
+
+        def mutate_after_rank(reader, found):
+            result = original_rank(reader, found)
+            object.__setattr__(old_artifacts[0], 'relative_path', '../poisoned.npy')
+            return result
+
+        with patch.object(semantic_search.SemanticSearchReads, '_extra_source',
+                          retain_pass_artifacts), \
+                patch.object(semantic_search.SemanticSearchReads, '_rank', mutate_after_rank), \
+                patch.object(semantic_search, '_validated_rows',
+                             wraps=semantic_search._validated_rows) as validate:
+            response = self.query()
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(passes[0], 2)
+        self.assertEqual(validate.call_count, 1)
+        self.assertIsNot(old_artifacts[0], fresh_artifacts[0])
+        self.assertNotEqual(old_artifacts[0].relative_path, fresh_artifacts[0].relative_path)
+        self.assertNotIn('..', fresh_artifacts[0].relative_path)
+
+    def test_row_cache_comparison_cancellation_clears_generation_and_policy(self):
+        from app.access import discovery as discovery_module
+        from app.access import semantic_search
+        original_equal = semantic_search._typed_rows_equal
+        original_extra = semantic_search.SemanticSearchReads._extra_source
+        readers = []
+
+        def retain_reader(reader, *args, **kwargs):
+            readers.append(reader)
+            return original_extra(reader, *args, **kwargs)
+
+        def cancel_during_comparison(rows, previous_rows, check):
+            checks = [0]
+
+            def cancel_after_two_rows():
+                checks[0] += 1
+                if checks[0] == 2:
+                    raise discovery_module.DiscoveryCancelled()
+                check()
+
+            return original_equal(rows, previous_rows, cancel_after_two_rows)
+
+        with patch.object(semantic_search.SemanticSearchReads, '_extra_source', retain_reader), \
+                patch.object(semantic_search, '_typed_rows_equal', cancel_during_comparison):
+            response = self.query()
+        self.assertEqual(response.status_code, 499, response.text)
+        reader = readers[-1]
+        self.assertIsNone(reader._eligibility_bulk_generation)
+        self.assertIsNone(reader._eligibility_policy)
+        self.assertIsNone(reader._eligibility_records_cache)
+        self.assertEqual(reader._bulk_artifacts, ())
 
     def test_changed_rows_and_failed_fresh_source_cannot_reuse_prior_generation(self):
         from app.access import semantic_search
@@ -143,6 +322,8 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
         self.assertEqual(len(self.calls), 1)
         self.assertEqual(len(prior_generations), 1)
         self.assertIsNone(readers[-1]._eligibility_bulk_generation)
+        self.assertIsNone(readers[-1]._eligibility_policy)
+        self.assertIsNone(readers[-1]._eligibility_records_cache)
 
     def test_current_identity_change_cannot_reuse_generation_or_open_bulk(self):
         from app.access import semantic_search
@@ -237,12 +418,25 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
         self.assertEqual(self.calls, [])
 
     def test_policy_change_during_encoding_and_after_warm_cache_refuses(self):
+        from app.access import semantic_search
         original = self.policy_path.read_bytes()
         self.assertEqual(self.query().status_code, 200)
         self.during_encode = lambda: self.policy_path.write_bytes(original + b' ')
-        changed = self.query()
+        policy_reads = [0]
+        original_policy_read = SemanticEligibilityStore.read_and_validate
+
+        def count_policy_reads(store, *args, **kwargs):
+            policy_reads[0] += 1
+            return original_policy_read(store, *args, **kwargs)
+
+        with patch.object(semantic_search, '_validated_rows',
+                          wraps=semantic_search._validated_rows) as validate, \
+                patch.object(SemanticEligibilityStore, 'read_and_validate', count_policy_reads):
+            changed = self.query()
         self.assertEqual(changed.status_code, 503, changed.text)
         self.assertNotIn('items', changed.json())
+        self.assertEqual(validate.call_count, 1)
+        self.assertEqual(policy_reads[0], 2)
         before = len(self.calls)
         self.during_encode = None
         self.assertEqual(self.query().status_code, 503)
