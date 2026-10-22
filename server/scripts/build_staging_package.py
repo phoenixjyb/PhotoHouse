@@ -301,6 +301,8 @@ FILES = (
             'scripts/qualify_library_semantic.py',
             'scripts/semantic_coverage_qualification.py',
             'scripts/semantic_request_profile.py',
+            'scripts/semantic_setup_profile.py',
+            'scripts/semantic_qualification_journal.py',
             'scripts/semantic_provider_readiness.py',
     'scripts/multilingual_index_collection.py',
     'scripts/semantic_bilingual_clothing.py',

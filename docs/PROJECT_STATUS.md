@@ -1,5 +1,15 @@
 # Current project status
 
+**October 22 durable semantic diagnostics (R64, source only):** the isolated
+qualification harness now has opt-in setup/audit profiling and bounded private
+phase checkpoints, beginning before its first full audit. Checkpoints retain
+fixed numeric progress through interruption and always mark themselves diagnostic;
+they never grant qualification or activation. Full audits, permissions, file
+integrity, protected cases and the fixed child deadline remain unchanged.
+Fresh Windows qualification and independent closure are still required. Semantic
+search remains **OFF**; no production installation or activation is included.
+See [durable diagnostic contract](SEMANTIC_REQUEST_LATENCY.md#r64-durable-qualification-diagnostics).
+
 **October 22 semantic latency increment (R63, unmerged / undeployed):** source
 `95b7f7f` reuses only a pure proof for exact freshly copied typed metadata; full
 file hashing and fresh source/policy/authorization checks remain intact. Focused

@@ -166,13 +166,14 @@ def prepare_omission_review(index_path, output_directory):
 
 
 def measure(index_path, output_directory, *, model, queries, repetitions=1, network=None,
-            bulk_vectors=False, omission_review_path=None, profile_requests=False):
+            bulk_vectors=False, omission_review_path=None, profile_requests=False,
+            profile_setup=False, checkpoint_directory=None):
     """Run the explicit canary, optionally observing private request phases.
 
     A full-catalog run requires a separately reviewed omission document. No
     builder promotes an unreviewed draft, and no production accounts are used.
     """
-    _require(type(profile_requests) is bool)
+    _require(type(profile_requests) is bool and type(profile_setup) is bool)
     repo_backend = str(Path(__file__).parents[1] / 'backend')
     if repo_backend not in sys.path:
         sys.path.insert(0, repo_backend)
@@ -181,19 +182,60 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
         observation = instrument_requests()
     else:
         observation = nullcontext(None)
-    with observation as observer:
-        result = _measure(index_path, output_directory, model=model, queries=queries,
-            repetitions=repetitions, network=network, bulk_vectors=bulk_vectors,
-            omission_review_path=omission_review_path, request_observer=observer)
-    if observer is not None:
-        result['request_profile'] = observer.snapshot()
-    from qualify_semantic_pair import write_record
-    write_record(Path(output_directory), 'measurement.json', result)
-    return result
+    journal = None
+    if checkpoint_directory is not None:
+        # Check all input/output overlaps before creating even a diagnostic
+        # directory. It is separate so the first full audit is observable.
+        from qualify_semantic_pair import output_target
+        target = Path(checkpoint_directory)
+        _require(target.is_absolute() and '..' not in target.parts,
+                 'unsafe_checkpoint_path')
+        resolved = target.resolve(strict=False)
+        roots = [Path(index_path).resolve(strict=False).parent,
+                 Path(output_directory).resolve(strict=False)]
+        if omission_review_path is not None:
+            roots.append(Path(omission_review_path).resolve(strict=False))
+        _require(not any(resolved.is_relative_to(root) or root.is_relative_to(resolved)
+                         for root in roots), 'checkpoint_overlaps_inputs_or_output')
+        target = output_target(target)
+        from semantic_qualification_journal import QualificationJournal
+        journal = QualificationJournal(target)
+    if profile_setup or journal is not None:
+        from semantic_setup_profile import instrument_setup
+        setup_observation = instrument_setup(journal)
+    else:
+        setup_observation = nullcontext(None)
+    try:
+        with setup_observation as setup, observation as observer:
+            result = _measure(index_path, output_directory, model=model, queries=queries,
+                repetitions=repetitions, network=network, bulk_vectors=bulk_vectors,
+                omission_review_path=omission_review_path, request_observer=observer,
+                setup_observer=setup)
+            if observer is not None:
+                result['request_profile'] = observer.snapshot()
+            if setup is not None:
+                result['setup_profile'] = setup.snapshot()
+            from qualify_semantic_pair import write_record
+            with _phase(setup, 'report'):
+                write_record(Path(output_directory), 'measurement.json', result)
+        if journal is not None:
+            journal.close(success=True)
+        return result
+    except BaseException:
+        if journal is not None:
+            try:
+                journal.close(success=False)
+            except BaseException:
+                pass  # Preserve the original failure; never publish a pass.
+        raise
+
+
+def _phase(observer, name):
+    return observer.phase(name) if observer is not None else nullcontext()
 
 
 def _measure(index_path, output_directory, *, model, queries, repetitions, network,
-             bulk_vectors, omission_review_path, request_observer):
+             bulk_vectors, omission_review_path, request_observer, setup_observer=None):
     """Run a bounded synthetic-account canary over a verified immutable index.
 
     ``model`` must be the caller's real, loaded, UNBOUND LibrarySiglipModel.
@@ -229,7 +271,8 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
     _require(index_path.is_absolute() and ".." not in index_path.parts)
     source_root = Path(fixture_harness.qualification.ROOT.parent).resolve()
     net_files = _network_files(network, source_root)
-    manifest, records, identities = inspect_library_index(index_path)
+    with _phase(setup_observer, 'initial_audit'):
+        manifest, records, identities = inspect_library_index(index_path)
     _require(type(manifest) is dict and type(records) is tuple and bool(records)
         and type(identities) is dict and set(identities) == {"image", "text"})
     _require(type(manifest.get("failures")) is list)
@@ -247,32 +290,35 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
         and identities["text"] == model.text_identity)
     _require(manifest["processing_complete"] is True
         and manifest["complete"] is (not manifest["failures"]), "inconsistent_index_completeness")
-    for record in records:
-        _require(validate_artifact(record, identities["image"]), "invalid_candidate_artifact")
+    with _phase(setup_observer, 'artifact_validation'):
+        for record in records:
+            _require(validate_artifact(record, identities["image"]), "invalid_candidate_artifact")
 
     index_root = index_path.parent
-    original_vector_hashes = _index_file_hashes(index_root, records)
-    index_hash = _record_digest(index_path)
+    with _phase(setup_observer, 'initial_vector_hashes'):
+        original_vector_hashes = _index_file_hashes(index_root, records)
+        index_hash = _record_digest(index_path)
     candidate_identity = identity_sha256(identities["image"])
     _require(all(record.identity_sha256 == candidate_identity for record in records))
     omission_review = snapshot = None
     omitted = ()
     review_hash = snapshot_file_hash = None
     if omission_review_path is not None:
-        from library_semantic_index import MAX_MANIFEST_BYTES
-        from semantic_coverage_qualification import validate_omission_review
-        _require(bulk_vectors, 'omission_review_requires_bulk')
-        omission_review_path = Path(omission_review_path)
-        _require(omission_review_path.is_absolute() and '..' not in omission_review_path.parts
-            and not omission_review_path.resolve().is_relative_to(source_root), 'unsafe_review_path')
-        require_private_directory(omission_review_path.parent)
-        snapshot_path = index_root / 'snapshot.json'
-        snapshot, snapshot_file_hash = _private_json_pin(snapshot_path, MAX_MANIFEST_BYTES)
-        omission_review, review_hash = _private_json_pin(omission_review_path, 16 * 1024**2)
-        omitted = validate_omission_review(omission_review, manifest, records, snapshot,
-                                          index_sha256=index_hash)
-        _require(_json_pin_matches(omission_review_path, review_hash, 16 * 1024**2)
-            and _json_pin_matches(snapshot_path, snapshot_file_hash, MAX_MANIFEST_BYTES), 'review_inputs_changed')
+        with _phase(setup_observer, 'review_validation'):
+            from library_semantic_index import MAX_MANIFEST_BYTES
+            from semantic_coverage_qualification import validate_omission_review
+            _require(bulk_vectors, 'omission_review_requires_bulk')
+            omission_review_path = Path(omission_review_path)
+            _require(omission_review_path.is_absolute() and '..' not in omission_review_path.parts
+                and not omission_review_path.resolve().is_relative_to(source_root), 'unsafe_review_path')
+            require_private_directory(omission_review_path.parent)
+            snapshot_path = index_root / 'snapshot.json'
+            snapshot, snapshot_file_hash = _private_json_pin(snapshot_path, MAX_MANIFEST_BYTES)
+            omission_review, review_hash = _private_json_pin(omission_review_path, 16 * 1024**2)
+            omitted = validate_omission_review(omission_review, manifest, records, snapshot,
+                                              index_sha256=index_hash)
+            _require(_json_pin_matches(omission_review_path, review_hash, 16 * 1024**2)
+                and _json_pin_matches(snapshot_path, snapshot_file_hash, MAX_MANIFEST_BYTES), 'review_inputs_changed')
 
     output = output_target(output_directory)
     resolved_output = output.resolve(strict=False)
@@ -290,24 +336,26 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
     bulk_store = None
     if bulk_vectors:
         from app.access.semantic_bulk_vectors import write_bulk_vectors
-        bulk_store = write_bulk_vectors(output / "bulk-vectors.phbv", index_root,
-            tuple(sorted(records, key=lambda item: int(item.asset_id))),
-            identities["image"], library)
+        with _phase(setup_observer, 'bulk_vectors'):
+            bulk_store = write_bulk_vectors(output / "bulk-vectors.phbv", index_root,
+                tuple(sorted(records, key=lambda item: int(item.asset_id))),
+                identities["image"], library)
     now = int(time.time())
     tokens = {name: secrets.token_urlsafe(32)
         for name in ("pilot-owner", "pilot-viewer", "pilot-other")}
-    fixture_harness._fixture(database, records, library, tokens, now)
-    if omission_review is not None:
-        # Only this new synthetic DB receives full-roster failure rows. Its
-        # synthetic dates/text make omitted-only hard filters observable.
-        with closing(sqlite3.connect(database)) as db, db:
-            for number, item in enumerate(omitted, len(records) + 1):
-                db.execute('INSERT INTO assets VALUES(?,?,?,?,?,?,?,NULL,?)',
-                    (int(item.asset_id), 'synthetic-omitted-no-original', item.source_sha256,
-                     'active', 'image/jpeg', 16, 16, '2026-01-03'))
-                db.execute('INSERT INTO access_asset_libraries VALUES(?,?)', (int(item.asset_id), library))
-                db.execute('INSERT INTO captions VALUES(?,?,?,0,0)',
-                    (number, int(item.asset_id), 'Synthetic omitted fixture caption'))
+    with _phase(setup_observer, 'fixture'):
+        fixture_harness._fixture(database, records, library, tokens, now)
+        if omission_review is not None:
+            # Only this new synthetic DB receives full-roster failure rows. Its
+            # synthetic dates/text make omitted-only hard filters observable.
+            with closing(sqlite3.connect(database)) as db, db:
+                for number, item in enumerate(omitted, len(records) + 1):
+                    db.execute('INSERT INTO assets VALUES(?,?,?,?,?,?,?,NULL,?)',
+                        (int(item.asset_id), 'synthetic-omitted-no-original', item.source_sha256,
+                         'active', 'image/jpeg', 16, 16, '2026-01-03'))
+                    db.execute('INSERT INTO access_asset_libraries VALUES(?,?)', (int(item.asset_id), library))
+                    db.execute('INSERT INTO captions VALUES(?,?,?,0,0)',
+                        (number, int(item.asset_id), 'Synthetic omitted fixture caption'))
 
     @contextmanager
     def connection():
@@ -348,11 +396,12 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
         # From the first reserved socket onward, setup belongs to the same
         # ExitStack as the listeners. A failed source receipt, model bind, or
         # app construction therefore closes every socket already acquired.
-        with closing(sqlite3.connect(database)) as db:
-            with base_budget.attempt(db, lambda: False) as (_check, read):
-                source = d.scoped_source(library, read)
-        ids = tuple(str(row[0]) for row in source['assets'])
-        reviewed = ReviewedIndex(library, "1", ids, ids, d.digest(source))
+        with _phase(setup_observer, 'source_projection'):
+            with closing(sqlite3.connect(database)) as db:
+                with base_budget.attempt(db, lambda: False) as (_check, read):
+                    source = d.scoped_source(library, read)
+            ids = tuple(str(row[0]) for row in source['assets'])
+            reviewed = ReviewedIndex(library, "1", ids, ids, d.digest(source))
         technical_receipt = hashlib.sha256(canonical({
             "role": "synthetic_fixture_not_activation",
             "library_id": library,
@@ -362,18 +411,20 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
         binding = JointSpaceBinding(identities["image"], identities["text"], technical_receipt)
         eligibility = None
         if omission_review is not None:
-            from semantic_coverage_qualification import runtime_policy
-            from app.access.semantic_eligibility import SemanticEligibilityStore
-            policy = runtime_policy(omission_review, manifest, records, snapshot,
-                index_sha256=index_hash, binding_sha256=binding.binding_sha256,
-                bulk_sha256=bulk_store.file_sha256)
-            policy_path = output / 'synthetic-eligibility.json'
-            write_record(output, policy_path.name, policy)
-            policy_hash = _record_digest(policy_path)
-            eligibility = SemanticEligibilityStore(policy_path, policy_hash, library,
-                binding.binding_sha256, bulk_store.file_sha256, source_root)
-        model.bind(binding)
-        model.verify()
+            with _phase(setup_observer, 'eligibility'):
+                from semantic_coverage_qualification import runtime_policy
+                from app.access.semantic_eligibility import SemanticEligibilityStore
+                policy = runtime_policy(omission_review, manifest, records, snapshot,
+                    index_sha256=index_hash, binding_sha256=binding.binding_sha256,
+                    bulk_sha256=bulk_store.file_sha256)
+                policy_path = output / 'synthetic-eligibility.json'
+                write_record(output, policy_path.name, policy)
+                policy_hash = _record_digest(policy_path)
+                eligibility = SemanticEligibilityStore(policy_path, policy_hash, library,
+                    binding.binding_sha256, bulk_store.file_sha256, source_root)
+        with _phase(setup_observer, 'model_bind_verify'):
+            model.bind(binding)
+            model.verify()
 
         class ObservedProvider:
             binding = model.binding
@@ -395,27 +446,32 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
         else:
             provider_context = resources.enter_context(TestClient(provider_app,
                 base_url=f"http://127.0.0.1:{port}", client=("127.0.0.1", 41234)))
-        result = _run_canary(resources, network_enabled, loopback, provider_context,
-            provider_app, access, discovery, base_budget, limits, model, binding,
-            database, library, tokens, records, ids, queries=query_plan,
-            repetitions=repetitions, origin=origin, api_socket=api_socket,
-            provider_token=provider_token, port=port, counters=counters, protected=protected,
-            denial_latencies=denial_latencies, rows=rows, index_path=index_path,
-            index_root=index_root, index_hash=index_hash, manifest=manifest,
-            original_vector_hashes=original_vector_hashes, net_files=net_files,
-            warmup_holder=[None], bulk_store=bulk_store, eligibility=eligibility,
-            omitted=omitted, during_encode=during_encode, request_observer=request_observer)
+        with _phase(setup_observer, 'canary'):
+            result = _run_canary(resources, network_enabled, loopback, provider_context,
+                provider_app, access, discovery, base_budget, limits, model, binding,
+                database, library, tokens, records, ids, queries=query_plan,
+                repetitions=repetitions, origin=origin, api_socket=api_socket,
+                provider_token=provider_token, port=port, counters=counters, protected=protected,
+                denial_latencies=denial_latencies, rows=rows, index_path=index_path,
+                index_root=index_root, index_hash=index_hash, manifest=manifest,
+                original_vector_hashes=original_vector_hashes, net_files=net_files,
+                warmup_holder=[None], bulk_store=bulk_store, eligibility=eligibility,
+                omitted=omitted, during_encode=during_encode, request_observer=request_observer)
 
     # Only publish the report after all temporary clients/listeners have closed.
-    model.verify()
-    _require(_record_digest(index_path) == index_hash, "index_changed_during_measurement")
-    _require(_index_file_hashes(index_root, records) == original_vector_hashes,
-        "candidate_vectors_changed_during_measurement")
-    inspect_library_index(index_path, expected_snapshot=manifest["snapshot_sha256"])
+    with _phase(setup_observer, 'final_model_verify'):
+        model.verify()
+    with _phase(setup_observer, 'final_vector_hashes'):
+        _require(_record_digest(index_path) == index_hash, "index_changed_during_measurement")
+        _require(_index_file_hashes(index_root, records) == original_vector_hashes,
+            "candidate_vectors_changed_during_measurement")
+    with _phase(setup_observer, 'final_audit'):
+        inspect_library_index(index_path, expected_snapshot=manifest["snapshot_sha256"])
     if omission_review is not None:
-        _require(_json_pin_matches(omission_review_path, review_hash, 16 * 1024**2)
-            and _json_pin_matches(index_root / 'snapshot.json', snapshot_file_hash, MAX_MANIFEST_BYTES),
-            'review_inputs_changed')
+        with _phase(setup_observer, 'final_review_validation'):
+            _require(_json_pin_matches(omission_review_path, review_hash, 16 * 1024**2)
+                and _json_pin_matches(index_root / 'snapshot.json', snapshot_file_hash, MAX_MANIFEST_BYTES),
+                'review_inputs_changed')
     result.update({
         "schema": "photohouse.library_semantic_measurement.v1",
         "index_sha256": index_hash,

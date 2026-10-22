@@ -30436,6 +30436,67 @@
         }
       ],
       "notes": "Record full local source validation, one bounded failed native attempt without accepted latency/protection results, preserved external state, and distinct source implementation versus unapproved serving policy. Keep semantic OFF."
+    },
+    {
+      "feature": "semantic-durable-phase-checkpoints-and-setup-profile-r64",
+      "source_base": "9a859d6ecb03457fd74f29ccb574bec10c59daf2",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "1eb3435fa3df7e4b1ca98995ee3126e91bb4e753a6bd77ae9f1f26c92c5a7646",
+          "before_sha256": "3b3bac7be7dbbf55a2e0d9ce55331e380d0f00bff1022985b80bdd2e2fd88dde"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "sha256": "add0a7987756c6b9c6d7df27499c38412c5396e604b0d8f90507cf4e222a108b",
+          "before_sha256": "28026c872fa791adca769810442925ee6aac1d989a1f4cc47c2e91f39eb56576"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "de55e5767b3b5f623ace9cd48b87015c841cb533d42bc130550de8de71a93fdd",
+          "before_sha256": "398d83cb89843733efb0f84891004f9d37166b28383c09753349caf00608a688"
+        },
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "sha256": "66b208bc5e9f4272aebf914cea6f03f725de28ecccd67ea5bde94683f8a51245",
+          "before_sha256": "08387cc542e77459a0c8fafd59cc18d815ba6763b361402c8dd06255c36a85bc"
+        },
+        {
+          "path": "server/scripts/semantic_qualification_journal.py",
+          "sha256": "0ebc8e5ffd47632348ceb836bd165e359d80ac1411c9b98113b728cc7f09350d"
+        },
+        {
+          "path": "server/scripts/semantic_setup_profile.py",
+          "sha256": "67bec5b86f260978da0870aa5aa8a928a5cf1a421da55a3071173c7beaae2fdd"
+        },
+        {
+          "path": "server/tests/security/test_qualify_library_semantic.py",
+          "sha256": "f1330845be89eb96458000ed00919af6ee9330b81e4c80a4761a21fd2853ffb6",
+          "before_sha256": "943b27be88cec1520eb55edc9fe9e2cdaad5d07c3f896742559df205ff9f8e3c"
+        },
+        {
+          "path": "server/tests/security/test_qualify_semantic_coverage.py",
+          "sha256": "bf58fa90d074017f725e050f95e85bfc87bb0c2f600e9198abc81d3156347660",
+          "before_sha256": "0c6463bb4aad7fefce2bf734596e02d991b1755579da2e093edac2bc357b6972"
+        },
+        {
+          "path": "server/tests/security/test_semantic_qualification_journal.py",
+          "sha256": "01721cca8ce34b9d357690c23237bdb6b3250a98d233e7a3e1178492536e96be"
+        },
+        {
+          "path": "server/tests/security/test_semantic_setup_profile.py",
+          "sha256": "ca3e5f17426b97e54a609ec88483fc27c4fe18633529b45e84e576c7e804bdd3"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "5247d5b16d99928c63545176763f5de5f5abe65c118be4fe1cad113a140717a2",
+          "before_sha256": "23d7d2f2f8b4e3a11f70a05e0f97ae7bb9be4cf1f9b1733e744e49bc37341ce7"
+        }
+      ],
+      "notes": "Opt-in diagnostic-only private atomic bounded progress before both full audits, fixed numeric operation timing, exact result/exception and patch restoration checks. Preserve full protected qualification, permissions/integrity and fixed Job deadline. Native qualification remains separate; no production activation."
     }
   ]
 }

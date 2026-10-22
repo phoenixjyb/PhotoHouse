@@ -87,8 +87,10 @@ def test_draft_stays_unreviewed_and_cannot_start_canary(full_catalog, tmp_path):
 def test_full_catalog_canary_preserves_65_omissions_and_profiles_actual_runtime(full_catalog, tmp_path):
     index, model, manifest, records, snapshot, draft, review_path = full_catalog
     output = tmp_path / 'full-catalog-canary'
+    checkpoints = tmp_path / 'full-catalog-checkpoints'
     result = subject.measure(index, output, model=model, bulk_vectors=True,
         omission_review_path=review_path, profile_requests=True,
+        profile_setup=True, checkpoint_directory=checkpoints,
         queries=[{'id': 'en', 'language': 'en', 'text': 'a garden scene'},
                  {'id': 'zh', 'language': 'zh', 'text': '花园里的家人'},
                  {'id': 'mixed', 'language': 'zh-en', 'text': '花园 family scene'}])
@@ -123,6 +125,22 @@ def test_full_catalog_canary_preserves_65_omissions_and_profiles_actual_runtime(
         assert observation['phases']['eligibility_validation']['calls'] == 2
         assert observation['phases']['source_sql']['calls'] > 0
     assert all(text not in json.dumps(profile) for text in ('garden scene', 'omitted-', 'source_sha256', str(tmp_path)))
+    from semantic_qualification_journal import read_checkpoints
+    progress = read_checkpoints(checkpoints)
+    assert progress[-1]['status'] == 'completed'
+    assert all(row['qualification_passed'] is False for row in progress)
+    phases = [row['phase'] for row in progress if row['event'] == 'phase_completed']
+    assert phases == ['initial_audit', 'artifact_validation', 'initial_vector_hashes',
+        'review_validation', 'bulk_vectors', 'fixture', 'source_projection', 'eligibility',
+        'model_bind_verify', 'canary', 'final_model_verify', 'final_vector_hashes',
+        'final_audit', 'final_review_validation', 'report']
+    setup = result['setup_profile']
+    assert setup['operations']['file_hash']['calls'] >= 2 * 515
+    assert setup['operations']['bulk_vector_read']['calls'] == 515
+    assert setup['operations']['coverage_inputs']['calls'] >= 3
+    assert setup['operations']['scoped_source']['calls'] > 0
+    assert all(text not in json.dumps([setup, progress])
+        for text in ('garden scene', 'omitted-', 'source_sha256', str(tmp_path)))
     assert json.loads((output / 'measurement.json').read_bytes()) == result
 
 

@@ -236,3 +236,42 @@ Coordinate each Windows execution window with the active grouping and AI-harness
 sessions. This source work does not authorize production installation or activation.
 Relevance, phone/WAN, concurrent load, refresh/retirement and a concrete owner-only
 serving-policy proposal remain separate gates.
+
+## R64 durable qualification diagnostics
+
+The explicit library qualification call now accepts `profile_setup=True` and an
+optional `checkpoint_directory`. Both default to disabled. The checkpoint path
+must be a new private directory outside application source, the candidate index,
+the reviewed input and the measurement output. A durable `initial_audit` start
+is published before the first full inspection. Fixed phase boundaries cover
+artifact validation, vector hashes, omission review, bulk construction, fixture
+setup, scoped source projection, eligibility, model binding, the protected canary,
+the final hashes/audit/review and report publication. Both complete audits remain.
+
+The scoped setup observer counts and times JSON/checkpoint verification, source
+stats, vector reads, bulk cohort/component/write/hash work, fixture construction,
+source projection/digest and coverage validation. These are inclusive timings:
+nested totals must not be added as independent costs. Counts represent operation
+calls, not distinct assets. Fractional milliseconds are retained rather than
+rounding each short operation before summation. The observer retains no inputs,
+queries, paths, identifiers, database values, results or exception text, and
+restores every patched alias when its explicit context exits.
+
+Completed operations can emit a checkpoint at most once every five seconds.
+Phase starts/ends are also forced checkpoints. There is no background writer:
+an operation stalled inside native code leaves the last completed checkpoint and
+its phase start. The private journal publishes complete fsynced files atomically
+without overwriting earlier records, and caps output at 512 records, 16 KiB each
+and 8 MiB overall, reserving one terminal record. Windows file fsync does not
+establish power-loss recovery or portable directory durability. Reader validation
+rejects malformed published records and ignores only bounded private temporary
+remnants. `qualification_passed` is always false in diagnostic records.
+
+An interrupted phase, missing terminal checkpoint or retained measurement alone
+cannot qualify a run. In particular, a final checkpoint storage failure can leave
+`measurement.json` while the call raises; independent acceptance must require the
+successful worker/coordinator exit, complete journal, both audits, all 15
+protections, nine matching English/Chinese/mixed samples, exact pins and resource
+closure. Setup/audit costs are separate from interactive query latency. The
+1,800-second child Job deadline and existing integrity checks are unchanged.
+Native R64 qualification is still required; semantic search remains **OFF**.
