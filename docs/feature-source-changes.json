@@ -30290,6 +30290,24 @@
         }
       ],
       "notes": "Specify returned-narration language review and request-bound native decode/sample proof before cancellation or real total-deadline expiry. Qualification requirements only; no new native result, model tuning, default, deployment or activation change."
+    },
+    {
+      "feature": "story-activity-witness-refusal-evidence-20261022",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "1d9ef3a59c9f21cc2f4359c1400a0cdb7f21e4f9da68d78f449ae509cebb5421",
+          "sha256": "babef0b23e75dd40a2a80dcbab519974f06ef45921fe6650691ce7dd68a4b303"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "5697edd676a802c7621b9adda045ec030744f9521a28a4d72bf07750eaedd94a",
+          "sha256": "35776ce1a1407dd5ce804e0f4440ab8ab7fb22bcee49416de99d793849604365"
+        }
+      ],
+      "notes": "Record92zero-skip native operator checks and the one first-Chinese activity-witness refusal, no draft/later cases/retry, strict cleanup and current preserved baseline. Root/emitter mismatch remains a hypothesis; no model-language or active-interruption pass or activation/deployment change claimed."
     }
   ]
 }

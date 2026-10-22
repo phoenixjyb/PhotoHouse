@@ -396,3 +396,58 @@ pinned candidate. Keep one generation slot and immediate busy behavior for the
 small family setup. Quality/latency review, protected UI/device acceptance and a
 separate activation decision follow that evidence; successful generation alone
 does not authorize enabling the feature.
+
+## Language/interruption slate: activity-witness refusal, 2026-10-22
+
+The next isolated qualification retained runtime source `8055183`, its 275-file
+package, model/backend/context/options, two CPU threads, zero GPU layers and
+4 GiB native limit. The private observer added request-bound successful native
+decode/sample evidence and an exclusive completion-exit marker. The marker
+prevents observed generation cleanup from counting as active inference; it does
+not provide instruction-level ordering between backend return and termination.
+All **92 model-free Windows operator checks passed with zero skips**, including
+the native binding/Job canary. Independent readback confirmed canary root exit,
+zero Job members, reconciliation, owner close and zero owned processes.
+
+With fresh workload-owner holds, current preservation checks and a short bound
+clearance, one sequential slate was dispatched: Chinese, mixed language, active
+cancellation and real total-deadline expiry. It stopped on the **first Chinese
+case after 24.000 seconds**, with the fixed qualification refusal
+`activity_witness_unavailable`. The outer run failed after **36.921 seconds**.
+No generated result file was retained, no story was saved, the other three cases
+did not run, and no model retry or settings change followed.
+
+A read-only postmortem found a committed, content-free successful decode/sample
+record. It validated after stop when checked against its own recorded process
+identity, but that does not establish that the parent accepted it while the
+operation was outstanding. The original expected root identity and underlying
+read refusal category were not retained. Three owned Job members were observed,
+with the four core DLLs mapped in one member; this is not process-lineage proof.
+An expected-root versus emitting-worker PID difference is a hypothesis, while a
+transient private-file or identity check failure remains possible. Do not weaken
+the exact-owner binding or retroactively count this as a qualified draft or
+active-inference interruption. The next diagnostic needs bounded expected and
+witness identities plus a sanitized refusal category before changing topology.
+
+The failed case still observed native root exit, zero Job members and disposed
+exchange; the host store retained zero claims with maintenance closed. Final
+independent readback found zero owned Python/control observers and preserved the
+275-file runtime, both retained 274-file sources, full model hash and 13 DLL pins.
+The owned Job sampled a peak of **1,910,632,448 bytes**; this single observation
+is not a general memory or concurrency guarantee.
+
+The preservation baseline was refreshed from the other owners' completed
+releases. Before/after checks matched 57 protected file pins, the live API's
+293-file source closure, 125 report payloads, all 106 root task definitions and
+enabled states, four service process identities and 25 runtime identities.
+The 81 PhotoHouse/report task definitions were also checked against their
+reviewed owner pins. All 125 public report assets passed trusted-TLS, byte-count
+and hash checks before and after. These checks do not establish continuous
+availability or family/browser acceptance.
+
+This qualifies the model-free operator gate and its observed containment, not
+Chinese/mixed generation or active-inference cancellation/expiry. The earlier
+single English result remains the accepted generation checkpoint. Both AI
+switches and the live provider remain off. This qualification made no production
+service/task/configuration, database, family-media, GPU, activation or deployment
+change; reports and failed-attempt artifacts remain private and are not replayed.
