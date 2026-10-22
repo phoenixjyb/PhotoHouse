@@ -38,6 +38,7 @@ _MAX_RECORDS = 512
 _MAX_RECORD_BYTES = 16 * 1024
 _MAX_TOTAL_BYTES = 8 * 1024 * 1024
 _MAX_UNITS = 2**53 - 1
+_WINDOWS_PUBLICATION = os.name == "nt"
 _CHECKPOINT_NAME = re.compile(r"checkpoint-([0-9]{6})\.json\Z", re.ASCII)
 _TEMP_NAME = re.compile(r"\.checkpoint-[0-9]{6}\.json\.[0-9a-f]{32}\.tmp\Z", re.ASCII)
 _FIELDS = frozenset(("schema", "diagnostic_only", "qualification_passed",
@@ -301,8 +302,14 @@ class QualificationJournal:
                     raise QualificationJournalError()
                 if _parent_identity(self.directory.parent) != self._parent_identity:
                     raise QualificationJournalError()
-                os.link(temp, final_path, follow_symlinks=False)
-                os.unlink(temp)
+                if _WINDOWS_PUBLICATION:
+                    # Windows rename refuses an existing destination. One
+                    # operation avoids a kill leaving a two-link publication
+                    # that the strict private-file reader must reject.
+                    os.rename(temp, final_path)
+                else:
+                    os.link(temp, final_path, follow_symlinks=False)
+                    os.unlink(temp)
                 temp = None
                 require_private_file(final_path)
                 sync_directory(self.directory)

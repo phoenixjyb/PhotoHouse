@@ -71,6 +71,31 @@ with journal.phase('initial_audit'):
     assert records[0]["qualification_passed"] is False
 
 
+def test_interruption_immediately_after_windows_publication_leaves_one_readable_link(tmp_path):
+    output = tmp_path / 'interrupted-publication'
+    code = """import os,sys
+sys.path.insert(0,sys.argv[1])
+import semantic_qualification_journal as journal_module
+journal_module._WINDOWS_PUBLICATION=True
+rename=os.rename
+def interrupted_rename(source,destination):
+    # Exercise the Windows branch on POSIX without claiming native acceptance.
+    assert not os.path.lexists(destination)
+    rename(source,destination)
+    os._exit(0)
+journal_module.os.rename=interrupted_rename
+journal=journal_module.QualificationJournal(sys.argv[2])
+with journal.phase('initial_audit'):pass
+"""
+    process = subprocess.run([sys.executable, '-c', code,
+        str(ROOT / 'scripts'), str(output)], cwd=ROOT, check=False)
+    assert process.returncode == 0
+    records = subject.read_checkpoints(output)
+    assert len(records) == 1 and records[0]['event'] == 'phase_started'
+    assert (output / 'checkpoint-000001.json').stat().st_nlink == 1
+    assert len(list(output.iterdir())) == 1
+
+
 def test_report_completion_is_still_diagnostic_and_pulses_are_throttled(tmp_path):
     output = tmp_path / "complete-report"
     clock = Clock()

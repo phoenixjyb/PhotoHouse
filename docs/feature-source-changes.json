@@ -30517,6 +30517,26 @@
         }
       ],
       "notes": "Close fsynced temporary descriptor before no-overwrite hard-link publication and temporary-name deletion, retaining inode/size/type/reparse checks. Regression enforces closed descriptor before filesystem publication; native Windows qualification remains separate."
+    },
+    {
+      "feature": "semantic-windows-single-operation-checkpoint-publication-r64",
+      "source_base": "20cfe7415a85b4284068bad92b79f488482209c5",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/semantic_qualification_journal.py",
+          "before_sha256": "ef4b6252bc5d0cc8e173c9e48f9dd90c10f6778bdf199a194546910737acfd45",
+          "sha256": "bb49ba35da7d1c77f4df777e98b583840a7cbf2428fc05e1e05fbf4686d1bbca"
+        },
+        {
+          "path": "server/tests/security/test_semantic_qualification_journal.py",
+          "before_sha256": "393cd970eabb8d9eb4fdd9355da4254a8b358b500cffea83bc69491f6e7a6c38",
+          "sha256": "f2ac71fab582271c48f37681d02c716e32b5bb2d700949b6f7d43bb10a9e0e8b"
+        }
+      ],
+      "notes": "Use Windows no-overwrite rename after closing the fsynced temporary file, avoiding a hard termination between link and unlink that leaves two names rejected by strict private readers. Keep POSIX no-overwrite hard-link publication. Generated subprocess termination immediately after the Windows publication branch preserves a readable single-link checkpoint; native acceptance remains separate."
     }
   ]
 }
