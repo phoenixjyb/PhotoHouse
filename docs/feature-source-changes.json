@@ -30411,6 +30411,31 @@
         }
       ],
       "notes": "Reuse only a pure validation proof for exact freshly copied typed cohort metadata. Preserve complete secure file reads and hashes, scope/identity/source/policy checks, per-row cancellation and exact ranking. Native latency qualification remains separate."
+    },
+    {
+      "feature": "semantic-r63-native-timeout-evidence-20261022",
+      "source_base": "95b7f7f6b31b604766219b8155f480641995a594",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "fa4adf64bce303c893f2b347a8294bb546ce5e415b4155aa9469fd878cb13b37",
+          "sha256": "28026c872fa791adca769810442925ee6aac1d989a1f4cc47c2e91f39eb56576"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "0be330c4f1cc30f2090841bdca7790b29663bcfb6002107e5237d06e5a14ec58",
+          "sha256": "3b3bac7be7dbbf55a2e0d9ce55331e380d0f00bff1022985b80bdd2e2fd88dde"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "20ab4c5ef25ddff752797efa8aafa11081cb906135d4331b8a404943d4d92cc6",
+          "sha256": "2c2fde8ad564663eab90b5973bbc4f9eb091ca1a13f56eb8150b4387cccfb14a"
+        }
+      ],
+      "notes": "Record full local source validation, one bounded failed native attempt without accepted latency/protection results, preserved external state, and distinct source implementation versus unapproved serving policy. Keep semantic OFF."
     }
   ]
 }

@@ -1,6 +1,11 @@
 # Protected semantic request latency
 
-Semantic remains **OFF**. The latest full-catalog Windows CPU qualification at
+Semantic remains **OFF**. The R63 attempt at `95b7f7f` reached the fixed
+**1,800-second child timeout** on October 22. No completed measurement, full
+protection result or new native latency was produced. Its original failure and
+all candidate evidence were retained; the model run was not replayed.
+
+The latest **successful** full-catalog Windows CPU qualification at
 `e85c6e4` passed all **15 protection checks**. Nine English/Chinese/mixed loopback
 HTTPS/TCP requests measured **7.860 seconds median / 8.328 seconds maximum**;
 the cold request took **14.843 seconds**. The 2-second backend target remains unmet.
@@ -180,12 +185,41 @@ ranking digest. These are separate local runs, not a native end-to-end speedup
 or service-SLO claim. A generated 4,163-entry canary, including 65 synthetic
 omissions, passed all 15 protection checks with a synthetic encoder.
 
-Semantic remains **OFF**. The new source, together with the already merged
-R61/R62 changes, still needs a newly frozen native qualification on matching
-catalog, policy, model and workload pins. The latest verified native timing
+The frozen R63 source passed the full local API profile: **3,346 tests / 4,037
+subtests**, plus the generated no-listener demo. An earlier run hit a positive-
+control 503 and was interrupted; that isolated suite then passed 8 tests / 113
+subtests and the full recheck passed. No timeout or refusal gate was loosened.
+
+The new source, including merged R61/R62 changes, was packaged as an independently
+attested 293-file candidate and attempted once on the matching Windows model,
+index, snapshot, 23,761-row catalog and query workload. The child hit its fixed
+1,800-second Job deadline; the coordinator recorded `process_timeout` and exited
+unsuccessfully. Retained artifacts show index preflight and bulk/eligibility/
+synthetic-database preparation were reached. They do not establish which phase
+consumed the remaining time. No completed measurement or phase profile survived,
+so no partial timing or protection result is accepted as qualification.
+
+Fresh postflight preserved all 106 task definitions, 28 runtime identities,
+55 preservation-file pins, 293 live API files, four read-only stores, model and
+index pins, the unchanged current catalog, private ACLs and phone v75 / TV v30.
+All 125 furniture assets passed trusted-TLS verification before and after. The
+independent observer found zero owned candidate processes. No test-port record
+survived; direct per-port readback is therefore unavailable. The exact full
+Python-process roster and the bounded Job cleanup provide process-level closure.
+No production policy, service, task, database, media or index publication changed.
+After 272 seconds of conservative offline cleanup, both active sessions received
+explicit Windows release at 2026-10-22 16:42:20 Asia/Shanghai (08:42:20 UTC).
+
+Semantic remains **OFF**. Native qualification of this increment is **failed**,
+not pending acceptance or ready for deployment. The latest verified native timing
 remains the `e85c6e4` result above; no newer native latency is claimed here.
 
-The next measured priorities are ranking CPU work, both protected bulk snapshots,
+The next qualification priority is durable aggregate phase checkpoints and
+audit/setup profiling under the same bounded Job, so a timeout retains useful
+progress without exposing queries, media paths or asset identifiers. Keep both
+full audits and the fixed deadline; do not extend the timeout to manufacture a pass.
+For interactive requests, the last successful profile points to ranking CPU work,
+both protected bulk snapshots,
 and fresh SQL/fact construction. The request-local metadata increment may save
 only a fraction of the remaining gap. A synthetic Mac subphase experiment is not
 an end-to-end speedup claim. Do not remove fresh policy/source/owner checks or

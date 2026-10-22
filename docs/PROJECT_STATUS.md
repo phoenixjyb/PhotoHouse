@@ -1,15 +1,25 @@
 # Current project status
 
-**October 22 next semantic latency increment (R63, source only):** warm bulk
-snapshots can reuse a prior pure metadata-validation proof only after exact
-current copies of all 16 typed primitive fields, file/library binding and model
-identity match. Fresh full file hashing, source/policy/authorization checks and
-exact ranking arithmetic remain intact. Focused suites passed 69 tests / 53
-subtests; a generated 4,163-entry canary passed all 15 protections. Separate Mac
-bulk experiments recorded 49.16 ms before / 21.86 ms after for warm snapshots,
-with identical exact rankings; these are not native or end-to-end latency claims.
-The full source check and fresh native qualification are the next gates.
-Semantic stays **OFF**. See [latency contract and evidence](SEMANTIC_REQUEST_LATENCY.md).
+**October 22 semantic latency increment (R63, unmerged / undeployed):** source
+`95b7f7f` reuses only a pure proof for exact freshly copied typed metadata; full
+file hashing and fresh source/policy/authorization checks remain intact. Focused
+suites passed 69 tests / 53 subtests, and the full API recheck passed **3,346 tests /
+4,037 subtests** plus the generated demo. Separate Mac warm-snapshot measurements
+were 49.16 ms before / 21.86 ms after with identical exact ranking; these do not
+establish native request latency.
+
+The single frozen Windows attempt hit its fixed **1,800-second child timeout**.
+No completed measurement or full protection result was produced, and no model
+retry occurred. The latest successful native timing remains `e85c6e4`: 7.860 s
+warm median / 8.328 s maximum / 14.843 s cold. Independent after-checks preserved
+106 tasks, 28 runtime identities, 55 file pins, 293 live API files, model/index/
+catalog/ACL state, phone v75 / TV v30 and all 125 trusted-TLS site assets. Owned
+candidate processes were zero; Windows was explicitly released after 272 seconds
+of offline cleanup. No production change or activation occurred.
+Semantic stays **OFF**. Next: preserve aggregate progress on timeout, profile
+full-index audit/setup cost, then repeat bounded qualification. Relevance,
+coverage-policy/lifecycle and device/WAN acceptance remain separate gates.
+See [latency contract and evidence](SEMANTIC_REQUEST_LATENCY.md).
 
 **October 22 combined-source release:** PR [#108](https://github.com/phoenixjyb/PhotoHouse/pull/108)
 merged as `a6dfe31f7df1149170a01fc5a171867b2aea0584`; the merge tree is identical to reviewed
