@@ -101,9 +101,10 @@ story admission blocked while another owner's maintenance or recovery is active.
    real grammar support, complete source citations, no invented people/events,
    preservation of original wording and useful review questions for missing facts.
    Schema validity alone is not language or factual quality.
-5. Cancel an already resumed real worker and exercise a deadline failure. Require
-   native root exit, zero Job members, exchange disposal and admission release
-   before a subsequent attempt. Do not reclaim a claim by age, PID or free RAM.
+5. Cancel during proved native inference and exercise the real total-operation
+   deadline using the evidence requirements below. Require native root exit,
+   zero Job members, exchange disposal and admission release before a subsequent
+   attempt. Do not reclaim a claim by age, PID or free RAM.
 6. Record pass/fail per exact build/model/account/launch and retain private failure
    evidence. Any change to those pins needs renewed qualification. Keep the
    application disabled after a passing trial.
@@ -112,6 +113,51 @@ Do not log selected words, prompt text, generated prose or original media in
 shared reports. Use generated case IDs and fixed outcomes. A real CPU trial does
 not qualify GPU mapping/VRAM, service restart recovery, live retention/egress,
 model residency, deployment, voice interaction or family/device acceptance.
+
+## Language and active-inference evidence
+
+For Chinese and mixed-language cases, inspect the returned chapter narration.
+An input containing Chinese, an echoed title or a valid JSON response does not
+establish a Chinese draft. A character-presence check can reject an obvious
+language mismatch, but cannot accept fluency, factual grounding or usefulness.
+Review those separately against the generated source memories and citations;
+retain `needs_review` and leave both drafts unsaved.
+
+Worker resume establishes process execution only. Before describing cancellation
+as active-inference cancellation, obtain a request-bound, content-free witness
+after a successful native decode and token-sampling call within the same
+completion. Forward the backend's original arguments and return values, record
+no token or prose, and restore all observation hooks on success and failure.
+Observation failure must prevent a successful qualification result.
+
+The parent must validate the witness against the exact private request and its
+owned root handle, PID and creation identity. It must also observe that the root
+is alive and preparation is outstanding before sending cancellation. PID
+existence, CPU use, model loading or a completion that already won the race are
+insufficient. Report missing evidence or a completion race as failed or
+inconclusive, without publishing a draft or automatically repeating the case.
+
+For expiry, use the existing real monotonic total-operation deadline, including
+hashing, cold loading and cleanup. After the native-work witness, verify the
+same root and outstanding preparation near that fixed deadline. Expiry before
+inference starts, or during cleanup after generation ends, does not establish
+active-inference expiry. Do not delay the backend, substitute a clock, extend
+the deadline or retry automatically to manufacture overlap.
+
+Use a separate request-bound completion-exit marker before diagnostic or worker
+cleanup. Require it absent at the interruption checks and after the interrupted
+root settles; require a valid marker for normal generated results. Any completion
+exit, including an exception, makes the interrupt case failed or inconclusive.
+This excludes observed post-generation cleanup from the active-inference result.
+It remains sampled evidence: forceful termination in the short interval between
+backend return and marker creation cannot establish instruction-level ordering.
+
+Both interrupt cases must produce no draft and settle the preparation task.
+Reconcile the retained native owner, observe root exit and zero Job members,
+dispose the owned exchange and release its exact admission claim. Uncertain
+cleanup retains ownership and blocks reuse. Keep execution reports private and
+content-free; these evidence requirements do not activate a provider or qualify
+service-account behavior, protected UI, recovery or family use.
 
 ## Composed synthetic rehearsal
 

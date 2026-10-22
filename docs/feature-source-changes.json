@@ -30277,6 +30277,19 @@
         }
       ],
       "notes": "Retain both reviewed parents, union their check suites and source-package payloads, and preserve all default-off inference/semantic flags. No runtime service, model, data, publication or provider activation. Two inherited trailing spaces in the qualification script were removed; script statements and runtime behavior are unchanged."
+    },
+    {
+      "feature": "story-language-active-inference-evidence-20261022",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "7f638278df949a0c6077a4b330b186f4b0cc2de4bb07006aeceadb7a293a3e19",
+          "sha256": "1d9ef3a59c9f21cc2f4359c1400a0cdb7f21e4f9da68d78f449ae509cebb5421"
+        }
+      ],
+      "notes": "Specify returned-narration language review and request-bound native decode/sample proof before cancellation or real total-deadline expiry. Qualification requirements only; no new native result, model tuning, default, deployment or activation change."
     }
   ]
 }
