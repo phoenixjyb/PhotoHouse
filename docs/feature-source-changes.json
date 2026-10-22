@@ -30537,6 +30537,26 @@
         }
       ],
       "notes": "Use Windows no-overwrite rename after closing the fsynced temporary file, avoiding a hard termination between link and unlink that leaves two names rejected by strict private readers. Keep POSIX no-overwrite hard-link publication. Generated subprocess termination immediately after the Windows publication branch preserves a readable single-link checkpoint; native acceptance remains separate."
+    },
+    {
+      "feature": "semantic-durable-native-diagnostics-result-r64",
+      "source_base": "8fbffd8966ec68216b30ffd7dc29e9e9d30256e4",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "1eb3435fa3df7e4b1ca98995ee3126e91bb4e753a6bd77ae9f1f26c92c5a7646",
+          "sha256": "900fba04c7981ea5fbaaf7d4f51f02e0e9f0e33cc98754d023975f22d571c5ed"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "add0a7987756c6b9c6d7df27499c38412c5396e604b0d8f90507cf4e222a108b",
+          "sha256": "f1c910860b875da72923a44838086b0aae99b6fac923a987811fe17cb593317e"
+        }
+      ],
+      "notes": "Record the single bounded native timeout with 365 validated diagnostic checkpoints, measured setup phase boundaries, incomplete final audit and no accepted latency. Distinguish independently authorized report publication from unchanged PhotoHouse pins; preserve semantic OFF and both audit/closure gates."
     }
   ]
 }

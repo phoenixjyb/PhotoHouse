@@ -1,14 +1,34 @@
 # Current project status
 
-**October 22 durable semantic diagnostics (R64, source only):** the isolated
-qualification harness now has opt-in setup/audit profiling and bounded private
-phase checkpoints, beginning before its first full audit. Checkpoints retain
-fixed numeric progress through interruption and always mark themselves diagnostic;
-they never grant qualification or activation. Full audits, permissions, file
-integrity, protected cases and the fixed child deadline remain unchanged.
-Fresh Windows qualification and independent closure are still required. Semantic
-search remains **OFF**; no production installation or activation is included.
-See [durable diagnostic contract](SEMANTIC_REQUEST_LATENCY.md#r64-durable-qualification-diagnostics).
+**October 22 durable semantic diagnostics (R64, unmerged / undeployed):**
+source `8fbffd8` adds opt-in setup profiling and durable private phase checkpoints.
+The exact source passed **3,375 API tests / 4,037 subtests** plus the generated
+demo; both hosted Source checks and Android UI qualification passed. PR
+[#111](https://github.com/phoenixjyb/PhotoHouse/pull/111) remains draft.
+
+One isolated Windows attempt reached the unchanged **1,800-second child limit**
+during its final full audit. Independent readback validated **365 checkpoints**
+and all 295 extracted source files. The model-load marker recorded 56.172 s;
+the initial audit completed in 1,238.702 s, bulk-vector construction in 19.187 s,
+and the canary phase in 194.547 s. These are setup/phase costs, not per-query
+latencies. Twelve phases completed, but the journal was unclosed and no completed
+measurement/report survived. This does **not** qualify the source, establish new
+latency or prove the full protected result. No automatic retry occurred.
+
+Postflight preserved the live API, 73 file pins, four stores, model/index/catalog
+and ACL evidence, and the semantic-off policy. A separate authorized report
+publisher replaced the site task/process pair during the attempt, adding a home
+page and navigation; the original unchanged-baseline gate correctly refused.
+Separate verification preserved the newer 148-file site, all retained releases
+and trusted HTTPS. The original preflight was not restamped or restored.
+Candidate-owned process counts were zero; recorded test ports were lost on the
+hard stop, so direct per-port closure was not established.
+
+Semantic search remains **OFF**. Next: reduce repeated immutable-artifact
+verification within each full audit while retaining both independent audits,
+then repeat the bounded protected qualification. Keep setup profiling, interactive
+latency, relevance/coverage policy and device/WAN acceptance separate.
+See [durable diagnostic contract and result](SEMANTIC_REQUEST_LATENCY.md#r64-durable-qualification-diagnostics).
 
 **October 22 semantic latency increment (R63, unmerged / undeployed):** source
 `95b7f7f` reuses only a pure proof for exact freshly copied typed metadata; full

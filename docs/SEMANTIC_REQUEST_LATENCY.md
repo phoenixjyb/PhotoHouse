@@ -274,4 +274,49 @@ successful worker/coordinator exit, complete journal, both audits, all 15
 protections, nine matching English/Chinese/mixed samples, exact pins and resource
 closure. Setup/audit costs are separate from interactive query latency. The
 1,800-second child Job deadline and existing integrity checks are unchanged.
-Native R64 qualification is still required; semantic search remains **OFF**.
+The single native R64 attempt on source `8fbffd8` reached the unchanged
+1,800-second child deadline during `final_audit`; it was not replayed. Independent
+readback verified the 12 frozen inputs, the exact 295 extracted source files plus
+their manifest, and a strict valid prefix of 365 checkpoints. The last checkpoint
+was still running, with no terminal close, completed measurement or final report.
+The Windows generated checkpoint publication/collision smoke retained its three
+records. This proves useful interruption diagnostics, not qualification.
+
+Retained completed phase boundaries give:
+
+| Phase | Duration | Evidence limit |
+| --- | ---: | --- |
+| Model load | 56.172 s | Separate start/completion marker, includes imports |
+| Initial full audit | 1,238.702 s | Completed phase, both artifact passes |
+| Bulk-vector construction | 19.187 s | Completed phase, 23,696 vector reads |
+| Protected canary | 194.547 s | Phase completed; full result/report not retained |
+| Final full audit | Interrupted | Last checkpoint at 1,741.907 s after journal start |
+
+The canary duration includes many checks and requests; it is not a single-query
+latency or evidence that every protection and sample passed. No new native
+latency replaces the latest successful result above. Aggregate operation timings
+are inclusive and nested. For example, `audit_json` includes its checkpoint
+inspection; `audit_checkpoint_verify` labels calls to `inspect_checkpoint`, not
+`verify_checkpoint`. Counts are function invocations, not distinct images. Each
+full audit has a committed-batch artifact pass followed by a separate manifest
+record pass; a partial counter must not be divided by two to infer coverage.
+
+All 73 preflight pins, the 293-file live API, four stores, parent ACL, semantic-off
+policy, model/index/snapshot and 23,761-row catalog evidence matched after the
+attempt. A separate human-authorized publisher added a homepage and navigation
+during the run, replacing the report task/process pair. Consequently the original
+unchanged-baseline/TLS gate refused; its preflight was retained unchanged.
+Separate checks verified the current 148-file report, its retained predecessors
+and normal trusted HTTPS. The other 105 task definitions/enabled states matched;
+a transient scheduled DNS-task state returned to its preflight state in the final
+inventory. These observations do not establish an unchanged timed environment.
+Owned candidate processes were zero. No test-port record survived, so closure
+claims are limited to process scope and the final runtime inventory, not direct
+per-port checks. No production deployment or semantic activation occurred.
+
+Next, investigate repeated path/identity/hash/JSON checks within a single full
+audit and qualify any immutable-artifact reuse with mutation/refusal cases.
+Retain two independent complete audits and fresh file, source, membership,
+policy, hash and canonical-vector checks; do not share a permissive cache across
+audits or extend the deadline to manufacture acceptance. Semantic search remains
+**OFF** until a complete protected run and the remaining activation gates pass.
