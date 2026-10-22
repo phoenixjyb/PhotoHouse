@@ -38,7 +38,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Title from authored chapter wording | [Chapter-opening title contract](CHAPTER_OPENING_TITLE.md) |
 | Guided phone story creation | [Flow, draft boundary and trial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) |
 | Failed story/memoir images | [Preview recovery](READER_PREVIEW_RECOVERY.md) |
-| Current search delivery, capabilities and remaining gates | [October 20 guarded-search release](SEARCH_RELEASE_2026-10-20.md), [exclusion/clarification contract](SCENE_QUERY_REWORDING.md), [bilingual behavior](BILINGUAL_SEARCH_REQUIREMENTS.md) |
+| Current search delivery, capabilities and remaining gates | [October 22 combined-source release](SEARCH_RELEASE_2026-10-22.md), [October 20 guarded-search release](SEARCH_RELEASE_2026-10-20.md), [exclusion/clarification contract](SCENE_QUERY_REWORDING.md), [bilingual behavior](BILINGUAL_SEARCH_REQUIREMENTS.md) |
 | Earlier natural-language search diagnosis | [October 15 search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md), [historical redesign handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md) |
 | Private search coverage, relevance cases and video dates | [Readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md) |
 | Installed bilingual intent model quality | [October 16 native trial](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md) |
@@ -48,14 +48,17 @@ use dated release/qualification records as evidence for their exact revision.
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |
 
-Latest recorded phone delivery: [v74 preparation details](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md).
-The [v75 gallery/search candidate](../clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md)
-records the signed preparation snapshot; [release PR #104](https://github.com/phoenixjyb/PhotoHouse/pull/104)
-tracks the subsequent UI qualification and publication result. The
+Latest phone release package/feed: **v75 / `0.75-gallery-search`**, independently published under
+[PR #104](https://github.com/phoenixjyb/PhotoHouse/pull/104). See the
+[v75 package and qualification record](../clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md);
+[v74 release details](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md) are historical.
+Physical installation and family-device experience remain unaccepted. The
 [offline exclusion scorecard](SEMANTIC_EXCLUSION_QUALIFICATION.md) has generated-vector
 validation only; semantic search remains disabled.
-The [October 20 API/Web search release](SEARCH_RELEASE_2026-10-20.md) preserved
-phone v74 / TV v30 and kept semantic search OFF. API/Web and client publication
+The [October 22 combined-source record](SEARCH_RELEASE_2026-10-22.md) covers PR #108 source and the
+verified R3 Windows API deployment. Phone v75 was independently published as a release package/feed
+through PR #104; physical installation and family-device experience remain unaccepted. PR #108 published
+no Android package. Semantic search and local AI remain OFF. API/Web deployment and client publication
 remain separate in [Project Status](PROJECT_STATUS.md).
 
 Earlier continuation: [October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and
