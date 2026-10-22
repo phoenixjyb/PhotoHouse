@@ -23,6 +23,13 @@ Chinese/mixed, active-cancellation or expiry result. Both application flags stay
 off. See the [corrected-grammar checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#corrected-grammar-first-generated-english-case-2026-10-22)
 for measured evidence and the earlier retained failures.
 
+A later language/interruption slate passed its 92-check model-free Windows gate
+with zero skips, then stopped on the first Chinese case because the parent could
+not validate its native activity witness. No draft was retained and the other
+three cases did not run. Cleanup and preservation passed; the witness failure
+does not establish a model-language failure or qualify cancellation/expiry.
+See the [activity-witness checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#languageinterruption-slate-activity-witness-refusal-2026-10-22).
+
 The default-off synthetic application, protected prepare/cancel, review/save and
 `RuntimeConfiguration` injection seams are implemented. Windows completed 12
 synthetic native cases for the pinned source and 18 binding-observer checks.
@@ -101,9 +108,10 @@ story admission blocked while another owner's maintenance or recovery is active.
    real grammar support, complete source citations, no invented people/events,
    preservation of original wording and useful review questions for missing facts.
    Schema validity alone is not language or factual quality.
-5. Cancel an already resumed real worker and exercise a deadline failure. Require
-   native root exit, zero Job members, exchange disposal and admission release
-   before a subsequent attempt. Do not reclaim a claim by age, PID or free RAM.
+5. Cancel during proved native inference and exercise the real total-operation
+   deadline using the evidence requirements below. Require native root exit,
+   zero Job members, exchange disposal and admission release before a subsequent
+   attempt. Do not reclaim a claim by age, PID or free RAM.
 6. Record pass/fail per exact build/model/account/launch and retain private failure
    evidence. Any change to those pins needs renewed qualification. Keep the
    application disabled after a passing trial.
@@ -112,6 +120,69 @@ Do not log selected words, prompt text, generated prose or original media in
 shared reports. Use generated case IDs and fixed outcomes. A real CPU trial does
 not qualify GPU mapping/VRAM, service restart recovery, live retention/egress,
 model residency, deployment, voice interaction or family/device acceptance.
+
+## Language and active-inference evidence
+
+For Chinese and mixed-language cases, inspect the returned chapter narration.
+An input containing Chinese, an echoed title or a valid JSON response does not
+establish a Chinese draft. A character-presence check can reject an obvious
+language mismatch, but cannot accept fluency, factual grounding or usefulness.
+Review those separately against the generated source memories and citations;
+retain `needs_review` and leave both drafts unsaved.
+
+Worker resume establishes process execution only. Before describing cancellation
+as active-inference cancellation, obtain a request-bound, content-free witness
+after a successful native decode and token-sampling call within the same
+completion. Forward the backend's original arguments and return values, record
+no token or prose, and restore all observation hooks on success and failure.
+Observation failure must prevent a successful qualification result.
+
+The witness must include the executing worker's PID and creation FILETIME and
+match the exact private request. The parent must keep its original root process
+handle and Job handle, then verify the witnessed worker in that Job's complete,
+bounded member list before opening an observation handle. Check exact creation
+identity, membership and liveness through that query/synchronize-only handle;
+verify the retained root independently. Pin both executable images by their
+queried paths and stable file hashes. A launcher and its executing worker can
+have different identities; neither a witness PID nor `sys.executable` grants
+ownership. All cancellation and cleanup stay on the retained native Job owner.
+
+Recheck both identities, the request and witness, outstanding preparation and
+absent completion marker before interruption. Close the observation handle on
+success and failure; an uncertain close prevents acceptance. PID existence, CPU
+use, model loading or a completion that already won the race are insufficient.
+Retain bounded expected/emitted identities and a fixed refusal category when a
+check fails. Report missing evidence or a completion race as failed or
+inconclusive, without publishing a draft or automatically repeating the case.
+
+For expiry, use the existing real monotonic total-operation deadline, including
+hashing, cold loading and cleanup. After the native-work witness, verify the
+same retained root, verified worker and outstanding preparation near that fixed
+deadline. Expiry before
+inference starts, or during cleanup after generation ends, does not establish
+active-inference expiry. Do not delay the backend, substitute a clock, extend
+the deadline or retry automatically to manufacture overlap.
+
+Use a separate request-bound completion-exit marker before diagnostic or worker
+cleanup. Require it absent at the interruption checks and after the interrupted
+root settles; require a valid marker for normal generated results. Any completion
+exit, including an exception, makes the interrupt case failed or inconclusive.
+This excludes observed post-generation cleanup from the active-inference result.
+It remains sampled evidence: forceful termination in the short interval between
+backend return and marker creation cannot establish instruction-level ordering.
+
+For Windows pathname/open-handle file comparisons, require a stable creation
+birth-time identity. Some Python builds give different meanings to path and
+handle `ctime`; comparing those values can reject an unchanged file. Verify
+this compatibility before model startup and retain the other file identity,
+size, modification-time, link, ACL and reparse checks.
+
+Both interrupt cases must produce no draft and settle the preparation task.
+Reconcile the retained native owner, observe root exit and zero Job members,
+dispose the owned exchange and release its exact admission claim. Uncertain
+cleanup retains ownership and blocks reuse. Keep execution reports private and
+content-free; these evidence requirements do not activate a provider or qualify
+service-account behavior, protected UI, recovery or family use.
 
 ## Composed synthetic rehearsal
 
