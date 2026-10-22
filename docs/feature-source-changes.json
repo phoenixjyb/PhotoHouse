@@ -30577,6 +30577,36 @@
         }
       ],
       "notes": "Compute phase durations from matching phase_started and phase_completed events, rather than neighboring completion boundaries. Documentation precision only; no new qualification or runtime action."
+    },
+    {
+      "feature": "semantic-index-single-artifact-audit-pass-r65",
+      "source_base": "9b307fba82f454f06c0aca97a024d919a84142e1",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/library_semantic_index.py",
+          "before_sha256": "ce9fc3e0ec4c1945271401724501caf0f2932b0303364042999e67ca491a64e9",
+          "sha256": "1ed5c80814b2877717ae1c5da8d26c36de6d3961a124bf6a0816adc1d5dfca2d"
+        },
+        {
+          "path": "server/tests/security/test_library_semantic_index.py",
+          "before_sha256": "08485576ffb4a89504194f719a4dcab442076b2a45f71b04d26c53f329a5eba0",
+          "sha256": "461a87e07a202657d8fe76ff435f7de3f09ee4aa2eba7e70f05fed9681d0f87f"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "f21e2aecc2144fad2b30ecb5796873ce121a9c4c56f7c5b63eb270ce38192ced",
+          "sha256": "758b098744e160b1476b6c3f6d97232d69527fa2ad9c6af82362d1a04b703b7b"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "89318d72cc23fb187d43dec5caf4812a6c327464b1ade62dc72f1992adff1f95",
+          "sha256": "786f41900532a910097e900f7623800b916793de8e57b5c79ba1af3aa9c6a7fd"
+        }
+      ],
+      "notes": "Validate all checkpoint provenance before one artifact-verification pass; retain writer/resume, protected JSON and vector checkpoint/hash/identity checks, canonical components, source checks and both independent full qualification audits. Generated mutation/refusal and exact-output comparison only; native qualification and activation remain separate."
     }
   ]
 }

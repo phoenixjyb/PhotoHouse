@@ -1,5 +1,22 @@
 # Current project status
 
+**October 23 audit optimization (R65, source only / unmerged):** the full-index
+inspector now validates complete checkpoint coverage and its exact agreement with
+the manifest before one artifact-verification pass. Resume/index construction,
+the protected JSON reader, vector checkpoint/hash/identity checks, canonical
+components, source checks and both independent qualification audits remain.
+
+The focused index/vector/checkpoint suites passed **54 tests / 4 subtests**.
+A generated 515-image Mac comparison returned identical manifests, artifacts and
+identities: vector read/decode calls fell from 1,030 to 515, JSON loads from 1,098
+to 583 and checkpoint inspections from 2,128 to 1,098 per audit. Three alternating
+pairs measured a median 1,453.685 ms before / 827.143 ms after. These are local
+model-free audit measurements, not native query latency or qualification.
+Full API validation and one fresh bounded Windows qualification remain pending;
+semantic search stays **OFF**. No production deployment or activation is included.
+See [the audit optimization contract](SEMANTIC_REQUEST_LATENCY.md#r65-audit-artifact-pass).
+
+
 **October 22 durable semantic diagnostics (R64, unmerged / undeployed):**
 source `8fbffd8` adds opt-in setup profiling and durable private phase checkpoints.
 The exact source passed **3,375 API tests / 4,037 subtests** plus the generated

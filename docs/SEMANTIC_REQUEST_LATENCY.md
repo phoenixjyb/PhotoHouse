@@ -320,3 +320,41 @@ Retain two independent complete audits and fresh file, source, membership,
 policy, hash and canonical-vector checks; do not share a permissive cache across
 audits or extend the deadline to manufacture acceptance. Semantic search remains
 **OFF** until a complete protected run and the remaining activation gates pass.
+
+
+## R65 audit artifact pass
+
+`inspect_library_index` used to read and validate every metadata/vector artifact
+while traversing committed batches, then repeat that work in its manifest-record
+loop. It now checks every batch's complete structure, source identity and failure
+semantics; exactly matches checkpoint records/failures to the manifest; validates
+all directory/name coverage; and performs one artifact-verification pass using
+the matched manifest. The remaining pass explicitly retains metadata digest,
+source/identity/canonical path binding, vector checkpoint inspection and rehash,
+the protected vector reader, canonical checksum and component validation.
+
+This is not a cache. No verified result survives an inspection, file, request or
+qualification phase. Both complete initial and final inspections remain, and the
+writer/resume path retains its independent committed-artifact checks. The JSON
+reader and vector checkpoint wrappers retain their existing repeated byte/hash
+and stable-identity checks. One read/decode call is not one physical hash pass.
+
+The focused suites passed 54 tests / four subtests, including corruption after an
+independent audit, checkpoint/manifest tail disagreement before vector I/O,
+canonical-but-stale metadata, jointly rebound incorrect identity/source/path/file
+or component checksums, metadata/vector links, and source drift after checkpoint
+validation. A generated 515-image comparison returned identical manifest,
+artifact records and identities across three alternating baseline/optimized runs:
+
+| Per-audit observation | Before | R65 |
+| --- | ---: | ---: |
+| Vector read/decode calls | 1,030 | 515 |
+| JSON load calls | 1,098 | 583 |
+| Checkpoint inspection calls | 2,128 | 1,098 |
+| Mac median audit duration | 1,453.685 ms | 827.143 ms |
+
+These model-free generated measurements do not establish Windows performance,
+interactive request latency, relevance or full protected qualification. Keep the
+1,800-second child limit, both complete audits, 15 protected cases, nine matching
+samples, fresh current coverage/model/source/policy pins and independent closure.
+Native qualification is pending; semantic search remains **OFF**.

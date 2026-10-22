@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import threading
@@ -185,6 +186,125 @@ def test_snapshot_membership_and_vector_tampering_fail_closed(tmp_path):
     record = next(output.glob("image-vectors/*/*.npy"))
     record.write_bytes(record.read_bytes()[:-1] + b"\x01")
     record.chmod(0o600)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output)
+
+
+def _completed_index(tmp_path, count=2):
+    snapshot, roots, parent = _fixture(tmp_path, count)
+    output = parent / "index-run"
+    index.execute(snapshot, output, model=FakeModel(), original_roots=[roots],
+        free_space_floor=0)
+    return snapshot, roots, output
+
+
+def _replace_json(path, value):
+    path.write_bytes(index.canonical(value) + b"\n")
+    path.chmod(0o600)
+
+
+def test_each_independent_audit_verifies_every_artifact_once(monkeypatch, tmp_path):
+    snapshot, _roots, output = _completed_index(tmp_path, count=9)
+    read_vector = index._read_vector
+    reads = []
+
+    def observed(root, record):
+        reads.append(record.asset_id)
+        return read_vector(root, record)
+
+    monkeypatch.setattr(index, "_read_vector", observed)
+    first = index.inspect_library_index(output, expected_snapshot=snapshot)
+    assert reads == [str(number) for number in range(1, 10)]
+    reads.clear()
+    second = index.inspect_library_index(output, expected_snapshot=snapshot)
+    assert reads == [str(number) for number in range(1, 10)]
+    assert first == second
+    # No result survives into another audit: fresh byte tampering is refused.
+    target = next(output.glob("image-vectors/*/*.npy"))
+    target.write_bytes(target.read_bytes()[:-1] + b"\x01")
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output, expected_snapshot=snapshot)
+
+
+def test_checkpoint_manifest_mismatch_refuses_before_any_artifact_read(monkeypatch, tmp_path):
+    _snapshot, _roots, output = _completed_index(tmp_path, count=9)
+    path = output / "index.json"
+    manifest = json.loads(path.read_bytes())
+    manifest["records"][-1]["metadata_sha256"] = "a" * 64
+    _replace_json(path, manifest)
+    reads = []
+    monkeypatch.setattr(index, "_read_vector", lambda *args: reads.append(args))
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output)
+    assert reads == []
+
+
+@pytest.mark.parametrize("field,value", [
+    ("asset_id", "999"),
+    ("source_sha256", "a" * 64),
+    ("identity_sha256", "a" * 64),
+    ("file_sha256", "a" * 64),
+    ("component_sha256", "a" * 64),
+    ("relative_path", "image-vectors/" + "a" * 64 + "/" + "b" * 64 + ".npy"),
+])
+def test_rebound_metadata_still_requires_artifact_and_source_identity(tmp_path, field, value):
+    _snapshot, _roots, output = _completed_index(tmp_path)
+    manifest_path = output / "index.json"
+    manifest = json.loads(manifest_path.read_bytes())
+    summary = manifest["records"][0]
+    metadata_path = next(output.glob(f"image-vectors/*/{summary['record_id']}.json"))
+    metadata = json.loads(metadata_path.read_bytes())
+    metadata[field] = value
+    _replace_json(metadata_path, metadata)
+    summary["metadata_sha256"] = _digest(metadata_path)
+    batch_path = output / "checkpoints" / "batch-00000000.json"
+    batch = json.loads(batch_path.read_bytes())
+    batch["results"][0]["metadata_sha256"] = summary["metadata_sha256"]
+    _replace_json(batch_path, batch)
+    _replace_json(manifest_path, manifest)
+    # Even agreement between the manifest and checkpoint does not authorize
+    # stale source/identity bindings, an alias path, or wrong vector checksums.
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output)
+
+
+def test_canonical_metadata_change_requires_original_checkpoint_digest(tmp_path):
+    _snapshot, _roots, output = _completed_index(tmp_path)
+    path = next(output.glob("image-vectors/*/*.json"))
+    metadata = json.loads(path.read_bytes())
+    metadata["created_at"] += 1
+    _replace_json(path, metadata)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output)
+
+
+@pytest.mark.parametrize("suffix,alias", [("json", "symlink"), ("npy", "symlink"),
+                                         ("json", "hardlink"), ("npy", "hardlink")])
+def test_audit_refuses_linked_artifacts(tmp_path, suffix, alias):
+    _snapshot, _roots, output = _completed_index(tmp_path)
+    path = next(output.glob(f"image-vectors/*/*.{suffix}"))
+    other = output.parent / f"alias.{suffix}"
+    if alias == "symlink":
+        other.write_bytes(path.read_bytes())
+        other.chmod(0o600)
+        path.unlink()
+        path.symlink_to(other)
+    else:
+        os.link(path, other)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output)
+
+
+def test_source_drift_after_checkpoint_validation_is_still_refused(monkeypatch, tmp_path):
+    snapshot, _roots, output = _completed_index(tmp_path)
+    verify_batch = index._verify_batch
+
+    def change_after_batch(*args, **kwargs):
+        verify_batch(*args, **kwargs)
+        source = Path(snapshot["assets"][0]["path"])
+        source.write_bytes(source.read_bytes() + b"changed")
+
+    monkeypatch.setattr(index, "_verify_batch", change_after_batch)
     with pytest.raises(index.LibraryIndexUnavailable):
         index.inspect_library_index(output)
 

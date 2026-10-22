@@ -972,13 +972,16 @@ def inspect_library_index(path, *, expected_snapshot=None, verify_original_bytes
         expected_batches = (manifest["snapshot_asset_count"] + BATCH_SIZE - 1) // BATCH_SIZE
         _require({item.name for item in checkpoint_dir.iterdir()} == {
             f"batch-{number:08d}.json" for number in range(expected_batches)})
+        # Establish complete checkpoint provenance before artifact I/O. Once
+        # the full summaries match the manifest, the record loop below performs
+        # one artifact-verification pass. Its protected readers still recheck
+        # file hashes/identity. Resume continues to use _verify_batch_files.
         checkpoint_records, checkpoint_failures = [], []
         for number in range(expected_batches):
             batch = _load_json(_batch_path(root, number), MAX_DOCUMENT_BYTES)
             _verify_batch(batch, number, frozen_snapshot, manifest["snapshot_sha256"],
                 roots, image, identity_digest, manifest["model_receipt_sha256"],
                 lambda: None, verify_sources=False)
-            _verify_batch_files(root, batch, image)
             checkpoint_records.extend(result for result in batch["results"]
                 if result["status"] == "ready")
             checkpoint_failures.extend(result for result in batch["results"]
@@ -1032,7 +1035,8 @@ def inspect_library_index(path, *, expected_snapshot=None, verify_original_bytes
             record = ImmutableVectorArtifact(**metadata)
             _require(validate_artifact(record, image)
                 and record.record_id == record_id and record.asset_id == summary["asset_id"]
-                and record.source_sha256 == summary["source_sha256"])
+                and record.source_sha256 == summary["source_sha256"]
+                and record.relative_path == f"image-vectors/{identity_digest}/{record_id}.npy")
             pin = inspect_checkpoint(index_dir / f"{record_id}.npy", record.file_sha256)
             verify_checkpoint(pin)
             vector = _read_vector(root, record)
