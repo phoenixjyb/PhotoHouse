@@ -9,8 +9,8 @@ demo; both hosted Source checks and Android UI qualification passed. PR
 One isolated Windows attempt reached the unchanged **1,800-second child limit**
 during its final full audit. Independent readback validated **365 checkpoints**
 and all 295 extracted source files. The model-load marker recorded 56.172 s;
-the initial audit completed in 1,238.702 s, bulk-vector construction in 19.187 s,
-and the canary phase in 194.547 s. These are setup/phase costs, not per-query
+the initial audit completed in 1,238.686 s, bulk-vector construction in 19.171 s,
+and the canary phase in 193.860 s. These are setup/phase costs, not per-query
 latencies. Twelve phases completed, but the journal was unclosed and no completed
 measurement/report survived. This does **not** qualify the source, establish new
 latency or prove the full protected result. No automatic retry occurred.

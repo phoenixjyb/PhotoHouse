@@ -287,9 +287,9 @@ Retained completed phase boundaries give:
 | Phase | Duration | Evidence limit |
 | --- | ---: | --- |
 | Model load | 56.172 s | Separate start/completion marker, includes imports |
-| Initial full audit | 1,238.702 s | Completed phase, both artifact passes |
-| Bulk-vector construction | 19.187 s | Completed phase, 23,696 vector reads |
-| Protected canary | 194.547 s | Phase completed; full result/report not retained |
+| Initial full audit | 1,238.686 s | Completed phase, both artifact passes |
+| Bulk-vector construction | 19.171 s | Completed phase, 23,696 vector reads |
+| Protected canary | 193.860 s | Phase completed; full result/report not retained |
 | Final full audit | Interrupted | Last checkpoint at 1,741.907 s after journal start |
 
 The canary duration includes many checks and requests; it is not a single-query

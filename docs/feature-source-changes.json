@@ -30557,6 +30557,26 @@
         }
       ],
       "notes": "Record the single bounded native timeout with 365 validated diagnostic checkpoints, measured setup phase boundaries, incomplete final audit and no accepted latency. Distinguish independently authorized report publication from unchanged PhotoHouse pins; preserve semantic OFF and both audit/closure gates."
+    },
+    {
+      "feature": "semantic-phase-start-duration-precision-r64",
+      "source_base": "a52bb257a1f9ea8c30ac1aacd2e67daa693023d5",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "900fba04c7981ea5fbaaf7d4f51f02e0e9f0e33cc98754d023975f22d571c5ed",
+          "sha256": "f21e2aecc2144fad2b30ecb5796873ce121a9c4c56f7c5b63eb270ce38192ced"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "f1c910860b875da72923a44838086b0aae99b6fac923a987811fe17cb593317e",
+          "sha256": "89318d72cc23fb187d43dec5caf4812a6c327464b1ade62dc72f1992adff1f95"
+        }
+      ],
+      "notes": "Compute phase durations from matching phase_started and phase_completed events, rather than neighboring completion boundaries. Documentation precision only; no new qualification or runtime action."
     }
   ]
 }
