@@ -30363,6 +30363,24 @@
       "schema_changed": false,
       "production_activation": false,
       "notes": "Record independently verified R3 API deployment while semantic/local AI stay off and physical phone/family acceptance remains open."
+    },
+    {
+      "feature": "release-documentation-scope-precision-20261022",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "85b854cffd05793aeef2bdf102fcffbb6393c67d074c3fbc1b680486392f4b39",
+          "sha256": "9c2b51c038f0ae0184f69d49e6aeb0bd0897f8a43a90ff745591e0bc87eb6d0d"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "0441d8bf90bf1cdad27acc0adb4c86d3d4910dd89a6678835496debbf93a931a",
+          "sha256": "0d92245770d19f70ba66de2d45de1ab5cbe282088eca81371f51bdcfe31c84a9"
+        }
+      ],
+      "notes": "Clarify static asset count and selected-story generation/provider scope; speech and other existing local services are not described as disabled."
     }
   ]
 }

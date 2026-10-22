@@ -58,7 +58,7 @@ validation only; semantic search remains disabled.
 The [October 22 combined-source record](SEARCH_RELEASE_2026-10-22.md) covers PR #108 source and the
 verified R3 Windows API deployment. Phone v75 was independently published as a release package/feed
 through PR #104; physical installation and family-device experience remain unaccepted. PR #108 published
-no Android package. Semantic search and local AI remain OFF. API/Web deployment and client publication
+no Android package. Semantic search and selected-story AI generation/providers remain OFF. API/Web deployment and client publication
 remain separate in [Project Status](PROJECT_STATUS.md).
 
 Earlier continuation: [October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and
