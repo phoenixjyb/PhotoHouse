@@ -137,7 +137,10 @@ def _artifact_cohort_key(artifacts, check):
     rows = []
     for artifact in artifacts:
         _check_callback(check)
-        # validate_artifact has already enforced exact builtin field types.
+        if type(artifact) is not ImmutableVectorArtifact:
+            _unavailable()
+        # Cold callers validate grammar before this copy. Warm callers rely on
+        # exact primitive types plus equality with the prior validated rows.
         # Store values rather than frozen dataclass references: object.__setattr__
         # can still mutate a retained dataclass instance after this snapshot.
         row = tuple(getattr(artifact, name) for name in _ARTIFACT_COHORT_FIELDS)
@@ -146,6 +149,30 @@ def _artifact_cohort_key(artifacts, check):
             _unavailable()
         rows.append(row)
     return tuple(rows)
+
+
+def _warm_artifact_cohort_key(artifacts, cached, check):
+    """Copy current fields for comparison with one prior validated cohort."""
+    if (type(artifacts) is not tuple or len(artifacts) > MAX_CANDIDATES
+            or type(cached) is not tuple or len(cached) != 3
+            or type(cached[0]) is not tuple or len(cached[0]) != 4
+            or type(cached[1]) is not tuple or len(cached[1]) != len(artifacts)):
+        return None
+    # The cached rows came from a complete validation and are immutable builtin
+    # primitives. A warm hit still copies and type-checks every current field;
+    # equality can therefore reuse only the prior grammar/cohort proof.
+    return _artifact_cohort_key(artifacts, check)
+
+
+def _private_artifact_copies(cohort_key, check):
+    """Detach downstream work from caller-owned artifact instances."""
+    copies = []
+    for row in cohort_key:
+        _check_callback(check)
+        if type(row) is not tuple or len(row) != len(_ARTIFACT_COHORT_FIELDS):
+            _unavailable()
+        copies.append(ImmutableVectorArtifact(*row))
+    return tuple(copies)
 
 
 def _safe_file_parent(path: Path):
@@ -360,11 +387,46 @@ class BulkVectorStore:
     @_unwrap_callbacks
     def snapshot(self, artifacts, *, library_id, check=lambda: None, charge=lambda size: None):
         _check_callback(check)
-        identity_digest, artifacts = _valid_artifact_cohort(artifacts, self.identity, library_id, check)
-        if library_id != self.library_id or identity_digest != identity_sha256(self.identity):
-            _unavailable()
-        cohort_key = _artifact_cohort_key(artifacts, check)
         cached = self._cache
+        identity_digest = None
+        cohort_key = None
+        warm_hit = False
+        if (library_id == self.library_id and _valid_library(library_id)
+                and type(self.identity) is VectorSpaceIdentity):
+            try:
+                identity_digest = identity_sha256(self.identity)
+            except (AttributeError, TypeError, ValueError):
+                _unavailable()
+            if (type(cached) is tuple and len(cached) == 3
+                    and type(cached[0]) is tuple and len(cached[0]) == 4
+                    and cached[0][0] == self.file_sha256
+                    and cached[0][2] == library_id
+                    and cached[0][3] == identity_digest):
+                current_key = _warm_artifact_cohort_key(artifacts, cached, check)
+                if current_key is not None and current_key == cached[1]:
+                    cohort_key = current_key
+                    warm_hit = True
+        if not warm_hit:
+            identity_digest, artifacts = _valid_artifact_cohort(
+                artifacts, self.identity, library_id, check,
+            )
+            try:
+                current_identity_digest = identity_sha256(self.identity)
+            except (AttributeError, TypeError, ValueError):
+                _unavailable()
+            if library_id != self.library_id or identity_digest != current_identity_digest:
+                _unavailable()
+            cohort_key = _artifact_cohort_key(artifacts, check)
+        # Every downstream operation receives artifacts reconstructed from the
+        # complete typed primitive copy. Callbacks and caller-held references
+        # can mutate the originals without changing this coherent snapshot.
+        artifacts = _private_artifact_copies(cohort_key, check)
+        try:
+            current_identity_digest = identity_sha256(self.identity)
+        except (AttributeError, TypeError, ValueError):
+            _unavailable()
+        if identity_digest != current_identity_digest:
+            _unavailable()
         # Reuse only the digest for an exact copy of the freshly validated
         # primitive fields; never retain mutable artifact objects in the cache.
         cohort_digest = (cached[0][1] if cached is not None and cached[1] == cohort_key

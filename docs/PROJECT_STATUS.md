@@ -1,5 +1,16 @@
 # Current project status
 
+**October 22 next semantic latency increment (R63, source only):** warm bulk
+snapshots can reuse a prior pure metadata-validation proof only after exact
+current copies of all 16 typed primitive fields, file/library binding and model
+identity match. Fresh full file hashing, source/policy/authorization checks and
+exact ranking arithmetic remain intact. Focused suites passed 69 tests / 53
+subtests; a generated 4,163-entry canary passed all 15 protections. Separate Mac
+bulk experiments recorded 49.16 ms before / 21.86 ms after for warm snapshots,
+with identical exact rankings; these are not native or end-to-end latency claims.
+The full source check and fresh native qualification are the next gates.
+Semantic stays **OFF**. See [latency contract and evidence](SEMANTIC_REQUEST_LATENCY.md).
+
 **October 22 combined-source release:** PR [#108](https://github.com/phoenixjyb/PhotoHouse/pull/108)
 merged as `a6dfe31f7df1149170a01fc5a171867b2aea0584`; the merge tree is identical to reviewed
 source `c5dd85018a36e9f574acabcd9ecaf47db609e051`. Hosted functional API, browser, Windows CPU,

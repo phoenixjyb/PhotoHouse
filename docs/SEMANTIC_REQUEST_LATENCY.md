@@ -150,6 +150,41 @@ demo, with unchanged source; independent related checks passed 33 tests. This is
 a correctness fix, not a measured latency improvement. **R62 is also
 outside the native e85c6e4 package** and needs native qualification.
 
+## R63 exact warm-cohort metadata proof
+
+R63 avoids repeating pure artifact grammar, duplicate and ordering validation
+only when every current artifact has its exact class and all 16 current fields
+are copied into exact builtin primitive tuples matching the previously validated,
+ordered cohort. The pinned file, library and current model identity must match.
+Identity is checked again after callbacks copy the fields. Any difference takes
+the full validator/sort path; wrong types, duplicates, changed scope, identity
+or metadata still refuse when they cannot match the pinned container.
+
+Only the metadata proof is reused. Every snapshot still securely opens and fully
+hashes the current bulk file, validates its header and complete cohort binding,
+charges its bytes and checks cancellation. Source SQL, eligibility policy,
+current permissions, the pre/post-encoder snapshots and final authorization are
+unchanged. Cold canonical-matrix verification and exact `math.fsum` scores and
+tie ordering remain unchanged. The cache stores copied primitives, never mutable
+artifact references or an authorization decision. Downstream header, matrix and
+ranking inputs are rebuilt as private copies of the captured primitive rows, so
+later callbacks cannot change a snapshot through caller-held artifact aliases.
+
+The focused storage/search/eligibility/coverage/profiler suites passed **69 tests
+and 53 subtests**. Regression cases include all 16 wrong-type fields, boolean and
+float integer aliases, callback-driven valid/invalid identity mutations, cloned
+metadata, reordered cohorts, duplicates and unchanged secure file reads. A
+separate generated 4,098-vector / 768-dimension Mac experiment recorded a warm
+snapshot median of **49.16 ms before / 21.86 ms after**, with the identical exact
+ranking digest. These are separate local runs, not a native end-to-end speedup
+or service-SLO claim. A generated 4,163-entry canary, including 65 synthetic
+omissions, passed all 15 protection checks with a synthetic encoder.
+
+Semantic remains **OFF**. The new source, together with the already merged
+R61/R62 changes, still needs a newly frozen native qualification on matching
+catalog, policy, model and workload pins. The latest verified native timing
+remains the `e85c6e4` result above; no newer native latency is claimed here.
+
 The next measured priorities are ranking CPU work, both protected bulk snapshots,
 and fresh SQL/fact construction. The request-local metadata increment may save
 only a fraction of the remaining gap. A synthetic Mac subphase experiment is not

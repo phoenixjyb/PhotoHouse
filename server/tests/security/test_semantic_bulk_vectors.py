@@ -275,8 +275,10 @@ class SemanticBulkVectorTests(unittest.TestCase):
         self.assertNotIn(original, cached_rows)
 
         mutations = (
+            {'asset_id': '2'},
             {'created_at': 2},
             {'source_sha256': 'd' * 64},
+            {'model_name': 'other-model'},
             {'file_sha256': 'e' * 64},
             {'component_sha256': 'f' * 64},
             {'record_id': 'c' * 64,
@@ -308,6 +310,164 @@ class SemanticBulkVectorTests(unittest.TestCase):
                     store.snapshot((original,), library_id='family-a')
                 self.assertEqual(read.call_count, 1)
                 self.assertIs(store._cache[2], original_matrix)
+
+    def test_warm_exact_primitive_cohort_skips_only_duplicate_validation(self):
+        from app.access import semantic_bulk_vectors as module
+        store, records = self.build(((1, 'a', (1.0, 0.0)),))
+        with patch.object(module, 'validate_artifact', wraps=module.validate_artifact) as validate:
+            first = store.snapshot(records, library_id='family-a')
+            self.assertEqual(validate.call_count, 1)
+            validate.reset_mock()
+            with patch.object(module, '_read_secure_file', wraps=module._read_secure_file) as read:
+                warm = store.snapshot(tuple(replace(row) for row in records), library_id='family-a')
+            self.assertEqual(validate.call_count, 0)
+            self.assertEqual(read.call_count, 1)
+            self.assertEqual(warm.rank((1.0, 0.0), ('1',)), first.rank((1.0, 0.0), ('1',)))
+
+    def test_warm_callback_identity_mutation_refuses_before_file_read(self):
+        from app.access import semantic_bulk_vectors as module
+        store, records = self.build(((1, 'a', (1.0, 0.0)),))
+        store.snapshot(records, library_id='family-a')
+        original = store.identity.model_version
+        calls = 0
+
+        def mutate_identity():
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                object.__setattr__(store.identity, 'model_version', 'other-v1')
+
+        try:
+            with patch.object(module, '_read_secure_file', wraps=module._read_secure_file) as read:
+                with self.assertRaises(BulkVectorUnavailable):
+                    store.snapshot(tuple(replace(row) for row in records),
+                                   library_id='family-a', check=mutate_identity)
+            self.assertEqual(read.call_count, 0)
+        finally:
+            object.__setattr__(store.identity, 'model_version', original)
+
+    def test_warm_callback_invalid_identity_refuses_with_fixed_error_before_file_read(self):
+        from app.access import semantic_bulk_vectors as module
+        store, records = self.build(((1, 'a', (1.0, 0.0)),))
+        store.snapshot(records, library_id='family-a')
+        original = store.identity.dimension
+        calls = 0
+
+        def invalidate_identity():
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                object.__setattr__(store.identity, 'dimension', True)
+
+        try:
+            with patch.object(module, '_read_secure_file', wraps=module._read_secure_file) as read:
+                with self.assertRaises(BulkVectorUnavailable):
+                    store.snapshot(tuple(replace(row) for row in records),
+                                   library_id='family-a', check=invalidate_identity)
+            self.assertEqual(read.call_count, 0)
+        finally:
+            object.__setattr__(store.identity, 'dimension', original)
+
+    def test_warm_order_scope_identity_and_duplicate_fallbacks(self):
+        from app.access import semantic_bulk_vectors as module
+        store, records = self.build(((1, 'a', (1.0, 0.0)), (2, 'b', (0.0, 1.0))))
+        first = store.snapshot(records, library_id='family-a')
+        with patch.object(module, 'validate_artifact', wraps=module.validate_artifact) as validate:
+            reordered = store.snapshot(tuple(reversed(records)), library_id='family-a')
+            self.assertEqual(validate.call_count, len(records))
+        self.assertEqual(reordered.rank((1.0, 0.0), ('1', '2')),
+                         first.rank((1.0, 0.0), ('1', '2')))
+        with self.assertRaises(BulkVectorUnavailable):
+            store.snapshot((records[0], records[0]), library_id='family-a')
+        with self.assertRaises(BulkVectorUnavailable):
+            store.snapshot(records, library_id='family-b')
+        original = store.identity.model_version
+        try:
+            object.__setattr__(store.identity, 'model_version', 'other-v1')
+            with self.assertRaises(BulkVectorUnavailable):
+                store.snapshot(records, library_id='family-a')
+        finally:
+            object.__setattr__(store.identity, 'model_version', original)
+
+    def test_warm_snapshot_uses_private_copies_across_callbacks_and_after_return(self):
+        from app.access import semantic_bulk_vectors as module
+        store, records = self.build(((1, 'a', (1.0, 0.0)), (2, 'b', (0.0, 1.0))))
+        store.snapshot(records, library_id='family-a')
+        calls = 0
+
+        def mutate_caller_artifacts():
+            nonlocal calls
+            calls += 1
+            if calls == 3:
+                # The first current row was already copied for the warm key.
+                object.__setattr__(records[0], 'component_sha256', 'f' * 64)
+            elif calls == 6:
+                # This callback runs during the secure bulk read, after private
+                # artifacts have been reconstructed from the captured rows.
+                object.__setattr__(records[0], 'asset_id', '3')
+                object.__setattr__(records[0], 'record_id', 'd' * 64)
+                object.__setattr__(records[0], 'relative_path',
+                                   f"image-vectors/{records[0].identity_sha256}/" + 'd' * 64 + '.npy')
+
+        with patch.object(module, '_read_secure_file', wraps=module._read_secure_file) as read:
+            snapshot = store.snapshot(records, library_id='family-a', check=mutate_caller_artifacts)
+        self.assertEqual(read.call_count, 1)
+        self.assertEqual(snapshot.rank((1.0, 0.0), ('1', '2')), (('1', 1.0), ('2', 0.0)))
+        object.__setattr__(records[1], 'asset_id', '4')
+        self.assertEqual(snapshot.rank((1.0, 0.0), ('1', '2')), (('1', 1.0), ('2', 0.0)))
+
+    def test_cold_snapshot_uses_private_copies_after_secure_read_callback(self):
+        from app.access import semantic_bulk_vectors as module
+        store, records = self.build(((1, 'a', (1.0, 0.0)), (2, 'b', (0.0, 1.0))))
+        calls = 0
+
+        def mutate_caller_artifacts():
+            nonlocal calls
+            calls += 1
+            if calls == 8:
+                object.__setattr__(records[0], 'asset_id', '3')
+                object.__setattr__(records[0], 'record_id', 'd' * 64)
+                object.__setattr__(records[0], 'relative_path',
+                                   f"image-vectors/{records[0].identity_sha256}/" + 'd' * 64 + '.npy')
+
+        with patch.object(module, '_read_secure_file', wraps=module._read_secure_file) as read:
+            snapshot = store.snapshot(records, library_id='family-a', check=mutate_caller_artifacts)
+        self.assertEqual(read.call_count, 1)
+        self.assertEqual(snapshot.rank((1.0, 0.0), ('1', '2')), (('1', 1.0), ('2', 0.0)))
+
+    def test_wrong_primitive_types_refuse_on_warm_and_cold_cohorts(self):
+        from app.access import semantic_bulk_vectors as module
+        store, records = self.build(((1, 'a', (1.0, 0.0)),))
+        store.snapshot(records, library_id='family-a')
+        original = records[0]
+        wrong_types = {
+            'record_id': 1,
+            'asset_id': 1,
+            'source_sha256': 1,
+            'model_name': 1,
+            'artifact_sha256': 1,
+            'preprocessing_sha256': 1,
+            'vector_space_id': 1,
+            'model_version': 1,
+            'dimension': True,
+            'normalization': 1,
+            'identity_sha256': 1,
+            'relative_path': 1,
+            'file_sha256': 1,
+            'component_sha256': 1,
+            'created_at': True,
+            'status': 1,
+        }
+        self.assertEqual(set(wrong_types), set(module._ARTIFACT_COHORT_FIELDS))
+        for name, value in [*wrong_types.items(), ('created_at', 1.0)]:
+            changed = replace(original, **{name: value})
+            with self.subTest(field=name):
+                with self.assertRaises(BulkVectorUnavailable):
+                    store.snapshot((changed,), library_id='family-a')
+                cold = BulkVectorStore(self.out, hashlib.sha256(self.out.read_bytes()).hexdigest(),
+                                       'family-a', identity())
+                with self.assertRaises(BulkVectorUnavailable):
+                    cold.snapshot((changed,), library_id='family-a')
 
     def test_768d_scores_are_bitwise_legacy_equivalent_across_cached_blocks(self):
         import math

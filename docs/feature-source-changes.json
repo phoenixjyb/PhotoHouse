@@ -30381,6 +30381,36 @@
         }
       ],
       "notes": "Clarify static asset count and selected-story generation/provider scope; speech and other existing local services are not described as disabled."
+    },
+    {
+      "feature": "semantic-warm-exact-cohort-validation-proof-r63",
+      "source_base": "885c428333cd952b8a22802bb7789aa9cfe8eb98",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "before_sha256": "e9971843a851534957db137a255986791d79654821a3615396a851a619fe40a6",
+          "sha256": "9fa380ac576725370a04b091ab7a56640f20f95fe3471a4d8bffb2eff527e006"
+        },
+        {
+          "path": "server/tests/security/test_semantic_bulk_vectors.py",
+          "before_sha256": "c5ef235f11938924042a869793aaee051f302f9136f8c5f34277b619be6ac021",
+          "sha256": "a8c9836b50dc97c63968e5c17428c7b8b27d8c54fe2738c65bc9bd00cfad4adf"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "e46db0f80de45d4723e6411fd6e1c891f334ca79fb970f6c54ebf5b3c4d65008",
+          "sha256": "fa4adf64bce303c893f2b347a8294bb546ce5e415b4155aa9469fd878cb13b37"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "0ceaedfb080f8ce7965eaf875a4476a59ef020b74eef0849a9e597f5d50a96e8",
+          "sha256": "0be330c4f1cc30f2090841bdca7790b29663bcfb6002107e5237d06e5a14ec58"
+        }
+      ],
+      "notes": "Reuse only a pure validation proof for exact freshly copied typed cohort metadata. Preserve complete secure file reads and hashes, scope/identity/source/policy checks, per-row cancellation and exact ranking. Native latency qualification remains separate."
     }
   ]
 }
