@@ -137,16 +137,28 @@ completion. Forward the backend's original arguments and return values, record
 no token or prose, and restore all observation hooks on success and failure.
 Observation failure must prevent a successful qualification result.
 
-The parent must validate the witness against the exact private request and its
-owned root handle, PID and creation identity. It must also observe that the root
-is alive and preparation is outstanding before sending cancellation. PID
-existence, CPU use, model loading or a completion that already won the race are
-insufficient. Report missing evidence or a completion race as failed or
+The witness must include the executing worker's PID and creation FILETIME and
+match the exact private request. The parent must keep its original root process
+handle and Job handle, then verify the witnessed worker in that Job's complete,
+bounded member list before opening an observation handle. Check exact creation
+identity, membership and liveness through that query/synchronize-only handle;
+verify the retained root independently. Pin both executable images by their
+queried paths and stable file hashes. A launcher and its executing worker can
+have different identities; neither a witness PID nor `sys.executable` grants
+ownership. All cancellation and cleanup stay on the retained native Job owner.
+
+Recheck both identities, the request and witness, outstanding preparation and
+absent completion marker before interruption. Close the observation handle on
+success and failure; an uncertain close prevents acceptance. PID existence, CPU
+use, model loading or a completion that already won the race are insufficient.
+Retain bounded expected/emitted identities and a fixed refusal category when a
+check fails. Report missing evidence or a completion race as failed or
 inconclusive, without publishing a draft or automatically repeating the case.
 
 For expiry, use the existing real monotonic total-operation deadline, including
 hashing, cold loading and cleanup. After the native-work witness, verify the
-same root and outstanding preparation near that fixed deadline. Expiry before
+same retained root, verified worker and outstanding preparation near that fixed
+deadline. Expiry before
 inference starts, or during cleanup after generation ends, does not establish
 active-inference expiry. Do not delay the backend, substitute a clock, extend
 the deadline or retry automatically to manufacture overlap.
@@ -158,6 +170,12 @@ exit, including an exception, makes the interrupt case failed or inconclusive.
 This excludes observed post-generation cleanup from the active-inference result.
 It remains sampled evidence: forceful termination in the short interval between
 backend return and marker creation cannot establish instruction-level ordering.
+
+For Windows pathname/open-handle file comparisons, require a stable creation
+birth-time identity. Some Python builds give different meanings to path and
+handle `ctime`; comparing those values can reject an unchanged file. Verify
+this compatibility before model startup and retain the other file identity,
+size, modification-time, link, ACL and reparse checks.
 
 Both interrupt cases must produce no draft and settle the preparation task.
 Reconcile the retained native owner, observe root exit and zero Job members,

@@ -451,3 +451,31 @@ single English result remains the accepted generation checkpoint. Both AI
 switches and the live provider remain off. This qualification made no production
 service/task/configuration, database, family-media, GPU, activation or deployment
 change; reports and failed-attempt artifacts remain private and are not replayed.
+
+
+## Model-free launcher/worker follow-up, 2026-10-22
+
+A later isolated synthetic Python probe completed its native inner run in
+**8.766 seconds**. It recorded different launcher and executing-worker identities
+and verified each creation identity, Job membership, liveness and independently
+pinned executable image. After root exit zero, Job membership went from one to
+zero during one natural-drain poll; no Job termination was requested. Retained
+handles closed and the private exchange was disposed. This measures the probe's
+process topology; it does not prove the original Chinese attempt's failure cause.
+
+The probe's **original outer result remained failed**: its report reader compared
+pathname and open-handle `ctime`. One bounded read-only replay confirmed that
+only that field differed; device, file identity, size, links and modification
+time matched. Independent readback matched all three artifact hashes and
+reconciled the report with the completed inner terminal. That diagnoses the
+reader failure without rewriting it as a passed qualification or rerunning the
+worker. New local observer work uses strict Windows birth-time identity and
+retains the original attempts unchanged.
+
+Before/after checks preserved the current source, tasks, service processes,
+runtime roster and all 125 report assets. An independent final check found zero
+owned Python/control observers before the slot was explicitly released. No
+model, inference backend, database or family media was opened by this probe.
+Chinese/mixed generation and active cancellation/expiry remain unqualified;
+new observer integration and Windows qualification are separate next checks.
+Both AI switches and the live provider remain off, with deployment separate.
