@@ -281,7 +281,12 @@ async def session(request: Request):
 async def logout(request: Request):
     token, mode = credentials_from_request(request)
     # Idempotent revocation, including expired sessions. CSRF still required for web.
-    await run_in_threadpool(_runtime(request).call, 'logout', token)
+    runtime = _runtime(request)
+    lifecycle = getattr(request.app.state, 'selected_story_lifecycle', None)
+    if lifecycle is None:
+        await run_in_threadpool(runtime.call, 'logout', token)
+    else:
+        await lifecycle.access_change('logout', token)
     response = JSONResponse({'ok': True})
     if mode == 'web':
         response.delete_cookie(COOKIE, path='/', secure=True, httponly=True, samesite='strict')

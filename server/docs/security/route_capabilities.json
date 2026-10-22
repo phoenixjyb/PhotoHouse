@@ -4786,6 +4786,48 @@
    ],
    "current_control": "Indexed groups revalidate all member metadata and current library mappings in the authorized snapshot; stale groups dissolve. Explicit personal choices use current membership, CSRF or native bearer transport, index generation and preference revision. No media deletion or request-time rebuild.",
    "gap": "Optional migrated/indexed source only. Native worker qualification, Windows migration/index publication and physical family acceptance remain separate gates."
+  },
+  {
+   "source": "backend/app/access/selected_story_transport.py",
+   "owner": "access",
+   "method": "POST",
+   "path": "/story-workspace/drafts/prepare",
+   "handler": "prepare",
+   "surface": "photohouse",
+   "capabilities": [
+    "story.write"
+   ],
+   "scope": "Current account/session and approved owner/contributor in exactly one selected library. Prepare resolves current selected media/source and edit/revision authority; cancel fences only the matching account/library/request/session.",
+   "current_control": "Explicit selected_story_drafts_enabled opt-in plus injected async provider and started app owner. Existing HTTPS/host/origin/bearer-or-cookie/CSRF controls, strict library query and bounded JSON body. Shared nonqueued admission, exact retry/revalidation and volatile results; cancellation does not certify native stop.",
+   "gap": "Default-off source feature, synthetic-provider checks only. No installed native provider, UI client activation, cross-process GPU qualification or deployment."
+  },
+  {
+   "source": "backend/app/access/selected_story_transport.py",
+   "owner": "access",
+   "method": "POST",
+   "path": "/story-workspace/drafts/cancel",
+   "handler": "cancel",
+   "surface": "photohouse",
+   "capabilities": [
+    "story.write"
+   ],
+   "scope": "Current account/session and approved owner/contributor in exactly one selected library. Prepare resolves current selected media/source and edit/revision authority; cancel fences only the matching account/library/request/session.",
+   "current_control": "Explicit selected_story_drafts_enabled opt-in plus injected async provider and started app owner. Existing HTTPS/host/origin/bearer-or-cookie/CSRF controls, strict library query and bounded JSON body. Shared nonqueued admission, exact retry/revalidation and volatile results; cancellation does not certify native stop.",
+   "gap": "Default-off source feature, synthetic-provider checks only. No installed native provider, UI client activation, cross-process GPU qualification or deployment."
+  },
+  {
+   "source": "backend/app/access/selected_story_transport.py",
+   "owner": "access",
+   "method": "GET",
+   "path": "/story-workspace/drafts/capabilities",
+   "handler": "capabilities",
+   "surface": "photohouse",
+   "capabilities": [
+    "library.read"
+   ],
+   "scope": "Current account/session and approved membership in exactly one library. Capability readiness is not a preparation or save grant.",
+   "current_control": "Fresh protected library.read even when optional UI is off. Separate default-off UI/API flags and started lifecycle; can_prepare additionally requires current owner/contributor role. Strict library-only query; existing private transport headers.",
+   "gap": "Source-only UI negotiation. No native model or family/device qualification, provider installation or deployment."
   }
  ]
 }

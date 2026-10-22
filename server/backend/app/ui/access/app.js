@@ -609,12 +609,12 @@
         // UI. Error bodies may contain private details, so never expose them.
         const requestedSearchVersion=extraHeaders?.['X-PhotoHouse-Search-Version'];
         const unsupportedSearchCapability=response.status===400&&/^\/assistant\/workspace\/v1\/capabilities\?/.test(path)&&['2','3'].includes(requestedSearchVersion);
-        if(([422,429,502,503,504].includes(response.status)||unsupportedSearchCapability)&&response.body){
+        if(([422,429,502,503,504].includes(response.status)||unsupportedSearchCapability||response.status===409&&/^\/story-workspace\/drafts\//.test(path))&&response.body){
           const contentType=response.headers.get('content-type')||'';
           const reader=response.body.getReader(),parts=[];let size=0;
           try{
             while(true){const part=await reader.read();if(stale(epoch)){part.value?.fill?.(0);throw new DOMException('Stale request','AbortError');}if(part.done)break;size+=part.value.byteLength;if(size>4096){part.value.fill(0);for(const chunk of parts)chunk.fill(0);parts.length=0;break;}parts.push(part.value);}
-            if(size<=4096&&/^application\/json(?:\s*;|$)/i.test(contentType)){const bytes=new Uint8Array(size);try{let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.byteLength;}const payload=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));if(payload&&typeof payload==='object'&&!Array.isArray(payload)&&typeof payload.detail==='string'&&payload.detail.trim()){const keys=Object.keys(payload).sort().join(',');if(keys==='code,detail'&&response.status===429&&payload.code==='memory_conversation_full')error.code='memory_conversation_full';if(keys==='detail,error'&&assistantAsrErrorStatuses[payload.error]===response.status)error.code=payload.error;if(keys==='detail,error'&&unsupportedSearchCapability&&payload.detail==='Search version is not supported on this endpoint'&&['invalid_request','search_version_unsupported'].includes(payload.error))error.code='search_version_unsupported';}}finally{bytes.fill(0);}}
+            if(size<=4096&&/^application\/json(?:\s*;|$)/i.test(contentType)){const bytes=new Uint8Array(size);try{let offset=0;for(const part of parts){bytes.set(part,offset);offset+=part.byteLength;}const payload=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(bytes));if(payload&&typeof payload==='object'&&!Array.isArray(payload)&&typeof payload.detail==='string'&&payload.detail.trim()){const keys=Object.keys(payload).sort().join(',');if(keys==='code,detail'&&response.status===429&&payload.code==='memory_conversation_full')error.code='memory_conversation_full';if(keys==='code,detail'&&/^\/story-workspace\/drafts\//.test(path)&&({draft_busy:429,draft_capacity:429,draft_unavailable:503,draft_timed_out:504,draft_conflict:409,draft_scope_changed:409,draft_cancelled:409})[payload.code]===response.status)error.code=payload.code;if(keys==='detail,error'&&assistantAsrErrorStatuses[payload.error]===response.status)error.code=payload.error;if(keys==='detail,error'&&unsupportedSearchCapability&&payload.detail==='Search version is not supported on this endpoint'&&['invalid_request','search_version_unsupported'].includes(payload.error))error.code='search_version_unsupported';}}finally{bytes.fill(0);}}
           }catch(parseError){if(parseError?.name==='AbortError')throw parseError;}
           finally{for(const part of parts)part.fill(0);try{await reader.cancel();}catch(_){}}
           if(stale(epoch))throw new DOMException('Stale request','AbortError');
@@ -4010,6 +4010,10 @@
     stopAudioForCapture:()=>{stopAssistantSpeech();memoryCommunity?.stopPlayback?.();window.dispatchEvent(new CustomEvent('photohouse-memory-audio-start'));},
     request:body=>request(libraryPath('/story-workspace/preview'),{method:'POST',body,epoch:state.generation}),
     relatedRequest:body=>request(libraryPath('/story-workspace/related-media'),{method:'POST',body,epoch:state.generation}),
+    draftRequest:(path,{library=state.library,account=state.profile?.account_id,...options}={})=>{
+      if(!['/story-workspace/drafts/capabilities','/story-workspace/drafts/prepare','/story-workspace/drafts/cancel'].includes(path))throw new Error('Invalid draft route');
+      if(account!==state.profile?.account_id||!account||!library||(path!=='/story-workspace/drafts/cancel'&&library!==state.library))throw new DOMException('Stale draft scope','AbortError');
+      return request(path+'?'+new URLSearchParams({library}),{...options,epoch:state.generation});},
     titleRequest:(path,options={})=>{
       if(!['/story-workspace/title-capabilities','/story-workspace/title-suggestions'].includes(path))throw new Error('Invalid title route');
       return request(libraryPath(path),{...options,epoch:state.generation});},

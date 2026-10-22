@@ -26436,6 +26436,910 @@
       "notes": "Bind corrupt-artifact replay no-encoder assertion to the immediate call count, independent of earlier exclusion admission."
     },
     {
+      "feature": "bounded-read-only-assistant-agent-seam-v1",
+      "source_commit": "a4e39221a3dab8ee84bacc7c9226e7b3a71b112b",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_ACCEPTANCE.md",
+          "before_sha256": null,
+          "sha256": "9c5db7a00e744295c26776a590f36dc9b264dd917d2ac8534eaa7a830d4a6fe1"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_RUNTIME.md",
+          "before_sha256": null,
+          "sha256": "6adb6bf2d091cf14ae020c94f64afff36a90a317c87d7eac22798fcd3a2c89ad"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "e658091fdbf502a13c94d0e9096332d733a4dcc22d474a54090c30a646a8754c",
+          "sha256": "719151eb3cb195a78e4d12756ff5e82341a4d680346cfd6bc72ebbde0ed0d5bb"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": null,
+          "sha256": "adcbc1b0fbe15ba80052226f10b6a649541c3066a13a4cde8961d6019e3fc20f"
+        },
+        {
+          "path": "server/backend/app/access/assistant_agent.py",
+          "before_sha256": null,
+          "sha256": "116b64c4d2ef08d37072cc0c509bab1cdfa0a63f921ca9bb7e4c0b504f3c4708"
+        },
+        {
+          "path": "server/backend/app/access/assistant_agent_tools.py",
+          "before_sha256": null,
+          "sha256": "57416ced91794eac68216ef33fb774fc4b5f5604ec8b4bae80c8392fbfacb67d"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "47c32a1a8697879f80900ac1cd8eb891fc00395ac92217c394bcc9223a1d674e",
+          "sha256": "c82098388053955505fbe2d0a315567ab59335ee8dd08a9070065ef3dbf73550"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "86bb4fcc8bc3486f824d43176a20c0bcdb85e294e6eb93fdbf4cd7882aa861d9",
+          "sha256": "fe8228ed39ed3421a19b2fe49786623d2e3c241195fa492963d4fac6e11e0efb"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "5bf82874c26c69d750a994584bcfe89c0bc3beb0dc6f8e90b152cc4375c208a4",
+          "sha256": "37a09a8a8c62880fcc0deb4c1f625310656bdc114216264da4b56472a748ae32"
+        },
+        {
+          "path": "server/tests/security/test_assistant_agent_tools.py",
+          "before_sha256": null,
+          "sha256": "14db30226c7a6a490bbe8313135fe6272cb4de9f6c527f8b5ef7e5ccb278aa25"
+        },
+        {
+          "path": "server/tests/security/test_assistant_agent_workspace.py",
+          "before_sha256": null,
+          "sha256": "47330e0149b56224173e785de11dbe8e5abec6046b34873e49477418b328bb69"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "0e6d79b7074d9712fdbe4d9182ce1577f873fc5e3d73fc5f9426d58f1de05537",
+          "sha256": "7dac47edc41b26d1e71ec226bdf9d870a38f58e8c1a4608aa293efa6390ec8c6"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "7dcc9bd44dcb9cebb074c3d1a0020ac0d7e96bf07dcb88fb9c0decd81413e9ae",
+          "sha256": "5678ea82ca14d6b03b9bdddd48cdbe10cc9865a95a992ca4d99470335722e507"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "45ae8c2730ccb3e29c5a17a5f5e50f0e76e927c40dd118878304d97b61e9293f",
+          "sha256": "746c800fd2e07637e9854cd9e08796241c65e03463957d7023eb91602dfc6677"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Default-off injected PH-A1 supervision and exact v2 domain tools, generated HTTP lifecycle/recovery tests, CPU/staging closure, PH-U0 acceptance sheet and proposed PH-A4 selected-source story contract."
+    },
+    {
+      "feature": "local-agent-contract-fixture-identity-and-chapter-titles",
+      "source_commit": "4dbe2971dbaa4339b9ae94f7b4a712c827317829",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_ACCEPTANCE.md",
+          "before_sha256": "9c5db7a00e744295c26776a590f36dc9b264dd917d2ac8534eaa7a830d4a6fe1",
+          "sha256": "5443f5e57046e819a5f28c3ed8b2e86a469ed7874a07ff5f8d09caf13d3654fe"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "adcbc1b0fbe15ba80052226f10b6a649541c3066a13a4cde8961d6019e3fc20f",
+          "sha256": "5c9b92802de62cb5dcdb779d86612e02c056db54cdde42d7fdc46465b4486532"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Documentation-only clarification of canonical synthetic asset/person mappings and author-owned chapter titles; application, tests, provider and package-builder bytes remain unchanged."
+    },
+    {
+      "feature": "local-agent-stock-runtime-capability-probe",
+      "source_commit": "23733e2eb4f94a4ee474ea0746b0633b12589c9f",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_QUALIFICATION.md",
+          "before_sha256": null,
+          "sha256": "56c081e627738f6c4852234f756231f51494dcb6663ccb0ed46ed0340aa30236"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_RUNTIME.md",
+          "before_sha256": "6adb6bf2d091cf14ae020c94f64afff36a90a317c87d7eac22798fcd3a2c89ad",
+          "sha256": "ddb893c553d5055c5cd434a34c31fb2012684a5654c14b744f83b183ac21f9e8"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "719151eb3cb195a78e4d12756ff5e82341a4d680346cfd6bc72ebbde0ed0d5bb",
+          "sha256": "ecce732adc4f2e92a3504ee6b991c186ceb06fb671b6c9f1dace8ecb0b8efe68"
+        },
+        {
+          "path": "tools/probe_agent_runtime.py",
+          "before_sha256": null,
+          "sha256": "4dca58a42c8fec03baa43e1a40bdef8eb9be968f897d4757d617e1d70318a6b8"
+        },
+        {
+          "path": "tools/tests/test_probe_agent_runtime.py",
+          "before_sha256": null,
+          "sha256": "5048f788f1a55d7e9968117e5825d9d5cc16849ffebe37bf375a598380c9496a"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Developer-only synthetic real-binary PH-A0 capability probe, scoped tests and failed-stock-ceiling record. Application/client source is unchanged; no real model, PH-A2 activation, deployment or publication."
+    },
+    {
+      "feature": "household-agent-workflow-and-overlap-plan",
+      "source_commit": "0bcd859b5c4bc004a3c80d528a3b418175dfb70a",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": null,
+          "sha256": "14f6df49b4d986b2376311609e3b18e8aa4e09d10f683d3bf98f769b5e319e8e"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_QUALIFICATION.md",
+          "before_sha256": "56c081e627738f6c4852234f756231f51494dcb6663ccb0ed46ed0340aa30236",
+          "sha256": "82454b24efc099fdf78b9cbbb2e8fe5510d7313dc1cf5103fa087d03f49f2061"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_RUNTIME.md",
+          "before_sha256": "ddb893c553d5055c5cd434a34c31fb2012684a5654c14b744f83b183ac21f9e8",
+          "sha256": "a56fdc2187f946e5f2ddc428206deb453a67c579ede444e9ff5d03d651d0a1ce"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_ACCEPTANCE.md",
+          "before_sha256": "5443f5e57046e819a5f28c3ed8b2e86a469ed7874a07ff5f8d09caf13d3654fe",
+          "sha256": "4ed5a5b8aa09158fd3802b7c39d712ad97ab6d94b623e213082d9b1fbfd6ddc8"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "5c9b92802de62cb5dcdb779d86612e02c056db54cdde42d7fdc46465b4486532",
+          "sha256": "be2b39454a52e554cc04b202d9193e767949a53baa4e7401be284c2b49219a66"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "ecce732adc4f2e92a3504ee6b991c186ceb06fb671b6c9f1dace8ecb0b8efe68",
+          "sha256": "e254b802ad02b72e8fe686eb78ecc6d083b2e654c034d4d4d9af3a700b420bc8"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "758239b241467b992432801fa84477e540b727792d936293f8064db19904bf3b",
+          "sha256": "cd1f75f1cd2470426817b86fab9b8cc7f2c0d01113b8473ca4c31f95e5ec37ea"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Documentation-only PhotoHouse plan revision: workflow-specific capabilities, independent family conversations, proposed bounded shared inference scheduling and story-first evaluation. Original PH-A1/probe source and frozen oracles remain unchanged; waiting, generation capacity and native suitability are not implemented or measured by this revision."
+    },
+    {
+      "feature": "household-story-acceptance-and-isolated-admission-core",
+      "source_commit": "ad0ec609e773e8f37ee7579305326decfad98c56",
+      "files": [
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": null,
+          "sha256": "b5f53e5f4d3be3d19122056a340ff3491002569768e14f10bd8d69fc7a4a1c6b"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": null,
+          "sha256": "8b4ec3e214ad4db1b8518705e81611dd4165b1d71316c35e02fe120c777473f5"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "be2b39454a52e554cc04b202d9193e767949a53baa4e7401be284c2b49219a66",
+          "sha256": "eff77b6bc5b23a6a51faf70c72f5e37faf17383fb5b9e84e374c521221f50fc6"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "14f6df49b4d986b2376311609e3b18e8aa4e09d10f683d3bf98f769b5e319e8e",
+          "sha256": "13da3cf0b91e8dcb69697bebd1294923e27b200d6342dc1c65c36da4d889a1cd"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "e254b802ad02b72e8fe686eb78ecc6d083b2e654c034d4d4d9af3a700b420bc8",
+          "sha256": "59404cfcad1591ee3873837bb2f67b59fa204d497058bfb01cb6f4b89a93483d"
+        },
+        {
+          "path": "server/backend/app/access/inference_admission.py",
+          "before_sha256": null,
+          "sha256": "9b881cc6c92874419cf67949c74d58145b770a906ae074c358c678408c8a2146"
+        },
+        {
+          "path": "server/tests/security/test_inference_admission.py",
+          "before_sha256": null,
+          "sha256": "301b6828495a09474aa22240cb0ebb79760abb09d8c936a57afb3f6271fa55f0"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "746c800fd2e07637e9854cd9e08796241c65e03463957d7023eb91602dfc6677",
+          "sha256": "2d6b99c117d8f2f70f47265a36c0dc24a99822eff281267f24218da12454755e"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Frozen PH-P2 story comparison and explicit future draft-bundle input delta; PH-C0 consumer inventory, unwired event-loop admission primitive and CPU ownership/race tests. No app construction, HTTP/profile/worker wiring, API package inclusion, model generation or native capacity qualification."
+    },
+    {
+      "feature": "selected-source-narrative-draft-bundle-v3",
+      "source_commit": "4599faa182b4db6d286a8fb2ec8fe9f0ca9c08ff",
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "657bcf8c716e96895b0a32b0e06b71d884341011ff5064094bbc3e5eba187cf8",
+          "sha256": "a840ae2d4c86226fb1eda8bbf22520217e11954cf12296f031129f4dfe0a1336"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_narrative.py",
+          "before_sha256": null,
+          "sha256": "cd8c6ca633f6abb2355c7aa98de29da6366862ed36efe58cb480fcdea423bca2"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "2d6b99c117d8f2f70f47265a36c0dc24a99822eff281267f24218da12454755e",
+          "sha256": "f35df61d8fac52039a4bec539a84408b65937148fbe8737bbffa22a3159de8bd"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "8b4ec3e214ad4db1b8518705e81611dd4165b1d71316c35e02fe120c777473f5",
+          "sha256": "a98462d2057e183da8cd92f60e5da57e0b161b385dcfb4700f1765ea6b03d00a"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "eff77b6bc5b23a6a51faf70c72f5e37faf17383fb5b9e84e374c521221f50fc6",
+          "sha256": "3b1dd164842e7dc9deefd54afac37ded190caa3a1e1a31367c56cce5860ce671"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "13da3cf0b91e8dcb69697bebd1294923e27b200d6342dc1c65c36da4d889a1cd",
+          "sha256": "d3d15920795e8cb945fc5917374a98cde1de3ce414fb32210e93cfda5de37610"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": true,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Internal narrative-only v3 draft input with bounded selected evidence, original source-kind mapping and caption-to-chapter media checks; companion and saved v1/v2 contracts remain isolated. Synthetic provider coverage only. No source snapshot authorization/service, HTTP route, worker target, runtime flag, model installation or deployment is added."
+    },
+    {
+      "feature": "authorized-selected-story-snapshot-core-v1",
+      "source_commit": "41ca946db5f0a6e76a49c8302d415d2ba1501f25",
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_snapshot.py",
+          "before_sha256": null,
+          "sha256": "1353947899b723080abd5d45d734b415251879c8e9f8cbd929a2f206d8851a6d"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_snapshot.py",
+          "before_sha256": null,
+          "sha256": "ac1f8419aad2c26d42ca9ddb28507446bddc2c4f42207c56c571c3260816d141"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "f35df61d8fac52039a4bec539a84408b65937148fbe8737bbffa22a3159de8bd",
+          "sha256": "388d8412f34cb1e006eb44b2169889f6f285c0cd44d19585217594b02cddc01b"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "a98462d2057e183da8cd92f60e5da57e0b161b385dcfb4700f1765ea6b03d00a",
+          "sha256": "470f717dd2ede0b922f64face17128de3c6dccbff0453a2d95db06e572cfbe65"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "3b1dd164842e7dc9deefd54afac37ded190caa3a1e1a31367c56cce5860ce671",
+          "sha256": "b27942d105cb4de0c6efb112a5a536dd916ea7f244f47d50324e34cef1d36d99"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "d3d15920795e8cb945fc5917374a98cde1de3ce414fb32210e93cfda5de37610",
+          "sha256": "0f18b0ba789f390c8112f97e1831681eadaaeff3138252c65fefbc15e5273c27"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "isolated_core": true,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Internal bounded read-only source snapshot and fresh revalidation using current authorized story/media/source services, exact bylines, chapter allowlists and actor/revision binding. Frozen process-local bytes only; no operation registry, provider/admission wiring, HTTP route, DB mutation or runtime package inclusion. All 258 API package inputs unchanged; synthetic security checks do not qualify a live model, family UX or deployment."
+    },
+    {
+      "feature": "household-selected-story-operation-owner-v1",
+      "source_commit": "ff7334d44899eb5ea701bd8c99a5893a94074e7e",
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_operations.py",
+          "before_sha256": null,
+          "sha256": "d22a45456dd23e32d5804a5bb1757bafc86f83b697db30aa70a42cd667694c18"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_operations.py",
+          "before_sha256": null,
+          "sha256": "b8d95b930c4b0a8e1b668f5025a10d23a527789ee7821d8e03f855796798e048"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_operation_auth.py",
+          "before_sha256": null,
+          "sha256": "6c4a950f6b3f15916fd0e1c308461ff74fe19d316a9c4d242b18eff8daae30a9"
+        },
+        {
+          "path": "server/tests/security/test_inference_admission.py",
+          "before_sha256": "301b6828495a09474aa22240cb0ebb79760abb09d8c936a57afb3f6271fa55f0",
+          "sha256": "df05000b76351e3bb17a218812d70f1f9f7138a9e8f5bdd38e79e090e9c29055"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "388d8412f34cb1e006eb44b2169889f6f285c0cd44d19585217594b02cddc01b",
+          "sha256": "7cd5b7b2b28649ef1f167dbf5dffb72900d9319d8bdb89b3fb28d9725ea615d2"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "b27942d105cb4de0c6efb112a5a536dd916ea7f244f47d50324e34cef1d36d99",
+          "sha256": "cac9aa5727d066d99c30f4805860e72558d1740be39fedd0afb02e3abe7a40f3"
+        },
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "b5f53e5f4d3be3d19122056a340ff3491002569768e14f10bd8d69fc7a4a1c6b",
+          "sha256": "fda8f163bfef3fea114dd4cf0224ae8cd49fae1b62eccf7e7489a1b163b26430"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "0f18b0ba789f390c8112f97e1831681eadaaeff3138252c65fefbc15e5273c27",
+          "sha256": "f41d5bc1c6c292ba1625e59d5c61eb37c9d50be55250d6aa7af8cce1d9e69f8f"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "470f717dd2ede0b922f64face17128de3c6dccbff0453a2d95db06e572cfbe65",
+          "sha256": "161250840051b79e3982a347af18e0d42e2b7a33d092d00371ad313f1ec9d266"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "isolated_core": true,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Internal selected-source operation owner with exact-request retries, fixed result expiry, bounded identity retention and injected shared admission. Synthetic async providers certify cleanup only in tests; no native stop adapter, application/session hook wiring, HTTP route or deployment. Production admission component unchanged; existing expiry test made deterministic. All 258 API runtime package inputs unchanged."
+    },
+    {
+      "feature": "selected-story-app-session-lifecycle-v1",
+      "source_commit": "0d05928095accd043041e565fef016dc150cb143",
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_lifecycle.py",
+          "before_sha256": null,
+          "sha256": "31d45cd1279e88ac16cffbe6eeccf07942a0bfe1946d55c2135d1ed18390cdcf"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_operations.py",
+          "before_sha256": "d22a45456dd23e32d5804a5bb1757bafc86f83b697db30aa70a42cd667694c18",
+          "sha256": "e157f181a2d899492f7d581eb6ba71899e4606394ea935324b44728f73f646cd"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "fe8228ed39ed3421a19b2fe49786623d2e3c241195fa492963d4fac6e11e0efb",
+          "sha256": "9fe87a7448341a9fceb69ff58c8c69f5afe71c5fc51397b12d3f0725618a6fcb"
+        },
+        {
+          "path": "server/backend/app/access/transport.py",
+          "before_sha256": "c590e516471701230361ca74328632c531d76fcf853f92206504f5b0f80fc4d9",
+          "sha256": "5cfcd821b896625762a86781b5f7054cc445b71bdf50fffe3f73ca3da7c2b67c"
+        },
+        {
+          "path": "server/backend/app/access/members.py",
+          "before_sha256": "d04fe7891812b79b0f56aefed9974f2e101f11df054c008e927d2da77129adf6",
+          "sha256": "c1a3dead9bf3cafda78d805f8e9a3183f71393f17bf139db34ca4a9072249cba"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "37a09a8a8c62880fcc0deb4c1f625310656bdc114216264da4b56472a748ae32",
+          "sha256": "62c413b8d309374ee6be3c4373aa6201401475e4d584e5ce9e709c0167c0a874"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_lifecycle.py",
+          "before_sha256": null,
+          "sha256": "58fc7138c7cbd026b68d45e2af3818a652a2c81891d3ab8dcc14547cbe566f3e"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "5678ea82ca14d6b03b9bdddd48cdbe10cc9865a95a992ca4d99470335722e507",
+          "sha256": "6f47b4f7ebe0d62b7736f87d9c14657750893140f93a21cada8c25632da61517"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "7cd5b7b2b28649ef1f167dbf5dffb72900d9319d8bdb89b3fb28d9725ea615d2",
+          "sha256": "f7c4791b4d87ecb2a228fd4c4631133a04d4510fd2d33c5662a051274a47d10b"
+        },
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "fda8f163bfef3fea114dd4cf0224ae8cd49fae1b62eccf7e7489a1b163b26430",
+          "sha256": "2be9dae31c8cc1d53efafabd981a3ec95ded7b2cc027ec9949e9626ab12639e9"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "f41d5bc1c6c292ba1625e59d5c61eb37c9d50be55250d6aa7af8cce1d9e69f8f",
+          "sha256": "dab6251d4f4f20545e27aeb0bb9ab177991b02df246580e209d0d3425d2ede91"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "161250840051b79e3982a347af18e0d42e2b7a33d092d00371ad313f1ec9d266",
+          "sha256": "dfd2474b15dca81c2f46662ae616ec88ceca50556f1d95d0ab4929b7287b7b82"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "cac9aa5727d066d99c30f4805860e72558d1740be39fedd0afb02e3abe7a40f3",
+          "sha256": "7316e7588f17ef3806a6a9950ecc96675506d4f0ab41f77def454752e9749eea"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Optional explicit async selected-story provider injection creates one app-owned nonqueued inference gate and draft owner. Startup failure/shutdown fence output and retain unresolved ownership. Bounded shielded logout writes hold transient session barriers; authorized committed membership revocation fences only its account/library. Defaults remain off. Adds source-only dependency closure (262 runtime package inputs), synthetic app/session checks and real SQLite authorization. No preparation route/client, installed native provider, cross-process GPU qualification or deployment."
+    },
+    {
+      "feature": "protected-selected-story-prepare-cancel-http-v1",
+      "source_commit": "4e7db1b0b31a196c1117d2f5fd03d4f07857ef6e",
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_transport.py",
+          "before_sha256": null,
+          "sha256": "44cea4cbff4be345150834efc7a5558a73db7624000f6be3212f5d8642d04ef4"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "9fe87a7448341a9fceb69ff58c8c69f5afe71c5fc51397b12d3f0725618a6fcb",
+          "sha256": "28b9c25088a69f95eb3a71444500ea1de2cd59b8a943e3a9a3cc0cab2b403e34"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "8df9f0f97666341033fe076a5ee870c8f5e39a780b224eb3c9158d7ba58cbaf4",
+          "sha256": "6af1ed0ff78a472902657cb1882047c46b3ae290ee9ffab2dcc6567dbbbda2f9"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "a70081111eefbcc0bed56b2bfa45b736c800fa8f79557b89aaf91b38277263e0",
+          "sha256": "ff8a4e546977a9bb9c2de20ffc0bfcadf111660f26a8688c00ef67fbb5189ee3"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "62c413b8d309374ee6be3c4373aa6201401475e4d584e5ce9e709c0167c0a874",
+          "sha256": "6500cf85e69588e7175bd3ada5e4359d6b489c60a4812d3879c74d5e1c470777"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_transport.py",
+          "before_sha256": null,
+          "sha256": "8b52f2b3ba21800f4aa6f5936e14f4f4c39debfab75fc535adcb61b0d3b98de4"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "7dac47edc41b26d1e71ec226bdf9d870a38f58e8c1a4608aa293efa6390ec8c6",
+          "sha256": "fdb83d04999a7b146cfdb349a73a9e14758060b5d6a58baa450fcc7ea7e398a6"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "6f47b4f7ebe0d62b7736f87d9c14657750893140f93a21cada8c25632da61517",
+          "sha256": "c181a9e79dfc6cf1008ced7eb5e425fef80eb87418e0ef5f00b897e142ec96e1"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "f7c4791b4d87ecb2a228fd4c4631133a04d4510fd2d33c5662a051274a47d10b",
+          "sha256": "935fe31000175f9483fcf63bd600b3839120acb79689ca1dff1efa0a40d461c6"
+        },
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "2be9dae31c8cc1d53efafabd981a3ec95ded7b2cc027ec9949e9626ab12639e9",
+          "sha256": "24f3cefc1eeef3d9c8811ba02c3a95d8a2ce2d04eeb831adf70a6afdf1181ae9"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "dab6251d4f4f20545e27aeb0bb9ab177991b02df246580e209d0d3425d2ede91",
+          "sha256": "750c19f11ed29b4fedcfecfb7bcc3a38abf47a6aa0503ec80aa2a9ad22551db3"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "dfd2474b15dca81c2f46662ae616ec88ceca50556f1d95d0ab4929b7287b7b82",
+          "sha256": "97a4b2abebdc1b2629c92d4e29b1191e0a23491a72686b70d60f1442517f6b72"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "7316e7588f17ef3806a6a9950ecc96675506d4f0ab41f77def454752e9749eea",
+          "sha256": "34885bae1b4a3c8ea7b48f3bdaf49746513bf35bb57176325a0eb20e2996f86b"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Default-off protected prepare/cancel HTTP v1 with separate explicit bool opt-in and injected async provider requirement. Closed route inventory, bearer/cookie CSRF, strict bounded UTF-8 JSON, exact retries, fixed expiry and source revalidation use the existing app-owned lifecycle/shared gate. Cancel matched is an output fence, not native stop proof, and absent identities receive no future tombstone. Fixed errors omit diagnostics. Synthetic providers and generated SQLite only, including real source resolution/foreign media denial. Source-only API package has 263 inputs. No client, native provider installation, live activation, save authority or deployment."
+    },
+    {
+      "feature": "selected-source-story-web-review-save-v1",
+      "source_commit": "be15811fda978ec46b3fd3f4971d3aef4f2373f9",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "750c19f11ed29b4fedcfecfb7bcc3a38abf47a6aa0503ec80aa2a9ad22551db3",
+          "sha256": "a58abcf8f994f4bc46af8640a5d7f97c47a2e4c402a7b27e21fcb882cc65687b"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "34885bae1b4a3c8ea7b48f3bdaf49746513bf35bb57176325a0eb20e2996f86b",
+          "sha256": "b454e29bf5cb91e368d71b121bf4d64fa738110cbf3feaef1dfd29f39cacc2b1"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_UI.md",
+          "before_sha256": null,
+          "sha256": "949c899275d1bf708f4f937389394854cf4e6f9cfd64704af62b83ba0dcb63ad"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "6af1ed0ff78a472902657cb1882047c46b3ae290ee9ffab2dcc6567dbbbda2f9",
+          "sha256": "0f247ccc83ad309738f1242a0d2584abcae0d0ac182e25c57fb82149ee9bde20"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_transport.py",
+          "before_sha256": "44cea4cbff4be345150834efc7a5558a73db7624000f6be3212f5d8642d04ef4",
+          "sha256": "2941629e41e6923a57ff52835468ae810885874353bac64776faa251ae708ce8"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "28b9c25088a69f95eb3a71444500ea1de2cd59b8a943e3a9a3cc0cab2b403e34",
+          "sha256": "57803cd76b9c2f449e5f2dc2e43eba3861d40a648e3aa152b22c01d8d1324429"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "c93ac1daa7e88df19ab6247a71939dbb6194f5d5365edfe96494060bd09aca2e",
+          "sha256": "41e3010fadbb39c119fc07ff8d2c741a2534acafe0d6a8d006bfaabd74d25991"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "df7f4b6117ee0cf51e535e26350836ae78fe259f664ade61bac43d383474f6a9",
+          "sha256": "8e3b3663c5df2a37c79c27c192c9519a6b2786824a035236a54b265a6ed53180"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "7c39eae7a5c7f03e2b565972632e383f7611ab901ee57453c5cb7b188555161f",
+          "sha256": "4502d2e0a54414bf6968c787cc2055196ad10a605ec654130f669378cc377d09"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "ff8a4e546977a9bb9c2de20ffc0bfcadf111660f26a8688c00ef67fbb5189ee3",
+          "sha256": "a2e9e4444d80603dfa38a2622defcfde461baba83d2bf43d910d89f6ad7545ed"
+        },
+        {
+          "path": "server/tests/security/story_draft_browser_bridge.py",
+          "before_sha256": null,
+          "sha256": "76e7670e2fb7f6d8c41e7edc3ba30d829bddb4827ac06482a44fa02c956debcb"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "fdb83d04999a7b146cfdb349a73a9e14758060b5d6a58baa450fcc7ea7e398a6",
+          "sha256": "de673b90d64ccac9516009308b72e2c776a41ce30c5a024dd4ae84684a205874"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_ui_capabilities.py",
+          "before_sha256": null,
+          "sha256": "e322e916e77f006060c1bea620e833c2138cf61b7bc8045da3d3f749f6527a66"
+        },
+        {
+          "path": "server/tests/security/test_story_draft_preparation_browser.cjs",
+          "before_sha256": null,
+          "sha256": "f459a751a700586eef4e5127809d5a94dac322a10d9815bf1ea1886339fc269f"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "935fe31000175f9483fcf63bd600b3839120acb79689ca1dff1efa0a40d461c6",
+          "sha256": "0439e9f896cbfb764e7feec7011a50b8d4291e09c4e6af388700fe5e6dc513b1"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Independent default-off Web UI and protected library-scoped capability negotiation. Existing selection and chapter-source review feed prepare; bounded citation validation, editable AI-labelled wording, explicit fingerprint-bound review and existing idempotent Save retain author authority. Frozen explicit preparation retries, cancellation of abandoned results, source/scope/replacement fences and fixed expiry preserve prior family wording; uncertain Save keeps its frozen mutation. Generated SQLite/images and injected synthetic providers only. No native provider, model download, voice activation, Windows runtime/data, deployment or publication."
+    },
+    {
+      "feature": "selected-story-async-local-model-adapter-v1",
+      "source_commit": "6d84df36c6cd2c9d3ae438a447270857b7cc4e0c",
+      "files": [
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "24f3cefc1eeef3d9c8811ba02c3a95d8a2ce2d04eeb831adf70a6afdf1181ae9",
+          "sha256": "d93e4a4eb0df4620c1113004a761865581b8ecb68b14e70cb2263f5ebed895b2"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "a58abcf8f994f4bc46af8640a5d7f97c47a2e4c402a7b27e21fcb882cc65687b",
+          "sha256": "614184d5055b65a7809623fb8f3506eff92df7ba42fc31254f1f8c6342a964d7"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_ACCEPTANCE.md",
+          "before_sha256": "97a4b2abebdc1b2629c92d4e29b1191e0a23491a72686b70d60f1442517f6b72",
+          "sha256": "27d274bfe55860da0930ea09720cda8058c793a6197ecebcf3e2b72f8a237cc9"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "b454e29bf5cb91e368d71b121bf4d64fa738110cbf3feaef1dfd29f39cacc2b1",
+          "sha256": "a53f7e9dee832346ea22da962acecb2cebaaa5e05bc0e114118810f967bf77d9"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_LOCAL.md",
+          "before_sha256": null,
+          "sha256": "aaf4d6e9c5d41537d8ceadb38e2b624fdc699b4d9f407f3cbee6b61cc3f8522c"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_UI.md",
+          "before_sha256": "949c899275d1bf708f4f937389394854cf4e6f9cfd64704af62b83ba0dcb63ad",
+          "sha256": "15d4b2dc079db1359ec5fb5068b97d5fcc4dc81a4c1bab84e013eca31576765d"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "a840ae2d4c86226fb1eda8bbf22520217e11954cf12296f031129f4dfe0a1336",
+          "sha256": "aa065adf5ade30f1a9ce2d6b6091fbc41d206ab0f28535904a5ccbc764222568"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_local.py",
+          "before_sha256": null,
+          "sha256": "f889d8f00d35850c4789705f0a73927ae5b6d46f4886071fac11c00581d2a725"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "6500cf85e69588e7175bd3ada5e4359d6b489c60a4812d3879c74d5e1c470777",
+          "sha256": "9937e1613d4e8b529c2c2217b44e2752db57544460f8a7459f4ae6c19d907f57"
+        },
+        {
+          "path": "server/tests/security/story_draft_browser_bridge.py",
+          "before_sha256": "76e7670e2fb7f6d8c41e7edc3ba30d829bddb4827ac06482a44fa02c956debcb",
+          "sha256": "b936d8366d1bbb244e8243bbfe7421b681c36058032304cbe231922a1466cbd7"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_local.py",
+          "before_sha256": null,
+          "sha256": "494793a253852e51a6e780bb14be5281685e31ab19ef3d4be4698dbdf852283b"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_local_lifecycle.py",
+          "before_sha256": null,
+          "sha256": "6ec04bd351d26af444a0d994cde67ac192baebf18510ac3f447f1b036f002218"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "c181a9e79dfc6cf1008ced7eb5e425fef80eb87418e0ef5f00b897e142ec96e1",
+          "sha256": "b9d6b45ebf7dd1a0a79fd7027767193fdf34b26943f789d290c826038c5394e9"
+        },
+        {
+          "path": "server/tests/security/test_story_draft_preparation_browser.cjs",
+          "before_sha256": "f459a751a700586eef4e5127809d5a94dac322a10d9815bf1ea1886339fc269f",
+          "sha256": "1f6a32a0b9a1764f8a78e20f6712da429613e654a29fd802c2bf12abcd1cb71e"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "0439e9f896cbfb764e7feec7011a50b8d4291e09c4e6af388700fe5e6dc513b1",
+          "sha256": "dc6a259b3a1a4c57f18f5448d82d9995a6594719070da3a7cfb79f38b5d836a8"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Default-off explicit literal-loopback async narrative v3 adapter with bounded request/body/deadline, fixed errors, no proxy/redirect/fallback/retry, and shared unchanged narrative prompt/schema helper. Every dispatched request requires injected trusted native-owner exact-True reconciliation even after a completed HTTP response. Retained cleanup survives waiter cancellation and cannot release a newer scope; uncertain native work quarantines the existing shared gate. Source-only package closure adds the inactive adapter. Synthetic transport/native-owner unit, operation lifecycle and real protected ASGI/browser fixtures only; fake model completion is independent of HTTP close. No native-owner implementation/qualification, installed model, Windows/GPU data access, activation, deployment or publication."
+    },
+    {
+      "feature": "selected-story-private-native-process-owner-default-off",
+      "source_commit": "b89632e4e05006d44169d971c0e2acd3ce3ec092",
+      "files": [
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "d93e4a4eb0df4620c1113004a761865581b8ecb68b14e70cb2263f5ebed895b2",
+          "sha256": "0090058cbabd1d92d2e1fef9caffc3f5e027b8619b213beb19b00ec5a54c096e"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "614184d5055b65a7809623fb8f3506eff92df7ba42fc31254f1f8c6342a964d7",
+          "sha256": "3924dcc2272c8eea76d598699e42c2e8860fd4a049437d59ae1598908e3c4a4c"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "a53f7e9dee832346ea22da962acecb2cebaaa5e05bc0e114118810f967bf77d9",
+          "sha256": "434f2c79b0b45b02021e5306a713266bea52afe964f1d2bcf1657bceecf80a0e"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_LOCAL.md",
+          "before_sha256": "aaf4d6e9c5d41537d8ceadb38e2b624fdc699b4d9f407f3cbee6b61cc3f8522c",
+          "sha256": "3c4f35170e65c6e78eb3de59fbcfd4e8f67462339f6004fb3e3343775fd351dc"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_NATIVE_OWNER.md",
+          "before_sha256": null,
+          "sha256": "763e3ddc3d7220c72173522c73c0b1d1f407aa3c717e72443b80d17808cc5c67"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_local.py",
+          "before_sha256": "f889d8f00d35850c4789705f0a73927ae5b6d46f4886071fac11c00581d2a725",
+          "sha256": "eaf951a28ec55c514ac8a65827baa6b2d9fd989cfb7a3d4ee8ee1883b4da7ba4"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_native.py",
+          "before_sha256": null,
+          "sha256": "49f1351cabaf84c3cfa46a0f3ec022d02d88f6b37861e1e6796de15710400434"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "9937e1613d4e8b529c2c2217b44e2752db57544460f8a7459f4ae6c19d907f57",
+          "sha256": "209f4b588215914f477fe962ef0580aa72777b9bf16562e5e9b7122cca95826f"
+        },
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "before_sha256": null,
+          "sha256": "3ba838b80ce847576dcc7d95a4a696c8b5971625dd443ff40b44e7bac543d5bb"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_native.py",
+          "before_sha256": null,
+          "sha256": "de69471b15cd266b91f416c8532cae2818659372b91b060a3e4163527b9de9be"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_native_processes.py",
+          "before_sha256": null,
+          "sha256": "0700bf68fb9e68523ce8710a6e3e98fe99adf1e5f2e4c1b0b01ac40edbc72582"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "b9d6b45ebf7dd1a0a79fd7027767193fdf34b26943f789d290c826038c5394e9",
+          "sha256": "ab66f0fac0ac9f61c7c956e3fe12a444323dbf3fd64911f5cba0f60106a49ea7"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "dc6a259b3a1a4c57f18f5448d82d9995a6594719070da3a7cfb79f38b5d836a8",
+          "sha256": "d0fcc141b384fa2174ff716050ec8f4cf67ac2a0126f71c56c1b130f095fd516"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Default-off single-scope private process containment controller with retained shielded launch/cleanup, suspended root assignment before resume, root-exit plus zero-member reconciliation, sticky uncertain receipts/close failures, bounded polling and explicit shutdown. Windows factory reuses existing verified non-breakaway Job kernel; no app binding. HTTP adapter refuses this containment-only proof domain pending qualified provider-to-process binding. Fake-kernel and real synthetic subprocess tests with simulated Job membership exercise cancellation, expiry, cleanup and sticky shared admission quarantine; no Windows containment/GPU/model qualification. Hash is preflight only; protected path/identity qualification remains required. No weights, production data, runtime control, activation, deployment or publication."
+    },
+    {
+      "feature": "selected-story-owned-process-provider-binding-default-off",
+      "source_commit": "aa00fa9888882279ef23bbc18eab5c9fe321bc88",
+      "files": [
+        {
+          "path": "docs/HOUSEHOLD_INFERENCE_ADMISSION.md",
+          "before_sha256": "0090058cbabd1d92d2e1fef9caffc3f5e027b8619b213beb19b00ec5a54c096e",
+          "sha256": "66e03eb3f854a95fdc08bb0a2cab42c83152a391f191a8b93a5cbc41e5ec183e"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "3924dcc2272c8eea76d598699e42c2e8860fd4a049437d59ae1598908e3c4a4c",
+          "sha256": "f61eedba73c3fdae2df5f4d8f5ac3c43b0cfea53d2ee9a5614191a8feb2850ea"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md",
+          "before_sha256": "434f2c79b0b45b02021e5306a713266bea52afe964f1d2bcf1657bceecf80a0e",
+          "sha256": "92d4941e97e290e0b191dbbdf6ce6dad6f73349b38d0a44a71bb570fa8aac82b"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_LOCAL.md",
+          "before_sha256": "3c4f35170e65c6e78eb3de59fbcfd4e8f67462339f6004fb3e3343775fd351dc",
+          "sha256": "59b35e5a73a330df1f6717afdbf42cccea158171ff9adc284c898865a4623be6"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_NATIVE_OWNER.md",
+          "before_sha256": "763e3ddc3d7220c72173522c73c0b1d1f407aa3c717e72443b80d17808cc5c67",
+          "sha256": "04f9f5470a6a981648d7d69beb0a5929cc74b873746bb38298549be9da5916bd"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": null,
+          "sha256": "85094e9bc5a7563876104904ab0c990a28eb018887850c5080d94e5d08359dde"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_local.py",
+          "before_sha256": "eaf951a28ec55c514ac8a65827baa6b2d9fd989cfb7a3d4ee8ee1883b4da7ba4",
+          "sha256": "df3ce35dff807efb40d4dbcbd1fab4642a97e809d31afc3d09c5f5ecf689e4c9"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_native.py",
+          "before_sha256": "49f1351cabaf84c3cfa46a0f3ec022d02d88f6b37861e1e6796de15710400434",
+          "sha256": "4d236a2ccdafe230291c262c0e2df858d5ee349f1e40e9d5d9bcf83d60309c20"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": null,
+          "sha256": "6679016c39ba5861ebf65ffd8940d1f8a395ab0066b4840ba9351aedfd4d5de5"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "209f4b588215914f477fe962ef0580aa72777b9bf16562e5e9b7122cca95826f",
+          "sha256": "6820289c29a01e10e787bef2e2f8ddcb1a50102e6e97f38096d168f256f218cf"
+        },
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "before_sha256": "3ba838b80ce847576dcc7d95a4a696c8b5971625dd443ff40b44e7bac543d5bb",
+          "sha256": "859837e2ef4beb143dd1bf8de9018ca45a8dff94dee3388560dae8ea80fdc4a7"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": null,
+          "sha256": "2a29cd82c8bf33affbb95a744b27636455736ae84ba3cb602039cf437700df0b"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process_lifecycle.py",
+          "before_sha256": null,
+          "sha256": "e718df565889bb30a22807c827bf3c9db31a14cda159b30ec8d07d8eb94b09e4"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "ab66f0fac0ac9f61c7c956e3fe12a444323dbf3fd64911f5cba0f60106a49ea7",
+          "sha256": "00479d3d13b78dec682c0015289d19cf555531e19bea0a3dce364c1cf0464720"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d0fcc141b384fa2174ff716050ec8f4cf67ac2a0126f71c56c1b130f095fd516",
+          "sha256": "c32e10bf187eeaeedb545de40c94636b1f51dee1e6d97cb9cda6d7ad473ec749"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "runtime_input_contract_changed": false,
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Default-off selected-source v3 narrative provider bound to a private per-operation file exchange and explicit owned native process. Reserved request/response environment paths, scope UUID correlation, unchanged generation prompt/schema, bounded strict closed response validation; root zero exit and exact native cleanup before reading. Retained setup/read/cleanup work, known-file-only deletion, uncertain native/filesystem cleanup holds shared admission quarantine. Explicit inert Windows factory, no HTTP binding/fallback/model loader/app settings. Fake-kernel filesystem refusal tests and real synthetic worker/lifecycle tests with simulated Job membership only. Windows ACL/reparse/quota/erasure, image/dependency identity, actual containment/GPU/crash recovery and production model worker remain unqualified. No weights, production media/data, runtime actions, deployment or publication."
+    },
+    {
+      "feature": "agent-main-20261021-provenance-replay-base",
+      "source_commit": "a4e39221a3dab8ee84bacc7c9226e7b3a71b112b",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "cd1f75f1cd2470426817b86fab9b8cc7f2c0d01113b8473ca4c31f95e5ec37ea",
+          "sha256": "758239b241467b992432801fa84477e540b727792d936293f8064db19904bf3b"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "6820289c29a01e10e787bef2e2f8ddcb1a50102e6e97f38096d168f256f218cf",
+          "sha256": "5bf82874c26c69d750a994584bcfe89c0bc3beb0dc6f8e90b152cc4375c208a4"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "00479d3d13b78dec682c0015289d19cf555531e19bea0a3dce364c1cf0464720",
+          "sha256": "7dcc9bd44dcb9cebb074c3d1a0020ac0d7e96bf07dcb88fb9c0decd81413e9ae"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "c32e10bf187eeaeedb545de40c94636b1f51dee1e6d97cb9cda6d7ad473ec749",
+          "sha256": "45ae8c2730ccb3e29c5a17a5f5e50f0e76e927c40dd118878304d97b61e9293f"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "59404cfcad1591ee3873837bb2f67b59fa204d497058bfb01cb6f4b89a93483d",
+          "sha256": "e658091fdbf502a13c94d0e9096332d733a4dcc22d474a54090c30a646a8754c"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Provenance replay bridge only: restore the recorded common-base hashes for overlapping paths so main branch overlays can be retained verbatim after the agent overlays. This is not a working-file rollback; the final merged-source overlay follows."
+    },
+    {
       "feature": "photo-stack-guarded-migration-and-one-sweep-host",
       "source_commit": "a4e39221a3dab8ee84bacc7c9226e7b3a71b112b",
       "files": [
@@ -26862,6 +27766,570 @@
       "notes": "Resolve only documentation and provenance conflicts; retain main search-release/phone QA tooling and guarded grouping packaging. Keep the already-qualified d951b1b runtime artifact pinned for its separate approved rollout; this merge does not rebuild or publish it."
     },
     {
+      "feature": "agent-main-20261021-source-integration",
+      "source_commit": "b8837950d456970cfb19595b1f0fceda93769494",
+      "main_commit": "5f72004ad4692786516615d5c68ac8e1568ff2cf",
+      "files": [
+        {
+          "path": "docs/README.md",
+          "before_sha256": "57c24921ecc4eb6c57aaf1a96fb45c8c8a68a59a31ed7d066643575afae3594a",
+          "sha256": "85fb82c5a35fbf8e27a22686fdb48cf3c32235931cb8787fa0121ab4a442bd22"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "b93b427926596f56490c55cc958c03ee819dfe896ed04eea47acd59f48778200",
+          "sha256": "0f2e5d70b2f2007f7f4a4bf708b21ea2ac63e90e8ba4cbeaa9929f213036fcfc"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "22e6aa237fa926a6c957ebb6642999e2989fd5bcea2cf533a0027ba7c999fd5c",
+          "sha256": "a284ae980e96870d3eb729b5ff862ddd36752b9adac7581693d145f4b20ef34f"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "b50d0125afb806ea471f56b6ec865e7ea82c02b617bbe2e45df97d23534fecbd",
+          "sha256": "09c214ff1d727d6a49f673ef5714caf044cce1a4d4aa34c888898bf1e01eac51"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "6685f4585a13573be75a852a414c4a8889de8f18f7f57b002652c99b444b6a53",
+          "sha256": "d30b7be4ddad50b4dbe35cb812a1e79ca76e943593d5daac249ff481caabbd9a"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Integrate current main with the default-off agent/story feature branch. Preserve both roadmap sections, current photo-stack schema-target packaging and isolated-import checks, all inactive native/process provider files and all test cohorts. No provider activation, runtime changes, model loading, deployment or publication."
+    },
+    {
+      "feature": "memoir-font-browser-await-source-readiness",
+      "source_commit": "97aa275d3577c178e9442c1275e9cbf08ca3d875",
+      "files": [
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "f5dd7c8c4b6ad51e2e51eb3dba7c2219b4c7bc0592f544af99d0749ff7e3a61e",
+          "sha256": "e74efc61675a8f44b21a0fa26a1da411929f0e6d9b00faca81074c5c8aa88573"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Browser fixture only: wait for the visible chapter source-check completion before recording the strict no-network baseline for the local text-size control. Prose intentionally renders before the existing parent/child source reauthorization finishes. Preserve the all-request and no-write assertions; no product behavior or source authorization changes."
+    },
+    {
+      "feature": "selected-story-lifecycle-fixture-close-initialization-db",
+      "source_commit": "9cc7c3ed9309ba56da77bb0ead2fe69294ec5fae",
+      "files": [
+        {
+          "path": "server/tests/security/test_selected_story_lifecycle.py",
+          "before_sha256": "58fc7138c7cbd026b68d45e2af3818a652a2c81891d3ab8dcc14547cbe566f3e",
+          "sha256": "b4bbfa260e9111b9ea5c6cc864ab646620cf93995a4e8b69f404d16e305fafbf"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Close the synthetic SQLite initialization connection explicitly after its transaction instead of relying on sqlite3 context-manager or garbage-collection behavior. A retained-connection regression verifies closure and committed sessions; fixes Windows temporary-directory teardown. No product database/lifecycle behavior changes."
+    },
+    {
+      "feature": "selected-story-private-ipc-and-native-windows-qualification",
+      "source_commit": "31083f72b0d20e7c0c55f2faea5e4181eea1ff2e",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "85094e9bc5a7563876104904ab0c990a28eb018887850c5080d94e5d08359dde",
+          "sha256": "5e1b7844d769474f08459a8a29021d9aa343537bfe58075cda1c5628276c2de2"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_WINDOWS_QUALIFICATION.md",
+          "before_sha256": null,
+          "sha256": "420a6730e6232eded60a111ae9b45aebc5850a143457193cc53425772dc6d0fd"
+        },
+        {
+          "path": "docs/WINDOWS_CPU_CHECKS.md",
+          "before_sha256": "32bb8ebee6f7aa157bca025e9c5cfe55a31fe514f329fb8513bc93d08d85d44e",
+          "sha256": "e0b53259570fe2e21d791473ef7ad9aba742049ba2672ad477b9ccc00e7f7c99"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": "6679016c39ba5861ebf65ffd8940d1f8a395ab0066b4840ba9351aedfd4d5de5",
+          "sha256": "a3588e77f1c970801a84c1ed3629d8c9668d3a996d7185241b29a789c1965d41"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "a284ae980e96870d3eb729b5ff862ddd36752b9adac7581693d145f4b20ef34f",
+          "sha256": "85c7fc415ad7c6a66cdec892e272c8da1ed7c649e1758b23815122c1f11aacca"
+        },
+        {
+          "path": "server/scripts/qualify_selected_story.py",
+          "before_sha256": null,
+          "sha256": "228fa44143b58cd7f2efc9af274efdf7646fd95d43a173ab49d320400a9a0295"
+        },
+        {
+          "path": "server/tests/security/test_qualify_selected_story.py",
+          "before_sha256": null,
+          "sha256": "4ccc574fdbde539ff02d807f6497260e0706878b49221f50da2eadd83bc51cf7"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": "2a29cd82c8bf33affbb95a744b27636455736ae84ba3cb602039cf437700df0b",
+          "sha256": "992a1cd0e7b784f5b835277f599fa64acbd31a73365ca647a20f72734a380d19"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "09c214ff1d727d6a49f673ef5714caf044cce1a4d4aa34c888898bf1e01eac51",
+          "sha256": "2a3c8496a3e30d94bc891581048c5fa1fcf0c9a133ae8499911d45ba2709ed42"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d30b7be4ddad50b4dbe35cb812a1e79ca76e943593d5daac249ff481caabbd9a",
+          "sha256": "1507a1425fe625fe75be05f27957befb4f33a6b7045b9dc3f0d0afd52552bdf9"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Check actual private Windows owner/DACL before request text write and response read; preserve native cancellation category. Add explicit default-off source-package native Job and file-IPC synthetic qualification, portable refusal tests and operator runbook. No model worker, provider activation or production deployment."
+    },
+    {
+      "feature": "selected-story-isolated-windows-rehearsal-evidence",
+      "source_commit": "0e218ece143cca299704c2c6b4513bffa9051da1",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_WINDOWS_QUALIFICATION.md",
+          "before_sha256": "420a6730e6232eded60a111ae9b45aebc5850a143457193cc53425772dc6d0fd",
+          "sha256": "9f214640683b9005e6bb11c09942f9fd937885efefe7362cba0a6eabd92b9edd"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Record the separately authorized isolated SYSTEM synthetic qualification: 12 generated application cases and 9 real Windows Job/ACL/file-IPC cases passed on the pinned source-only package. Owned one-off task removed; existing definitions and launcher verified unchanged. No production data/model use, feature activation or deployment."
+    },
+    {
+      "feature": "selected-story-native-evidence-source-entry-count",
+      "source_commit": "7726fd61b7b5fe51ea1ac2bccb92b331a88d4826",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_WINDOWS_QUALIFICATION.md",
+          "before_sha256": "9f214640683b9005e6bb11c09942f9fd937885efefe7362cba0a6eabd92b9edd",
+          "sha256": "abdb8683eefc166b108d4b76fb3bdc9f3b34e6229fc047689f9640c8a85dd1fe"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Clarify that the 271 selected source files are accompanied by a separate manifest ZIP entry; qualification pins and behavior unchanged."
+    },
+    {
+      "feature": "selected-story-optional-owned-gguf-worker",
+      "source_commit": "8c49e76fe32d04fce9385887b0b7d5be0309c0df",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": null,
+          "sha256": "6fb48ee982ff5e71fa11186ef96f86bb837d782ff58888ef5461b29f326be639"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "5e1b7844d769474f08459a8a29021d9aa343537bfe58075cda1c5628276c2de2",
+          "sha256": "8f9bcf668ac705330661f13e122778fd0464a46a3bfaa8f913d233899cd381bb"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "85c7fc415ad7c6a66cdec892e272c8da1ed7c649e1758b23815122c1f11aacca",
+          "sha256": "8d214769500202a90b75d1c4ac72d44d26fea32b16aa59e887cd0056395b1a15"
+        },
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": null,
+          "sha256": "2a409b0568098b82cab2bb9a3b6393e973358d82dd9ae1a306aa82df01d31319"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": null,
+          "sha256": "4c6d157841869f6a8cc425ff947804c5a90952808976fa41fc9afcc15a1a3416"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "2a3c8496a3e30d94bc891581048c5fa1fcf0c9a133ae8499911d45ba2709ed42",
+          "sha256": "b035b12e27741db243191b14d35e327a3e193fa3877636ed9b213bb92715891c"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "1507a1425fe625fe75be05f27957befb4f33a6b7045b9dc3f0d0afd52552bdf9",
+          "sha256": "113818f76e4f2250fc7cea5c7e0859061fedcc5c5af02a5c9ccb10a3271da1dc"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add an explicit one-request optional local llama-cpp-python GGUF worker within the existing owned-process protocol. Reconstruct canonical request/schema/options, preflight explicit local single-file model digest, refuse context/output truncation, validate narrative, close model before private exclusive response. Include inert package imports and synthetic backend/process tests. No model/binary selected or installed, no GPU/native-loader qualification, no app/provider activation or deployment."
+    },
+    {
+      "feature": "selected-story-windows-fixture-repair-explicit-gpu",
+      "source_commit": "9a9edd0e2d3cb229b64efc342c90654824606597",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "6fb48ee982ff5e71fa11186ef96f86bb837d782ff58888ef5461b29f326be639",
+          "sha256": "fbfb6cff65e0c6f54b653128cde87c592e0420bf0b577784ddf1242aceec15ee"
+        },
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": "2a409b0568098b82cab2bb9a3b6393e973358d82dd9ae1a306aa82df01d31319",
+          "sha256": "c81ef67bfac1f06f4100a34be686859fb64addb3d781e74fb14dd441c03dcd14"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "4c6d157841869f6a8cc425ff947804c5a90952808976fa41fc9afcc15a1a3416",
+          "sha256": "53971656c494980b6a58232405f89580b6f3f8732ba8f7823ecc1eca90baa8b1"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process_lifecycle.py",
+          "before_sha256": "e718df565889bb30a22807c827bf3c9db31a14cda159b30ec8d07d8eb94b09e4",
+          "sha256": "e6e40522040932c8417949de6d027e2e7d81236a20aaf9d2553910c7443029fe"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Develop source repair in an isolated Windows export: preserve platform basics in synthetic child launches and expire only after resumed/live process proof. Require explicit bounded backend GPU ordinal for nonzero GPU layers; physical GPU identity remains unqualified. Windows interactive bounded-Job checks: 115 affected cases passed with three platform skips; ten committed-package checks passed. Synthetic processes/providers, no model/backend loading or production activation. Record a draft shared-host admission contract without implementing coordination."
+    },
+    {
+      "feature": "selected-story-maintenance-aware-shared-host-admission",
+      "source_commit": "acb2fd19f78241507e7da372fcba964916b486e9",
+      "files": [
+        {
+          "path": "server/backend/app/access/host_inference_admission.py",
+          "before_sha256": null,
+          "sha256": "e3cf522c46a9c17b2596aff1412129a473fa3ae0f43e28726bae6c46922500b2"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": "a3588e77f1c970801a84c1ed3629d8c9668d3a996d7185241b29a789c1965d41",
+          "sha256": "1b3ad06e8a0f30fbef6cb71c9526b2e0701277189843b533750adc0a63c68cd2"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_operations.py",
+          "before_sha256": "e157f181a2d899492f7d581eb6ba71899e4606394ea935324b44728f73f646cd",
+          "sha256": "98c631886aeb3895a041919d581e7401c522dfaf66eb185c7cc11e0c199f42a2"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "113818f76e4f2250fc7cea5c7e0859061fedcc5c5af02a5c9ccb10a3271da1dc",
+          "sha256": "d53527f7481b395d0cc861cfa0b6c7b12c642d3f71a368baca8e4ac9825453ac"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "8d214769500202a90b75d1c4ac72d44d26fea32b16aa59e887cd0056395b1a15",
+          "sha256": "1e8c3ac6e5b5a4740528ffa239df5d17a73f9b25984929b3ec2075a83c683155"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "b035b12e27741db243191b14d35e327a3e193fa3877636ed9b213bb92715891c",
+          "sha256": "770e9cb8dddc21b7bb665c0f67d0597f2d378d6dfb8c422c7f92fae8db9d1396"
+        },
+        {
+          "path": "server/tests/security/test_host_inference_admission.py",
+          "before_sha256": null,
+          "sha256": "9efade5c2d320f7607a4e681cd54074f112b62b72ebae18d7d0a312439190120"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_HOST_ADMISSION.md",
+          "before_sha256": null,
+          "sha256": "be3beec2aab36f6eedf90c0b041096a17e5f8d0c779fad02e5e8ff01844a56d8"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "fbfb6cff65e0c6f54b653128cde87c592e0420bf0b577784ddf1242aceec15ee",
+          "sha256": "82d81629b18c0357836d54c483554eca1d4e95d5e5fafb85167068427eaf7624"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "before_sha256": "7a8b563f5a06248c2466391250e7d0b69178dcafece96afbe7fb606b204912e7",
+          "sha256": "0e77f89b05b9b284680b71b66bf93a1eab7b65d009b26d13b6c51d7c3c6e7ba3"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "8f9bcf668ac705330661f13e122778fd0464a46a3bfaa8f913d233899cd381bb",
+          "sha256": "afa396d8d71943e9a9c187f197f38136029d09706515accc02175a29758ccda2"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add default-off private local SQLite coordination for one cooperating host generation, maintenance closure and explicit full-profile clearance, fresh trusted RAM/disk/VRAM/external workload evidence, exact operation/owner release and durable crash quarantine. Optional owned-process integration retains acquisition and releases only after process/exchange cleanup; preserve protected busy retries. Developed and checked in isolated Windows source: 115 affected tests passed, two platform skips, ten committed-package tests passed. Synthetic processes/providers only; native probe, shared external workload agreement, actual model/GPU qualification and deployment remain separate. All 14 runner tests passed on Windows; normalize only a test assertion for platform environment-key casing."
+    },
+    {
+      "feature": "selected-story-native-windows-capacity-and-pinned-clearance",
+      "source_commit": "83ee0c58a4e0393566a9fb1482606f86e7d526a8",
+      "files": [
+        {
+          "path": "server/backend/app/access/windows_story_capacity.py",
+          "before_sha256": null,
+          "sha256": "38e644c5432b4e0817a539242d0923630bb30e0f6ad0a97937f9afbb5334b973"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_capacity.py",
+          "before_sha256": null,
+          "sha256": "522c690195b141aa1d6c746b26afa0001cd65fb1d73f8852e82199b9c7dc53ba"
+        },
+        {
+          "path": "server/backend/app/access/host_inference_admission.py",
+          "before_sha256": "e3cf522c46a9c17b2596aff1412129a473fa3ae0f43e28726bae6c46922500b2",
+          "sha256": "1ecabaebd4c15d7c6685ef297662bc6468a2c48c3de0e96b5e506a06815f9c0e"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d53527f7481b395d0cc861cfa0b6c7b12c642d3f71a368baca8e4ac9825453ac",
+          "sha256": "e440a58158d844cc1dfe862100cbac41f0afd341520798a3eac4c52bdd56d09e"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "1e8c3ac6e5b5a4740528ffa239df5d17a73f9b25984929b3ec2075a83c683155",
+          "sha256": "d5570cc974b4e43461a2165d6654744ebc8967ee21dde4c6a5871ff8026724be"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "770e9cb8dddc21b7bb665c0f67d0597f2d378d6dfb8c422c7f92fae8db9d1396",
+          "sha256": "6b65b31426f8ac714d06036b37983fdaf0550c8fb915c90c5548974ec40415a9"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_HOST_ADMISSION.md",
+          "before_sha256": "be3beec2aab36f6eedf90c0b041096a17e5f8d0c779fad02e5e8ff01844a56d8",
+          "sha256": "25255a72eafa4f6f13b01e7a4031e9f2c283d1b1509bd5dff9abdbef5e9e3049"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_WINDOWS_CAPACITY.md",
+          "before_sha256": null,
+          "sha256": "937afd52ae8d1d1269228325dab8ea91ca953a8a4979f4423777f4124248e7fa"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add default-off native Windows RAM/caller-disk/host-SID-volume and explicit UUID NVML counter reads. Bind sealed probe configuration and receipt SHA/UUID into full host profile; require exact trusted owner roster, pre/post private receipt, bounded age/window, boot/timing checks and refuse native/config errors. Resolve actual mountpoint; pin system-driver link count; verify loaded module path, require shutdown and DLL reference release. Isolated Windows:153 affected passed with3platform skips,10committed-package checks passed,2read-only native checks passed with generated CPU clearance and actual pinned UUID/VRAM counters. No real inference clearance, model/backend load, service/task/data mutation, activation or deployment."
+    },
+    {
+      "feature": "selected-story-composed-native-gguf-synthetic-qualification",
+      "source_commit": "209d3a553ff267232e25b5b0876c62a3a198290c",
+      "files": [
+        {
+          "path": "server/scripts/qualify_selected_story.py",
+          "before_sha256": "228fa44143b58cd7f2efc9af274efdf7646fd95d43a173ab49d320400a9a0295",
+          "sha256": "8bfcea924e18174347029d311beaeec7f52be21b54442108afd6e2367d5b3d40"
+        },
+        {
+          "path": "server/tests/security/test_qualify_selected_story.py",
+          "before_sha256": "4ccc574fdbde539ff02d807f6497260e0706878b49221f50da2eadd83bc51cf7",
+          "sha256": "0492b699d7159833f4002862001927a690a1330958daf52a952b32c10bb455ec"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "82d81629b18c0357836d54c483554eca1d4e95d5e5fafb85167068427eaf7624",
+          "sha256": "ec0e2e2e28ba4e1d08eec3ef38a389acb1a6338b3248e0c90caf5e95643bd018"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_WINDOWS_QUALIFICATION.md",
+          "before_sha256": "abdb8683eefc166b108d4b76fb3bdc9f3b34e6229fc047689f9640c8a85dd1fe",
+          "sha256": "938ad6e8349e091dd758c2519870530ccc255ffc234f64aa423a6acf7efa4401"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": null,
+          "sha256": "cf62b40670ef58e1a7b3cbb80f26369bc93a097c0af4f79e27f1303fc817e919"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Extend explicit synthetic Windows qualifier to compose actual nested Jobs/private ACL file exchange, injected GGUF worker engine, persistent host admission and native CPU clearance probe. Verify blocked setup before exchange/child, successful cleanup/claim release and observed model-close failure without response. Empty exclusive close marker and native resume prevent startup-failure false acceptance. All 12 native cases and 44 focused cases passed with two platform skips in isolated interactive Windows source; all ten committed-package checks and eight portable qualifier tests on Mac passed. First actual CPU backend/model trial is documented but not installed, loaded, enabled or deployed; SYSTEM/new runtime and real workload-owner clearance remain separate."
+    },
+    {
+      "feature": "selected-story-optional-cpu-trial-artifact-candidate",
+      "source_commit": "8dc414788a522aa0d9cbf6ea3f37a60828991d24",
+      "files": [
+        {
+          "path": "config/requirements-selected-story-cpu-trial.lock",
+          "before_sha256": null,
+          "sha256": "6aa56d6a966f9f12547350165acdc35f593a07899e359c53327b19685a808691"
+        },
+        {
+          "path": "config/selected-story-cpu-trial-candidate.json",
+          "before_sha256": null,
+          "sha256": "88a474f54f6d45cb3c394441e0da2991e1d45fb04d497b91c2d542cdcc93f6ca"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": null,
+          "sha256": "e949f2d621bec1439b3052116ab1b762416f7d15c1860d1796411f810a853700"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "cf62b40670ef58e1a7b3cbb80f26369bc93a097c0af4f79e27f1303fc817e919",
+          "sha256": "1e9a685c1423acefe22c29a240454256c5af74e7edd373cea22dd435b0ae7548"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "ec0e2e2e28ba4e1d08eec3ef38a389acb1a6338b3248e0c90caf5e95643bd018",
+          "sha256": "526bddaf0f27d6a7e6144cc6b16568ccfced9b373890aaf2bb90c02900c45ad1"
+        },
+        {
+          "path": "third_party/selected-story-cpu-trial.md",
+          "before_sha256": null,
+          "sha256": "4abc9fc7d7a1a817cb3b8d8563bdf391486f5360b591f74f4c2cb9853636f8ec"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Pin optional WindowsCPython3.12 CPUtrial wheel set and single Qwen2.5-1.5B Q4_K_M candidate from primary publisher metadata, with exact versions/URLs/sizes/hashes, separate optional lock and declared license notices. Source API review and compatible-tag/Python-version/transitive-dependency closure pass for25wheels+oneGGUF. No candidate artifacts acquired/installed/loaded; no appdefault/profile/provider orruntime changed. Runtime approval, actual artifact/native DLL inspection, fresh ownerwindow and measured model behavior remain separate. Private default-off acquisition/trial operators prepared;13preparation tests pass on Mac/Windows under bounded native outerJob, using mocked executor/network paths and actual generated-bundle validator. This is not installer/native-model execution qualification; fresh target absent and zero owned test Python processes."
+    },
+    {
+      "feature": "selected-story-isolated-cpu-binding-and-acquisition-checkpoint",
+      "source_commit": "bb9e0d6eb23dce57cfbb9685a026b8ce7c279b6f",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "e949f2d621bec1439b3052116ab1b762416f7d15c1860d1796411f810a853700",
+          "sha256": "8699f3d4c4b58c2f2482536e6363a46ffc13771e5643812828bb2cd579ccec8b"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Record approved isolated Windows results at runtime source 8dc4147: all25 wheels size/SHA verified and installed offline in a new private environment; pip check passed; all12 synthetic native lifecycle cases and seven PE-parser tests passed; bounded CPU binding-only import passed with expected core DLL path/file pins and no model construction. Auxiliary llama-common.dll OpenSSL imports remain unqualified and were not mapped. Acquisition stopped before model-file creation; original child exception unavailable because native launcher discarded streams; separate bounded HEAD check timed out. No acquisition retry/mirror/provider substitution, real model trial/window/receipt, GPU inference, production DB/media, service/task control, activation or deployment. Final readback: no owned Python processes, zero synthetic claims with maintenance closed, all274 source-file hashes intact. Disk hashes/module-path snapshot are not atomic mapped-image proof."
+    },
+    {
+      "feature": "selected-story-private-exchange-parent",
+      "source_commit": "0dd46babbaea04c994a302ecec96ab87f18bde8d",
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": "1b3ad06e8a0f30fbef6cb71c9526b2e0701277189843b533750adc0a63c68cd2",
+          "sha256": "b192cc9511f0362b02b7f8fb91adbb514ab3a9a19dd6f21f57d5f5e9350362f5"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_exchange_root.py",
+          "before_sha256": null,
+          "sha256": "07f3ab89895670e3b9e1ae38d0f4506c5b91930c1afa3652b9f2b50d6cb9bcd4"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "e440a58158d844cc1dfe862100cbac41f0afd341520798a3eac4c52bdd56d09e",
+          "sha256": "559b9c1b9785e32004cebbcd2c7e502f0504f00dab39eefd4da9a3d670af280f"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "afa396d8d71943e9a9c187f197f38136029d09706515accc02175a29758ccda2",
+          "sha256": "41a37c3e13029e0eb0f1034ec94ffdf7d3c9817862cff155d09a09fee211a23b"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add explicit optional existing private local IPC parent without process-global TEMP changes. Validate spelling without I/O during construction; check parent identity, canonical path and private permissions after admission and before exchange reads/disposal. Parent replacement retains exchange and host claim. Explicit parent is included in launch digest; None preserves legacy digest. Synthetic tests cover containment/sibling preservation, missing/unsafe/replaced parents and recovery. Staged app/factory activation and native Windows qualification remain separate; immutable runtime source 8dc4147 is unchanged."
+    },
+    {
+      "feature": "selected-story-windows-factory-admission-and-exchange-forwarding",
+      "source_commit": "7ad4a478306d7d1902e8cfd9aca1b2bcebc932a2",
+      "files": [
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "before_sha256": "859837e2ef4beb143dd1bf8de9018ca45a8dff94dee3388560dae8ea80fdc4a7",
+          "sha256": "d57236dcee8e41e97a70a41d8ba1a6e2c6a30c8e34cc739555bbec2f8030a9c7"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_windows_factory.py",
+          "before_sha256": null,
+          "sha256": "4cb668fbeadc6e22ffca0ead9c55517c6c5fb5e4a9d88de898981e2efc113e68"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "559b9c1b9785e32004cebbcd2c7e502f0504f00dab39eefd4da9a3d670af280f",
+          "sha256": "0c952a8b35085879d33d3f3760f1689649e8a41aa8d920df66e64f9fbf13f4be"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "41a37c3e13029e0eb0f1034ec94ffdf7d3c9817862cff155d09a09fee211a23b",
+          "sha256": "b432d916d92dc4588c4f8a58dbe688d37c3efe4e17c1b9dfb0acdfb3c00f7624"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Forward optional host admission and explicit exchange parent through inert default-off Windows provider factory. Preserve existing Windows launch-path validation. Four synthetic tests cover disabled defaults, exact forwarding, mismatched profile refusal and matching profile construction without native API, capacity, filesystem or store-control actions. Dispatcher includes checks in API/memory/Windows CPU profiles. Staged app binding, native qualification of this source and deployment remain separate."
+    },
+    {
+      "feature": "selected-story-content-free-worker-failure-phases",
+      "source_commit": "afe1f99b7fefbd932ac7f6d7ac24c4747ba06c39",
+      "files": [
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": "c81ef67bfac1f06f4100a34be686859fb64addb3d781e74fb14dd441c03dcd14",
+          "sha256": "437ecf89e1c4daaed6d1aaa2f7fa6b6d51be7d6f4019c144d2aebaf81382abb0"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "53971656c494980b6a58232405f89580b6f3f8732ba8f7823ecc1eca90baa8b1",
+          "sha256": "7e64fb77926e384b45d01469dd6d0d59790ad7f0b3b599f2b24188d40d0d72e4"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "526bddaf0f27d6a7e6144cc6b16568ccfced9b373890aaf2bb90c02900c45ad1",
+          "sha256": "b3ee4e3319d1d309caeb33be976a11bf7982f3abb2f5fefa96286b7b3a0f5e5c"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "8699f3d4c4b58c2f2482536e6363a46ffc13771e5643812828bb2cd579ccec8b",
+          "sha256": "ec477ff7cd2c6015c6f574a45c8af083c125a80a33fb80272a0b9b41300a17cb"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add closed worker failure phases/stable exit10-22; retain generic public error and default/config exit2. Track load/context/grammar/generation/validation/close without paths, words or raw backend errors; close failure overrides and prevents publication. Synthetic worker/protocol tests pass. Record separately pinned Windows model acquisition,18-check binding canary and first real English trial failure(exit2); successful model construction/generation/quality/cancel/expiry remain unqualified. Zero claims/native processes and closed maintenance verified; runtime8dc unchanged."
+    },
+    {
+      "feature": "selected-story-explicit-runtime-provider-injection",
+      "source_commit": "afe1f99b7fefbd932ac7f6d7ac24c4747ba06c39",
+      "files": [
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "e600b2eb885c68b1942fb9c1953f55bc8bf8f304936141d0d8ebfa2d4c26ccfb",
+          "sha256": "0fc3f60264b3a5fbfd7b420d77269be593fddf7290baa7d1af0c645951801a72"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_runtime_binding.py",
+          "before_sha256": null,
+          "sha256": "af7c4d1d37aa931dea266a2c1de235b30f1907935a5148c6de1f7e43bd80ead9"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "0c952a8b35085879d33d3f3760f1689649e8a41aa8d920df66e64f9fbf13f4be",
+          "sha256": "e7038c125e7578d68ef514a3891a684bd5d34d229d2c73bc2d9b55b8c5a9a572"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "b432d916d92dc4588c4f8a58dbe688d37c3efe4e17c1b9dfb0acdfb3c00f7624",
+          "sha256": "5071526bce752dfa357bea7213c670e2d4c39f0d2a8ce4dab4e4a063e1cadb43"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Forward an explicitly injected provider through RuntimeConfiguration into existing app/session lifecycle. Separate API/UI flags remain false; validate booleans/provider/collaboration dependencies before storage construction. Generated-store tests verify defaults, dependency refusal, exact object forwarding and app lifespan ownership without build-time provider calls. No serialized recipe, model selection/load, Windows access, store clearance or automatic receipt renewal. Long-running operator policy and activation/deployment remain separate."
+    },
+    {
+      "feature": "selected-story-main-fe47cec-provenance-replay",
+      "source_commit": "191534d3ef2e2739a4bb7b1badd42fc5df259684",
+      "merged_main_commit": "fe47cecd857206090b282723390b20c4a7830f10",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "0f2e5d70b2f2007f7f4a4bf708b21ea2ac63e90e8ba4cbeaa9929f213036fcfc",
+          "sha256": "b93b427926596f56490c55cc958c03ee819dfe896ed04eea47acd59f48778200"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "41e3010fadbb39c119fc07ff8d2c741a2534acafe0d6a8d006bfaabd74d25991",
+          "sha256": "c93ac1daa7e88df19ab6247a71939dbb6194f5d5365edfe96494060bd09aca2e"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "4502d2e0a54414bf6968c787cc2055196ad10a605ec654130f669378cc377d09",
+          "sha256": "7c39eae7a5c7f03e2b565972632e383f7611ab901ee57453c5cb7b188555161f"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Ledger replay bridge only: restore each overlapping common-source hash before retaining upstream feature records verbatim. This does not roll back working files; the combined-source overlay follows."
+    },
+    {
       "feature": "photo-stack-expanded-web-regions-20261021",
       "source_commit": "5f72004ad4692786516615d5c68ac8e1568ff2cf",
       "files": [
@@ -26916,6 +28384,270 @@
       "live_runtime_changed": false,
       "apk_publication": false,
       "notes": "Named inline contact sheet for expanded v1/v2 stacks, keyboard focus return and measured sticky-navigation clearance. Saved preferences, authorization and full viewer sequence retain their existing contracts. Mac-local generated browser acceptance only; Windows indexing and runtime remain separately owned."
+    },
+    {
+      "feature": "selected-story-preserve-expanded-photo-stack-browsing",
+      "source_commit": "191534d3ef2e2739a4bb7b1badd42fc5df259684",
+      "merged_main_commit": "fe47cecd857206090b282723390b20c4a7830f10",
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "000f0a1d262e640569fd0e8e9d00e91cd1946b4c70e523d86dbed4d9fd501060",
+          "sha256": "2307414a3b75b55a05a0c8c0bf2eb9b53e49356a3f13f4755e7512f6f541b171"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "4c9bceea19cb413447c172bd35de551d0c90331920d67d2bd1c89225228ac348",
+          "sha256": "b519097d421dfc247ce772656e49e3d5f21bb55faa547b6e64dd9dcf0dfe7db2"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "efc47385c8972a7465fedd619e1b7502e813100d0e7667a897b9399a00db36ba",
+          "sha256": "2ff6a299c6b0a50483dac3b1a766906642e2bcdcc970950435c347d40d784640"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Integrate merged main fe47cec without dropping selected-story UI/runtime work or upstream photo-stack browsing and keyboard behavior. Retain both parent feature histories verbatim with an explicit replay bridge and final combined-source hashes. No Windows runtime or deployment change."
+    },
+    {
+      "feature": "selected-story-protected-runtime-process-integration",
+      "source_commit": "a6b27df0f539a1b592b7c10e301a5d1e9338e11c",
+      "files": [
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "before_sha256": null,
+          "sha256": "829fe1237a626bbf26340768750e49406ba7f270aca541fc5ed9b4e6d90a0528"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "e7038c125e7578d68ef514a3891a684bd5d34d229d2c73bc2d9b55b8c5a9a572",
+          "sha256": "f011f1964b9ecf9e60a543313faef6d4746e0c2b424b5fb858f7ccf80f8a02af"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "5071526bce752dfa357bea7213c670e2d4c39f0d2a8ce4dab4e4a063e1cadb43",
+          "sha256": "6f11d6b881bb378384917161f335223cf0ca4370952e424865a0be83a0ea5297"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add three generated-store integration tests through actual RuntimeConfiguration, source/evidence preview, protected prepare/cancel/logout ASGI routes and a real stdlib synthetic file-protocol child. Verify exact retry causes one child/no save, immediate busy admission, cancellation fences wording until reaping/exchange disposal/claim release, and foreign-session refusal followed by owner logout cleanup. Pin actual base interpreter and disable helper descendants. OS Job/resource limits remain simulated; no Windows/model/deployment acceptance claimed. Register in API/memory/Windows CPU profiles."
+    },
+    {
+      "feature": "selected-story-logout-race-contract-and-current-trial-checkpoint",
+      "source_commit": "2fb8febf5d81b2e4a9ff0640c42b6169d30b9d6e",
+      "files": [
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "before_sha256": "829fe1237a626bbf26340768750e49406ba7f270aca541fc5ed9b4e6d90a0528",
+          "sha256": "e7b225fb90fec61af5236b5cc5b9d239614d6db57700cb2128601cad79fb2072"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "ec477ff7cd2c6015c6f574a45c8af083c125a80a33fb80272a0b9b41300a17cb",
+          "sha256": "40b235911f9b8bb7c0d6ead1959faa311207189a8662f5dfc9f87ac2f5dda300"
+        }
+      ],
+      "notes": "An in-flight prepare may encounter the logout barrier before revocation commit or revoked authentication after it; both fixed refusals must fence output. A fresh exact retry after completed logout must be unauthorized. Clarify current verified model acquisition and preserve historical checkpoint evidence. No production behavior or Windows runtime changed."
+    },
+    {
+      "feature": "selected-story-roadmap-current-source-and-runtime-gates",
+      "source_commit": "613fe731c6d471d82d3140348235902b6213d3b2",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "f61eedba73c3fdae2df5f4d8f5ac3c43b0cfea53d2ee9a5614191a8feb2850ea",
+          "sha256": "78e7c0f1f2bd456667553908050b1069b748850f1eb7d01fddde8a34af1ec1d9"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "1e9a685c1423acefe22c29a240454256c5af74e7edd373cea22dd435b0ae7548",
+          "sha256": "338d94a7dd8c1779c563b1ae20686e83d9f80be648ef902e96b884f7e68fcd7f"
+        }
+      ],
+      "notes": "Align the plan and trial overview with synthetic runtime injection, pinned Windows synthetic/binding evidence, verified model acquisition and the first failed real trial. Preserve the proposed qualification procedure and separate later source, real model success, production activation and deployment."
+    },
+    {
+      "feature": "selected-story-phase-aware-cpu-trial-and-preservation-checkpoint",
+      "source_commit": "a580884f67a94154efb0a671262ea395a6bb2262",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "78e7c0f1f2bd456667553908050b1069b748850f1eb7d01fddde8a34af1ec1d9",
+          "sha256": "b8f131911cc5d6bb61716ce9ab9226eacb0a31c980b95d6d91cce9fdd2f36dfc"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "40b235911f9b8bb7c0d6ead1959faa311207189a8662f5dfc9f87ac2f5dda300",
+          "sha256": "c223cc6cca0757d1e950e43b0f7442ef0dd4b11f57239d5862c99db73340168e"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "338d94a7dd8c1779c563b1ae20686e83d9f80be648ef902e96b884f7e68fcd7f",
+          "sha256": "a20a590879405ddbcea18a5ea3d5aa713bd661037a66a22c0442e707a1a7ddfb"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Record the separately staged a6b27df diagnostic: 22 native operator/binding-canary checks pass, real English generation exits 17, no qualified draft or remaining four cases. Record independent source/model/DLL/claims/process cleanup and live gateway/site/API/feed/report preservation, followed by explicit lane release. Preserve unknown exception, optional exchange-root qualification and production activation as open gates."
+    },
+    {
+      "feature": "selected-story-small-household-protected-process-overlap",
+      "source_commit": "c9e246321ed13fa9e3939c627749c9bb5ba3307d",
+      "files": [
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "before_sha256": "e7b225fb90fec61af5236b5cc5b9d239614d6db57700cb2128601cad79fb2072",
+          "sha256": "ce5af75336c6f3c283f218dbe4ea6949e15b2764b5e4bced4d828f9b9d9c69bb"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_PROCESS_BINDING.md",
+          "before_sha256": "6f11d6b881bb378384917161f335223cf0ca4370952e424865a0be83a0ea5297",
+          "sha256": "1cdc1a60dc6f9b9876ce5c62af24f916be556721eb16cc002a0d41756899585e"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Add one generated-store/ASGI/real-stdlib-child fixture with four approved contributors and 32 active session rows. Exactly one child/claim; three concurrent submissions get immediate fixed busy, browsing/source preview remain available, foreign-member cancel/prepare cannot disclose or stop the owner, cancellation cleanup precedes explicit retry and no story is saved. Native containment remains simulated; this is not a client load or Windows capacity result."
+    },
+    {
+      "feature": "selected-story-sanitized-native-sampler-checkpoint",
+      "source_commit": "e3b3cf5966ff26f7295113b9ea59fbdcc551e395",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "c223cc6cca0757d1e950e43b0f7442ef0dd4b11f57239d5862c99db73340168e",
+          "sha256": "dab2cc1a21fedfd7e3c6b43957798a74ecd6d7855d87c4f8b36a4056746def64"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "a20a590879405ddbcea18a5ea3d5aa713bd661037a66a22c0442e707a1a7ddfb",
+          "sha256": "6effa5d03bdaac77e1a36c37ad99cc1f24f582e7a58b16478464d51b6f09039b"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "b8f131911cc5d6bb61716ce9ab9226eacb0a31c980b95d6d91cce9fdd2f36dfc",
+          "sha256": "ff4204ed3a96980db0998de1f6fb06fa8f0cb711483439ce5bf49e4823134248"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Record same-recipe private English diagnostic with closed OSError/sampler_setup report, exit17/no draft/no replay, 37 Windows operator checks after test-only portability correction, independent cleanup/pin/service/feed/report preservation and explicit lane release. Exact native cause, successful model behavior and household activation remain unqualified."
+    },
+    {
+      "feature": "selected-story-shallow-bounded-grammar-and-stack-overflow-evidence",
+      "source_commit": "c6882c9c76f7be38d5522405fa2e8bf184af4291",
+      "files": [
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "ff4204ed3a96980db0998de1f6fb06fa8f0cb711483439ce5bf49e4823134248",
+          "sha256": "dd586ff7421dd845fbce817eedad3f09369f6d69cb3f14dc0d5e5fab035e0802"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "dab2cc1a21fedfd7e3c6b43957798a74ecd6d7855d87c4f8b36a4056746def64",
+          "sha256": "c8644eeeb7e8e906f64852b1422d37800e69dd401968aba4fa1479e948b04b51"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "6effa5d03bdaac77e1a36c37ad99cc1f24f582e7a58b16478464d51b6f09039b",
+          "sha256": "a7018c4be8a2f50539d93d8e31bc414699f9a1cbe2ef9a010ab37df8208494c6"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_grammar.py",
+          "before_sha256": null,
+          "sha256": "5734950bbe3e044b61826abbb3ad6869f295135bca6ec993c08aa0d82007ca0a"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "d5570cc974b4e43461a2165d6654744ebc8967ee21dde4c6a5871ff8026724be",
+          "sha256": "ab1c35e6512f14aa90920cb18631701a6488d66d3af11136aafa879393106b22"
+        },
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": "437ecf89e1c4daaed6d1aaa2f7fa6b6d51be7d6f4019c144d2aebaf81382abb0",
+          "sha256": "9f21e38e07fd60aa5384f0eb83a5bb2f70a2705e8de11605fe2086436c644d61"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "7e64fb77926e384b45d01469dd6d0d59790ad7f0b3b599f2b24188d40d0d72e4",
+          "sha256": "84c1b8552a3e93eb80482153e0cb167a404a3867ead393ff442817643d9a8596"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_grammar.py",
+          "before_sha256": null,
+          "sha256": "4b50a76e5533a72caf22399f08b460e37d937cbf0f024f95ba9d825f702de59c"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "6b65b31426f8ac714d06036b37983fdaf0550c8fb915c90c5548974ec40415a9",
+          "sha256": "c23aa1200ba2fc1a03437af6d7f852eef8708293f0d2a2b95c3f3db52d452b51"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "f011f1964b9ecf9e60a543313faef6d4746e0c2b424b5fb858f7ccf80f8a02af",
+          "sha256": "86a304ed59d7a1d54b232a587ed5070eea0170adda15ede55dbd49c48822fa1b"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Measure native grammar_init STATUS_STACK_OVERFLOW with fixed numeric diagnostic, then replace plain bounded-string expansion by an acyclic disjoint-length helper graph. Preserve backend serialized character-token language and all other schema rules; keep decoded validators authoritative. Add aggregate caps, worker grammar-failure close/no-publication tests and source-package closure. New source is synthetic/pure-converter checked, not yet native-model-qualified; model/backend/options/resources and application flags unchanged."
+    },
+    {
+      "feature": "selected-story-first-native-english-success-checkpoint",
+      "source_commit": "8055183a40a8d9470d7c36bb4ffa0148638601f0",
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_CPU_CANDIDATE.md",
+          "before_sha256": "c8644eeeb7e8e906f64852b1422d37800e69dd401968aba4fa1479e948b04b51",
+          "sha256": "5697edd676a802c7621b9adda045ec030744f9521a28a4d72bf07750eaedd94a"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_MODEL_TRIAL.md",
+          "before_sha256": "a7018c4be8a2f50539d93d8e31bc414699f9a1cbe2ef9a010ab37df8208494c6",
+          "sha256": "7f638278df949a0c6077a4b330b186f4b0cc2de4bb07006aeceadb7a293a3e19"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_DEVELOPMENT_PLAN.md",
+          "before_sha256": "dd586ff7421dd845fbce817eedad3f09369f6d69cb3f14dc0d5e5fab035e0802",
+          "sha256": "b069c379677fa97ec28278330018375c9505d7ca0a3c4d8f5c7508d402088c6c"
+        }
+      ],
+      "generation_enabled": false,
+      "deployed_or_published": false,
+      "notes": "Record exact805 native54/zero-skip gate and one generated English success32.031s/44.766s outer with unchanged model/backend/options/CPU2/4GiB; validated needs_review draft, no save/replay. Independent source/model/DLL/Job/exchange/host/process/service/feed/report preservation and explicit lane release. Language quality, Chinese/mixed, native cancellation/expiry/recovery and deployment remain separate open gates. Documentation only; application source unchanged."
+    },
+    {
+      "feature": "combined-search-grouping-ai-provenance-base-replay-20261022",
+      "source_commit": "fe47cecd857206090b282723390b20c4a7830f10",
+      "replayed_search_grouping_parent": "641ce8705e9369c8583ff79d4dab15a73a4cedc0",
+      "retained_ai_parent": "56b084ed4bcfdaf207d5fac254e137ea10b300b8",
+      "lineage_projection_only": true,
+      "runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/README.md",
+          "before_sha256": "85fb82c5a35fbf8e27a22686fdb48cf3c32235931cb8787fa0121ab4a442bd22",
+          "sha256": "57c24921ecc4eb6c57aaf1a96fb45c8c8a68a59a31ed7d066643575afae3594a"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "ab1c35e6512f14aa90920cb18631701a6488d66d3af11136aafa879393106b22",
+          "sha256": "22e6aa237fa926a6c957ebb6642999e2989fd5bcea2cf533a0027ba7c999fd5c"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "c23aa1200ba2fc1a03437af6d7f852eef8708293f0d2a2b95c3f3db52d452b51",
+          "sha256": "b50d0125afb806ea471f56b6ec865e7ea82c02b617bbe2e45df97d23534fecbd"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "86a304ed59d7a1d54b232a587ed5070eea0170adda15ede55dbd49c48822fa1b",
+          "sha256": "6685f4585a13573be75a852a414c4a8889de8f18f7f57b002652c99b444b6a53"
+        }
+      ],
+      "notes": "Project shared tooling paths to the reviewed common state before replaying the unchanged search/grouping ledger suffix. Existing AI history is retained verbatim; this is provenance reconstruction only."
     },
     {
       "feature": "semantic-branch-base-ledger-projection-for-main-integration-r57",
@@ -28508,6 +30240,43 @@
       "live_runtime_changed": false,
       "semantic_search_enabled": false,
       "notes": "Fix warm-cache retained-reference metadata aliasing with immutable primitive keys for every artifact field. Preserve current file/hash/header checks, locking, complete-cohort validation, cancellation and exact score arithmetic. Native qualification remains pending."
+    },
+    {
+      "feature": "combined-grouping-search-ai-tooling-20261022",
+      "parents": [
+        "641ce8705e9369c8583ff79d4dab15a73a4cedc0",
+        "56b084ed4bcfdaf207d5fac254e137ea10b300b8"
+      ],
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/README.md",
+          "before_sha256": "7c5ebac67aebca1f5528501d0de3609dc7ccaa9423d7e8cde56912e2bde2596a",
+          "sha256": "d1c08c45f6413487f0bc2e73f1067d765607bd57d77c1df02ce6a2abcee3a577"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "4ac9f1893c0e55c69f979df9c812ebf9c14c05166b9b4fa258dda5676f33affa",
+          "sha256": "398d83cb89843733efb0f84891004f9d37166b28383c09753349caf00608a688"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "ac985d839737d43f9d33e2c1b04d293f6e2f0464c8621cf62c8235e75cb211db",
+          "sha256": "2a14fae7b107c0dd607bb621dcae8a7f592ce08fd3fabc8dd4cfad5d3921d8f6"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "e837a8e58c1ff08003c8624749fdf12db0771a998ae526d5003b1ba81c2556e8",
+          "sha256": "23d7d2f2f8b4e3a11f70a05e0f97ae7bb9be4cf1f9b1733e744e49bc37341ce7"
+        },
+        {
+          "path": "server/scripts/qualify_selected_story.py",
+          "before_sha256": "8bfcea924e18174347029d311beaeec7f52be21b54442108afd6e2367d5b3d40",
+          "sha256": "1d976798669195eaec2a9d66818e3b6ed5dee80c3d84cef21e2f85ceac6c5cac"
+        }
+      ],
+      "notes": "Retain both reviewed parents, union their check suites and source-package payloads, and preserve all default-off inference/semantic flags. No runtime service, model, data, publication or provider activation. Two inherited trailing spaces in the qualification script were removed; script statements and runtime behavior are unchanged."
     }
   ]
 }

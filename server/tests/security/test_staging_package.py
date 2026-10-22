@@ -71,6 +71,22 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/qualify_semantic_scenes.py',
             'scripts/qualify_reviewed_semantic_scenes.py',
             'scripts/qualify_oral_history.py',
+            'backend/app/access/assistant_agent.py',
+            'backend/app/access/assistant_agent_tools.py',
+            'backend/app/access/inference_admission.py',
+            'backend/app/access/host_inference_admission.py',
+            'backend/app/access/windows_story_capacity.py',
+            'backend/app/access/selected_story_snapshot.py',
+            'backend/app/access/selected_story_operations.py',
+            'backend/app/access/selected_story_lifecycle.py',
+            'backend/app/access/selected_story_transport.py',
+            'backend/app/access/selected_story_local.py',
+            'backend/app/access/selected_story_native.py',
+            'backend/app/access/selected_story_process.py',
+            'backend/app/access/selected_story_grammar.py',
+            'scripts/selected_story_native_owner.py',
+            'scripts/qualify_selected_story.py',
+            'scripts/selected_story_gguf_worker.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
             'backend/app/access/family_note_deletions.py',
@@ -212,6 +228,22 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.model_deployment import validate_deployment\n'
                 'from app.access.model_qualification import validate_qualification\n'
                 'from app.main import create_app\n'
+                'from app.access.selected_story_lifecycle import SelectedStoryLifecycle\n'
+                'from app.access.selected_story_local import LocalSelectedStoryProvider\n'
+                'from app.access.selected_story_native import NativeStoryLaunch\n'
+                'from app.access.selected_story_grammar import bounded_schema_to_gbnf\n'
+                'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider\n'
+                'import qualify_selected_story, selected_story_gguf_worker, json\n'
+                "assert 'llama_cpp' not in sys.modules\n"
+                "manifest=json.loads((root/'manifest.json').read_text())\nassert qualify_selected_story._source_identity(manifest['source_commit'])==manifest['source_commit']\n"
+                "assert not hasattr(qualify_selected_story, 'WindowsAPI')\n"
+                "exe=r'C:\\synthetic\\worker.exe'\n"
+                "spec=NativeStoryLaunch(exe, '0'*64, (exe,), r'C:\\synthetic', {'PATH':r'C:\\synthetic'})\n"
+                "owner=windows_story_process_owner(spec)\nassert owner.enabled is False\nassert owner._active is None\n"
+                "bound=windows_story_process_provider(spec, 'synthetic-local-model')\nassert bound.enabled is False\nassert bound._active is None\n"
+                "try: windows_story_process_owner(NativeStoryLaunch('/synthetic/worker', '0'*64, ('/synthetic/worker',), '/synthetic', {'PATH':'/synthetic'}))\n"
+                "except ValueError: pass\nelse: raise AssertionError('non-Windows path accepted')\n"
+                "provider=LocalSelectedStoryProvider('http://127.0.0.1:11434', 'synthetic-local-model')\nassert provider.enabled is False\n"
                 'from app.access.story_titles import validate_bundle, validate_suggestions\n'
                 'from app.access.visual_vector_loader import VisualVectorReads\n'
                 'from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256\n'
@@ -243,7 +275,7 @@ class StagingPackageTests(unittest.TestCase):
                 'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'apply_library_photo_stack_schema', 'run_photo_stack_worker'):\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker', 'qualify_selected_story', 'selected_story_gguf_worker'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"

@@ -231,6 +231,9 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     const planOpenStart=requests.length,planOpenJobPosts=requests.filter(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/jobs')).length,planStoryStateBefore=await rpc({command:'state'});
     await planPanel.locator('.memory-book-plan-open-story').first().click();
     await page.locator('#memory-book-reader .memory-book-reading-prose').filter({hasText:'家人一起沿着湖边散步'}).waitFor();
+    // Prose renders before asynchronous parent/child source reauthorization.
+    // Set the no-request baseline only after that opening work has settled.
+    await page.locator('#memory-book-reader .memory-book-source-status').filter({hasText:/本章(?:已核实|没有已保存)/}).waitFor();
     assert.equal(await planIdeaText.inputValue(),'请保留各自的说法，并标出还要向家人确认的日期。','opening a plan story keeps the mounted memoir instructions');assert.equal(await planIdeaForm.inputValue(),'chronicle','opening a plan story keeps the selected memoir form');
     await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
     const memoirReader=page.locator('#memory-book-reader');
