@@ -1,0 +1,13 @@
+# Optional candidate ONLY: Windows x64 / CPython 3.12. No default profile includes this.
+# Published artifact hashes; actual bytes/native DLLs remain unqualified.
+# Install into a dedicated private trial environment only with runtime authority.
+# Reuse the pinned API contract imports; do not install into an existing service env.
+-r requirements-api.lock
+llama-cpp-python @ https://github.com/abetlen/llama-cpp-python/releases/download/v0.3.36/llama_cpp_python-0.3.36-py3-none-win_amd64.whl \
+    --hash=sha256:ae5e88a2cf464e5a2dde7c8898c2d5c71cc24d03cac6396bf7509456bde0b9fb
+numpy==2.3.4 \
+    --hash=sha256:985f1e46358f06c2a09921e8921e2c98168ed4ae12ccd6e5e87a4f1857923f32
+diskcache==5.6.3 \
+    --hash=sha256:5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19
+jinja2==3.1.6 \
+    --hash=sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67

@@ -21,6 +21,8 @@ use dated release/qualification records as evidence for their exact revision.
 | Deployment/recovery workflow | [Operations](OPERATIONS.md), [source packaging](SOURCE_PACKAGING.md), [API package inspection](API_PACKAGE_INSPECTION.md) |
 | Replaceable models and infrastructure | [Provider architecture](MODEL_PROVIDER_ARCHITECTURE.md), [model directory](../models/README.md) |
 | Private manifest and model quality gates | [Deployment manifest](MODEL_DEPLOYMENT_MANIFEST.md), [qualification](MODEL_QUALIFICATION.md) |
+| Bounded optional product agent | [Household development plan](LOCAL_AGENT_DEVELOPMENT_PLAN.md), [PH-A0 runtime qualification](LOCAL_AGENT_QUALIFICATION.md), [PH-A1 application boundary](LOCAL_AGENT_RUNTIME.md), [PH-U0 acceptance](LOCAL_AGENT_ACCEPTANCE.md), [PH-A4 draft contract](SELECTED_SOURCE_STORY_DRAFT_CONTRACT.md) |
+| Household story value and shared inference ownership | [PH-P2 story acceptance](SELECTED_SOURCE_STORY_ACCEPTANCE.md), [PH-C0 admission and consumer inventory](HOUSEHOLD_INFERENCE_ADMISSION.md) |
 | Monorepo transition and old repository disposition | [Repository transition](REPOSITORY_TRANSITION.md) |
 | Source ownership/import provenance | [Source ledger](feature-source-changes.json), [contributing](../CONTRIBUTING.md) |
 | Reader progress and source status | [Reader UX](READER_PROGRESS_AND_SOURCES.md) |
@@ -30,6 +32,7 @@ use dated release/qualification records as evidence for their exact revision.
 | AI-assisted story completion | [Drafting handoff, recovery and remaining model gates](AI_STORY_COMPLETION.md) |
 | Link an accepted family memory to a story chapter | [Web chooser and protected metadata contract](CHAPTER_FAMILY_MEMORY_CHOOSER.md) |
 | Compare synthetic story output with its sources | [Private operator review page](MEMOIR_QUALITY_REVIEW.md) |
+| Prepare multilingual vectors and an owner-only search pilot | [Index, provider and protected latency contract](MULTILINGUAL_PILOT_PREPARATION.md) |
 | Companion answer grounding | [Cited answers and clarification](STORY_COMPANION_GROUNDING.md) |
 | Review wording changes in story suggestions | [Review summary and local focus](STORY_PROPOSAL_WORDING_REVIEW.md) |
 | Title from authored chapter wording | [Chapter-opening title contract](CHAPTER_OPENING_TITLE.md) |

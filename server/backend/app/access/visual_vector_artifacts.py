@@ -8,6 +8,7 @@ record.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import hashlib
 import json
 import re
@@ -43,7 +44,7 @@ class ImmutableVectorArtifact:
     status: str = "ready"
 
 
-def _valid_identity(identity: object) -> bool:
+def _valid_identity_uncached(identity: object) -> bool:
     return (
         type(identity) is VectorSpaceIdentity
         and type(identity.artifact_sha256) is str
@@ -61,18 +62,66 @@ def _valid_identity(identity: object) -> bool:
     )
 
 
+@lru_cache(maxsize=128)
+def _identity_fields_valid_cached(artifact_sha256, preprocessing_sha256, vector_space_id,
+                                  model_version, dimension, normalization):
+    """Cache only regex validity for one bounded tuple of identity primitives."""
+    identity = VectorSpaceIdentity(artifact_sha256, preprocessing_sha256, vector_space_id,
+                                   model_version, dimension, normalization)
+    return _valid_identity_uncached(identity)
+
+
+def _valid_identity(identity: object) -> bool:
+    """Validate current fields, then reuse only their pure regex validity."""
+    if type(identity) is not VectorSpaceIdentity:
+        return False
+    # Read fresh primitives every time. Keep cache keys small and exact-typed;
+    # strings outside the identity grammar bounds never enter the LRU.
+    artifact_sha256 = identity.artifact_sha256
+    preprocessing_sha256 = identity.preprocessing_sha256
+    vector_space_id = identity.vector_space_id
+    model_version = identity.model_version
+    dimension = identity.dimension
+    normalization = identity.normalization
+    if (type(artifact_sha256) is not str or len(artifact_sha256) != 64
+            or type(preprocessing_sha256) is not str or len(preprocessing_sha256) != 64
+            or type(vector_space_id) is not str or not 1 <= len(vector_space_id) <= 64
+            or type(model_version) is not str or not 1 <= len(model_version) <= 64
+            or type(dimension) is not int or not 1 <= dimension <= MAX_DIMENSION
+            or type(normalization) is not str or normalization != "unit_l2"):
+        return False
+    # Cache keys are copied immutable field values, never object identity or
+    # artifact/source/auth/file/policy state. A changed frozen instance gets a
+    # different key and still passes these fresh checks.
+    return _identity_fields_valid_cached(artifact_sha256, preprocessing_sha256,
+        vector_space_id, model_version, dimension, normalization)
+
+
 def identity_sha256(identity: VectorSpaceIdentity) -> str:
     """Hash a versioned, canonical representation of vector-space identity."""
     if not _valid_identity(identity):
         raise ValueError("invalid_vector_identity") from None
+    # Only pure hash work is reused. Validate on every call and key by copied
+    # primitive values, so a changed identity cannot inherit an object's old
+    # digest. No artifact, source, authorization or file state enters this cache.
+    return _identity_fields_sha256(identity.artifact_sha256,
+        identity.preprocessing_sha256, identity.vector_space_id,
+        identity.model_version, identity.dimension, identity.normalization,
+        _IDENTITY_VERSION)
+
+
+@lru_cache(maxsize=128)
+def _identity_fields_sha256(artifact_sha256, preprocessing_sha256, vector_space_id,
+                           model_version, dimension, normalization, version):
+    """Memoize the canonical digest of at most 128 exact model identities."""
     payload = {
-        "artifact_sha256": identity.artifact_sha256,
-        "dimension": identity.dimension,
-        "model_version": identity.model_version,
-        "normalization": identity.normalization,
-        "preprocessing_sha256": identity.preprocessing_sha256,
-        "vector_space_id": identity.vector_space_id,
-        "version": _IDENTITY_VERSION,
+        "artifact_sha256": artifact_sha256,
+        "dimension": dimension,
+        "model_version": model_version,
+        "normalization": normalization,
+        "preprocessing_sha256": preprocessing_sha256,
+        "vector_space_id": vector_space_id,
+        "version": version,
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(encoded.encode("ascii")).hexdigest()

@@ -5,13 +5,23 @@ This module deliberately has no database, filesystem, or model access.
 """
 from datetime import datetime, timezone
 
-from .photo_stacks import _capture_day, _capture_time, _hash, _pair_reason
+from . import photo_stacks as _policy
 
 
 _MAX_ID = 2**63 - 1
-_GROUP_LIMIT = 24
 _EPOCH_NAIVE = datetime(1970, 1, 1)
 _EPOCH_UTC = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def grouping_policy_fingerprint():
+    """Return the exact pure grouping policy that affects index contents."""
+    return {
+        'algorithm_version': _policy.GROUPING_ALGORITHM_VERSION,
+        'near_capture_hash_max_distance': _policy.NEAR_CAPTURE_HASH_MAX_DISTANCE,
+        'same_upload_hash_max_distance': _policy.SAME_UPLOAD_HASH_MAX_DISTANCE,
+        'capture_window_seconds': _policy.CAPTURE_WINDOW_SECONDS,
+        'group_limit': _policy.GROUP_LIMIT,
+    }
 
 
 class PhotoStackCancelled(RuntimeError):
@@ -24,7 +34,7 @@ def check_stopped(stopped):
 
 
 def _bands(value, count):
-    """Return disjoint bit bands; distance < count guarantees a shared band."""
+    """Return disjoint bit bands for lossless bounded-distance lookup."""
     width, extra = divmod(64, count)
     result = []
     offset = 0
@@ -33,6 +43,13 @@ def _bands(value, count):
         result.append((i, (value >> offset) & ((1 << size) - 1)))
         offset += size
     return tuple(result)
+
+
+def _band_variants(part, band, count):
+    """Return an exact band value and each value one bit away from it."""
+    width, extra = divmod(64, count)
+    size = width + (1 if band < extra else 0)
+    return (part, *(part ^ (1 << bit) for bit in range(size)))
 
 
 def _time_bucket(value):
@@ -64,16 +81,17 @@ class _CandidateIndex:
 
     def keys_for(self, item):
         keys = []
-        hash_near = _bands(item['phash'], 7)
+        hash_near = _bands(item['phash'],
+                           _policy.NEAR_CAPTURE_HASH_MAX_DISTANCE // 2 + 1)
         if item['capture_time'] is not None:
             domain, bucket = item['time_bucket']
             for band, part in hash_near:
-                for neighbor in (bucket - 1, bucket, bucket + 1):
-                    keys.append(('n', domain, neighbor, band, part))
+                keys.append(('n', domain, bucket, band, part))
         # _pair_reason only consults upload metadata when both times are absent.
         if (item['capture_time'] is None and item['upload_account']
                 and item['upload_batch']):
-            for band, part in _bands(item['phash'], 3):
+            for band, part in _bands(
+                    item['phash'], _policy.SAME_UPLOAD_HASH_MAX_DISTANCE // 2 + 1):
                 keys.append(('u', item['upload_account'], item['upload_batch'],
                              band, part, item['capture_day']))
         return tuple(keys)
@@ -89,19 +107,31 @@ class _CandidateIndex:
 
     def candidates(self, item):
         ids = set()
-        for key in self.keys_for(item):
-            mapping = self.near if key[0] == 'n' else self.upload
-            if key[0] == 'u' and key[-1] is None:
-                # Unknown day may pair with every recorded day. Keep an
-                # account/batch/band index so this lookup is independent of
-                # unrelated upload metadata elsewhere in the library.
-                ids.update(self.upload_any_day.get(key[:-1], ()))
-            elif key[0] == 'u':
-                ids.update(mapping.get(key, ()))
-                unknown_key = key[:-1] + (None,)
-                ids.update(mapping.get(unknown_key, ()))
-            else:
-                ids.update(mapping.get(key, ()))
+        if item['capture_time'] is not None:
+            domain, bucket = item['time_bucket']
+            bucket_span = (_policy.CAPTURE_WINDOW_SECONDS + 299) // 300
+            for band, part in _bands(
+                    item['phash'], _policy.NEAR_CAPTURE_HASH_MAX_DISTANCE // 2 + 1):
+                for variant in _band_variants(
+                        part, band, _policy.NEAR_CAPTURE_HASH_MAX_DISTANCE // 2 + 1):
+                    for neighbor in range(bucket - bucket_span,
+                                          bucket + bucket_span + 1):
+                        ids.update(self.near.get(
+                            ('n', domain, neighbor, band, variant), ()))
+        elif item['upload_account'] and item['upload_batch']:
+            count = _policy.SAME_UPLOAD_HASH_MAX_DISTANCE // 2 + 1
+            for band, part in _bands(item['phash'], count):
+                for variant in _band_variants(part, band, count):
+                    prefix = ('u', item['upload_account'], item['upload_batch'],
+                              band, variant)
+                    if item['capture_day'] is None:
+                        # Unknown day may pair with every recorded day. Keep
+                        # an account/batch/band index so this lookup is
+                        # independent of unrelated upload metadata elsewhere.
+                        ids.update(self.upload_any_day.get(prefix, ()))
+                    else:
+                        ids.update(self.upload.get(prefix + (item['capture_day'],), ()))
+                        ids.update(self.upload.get(prefix + (None,), ()))
         return ids
 
     def remove_cluster(self, cluster_id, keys):
@@ -124,9 +154,12 @@ def build_library_photo_stacks(rows, *, maximum_assets=100000,
                                maximum_comparisons=10000000, stopped=None):
     """Build deterministic complete-link stacks across one authorized library.
 
-    Candidate discovery uses seven pHash bands for near-capture pairs and
-    three for same-upload pairs. Every tested pair consumes the comparison
-    budget; exceeding it rejects the whole build with ``ValueError``.
+    Candidate discovery stores ``floor(r / 2) + 1`` exact pHash bands for an
+    inclusive distance threshold ``r`` and probes exact plus one-bit variants.
+    If every band differed by more than one bit, at least ``2 * bands`` bits
+    would differ overall, which exceeds ``r``; therefore every eligible pair
+    shares a probed key. Every tested pair consumes the comparison budget;
+    exceeding it rejects the whole build with ``ValueError``.
     """
     if stopped is not None and not callable(stopped):
         raise ValueError('stopped must be callable')
@@ -153,17 +186,17 @@ def build_library_photo_stacks(rows, *, maximum_assets=100000,
         if len(row) < 9:
             continue
         asset_id, mime = row[0], row[1]
-        phash = _hash(row[6])
+        phash = _policy._hash(row[6])
         if (type(asset_id) is not int or not 1 <= asset_id <= _MAX_ID
                 or type(mime) is not str or not mime.startswith('image/')
                 or phash is None):
             continue
-        capture_time = _capture_time(row[5])
+        capture_time = _policy._capture_time(row[5])
         account, batch = row[7:9]
         item = {
             'id': asset_id,
             'capture_time': capture_time,
-            'capture_day': _capture_day(row[5]),
+            'capture_day': _policy._capture_day(row[5]),
             'phash': phash,
             'upload_account': account if type(account) is str and account.strip() else None,
             'upload_batch': batch if type(batch) is str and batch.strip() else None,
@@ -191,7 +224,7 @@ def build_library_photo_stacks(rows, *, maximum_assets=100000,
         for cluster_id in sorted(index.candidates(item)):
             check_stopped(stopped)
             cluster = clusters[cluster_id]
-            if len(cluster['members']) >= _GROUP_LIMIT:
+            if len(cluster['members']) >= _policy.GROUP_LIMIT:
                 continue
             relation = None
             eligible = True
@@ -199,7 +232,7 @@ def build_library_photo_stacks(rows, *, maximum_assets=100000,
                 comparisons += 1
                 if comparisons > maximum_comparisons:
                     raise ValueError('pair comparison budget exceeded')
-                pair_relation = _pair_reason(item, member)
+                pair_relation = _policy._pair_reason(item, member)
                 if pair_relation is None or (relation is not None and pair_relation != relation):
                     eligible = False
                     break
@@ -210,7 +243,7 @@ def build_library_photo_stacks(rows, *, maximum_assets=100000,
                 cluster['reason'] = relation
                 cluster['members'].append(item)
                 indexed_keys[selected].extend(index.add(item, selected))
-                if len(cluster['members']) == _GROUP_LIMIT:
+                if len(cluster['members']) == _policy.GROUP_LIMIT:
                     index.remove_cluster(selected, indexed_keys[selected])
                 break
         if selected is None:

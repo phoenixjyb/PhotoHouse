@@ -1,5 +1,211 @@
 # Current project status
 
+**October 22 bulk-cache correctness follow-up:** R62 fixes retained-reference
+aliasing in the bulk store's metadata key. It now copies all 16 validated artifact
+fields into immutable primitive tuples before cache comparison. Grammar-valid
+changes to retained artifact objects refuse on warm and cold stores; restoring
+metadata permits matrix reuse only after a fresh secure file read. Ranking
+arithmetic, full file/header checks and authorization remain unchanged. The
+focused bulk-vector suite passed 18 tests; independent related checks passed 33.
+The full API profile passed **3,000 tests / 3,732 subtests** plus the generated
+demo, with unchanged source during the receipt. This correction is source-only and
+was not in the native `e85c6e4` package; its native behavior/performance still
+needs qualification. All 11 hosted functional checks for the preceding R61
+`7ae5d21` passed; GitGuardian's historical fixture finding remains unadjudicated.
+Semantic stays **OFF**, with no merge, deployment or activation.
+
+**October 22 latest native search qualification:** frozen source `e85c6e4`
+passed all **15 protection checks** across 23,761 catalog entries (23,696 vectors
+and 65 omissions approved for qualification only). Nine English/Chinese/mixed
+loopback HTTPS/TCP samples measured **7.860 seconds median / 8.328 seconds maximum**;
+cold latency was **14.843 seconds**. The earlier same-catalog baseline was
+14.516 / 17.281 / 24.984 seconds. Both complete audits passed. Independent readback
+verified input/result pins and zero test processes/listeners; live API/gateway/
+site/task/feed pins and the catalog stayed unchanged. Furniture-report assets
+passed 69/69 before and after. The Windows lane was explicitly released.
+**Semantic remains OFF**, and the 2-second backend target remains unmet. This
+is qualification evidence, not production deployment or family relevance/device
+acceptance. See [native evidence](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md) and
+[remaining measured latency costs](SEMANTIC_REQUEST_LATENCY.md).
+
+**October 22 next source increment:** R61 reuses immutable parsed primitive
+metadata only within one request after exact typed current-row, library and
+identity comparison; artifact instances are reconstructed afresh. SQL, policy,
+source/file integrity and final authorization checks remain current. Full API
+passed **2,999 tests / 3,727 subtests** plus the generated demo; independent focused
+review passed 55 tests. This later increment was not in the native `e85c6e4`
+package and still needs native qualification. The search branch remains unmerged
+and undeployed; PR #107 remains a draft with its historical GitGuardian finding
+unadjudicated. No security bypass or production activation occurred.
+
+The dated entries below are historical source and qualification milestones;
+performance-pending statements for older source are superseded by the latest
+native result above.
+
+**October 22 first-page and provider-readiness development:** new unbound semantic
+first pages derive their binding inside the authorized ranking read, reducing
+three complete source reads to two. A final fresh source/policy check and exact
+owner authorization remain mandatory; unsupported queries compare against the
+captured pre-provider binding. Ordinary discovery still requires a binding.
+A separate [provider-only readiness check](SEMANTIC_PROVIDER_READINESS.md) verifies
+an externally pinned private configuration and one synthetic local encode without
+changing provider protocols/model recipes, opening a database or activating search.
+The loader checks the actual configuration document before credential reads.
+Source `265034e` passed **2,989 tests / 3,717 subtests** plus the generated demo
+with an unchanged source receipt. All ten archive checks and the nine-checkpoint
+coverage browser journey passed. Native optimized performance qualification is pending.
+Semantic stays **OFF**, with no native speedup or production-deployment claim.
+
+**October 22 integrated request-performance source qualification:** source
+`e37c97c` integrates main `fe47cec` and preserves its grouping tooling and explicit
+schema-target packaging. It removes duplicate artifact validation, reuses a
+validated cohort only within the same fresh source read, bounds the pure canonical
+model-identity cache, and batches exact source-byte accounting within a bounded
+serialization. The fixed-source API receipt passed **2,969 tests / 3,717 subtests**
+plus the generated demo; all ten archive checks passed. The semantic coverage
+browser journey passed nine checkpoints, and the integrated photo-stack browser
+journey passed with no page errors or outside-origin requests. Enlarged bilingual
+phone disclosures were inspected. These are generated-data source checks, not
+native speedup, family relevance or device acceptance. The
+[latency follow-up](SEMANTIC_REQUEST_LATENCY.md) records the invariants and tests.
+Native measurement of these optimizations remains pending. Semantic stays **OFF**;
+no production deployment or activation occurred.
+
+**October 22 full-catalog native qualification:** source `a46d9f5` passed the
+full API profile (**2,916 tests / 3,703 subtests** plus the generated demo) and
+seven archive checks. The owner approved the frozen 65 omissions for isolated
+qualification only. The real Windows CPU canary retained all **23,761 catalog
+entries**, with 23,696 ready vectors, and passed **all 15 protection checks**.
+Nine loopback HTTPS/TCP samples measured **14.516 seconds median / 17.281 seconds
+maximum**; cold latency was **24.984 seconds**. No individual NPY query reads
+occurred. Repeated metadata validation and source reads are substantial costs;
+the 2-second backend target remains unmet. Independent readback verified the
+review, inputs, both complete audits and process/listener closure. Production
+API/task/config/feed pins stayed unchanged, and the current catalog still matched
+the frozen roster. Semantic remains **OFF**; no production policy, publication,
+deployment or activation occurred. Broad family relevance, phone/WAN, concurrency
+and refresh/retirement remain separate gates. See
+[the full-catalog qualification guide](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md).
+
+**October 21 semantic coverage development:** local source adds optional private
+configuration version 5 for an explicitly reviewed semantic-only eligibility
+partition. It keeps ordinary discovery's full library scope, rechecks every
+current image/source hash and ready artifact, and discloses global and filtered
+omissions in Chinese/English replies. Web/Android accept the closed coverage
+contract and bounded larger scene totals. A changed policy, unaccounted image,
+newly ready omitted artifact or corrupt bulk payload refuses before ranking;
+source/owner/policy are checked again before results escape. Versions 1–4 retain
+their strict missing-vector behavior. This is local development: no household
+serving policy was installed and semantic remains **OFF**. See the
+[eligibility contract](SEMANTIC_ELIGIBILITY_DESIGN.md) for checks and remaining
+native, refresh/retirement, latency and owner/family/device gates.
+At `7be2f7b`, the complete API profile passed **2,891 tests / 3,703 subtests** plus
+the generated demo, with unchanged source and revision. All seven isolated API
+archive checks passed. Web wire checks passed 22 tests, and all 1,157 live-core
+JVM tests passed. Coverage and legacy Web
+journeys passed nine and eight checkpoints respectively; enlarged bilingual replies
+were inspected.
+
+**October 21 semantic readiness follow-up:** the frozen family roster is fully
+processed: **23,696 indexed photos + 65 explicit failures = 23,761 attempts**.
+This is not complete searchable coverage: 64 inputs failed preparation and one
+source is missing. All failure records remain; 27 earlier preparation copies are
+retained separately and 36 later copies remain in the index scratch directory.
+No original was deleted, repaired or overwritten. The native completion receipt,
+final manifest and process closure were independently read back; the Mac transport
+itself timed out, so terminal success comes from the Windows receipts.
+
+A fresh read-only catalog comparison found **no added or removed photos and no
+changed source hashes**; its complete catalog digest matches the frozen roster.
+That is a point-in-time check, not an ongoing freshness guarantee. The new bulk
+canary checks owner revocation and stale cohorts after soft deletion or library
+scope removal before inference. Injecting unsafe reuse of a cached snapshot is
+caught by the qualification harness. Full API at `3aa43c6` passed **2,867 tests /
+3,651 subtests** plus the generated demo, with unchanged source and revision.
+The native audit verified all 23,696 vector payloads/metadata and current original
+stat identities, with all 65 failures accounted for; it did not rehash original
+media bytes. The real-model Windows bulk canary passed **all 10 protection checks**
+with **zero individual NPY query reads**: nine loopback HTTPS/TCP samples measured
+**9.78 seconds median / 10.16 seconds maximum**, with an **18.30-second cold
+request**. This misses the 2-second backend target. Model encoding averaged
+about 145 ms; more granular request-pipeline profiling is needed. Independent
+readback verified inputs/results and process/listener closure; API/config/OTA
+pins stayed unchanged. These are synthetic-account loopback measurements, not
+phone/WAN, concurrent-load or relevance acceptance. See the
+[readiness qualification record](SEMANTIC_LIBRARY_SCALE.md#completed-index-and-lifecycle-qualification--october-21-2026).
+The real benchmark uses a ready-only synthetic catalog. The existing strict path
+refuses candidates that include one of the 65 missing embeddings; a
+reviewed semantic-only eligibility and visible coverage policy must be qualified
+and deployed before these omissions can be disclosed and skipped for ranking.
+Semantic remains **OFF**. Current-roster relevance, failure disposition,
+refresh/swap/retirement packaging, protected latency and owner/family/device
+acceptance remain activation gates.
+
+**October 21 bulk-serving follow-up:** local source `e4f06a5` adds an explicit
+bulk vector container and immutable scoring snapshot; `f5018e4` also captures one
+budget view per request. Current membership, source/cohort, file integrity,
+permissions and deadline checks remain mandatory. Generated 23,761-vector checks
+pass all seven protection checks at **3.93 seconds median / 3.98 seconds maximum**
+across English, Chinese and mixed input, with **zero individual NPY query reads**.
+The first cold request took **6.73 seconds**. These are three shared-Mac samples
+with a fake encoder and index inspector, not native or device acceptance; the
+2-second backend target remains unmet. Full API at `f5018e4`: **2,866 tests /
+3,651 subtests** plus the generated demo, with unchanged source.
+
+The private index now has **23,696 ready photos and 65 explicit failures** after
+all 23,761 frozen-roster assets were attempted. The guarded recovery completed
+with all retained evidence preserved. Native bulk-serving measurements and
+operational lifecycle qualification remain open. Semantic remains **OFF**; the
+serving source is local, unmerged and undeployed, and the index is unpublished.
+See the [completed-index record](SEMANTIC_LIBRARY_SCALE.md#completed-index-and-lifecycle-qualification--october-21-2026).
+
+**October 21 morning search qualification:** generated 23,761-vector checks now
+pass all seven protection checks at **13.7 seconds median / 15.0 seconds p95**;
+these fake-model diagnostics still leave interactive/native latency unqualified.
+Request-local metadata reuse and builtin vector arithmetic preserve fresh source
+and authorization checks. A separate v2 MPO primary-frame profile qualified the
+blocked original on Windows in **2.5 seconds**, preserving its hash/stat and all
+failure evidence; it is not integrated with the running index. The unchanged
+JPEG/PNG worker resumed from 8,431 ready photos plus one failure and reached
+1,218 committed batches at the latest observation; full coverage is pending.
+Focused MPO/legacy input checks: **46 passed**. Full API at `a61de0d`:
+**2,838 tests / 3,630 subtests** plus the generated demo, with unchanged source.
+Semantic remains **OFF**, with local source unmerged/undeployed and index unpublished.
+See the [morning qualification record](SEMANTIC_LIBRARY_SCALE.md#latency-and-mpo-qualification--october-21-2026).
+
+**October 21 full-family candidate indexing:** local source now prepares bounded,
+metadata-stripped image inputs and checkpoints a frozen **23,761-photo** family
+roster. Six native extreme-image probes passed, including about 200 megapixels;
+the long indexing job was still running at that earlier observation, with explicit
+preparation failures retained.
+Missing-original handling, an unsupported MPO container and final coverage remain open. Protected generated
+23,761-vector checks exposed slow request latency; source removes duplicate
+checksum packing and preserves canonical numeric/type checks. The full API profile
+at `9eae2d7` passed **2,808 tests / 3,628 subtests** plus the generated no-listener
+demo; seven packaging tests passed. Real full-library Windows performance has
+not run: its runtime preflight refused during a separate service-recovery window.
+Semantic remains **OFF**; these source commits are local, unmerged and undeployed,
+and the private index is unpublished. See the [current scale record](SEMANTIC_LIBRARY_SCALE.md#full-family-run-and-scale-findings--october-21-2026).
+
+**October 20 library-scale semantic preparation:** local source `20f6ddb` adds
+verified multi-batch collection/staging and explicit owner-only streaming beyond
+512 candidates. Generated checks cover 513 actual artifacts and 515 API results.
+A narrow bilingual clothing parser fixes the known Chinese/mixed regression:
+all 24 original query variants ranked a relevant photo first; a new three-query
+case ranked second consistently. Semantic remains **OFF**; no deployment, account
+binding or publication. Complete family indexing and native/device performance
+remain open. See the [scale and qualification record](SEMANTIC_LIBRARY_SCALE.md).
+
+**October 20 local semantic qualification:** source `3d572c3` adds complete
+private coverage planning and an explicit temporary HTTPS/TCP canary. A partial
+32-photo candidate produced 22/24 first-place relevance hits across English,
+Chinese and mixed input; all 12 protected checks passed, with 500 ms median /
+578 ms p95 host-loopback CPU latency. This is assistant-reviewed diagnostic
+evidence, with a known bilingual failure, incomplete coverage and a 512-candidate
+serving cap. The full API profile passed 2,713 tests / 2,786 subtests. These
+changes are local, unmerged and undeployed; semantic search remains **OFF**. See
+the [coverage and relevance record](FAMILY_SEMANTIC_COVERAGE.md).
+
 **October 20 guarded-search delivery — verified 10:49 Asia/Shanghai:**
 [PR #101](https://github.com/phoenixjyb/PhotoHouse/pull/101) is merged as `a4e3922`;
 API/Web serves qualified source `b170a97`, whose Git tree matches that merge.

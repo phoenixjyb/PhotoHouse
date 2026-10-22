@@ -5,18 +5,28 @@ measure model compatibility or establish multilingual retrieval quality.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
+import re
 import stat
 
 from .model_deployment import DeploymentError, _load_private_document
 from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder
-from .semantic_search import SemanticSearchRuntime
+from .semantic_search import SemanticSearchRuntime, _valid_pilot_owner_account_id
+from .semantic_streaming import SemanticServingLimits
+from .semantic_bulk_vectors import BulkVectorStore
+from .semantic_eligibility import SemanticEligibilityStore
 from .visual_candidates import VectorSpaceIdentity
 
 _IDENTITY_KEYS = {'artifact_sha256', 'preprocessing_sha256', 'vector_space_id',
                   'model_version', 'dimension', 'normalization'}
 _FIELDS = {'format_version', 'vector_root', 'encoder_url', 'encoder_timeout_seconds',
            'credential_file', 'binding', 'binding_sha256', 'operator_reviewed'}
+_OWNER_FIELDS = _FIELDS | {'pilot_owner_account_id'}
+_LARGE_FIELDS = _OWNER_FIELDS | {'serving_limits'}
+_BULK_FIELDS = _LARGE_FIELDS | {'bulk_vectors'}
+_ELIGIBILITY_FIELDS = _BULK_FIELDS | {'eligibility'}
 
 
 class SemanticConfigurationError(ValueError):
@@ -81,17 +91,54 @@ def _require_semantic_paths_disjoint(semantic_paths, protected_paths):
             raise SemanticConfigurationError()
 
 
-def load_semantic_runtime(path, *, discovery, source_root, protected_paths=()):
+def _canonical_document_sha256(document):
+    try:
+        payload = json.dumps(document, sort_keys=True, separators=(',', ':'),
+            ensure_ascii=False, allow_nan=False).encode('utf-8', errors='strict')
+    except (TypeError, ValueError, UnicodeError, RecursionError):
+        raise SemanticConfigurationError() from None
+    return hashlib.sha256(payload).hexdigest()
+
+
+def load_semantic_runtime(path, *, discovery, source_root, protected_paths=(),
+                          expected_document_sha256=None):
     """Load one bounded private manifest and build a loopback encoder runtime.
 
     Call only after an explicit semantic opt-in. The separately selected token
     file and vector root are checked only on this enabled path.
     """
     try:
-        doc = _load_private_document(path, source_root=source_root)
-        if (type(doc) is not dict or set(doc) != _FIELDS or
-                type(doc['format_version']) is not int or doc['format_version'] != 1):
+        if (expected_document_sha256 is not None and
+                (type(expected_document_sha256) is not str or
+                 re.fullmatch(r'[0-9a-f]{64}', expected_document_sha256,
+                              flags=re.ASCII) is None)):
             raise SemanticConfigurationError()
+        doc = _load_private_document(path, source_root=source_root)
+        if (expected_document_sha256 is not None and
+                _canonical_document_sha256(doc) != expected_document_sha256):
+            raise SemanticConfigurationError()
+        if type(doc) is not dict or type(doc.get('format_version')) is not int:
+            raise SemanticConfigurationError()
+        version = doc['format_version']
+        if version == 1:
+            if set(doc) != _FIELDS:
+                raise SemanticConfigurationError()
+            owner_account_id = None
+        elif version in (2, 3, 4, 5):
+            fields = {2: _OWNER_FIELDS, 3: _LARGE_FIELDS, 4: _BULK_FIELDS, 5: _ELIGIBILITY_FIELDS}[version]
+            if (set(doc) != fields or
+                    not _valid_pilot_owner_account_id(doc['pilot_owner_account_id'])):
+                raise SemanticConfigurationError()
+            owner_account_id = doc['pilot_owner_account_id']
+        else:
+            raise SemanticConfigurationError()
+        limits = None
+        if version in (3, 4, 5):
+            value = doc['serving_limits']
+            if type(value) is not dict or set(value) != {
+                    'candidate_limit', 'source_rows', 'source_bytes', 'search_seconds'}:
+                raise SemanticConfigurationError()
+            limits = SemanticServingLimits(**value)
         if type(doc['operator_reviewed']) is not bool or doc['operator_reviewed'] is not True:
             raise SemanticConfigurationError()
         binding_doc = doc['binding']
@@ -105,7 +152,31 @@ def load_semantic_runtime(path, *, discovery, source_root, protected_paths=()):
         manifest_path = _checked_path(str(path))
         credential_path = _checked_path(doc['credential_file'])
         root = _vector_root(doc['vector_root'], source_root=source_root)
-        _require_semantic_paths_disjoint((manifest_path, credential_path, root), protected_paths)
+        semantic_paths = (manifest_path, credential_path, root)
+        bulk = None
+        if version in (4, 5):
+            value = doc['bulk_vectors']
+            if type(value) is not dict or set(value) != {'path', 'file_sha256', 'library_id'}:
+                raise SemanticConfigurationError()
+            bulk_path = _checked_path(value['path'])
+            # A separately pinned serving copy cannot overlap source, secrets,
+            # live stores or the original per-file vector tree. Loading a
+            # configuration does not load or trust its vector payload.
+            _vector_root(str(bulk_path.parent), source_root=source_root)
+            bulk = BulkVectorStore(bulk_path, value['file_sha256'],
+                value['library_id'], binding.image_identity)
+            semantic_paths += (bulk_path,)
+        eligibility = None
+        if version == 5:
+            value = doc['eligibility']
+            if type(value) is not dict or set(value) != {'path', 'file_sha256'}:
+                raise SemanticConfigurationError()
+            policy_path = _checked_path(value['path'])
+            _vector_root(str(policy_path.parent), source_root=source_root)
+            eligibility = SemanticEligibilityStore(policy_path, value['file_sha256'],
+                bulk.library_id, binding.binding_sha256, bulk.file_sha256, Path(source_root))
+            semantic_paths += (policy_path,)
+        _require_semantic_paths_disjoint(semantic_paths, protected_paths)
         credential = _load_private_document(credential_path, source_root=source_root)
         if (type(credential) is not dict or set(credential) != {'token'} or
                 type(credential['token']) is not str):
@@ -116,7 +187,7 @@ def load_semantic_runtime(path, *, discovery, source_root, protected_paths=()):
             raise SemanticConfigurationError()
         encoder = LocalSemanticEncoder(binding, doc['encoder_url'], timeout=float(timeout),
                                        bearer_token=token)
-        return SemanticSearchRuntime(discovery, root, encoder)
+        return SemanticSearchRuntime(discovery, root, encoder, owner_account_id, limits, bulk, eligibility)
     except SemanticConfigurationError:
         raise
     except (DeploymentError, OSError, TypeError, ValueError, KeyError, OverflowError):

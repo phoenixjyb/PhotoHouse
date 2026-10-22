@@ -52,12 +52,41 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/semantic_scene_translation.py',
             'scripts/semantic_scene_translation_fidelity.py',
             'scripts/qualify_multilingual_scenes.py',
+            'scripts/semantic_siglip.py',
+            'scripts/build_multilingual_image_index.py',
+            'scripts/serve_multilingual_semantic_text.py',
+            'scripts/qualify_multilingual_pilot.py',
+            'scripts/multilingual_library_coverage.py',
+            'scripts/library_image_inputs.py',
+            'scripts/library_siglip.py',
+            'scripts/library_semantic_index.py',
+            'scripts/qualify_library_semantic.py',
+            'scripts/semantic_coverage_qualification.py',
+            'scripts/semantic_request_profile.py',
+            'scripts/semantic_provider_readiness.py',
+            'scripts/semantic_loopback_network.py',
             'scripts/semantic_scene_comparison.py',
             'scripts/semantic_reviewed_projection.py',
             'scripts/serve_reviewed_semantic_text.py',
             'scripts/qualify_semantic_scenes.py',
             'scripts/qualify_reviewed_semantic_scenes.py',
             'scripts/qualify_oral_history.py',
+            'backend/app/access/assistant_agent.py',
+            'backend/app/access/assistant_agent_tools.py',
+            'backend/app/access/inference_admission.py',
+            'backend/app/access/host_inference_admission.py',
+            'backend/app/access/windows_story_capacity.py',
+            'backend/app/access/selected_story_snapshot.py',
+            'backend/app/access/selected_story_operations.py',
+            'backend/app/access/selected_story_lifecycle.py',
+            'backend/app/access/selected_story_transport.py',
+            'backend/app/access/selected_story_local.py',
+            'backend/app/access/selected_story_native.py',
+            'backend/app/access/selected_story_process.py',
+            'backend/app/access/selected_story_grammar.py',
+            'scripts/selected_story_native_owner.py',
+            'scripts/qualify_selected_story.py',
+            'scripts/selected_story_gguf_worker.py',
             'backend/app/access/captions.py',
             'backend/app/access/duplicates.py',
             'backend/app/access/family_note_deletions.py',
@@ -172,6 +201,10 @@ class StagingPackageTests(unittest.TestCase):
                          'backend/app/access/photo_stack_transport.py',
                          'backend/migrations/versions/f2a8c5d1e640_library_photo_stacks.py',
                          'backend/app/access/semantic_configuration.py',
+                         'backend/app/access/semantic_streaming.py',
+                         'backend/app/access/semantic_eligibility.py',
+                         'scripts/multilingual_index_collection.py',
+                         'scripts/semantic_bilingual_clothing.py',
                          'backend/app/access/people_review.py',
                          'scripts/export_visual_people_review.py',
                          'scripts/inspect_reviewed_people_readiness.py',
@@ -195,6 +228,22 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.model_deployment import validate_deployment\n'
                 'from app.access.model_qualification import validate_qualification\n'
                 'from app.main import create_app\n'
+                'from app.access.selected_story_lifecycle import SelectedStoryLifecycle\n'
+                'from app.access.selected_story_local import LocalSelectedStoryProvider\n'
+                'from app.access.selected_story_native import NativeStoryLaunch\n'
+                'from app.access.selected_story_grammar import bounded_schema_to_gbnf\n'
+                'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider\n'
+                'import qualify_selected_story, selected_story_gguf_worker, json\n'
+                "assert 'llama_cpp' not in sys.modules\n"
+                "manifest=json.loads((root/'manifest.json').read_text())\nassert qualify_selected_story._source_identity(manifest['source_commit'])==manifest['source_commit']\n"
+                "assert not hasattr(qualify_selected_story, 'WindowsAPI')\n"
+                "exe=r'C:\\synthetic\\worker.exe'\n"
+                "spec=NativeStoryLaunch(exe, '0'*64, (exe,), r'C:\\synthetic', {'PATH':r'C:\\synthetic'})\n"
+                "owner=windows_story_process_owner(spec)\nassert owner.enabled is False\nassert owner._active is None\n"
+                "bound=windows_story_process_provider(spec, 'synthetic-local-model')\nassert bound.enabled is False\nassert bound._active is None\n"
+                "try: windows_story_process_owner(NativeStoryLaunch('/synthetic/worker', '0'*64, ('/synthetic/worker',), '/synthetic', {'PATH':'/synthetic'}))\n"
+                "except ValueError: pass\nelse: raise AssertionError('non-Windows path accepted')\n"
+                "provider=LocalSelectedStoryProvider('http://127.0.0.1:11434', 'synthetic-local-model')\nassert provider.enabled is False\n"
                 'from app.access.story_titles import validate_bundle, validate_suggestions\n'
                 'from app.access.visual_vector_loader import VisualVectorReads\n'
                 'from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256\n'
@@ -214,6 +263,10 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.search_exclusions import requires_exclusion_clarification\n'
                 "assert requires_exclusion_clarification('不在grass上的dog')\n"
                 'from app.access.semantic_configuration import load_semantic_runtime\n'
+                'from app.access.semantic_streaming import SemanticServingLimits\n'
+                'from app.access.semantic_eligibility import SemanticEligibilityStore\n'
+                'import multilingual_index_collection, semantic_bilingual_clothing\n'
+                'import semantic_coverage_qualification, semantic_request_profile\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
                 'from app.access.oral_history_withdrawal import verify_recording_record\n'
                 'from app.access.photo_stacks import build_photo_stacks\n'
@@ -222,7 +275,7 @@ class StagingPackageTests(unittest.TestCase):
                 'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'apply_library_photo_stack_schema', 'run_photo_stack_worker'):\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker', 'qualify_selected_story', 'selected_story_gguf_worker'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"
@@ -251,6 +304,13 @@ class StagingPackageTests(unittest.TestCase):
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'
+                'import semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness\n'
+                'for module in (semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness):\n'
+                ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
+                'for module in (build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot):\n'
+                ' captured=io.StringIO()\n'
+                ' with redirect_stdout(captured): assert module.run([])==0\n'
+                " assert json.loads(captured.getvalue())['private_files_read'] is False\n"
                 'captured=io.StringIO()\n'
                 'with redirect_stdout(captured): assert serve_reviewed_semantic_text.run([])==0\n'
                 "assert json.loads(captured.getvalue())['execution_performed'] is False\n"
@@ -261,6 +321,10 @@ class StagingPackageTests(unittest.TestCase):
                 'with redirect_stdout(captured): assert qualify_multilingual_scenes.run([])==0\n'
                 "assert json.loads(captured.getvalue())['private_files_read'] is False\n"
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
+                'captured=io.StringIO()\n'
+                'with redirect_stdout(captured): assert semantic_provider_readiness.main([])==0\n'
+                "assert json.loads(captured.getvalue())['status']=='plan_only'\n"
+                "assert json.loads(captured.getvalue())['private_file_reads'] is False\n"
                 'raise SystemExit(qualify_semantic_scenes.run([]))\n'
             )
             result = subprocess.run([sys.executable, '-I', '-B', '-c', program],

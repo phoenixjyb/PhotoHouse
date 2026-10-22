@@ -6,7 +6,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 from bounded_windows_job import (BOUNDED_JOB_QUERY_ENV, JOB_OBJECT_EXTENDED_LIMIT_INFORMATION,
     JOB_OBJECT_LIMIT_ACTIVE_PROCESS, JOB_OBJECT_LIMIT_JOB_MEMORY, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
-    CheckRefused, WindowsAPI, environment_block, run_bounded)
+    CheckRefused, WindowsAPI, environment_block, run_bounded, run_bounded_library_index)
 from run_editorial_rehearsal_group import SocketPairAllowance, audit_guard, database_within
 
 
@@ -56,6 +56,28 @@ class ProvenFakeAPI(FakeAPI):
 
 
 class WindowsJobControllerTests(unittest.TestCase):
+    def test_library_profile_has_fixed_limits_proof_and_six_hour_cap(self):
+        api = ProvenFakeAPI()
+        self.assertEqual(run_bounded_library_index(api, 'python.exe', ['python.exe', 'worker.py'],
+            {'SystemRoot': 'C:\\Windows'}, 'C:\\synthetic', timeout_seconds=21600), 0)
+        self.assertEqual(api.events[0], ('limits', 8 * 1024**3, 4))
+        self.assertTrue(any(isinstance(e, tuple) and e[0] == 'proven-suspended' for e in api.events))
+        for timeout in (21601, True, float('nan'), float('inf'), 0):
+            rejected = ProvenFakeAPI()
+            with self.assertRaisesRegex(CheckRefused, 'invalid_launch'):
+                run_bounded_library_index(rejected, 'python.exe', ['python.exe'],
+                    {'SystemRoot': 'C:\\Windows'}, 'C:\\synthetic', timeout_seconds=timeout)
+            self.assertEqual(rejected.events, [])
+
+    def test_library_profile_rejects_low_ram_and_ordinary_cap_is_preserved(self):
+        api = ProvenFakeAPI(ram=16 * 1024**3 - 1)
+        with self.assertRaisesRegex(CheckRefused, 'free_ram_below_minimum'):
+            run_bounded_library_index(api, 'python.exe', ['python.exe'],
+                {'SystemRoot': 'C:\\Windows'}, 'C:\\synthetic', timeout_seconds=1000)
+        self.assertEqual(api.events, [])
+        with self.assertRaisesRegex(CheckRefused, 'invalid_launch'):
+            self.launch(ProvenFakeAPI(), timeout_seconds=901)
+
     def launch(self, api, **kwargs):
         timeout_seconds = kwargs.pop('timeout_seconds', 2)
         return run_bounded(api, 'python.exe', ['python.exe', '-I', '-B', 'fixture.py'],

@@ -26,9 +26,9 @@ original media is opened, and no database rows or saved editorial groups change.
 
 - A valid image perceptual hash is required: exactly 16 hexadecimal characters.
 - Two reliable full capture timestamps must be within five minutes, with
-  compatible timezone information, and hash Hamming distance at most six.
+  compatible timezone information, and hash Hamming distance at most eight.
 - If both capture timestamps are unavailable, require the same uploader and
-  upload-batch identity plus the stricter Hamming distance of at most two.
+  upload-batch identity plus the stricter Hamming distance of at most four.
   The UI calls this **同批导入 / Same upload**, not a capture-date claim.
 - A known capture timestamp is not replaced with receipt time to join an
   undated image. Date-only metadata does not establish a burst timestamp.
@@ -39,6 +39,14 @@ original media is opened, and no database rows or saved editorial groups change.
 
 Photo hashes and uploader/batch identifiers are never included in the response.
 The result is bounded by the existing maximum of 100 gallery items.
+
+The October 22 source adjustment modestly relaxes the earlier six/two-bit limits.
+It does not widen the five-minute window or use receipt time as capture time.
+The indexed library builder uses the same thresholds and refreshes its source
+digest when the policy changes. This source change does not update a live API
+or an existing family index; native release and real-photo acceptance are
+separate gates. Similarity still depends on usable perceptual hashes and date
+metadata, and page-local suggestions cannot join photos on different pages.
 
 ## Optional wire extension
 

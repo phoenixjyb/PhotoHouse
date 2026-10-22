@@ -35,10 +35,82 @@ candidate that remains in the requested result set.
 
 Nine generated-vector tests cover ranking, near-ties, top-k inclusion,
 multilingual differences, 512/768 dimensions and invalid inputs. This scorecard
-has not yet been applied to real-encoder vectors. The earlier multilingual
+was initially tested only with generated vectors. The earlier multilingual
 model screen did not report this explicit forbidden-candidate scorecard.
 The source-only staging package includes the helper and verifies it imports
 without optional ML packages or a checkout fallback; no native run is implied.
+
+The pinned offline SigLIP2 runner now accepts an explicit
+`--exclusion-dataset ABSOLUTE_PRIVATE_JSON` alongside its existing `--run`,
+`--configuration` and `--output-directory` arguments. Its existing closed
+configuration and scene-dataset schemas are unchanged. Planning mode refuses
+the extra path without reading it. Before loading a model or creating output,
+the label file must be a closed `photohouse.multilingual_exclusion_labels.v1`
+envelope with exactly `schema`, `scene_dataset_sha256` and `dataset`. The
+`dataset` is the existing exclusion schema above; `scene_dataset_sha256` must
+match the reviewed scene dataset's content fingerprint, including candidate
+image hashes. Reusing stable IDs with changed candidate bytes is refused.
+The adapter also requires the same reviewed candidate IDs, complete case IDs,
+relevant labels and exact original English/Chinese/mixed query bytes as the
+scene dataset. Candidate and case order may differ; query normalization,
+missing cases and substituted labels are refused.
+
+The adapter scores the same in-memory 768-dimensional image and text vectors
+used for scene metrics. It uses top-five inclusion and the evaluator's
+conservative tie policy. Its separate
+`photohouse.multilingual_exclusion_measurement.v1` report records the
+exclusion-dataset and bound-label fingerprints, evaluator source hash, original/input query
+hashes, image hashes and vector checksums. The ordinary measurement schema
+remains unchanged when no exclusion dataset is supplied. Neither mode saves
+vectors, query text, an index or a serving binding. Adapter tests cover exact
+binding, pre-model refusal, output privacy and the scorecard's execution on
+stub encoder outputs; these tests alone do not qualify the real model.
+
+## October 20 real-model diagnostic
+
+The adapter was run on Windows against the pinned local SigLIP2 model at
+source `64a169594`. It reused the earlier frozen 16 public photos and six
+queries per language: three positive/negative contrast pairs about a dog's
+location and a held/unheld phone. Each query received one explicit forbidden
+counterpart from the opposite side of its reviewed pair. The bound labels
+were frozen before this run, with independent assistant review. The earlier
+model results were already known: this is a repeated diagnostic, not an
+untouched holdout or human-confirmed family relevance evaluation.
+
+| Query language | Variants | Forbidden ahead of/tied with best relevant | Forbidden possible in top five |
+| --- | ---: | ---: | ---: |
+| English | 6 | 3 | 6 |
+| Chinese | 6 | 3 | 6 |
+| Mixed Chinese/English | 6 | 3 | 6 |
+| Total | 18 | 9 | 18 |
+
+All nine negated variants placed the forbidden counterpart ahead of or tied
+with the intended image; the intended image ranked second under the
+pessimistic tie policy. All nine positive variants ranked their intended image first, but a
+forbidden counterpart could still occur in their top five. The earlier
+top-five relevance result therefore concealed exclusion failures. These
+counts demonstrate concrete failures on three contrasts; they do not estimate
+a general error rate or qualify an arbitrary similarity threshold.
+
+A separate replay through the current admission guard required clarification
+for all nine negated variants and for none of the nine positive variants.
+That evidence qualifies those guard decisions, not the encoder's understanding
+of negation. The offline diagnostic intentionally bypasses admission so the
+model weakness remains visible; production must retain the guard.
+
+The successful inference job used two CPU threads, an 8 GiB Windows Job Object,
+four-process limit, 600-second timeout and 16 GiB free-memory floor. The child
+proved its limits before ML imports. An independent readback verified the
+257 packaged source hashes, 16 image receipts, 18 original/lowercased query
+receipts, bound labels, measurement hash and Job proof. Python socket denial
+and offline hub settings are not an OS firewall qualification. No raw vectors
+were persisted. Active API task/listener/config and phone/TV feed pointers
+were unchanged; semantic search remained disabled.
+
+Focused source checks passed 87 tests and 17 subtests; seven committed-source
+staging/extraction checks also passed. These do not establish serving latency,
+GPU behavior, Android installation or family acceptance. Private packet,
+failure/launch evidence and measurement receipts remain outside Git.
 
 The output always declares `activation_approved: false`. A scorecard is a
 measurement aid, not a model-quality threshold or activation decision. The

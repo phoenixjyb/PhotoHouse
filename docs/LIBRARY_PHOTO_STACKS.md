@@ -92,10 +92,14 @@ clears protected UI through the existing access-failure path.
 ## Index and lifecycle
 
 The pure CPU builder uses the same conservative complete-link rules as v1:
-full capture times within five minutes and pHash distance at most six, or absent
-full times with the same uploader/batch and distance at most two. Known date
+full capture times within five minutes and pHash distance at most eight, or absent
+full times with the same uploader/batch and distance at most four. Known date
 conflicts veto the fallback. Videos and uncertain comparisons stay separate.
-Seven pHash bands/time buckets and three upload bands bound candidate discovery.
+Candidate discovery stores five disjoint hash bands for near-capture images and
+three for same-upload images. It probes each exact band plus one-bit variants;
+any pair within the respective eight/four-bit limit must share such a probe.
+Capture times are stored in one bucket and checked in neighboring buckets.
+This preserves eligible pairs while avoiding excessive candidates in dense batches.
 A build accepts at most 100,000 authorized assets and 10 million pair comparisons;
 exceeding a bound rejects the build without publishing partial output.
 
@@ -109,7 +113,11 @@ photo-stack tables prevent downgrade; recovery needs a reviewed offline plan.
 `PhotoStackRefreshWorker.run_once()` is a CPU-only integration entry point for an
 explicit tuple of 1–32 libraries, using fresh foreign-key-enabled connections.
 It does not start a thread, scheduler, service or task. Runnable scoped pHash work
-postpones a refresh; failed tasks are preserved. Unchanged input is a no-op.
+postpones a refresh; failed tasks are preserved. Unchanged input and grouping
+policy are a no-op. The source digest includes the algorithm, visual thresholds,
+time window and group cap; a policy change rebuilds even unchanged source rows
+on the next explicitly run refresh. Legacy row-only digests also rebuild once.
+Refreshing does not rewrite originals or account-private display choices.
 Clustering runs outside the write transaction. Atomic publication rechecks the
 source digest, generation and any attached deletion-history guard. A bound primary
 requires its current external deletion-history guard, including on no-op refresh;
@@ -142,6 +150,17 @@ bounded to 4,096 covers/separations and 256 KiB per account/library.
 
 The complete source/hosted profiles remain release gates, distinct from these
 focused results. No real household database, model, media or device was used.
+
+### Threshold adjustment — October 22 local candidate
+
+The relaxed eight/four-bit policy passed 79 focused tests and 27 subtests,
+including boundary distances, timestamp reliability, complete-link cohesion,
+policy-triggered index refresh and preserved private choices. A deterministic
+20,000-image same-timestamp synthetic batch completes within the existing
+comparison budget after the candidate-lookup adjustment. These checks do not
+establish matching quality for household photos, Windows qualification or live
+delivery. The previously sealed Windows rehearsal uses its original source and
+does not include this tuning.
 
 ## Generated Windows rehearsal
 

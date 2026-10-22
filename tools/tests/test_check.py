@@ -68,7 +68,8 @@ class CpuEnvironmentTests(unittest.TestCase):
                      "PATHEXT": ".EXE;.BAT", "TEMP": "synthetic-temp", "localappdata": "synthetic-appdata"}
         with mock.patch.dict(check.os.environ, inherited, clear=True):
             actual = check.cpu_environment()
-        for name, value in inherited.items(): self.assertEqual(actual[name], value)
+        normalized = {name.upper(): value for name, value in actual.items()}
+        for name, value in inherited.items(): self.assertEqual(normalized[name.upper()], value)
         self.assertEqual(actual["PHOTOHOUSE_NO_DOTENV"], "1")
 
     def test_pytest_receives_only_the_generated_cpu_environment(self):

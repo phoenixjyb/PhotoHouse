@@ -29,6 +29,7 @@ from .assistant_workspace_store import (AssistantWorkspaceStore,
 from .assistant_speech import (AssistantSpeechUnavailable, LocalAssistantTts,
                                valid_reply_wav)
 from .assistant_reading_segments import saved_reading_segments, MAX_SEGMENTS
+from .assistant_agent import AgentIdentity, AgentUnavailable
 from .service import AccessDenied, AccessService
 from .transport import (AccessRuntime, PRIVACY_HEADERS, TransportError, _runtime,
                         _single, credentials_from_request, _memory_runtime)
@@ -64,7 +65,8 @@ class WorkspaceRoute(APIRoute):
                     raise TransportError(400, 'Search version is not supported on this endpoint')
                 response = await handler(request)
             except TransportError as exc:
-                code = ('search_version_unsupported' if exc.status == 400 and
+                code = ('assistant_unavailable' if isinstance(exc, AgentUnavailable) else
+                        'search_version_unsupported' if exc.status == 400 and
                         exc.message == 'Search version is not supported on this endpoint' else
                         'access_denied' if exc.status in (401, 403) else
                         'request_too_large' if exc.status == 413 else 'invalid_request')
@@ -1060,6 +1062,165 @@ def _quoted_description_answer(value):
     return clue.strip()
 
 
+async def _agent_turn(operation, *, store, access, engine, token, journal, journal_parent):
+    """Own reservation through reconciliation; never retain an HTTP waiter."""
+    from .assistant_agent_tools import AgentTools
+    ident = operation.identity
+    args = (ident.account_id, ident.library_id, ident.thread_id, ident.request_id)
+    reservation = completion = runtime_task = journal_reservation = None
+    row = None
+    journal_started = committed = False
+
+    def live():
+        operation.check()
+        if _authorize(access, token, ident.library_id) != ident.account_id:
+            raise AccessDenied()
+        current = store.get_turn(*args)
+        if (current['status'] != 'pending' or operation.scope is None or
+                current['lease_id'] != operation.scope.lease_id or
+                current['revision'] != ident.expected_revision):
+            raise WorkspaceStoreConflict()
+        operation.check()
+
+    async def finish_journal(*, error=None, kind=None, total=None):
+        status, http_status = ('succeeded', 200) if committed else ('failed', 503)
+        if row is not None and row['status'] == 'interrupted':
+            error, http_status = 'turn_interrupted', 409
+
+        async def read():
+            return await operation.reconcile(operation.spawn_call(journal.get,
+                ident.request_id, ident.account_id, ident.library_id))
+
+        def matches(receipt):
+            return (receipt['status'] == status and receipt['http_status'] == http_status
+                    and receipt['error_code'] == error)
+
+        receipt = await read()
+        if receipt['status'] != 'received':
+            if not matches(receipt):
+                raise JournalUnavailable()
+            return
+        try:
+            await operation.reconcile(operation.spawn_call(journal.finish,
+                ident.request_id, status, http_status=http_status, error=error,
+                kind=kind if committed else None, total=total if committed else None))
+        except Exception:
+            # finish is intentionally non-idempotent. Read its outcome instead
+            # of blindly repeating a possibly committed terminal write.
+            if not matches(await read()):
+                raise
+
+    try:
+        # The owner was registered before this reservation can await or commit.
+        operation.start()
+        reservation = operation.spawn_call(store.begin_turn, *args,
+                                            ident.expected_revision, ident.text)
+        row = await operation.wait(reservation)
+        if row['replayed']:
+            return {'row': row, 'recovered': True, 'tracking': journal is not None,
+                    'receipt': None}
+        operation.bind(row['lease_id'])
+        await operation.call(live)
+        if journal is not None:
+            journal_reservation = operation.spawn_call(journal.begin, ident.account_id,
+                ident.library_id, 'turn', ident.request_id, journal_parent, ident.text)
+            await operation.wait(journal_reservation)
+            journal_started = True
+            await operation.call(journal.stage, ident.request_id, 'action_started')
+        preferences = await operation.call(store.get_preferences, ident.account_id)
+        tools = AgentTools(engine=engine, token=token, library=ident.library_id,
+            words=ident.text, context=row['context'], pending_intent=row.get('pending_intent'),
+            clock=access.clock, language=preferences['locale'], check=live,
+            invalidated=operation.cancelled)
+
+        async def dispatch(name, arguments):
+            return await operation.dispatch(tools, name, arguments)
+
+        operation.runtime_started = True
+        runtime_task = operation.spawn(operation.owner.runtime.run(
+            {'version': 1, 'text': ident.text, 'locale': preferences['locale']},
+            dispatch, operation.invalidation))
+        selector = await operation.wait(runtime_task)
+        outcome = await operation.call(tools.resolve, selector)
+        await operation.call(live)
+        summary, cards = outcome.summary(), outcome.cards()
+        # Domain capabilities close BEFORE an asynchronous commit is initiated.
+        operation.phase = 'finalizing'
+        completion = operation.spawn_call(store.complete_turn, *args,
+            row['lease_id'], summary, cards, [ident.request_id] if journal_started else [])
+        row = await operation.wait(completion, finalizing=True)
+        committed = row['status'] == 'completed'
+        if journal_started:
+            await finish_journal(error=None if committed else 'turn_interrupted',
+                                 kind=summary['kind'], total=summary['total'])
+        return {'row': row, 'recovered': False, 'tracking': journal is not None,
+                'receipt': ('succeeded' if committed else 'failed') if journal_started else None}
+    except BaseException as error:
+        operation.invalidate()
+        # A response timeout is not a claim that an in-flight commit rolled back.
+        operation.publish_error(AgentUnavailable() if isinstance(
+            error, (asyncio.CancelledError, TimeoutError)) else error)
+        if runtime_task is not None and not runtime_task.done():
+            runtime_task.cancel()
+        try:
+            if completion is not None:
+                try:
+                    row = await operation.reconcile(completion)
+                except Exception:
+                    # A store wrapper/transport can fail after its commit. Its
+                    # durable original receipt, rather than another completion,
+                    # resolves that uncertainty.
+                    row = await operation.reconcile(operation.spawn_call(store.get_turn, *args))
+                committed = row['status'] == 'completed'
+            elif reservation is not None:
+                try:
+                    row = await operation.reconcile(reservation)
+                except (WorkspaceStoreConflict, WorkspaceStoreMissing):
+                    # Definitive admission failures created no owned lease or
+                    # model work. They do not poison the optional lane.
+                    row = None
+            if (not committed and row is not None and row['status'] == 'pending' and
+                    operation.scope is not None and row.get('lease_id') == operation.scope.lease_id):
+                row = await operation.reconcile(operation.spawn_call(store.fail_turn,
+                    *args, operation.scope.lease_id, _error_code(error)))
+            if not journal_started and journal_reservation is not None:
+                try:
+                    await operation.reconcile(journal_reservation)
+                    journal_started = True
+                except (JournalConflict, JournalMissing):
+                    # A pre-existing or foreign receipt was never ours to finish.
+                    pass
+                except Exception:
+                    try:
+                        receipt = await operation.reconcile(operation.spawn_call(journal.get,
+                            ident.request_id, ident.account_id, ident.library_id))
+                    except JournalMissing:
+                        receipt = None
+                    if receipt is not None:
+                        if (receipt['operation'] != 'turn' or receipt['input_text'] != ident.text or
+                                receipt['parent_request_id'] != journal_parent):
+                            raise JournalConflict()
+                        journal_started = True
+            if journal_started:
+                await finish_journal(error=None if committed else _error_code(error))
+        except BaseException:
+            # Retain an unavailable lane and the existing bounded durable lease.
+            operation.owner.healthy = False
+        raise
+
+
+async def _agent_response(request, account, library, operation):
+    value = await asyncio.shield(operation.result)
+    response = await _turn_envelope(request, account, library, value['row'],
+                                    recovered=value['recovered'])
+    if value['tracking']:
+        response.headers['X-PhotoHouse-Request-Id'] = operation.identity.request_id
+    response.headers['X-PhotoHouse-Tracking'] = 'enabled' if value['tracking'] else 'disabled'
+    if value['receipt'] is not None:
+        response.headers['X-PhotoHouse-Receipt-Status'] = value['receipt']
+    return response
+
+
 @router.post('/assistant/workspace/v1/threads/{thread_id}/turns')
 async def create_turn(request: Request, thread_id: str):
     body = await _body(request, {'library_id', 'request_id', 'expected_revision', 'text', 'accepts', 'memory_parent'},
@@ -1068,7 +1229,8 @@ async def create_turn(request: Request, thread_id: str):
     scene_opt_in = _single(request, 'x-photohouse-search-version') == '4'
     if scene_opt_in and (body.get('accepts') != ['scene_search_v1'] or 'memory_parent' in body):
         raise WorkspaceInvalid()
-    memory_opt_in = 'accepts' in body and not scene_opt_in
+    agent_opt_in = body.get('accepts') == ['agent_media_search_v1']
+    memory_opt_in = 'accepts' in body and not scene_opt_in and not agent_opt_in
     memory_actions_opt_in = False
     library, selected = _library(body['library_id']), _thread_id(thread_id)
     ident, revision = _thread_id(body['request_id']), _revision(body['expected_revision'])
@@ -1102,8 +1264,35 @@ async def create_turn(request: Request, thread_id: str):
     # the store's original text/revision collision checks on this GET-like path.
     prior = await _call(store, 'begin_turn', account, library, selected, ident,
                         revision, words, existing_only=True)
+    supervisor = getattr(request.app.state, 'assistant_agent_supervisor', None)
+    identity = AgentIdentity(account, library, selected, ident, revision, words)
+    operation = supervisor.lookup(identity) if supervisor is not None else None
+    if operation is not None and (prior is None or prior['status'] == 'pending'):
+        return await _agent_response(request, account, library, operation)
     if prior is not None:
         return await _turn_envelope(request, account, library, prior, recovered=True)
+    if agent_opt_in:
+        if (_single(request, 'x-photohouse-search-version') != '2' or
+                'memory_parent' in body):
+            raise WorkspaceInvalid()
+        if supervisor is None:
+            raise AgentUnavailable()
+        journal = _journal(request)
+        try:
+            operation = supervisor.submit(identity, lambda operation: _agent_turn(operation,
+                store=store, access=access, engine=engine, token=token,
+                journal=journal, journal_parent=journal_parent))
+        except AgentUnavailable:
+            # Recheck durable ownership after the preceding asynchronous lookup.
+            prior = await _call(store, 'begin_turn', account, library, selected, ident,
+                                revision, words, existing_only=True)
+            operation = supervisor.lookup(identity)
+            if operation is not None and (prior is None or prior['status'] == 'pending'):
+                return await _agent_response(request, account, library, operation)
+            if prior is not None:
+                return await _turn_envelope(request, account, library, prior, recovered=True)
+            raise
+        return await _agent_response(request, account, library, operation)
     if parent is not None and not memory_opt_in:
         raise WorkspaceInvalid()
     if memory_opt_in:

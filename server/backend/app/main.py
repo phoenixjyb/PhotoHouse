@@ -14,6 +14,7 @@ from .access.photo_stack_transport import router as photo_stack_router
 from .access.members import router as member_router
 from .access.stories import router as story_router
 from .access.story_workspace import router as story_workspace_router
+from .access.selected_story_transport import router as selected_story_router
 from .access.memory_group_transport import router as memory_group_router, GroupVectorConfiguration
 from .access.memory_stories import router as memory_router
 from .access.memory_transport import router as memory_community_router
@@ -48,7 +49,10 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_workspace_store=None, assistant_kinship_provider=None, assistant_intent_planner=None, update_root=None,
                story_title_suggester=None, memory_groups_enabled=False, memory_group_vectors=None,
                assistant_reply_speech_enabled=False, assistant_saved_memory_cards_enabled=False,
-               assistant_semantic_search_enabled=False):
+               assistant_semantic_search_enabled=False,
+               assistant_agent_runtime=None, assistant_agent_budget=None,
+               selected_story_provider=None, selected_story_drafts_enabled=False,
+               selected_story_ui_enabled=False):
     if semantic_search_runtime is not None and (
             type(semantic_search_runtime) is not SemanticSearchRuntime or
             semantic_search_runtime.access is not access_runtime or
@@ -83,6 +87,16 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     if assistant_kinship_provider is not None and (
             not assistant_enabled or not callable(getattr(assistant_kinship_provider, 'get', None))):
         raise ValueError('Explicit enabled assistant kinship provider required')
+    agent_supervisor = None
+    if assistant_agent_runtime is not None:
+        if (not assistant_enabled or assistant_workspace_store is None or
+                discovery_runtime is None or access_runtime is None or
+                discovery_runtime.access is not access_runtime):
+            raise ValueError('Agent requires matching assistant, workspace and discovery')
+        from .access.assistant_agent import AgentSupervisor
+        agent_supervisor = AgentSupervisor(assistant_agent_runtime, budget=assistant_agent_budget)
+    elif assistant_agent_budget is not None:
+        raise ValueError('Agent budget requires an injected runtime')
     if assistant_saved_memory_cards_enabled and (not assistant_enabled or
             not memory_collaboration_enabled or
             type(assistant_workspace_store) is not AssistantWorkspaceStore):
@@ -103,6 +117,19 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     if (memory_originals_enabled or memory_generation_enabled or memory_editorial_enabled or
             memory_editions_enabled) and not memory_collaboration_enabled:
         raise ValueError('Memory contributions/generation require collaboration opt-in')
+    if (type(selected_story_drafts_enabled) is not bool or
+            (selected_story_drafts_enabled and selected_story_provider is None)):
+        raise ValueError('Explicit selected-story API opt-in and provider required')
+    if (type(selected_story_ui_enabled) is not bool or
+            (selected_story_ui_enabled and not selected_story_drafts_enabled)):
+        raise ValueError('Explicit selected-story UI and API opt-in required')
+    selected_story_lifecycle = None
+    if selected_story_provider is not None:
+        if not memory_collaboration_enabled:
+            raise ValueError('Selected-story provider requires collaboration opt-in')
+        from .access.selected_story_lifecycle import SelectedStoryLifecycle
+        selected_story_lifecycle = SelectedStoryLifecycle(access_runtime, selected_story_provider,
+            memory_groups_enabled=memory_groups_enabled)
     @asynccontextmanager
     async def lifespan(app):
         maintenance = None
@@ -110,65 +137,80 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
         workspace_maintenance = None
         journal = app.state.assistant_journal
         workspace = app.state.assistant_workspace_store
-        if app.state.memory_collaboration_enabled:
-            from .access.memory_jobs import maintenance as prune_memories
-            await run_in_threadpool(prune_memories, app.state.access_runtime)
-        if journal is not None:
-            await run_in_threadpool(journal.maintenance, interrupt=True)
-            async def prune():
-                while True:
-                    await asyncio.sleep(3600)
-                    try:
-                        await run_in_threadpool(journal.maintenance)
-                        app.state.assistant_journal_healthy = True
-                    except Exception:
-                        # Never log input/provider details. Refuse new processing
-                        # until a later successful purge restores retention.
-                        app.state.assistant_journal_healthy = False
-            maintenance = asyncio.create_task(prune())
-        if workspace is not None:
-            try:
-                await run_in_threadpool(workspace.prune)
-                app.state.assistant_workspace_healthy = True
-            except Exception:
-                app.state.assistant_workspace_healthy = False
-            async def prune_workspace():
-                while True:
-                    await asyncio.sleep(3600)
-                    try:
-                        await run_in_threadpool(workspace.prune)
-                        app.state.assistant_workspace_healthy = True
-                    except Exception:
-                        app.state.assistant_workspace_healthy = False
-            workspace_maintenance = asyncio.create_task(prune_workspace())
-        if app.state.memory_collaboration_enabled:
-            async def prune_memory_history():
-                while True:
-                    await asyncio.sleep(3600)
-                    try:
-                        await run_in_threadpool(prune_memories, app.state.access_runtime)
-                        app.state.memory_retention_healthy = True
-                    except Exception:
-                        app.state.memory_retention_healthy = False
-            memory_maintenance = asyncio.create_task(prune_memory_history())
         try:
+            if app.state.selected_story_lifecycle is not None:
+                app.state.selected_story_lifecycle.start()
+                app.state.selected_story_operations = app.state.selected_story_lifecycle.operations
+            if app.state.memory_collaboration_enabled:
+                from .access.memory_jobs import maintenance as prune_memories
+                await run_in_threadpool(prune_memories, app.state.access_runtime)
+            if journal is not None:
+                await run_in_threadpool(journal.maintenance, interrupt=True)
+                async def prune():
+                    while True:
+                        await asyncio.sleep(3600)
+                        try:
+                            await run_in_threadpool(journal.maintenance)
+                            app.state.assistant_journal_healthy = True
+                        except Exception:
+                            # Never log input/provider details. Refuse new processing
+                            # until a later successful purge restores retention.
+                            app.state.assistant_journal_healthy = False
+                maintenance = asyncio.create_task(prune())
+            if workspace is not None:
+                try:
+                    await run_in_threadpool(workspace.prune)
+                    app.state.assistant_workspace_healthy = True
+                except Exception:
+                    app.state.assistant_workspace_healthy = False
+                async def prune_workspace():
+                    while True:
+                        await asyncio.sleep(3600)
+                        try:
+                            await run_in_threadpool(workspace.prune)
+                            app.state.assistant_workspace_healthy = True
+                        except Exception:
+                            app.state.assistant_workspace_healthy = False
+                workspace_maintenance = asyncio.create_task(prune_workspace())
+            if app.state.memory_collaboration_enabled:
+                async def prune_memory_history():
+                    while True:
+                        await asyncio.sleep(3600)
+                        try:
+                            await run_in_threadpool(prune_memories, app.state.access_runtime)
+                            app.state.memory_retention_healthy = True
+                        except Exception:
+                            app.state.memory_retention_healthy = False
+                memory_maintenance = asyncio.create_task(prune_memory_history())
             yield
         finally:
-            if maintenance is not None:
-                maintenance.cancel()
-                with suppress(asyncio.CancelledError):
-                    await maintenance
-            if memory_maintenance is not None:
-                memory_maintenance.cancel()
-                with suppress(asyncio.CancelledError):
-                    await memory_maintenance
-            if workspace_maintenance is not None:
-                workspace_maintenance.cancel()
-                with suppress(asyncio.CancelledError):
-                    await workspace_maintenance
+            try:
+                if app.state.selected_story_lifecycle is not None:
+                    await app.state.selected_story_lifecycle.close()
+            finally:
+                if app.state.assistant_agent_supervisor is not None:
+                    await app.state.assistant_agent_supervisor.close()
+                if maintenance is not None:
+                    maintenance.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await maintenance
+                if memory_maintenance is not None:
+                    memory_maintenance.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await memory_maintenance
+                if workspace_maintenance is not None:
+                    workspace_maintenance.cancel()
+                    with suppress(asyncio.CancelledError):
+                        await workspace_maintenance
     app = FastAPI(openapi_url=None, docs_url=None, redoc_url=None,
                   redirect_slashes=False, lifespan=lifespan)
     app.state.access_runtime = access_runtime
+    app.state.selected_story_ui_enabled = selected_story_ui_enabled
+    app.state.selected_story_drafts_enabled = selected_story_drafts_enabled
+    app.state.selected_story_lifecycle = selected_story_lifecycle
+    app.state.selected_story_operations = None
+    app.state.inference_admission = (selected_story_lifecycle.admission
+                                     if selected_story_lifecycle is not None else None)
     # No provider discovery or live configuration fallback. Qualification and
     # runtime wiring are separate from mounting the protected, default-off route.
     from threading import Lock
@@ -198,6 +240,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.assistant_kinship_provider = assistant_kinship_provider
     app.state.assistant_intent_planner = assistant_intent_planner
     app.state.assistant_workspace_healthy = assistant_workspace_store is not None
+    app.state.assistant_agent_supervisor = agent_supervisor
     app.state.upload_runtime = upload_runtime
     app.state.upload_review_runtime = upload_review_runtime
     app.state.annotation_intake_enabled = annotation_intake_enabled
@@ -209,6 +252,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(member_router)
     app.include_router(story_router)
     app.include_router(story_workspace_router)
+    app.include_router(selected_story_router)
     app.include_router(memory_group_router)
     app.include_router(memory_router)
     app.include_router(memory_edition_router)

@@ -242,3 +242,11 @@ power loss. This closes the named synthetic guard and CPU/video
 worker cases. It does not qualify installed model workers, automatic vector
 coverage, a live backup/restoration, live schema/worker/API activation or family
 and device use. See the [maintenance sequence](../server/docs/security/MEMORY_GROUP_SCHEMA_APPLICATION.md).
+
+## Optional selected-story native rehearsal
+
+The [selected-story runner](SELECTED_SOURCE_STORY_WINDOWS_QUALIFICATION.md) is
+packaged but never executed by this ordinary CPU profile. It explicitly tests
+the owned-process provider with real Windows Jobs and synthetic workers under
+a pinned package/interpreter/account; model and deployment qualification remain
+separate.

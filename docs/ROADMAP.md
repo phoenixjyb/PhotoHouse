@@ -1,5 +1,14 @@
 # Product roadmap
 
+**October 20 local-agent plan, source only:** the
+[household AI revision](LOCAL_AGENT_DEVELOPMENT_PLAN.md) targets several
+independent family conversations with bounded shared inference scheduling.
+Workflow-specific capabilities replace a permanent three-tool product ceiling;
+the PH-A1 v1 fixture is preserved. Evaluate selected-source story preparation
+against existing drafting before committing to a general runtime. Provider
+qualification, source implementation and deployment remain distinct; existing
+upload/indexing priorities below are unchanged.
+
 **October 20 search release and next work:** [Guarded bilingual search](SEARCH_RELEASE_2026-10-20.md)
 is merged in PR #101 and API/Web source `b170a97` was deployed and verified.
 Exclusion/strict-condition admission and clarification recovery have shipped;

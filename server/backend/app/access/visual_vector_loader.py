@@ -229,7 +229,7 @@ def _valid_root_argument(root: object) -> bool:
     return isinstance(root, Path) and root.is_absolute() and ".." not in root.parts
 
 
-def _artifact_from_row(row) -> ImmutableVectorArtifact | None:
+def _artifact_from_row(row, expected_identity=None) -> ImmutableVectorArtifact | None:
     try:
         if (len(row) != 16 or type(row[1]) is not int or row[1] <= 0
                 or row[1] > 2**63 - 1):
@@ -239,15 +239,14 @@ def _artifact_from_row(row) -> ImmutableVectorArtifact | None:
         artifact = ImmutableVectorArtifact(*values)
     except (TypeError, ValueError):
         return None
-    return artifact if validate_artifact(artifact) else None
+    return artifact if validate_artifact(artifact, expected_identity) else None
 
 
 def _validated_rows(rows, expected_identity):
     result: dict[str, ImmutableVectorArtifact] = {}
     for row in rows:
-        artifact = _artifact_from_row(row)
-        if (artifact is None or not validate_artifact(artifact, expected_identity)
-                or artifact.asset_id in result):
+        artifact = _artifact_from_row(row, expected_identity)
+        if artifact is None or artifact.asset_id in result:
             return {}
         result[artifact.asset_id] = artifact
     return result
@@ -278,22 +277,18 @@ def _is_reparse(info) -> bool:
     return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
 
 
-def _read_vector(root: Path, artifact: ImmutableVectorArtifact) -> tuple[float, ...] | None:
+def _read_vector(root: Path, artifact: ImmutableVectorArtifact, *, charge=None) -> tuple[float, ...] | None:
     """Read one tightly bounded NPY payload without shape-driven allocation."""
-    root = _checked_root(root)
-    if root is None:
+    if not _valid_root_argument(root):
         return None
     relative = Path(artifact.relative_path)
     if relative.is_absolute() or ".." in relative.parts or len(relative.parts) != 3:
         return None
     target = root.joinpath(*relative.parts)
-    parent = root
     try:
-        for part in relative.parts[:-1]:
-            parent = parent / part
-            info = os.lstat(parent)
-            if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or _is_reparse(info):
-                return None
+        # One complete lexical ancestor walk subsumes both the root check and
+        # relative-directory walk. Keep its identity snapshot through the read;
+        # no path decisions are cached across files, passes or requests.
         path_snapshot = _root_snapshot(target.parent)
         if path_snapshot is None:
             return None
@@ -308,8 +303,12 @@ def _read_vector(root: Path, artifact: ImmutableVectorArtifact) -> tuple[float, 
             opened = os.fstat(descriptor)
             if not _same_file(before, opened) or not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1:
                 return None
-            chunks = []
             remaining = min(opened.st_size, _MAX_FILE_BYTES) + 1
+            # Reserve the maximum bytes this handle can read before I/O. The
+            # optional large-cohort caller shares one budget across both passes.
+            if charge is not None:
+                charge(remaining)
+            chunks = []
             while remaining:
                 chunk = os.read(descriptor, min(remaining, 8192))
                 if not chunk:
@@ -377,13 +376,16 @@ def _same_file(left, right) -> bool:
 
 def _root_snapshot(root: Path):
     """Capture every lexical ancestor so persistent parent swaps are refused."""
-    current = Path(root.anchor)
+    # Operate on native lexical strings during the walk. Constructing a new
+    # lazy Path for every ancestor repeatedly reparses and formats the same
+    # components across large cohorts; no resolution or alias following is needed.
+    current = root.anchor
     observed = []
     try:
         for part in root.parts[1:]:
-            current = current / part
+            current = os.path.join(current, part)
             info = os.lstat(current)
-            if stat.S_ISLNK(info.st_mode) or _is_reparse(info):
+            if not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode) or _is_reparse(info):
                 return None
             observed.append((info.st_dev, info.st_ino, info.st_mode))
         return tuple(observed)

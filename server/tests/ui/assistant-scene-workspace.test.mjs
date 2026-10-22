@@ -11,6 +11,7 @@ const interpretation={date_basis:'capture',people:[{id:'301',label:'Sample Child
 const item={id:'101',kind:'image',width:640,height:480,duration_sec:null,taken_at:'2032-09-01',thumbnail_url:'/assets/101/thumbnail?library=family-a',match_reasons:[]};
 function ordinary(){return {version:3,kind:'results',reply:'Found.',context:{library_id:library,binding:hash,fingerprint:fp,filters:structuredClone(filters),visible_ids:['101'],total:1,search_version:3},filters:structuredClone(filters),items:[structuredClone(item)],total:1,has_more:false,effect:null,interpretation:structuredClone(interpretation)};}
 function scene(){const base=ordinary();return {...base,version:4,context:{...base.context,search_version:4,scene:{version:1,query,scope:structuredClone(base.context),scores:[.75]}},items:[{...base.items[0],semantic_score:.75}],semantic:{mode:'text_to_image',score_kind:'cosine',candidate_count:1,coverage:'complete_eligible_images',needs_review:true}};}
+function largeScene(total=100000){const value=scene(),ids=Array.from({length:20},(_,i)=>String(101+i));value.context.total=total;value.context.scene.scope.total=total;value.context.visible_ids=ids;value.context.scene.scope.visible_ids=ids;value.context.scene.scores=ids.map(()=>.75);value.items=ids.map((id)=>({...structuredClone(item),id,thumbnail_url:`/assets/${id}/thumbnail?library=${library}`,semantic_score:.75}));value.total=total;value.has_more=true;value.semantic.candidate_count=total;return value;}
 const env=(result,id=rid,recovered=false)=>({version:1,thread_id:tid,request_id:id,status:'completed',revision:result.version===4?2:1,recovered,error:null,result});
 const failed=(id=rid,recovered=false,code='scene_query_unsupported',revision=1)=>({version:1,thread_id:tid,request_id:id,status:'failed',revision,recovered,error:code,result:null});
 const error=(status,code='unavailable')=>Object.assign(new Error(code),{status,code});
@@ -42,6 +43,33 @@ test('v4 requires explicit negotiation and validates complete scope, scores and 
  assert.equal(Private.validateResult(ordinary(),library,true,false,false,4).version,3);
  const mutations=[v=>v.effect={type:'open_asset',asset_id:'101'},v=>v.kind='clarification',v=>v.items[0].kind='video',v=>v.items[0].semantic_score=Infinity,v=>v.items[0].semantic_score=.5,v=>v.context.scene.scores=[1.01],v=>v.context.scene.scope.library_id='other',v=>v.context.scene.scope.search_version=4,v=>v.context.scene.query='x\ny',v=>v.context.scene.query='中'.repeat(171),v=>v.context.scene.extra=true,v=>v.filters.people.ids=['302'],v=>v.interpretation.people[0].id='302',v=>v.semantic.needs_review=false,v=>v.semantic.candidate_count=2,v=>v.semantic.coverage='partial',v=>v.semantic.extra=true,v=>v.context.scene.scope.filters.media=['video'],v=>v.context.scene.scope.filters.descriptive={version:1,concepts:[{surface:'beach',alternatives:['beach']}]},v=>v.items[0].thumbnail_url='/assets/101/thumbnail?library=other'];
  for(const mutate of mutations){const bad=scene();mutate(bad);assert.throws(()=>Private.validateResult(bad,library,false,false,false,4));}
+});
+test('semantic coverage details are optional, exact, bounded and cross-validated',()=>{
+ const legacy=Private.validateResult(scene(),library,false,false,false,4);assert.deepEqual(Object.keys(legacy.semantic),['mode','score_kind','candidate_count','coverage','needs_review']);
+ const complete=scene();complete.semantic.coverage_details={version:1,policy_sha256:'c'.repeat(64),state:'complete',catalog_images:100,searchable_images:100,omitted_images:0,matched_omitted_images:0};
+ const parsedComplete=Private.validateResult(complete,library,false,false,false,4);assert.equal(parsedComplete.semantic.coverage_details.state,'complete');assert.ok(Object.isFrozen(parsedComplete.semantic.coverage_details));
+ const partial=scene();partial.semantic.coverage_details={version:1,policy_sha256:'a'.repeat(64),state:'partial',catalog_images:100,searchable_images:90,omitted_images:10,matched_omitted_images:2};
+ assert.equal(Private.validateResult(partial,library,false,false,false,4).semantic.coverage_details.omitted_images,10);
+ const large=Private.validateResult(largeScene(),library,false,false,false,4);assert.equal(large.total,100000);assert.equal(large.items.length,20);
+ const invalid=[
+  {...partial.semantic.coverage_details,version:2},
+  {...partial.semantic.coverage_details,policy_sha256:'A'.repeat(64)},
+  {...partial.semantic.coverage_details,policy_sha256:'c'.repeat(63)},
+  {...partial.semantic.coverage_details,state:'complete'},
+  {...partial.semantic.coverage_details,extra:false},
+  {...partial.semantic.coverage_details,catalog_images:true},
+  {...partial.semantic.coverage_details,catalog_images:1.5},
+  {...partial.semantic.coverage_details,catalog_images:100001},
+  {...complete.semantic.coverage_details,searchable_images:0},
+  {...partial.semantic.coverage_details,searchable_images:91},
+  {...partial.semantic.coverage_details,omitted_images:0},
+  {...partial.semantic.coverage_details,matched_omitted_images:11},
+  {...partial.semantic.coverage_details,searchable_images:100,omitted_images:0,matched_omitted_images:0}
+ ];
+ for(const details of invalid){const bad=scene();bad.semantic.coverage_details=details;assert.throws(()=>Private.validateResult(bad,library,false,false,false,4));}
+ const tooManyCandidates=scene();tooManyCandidates.semantic.coverage_details={...partial.semantic.coverage_details,searchable_images:0,omitted_images:100};assert.throws(()=>Private.validateResult(tooManyCandidates,library,false,false,false,4));
+ const tooManyCombined=largeScene(99);tooManyCombined.semantic.coverage_details={...partial.semantic.coverage_details,catalog_images:100,searchable_images:90,omitted_images:10,matched_omitted_images:2};assert.throws(()=>Private.validateResult(tooManyCombined,library,false,false,false,4));
+ const unsafeCandidate=scene();unsafeCandidate.semantic.candidate_count=Number.MAX_SAFE_INTEGER+1;assert.throws(()=>Private.validateResult(unsafeCandidate,library,false,false,false,4));
 });
 test('scene POST sends only exact opt-in and bound revision, preserves main draft and never offers speech',async()=>{
  const f=setup();await ready(f);f.c.setDraft('unsent ordinary conditions');f.c.setSceneDraft(query);await f.c.sendScene();

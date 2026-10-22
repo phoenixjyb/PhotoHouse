@@ -16,7 +16,7 @@ from .library import FIELDS, HINT_FIELDS, SOURCE, GALLERY_ORDER, _asset
 from .photo_stack_schema import available
 from .service import Conflict
 from .transport import TransportError
-from .photo_stack_index import check_stopped
+from .photo_stack_index import check_stopped, grouping_policy_fingerprint
 
 PAGE_SIZE = 12
 MAX_MEMBERS = 24
@@ -83,7 +83,10 @@ def _source(db, library):
     rows = db.execute('SELECT '+_INPUT+SOURCE+GALLERY_ORDER+' LIMIT ?', (library,MAX_ASSETS+1)).fetchall()
     if len(rows)>MAX_ASSETS:
         raise ValueError('photo_stack_asset_limit')
-    digest = hashlib.sha256(json.dumps(rows,separators=(',',':'),ensure_ascii=True).encode()).hexdigest()
+    # A policy upgrade must rebuild unchanged source rows, too. Otherwise an
+    # old strict index would remain a no-op forever after thresholds change.
+    inputs = {'policy':grouping_policy_fingerprint(),'rows':rows}
+    digest = hashlib.sha256(json.dumps(inputs,separators=(',',':'),ensure_ascii=True).encode()).hexdigest()
     return rows,digest
 
 

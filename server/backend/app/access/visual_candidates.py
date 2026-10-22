@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import itertools
 import math
+import operator
 import re
 import struct
 from typing import Literal
@@ -115,28 +117,26 @@ def canonical_vector_checksum(vector: tuple[float, ...] | list[float]) -> str:
     unavailable result.
     """
     packed = _packed_vector(vector)
-    return hashlib.sha256(_CHECKSUM_PREFIX + struct.pack(">I", len(vector)) + packed).hexdigest()
+    return hashlib.sha256(_CHECKSUM_PREFIX + struct.pack(">I", len(packed) // 4) + packed).hexdigest()
 
 
 def _packed_vector(vector: tuple[float, ...] | list[float]) -> bytes:
     if type(vector) not in (tuple, list) or not 1 <= len(vector) <= MAX_DIMENSION:
         raise ValueError("invalid_vector")
-    values = []
-    for component in vector:
-        if type(component) not in (int, float):
-            raise ValueError("invalid_vector")
-        try:
-            value = float(component)
-        except OverflowError:
-            raise ValueError("invalid_vector") from None
-        if not math.isfinite(value):
-            raise ValueError("invalid_vector")
-        values.append(value)
+    # Freeze mutable inputs before checking types. Limit the copy even when a
+    # caller changes a list concurrently; tuple search vectors need no copy.
+    vector = vector if type(vector) is tuple else tuple(vector[:MAX_DIMENSION + 1])
+    if not 1 <= len(vector) <= MAX_DIMENSION:
+        raise ValueError("invalid_vector")
+    if any(type(component) not in (int, float) for component in vector):
+        raise ValueError("invalid_vector")
     try:
-        packed = struct.pack(f">{len(values)}f", *values)
+        # struct performs builtin int/float conversion while packing, avoiding
+        # a second Python list of converted components on large vectors.
+        packed = struct.pack(f">{len(vector)}f", *vector)
     except (OverflowError, struct.error):
         raise ValueError("invalid_vector") from None
-    if any(not math.isfinite(value) for value in struct.unpack(f">{len(values)}f", packed)):
+    if not all(map(math.isfinite, struct.unpack(f">{len(vector)}f", packed))):
         raise ValueError("invalid_vector")
     return packed
 
@@ -154,13 +154,13 @@ def _canonical_components(record: VectorRecord, identity: VectorSpaceIdentity) -
     if checksum != record.checksum_sha256:
         raise ValueError("invalid_vector_record")
     values = struct.unpack(f">{len(record.vector)}f", packed)
-    norm = math.sqrt(math.fsum(value * value for value in values))
+    norm = math.sqrt(math.fsum(map(operator.mul, values, values)))
     if (not math.isfinite(norm) or norm == 0.0
             or abs(norm - 1.0) > UNIT_NORM_TOLERANCE):
         raise ValueError("invalid_vector_record")
     # Scoring uses unit-normalized canonical components. Keep the checksum
     # bound to the original float32 bytes above, before normalization.
-    return tuple(value / norm for value in values)
+    return tuple(map(operator.truediv, values, itertools.repeat(norm)))
 
 
 def _valid_identity(identity: object) -> bool:
@@ -186,7 +186,7 @@ def _asset_id(value: object) -> bool:
 
 def _score(left: tuple[float, ...], right: tuple[float, ...]) -> float:
     """Cosine score over canonical, unit-normalized float32 components."""
-    return math.fsum(a * b for a, b in zip(left, right))
+    return math.fsum(map(operator.mul, left, right))
 
 
 def rank_visual_candidates(
