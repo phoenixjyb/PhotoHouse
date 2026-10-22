@@ -287,6 +287,16 @@ class QualificationJournal:
                     stream.write(raw)
                     stream.flush()
                     os.fsync(descriptor)
+                # Windows CRT descriptors do not grant delete sharing. Close
+                # before linking/unlinking, as in the bulk-vector publisher.
+                os.close(descriptor)
+                descriptor = None
+                info = temp.lstat()
+                if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                        or getattr(info, "st_file_attributes", 0) & 0x400
+                        or info.st_nlink != 1 or info.st_size != len(raw)
+                        or (info.st_dev, info.st_ino) != owned):
+                    raise QualificationJournalError()
                 if _parent_identity(self.directory) != self._directory_identity:
                     raise QualificationJournalError()
                 if _parent_identity(self.directory.parent) != self._parent_identity:

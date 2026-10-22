@@ -30497,6 +30497,26 @@
         }
       ],
       "notes": "Opt-in diagnostic-only private atomic bounded progress before both full audits, fixed numeric operation timing, exact result/exception and patch restoration checks. Preserve full protected qualification, permissions/integrity and fixed Job deadline. Native qualification remains separate; no production activation."
+    },
+    {
+      "feature": "semantic-checkpoint-windows-publication-handle-close-r64",
+      "source_base": "3195a601a1254ab49f7027671eb9d1a83c811071",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/semantic_qualification_journal.py",
+          "before_sha256": "0ebc8e5ffd47632348ceb836bd165e359d80ac1411c9b98113b728cc7f09350d",
+          "sha256": "ef4b6252bc5d0cc8e173c9e48f9dd90c10f6778bdf199a194546910737acfd45"
+        },
+        {
+          "path": "server/tests/security/test_semantic_qualification_journal.py",
+          "before_sha256": "01721cca8ce34b9d357690c23237bdb6b3250a98d233e7a3e1178492536e96be",
+          "sha256": "393cd970eabb8d9eb4fdd9355da4254a8b358b500cffea83bc69491f6e7a6c38"
+        }
+      ],
+      "notes": "Close fsynced temporary descriptor before no-overwrite hard-link publication and temporary-name deletion, retaining inode/size/type/reparse checks. Regression enforces closed descriptor before filesystem publication; native Windows qualification remains separate."
     }
   ]
 }

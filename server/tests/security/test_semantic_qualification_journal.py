@@ -123,6 +123,31 @@ def test_storage_failure_preserves_prior_checkpoints_and_cleans_temp(tmp_path, m
     assert not list(output.glob(".*.tmp"))
 
 
+def test_publication_closes_temporary_descriptor_before_windows_delete(tmp_path, monkeypatch):
+    journal = subject.QualificationJournal(tmp_path / 'windows-compatible-publication')
+    opened = []
+    real_open, real_link = os.open, os.link
+    def observe_open(path, flags, *args, **kwargs):
+        descriptor = real_open(path, flags, *args, **kwargs)
+        if flags & os.O_WRONLY:
+            opened.append(descriptor)
+        return descriptor
+    def windows_link(source, destination, **kwargs):
+        assert opened
+        # Simulate Windows refusing temporary-name deletion with an open CRT
+        # handle. This must hold before either publication filesystem mutation.
+        with pytest.raises(OSError):
+            os.fstat(opened[-1])
+        return real_link(source, destination, **kwargs)
+    monkeypatch.setattr(subject.os, 'open', observe_open)
+    monkeypatch.setattr(subject.os, 'link', windows_link)
+    with journal.phase('initial_audit'):
+        pass
+    journal.close(success=False)
+    assert len(opened) == 3
+    assert len(subject.read_checkpoints(journal.directory)) == 3
+
+
 def test_failed_phase_never_persists_exception_or_caller_text(tmp_path):
     output = tmp_path / "private-fields"
     journal = subject.QualificationJournal(output)
