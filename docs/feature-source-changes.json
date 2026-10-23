@@ -30707,6 +30707,67 @@
         }
       ],
       "notes": "Inspector-only bounded first JSON read with duplicate/nonfinite/canonical validation and expected metadata SHA, retaining final full digest/identity and private-file checks; writer/resume/source/vector/both full audits remain. 41 focused tests and independent source review passed; clean exact c534805 passed 3405 API tests/4037 subtests plus generated demo. Separate unqualified source, not in R68 native metrics, no runtime or activation."
+    },
+    {
+      "feature": "semantic-request-local-conditional-text-provenance-r70",
+      "source_commit": "21c2b7d15e155829157ad0c9b459f779a8b675e8",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "39b901aece2bf49af3ecbae90433fa4251a9d35f60a843652ed4b18d1d1a466a",
+          "sha256": "26b79c7c37dfd90cb819b1c953937cbf9a3a11baff0d1dd49f3f295bf770b5f2"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "0b39acd7092785a389b1f9439211e812f2f3d4b967736a9c76cecc1974767962",
+          "sha256": "f940dd9702584ec8851e61a12c8297344ec40b9247a9d381af0a6c9f471e80f0"
+        },
+        {
+          "path": "server/tests/security/test_semantic_eligibility_search.py",
+          "before_sha256": "f93210edb8f5942994ce5220f05c9dc289958c4844b2c292ba41e74a3ecf774d",
+          "sha256": "93947ec433578c1c40f905e9ea71c7aab41d5bcc05ecec150b0ff338e828e276"
+        },
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": "fb1a28b7c91039e66124ae5cc9fc5f65e40b27ab3684bab945c0d1143b35f1f5",
+          "sha256": "7ac9b455e38c93d3d7d5b09d52b45caf076990bc3690f6700ffd9194a65ba4fe"
+        }
+      ],
+      "notes": "Conditional request-local text provenance for validated semantic-only filters; SQL/source/auth/final hashes and ordinary lexical behavior remain. Local exact-source API qualification recorded separately; native latency and activation remain gated."
+    },
+    {
+      "feature": "semantic-native-f64-immutable-cache-ranking-r71",
+      "files": [
+        {
+          "before_sha256": "9fa380ac576725370a04b091ab7a56640f20f95fe3471a4d8bffb2eff527e006",
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "sha256": "f76c36e6edade337b88bb6cd177dc52da2f825472aa0868ae917f573f54d1256"
+        },
+        {
+          "before_sha256": "f82473bf76fa438328a11539feb64484576c000519cc23e9337c1c8707f62a8c",
+          "path": "server/tests/security/test_semantic_bulk_search.py",
+          "sha256": "53fe82bc2f81ad327b8a97ced0adf255031070e6bf10b35ecaa5c14ec16c66ff"
+        },
+        {
+          "before_sha256": "a8c9836b50dc97c63968e5c17428c7b8b27d8c54fe2738c65bc9bd00cfad4adf",
+          "path": "server/tests/security/test_semantic_bulk_vectors.py",
+          "sha256": "c3e0c94621bb23bd005597e0d0768458b9f0086ee309899f8dba85cadcf35053"
+        }
+      ],
+      "generation_enabled": false,
+      "memory_limits_changed": false,
+      "on_disk_vector_format_changed": false,
+      "private_cache_layout_changed": true,
+      "routes_added": false,
+      "schema_changed": false,
+      "semantic_enabled": false,
+      "source_commit": "1148a820b393a6eb7def885e51056bcbc05fa06e",
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "notes": "Immutable native-double private cache views retain portable on-disk vectors and exact math.fsum ranking/callback checks. Exact1148a82 passed3426 API tests/4085 subtests/generated demo. Generated Mac ranking gain does not establish Windows2s target, deployment or activation."
     }
   ]
 }
