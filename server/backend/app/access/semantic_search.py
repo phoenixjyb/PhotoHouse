@@ -90,12 +90,14 @@ def _valid_pilot_owner_account_id(value):
 
 class SemanticSearchReads(AssistantSearchReads):
     def __init__(self, access, provider, budget, *, vector_root, encoder, query,
-                 server_snapshot=None, serving_limits=None, bulk_vectors=None, eligibility=None):
+                 server_snapshot=None, serving_limits=None, bulk_vectors=None, eligibility=None,
+                 text_projection_required=True):
         # This reader belongs to exactly one runtime call. Reuse derived facts
         # for an identical opaque binding during that call, while every _run
         # still reauthorizes and reads/validates the complete current source.
         # Never share this cache between readers, queries or requests.
-        super().__init__(access, provider, budget, facts_cache={})
+        super().__init__(access, provider, budget, facts_cache={},
+                         text_projection_required=text_projection_required)
         self.vector_root, self.encoder, self.query = vector_root, encoder, query
         self._vector_rows = ()
         self._source_hashes = {}
@@ -498,7 +500,8 @@ class SemanticSearchRuntime:
                 self.discovery.provider, budget, vector_root=self.vector_root,
                 encoder=self.encoder, query=query, server_snapshot=server_snapshot,
                 serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors,
-                eligibility=self.eligibility)
+                eligibility=self.eligibility,
+                text_projection_required=('text' in filters or 'descriptive' in filters))
             binding = values.get('binding')
             page = values.get('page', 1)
             page_size = values.get('page_size', 20)

@@ -83,6 +83,187 @@ class SemanticSearchTests(unittest.TestCase):
         return self.client.post(BASE, headers={'Authorization': 'Bearer ' + token},
                                 json={'query': query, 'filters': filters or {}, **kwargs})
 
+    def _query_with_caption_digest_count(self, *, query, filters, force_eager=False, **request_kwargs):
+        from app.access import semantic_search
+
+        with closing(sqlite3.connect(self.fixture.database)) as db:
+            caption_ids = {row[0] for row in db.execute('SELECT id FROM captions')}
+        original_digest = d.digest
+        caption_digests = []
+
+        def counted(value):
+            if (type(value) is tuple and len(value) == 7 and value[0] in caption_ids):
+                caption_digests.append(value[0])
+            return original_digest(value)
+
+        original_reader = semantic_search.SemanticSearchReads
+
+        def eager_reader(*args, **kwargs):
+            kwargs['text_projection_required'] = True
+            return original_reader(*args, **kwargs)
+
+        with patch('app.access.discovery.digest', side_effect=counted):
+            if force_eager:
+                with patch.object(semantic_search, 'SemanticSearchReads', side_effect=eager_reader):
+                    response = self.query(query=query, filters=filters, **request_kwargs)
+            else:
+                response = self.query(query=query, filters=filters, **request_kwargs)
+        return response, caption_digests
+
+    def _assistant_reader(self, *, cache=None, text_projection_required=True):
+        from app.access.assistant_search import AssistantSearchReads
+
+        with closing(sqlite3.connect(self.fixture.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            access = AccessService(db, clock=lambda: NOW)
+            return AssistantSearchReads(access, self.fixture.discovery_runtime.provider,
+                d.ReadBudget(), facts_cache=cache,
+                text_projection_required=text_projection_required)
+
+    def test_projection_cache_is_mode_bound_and_non_boolean_modes_are_invalid(self):
+        cache = {}
+        reader = self._assistant_reader(cache=cache, text_projection_required=False)
+        calls = []
+
+        def derive(*_args):
+            calls.append(reader._text_projection_required)
+            return {'derived_mode': reader._text_projection_required}
+
+        reader._facts = derive
+        minimal = reader._prepared_facts(None, None, None, None, lambda: None, 'same-binding')
+        reader._text_projection_required = True
+        eager = reader._prepared_facts(None, None, None, None, lambda: None, 'same-binding')
+        self.assertEqual(calls, [False, True])
+        self.assertEqual(minimal, {'derived_mode': False})
+        self.assertEqual(eager, {'derived_mode': True})
+        self.assertIs(cache['text_projection_required'], True)
+
+        from app.access.assistant_search import AssistantSearchReads
+        with closing(sqlite3.connect(self.fixture.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            with self.assertRaises(d.DiscoveryInvalid):
+                AssistantSearchReads(AccessService(db, clock=lambda: NOW),
+                    self.fixture.discovery_runtime.provider, d.ReadBudget(),
+                    text_projection_required=1)
+
+    def test_projection_mode_change_during_derivation_clears_cache_and_refuses(self):
+        cache = {'binding': 'previous', 'text_projection_required': False, 'facts': 'old'}
+        reader = self._assistant_reader(cache=cache, text_projection_required=False)
+
+        def switch_mode(*_args):
+            reader._text_projection_required = True
+            return 'partially-derived'
+
+        reader._facts = switch_mode
+        with self.assertRaises(d.DiscoveryUnavailable):
+            reader._prepared_facts(None, None, None, None, lambda: None, 'new-binding')
+        self.assertEqual(cache, {})
+
+        minimal = self._assistant_reader(text_projection_required=False)
+        with self.assertRaises(d.DiscoveryUnavailable):
+            minimal._content_match({'text_sources': []}, {'text': 'family beach'})
+
+    def test_cancellation_is_checked_before_cached_facts_are_reused(self):
+        cache = {'binding': 'same-binding', 'text_projection_required': False,
+                 'facts': 'cached'}
+        reader = self._assistant_reader(cache=cache, text_projection_required=False)
+        reader._facts = lambda *_args: self.fail('cache miss unexpectedly derived facts')
+
+        def cancelled():
+            raise d.DiscoveryCancelled()
+
+        with self.assertRaises(d.DiscoveryCancelled):
+            reader._prepared_facts(None, None, None, None, cancelled, 'same-binding')
+        self.assertEqual(cache['facts'], 'cached')
+
+    def test_minimal_text_projection_matches_eager_semantic_results(self):
+        # These requests exercise English, Chinese, mixed-language queries and
+        # hard filters. With no literal text filter, the semantic reader can
+        # skip caption/note fact derivation while preserving the same result.
+        cases = (
+            ('a child flying a kite', {}),
+            ('海边的孩子', {'date': {'from': '2032-09-01', 'to': '2032-09-01'}}),
+            ('Family beach 家庭海边', {'people': {'ids': ['301'], 'match': 'all'}}),
+            ('family beach', {'tags': {'ids': ['501'], 'match': 'all'}}),
+            ('孩子在海边', {'locations': ['601']}),
+        )
+        for query, filters in cases:
+            with self.subTest(query=query, filters=filters):
+                minimal, minimal_caption_digests = self._query_with_caption_digest_count(
+                    query=query, filters=filters)
+                eager, eager_caption_digests = self._query_with_caption_digest_count(
+                    query=query, filters=filters, force_eager=True)
+                self.assertEqual(minimal.status_code, 200, minimal.text)
+                self.assertEqual(eager.status_code, 200, eager.text)
+                self.assertEqual(minimal.json(), eager.json())
+                self.assertEqual(minimal_caption_digests, [])
+                self.assertGreater(len(eager_caption_digests), 0)
+
+    def test_minimal_projection_preserves_pagination_binding_and_fingerprint(self):
+        first_minimal, _ = self._query_with_caption_digest_count(
+            query='scene', filters={}, page_size=1)
+        first_eager, _ = self._query_with_caption_digest_count(
+            query='scene', filters={}, force_eager=True, page_size=1)
+        self.assertEqual(first_minimal.status_code, 200, first_minimal.text)
+        self.assertEqual(first_minimal.json(), first_eager.json())
+        page_args = {'page': 2, 'page_size': 1,
+                     'binding': first_minimal.json()['binding'],
+                     'fingerprint': first_minimal.json()['fingerprint']}
+        page_minimal, _ = self._query_with_caption_digest_count(
+            query='scene', filters={}, **page_args)
+        page_eager, _ = self._query_with_caption_digest_count(
+            query='scene', filters={}, force_eager=True, **page_args)
+        self.assertEqual(page_minimal.status_code, 200, page_minimal.text)
+        self.assertEqual(page_minimal.json(), page_eager.json())
+        self.assertEqual([item['id'] for item in page_minimal.json()['items']], ['101'])
+
+    def test_literal_text_filters_keep_caption_and_note_fallback_eager(self):
+        # Explicit literal filters must still project current captions and
+        # saved notes, including note-only matches.
+        for literal, expected_id in (('Family beach', '101'), ('secret memory phrase', '101')):
+            with self.subTest(literal=literal):
+                response, caption_digests = self._query_with_caption_digest_count(
+                    query='scene', filters={'text': literal})
+                eager, _ = self._query_with_caption_digest_count(
+                    query='scene', filters={'text': literal}, force_eager=True)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(eager.status_code, 200, eager.text)
+                self.assertEqual(response.json(), eager.json())
+                self.assertGreater(len(caption_digests), 0)
+                self.assertEqual([item['id'] for item in response.json()['items']], [expected_id])
+
+    def test_caption_and_deleted_note_mutation_during_encoding_withhold_cards(self):
+        self.during_encode = lambda: self.fixture.mutate(
+            "UPDATE captions SET text='changed while encoding' WHERE id=1")
+        caption_change = self.query()
+        self.assertEqual(caption_change.status_code, 409, caption_change.text)
+        self.assertNotIn('items', caption_change.json())
+        self.during_encode = None
+        self.fixture.mutate("UPDATE captions SET text='海边 Ｆａｍｉｌｙ Beach Day 示例儿童' WHERE id=1")
+
+        self.during_encode = lambda: self.fixture.mutate(
+            "UPDATE access_stories SET deleted=1,revision=2 WHERE id='note-101'")
+        note_delete = self.query()
+        self.assertEqual(note_delete.status_code, 409, note_delete.text)
+        self.assertNotIn('items', note_delete.json())
+        self.during_encode = None
+
+    def test_ordinary_assistant_search_keeps_eager_text_projection(self):
+        with closing(sqlite3.connect(self.fixture.database)) as db:
+            caption_ids = {row[0] for row in db.execute('SELECT id FROM captions')}
+        original_digest = d.digest
+        caption_digests = []
+
+        def counted(value):
+            if type(value) is tuple and len(value) == 7 and value[0] in caption_ids:
+                caption_digests.append(value[0])
+            return original_digest(value)
+
+        with patch('app.access.discovery.digest', side_effect=counted):
+            response = self.fixture.turn('find photos containing "Family beach"')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertGreater(len(caption_digests), 0)
+
     def test_semantic_scores_replace_literal_eligibility_only_on_the_explicit_api(self):
         seen = []
         def checked(root, artifact):

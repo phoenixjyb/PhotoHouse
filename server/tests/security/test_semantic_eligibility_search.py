@@ -84,10 +84,21 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
 
     def test_exact_current_eligibility_rows_are_reused_across_fresh_source_reads(self):
         from app.access import semantic_search
+        from app.access import discovery
         original_extra = semantic_search.SemanticSearchReads._extra_source
-        sql_reads = {'artifacts': 0, 'source_hashes': 0}
+        sql_reads = {'artifacts': 0, 'source_hashes': 0, 'captions': 0, 'notes': 0}
         policy_reads = [0]
         original_policy_read = SemanticEligibilityStore.read_and_validate
+        original_index_source = discovery.index_source
+        with closing(sqlite3.connect(self.fixture.database)) as db:
+            caption_ids = {row[0] for row in db.execute('SELECT id FROM captions')}
+        original_digest = discovery.digest
+        caption_digests = []
+
+        def count_caption_digest(value):
+            if type(value) is tuple and len(value) == 7 and value[0] in caption_ids:
+                caption_digests.append(value[0])
+            return original_digest(value)
 
         def count_reads(reader, index, source, read, check):
             def counted_read(sql, args):
@@ -95,8 +106,19 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
                     sql_reads['artifacts'] += 1
                 elif 'SELECT a.id,a.hash_sha256 FROM assets a' in sql:
                     sql_reads['source_hashes'] += 1
+                elif 'FROM captions x' in sql:
+                    sql_reads['captions'] += 1
+                elif 'FROM access_stories s' in sql:
+                    sql_reads['notes'] += 1
                 return read(sql, args)
             return original_extra(reader, index, source, counted_read, check)
+
+        def count_index_source(index, read):
+            def counted_read(sql, args):
+                if 'FROM captions x' in sql:
+                    sql_reads['captions'] += 1
+                return read(sql, args)
+            return original_index_source(index, counted_read)
 
         def count_policy_reads(store, *args, **kwargs):
             policy_reads[0] += 1
@@ -105,14 +127,17 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
         with patch.object(semantic_search, '_validated_rows',
                           wraps=semantic_search._validated_rows) as validate, \
                 patch.object(semantic_search.SemanticSearchReads, '_extra_source', count_reads), \
-                patch.object(SemanticEligibilityStore, 'read_and_validate', count_policy_reads):
+                patch.object(SemanticEligibilityStore, 'read_and_validate', count_policy_reads), \
+                patch.object(discovery, 'index_source', count_index_source), \
+                patch.object(discovery, 'digest', side_effect=count_caption_digest):
             response = self.query()
         self.assertEqual(response.status_code, 200, response.text)
         # Both source passes still perform both SQL reads and validate the
         # current policy. Only deterministic artifact-row parsing is reused.
         self.assertEqual(validate.call_count, 1)
-        self.assertEqual(sql_reads, {'artifacts': 2, 'source_hashes': 2})
+        self.assertEqual(sql_reads, {'artifacts': 2, 'source_hashes': 2, 'captions': 2, 'notes': 2})
         self.assertEqual(policy_reads[0], 2)
+        self.assertEqual(caption_digests, [])
 
     def test_identity_change_between_passes_misses_row_cache_and_refuses(self):
         from app.access import semantic_search
