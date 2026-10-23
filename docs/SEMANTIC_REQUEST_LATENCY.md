@@ -358,3 +358,36 @@ interactive request latency, relevance or full protected qualification. Keep the
 1,800-second child limit, both complete audits, 15 protected cases, nine matching
 samples, fresh current coverage/model/source/policy pins and independent closure.
 Native qualification is pending; semantic search remains **OFF**.
+
+
+### R65 validation and native admission status
+
+The exact optimized code commit `13a94dd` passed the full generated-media API
+check: **3,389 tests / 4,037 subtests**, plus the generated demo. The source stayed
+clean and unchanged for the complete check. A 295-file runtime source archive
+was matched to that commit and independently reviewed.
+
+No R65 native qualification/model attempt or candidate staging occurred. The
+read-only preparation retained its failed probes and successful baselines. It
+correctly refused a transient scheduled-task state change; fresh host admission
+subsequently passed after the task naturally returned to its prior state. A
+local final-delta checker then incorrectly compared the current catalog row
+revision with a distinct historical observations digest and refused before any
+candidate write. The checker now binds each digest to its actual contract;
+current roster/index/snapshot and the existing qualification-only 65-omission
+review remain required. The rejected local seal and its exact control bodies
+were retained rather than rewritten into a success.
+
+The next fresh acquisition failed before connecting to the established SSH
+relay. Neither failed probe started a remote reader. Windows connectivity must
+be restored before fresh metadata, host admission, coordination and the single
+bounded run can proceed. The older baseline, host admission and reservation
+have expired and must not be reused. The latest public report check verified
+all 200 assets with normal certificate validation; no report/site restoration
+or production service/configuration change occurred.
+
+Keep semantic search **OFF**. There is no new native measurement or protection
+acceptance. Resume with fresh operation-specific coordination, a complete current
+baseline and host admission, then a fresh 45-minute execution window after the
+preflight is ready. Retain the fixed child/parent/transport limits, both audits,
+15 protections, nine samples, independent readback and owned closure.

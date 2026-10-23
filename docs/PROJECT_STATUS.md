@@ -12,8 +12,22 @@ identities: vector read/decode calls fell from 1,030 to 515, JSON loads from 1,0
 to 583 and checkpoint inspections from 2,128 to 1,098 per audit. Three alternating
 pairs measured a median 1,453.685 ms before / 827.143 ms after. These are local
 model-free audit measurements, not native query latency or qualification.
-Full API validation and one fresh bounded Windows qualification remain pending;
-semantic search stays **OFF**. No production deployment or activation is included.
+Exact code commit `13a94dd` passed **3,389 API tests / 4,037 subtests** and the
+generated demo with a clean, unchanged checkout. The matching runtime archive
+contains 295 verified source files. One fresh bounded Windows qualification is
+still pending; semantic search stays **OFF**. No production deployment or
+activation is included.
+
+R65 started no model run and staged no candidate. Read-only admission initially
+refused a scheduled task state transition; a later host admission passed after
+natural task completion. The local final gate then refused an incorrect
+comparison between two different catalog digest contracts. That checker was
+repaired and the refused seal/evidence retained. A subsequent fresh acquisition
+could not reach the established SSH relay, so the native run remains blocked by
+connectivity. The last reachable metadata preserved the current 200-file report
+and all 12 retained report trees; a later trusted-TLS check still verified all
+200 public report files. These observations do not prove current Windows state
+or new native latency after connectivity was lost.
 See [the audit optimization contract](SEMANTIC_REQUEST_LATENCY.md#r65-audit-artifact-pass).
 
 

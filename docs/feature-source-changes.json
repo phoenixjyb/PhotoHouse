@@ -30607,6 +30607,26 @@
         }
       ],
       "notes": "Validate all checkpoint provenance before one artifact-verification pass; retain writer/resume, protected JSON and vector checkpoint/hash/identity checks, canonical components, source checks and both independent full qualification audits. Generated mutation/refusal and exact-output comparison only; native qualification and activation remain separate."
+    },
+    {
+      "feature": "semantic-audit-r65-source-validation-and-connectivity-checkpoint",
+      "source_base": "13a94dd515fd20670a6171178202a2eee6524fbf",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "758b098744e160b1476b6c3f6d97232d69527fa2ad9c6af82362d1a04b703b7b",
+          "sha256": "a421992b39e9d7f2df8ff13ae8df8efdaaff76b60fe5de5781f52d30afc15ad2"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "786f41900532a910097e900f7623800b916793de8e57b5c79ba1af3aa9c6a7fd",
+          "sha256": "17622a2a0a2220bc247d63f909964cce01d4f22671e216a3eed0780b0ad9f30c"
+        }
+      ],
+      "notes": "Record exact 3389-test API pass and generated audit comparison separately from native qualification. Native attempt/staging remain zero; expired baselines and refused local gate retained, then SSH relay connectivity blocked fresh acquisition. No deployment or activation."
     }
   ]
 }
