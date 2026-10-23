@@ -80,6 +80,51 @@ class SemanticBulkEndpointTests(unittest.TestCase):
         self.assertNotIn(str(self.bulk_path), first.text)
         self.assertNotIn('file_sha256', first.text)
 
+    def test_native_cache_preserves_complete_endpoint_responses(self):
+        import math
+        import operator
+        import struct
+        from app.access.semantic_bulk_vectors import BulkVectorSnapshot
+
+        # An independent tuple-decoding oracle retains the previous scoring
+        # operation on the same validated canonical values. Endian conversion
+        # belongs to the private cache; public bindings/cards must not change.
+        def tuple_rank(snapshot, query, asset_ids, *, check):
+            check()
+            wanted = set(asset_ids)
+            blocks, rows_per_block, _layout = snapshot._matrix
+            dimension = snapshot.identity.dimension
+            ranked = []
+            for index, artifact in enumerate(snapshot._artifacts):
+                check()
+                if artifact.asset_id not in wanted:
+                    continue
+                vector = struct.unpack_from(f'={dimension}d',
+                    blocks[index // rows_per_block], (index % rows_per_block) * dimension * 8)
+                ranked.append((artifact.asset_id, math.fsum(map(operator.mul, query, vector))))
+            return tuple(sorted(ranked, key=lambda item: (-item[1], int(item[0]))))
+
+        for query, filters in (
+                ('family scene', {}),
+                ('海边的孩子', {'people': {'ids': ['301'], 'match': 'all'}}),
+                ('Family beach 家庭', {'locations': ['601'], 'text': 'Family beach'})):
+            with self.subTest(query=query):
+                actual = self.query(query=query, filters=filters, page_size=1)
+                with patch.object(BulkVectorSnapshot, 'rank', tuple_rank):
+                    expected = self.query(query=query, filters=filters, page_size=1)
+                self.assertEqual(actual.status_code, 200, actual.text)
+                self.assertEqual(expected.status_code, 200, expected.text)
+                self.assertEqual(actual.json(), expected.json())
+                if actual.json()['total'] > 1:
+                    page = dict(query=query, filters=filters, page_size=1, page=2,
+                                binding=actual.json()['binding'],
+                                fingerprint=actual.json()['fingerprint'])
+                    actual_page = self.query(**page)
+                    with patch.object(BulkVectorSnapshot, 'rank', tuple_rank):
+                        expected_page = self.query(**page)
+                    self.assertEqual(actual_page.status_code, 200, actual_page.text)
+                    self.assertEqual(actual_page.json(), expected_page.json())
+
     def test_denials_and_exclusions_precede_bulk_io_and_provider(self):
         with patch.object(BulkVectorStore, 'snapshot', side_effect=AssertionError('bulk before gate')):
             for token in (TOKEN, OTHER, 'invalid'):

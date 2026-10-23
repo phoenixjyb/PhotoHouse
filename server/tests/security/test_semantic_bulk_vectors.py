@@ -7,6 +7,7 @@ import struct
 import sys
 import tempfile
 import unittest
+from asyncio import CancelledError
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -481,8 +482,10 @@ class SemanticBulkVectorTests(unittest.TestCase):
             vectors.append((index + 1, 'abcdef0'[index], vector))
         store, records = self.build(tuple(vectors), ident)
         query = _canonical_components(VectorRecord('1', ident, vectors[0][2], records[0].component_sha256), ident)
-        with patch.object(module, '_CACHE_BLOCK_BYTES', 768 * 8 * 2):
-            snapshot = store.snapshot(records, library_id='family-a')
+        block_patch = patch.object(module, '_CACHE_BLOCK_BYTES', 768 * 8 * 2)
+        block_patch.start()
+        self.addCleanup(block_patch.stop)
+        snapshot = store.snapshot(records, library_id='family-a')
         actual = snapshot.rank(query, tuple(record.asset_id for record in records))
         expected = []
         for row, (_, _, vector) in zip(records, vectors):
@@ -491,6 +494,399 @@ class SemanticBulkVectorTests(unittest.TestCase):
         expected.sort(key=lambda value: (-value[1], int(value[0])))
         self.assertEqual([(aid, struct.pack('>d', score)) for aid, score in actual],
                          [(aid, struct.pack('>d', score)) for aid, score in expected])
+
+    def test_f64_cached_rank_matches_legacy_fsum_across_dimensions_and_query_ranges(self):
+        import math
+        from app.access import semantic_bulk_vectors as module
+
+        asset_ids = (9, 2, 7, 101, 13)
+        for dimension in (2, 3, 128, 768, module.MAX_DIMENSION):
+            with self.subTest(dimension=dimension):
+                ident = identity(dimension)
+                basis0 = (1.0,) + (0.0,) * (dimension - 1)
+                basis1 = (0.0, 1.0) + (0.0,) * (dimension - 2)
+                neg_basis0 = (-1.0,) + (0.0,) * (dimension - 1)
+                diagonal = (0.6, 0.8) + (0.0,) * (dimension - 2)
+                vectors = ((9, 'a', basis0), (2, 'b', basis0), (7, 'c', basis1),
+                           (101, 'd', neg_basis0), (13, 'e', diagonal))
+                vectors_by_id = sorted(vectors, key=lambda row: row[0])
+                self.out = self.base / f'cohort-{dimension}.bulk'
+                store, records = self.build(vectors, ident)
+                records_by_id = {record.asset_id: record for record in records}
+                original_file = self.out.read_bytes()
+                expected_disk_payload = b''.join(
+                    struct.pack(f'>{dimension}f', *vector) for _, _, vector in vectors_by_id)
+                self.assertEqual(module._decode_container(original_file)[1].tobytes(),
+                                 expected_disk_payload)
+                queries = (
+                    tuple(0.5 if index % 2 == 0 else -0.25 for index in range(dimension)),
+                    (1e-300, -2e-300) + (0.0,) * (dimension - 2),
+                    (1e308,) + (0.0,) * (dimension - 1),
+                )
+                # Five rows force two complete blocks plus a one-row tail.
+                block_bytes = dimension * 8 * 2
+                block_patch = patch.object(module, '_CACHE_BLOCK_BYTES', block_bytes)
+                block_patch.start()
+                self.addCleanup(block_patch.stop)
+                snapshot = store.snapshot(records, library_id='family-a')
+                matrix = snapshot._matrix
+                self.assertIs(type(matrix), tuple)
+                self.assertEqual(len(matrix), 3)
+                blocks, rows_per_block, layout_tag = matrix
+                self.assertIs(type(blocks), tuple)
+                self.assertEqual(rows_per_block, 2)
+                self.assertEqual(layout_tag,
+                    ('canonical_f64_native_v1', sys.byteorder, dimension, len(records),
+                     identity_sha256(ident)))
+                self.assertEqual(len(blocks), 3)
+                self.assertTrue(all(type(block) is bytes for block in blocks))
+                self.assertEqual(tuple(map(len, blocks)),
+                    (dimension * 8 * 2, dimension * 8 * 2, dimension * 8))
+                for index, (aid, _, vector) in enumerate(vectors_by_id):
+                    record = records_by_id[str(aid)]
+                    canonical = _canonical_components(VectorRecord(
+                        record.asset_id, ident, vector, record.component_sha256), ident)
+                    block = blocks[index // rows_per_block]
+                    actual_canonical = struct.unpack_from(
+                        f'={dimension}d', block, (index % rows_per_block) * dimension * 8)
+                    self.assertEqual(actual_canonical, canonical)
+                self.assertEqual(snapshot.count, 5)
+                for query in queries:
+                    expected = []
+                    for aid, _, vector in vectors_by_id:
+                        record = records_by_id[str(aid)]
+                        canonical = _canonical_components(VectorRecord(
+                            record.asset_id, ident, vector, record.component_sha256), ident)
+                        expected.append((record.asset_id, math.fsum(
+                            left * right for left, right in zip(query, canonical))))
+                    expected.sort(key=lambda row: (-row[1], int(row[0])))
+                    actual = snapshot.rank(query, tuple(str(aid) for aid in asset_ids))
+                    self.assertEqual([(aid, struct.pack('>d', score)) for aid, score in actual],
+                                     [(aid, struct.pack('>d', score)) for aid, score in expected])
+                    sparse_ids = ('101', '2')
+                    sparse_expected = tuple(row for row in expected if row[0] in sparse_ids)
+                    self.assertEqual([(aid, struct.pack('>d', score)) for aid, score in
+                                      snapshot.rank(query, sparse_ids)],
+                                     [(aid, struct.pack('>d', score)) for aid, score in sparse_expected])
+                    self.assertEqual(snapshot.rank(query, ()), ())
+                tied = snapshot.rank(basis0, ('9', '2'))
+                self.assertEqual(tuple(aid for aid, _ in tied), ('2', '9'))
+                self.assertEqual(self.out.read_bytes(), original_file)
+                with patch.object(module, '_read_secure_file', wraps=module._read_secure_file) as read:
+                    warm = store.snapshot(tuple(replace(record) for record in records),
+                                          library_id='family-a')
+                self.assertEqual(read.call_count, 1)
+                self.assertEqual(read.call_args.args[1], store.file_sha256)
+                self.assertEqual(hashlib.sha256(original_file).hexdigest(), store.file_sha256)
+                self.assertEqual(warm.rank(queries[0], tuple(str(aid) for aid in asset_ids)),
+                                 snapshot.rank(queries[0], tuple(str(aid) for aid in asset_ids)))
+                self.assertEqual(self.out.read_bytes(), original_file)
+
+    def test_empty_bulk_snapshot_has_empty_rank_and_cache(self):
+        from app.access import semantic_bulk_vectors as module
+        ident = identity(3)
+        store = write_bulk_vectors(self.out, self.root, (), ident, 'family-a')
+        snapshot = store.snapshot((), library_id='family-a')
+        self.assertEqual(snapshot.count, 0)
+        self.assertEqual(snapshot.rank((1.0, -2.0, 3.0), ()), ())
+        self.assertEqual(snapshot._matrix,
+            ((), max(1, module._CACHE_BLOCK_BYTES // (3 * 8)),
+             ('canonical_f64_native_v1', sys.byteorder, 3, 0, identity_sha256(ident))))
+        self.assertEqual(module._decode_container(self.out.read_bytes())[1].tobytes(), b'')
+
+    def test_malformed_matrix_layout_and_warm_cache_refuse(self):
+        from app.access import semantic_bulk_vectors as module
+        ident = identity(3)
+        store, records = self.build(((1, 'a', (1.0, 0.0, 0.0)),
+                                     (2, 'b', (0.0, 1.0, 0.0)),
+                                     (3, 'c', (0.0, 0.0, 1.0))))
+        snapshot = store.snapshot(records, library_id='family-a')
+        blocks, rows_per_block, tag = snapshot._matrix
+        damaged_blocks = list(blocks)
+        variants = (
+            snapshot._matrix[:2],
+            (blocks, rows_per_block, ('canonical_f64_native_v1',
+                                      'big' if sys.byteorder == 'little' else 'little', 3, 3,
+                                      identity_sha256(ident))),
+            (blocks, rows_per_block, ('canonical_f64_native_v1', sys.byteorder, 2, 3,
+                                      identity_sha256(ident))),
+            (blocks, rows_per_block, ('canonical_f64_native_v1', sys.byteorder, 3, 4,
+                                      identity_sha256(ident))),
+            (blocks, rows_per_block, ('canonical_f64_native_v1', sys.byteorder, 3, 3,
+                                      'f' * 64)),
+            (blocks, rows_per_block, ('canonical_f64_native_v1', sys.byteorder, 3, 3)),
+            (damaged_blocks, rows_per_block, tag),
+            ((bytearray(blocks[0]),) + blocks[1:], rows_per_block, tag),
+            ((blocks[0][:-1],) + blocks[1:], rows_per_block, tag),
+            ((blocks[0] + b'\x00',) + blocks[1:], rows_per_block, tag),
+            ((blocks[0][:-24],) + blocks[1:], rows_per_block, tag),
+            ((blocks[0] + bytes(24),) + blocks[1:], rows_per_block, tag),
+            (blocks, 0, tag),
+            (blocks, True, tag),
+            (blocks, rows_per_block + 1, tag),
+        )
+        for index, matrix in enumerate(variants):
+            with self.subTest(matrix_variant=index):
+                object.__setattr__(snapshot, '_matrix', matrix)
+                with self.assertRaises(BulkVectorUnavailable):
+                    snapshot.rank((1.0, 0.0, 0.0), ('1',))
+        object.__setattr__(snapshot, '_matrix', (blocks, rows_per_block, tag))
+
+        cache = store._cache
+        corrupted_matrix = (blocks, 0, tag)
+        object.__setattr__(store, '_cache', (cache[0], cache[1], corrupted_matrix))
+        with self.assertRaises(BulkVectorUnavailable):
+            store.snapshot(tuple(replace(record) for record in records), library_id='family-a')
+
+    def test_malformed_cache_wrapper_refuses_before_reuse(self):
+        store, records = self.build(((1, 'a', (1.0, 0.0)),))
+        store.snapshot(records, library_id='family-a')
+        valid_cache = store._cache
+        equality_calls = []
+
+        class HostileCacheRow:
+            def __eq__(self, _other):
+                equality_calls.append('called')
+                raise RuntimeError('malformed cached row must not be compared')
+
+        malformed = (
+            ((), valid_cache[1], valid_cache[2]),
+            valid_cache[:2],
+            (valid_cache[0], list(valid_cache[1]), valid_cache[2]),
+            (valid_cache[0], (HostileCacheRow(),), valid_cache[2]),
+            (('bad-file-hash', valid_cache[0][1], 'family-a', valid_cache[0][3]),
+             valid_cache[1], valid_cache[2]),
+        )
+        try:
+            for index, value in enumerate(malformed):
+                with self.subTest(cache_shape=index):
+                    object.__setattr__(store, '_cache', value)
+                    with self.assertRaises(BulkVectorUnavailable):
+                        store.snapshot(tuple(replace(record) for record in records),
+                                       library_id='family-a')
+            self.assertEqual(equality_calls, [])
+        finally:
+            object.__setattr__(store, '_cache', valid_cache)
+        self.assertEqual(store.snapshot(tuple(replace(record) for record in records),
+                                         library_id='family-a').count, 1)
+
+    def test_cache_replacement_from_last_secure_read_callback_refuses(self):
+        from app.access import semantic_bulk_vectors as module
+
+        store, records = self.build(((1, 'a', (1.0, 0.0)),))
+        store.snapshot(records, library_id='family-a')
+        valid_cache = store._cache
+        malformed = ((), valid_cache[1], valid_cache[2])
+        original_read = module._read_secure_file
+        inside_read = False
+        read_checks = 0
+
+        def marked_read(path, expected_sha, check, charge):
+            nonlocal inside_read
+            inside_read = True
+            try:
+                return original_read(path, expected_sha, check, charge)
+            finally:
+                inside_read = False
+
+        def replace_cache_during_read():
+            nonlocal read_checks
+            if inside_read:
+                read_checks += 1
+                if read_checks == 2:
+                    # The secure read's final callback runs after descriptor
+                    # and path verification; the next cache-pointer read must
+                    # reject this replacement before indexing it.
+                    object.__setattr__(store, '_cache', malformed)
+
+        try:
+            with patch.object(module, '_read_secure_file', side_effect=marked_read):
+                with self.assertRaises(BulkVectorUnavailable):
+                    store.snapshot(tuple(replace(record) for record in records),
+                                   library_id='family-a', check=replace_cache_during_read)
+            self.assertEqual(read_checks, 2)
+        finally:
+            object.__setattr__(store, '_cache', valid_cache)
+        self.assertEqual(store.snapshot(tuple(replace(record) for record in records),
+                                         library_id='family-a').count, 1)
+
+    def test_cold_matrix_derivation_refuses_same_dimension_identity_mutation(self):
+        from app.access import semantic_bulk_vectors as module
+        store, records = self.build(((1, 'a', (1.0, 0.0)), (2, 'b', (0.0, 1.0))))
+        original_version = store.identity.model_version
+        original_canonical = module._canonical_components
+
+        def mutate_identity(record, identity_value):
+            result = original_canonical(record, identity_value)
+            object.__setattr__(store.identity, 'model_version', 'mutated-generation')
+            return result
+
+        try:
+            with patch.object(module, '_canonical_components', side_effect=mutate_identity):
+                with self.assertRaises(BulkVectorUnavailable):
+                    store.snapshot(records, library_id='family-a')
+            self.assertIsNone(store._cache)
+        finally:
+            object.__setattr__(store.identity, 'model_version', original_version)
+
+    def test_rank_checks_skipped_rows_and_propagates_callback_failure(self):
+        store, records = self.build(((1, 'a', (1.0, 0.0)), (2, 'b', (0.0, 1.0)),
+                                     (3, 'c', (-1.0, 0.0))))
+        snapshot = store.snapshot(records, library_id='family-a')
+        checks = []
+
+        def cancel_on_second_row():
+            checks.append(True)
+            if len(checks) == 2:
+                raise RuntimeError('rank cancelled across skipped rows')
+
+        from app.access import semantic_bulk_vectors as module
+        with patch.object(module, 'memoryview', side_effect=AssertionError('view before selected row'),
+                          create=True):
+            with self.assertRaisesRegex(RuntimeError, 'rank cancelled across skipped rows'):
+                snapshot.rank((0.0, 1.0), ('3',), check=cancel_on_second_row)
+        self.assertEqual(len(checks), 2)
+
+    def test_rank_refuses_callback_time_identity_and_artifact_generation_changes(self):
+        from app.access import semantic_bulk_vectors as module
+
+        store, records = self.build(((1, 'a', (1.0, 0.0)), (2, 'b', (0.0, 1.0))))
+        base = store.snapshot(records, library_id='family-a')
+
+        for field, replacement in (('model_version', 'other-same-dimension'),
+                                   ('dimension', 3)):
+            with self.subTest(identity_field=field):
+                original = getattr(base.identity, field)
+                calls = 0
+
+                def change_identity():
+                    nonlocal calls
+                    calls += 1
+                    if calls == 2:
+                        object.__setattr__(base.identity, field, replacement)
+
+                try:
+                    with self.assertRaises(BulkVectorUnavailable):
+                        base.rank((1.0, 0.0), ('1', '2'), check=change_identity)
+                    self.assertEqual(calls, 3)  # precheck plus both ordered rows
+                finally:
+                    object.__setattr__(base.identity, field, original)
+                self.assertEqual(base.rank((1.0, 0.0), ('1', '2'))[0][0], '1')
+
+        mutable_artifact = base._artifacts[0]
+        original_asset_id = mutable_artifact.asset_id
+        calls = 0
+
+        def relabel_during_row_callback():
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                object.__setattr__(mutable_artifact, 'asset_id', '3')
+
+        try:
+            with self.assertRaises(BulkVectorUnavailable):
+                base.rank((1.0, 0.0), ('1', '2'), check=relabel_during_row_callback)
+            self.assertEqual(calls, 3)
+        finally:
+            object.__setattr__(mutable_artifact, 'asset_id', original_asset_id)
+        self.assertEqual(base.rank((1.0, 0.0), ('1', '2'))[0][0], '1')
+
+    def test_rank_refuses_replaced_snapshot_identity_matrix_and_id_slots(self):
+        store, records = self.build(((1, 'a', (1.0, 0.0)), (2, 'b', (0.0, 1.0))))
+        snapshot = store.snapshot(records, library_id='family-a')
+        replacements = (
+            ('_matrix', tuple(list(snapshot._matrix))),
+            ('_ids', frozenset(('1',))),
+            ('_asset_ids', tuple(list(snapshot._asset_ids))),
+            ('_identity_sha256', 'f' * 64),
+            ('identity', replace(snapshot.identity, model_version='same-dimension-replacement')),
+        )
+        for slot, replacement in replacements:
+            with self.subTest(slot=slot):
+                original = getattr(snapshot, slot)
+                calls = 0
+
+                def replace_during_rank():
+                    nonlocal calls
+                    calls += 1
+                    if calls == 2:
+                        object.__setattr__(snapshot, slot, replacement)
+
+                try:
+                    with self.assertRaises(BulkVectorUnavailable):
+                        snapshot.rank((1.0, 0.0), ('1', '2'), check=replace_during_rank)
+                finally:
+                    object.__setattr__(snapshot, slot, original)
+                self.assertEqual(snapshot.rank((1.0, 0.0), ('1', '2'))[0][0], '1')
+
+    def test_snapshot_constructor_rejects_exact_primitive_tag_spoofs(self):
+        from app.access.semantic_bulk_vectors import BulkVectorSnapshot
+        from app.access import semantic_bulk_vectors as module
+
+        ident = identity(2)
+        store, records = self.build(((1, 'a', (1.0, 0.0)), (2, 'b', (0.0, 1.0))))
+        snapshot = store.snapshot(records, library_id='family-a')
+        blocks, rows_per_block, tag = snapshot._matrix
+        malformed = (
+            (blocks, True, tag),
+            (blocks, rows_per_block, (tag[0], tag[1], True, tag[3], tag[4])),
+            (blocks, rows_per_block, (tag[0], tag[1], tag[2], True, tag[4])),
+            (blocks, rows_per_block, (tag[0], 1, tag[2], tag[3], tag[4])),
+            (list(blocks), rows_per_block, tag),
+            ((bytearray(blocks[0]),) + blocks[1:], rows_per_block, tag),
+        )
+        for index, matrix in enumerate(malformed):
+            with self.subTest(matrix=index), self.assertRaises(BulkVectorUnavailable):
+                BulkVectorSnapshot(records, ident, matrix)
+        self.assertEqual(module._native_matrix_parts(snapshot._matrix, 2, 2,
+                                                       snapshot._identity_sha256)[0], blocks)
+
+    def test_snapshot_constructor_rejects_artifactlike_rows_before_property_access(self):
+        from app.access.semantic_bulk_vectors import BulkVectorSnapshot
+
+        ident = identity(2)
+        store, records = self.build(((1, 'a', (1.0, 0.0)),))
+        matrix = store.snapshot(records, library_id='family-a')._matrix
+        property_calls = []
+
+        class ForgedArtifactLike:
+            @property
+            def asset_id(self):
+                property_calls.append('accessed')
+                raise RuntimeError('must not inspect a forged row')
+
+        with self.assertRaises(BulkVectorUnavailable):
+            BulkVectorSnapshot((ForgedArtifactLike(),), ident, matrix)
+        self.assertEqual(property_calls, [])
+
+    def test_rank_callbacks_cover_block_boundaries_and_preserve_baseexceptions(self):
+        from app.access import semantic_bulk_vectors as module
+
+        store, records = self.build(((1, 'a', (1.0, 0.0)), (2, 'b', (0.0, 1.0)),
+                                     (3, 'c', (-1.0, 0.0))))
+        with patch.object(module, '_CACHE_BLOCK_BYTES', 16):
+            snapshot = store.snapshot(records, library_id='family-a')
+            self.assertEqual(snapshot._matrix[1], 1)
+            calls = []
+
+            def trace():
+                calls.append(len(calls))
+
+            result = snapshot.rank((1.0, 0.0), ('1', '2', '3'), check=trace)
+            self.assertEqual(calls, [0, 1, 2, 3])  # initial check and each row, including block edges
+            self.assertEqual(tuple(aid for aid, _ in result), ('1', '2', '3'))
+
+            for error in (KeyboardInterrupt('interrupt'), CancelledError('cancelled')):
+                calls.clear()
+
+                def raise_same_error(error=error):
+                    calls.append('called')
+                    raise error
+
+                with self.assertRaises(type(error)) as caught:
+                    snapshot.rank((1.0, 0.0), ('1', '2', '3'), check=raise_same_error)
+                self.assertIs(caught.exception, error)
+                self.assertEqual(calls, ['called'])
 
     def test_matching_checksum_nonunit_and_boolean_schema_are_refused(self):
         from app.access import semantic_bulk_vectors as module

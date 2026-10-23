@@ -16,6 +16,7 @@ from pathlib import Path
 import re
 import stat
 import struct
+import sys
 import threading
 from typing import Callable
 
@@ -35,6 +36,7 @@ _ASSET_ID = re.compile(r"[1-9][0-9]{0,18}\Z", re.ASCII)
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 _READ_CHUNK = 1024 * 1024
 _CACHE_BLOCK_BYTES = 4 * 1024 * 1024
+_CACHE_LAYOUT = "canonical_f64_native_v1"
 _ARTIFACT_COHORT_FIELDS = (
     "record_id", "asset_id", "source_sha256", "model_name", "artifact_sha256",
     "preprocessing_sha256", "vector_space_id", "model_version", "dimension",
@@ -154,7 +156,7 @@ def _artifact_cohort_key(artifacts, check):
 def _warm_artifact_cohort_key(artifacts, cached, check):
     """Copy current fields for comparison with one prior validated cohort."""
     if (type(artifacts) is not tuple or len(artifacts) > MAX_CANDIDATES
-            or type(cached) is not tuple or len(cached) != 3
+            or type(cached) is not _CacheGeneration or len(cached) != 3
             or type(cached[0]) is not tuple or len(cached[0]) != 4
             or type(cached[1]) is not tuple or len(cached[1]) != len(artifacts)):
         return None
@@ -354,6 +356,39 @@ def _read_secure_file(path: Path, expected_sha: str | None, check, charge):
     return raw, parent_snapshot
 
 
+class _CacheGeneration(tuple):
+    """An atomically published, deeply immutable verified generation.
+
+    Validate primitives once when building the cold generation. Warm callers
+    still copy and validate every current metadata row and hash the file, but
+    never compare those rows with caller-replaced objects or custom equality.
+    """
+    __slots__ = ()
+
+    def __new__(cls, key, cohort, matrix):
+        if (type(key) is not tuple or len(key) != 4
+                or any(type(value) is not str for value in key)
+                or any(_SHA256.fullmatch(key[index]) is None for index in (0, 1, 3))
+                or not _valid_library(key[2])
+                or type(cohort) is not tuple or len(cohort) > MAX_CANDIDATES):
+            _unavailable()
+        for row in cohort:
+            if (type(row) is not tuple or len(row) != len(_ARTIFACT_COHORT_FIELDS)
+                    or any(type(value) is not (int if name in ("dimension", "created_at") else str)
+                           for name, value in zip(_ARTIFACT_COHORT_FIELDS, row))):
+                _unavailable()
+        if type(matrix) is not tuple or len(matrix) != 3 or type(matrix[2]) is not tuple or len(matrix[2]) != 5:
+            _unavailable()
+        _native_matrix_parts(matrix, matrix[2][2], len(cohort), key[3])
+        return tuple.__new__(cls, (key, cohort, matrix))
+
+
+def _checked_cache(cache):
+    if cache is not None and type(cache) is not _CacheGeneration:
+        _unavailable()
+    return cache
+
+
 class BulkVectorStore:
     """Pinned bulk file descriptor with a single immutable verified cache."""
 
@@ -387,7 +422,7 @@ class BulkVectorStore:
     @_unwrap_callbacks
     def snapshot(self, artifacts, *, library_id, check=lambda: None, charge=lambda size: None):
         _check_callback(check)
-        cached = self._cache
+        cached = _checked_cache(self._cache)
         identity_digest = None
         cohort_key = None
         warm_hit = False
@@ -397,7 +432,7 @@ class BulkVectorStore:
                 identity_digest = identity_sha256(self.identity)
             except (AttributeError, TypeError, ValueError):
                 _unavailable()
-            if (type(cached) is tuple and len(cached) == 3
+            if (type(cached) is _CacheGeneration and len(cached) == 3
                     and type(cached[0]) is tuple and len(cached[0]) == 4
                     and cached[0][0] == self.file_sha256
                     and cached[0][2] == library_id
@@ -439,7 +474,7 @@ class BulkVectorStore:
         if header != expected_header:
             _unavailable()
         key = (self.file_sha256, cohort_digest, library_id, identity_digest)
-        cached = self._cache
+        cached = _checked_cache(self._cache)
         if cached is not None and cached[0] == key and cached[1] == cohort_key:
             canonical_matrix = cached[2]
         else:
@@ -449,26 +484,96 @@ class BulkVectorStore:
                 _check_callback(check)
             try:
                 _check_callback(check)
-                cached = self._cache
+                cached = _checked_cache(self._cache)
                 if cached is not None and cached[0] == key and cached[1] == cohort_key:
                     canonical_matrix = cached[2]
                 else:
                     canonical_matrix = _canonical_matrix(payload, artifacts, self.identity, check)
                     _check_callback(check)
-                    object.__setattr__(self, "_cache", (key, cohort_key, canonical_matrix))
+                    object.__setattr__(self, "_cache", _CacheGeneration(key, cohort_key, canonical_matrix))
             finally:
                 self._cache_lock.release()
         return BulkVectorSnapshot(artifacts, self.identity, canonical_matrix)
 
 
+def _checked_identity_digest(identity):
+    try:
+        return identity_sha256(identity)
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        _unavailable()
+
+
+def _native_matrix_parts(matrix, dimension, count, identity_digest):
+    # This format is private to one process, never the portable bulk file.
+    # Exact types prevent bool/int equality or mutable buffers from selecting
+    # a generation. Validate every block, including rows outside a filter.
+    if (type(dimension) is not int or not 1 <= dimension <= MAX_DIMENSION
+            or type(count) is not int or not 0 <= count <= MAX_CANDIDATES
+            or type(identity_digest) is not str or _SHA256.fullmatch(identity_digest) is None
+            or count * dimension * 8 > MAX_CACHE_BYTES
+            or struct.calcsize("d") != 8
+            or type(matrix) is not tuple or len(matrix) != 3):
+        _unavailable()
+    blocks, rows_per_block, layout = matrix
+    expected_rows = max(1, _CACHE_BLOCK_BYTES // (dimension * 8))
+    if (type(blocks) is not tuple or type(rows_per_block) is not int
+            or rows_per_block != expected_rows
+            or type(layout) is not tuple or len(layout) != 5
+            or tuple(type(value) for value in layout) != (str, str, int, int, str)
+            or layout != (_CACHE_LAYOUT, sys.byteorder, dimension, count, identity_digest)
+            or len(blocks) != (count + rows_per_block - 1) // rows_per_block):
+        _unavailable()
+    for number, block in enumerate(blocks):
+        rows = min(rows_per_block, count - number * rows_per_block)
+        if type(block) is not bytes or len(block) != rows * dimension * 8:
+            _unavailable()
+    return blocks, rows_per_block
+
+
+def _snapshot_asset_ids(artifacts):
+    if type(artifacts) is not tuple or len(artifacts) > MAX_CANDIDATES:
+        _unavailable()
+    if artifacts and set(map(type, artifacts)) != {ImmutableVectorArtifact}:
+        _unavailable()
+    try:
+        asset_ids = tuple(map(operator.attrgetter("asset_id"), artifacts))
+    except AttributeError:
+        _unavailable()
+    if asset_ids and set(map(type, asset_ids)) != {str}:
+        _unavailable()
+    return asset_ids
+
+
 class BulkVectorSnapshot:
-    __slots__ = ("_artifacts", "identity", "_matrix", "_ids", "_sealed")
+    """Internal view of a Store-validated cohort, not an input admission API.
+
+    Only BulkVectorStore.snapshot produces these in application code. Complete
+    artifact grammar/current-cohort and file validation remains in that factory;
+    this boundary additionally enforces immutable layout and exact row types.
+    """
+    __slots__ = ("_artifacts", "identity", "_matrix", "_ids", "_asset_ids",
+                 "_dimension", "_identity_sha256", "_generation", "_sealed")
 
     def __init__(self, artifacts, identity, matrix):
+        if type(artifacts) is not tuple or len(artifacts) > MAX_CANDIDATES:
+            _unavailable()
+        digest = _checked_identity_digest(identity)
+        dimension = identity.dimension
+        _native_matrix_parts(matrix, dimension, len(artifacts), digest)
+        asset_ids = _snapshot_asset_ids(artifacts)
+        if (any(type(aid) is not str or _ASSET_ID.fullmatch(aid) is None for aid in asset_ids)
+                or len(set(asset_ids)) != len(asset_ids)
+                or _checked_identity_digest(identity) != digest):
+            _unavailable()
         object.__setattr__(self, "_artifacts", artifacts)
         object.__setattr__(self, "identity", identity)
         object.__setattr__(self, "_matrix", matrix)
-        object.__setattr__(self, "_ids", frozenset(a.asset_id for a in artifacts))
+        object.__setattr__(self, "_asset_ids", asset_ids)
+        object.__setattr__(self, "_ids", frozenset(asset_ids))
+        object.__setattr__(self, "_dimension", dimension)
+        object.__setattr__(self, "_identity_sha256", digest)
+        object.__setattr__(self, "_generation",
+            (artifacts, identity, matrix, asset_ids, self._ids, dimension, digest))
         object.__setattr__(self, "_sealed", True)
 
     def __setattr__(self, name, value):
@@ -478,31 +583,63 @@ class BulkVectorSnapshot:
 
     @property
     def count(self):
-        return len(self._artifacts)
+        return len(self._asset_ids)
 
     @_unwrap_callbacks
     def rank(self, query, asset_ids, *, check=lambda: None):
         _check_callback(check)
-        if (type(query) is not tuple or len(query) != self.identity.dimension
+        generation = self._generation
+        if type(generation) is not tuple or len(generation) != 7:
+            _unavailable()
+        artifacts, identity, matrix, ordered_ids, allowed_ids, dimension, identity_digest = generation
+        if (self._artifacts is not artifacts or self.identity is not identity
+                or self._matrix is not matrix or self._asset_ids is not ordered_ids
+                or self._ids is not allowed_ids or self._dimension is not dimension
+                or self._identity_sha256 is not identity_digest):
+            _unavailable()
+        if (type(query) is not tuple or len(query) != dimension
                 or any(type(value) not in (float, int) or not math.isfinite(value) for value in query)
                 or type(asset_ids) is not tuple or len(asset_ids) > self.count
                 or any(type(value) is not str or _ASSET_ID.fullmatch(value) is None for value in asset_ids)
-                or len(set(asset_ids)) != len(asset_ids) or not set(asset_ids) <= self._ids):
+                or len(set(asset_ids)) != len(asset_ids) or not set(asset_ids) <= allowed_ids):
             _unavailable()
         wanted = set(asset_ids)
-        width = self.identity.dimension * 8
+        if _checked_identity_digest(identity) != identity_digest:
+            _unavailable()
+        blocks, rows_per_block = _native_matrix_parts(
+            matrix, dimension, len(ordered_ids), identity_digest)
         ranked = []
-        blocks, rows_per_block = self._matrix
-        for index, artifact in enumerate(self._artifacts):
+        views = {}
+        for index, aid in enumerate(ordered_ids):
             _check_callback(check)
-            if artifact.asset_id not in wanted:
+            if aid not in wanted:
                 continue
-            block = blocks[index // rows_per_block]
+            block_number = index // rows_per_block
             block_index = index % rows_per_block
-            vector = struct.unpack_from(f">{self.identity.dimension}d", block, block_index * width)
+            view = views.get(block_number)
+            if view is None:
+                # Cancellation precedes decoding each selected block. Views
+                # are local and read-only over the bounded immutable cache.
+                try:
+                    view = memoryview(blocks[block_number]).cast("d")
+                except (TypeError, ValueError):
+                    _unavailable()
+                views[block_number] = view
+            start = block_index * dimension
+            vector = view[start:start + dimension]
+            if len(vector) != dimension:
+                _unavailable()
             score = math.fsum(map(operator.mul, query, vector))
-            ranked.append((artifact.asset_id, score))
-        if len(ranked) != len(asset_ids):
+            ranked.append((aid, score))
+        if (len(ranked) != len(asset_ids) or self._generation is not generation
+                or self._matrix is not matrix
+                or self.identity is not identity or self._artifacts is not artifacts
+                or self._asset_ids is not ordered_ids
+                or self._ids is not allowed_ids
+                or type(self._dimension) is not int or self._dimension != dimension
+                or self._identity_sha256 != identity_digest
+                or _checked_identity_digest(identity) != identity_digest
+                or _snapshot_asset_ids(artifacts) != ordered_ids):
             _unavailable()
         return tuple(sorted(ranked, key=lambda item: (-item[1], int(item[0]))))
 
@@ -541,9 +678,14 @@ def _decode_container(raw):
 
 
 def _canonical_matrix(payload, artifacts, identity, check):
-    row_bytes = identity.dimension * 4
-    canonical_row_bytes = identity.dimension * 8
-    required = len(artifacts) * identity.dimension * 8
+    digest = _checked_identity_digest(identity)
+    private_identity = VectorSpaceIdentity(**asdict(identity))
+    if _checked_identity_digest(private_identity) != digest:
+        _unavailable()
+    dimension = private_identity.dimension
+    row_bytes = dimension * 4
+    canonical_row_bytes = dimension * 8
+    required = len(artifacts) * canonical_row_bytes
     if required > MAX_CACHE_BYTES:
         _unavailable()
     rows_per_block = max(1, _CACHE_BLOCK_BYTES // canonical_row_bytes)
@@ -556,13 +698,16 @@ def _canonical_matrix(payload, artifacts, identity, check):
                 index = block_start + offset
                 artifact = artifacts[index]
                 _check_callback(check)
-                raw_values = struct.unpack_from(f">{identity.dimension}f", payload, index * row_bytes)
-                record = VectorRecord(artifact.asset_id, identity, tuple(raw_values), artifact.component_sha256)
-                canonical = _canonical_components(record, identity)
-                struct.pack_into(f">{identity.dimension}d", matrix, offset * canonical_row_bytes, *canonical)
+                raw_values = struct.unpack_from(f">{dimension}f", payload, index * row_bytes)
+                record = VectorRecord(artifact.asset_id, private_identity, tuple(raw_values), artifact.component_sha256)
+                canonical = _canonical_components(record, private_identity)
+                struct.pack_into(f"={dimension}d", matrix, offset * canonical_row_bytes, *canonical)
             blocks.append(bytes(matrix))
         _check_callback(check)
-        return (tuple(blocks), rows_per_block)
+        if _checked_identity_digest(identity) != digest:
+            _unavailable()
+        return (tuple(blocks), rows_per_block,
+                (_CACHE_LAYOUT, sys.byteorder, dimension, len(artifacts), digest))
     except _CallbackFailure:
         raise
     except (ValueError, TypeError, OverflowError, struct.error, MemoryError):
