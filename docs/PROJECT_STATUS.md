@@ -1,5 +1,16 @@
 # Current project status
 
+**October 23 bounded metadata reader (R69, source only):** the read-only index
+inspector now parses and canonical-checks one bounded descriptor read, then
+retains a second complete digest/identity verification. Metadata is bound to its
+manifest SHA; private-file checks, link/reparse/identity guards, writer/resume
+behavior, source checks, vector validation and both full audits remain. All
+**41 focused tests** passed, and independent code review found no blocking
+regression. Exact code `c534805` passed **3,405 API tests / 4,037 subtests** and
+the generated demo with a clean, unchanged checkout. This change was **not**
+in the R68 Windows run below; it has no native timing or
+activation acceptance. Semantic search stays **OFF**.
+
 **October 23 complete semantic qualification (R68, isolated / undeployed):**
 exact source `13a94dd` completed its bounded Windows CPU run in **1,582.750 s**.
 Both independent full audits and all **15 protection checks** passed against

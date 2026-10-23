@@ -30667,6 +30667,46 @@
         }
       ],
       "notes": "Record independent local closure after actual 185.668-second offline interval and explicit resource release before expiry; no remaining owned transport/queue, no deployment/activation."
+    },
+    {
+      "feature": "semantic-r69-bounded-inspector-json-with-final-digest",
+      "source_base": "e3b62cbfd81efea1cdf1e210602d1187e1622648",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/library_semantic_index.py",
+          "before_sha256": "1ed5c80814b2877717ae1c5da8d26c36de6d3961a124bf6a0816adc1d5dfca2d",
+          "sha256": "038ff5a22a005ae160a2076abd322e1acb50738cbf34d5ab38a9763dd5fa687d"
+        },
+        {
+          "path": "server/scripts/semantic_setup_profile.py",
+          "before_sha256": "67bec5b86f260978da0870aa5aa8a928a5cf1a421da55a3071173c7beaae2fdd",
+          "sha256": "53cf19b708a7075f4b43b5b9fb34e19b860385be5ec13ab0af6fa5377211bb2c"
+        },
+        {
+          "path": "server/tests/security/test_library_semantic_index.py",
+          "before_sha256": "461a87e07a202657d8fe76ff435f7de3f09ee4aa2eba7e70f05fed9681d0f87f",
+          "sha256": "1a3f91c836c5db610e2d7d7625338dc75b24448dc9ed3ea9326c21e96fcc947a"
+        },
+        {
+          "path": "server/tests/security/test_semantic_setup_profile.py",
+          "before_sha256": "ca3e5f17426b97e54a609ec88483fc27c4fe18633529b45e84e576c7e804bdd3",
+          "sha256": "44042837e814c07535f7e7edce9349d5a99f07ad962f8d0395012a38d569f15b"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "18913b8ed0437f67bcfb85f32d1d3ee5d2f0dc12c5ef045d5edec3acb01d0dda",
+          "sha256": "9f5b2f226ec73b649b254a322b556bddc0cd2413b6de2d7b5a7f926dd2d0c721"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "9b90d6d0af25dc01ac8a71a86298ad74333f0e7eda8e21e1c341a25eeeb7ef96",
+          "sha256": "f150e245a3e798a40d93b0f23d46acb090bca204e730ad3f3e35e85af25014ad"
+        }
+      ],
+      "notes": "Inspector-only bounded first JSON read with duplicate/nonfinite/canonical validation and expected metadata SHA, retaining final full digest/identity and private-file checks; writer/resume/source/vector/both full audits remain. 41 focused tests and independent source review passed; clean exact c534805 passed 3405 API tests/4037 subtests plus generated demo. Separate unqualified source, not in R68 native metrics, no runtime or activation."
     }
   ]
 }

@@ -420,3 +420,21 @@ completed the bounded run reported above. The R65 failed probes remain evidence;
 they are not native measurements or protection acceptance. The unchanged
 child/parent/transport limits, both audits, 15 protections, nine samples,
 independent readback and owned closure remained required. Semantic stays **OFF**.
+
+## R69 bounded two-pass metadata reader
+
+The inspector reads each canonical JSON document through one bounded descriptor
+for parsing, canonical-byte comparison and hashing, then retains an independent
+final `verify_checkpoint` digest/identity pass. Expected artifact metadata SHA
+binds the same bytes. Before/open/after file identities, private ACL checks,
+regular-file/link/reparse checks and size limits remain enforced. The writer and
+resume reader is unchanged. Both complete audits and all source/vector checks
+remain; neither permissions nor file state is cached.
+
+Focused suites passed 41 tests, including growth during reading, replacement,
+same-size restored-mtime mutation, canonical/duplicate/nonfinite/digest refusal,
+link refusal and the final private-file gate. Independent source review found no
+blocking regression. Exact code `c534805` passed 3,405 API tests / 4,037
+subtests plus the generated demo with a clean, unchanged checkout. R68 measured `13a94dd`,
+which does not include this reader. No Windows setup saving or interactive
+latency gain is claimed for R69; the 2-second target remains unmet.
