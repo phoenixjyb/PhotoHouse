@@ -78,3 +78,12 @@ def test_partial_instrumentation_failure_restores_earlier_aliases(monkeypatch):
     monkeypatch.setattr(subject, '_OPERATIONS', ())
     with subject.instrument_setup():
         pass
+
+
+def test_inspector_json_reader_uses_existing_audit_json_aggregate(monkeypatch):
+    sentinel = {"numeric_only": True}
+    monkeypatch.setattr(index, "_load_json_inspector", lambda *args, **kwargs: sentinel)
+    with subject.instrument_setup() as observer:
+        assert index._load_json_inspector("private path", 42) is sentinel
+    assert observer.snapshot()["operations"]["audit_json"]["calls"] == 1
+    assert observer.snapshot()["operations"]["audit_json"]["errors"] == 0

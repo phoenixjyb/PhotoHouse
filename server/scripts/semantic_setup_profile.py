@@ -15,6 +15,7 @@ from unittest.mock import patch
 _LOCK = threading.Lock()
 _OPERATIONS = (
     ("library_semantic_index", "_load_json", "audit_json"),
+    ("library_semantic_index", "_load_json_inspector", "audit_json"),
     ("library_semantic_index", "_stat_source", "audit_source_stat"),
     ("library_semantic_index", "_read_vector", "audit_vector_read"),
     ("library_semantic_index", "inspect_checkpoint", "audit_checkpoint_verify"),
