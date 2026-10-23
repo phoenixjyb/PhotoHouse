@@ -30627,6 +30627,31 @@
         }
       ],
       "notes": "Record exact 3389-test API pass and generated audit comparison separately from native qualification. Native attempt/staging remain zero; expired baselines and refused local gate retained, then SSH relay connectivity blocked fresh acquisition. No deployment or activation."
+    },
+    {
+      "feature": "semantic-r66-r68-transport-and-complete-native-qualification",
+      "source_base": "ac47a9746fcac67ef666d003729493c6aca58eef",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "a421992b39e9d7f2df8ff13ae8df8efdaaff76b60fe5de5781f52d30afc15ad2",
+          "sha256": "33f249b726f548404571c27228db896a23051152014e08659ba9d528f93b7b20"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "17622a2a0a2220bc247d63f909964cce01d4f22671e216a3eed0780b0ad9f30c",
+          "sha256": "9b90d6d0af25dc01ac8a71a86298ad74333f0e7eda8e21e1c341a25eeeb7ef96"
+        },
+        {
+          "path": "docs/SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md",
+          "before_sha256": "bfd8d1be281843adff6f5cf0b02e1339c86572bc6f3fb26a2ab0d64e9f10b0e8",
+          "sha256": "30ac58d06bb62665b961b2bab1954cfc175355f90b1be94629568e79c96fadef"
+        }
+      ],
+      "notes": "Record R66 partial stage and R67 full stage without a native start separately from R68 completed exact13a native qualification: two audits, 15 cases, nine samples, 8s warm median; postflight preserves source/stores/tasks/catalog/models/site and OFF policy. No performance/SLO, family relevance or activation acceptance."
     }
   ]
 }

@@ -1,5 +1,31 @@
 # Current project status
 
+**October 23 complete semantic qualification (R68, isolated / undeployed):**
+exact source `13a94dd` completed its bounded Windows CPU run in **1,582.750 s**.
+Both independent full audits and all **15 protection checks** passed against
+23,761 catalog entries, 23,696 vectors and the same 65 omissions approved for
+qualification only. Nine English/Chinese/mixed loopback HTTPS/TCP samples measured
+**8.000 s median / 8.438 s maximum**; cold latency was **15.594 s**. The 2-second
+backend target remains unmet; semantic search stays **OFF**.
+
+Independent readback verified all 12 staged inputs, exact source/model/index
+bindings, measurement/sample profiles, Job limits and 322 closed diagnostic
+checkpoints. No owned test Python process or test listener remained. The fresh
+postflight baseline preserved the live API, stores, tasks, catalog, models/index,
+permissions and semantic-off policy. All 83 preservation pins, 12 report trees
+and 200 current furniture-report assets passed before/after checks, including
+trusted HTTPS. These checks do not establish continuous uptime or phone/WAN use.
+
+R66 authenticated through the verified direct route but timed out staging a
+partial archive; it started no model/native test. R67 staged all 12 inputs but
+correctly refused a native start after its time reserve expired. Both stages
+were preserved and explicitly released after closure. R68 reused only the
+verified identical source archive through a fresh, no-overwrite private copy;
+all remaining inputs, admission, both audits and native checks were fresh.
+The compressed archive is 1,412,632 bytes, 73.21% smaller than the earlier
+5,272,648-byte package; its 295 source payloads and manifest are identical.
+See [the complete native record](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md#latest-complete-native-result-october-23-2026).
+
 **October 23 audit optimization (R65, source only / unmerged):** the full-index
 inspector now validates complete checkpoint coverage and its exact agreement with
 the manifest before one artifact-verification pass. Resume/index construction,
@@ -14,8 +40,8 @@ pairs measured a median 1,453.685 ms before / 827.143 ms after. These are local
 model-free audit measurements, not native query latency or qualification.
 Exact code commit `13a94dd` passed **3,389 API tests / 4,037 subtests** and the
 generated demo with a clean, unchanged checkout. The matching runtime archive
-contains 295 verified source files. One fresh bounded Windows qualification is
-still pending; semantic search stays **OFF**. No production deployment or
+contains 295 verified source files. The later R68 run above completed native qualification of this exact code;
+semantic search stays **OFF**. No production deployment or
 activation is included.
 
 R65 started no model run and staged no candidate. Read-only admission initially
@@ -23,8 +49,8 @@ refused a scheduled task state transition; a later host admission passed after
 natural task completion. The local final gate then refused an incorrect
 comparison between two different catalog digest contracts. That checker was
 repaired and the refused seal/evidence retained. A subsequent fresh acquisition
-could not reach the established SSH relay, so the native run remains blocked by
-connectivity. The last reachable metadata preserved the current 200-file report
+could not reach the established SSH relay, leaving R65 blocked by connectivity.
+The later R68 result above supersedes that transport blocker. The last reachable metadata preserved the current 200-file report
 and all 12 retained report trees; a later trusted-TLS check still verified all
 200 public report files. These observations do not prove current Windows state
 or new native latency after connectivity was lost.

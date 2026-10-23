@@ -1,44 +1,48 @@
 # Protected semantic request latency
 
-Semantic remains **OFF**. The R63 attempt at `95b7f7f` reached the fixed
-**1,800-second child timeout** on October 22. No completed measurement, full
-protection result or new native latency was produced. Its original failure and
-all candidate evidence were retained; the model run was not replayed.
+Semantic remains **OFF**. The latest complete bounded Windows CPU qualification
+(R68, October 23, exact code `13a94dd`) passed both full audits and all
+**15 protection checks**. Nine English/Chinese/mixed loopback HTTPS/TCP requests
+measured **8.000 seconds median / 8.438 seconds maximum**; the cold request took
+**15.594 seconds**. The 2-second backend target remains unmet.
 
-The latest **successful** full-catalog Windows CPU qualification at
-`e85c6e4` passed all **15 protection checks**. Nine English/Chinese/mixed loopback
-HTTPS/TCP requests measured **7.860 seconds median / 8.328 seconds maximum**;
-the cold request took **14.843 seconds**. The 2-second backend target remains unmet.
+The prior successful `e85c6e4` run measured 7.860 / 8.328 / 14.843 seconds
+respectively. The earlier `a46d9f5` baseline measured 14.516 / 17.281 / 24.984.
+These are separate instrumented runs on a shared host, not a randomized benchmark
+or phone/WAN measurement. The latest run does not show a further query-latency
+improvement. All retain 23,761 catalog entries, 23,696 vectors, 65
+qualification-only omissions and the same 15 protected cases.
 
-The earlier same-catalog baseline at `a46d9f5` measured 14.516 seconds median,
-17.281 seconds maximum and 24.984 seconds cold. The observed warm median fell
-by 6.656 seconds (about 46%). These are separate instrumented runs on the shared
-host, not a randomized benchmark or phone/WAN measurement. Both retain 23,761
-catalog entries, 23,696 vectors, 65 qualification-only omissions and the same
-15 protection cases. See the [native record](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md).
-
-The latest median warm phases identify the remaining costs:
+The latest nine warm samples identify the remaining costs:
 
 | Phase | Calls | Inclusive | Exclusive |
 | --- | ---: | ---: | ---: |
-| Source extension | 2 | 2.203 s | 0.915 s |
-| Source SQL and packing | 18 | 1.185 s | 1.185 s |
-| Prepared facts | 2 | 1.086 s | 0.938 s |
-| Artifact selection | 1 | 0.048 s | 0.048 s |
-| Bulk snapshot | 2 | 1.254 s | 1.254 s |
-| Eligibility validation | 2 | 0.504 s | 0.504 s |
-| Canonical hashing | 23,770 | 0.572 s | 0.572 s |
-| Encoder round trip | 1 | 0.406 s | 0.406 s |
-| Ranking | 1 | 3.520 s | 1.755 s |
+| Source extension | 2 | 2.081 s | 0.718 s |
+| Source SQL and packing | 18 | 1.192 s | 1.192 s |
+| Prepared facts | 2 | 1.355 s | 0.985 s |
+| Artifact selection | 1 | 0.119 s | 0.119 s |
+| Bulk snapshot | 2 | 1.011 s | 1.011 s |
+| Eligibility validation | 2 | 0.515 s | 0.515 s |
+| Canonical hashing | 23,770 | 0.811 s | 0.811 s |
+| Encoder round trip | 1 | 0.455 s | 0.455 s |
+| Ranking | 1 | 3.485 s | 1.782 s |
 
-These are nested per-phase medians and must not be added. Sixteen model encodes
-took 2.300 seconds total, about 144 ms each; encoder transport time is separate.
-Both mandatory full index audits took **1,119.002 seconds** of setup. The complete
-canary took 1,409.515 seconds; that setup duration is not interactive query latency.
-Independent readback verified input pins, audits, measurements and zero remaining
-test processes/listeners. Live API/gateway/site/task/feed pins and the catalog
-were unchanged; all 69 furniture-report assets passed before and after the run.
-No production policy, vector publication, service deployment or activation occurred.
+These are nested per-phase medians and must not be added. The 16 model encodes
+took 2.261 seconds total; encoder transport time is separate. The initial audit
+took **957.516 s**, and the independent final audit took **282.750 s** (durable
+phase wall times); bulk construction took 21.296 s and the canary phase 198.640 s.
+The complete run took **1,582.750 s**. Setup cost is separate from interactive
+query latency, and the two audits' different times do not establish a causal
+source-change speedup.
+
+Independent readback verified all 12 inputs, source identity, reviewed omissions,
+measurement/sample ordinals, two audits, the closed 322-checkpoint journal and
+8 GiB/four-process Job limits. Owned test Python processes/listeners were zero.
+Fresh postflight kept the live API, stores, task states, catalog, models/index,
+permissions and policy unchanged. All 83 preservation pins, 12 retained report
+trees and 200 current report assets passed, including trusted HTTPS. No production
+deployment, vector publication, family relevance acceptance or activation occurred.
+See [the native record](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md#latest-complete-native-result-october-23-2026).
 
 ## Local validation improvements
 
@@ -211,8 +215,9 @@ After 272 seconds of conservative offline cleanup, both active sessions received
 explicit Windows release at 2026-10-22 16:42:20 Asia/Shanghai (08:42:20 UTC).
 
 Semantic remains **OFF**. Native qualification of this increment is **failed**,
-not pending acceptance or ready for deployment. The latest verified native timing
-remains the `e85c6e4` result above; no newer native latency is claimed here.
+not pending acceptance or ready for deployment. At that checkpoint, the latest
+verified native timing was `e85c6e4`; the later complete R68 result is recorded
+at the top of this document.
 
 The next qualification priority is durable aggregate phase checkpoints and
 audit/setup profiling under the same bounded Job, so a timeout retains useful
@@ -357,8 +362,34 @@ These model-free generated measurements do not establish Windows performance,
 interactive request latency, relevance or full protected qualification. Keep the
 1,800-second child limit, both complete audits, 15 protected cases, nine matching
 samples, fresh current coverage/model/source/policy pins and independent closure.
-Native qualification is pending; semantic search remains **OFF**.
+The later R68 run completed native qualification of this exact source; semantic
+search remains **OFF**.
 
+
+### R66 transport checkpoint
+
+Direct Windows SSH authentication, the fresh before-baseline and host admission
+passed for exact source `13a94dd`. The single staging attempt reached the
+unchanged 180-second SFTP deadline. Readback found ten exact small input files,
+an incomplete source archive (1,827,840 of 5,272,648 bytes) and no final expected
+input. There was no model load or native qualification attempt; the stage was
+preserved without replay or deletion.
+
+Fresh read-only closure found zero owned test processes, SFTP servers or recorded
+test listeners. The private ACL and production configuration hash were unchanged,
+semantic search was off, and preservation checks covered 83 pins, 293 live source
+files, 12 report trees and the current 200 report assets. An independent review
+and 195.63 seconds without host access preceded explicit resource release.
+
+R67 compressed the identical 296 ZIP entries, including the source
+manifest, from 5,272,648 to 1,412,632 bytes. The 295 source payload hashes and
+manifest are unchanged. Its operator wrapper captures partial transfer output
+and bounds cleanup of its own process group. This reduces transfer bytes; it
+does not establish network throughput, query latency or native qualification.
+R67 completed staging but refused a native start after its reserve cutoff. R68
+then completed fresh admission, both audits, all 15 cases and nine samples using
+the same source archive under the unchanged runtime limits. Semantic search
+remains **OFF**.
 
 ### R65 validation and native admission status
 
@@ -378,16 +409,14 @@ current roster/index/snapshot and the existing qualification-only 65-omission
 review remain required. The rejected local seal and its exact control bodies
 were retained rather than rewritten into a success.
 
-The next fresh acquisition failed before connecting to the established SSH
-relay. Neither failed probe started a remote reader. Windows connectivity must
-be restored before fresh metadata, host admission, coordination and the single
-bounded run can proceed. The older baseline, host admission and reservation
-have expired and must not be reused. The latest public report check verified
-all 200 assets with normal certificate validation; no report/site restoration
-or production service/configuration change occurred.
+The next R65 acquisition failed before connecting to the established SSH relay.
+Neither failed probe started a remote reader. Its baseline, host admission and
+reservation expired and were not reused as fresh authority. The public report
+check at that checkpoint verified all 200 assets with normal certificates.
 
-Keep semantic search **OFF**. There is no new native measurement or protection
-acceptance. Resume with fresh operation-specific coordination, a complete current
-baseline and host admission, then a fresh 45-minute execution window after the
-preflight is ready. Retain the fixed child/parent/transport limits, both audits,
-15 protections, nine samples, independent readback and owned closure.
+R66 later restored access through a verified existing-key direct route. R68
+acquired fresh operation-specific coordination, baseline and host admission and
+completed the bounded run reported above. The R65 failed probes remain evidence;
+they are not native measurements or protection acceptance. The unchanged
+child/parent/transport limits, both audits, 15 protections, nine samples,
+independent readback and owned closure remained required. Semantic stays **OFF**.
