@@ -30652,6 +30652,21 @@
         }
       ],
       "notes": "Record R66 partial stage and R67 full stage without a native start separately from R68 completed exact13a native qualification: two audits, 15 cases, nine samples, 8s warm median; postflight preserves source/stores/tasks/catalog/models/site and OFF policy. No performance/SLO, family relevance or activation acceptance."
+    },
+    {
+      "feature": "semantic-r68-independent-closure-and-explicit-release",
+      "source_base": "7c3e714732d8f1ed015749b54becbbcadb764eb7",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "33f249b726f548404571c27228db896a23051152014e08659ba9d528f93b7b20",
+          "sha256": "18913b8ed0437f67bcfb85f32d1d3ee5d2f0dc12c5ef045d5edec3acb01d0dda"
+        }
+      ],
+      "notes": "Record independent local closure after actual 185.668-second offline interval and explicit resource release before expiry; no remaining owned transport/queue, no deployment/activation."
     }
   ]
 }

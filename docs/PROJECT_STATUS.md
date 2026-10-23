@@ -15,6 +15,9 @@ postflight baseline preserved the live API, stores, tasks, catalog, models/index
 permissions and semantic-off policy. All 83 preservation pins, 12 report trees
 and 200 current furniture-report assets passed before/after checks, including
 trusted HTTPS. These checks do not establish continuous uptime or phone/WAN use.
+After 185.668 seconds without host access, independent local closure review
+passed and the Windows window was explicitly released before expiry. No queued
+dispatch or owned local SSH/SFTP process remained.
 
 R66 authenticated through the verified direct route but timed out staging a
 partial archive; it started no model/native test. R67 staged all 12 inputs but
