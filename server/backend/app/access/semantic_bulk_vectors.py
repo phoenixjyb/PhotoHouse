@@ -36,6 +36,9 @@ _ASSET_ID = re.compile(r"[1-9][0-9]{0,18}\Z", re.ASCII)
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 _READ_CHUNK = 1024 * 1024
 _CACHE_BLOCK_BYTES = 4 * 1024 * 1024
+_RANK_NUMPY_MIN_ROWS = 128
+_RANK_NUMPY_MIN_DIMENSION = 128
+_RANK_PRODUCT_BUFFER_BYTES = 4 * 1024 * 1024
 _CACHE_LAYOUT = "canonical_f64_native_v1"
 _ARTIFACT_COHORT_FIELDS = (
     "record_id", "asset_id", "source_sha256", "model_name", "artifact_sha256",
@@ -530,6 +533,15 @@ def _native_matrix_parts(matrix, dimension, count, identity_digest):
     return blocks, rows_per_block
 
 
+def _rank_numpy_backend():
+    """Load the optional product-vector backend only for a large rank request."""
+    try:
+        import numpy
+    except ImportError:
+        return None
+    return numpy
+
+
 def _snapshot_asset_ids(artifacts):
     if type(artifacts) is not tuple or len(artifacts) > MAX_CANDIDATES:
         _unavailable()
@@ -610,26 +622,95 @@ class BulkVectorSnapshot:
             matrix, dimension, len(ordered_ids), identity_digest)
         ranked = []
         views = {}
+        numpy_backend = None
+        numpy_checked = False
+        numpy_query = None
+        product_scratch = None
+        product_offsets = None
+        product_cursor = 0
+        product_view = None
+        product_block_number = None
         for index, aid in enumerate(ordered_ids):
             _check_callback(check)
             if aid not in wanted:
                 continue
             block_number = index // rows_per_block
             block_index = index % rows_per_block
-            view = views.get(block_number)
-            if view is None:
-                # Cancellation precedes decoding each selected block. Views
-                # are local and read-only over the bounded immutable cache.
-                try:
-                    view = memoryview(blocks[block_number]).cast("d")
-                except (TypeError, ValueError):
+            if (len(asset_ids) >= _RANK_NUMPY_MIN_ROWS
+                    and dimension >= _RANK_NUMPY_MIN_DIMENSION):
+                if not numpy_checked:
+                    numpy_checked = True
+                    # Keep import lazy so ordinary CPU installs need no NumPy
+                    # package. ImportError alone selects the scalar path.
+                    numpy_backend = _rank_numpy_backend()
+            if (len(asset_ids) >= _RANK_NUMPY_MIN_ROWS
+                    and dimension >= _RANK_NUMPY_MIN_DIMENSION
+                    and numpy_backend is not None):
+                if product_block_number != block_number:
+                    block_start = block_number * rows_per_block
+                    block_count = min(rows_per_block, len(ordered_ids) - block_start)
+                    try:
+                        block_values = numpy_backend.frombuffer(
+                            blocks[block_number], dtype=numpy_backend.float64).reshape(
+                                (block_count, dimension))
+                        # Build one bounded integer-offset array instead of a
+                        # Python list plus per-row lookup dictionary. Products
+                        # for this block are prepared only after its first
+                        # selected row's callback has passed; later callbacks
+                        # still run before each score is read or returned.
+                        selected_offsets = numpy_backend.fromiter(
+                            (offset for offset in range(block_count)
+                             if ordered_ids[block_start + offset] in wanted),
+                            dtype=numpy_backend.intp)
+                        selected_count = len(selected_offsets)
+                        if (not selected_count or int(selected_offsets[0]) != block_index or
+                                int(selected_offsets[-1]) >= block_count or
+                                selected_offsets.nbytes > 32 * 1024 or
+                                selected_count * dimension * 8 > _RANK_PRODUCT_BUFFER_BYTES):
+                            _unavailable()
+                        if product_scratch is None:
+                            scratch_rows = max(1, min(
+                                _RANK_PRODUCT_BUFFER_BYTES // (dimension * 8), len(ordered_ids)))
+                            product_scratch = numpy_backend.empty(
+                                (scratch_rows, dimension), dtype=numpy_backend.float64)
+                            numpy_query = numpy_backend.asarray(query, dtype=numpy_backend.float64)
+                        if selected_count > product_scratch.shape[0]:
+                            _unavailable()
+                        product_target = product_scratch[:selected_count]
+                        numpy_backend.take(block_values, selected_offsets, axis=0,
+                                           out=product_target, mode="clip")
+                        with numpy_backend.errstate(over="ignore", invalid="ignore", under="ignore"):
+                            numpy_backend.multiply(product_target, numpy_query, out=product_target)
+                        product_offsets = selected_offsets
+                        product_cursor = 0
+                        product_view = memoryview(product_target).cast("B").cast("d")
+                        product_block_number = block_number
+                    except (TypeError, ValueError, OverflowError, struct.error):
+                        _unavailable()
+                if (product_cursor >= len(product_offsets) or
+                        int(product_offsets[product_cursor]) != block_index):
                     _unavailable()
-                views[block_number] = view
-            start = block_index * dimension
-            vector = view[start:start + dimension]
-            if len(vector) != dimension:
-                _unavailable()
-            score = math.fsum(map(operator.mul, query, vector))
+                product_index = product_cursor
+                product_cursor += 1
+                product_start = product_index * dimension
+                products = product_view[product_start:product_start + dimension]
+                if len(products) != dimension:
+                    _unavailable()
+                score = math.fsum(products)
+            else:
+                view = views.get(block_number)
+                if view is None:
+                    # Cancellation precedes decoding each selected block.
+                    try:
+                        view = memoryview(blocks[block_number]).cast("d")
+                    except (TypeError, ValueError):
+                        _unavailable()
+                    views[block_number] = view
+                start = block_index * dimension
+                vector = view[start:start + dimension]
+                if len(vector) != dimension:
+                    _unavailable()
+                score = math.fsum(map(operator.mul, query, vector))
             ranked.append((aid, score))
         if (len(ranked) != len(asset_ids) or self._generation is not generation
                 or self._matrix is not matrix

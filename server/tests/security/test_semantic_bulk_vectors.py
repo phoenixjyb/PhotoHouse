@@ -1,11 +1,15 @@
 """Synthetic integrity, cohort, and exact-ranking checks for bulk vectors."""
 from dataclasses import fields, replace
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
+import math
+import operator
 from pathlib import Path
 import struct
 import sys
 import tempfile
+import threading
 import unittest
 from asyncio import CancelledError
 from unittest.mock import patch
@@ -37,7 +41,7 @@ def identity(dimension=2):
 
 def artifact(identity_value, asset_id, record_char, raw, vector):
     digest = identity_sha256(identity_value)
-    record_id = record_char * 64
+    record_id = record_char if len(record_char) == 64 else record_char * 64
     return ImmutableVectorArtifact(
         record_id, str(asset_id), f"{asset_id:064x}", "synthetic-model", identity_value.artifact_sha256,
         identity_value.preprocessing_sha256, identity_value.vector_space_id, identity_value.model_version,
@@ -887,6 +891,250 @@ class SemanticBulkVectorTests(unittest.TestCase):
                     snapshot.rank((1.0, 0.0), ('1', '2', '3'), check=raise_same_error)
                 self.assertIs(caught.exception, error)
                 self.assertEqual(calls, ['called'])
+
+    def _many_rank_vectors(self, dimension=2, count=160):
+        import math
+        result = []
+        for aid in range(1, count + 1):
+            vector = [0.0] * dimension
+            if dimension == 1:
+                vector[0] = 1.0 if aid % 2 else -1.0
+            else:
+                mode = aid % 5
+                if mode == 0:
+                    vector[0] = 1.0
+                elif mode == 1:
+                    vector[1] = 1.0
+                elif mode == 2:
+                    vector[0] = -1.0
+                elif mode == 3:
+                    vector[0] = math.sqrt(0.5)
+                    vector[1] = math.sqrt(0.5)
+                else:
+                    vector[0] = math.sqrt(0.5)
+                    vector[1] = -math.sqrt(0.5)
+            result.append((aid, f'{aid:064x}', tuple(vector)))
+        return tuple(result)
+
+    def _rank_bits(self, rows):
+        return tuple((aid, struct.pack('>d', score)) for aid, score in rows)
+
+    def test_optional_product_backend_matches_scalar_full_filtered_and_sparse_rank(self):
+        try:
+            import numpy
+        except ImportError:
+            self.skipTest('optional NumPy is unavailable')
+        from app.access import semantic_bulk_vectors as module
+
+        ident = identity(768)
+        vectors = self._many_rank_vectors(768, 160)
+        store, records = self.build(vectors, ident)
+        snapshot = store.snapshot(records, library_id='family-a')
+        query = (0.6, 0.8) + (0.0,) * 766
+        ids = tuple(record.asset_id for record in records)
+        before = hashlib.sha256(b''.join(snapshot._matrix[0])).hexdigest()
+
+        def expected(selected):
+            rows = []
+            for aid in selected:
+                index = snapshot._asset_ids.index(aid)
+                block_number, block_index = divmod(index, snapshot._matrix[1])
+                view = memoryview(snapshot._matrix[0][block_number]).cast('d')
+                start = block_index * ident.dimension
+                rows.append((aid, math.fsum(map(operator.mul, query,
+                                                view[start:start + ident.dimension]))))
+            return tuple(sorted(rows, key=lambda row: (-row[1], int(row[0]))))
+
+        cohorts = (ids, ids[:128], ids[20:40])
+        for selected in cohorts:
+            with self.subTest(selected=len(selected)):
+                actual = snapshot.rank(query, selected)
+                scalar = expected(selected)
+                self.assertEqual(self._rank_bits(actual), self._rank_bits(scalar))
+        # Tied scores remain sorted by numeric asset id, and the matrix bytes
+        # remain immutable after the vectorized path runs.
+        tied = snapshot.rank((1.0,) + (0.0,) * 767, ids)
+        equal = [aid for aid, score in tied if score == 1.0]
+        self.assertEqual(equal, sorted(equal, key=int))
+        self.assertEqual(before, hashlib.sha256(b''.join(snapshot._matrix[0])).hexdigest())
+
+        # The same request must retain exact scalar behavior when NumPy cannot
+        # be imported; only ImportError selects this fallback.
+        with patch.object(module, '_rank_numpy_backend', return_value=None) as backend:
+            fallback = snapshot.rank(query, ids)
+        self.assertEqual(backend.call_count, 1)
+        self.assertEqual(self._rank_bits(fallback), self._rank_bits(expected(ids)))
+
+    def test_optional_product_backend_keeps_subnormal_and_numeric_exception_semantics(self):
+        try:
+            import numpy
+        except ImportError:
+            self.skipTest('optional NumPy is unavailable')
+        from app.access import semantic_bulk_vectors as module
+
+        for dimension in (1, 768):
+            with self.subTest(dimension=dimension):
+                ident = identity(dimension)
+                vectors = self._many_rank_vectors(dimension, 160)
+                self.out = self.base / f'numeric-{dimension}.bulk'
+                store, records = self.build(vectors, ident)
+                snapshot = store.snapshot(records, library_id='family-a')
+                query = (5e-324,) + (0.0,) * (dimension - 1)
+                actual = snapshot.rank(query, tuple(record.asset_id for record in records))
+                self.assertTrue(actual)
+                expected_subnormal_scores = {struct.pack('>d', 5e-324),
+                                             struct.pack('>d', -5e-324)}
+                if dimension > 1:
+                    expected_subnormal_scores.add(struct.pack('>d', 0.0))
+                self.assertEqual({struct.pack('>d', score) for _, score in actual},
+                                 expected_subnormal_scores)
+                if dimension > 1:
+                    dense = tuple(1.0 / math.sqrt(dimension) for _ in range(dimension))
+                    vectors = list(self._many_rank_vectors(dimension, 160))
+                    aid, record_char, _ = vectors[-1]
+                    vectors[-1] = (aid, record_char, dense)
+                    self.out = self.base / 'numeric-overflow.bulk'
+                    store, records = self.build(tuple(vectors), ident)
+                    snapshot = store.snapshot(records, library_id='family-a')
+                    huge = (1e308,) * dimension
+                    ids = tuple(record.asset_id for record in records)
+                    with self.assertRaises(BulkVectorUnavailable):
+                        snapshot.rank(huge, ids)
+                    with patch.object(module, '_rank_numpy_backend', return_value=None):
+                        with self.assertRaises(BulkVectorUnavailable):
+                            snapshot.rank(huge, ids)
+
+    def test_optional_backend_keeps_callback_order_and_cancels_before_decode(self):
+        try:
+            import numpy
+        except ImportError:
+            self.skipTest('optional NumPy is unavailable')
+        from app.access import semantic_bulk_vectors as module
+
+        ident = identity(128)
+        block_patch = patch.object(module, '_CACHE_BLOCK_BYTES', 128 * 8 * 64)
+        block_patch.start()
+        self.addCleanup(block_patch.stop)
+        vectors = self._many_rank_vectors(128, 160)
+        store, records = self.build(vectors, ident)
+        snapshot = store.snapshot(records, library_id='family-a')
+        ids = tuple(record.asset_id for record in records)
+        self.assertGreaterEqual(len(ids), module._RANK_NUMPY_MIN_ROWS)
+        calls = []
+        query = (0.6, 0.8) + (0.0,) * 126
+        result = snapshot.rank(query, ids, check=lambda: calls.append(len(calls)))
+        self.assertEqual(calls, list(range(len(ids) + 1)))
+        self.assertEqual(len(result), len(ids))
+
+        # A filtered request first selects row 33. Cancellation at that row
+        # must happen before the lazy backend import or block decode.
+        selected = tuple(str(aid) for aid in range(33, 161))
+        count = 0
+        cancel = RuntimeError('cancel before product preparation')
+        def cancel_before_first_selected():
+            nonlocal count
+            count += 1
+            if count == 34:  # initial callback, rows 1..32, then selected row 33
+                raise cancel
+        with patch.object(module, '_rank_numpy_backend',
+                          side_effect=AssertionError('backend loaded before selected callback')) as backend:
+            with self.assertRaises(RuntimeError) as caught:
+                snapshot.rank(query, selected, check=cancel_before_first_selected)
+        self.assertIs(caught.exception, cancel)
+        backend.assert_not_called()
+
+        count = 0
+        middle = CancelledError('cancel in selected rows')
+        def cancel_mid_rank():
+            nonlocal count
+            count += 1
+            if count == 75:
+                raise middle
+        original_take = numpy.take
+        take_calls = []
+        def trace_take(*args, **kwargs):
+            take_calls.append(1)
+            return original_take(*args, **kwargs)
+        with patch.object(numpy, 'take', side_effect=trace_take):
+            with self.assertRaises(CancelledError) as caught:
+                snapshot.rank(query, ids, check=cancel_mid_rank)
+        self.assertIs(caught.exception, middle)
+        self.assertEqual(count, 75)
+        self.assertEqual(len(take_calls), 2)  # cancellation in block 2 prevents block 3 products
+
+    def test_small_dimension_uses_scalar_path_without_loading_optional_backend(self):
+        from app.access import semantic_bulk_vectors as module
+
+        ident = identity(2)
+        vectors = self._many_rank_vectors(2, 160)
+        store, records = self.build(vectors, ident)
+        snapshot = store.snapshot(records, library_id='family-a')
+        ids = tuple(record.asset_id for record in records)
+        query = (0.6, 0.8)
+        with patch.object(module, '_rank_numpy_backend',
+                          side_effect=AssertionError('small dimension loaded NumPy')) as backend:
+            actual = snapshot.rank(query, ids)
+        self.assertEqual(backend.call_count, 0)
+        expected = []
+        view = memoryview(snapshot._matrix[0][0]).cast('d')
+        for index, aid in enumerate(ids):
+            start = index * ident.dimension
+            expected.append((aid, math.fsum(map(operator.mul, query,
+                                                view[start:start + ident.dimension]))))
+        expected.sort(key=lambda row: (-row[1], int(row[0])))
+        self.assertEqual(self._rank_bits(actual), self._rank_bits(expected))
+
+    def test_optional_product_scratch_is_bounded_private_and_generation_checked(self):
+        try:
+            import numpy
+        except ImportError:
+            self.skipTest('optional NumPy is unavailable')
+        from app.access import semantic_bulk_vectors as module
+
+        ident = identity(768)
+        vectors = self._many_rank_vectors(768, 160)
+        store, records = self.build(vectors, ident)
+        snapshot = store.snapshot(records, library_id='family-a')
+        ids = tuple(record.asset_id for record in records)
+        query = (0.6, 0.8) + (0.0,) * 766
+        real_empty = numpy.empty
+        arrays = []
+        lock = threading.Lock()
+        def bounded_empty(*args, **kwargs):
+            value = real_empty(*args, **kwargs)
+            with lock:
+                arrays.append(value)
+            self.assertLessEqual(value.nbytes, module._RANK_PRODUCT_BUFFER_BYTES)
+            return value
+        with patch.object(numpy, 'empty', side_effect=bounded_empty):
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = tuple(pool.map(lambda _: snapshot.rank(query, ids), range(2)))
+        self.assertEqual(len(arrays), 2)
+        self.assertIsNot(arrays[0], arrays[1])
+        self.assertEqual(self._rank_bits(results[0]), self._rank_bits(results[1]))
+
+        original_matrix = snapshot._matrix
+        calls = 0
+        def replace_generation():
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                object.__setattr__(snapshot, '_matrix', tuple(list(original_matrix)))
+        try:
+            with self.assertRaises(BulkVectorUnavailable):
+                snapshot.rank(query, ids, check=replace_generation)
+            self.assertEqual(calls, len(ids) + 1)
+        finally:
+            object.__setattr__(snapshot, '_matrix', original_matrix)
+
+    def test_optional_numpy_import_falls_back_only_for_importerror(self):
+        from app.access import semantic_bulk_vectors as module
+
+        with patch('builtins.__import__', side_effect=ImportError('no numpy')):
+            self.assertIsNone(module._rank_numpy_backend())
+        with patch('builtins.__import__', side_effect=RuntimeError('broken numpy install')):
+            with self.assertRaisesRegex(RuntimeError, 'broken numpy install'):
+                module._rank_numpy_backend()
 
     def test_matching_checksum_nonunit_and_boolean_schema_are_refused(self):
         from app.access import semantic_bulk_vectors as module
