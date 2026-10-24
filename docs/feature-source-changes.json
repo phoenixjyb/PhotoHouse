@@ -30823,9 +30823,20 @@
           "path": "server/tests/security/test_semantic_artifact_field_extraction.py",
           "before_sha256": null,
           "sha256": "9a5a61a0314c8c17ec44719d43e12f3ee3c94b6952e493d47a0c2725740124fd"
+        },
+        {
+          "path": "docs/SEMANTIC_ARTIFACT_FIELD_COPY.md",
+          "before_sha256": null,
+          "sha256": "66c4105c76e0173a4a9196020725b6c3cf6a71a0953be1ed4da31402ccfee1d0"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "ca64e29bd577e61dbff7bbc62815d1ddb21dd12dc5be9ed5a0a08b1ad4c59003",
+          "sha256": "821adc360d336ee65aa92fbbf6d6e7aa587cb19e418a2fbb3deacb5772bb1c25"
         }
       ],
-      "notes": "C-backed extraction copies the same16 current artifact fields; C map iteration retains exact type identity and per-row callbacks. No cache, SQL, policy, source/file/generation or rank change. Focused70 tests passed Python3.12/NumPy2.2.6 and3.14/2.4.2. Generated23696x768 full API comparison18 measured requests retained exact full JSON/rank bits; noisy local mean2.775s vs2.987s is not Windows/model/network/2s or activation qualification."
+      "notes": "C-backed extraction copies the same16 current artifact fields; C map iteration retains exact type identity and per-row callbacks. No cache, SQL, policy, source/file/generation or rank change. Focused70 tests passed Python3.12/NumPy2.2.6 and3.14/2.4.2. Generated23696x768 full API comparison18 measured requests retained exact full JSON/rank bits; noisy local mean2.775s vs2.987s is not Windows/model/network/2s or activation qualification. Additional74 semantic endpoint/streaming tests passed on3.12; 122 unique cases across overlapping focused sets. Code and local synthetic results remain separate from native qualification.",
+      "source_commit": "c01758491b87c6e2a7fb3f8bfff66d949df8e2c2"
     }
   ]
 }

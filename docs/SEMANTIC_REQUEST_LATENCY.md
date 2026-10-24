@@ -1,5 +1,10 @@
 # Protected semantic request latency
 
+The [exact artifact field copying note](SEMANTIC_ARTIFACT_FIELD_COPY.md) records
+a later source-only optimization and an alternating complete-request comparison
+on generated data. Its mean local request time was 2.775 versus 2.987 seconds;
+the 2-second target remains unmet, and Windows qualification is still required.
+
 The [R80 exact-product source note](SEMANTIC_EXACT_PRODUCT_RANKING.md) records a
 later local ranking optimization, its generated 23,696/40,000-row comparisons
 and unchanged activation gates. It is not included in the Windows measurements
