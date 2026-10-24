@@ -121,3 +121,34 @@ understands negation. Serving bindings, compatible immutable image coverage,
 latency/resource limits, protected integration and family/device acceptance
 remain separate gates. Semantic search stays disabled until those gates are
 independently resolved.
+
+
+## October 25 admission phrase repair (policy 3, source only)
+
+A generated endpoint replay found eight explicit exclusions that reached
+approximate ranking: Chinese prohibitions such as `不得有其他人`, `不准出现狗`
+and `甭有狗`, exception clauses such as `除狗之外`, and English `excepting`
+and `free from`. Each returned a result and invoked the fixture provider. A
+similarity score could not establish these negative conditions.
+
+The shared admission guard now recognizes these bounded prohibition and
+exception forms, English omission verbs and `omission of`, and simplified,
+traditional and mixed wording. The request asks for a complete revised positive
+search before any vector read or encoder call. Literal text inside a supported
+`find photos containing "..."` request stays opaque to this guard; an unframed
+quoted visual scene does not. Positive controls include `不倒翁`, `无锡`,
+`没落的建筑`, `不得了的美景` and `freeform`.
+
+This is a conservative cue guard, not a general negation grammar. Ambiguous
+`除了...` wording and `不准时` can request clarification; `photos, videos
+excepted` also clarifies rather than silently extending the closed media rewrite.
+These restrictions preserve uncertain conditions. They do not prove the model
+understands absence or qualify Shanxi/Jin dialects or ASR.
+
+Exclusion policy version 3 participates in the semantic extension binding so
+prior bound rankings must refresh. The focused literal-plan, pending-context,
+intent, semantic endpoint, initial-search and refusal suites passed 132 tests
+and 423 subtests. Authorization-before-guard and server-snapshot admission are
+retained. This source change is later than the `605ff8d` full API check and the
+`4254107` Windows measurement; those results do not qualify these new bytes.
+No deployment or activation is included. Semantic search remains OFF.

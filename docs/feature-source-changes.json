@@ -31046,6 +31046,35 @@
         }
       ],
       "notes": "Document actual4254107 R94 ninewarm median5250/max5703/cold12953ms; unchanged2stargetfailed, bothaudits/15protectionsran, laterofflineSSHfailed. Exactone-reader R103cleanup and192.824soffline/freshlocalaudit yieldedlimitedownedrelease only; originalqualificationfalse retained. Sourceab89fbd full3447tests/4138subtests+demo had295runtimepayloads identical425. Later605ff8d privateobserver66focused andfull3475tests/4138subtests+generateddemo passed withunchangedsourceidentity. Noactualfamilyquality/activation/deployment; earlierrecords historical."
+    },
+    {
+      "feature": "semantic-exclusion-prohibition-exception-omission-cues-r119",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/search_exclusions.py",
+          "before_sha256": "248e8722470ae6e5b1f95b5b8dced59dc1353af234a9d380fcaef6310f18017d",
+          "sha256": "cb7aeb07d6e1642de82acd764ad089e46471d1d9cb589e5fd8ab2b4ac6ec4444"
+        },
+        {
+          "path": "server/tests/security/test_search_exclusions.py",
+          "before_sha256": "f235bc25d25c9115bacc7e0ee18e15df1d24e0573036f2dff6bb095d0b9719f0",
+          "sha256": "84e5d36babc44789d5b7918813f123dc89e0b2907501f9c7689e36a5cb343118"
+        },
+        {
+          "path": "docs/SEMANTIC_EXCLUSION_QUALIFICATION.md",
+          "before_sha256": "33eb41eee531424547fa4a2e43d25205eb1b92d148be1682331e989f155a2d83",
+          "sha256": "4f5bbec7837feffb94ad9364e7bf496db25c95665c3304c5d37edcaf9eea9cf1"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "4655978bc4e11f581a5773c1090167ad9e31aeb2b2ea8f2ada5a72a1cb209adb",
+          "sha256": "7edeb0abf953dabd3040204a1c9f4953d7ace12f8440a4c2f97ed73d04eecde1"
+        }
+      ],
+      "notes": "Reproduced8generatedendpointqueries withclearChineseprohibition/exception orEnglishexcepting/freefrom reachingranking/provider. Addboundedsharedcue forms+Englishomissionwordforms, policy3 bindssemanticrankingrefresh. Positivelexical controls, exactliteralquotedtext opacity, authorizationbeforeguard andserver-snapshotguard preserved. Focused8modules132tests/423subtests passed; notnewfullAPI/native/ASR/Jinquality oractivation. No runtimeconfiguration/Windowschange. Added explicit API regression that policy2 boundranking returns409 underpolicy3 without anotherencoder invocation."
     }
   ]
 }

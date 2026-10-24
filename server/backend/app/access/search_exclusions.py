@@ -8,7 +8,7 @@ admission policy, not a general natural-language negation parser.
 import re
 import unicodedata
 
-EXCLUSION_POLICY_VERSION = 2
+EXCLUSION_POLICY_VERSION = 3
 
 # Keep negative predicates shared by request admission and affirmative evidence
 # matching. Do not match a bare 不/未: lexical words such as 不倒翁/未来 are
@@ -23,10 +23,11 @@ _APOSTROPHE = r'[\x27’‘ʼ‛]'
 # ASCII boundaries keep Chinese/English combinations usable without matching
 # e.g. notebook. Quoted scene wording is deliberately not opaque to this guard.
 NEGATION = re.compile(
-    r'(?a:\b)(?:no|not|never|without|except|excluding|exclude|neither|nor|'
+    r'(?a:\b)(?:no|not|never|without|except(?:ed|ing)?|excluding|exclude|neither|nor|'
     r'remove|delete|cannot|lacking|lacks?|absent|absence\s+of|zero|none|'
     r'nobody|nothing|minus|devoid\s+of|'
-    r'rather\s+than|instead\s+of|other\s+than|free\s+of)(?a:\b)|'
+    r'rather\s+than|instead\s+of|other\s+than|free\s+(?:of|from)|'
+    r'omission\s+of|omit(?:s|ted|ting)?)(?a:\b)|'
     r'(?a:\b)(?:don|doesn|didn|isn|aren|wasn|weren|hasn|haven|hadn|'
     r'can|couldn|wouldn|shouldn|mustn|won|ain|needn|mightn)' + _APOSTROPHE + r't(?a:\b)|'
     r'(?a:\b)non[-\s]|[-]free(?a:\b)|'
@@ -38,6 +39,9 @@ NEGATION = re.compile(
     r'没(?!落)|沒(?!落)|看不到|看不见|看不見|缺少|缺乏|'
     r'无(?!锡)|無(?!錫)|'
     r'(?:别|別|甭)(?:带|帶|出现|出現|穿|戴|拿|放|拍|选|選)|'
+    r'(?:不(?:得|准|準|许|許)|甭)(?:有|是|含|包括|包含|带|帶|出现|出現|穿|戴|拿|吃|喝|坐|站|躺|睡|玩)|'
+    r'不准|不準|不许|不許|'
+    r'甭要|除了|除去|除[^，,。.!！？?;；\n]{1,64}(?:之外|以外)|'
     r'避开|避開|去掉|零(?:只|个|個|位|人|辆|輛)|' +
     _CHINESE_NEGATIVE_PREDICATE, re.I)
 

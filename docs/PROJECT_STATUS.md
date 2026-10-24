@@ -1,5 +1,14 @@
 # Current project status
 
+**October 25 exclusion phrase repair (source only / OFF):** policy 3 requests
+clarification for additional explicit English/Chinese/mixed prohibition,
+exception and omission phrases before vectors or model calls. Eight generated
+endpoint misses were reproduced; 132 focused tests / 423 subtests passed after
+the repair. Supported quoted literal text and positive lexical controls remain
+usable. This is later source than the full API and native results below, and
+is no ASR/dialect or model-negation qualification. See the
+[admission repair](SEMANTIC_EXCLUSION_QUALIFICATION.md#october-25-admission-phrase-repair-policy-3-source-only).
+
 **October 25 current semantic checkpoint (R94 / OFF / undeployed):**
 application source `4254107` ran against the isolated synthetic-account fixture
 with the reviewed frozen catalog and prepared family vectors: 23,761 catalog
@@ -671,7 +680,7 @@ only a valid explicit QuickTime capture timestamp, preserve its local day and
 leave unknown dates unknown; the worker fills null dates only. No historical
 backfill, production write, model or permission activation occurred. The
 [operator guide](SEARCH_READINESS_AND_RELEVANCE.md) records limitations and commands.
-The focused search/source/storage cohort passes **131 tests / 81 subchecks**.
+The focused search/source/storage cohort passes **132 tests / 81 subchecks**.
 The video cohort passes **12 tests / 13 subchecks**, including a generated MP4
 through real FFmpeg/ffprobe. Later full release profiles and native Windows,
 real-library relevance and family/device acceptance remain open. The Android
