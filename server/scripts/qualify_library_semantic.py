@@ -64,6 +64,185 @@ def _summary(samples):
         "max_ms": ordered[-1]}
 
 
+def _result_observation(query, body, sample, *, cohort_ids, library_id,
+                        binding_sha256, index_sha256, query_plan_sha256):
+    """Build a bounded, redacted observation from one successful result body."""
+    _require(type(query) is dict and set(query) == {"id", "language", "text"},
+             "result_observation_invalid")
+    _require(type(query["id"]) is str and re.fullmatch(
+                 r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", query["id"], re.ASCII)
+             and query["language"] in ("en", "zh", "zh-en")
+             and type(query["text"]) is str,
+             "result_observation_invalid")
+    _require(type(sample) is dict
+             and {"query_id", "language", "query_sha256", "repetition", "elapsed_ms",
+                  "candidate_count"} <= set(sample)
+             and set(sample) <= {"query_id", "language", "query_sha256", "repetition",
+                  "elapsed_ms", "candidate_count", "runtime_profile_ordinal"}
+             and sample["query_id"] == query["id"]
+             and sample["language"] == query["language"]
+             and type(sample["query_sha256"]) is str
+             and sample["query_sha256"] == hashlib.sha256(query["text"].encode("utf-8")).hexdigest()
+             and type(sample["repetition"]) is int and sample["repetition"] >= 0
+             and type(sample["elapsed_ms"]) in (int, float)
+             and math.isfinite(sample["elapsed_ms"]) and sample["elapsed_ms"] >= 0,
+             "result_observation_invalid")
+    profile_ordinal = sample.get("runtime_profile_ordinal")
+    _require(profile_ordinal is None or (type(profile_ordinal) is int
+             and 1 <= profile_ordinal <= 256), "result_observation_invalid")
+    _require(type(cohort_ids) is tuple and 0 < len(cohort_ids) <= 100000
+             and all(type(item) is str and re.fullmatch(r"[1-9][0-9]{0,18}", item)
+                     and int(item) <= 2**63 - 1
+                     for item in cohort_ids)
+             and len(set(cohort_ids)) == len(cohort_ids),
+             "result_observation_invalid")
+    for pin in (binding_sha256, index_sha256, query_plan_sha256):
+        _require(type(pin) is str and re.fullmatch(r"[0-9a-f]{64}", pin),
+                 "result_observation_invalid")
+    _require(type(library_id) is str and re.fullmatch(r"[A-Za-z0-9._-]{1,128}", library_id),
+             "result_observation_invalid")
+    _require(type(body) is dict, "result_observation_invalid")
+    try:
+        _bounded_json_value(body)
+        canonical_body = json.dumps(body, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False, allow_nan=False).encode("utf-8")
+    except (TypeError, ValueError, UnicodeError):
+        raise LibrarySemanticRefused("result_observation_invalid") from None
+    _require(len(canonical_body) <= 4 * 1024 * 1024, "result_observation_invalid")
+    _require(body.get("library_id") == library_id
+             and type(body.get("page")) is int and body["page"] == 1
+             and type(body.get("page_size")) is int and body["page_size"] == 20,
+             "result_observation_invalid")
+    for field in ("binding", "fingerprint"):
+        _require(type(body.get(field)) is str
+                 and re.fullmatch(r"[0-9a-f]{64}", body[field]),
+                 "result_observation_invalid")
+    semantic = body.get("semantic")
+    items = body.get("items")
+    _require(type(semantic) is dict and type(items) is list and len(items) <= 20,
+             "result_observation_invalid")
+    cohort = set(cohort_ids)
+    candidate_count = semantic.get("candidate_count")
+    total = body.get("total")
+    _require(type(candidate_count) is int and candidate_count == len(cohort)
+             and type(sample["candidate_count"]) is int
+             and sample["candidate_count"] == candidate_count
+             and type(total) is int and total == candidate_count
+             and len(items) == min(body["page_size"], candidate_count)
+             and semantic.get("coverage") == "complete_eligible_images",
+             "result_observation_invalid")
+    ranked = []
+    seen = set()
+    for rank, item in enumerate(items, 1):
+        _require(type(item) is dict, "result_observation_invalid")
+        asset_id = item.get("id")
+        score = item.get("semantic_score")
+        _require(type(asset_id) is str and asset_id in cohort and asset_id not in seen
+                 and type(score) in (int, float) and math.isfinite(score),
+                 "result_observation_invalid")
+        seen.add(asset_id)
+        ranked.append({"asset_id": asset_id, "rank": rank, "semantic_score": float(score)})
+    coverage_details = semantic.get("coverage_details")
+    if coverage_details is None:
+        coverage = {"label": semantic.get("coverage"), "candidate_count": candidate_count}
+    else:
+        _require(type(coverage_details) is dict and set(coverage_details) == {
+            "version", "policy_sha256", "state", "catalog_images", "searchable_images",
+            "omitted_images", "matched_omitted_images"}
+            and type(coverage_details.get("version")) is int
+            and coverage_details["version"] == 1
+            and type(coverage_details.get("policy_sha256")) is str
+            and re.fullmatch(r"[0-9a-f]{64}", coverage_details["policy_sha256"])
+            and coverage_details.get("state") in ("complete", "partial"),
+            "result_observation_invalid")
+        count_fields = ("catalog_images", "searchable_images", "omitted_images",
+                        "matched_omitted_images")
+        _require(all(type(coverage_details.get(name)) is int and coverage_details[name] >= 0
+                     for name in count_fields)
+            and coverage_details["catalog_images"] == (
+                coverage_details["searchable_images"] + coverage_details["omitted_images"])
+            and coverage_details["searchable_images"] == candidate_count
+            and coverage_details["matched_omitted_images"] <= coverage_details["omitted_images"]
+            and ((coverage_details["state"] == "partial")
+                 == (coverage_details["omitted_images"] > 0)),
+            "result_observation_invalid")
+        coverage = {"label": semantic.get("coverage"), "candidate_count": candidate_count,
+            "policy_sha256": coverage_details["policy_sha256"],
+            "catalog_images": coverage_details["catalog_images"],
+            "searchable_images": coverage_details["searchable_images"],
+            "omitted_images": coverage_details["omitted_images"],
+            "matched_omitted_images": coverage_details["matched_omitted_images"],
+            "state": coverage_details.get("state")}
+    observation = {
+        "schema": "photohouse.semantic_result_observation.v1",
+        "query_id": sample["query_id"], "language": sample["language"],
+        "query_sha256": sample["query_sha256"],
+        "canonical_response_sha256": hashlib.sha256(canonical_body).hexdigest(),
+        "library_id": library_id, "model_binding_sha256": binding_sha256,
+        "response_binding_sha256": body["binding"],
+        "request_fingerprint_sha256": body["fingerprint"],
+        "index_sha256": index_sha256, "query_plan_sha256": query_plan_sha256,
+        "repetition": sample["repetition"],
+        "elapsed_ms": float(sample["elapsed_ms"]),
+        "runtime_profile_ordinal": profile_ordinal,
+        "candidate_count": candidate_count,
+        "coverage": coverage, "top_results": ranked,
+    }
+    _require(len(json.dumps(observation, separators=(",", ":"),
+            ensure_ascii=False, allow_nan=False).encode("utf-8")) <= 32 * 1024,
+             "result_observation_invalid")
+    return observation
+
+
+def _bounded_json_value(value, *, depth=0, budget=None):
+    """Reject non-JSON or oversized response trees before canonical encoding."""
+    if budget is None:
+        budget = [4 * 1024 * 1024]
+    _require(depth <= 16, "result_observation_invalid")
+    if value is None or type(value) is bool:
+        budget[0] -= 8
+    elif type(value) is int:
+        _require(-(2**63) <= value < 2**63, "result_observation_invalid")
+        budget[0] -= 24
+    elif type(value) is float:
+        _require(math.isfinite(value), "result_observation_invalid")
+        budget[0] -= 24
+    elif type(value) is str:
+        byte_count = 0
+        for offset in range(0, len(value), 4096):
+            byte_count += len(value[offset:offset + 4096].encode("utf-8"))
+            _require(byte_count + 2 <= budget[0], "result_observation_invalid")
+        budget[0] -= byte_count + 2
+    elif type(value) is list:
+        _require(len(value) <= 10000, "result_observation_invalid")
+        budget[0] -= 2 + len(value)
+        for child in value:
+            _bounded_json_value(child, depth=depth + 1, budget=budget)
+    elif type(value) is dict:
+        _require(len(value) <= 10000 and all(type(key) is str for key in value),
+                 "result_observation_invalid")
+        budget[0] -= 2 + len(value)
+        for key, child in value.items():
+            _bounded_json_value(key, depth=depth + 1, budget=budget)
+            _bounded_json_value(child, depth=depth + 1, budget=budget)
+    else:
+        raise LibrarySemanticRefused("result_observation_invalid")
+    _require(budget[0] >= 0, "result_observation_invalid")
+
+
+def _observe_result(callback, query, body, sample, **pins):
+    if callback is None:
+        return
+    observation = _result_observation(query, body, sample, **pins)
+    # The callback receives its own detached value and cannot alter the API body,
+    # later repetitions, or the qualification report.
+    detached = json.loads(json.dumps(observation, ensure_ascii=False, allow_nan=False))
+    try:
+        callback(detached)
+    except Exception:
+        raise LibrarySemanticRefused("result_observer_failed") from None
+
+
 def _record_digest(path):
     digest = hashlib.sha256()
     with Path(path).open("rb") as stream:
@@ -167,13 +346,14 @@ def prepare_omission_review(index_path, output_directory):
 
 def measure(index_path, output_directory, *, model, queries, repetitions=1, network=None,
             bulk_vectors=False, omission_review_path=None, profile_requests=False,
-            profile_setup=False, checkpoint_directory=None):
+            profile_setup=False, checkpoint_directory=None, result_observer=None):
     """Run the explicit canary, optionally observing private request phases.
 
     A full-catalog run requires a separately reviewed omission document. No
     builder promotes an unreviewed draft, and no production accounts are used.
     """
     _require(type(profile_requests) is bool and type(profile_setup) is bool)
+    _require(result_observer is None or callable(result_observer), "invalid_result_observer")
     repo_backend = str(Path(__file__).parents[1] / 'backend')
     if repo_backend not in sys.path:
         sys.path.insert(0, repo_backend)
@@ -210,7 +390,7 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
             result = _measure(index_path, output_directory, model=model, queries=queries,
                 repetitions=repetitions, network=network, bulk_vectors=bulk_vectors,
                 omission_review_path=omission_review_path, request_observer=observer,
-                setup_observer=setup)
+                setup_observer=setup, result_observer=result_observer)
             if observer is not None:
                 result['request_profile'] = observer.snapshot()
             if setup is not None:
@@ -235,7 +415,8 @@ def _phase(observer, name):
 
 
 def _measure(index_path, output_directory, *, model, queries, repetitions, network,
-             bulk_vectors, omission_review_path, request_observer, setup_observer=None):
+             bulk_vectors, omission_review_path, request_observer, setup_observer=None,
+             result_observer=None):
     """Run a bounded synthetic-account canary over a verified immutable index.
 
     ``model`` must be the caller's real, loaded, UNBOUND LibrarySiglipModel.
@@ -456,7 +637,10 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
                 index_root=index_root, index_hash=index_hash, manifest=manifest,
                 original_vector_hashes=original_vector_hashes, net_files=net_files,
                 warmup_holder=[None], bulk_store=bulk_store, eligibility=eligibility,
-                omitted=omitted, during_encode=during_encode, request_observer=request_observer)
+                omitted=omitted, during_encode=during_encode, request_observer=request_observer,
+                result_observer=result_observer,
+                query_plan_sha256=(hashlib.sha256(canonical(list(query_plan))).hexdigest()
+                    if result_observer is not None else None))
 
     # Only publish the report after all temporary clients/listeners have closed.
     with _phase(setup_observer, 'final_model_verify'):
@@ -531,7 +715,8 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
                 origin, api_socket, provider_token, port, counters, protected,
                 denial_latencies, rows, index_path, index_root, index_hash,
                 manifest, original_vector_hashes, net_files, warmup_holder, bulk_store=None,
-                eligibility=None, omitted=(), during_encode=None, request_observer=None):
+                eligibility=None, omitted=(), during_encode=None, request_observer=None,
+                result_observer=None, query_plan_sha256=None):
     import httpx
     from app.access.semantic_encoder import LocalSemanticEncoder
     from app.access.semantic_search import SemanticSearchRuntime
@@ -602,6 +787,17 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
                 and after_profile == before_profile + 1 and after_profile <= 256 else None)
             return response, (time.monotonic() - started) * 1000
 
+        qualified_ids = tuple(str(record.asset_id) for record in records)
+        if result_observer is not None:
+            qualified_set = set(qualified_ids)
+            omitted_ids = {str(row.asset_id) for row in omitted}
+            catalog_ids = set(ids)
+            _require(len(ids) == len(catalog_ids)
+                and len(omitted_ids) == len(omitted)
+                and not (qualified_set & omitted_ids)
+                and catalog_ids == qualified_set | omitted_ids,
+                "current_qualified_cohort_mismatch")
+
         def coverage(body, matched):
             if eligibility is None:
                 _require('coverage_details' not in body.get('semantic', {}), 'legacy_coverage_changed')
@@ -642,11 +838,16 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
                 _require(body.get("semantic", {}).get("candidate_count") == len(records)
                     and body.get("total") == len(records), "candidate_cohort_incomplete")
                 coverage(body, len(omitted))
-                rows.append({"query_id": query["id"], "language": query["language"],
+                sample = {"query_id": query["id"], "language": query["language"],
                     "query_sha256": hashlib.sha256(query["text"].encode("utf-8")).hexdigest(),
                     "repetition": repetition, "elapsed_ms": elapsed,
                     **({'runtime_profile_ordinal': last_profile_ordinal[0]} if request_observer else {}),
-                    "candidate_count": body["semantic"]["candidate_count"]})
+                    "candidate_count": body["semantic"]["candidate_count"]}
+                _observe_result(result_observer, query, body, sample,
+                    cohort_ids=qualified_ids, library_id=library,
+                    binding_sha256=binding.binding_sha256, index_sha256=index_hash,
+                    query_plan_sha256=query_plan_sha256)
+                rows.append(sample)
 
         allowed = {record.asset_id for index, record in enumerate(records) if index % 2 == 1}
         response, _elapsed = request(queries[0]["text"],

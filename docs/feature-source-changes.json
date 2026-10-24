@@ -30990,6 +30990,38 @@
         }
       ],
       "notes": "Test-only: force general facts along with eager text projection in the comparison reader. The prior helper left exact image-only facts enabled while forcing text projection, correctly tripping the product inconsistency guard. Preserve product guards and response/caption-digest assertions. Two previously failed tests and five media-only tests pass; original full-profile failure receipt retained. No server runtime payload or frozenR94 change."
+    },
+    {
+      "feature": "semantic-private-result-observation-r99",
+      "source_commit": "ab89fbd61017627bf45df25e53a75f57a1df60c9",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "production_data_used": false,
+      "family_relevance_measured": false,
+      "files": [
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "before_sha256": "66b208bc5e9f4272aebf914cea6f03f725de28ecccd67ea5bde94683f8a51245",
+          "sha256": "f8c1781ee4360d727ec507846e7592e9a2d1b06b8d1f3ed5489ab650ca2f6646"
+        },
+        {
+          "path": "server/tests/security/test_semantic_result_observation.py",
+          "before_sha256": null,
+          "sha256": "f9938784f3ee96bcc0129aab0f6a9f21c52ecf602092ba358b15b217bad2e1af"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d63ee66a49de341ffaa5aec44f370310c1f8d142185770af68c0dbd66496828e",
+          "sha256": "5793c229043d9cb21df60c4b5317898bc54a642a9859910bff81db11daa4a0ca"
+        },
+        {
+          "path": "docs/SEMANTIC_RESULT_OBSERVATION.md",
+          "before_sha256": null,
+          "sha256": "57ec5d9416a5763414ee5b8de7a955481c9663e1a22a19b10202fbd2c6f861e2"
+        }
+      ],
+      "notes": "Optional local qualification observer projects each successful measured response into a bounded redacted record for private result review. Default remains None with no observation fields and no query-plan digest work. Callback outputs retain library and top-result asset IDs and are private, linkable data. New generated-only tests verify sample/profile joins and partial READY/omitted coverage; no quality threshold, family acceptance, activation, runtime configuration or actual family data is added."
     }
   ]
 }
