@@ -56,13 +56,15 @@ def name_hits(words, label, aliases=(), *, person=False):
 
 class AssistantSearchReads(d.DiscoveryReads):
     def __init__(self, access, provider, budget, *, kinship=None, facts_cache=None,
-                 description_enabled=False):
+                 description_enabled=False, text_projection_required=True):
         super().__init__(access, provider,
                          budget.search_view() if isinstance(budget, d.ReadBudget) else budget)
         d.require(type(description_enabled) is bool)
+        d.require(type(text_projection_required) is bool)
         self.kinship = kinship
         self._facts_cache = facts_cache
         self.description_enabled = description_enabled
+        self._text_projection_required = text_projection_required
         self._quality_by_id = {}
         self._check = lambda: None
         self._prepared_description = None
@@ -114,18 +116,39 @@ class AssistantSearchReads(d.DiscoveryReads):
         # same opaque binding within one synchronous turn, never across turns.
         self._check = check
         check()
+        projection_required = self._text_projection_required
+        if type(projection_required) is not bool:
+            raise d.DiscoveryUnavailable()
         cache = self._facts_cache
-        if cache is not None and cache.get('binding') == binding:
+        if (cache is not None and cache.get('binding') == binding
+                and cache.get('text_projection_required') is projection_required):
             return cache['facts']
         facts = self._facts(index, source, people, places, check)
         check()
+        if self._text_projection_required is not projection_required:
+            if cache is not None:
+                cache.clear()
+            raise d.DiscoveryUnavailable()
         if cache is not None:
             cache.clear()
-            cache.update(binding=binding, facts=facts)
+            cache.update(binding=binding, text_projection_required=projection_required,
+                         facts=facts)
         return facts
 
     def _facts(self, index, source, people, places, check):
+        projection_required = self._text_projection_required
+        if type(projection_required) is not bool:
+            raise d.DiscoveryUnavailable()
         assets, rows, facets, coverage = super()._facts(index, source, people, places, check)
+        if not projection_required:
+            # Raw captions and notes still participate in every fresh source
+            # read and binding. Only unused derived provenance is deferred.
+            for aid, row in rows.items():
+                check()
+                row['_asset_id'] = aid
+                row['text_sources'] = []
+            check()
+            return assets, rows, facets, coverage
         captions = defaultdict(list)
         for row in source['text_captions']:
             check(); captions[str(row[1])].append(row)
@@ -148,6 +171,11 @@ class AssistantSearchReads(d.DiscoveryReads):
         return assets, rows, facets, coverage
 
     def _content_match(self, row, filters):
+        if (('text' in filters or 'descriptive' in filters)
+                and self._text_projection_required is not True):
+            # A wrongly configured internal reader must not silently drop a
+            # lexical condition or turn it into a broad semantic search.
+            raise d.DiscoveryUnavailable()
         if row and ('text' in filters or 'descriptive' in filters) and '_normalized_sources' not in row:
             row['_normalized_sources'] = search_text.normalize_sources(row['text_sources'], self._check)
         text_match, text_reasons, text_quality = search_text.match_text(

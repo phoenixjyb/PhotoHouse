@@ -1,5 +1,170 @@
 # Current project status
 
+**October 25 exclusion phrase repair (source only / OFF):** policy 3 requests
+clarification for additional explicit English/Chinese/mixed prohibition,
+exception and omission phrases before vectors or model calls. Eight generated
+endpoint misses were reproduced; 132 focused tests / 423 subtests passed after
+the repair. Supported quoted literal text and positive lexical controls remain
+usable. This is later source than the full API and native results below, and
+is no ASR/dialect or model-negation qualification. See the
+[admission repair](SEMANTIC_EXCLUSION_QUALIFICATION.md#october-25-admission-phrase-repair-policy-3-source-only).
+
+**October 25 current semantic checkpoint (R94 / OFF / undeployed):**
+application source `4254107` ran against the isolated synthetic-account fixture
+with the reviewed frozen catalog and prepared family vectors: 23,761 catalog
+entries, 23,696 vectors and 65 qualification-only omissions. Both full audits
+and all 15 protection cases ran. Nine warm English/Chinese/mixed HTTPS samples
+measured **5.250 s median / 5.703 s maximum**; cold latency was **12.953 s**.
+Every warm sample exceeded the unchanged 2 s target. These are native/provider/
+loopback-network measurements, not production, phone/WAN or family relevance
+acceptance. R92 previously measured 6.469 / 7.203 s; separate shared-host runs
+do not establish a causal saving from the intervening changes.
+
+The native Job closed, but the later first offline-collection SSH call timed
+out with no response. Whole qualification failed and the second observation
+was not run. A separately reviewed one-shot observer and exact native-handle
+cleanup stopped only the identified reader, preserved its parent, and verified
+its empty owned scope. After 192.824 s offline and a fresh local transport audit,
+the coordinator explicitly released that limited owned scope. Original failures
+and the incomplete offline pair remain; cleanup does not qualify the feature or
+establish that the whole shared host is free. No replay or activation occurred.
+
+**Current local source validation:** the exact image-only facts and immutable
+SQL-cohort grammar optimizations retain all fresh SQL, authorization, source,
+policy and file checks. Source `ab89fbd` passed **3,447 API tests / 4,138 subtests**
+and the generated demo. Its 295 runtime payloads are byte-identical to R94's
+`4254107` archive. The later `605ff8d` qualification-only
+[result observer](SEMANTIC_RESULT_OBSERVATION.md) passed 66 focused checks and
+then **3,475 API tests / 4,138 subtests** plus the generated demo on a clean,
+unchanged checkout. It captures bounded private rankings for future bilingual
+comparisons. It has no actual-family relevance result and does not change the default measurement
+report or enable serving. The
+[readiness checkpoint](SEMANTIC_SEARCH_READINESS_2026-10-24.md) records current
+performance, coverage, omission-policy and release gates. Earlier entries below
+retain their historical source and acceptance scope.
+
+**October 23 bounded metadata reader (R69, source only):** the read-only index
+inspector now parses and canonical-checks one bounded descriptor read, then
+retains a second complete digest/identity verification. Metadata is bound to its
+manifest SHA; private-file checks, link/reparse/identity guards, writer/resume
+behavior, source checks, vector validation and both full audits remain. All
+**41 focused tests** passed, and independent code review found no blocking
+regression. Exact code `c534805` passed **3,405 API tests / 4,037 subtests** and
+the generated demo with a clean, unchanged checkout. This change was **not**
+in the R68 Windows run below; it has no native timing or
+activation acceptance. Semantic search stays **OFF**.
+
+**October 23 complete semantic qualification (R68, isolated / undeployed):**
+exact source `13a94dd` completed its bounded Windows CPU run in **1,582.750 s**.
+Both independent full audits and all **15 protection checks** passed against
+23,761 catalog entries, 23,696 vectors and the same 65 omissions approved for
+qualification only. Nine English/Chinese/mixed loopback HTTPS/TCP samples measured
+**8.000 s median / 8.438 s maximum**; cold latency was **15.594 s**. The 2-second
+backend target remains unmet; semantic search stays **OFF**.
+
+Independent readback verified all 12 staged inputs, exact source/model/index
+bindings, measurement/sample profiles, Job limits and 322 closed diagnostic
+checkpoints. No owned test Python process or test listener remained. The fresh
+postflight baseline preserved the live API, stores, tasks, catalog, models/index,
+permissions and semantic-off policy. All 83 preservation pins, 12 report trees
+and 200 current furniture-report assets passed before/after checks, including
+trusted HTTPS. These checks do not establish continuous uptime or phone/WAN use.
+After 185.668 seconds without host access, independent local closure review
+passed and the Windows window was explicitly released before expiry. No queued
+dispatch or owned local SSH/SFTP process remained.
+
+R66 authenticated through the verified direct route but timed out staging a
+partial archive; it started no model/native test. R67 staged all 12 inputs but
+correctly refused a native start after its time reserve expired. Both stages
+were preserved and explicitly released after closure. R68 reused only the
+verified identical source archive through a fresh, no-overwrite private copy;
+all remaining inputs, admission, both audits and native checks were fresh.
+The compressed archive is 1,412,632 bytes, 73.21% smaller than the earlier
+5,272,648-byte package; its 295 source payloads and manifest are identical.
+See [the complete native record](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md#latest-complete-native-result-october-23-2026).
+
+**October 23 audit optimization (R65, source only / unmerged):** the full-index
+inspector now validates complete checkpoint coverage and its exact agreement with
+the manifest before one artifact-verification pass. Resume/index construction,
+the protected JSON reader, vector checkpoint/hash/identity checks, canonical
+components, source checks and both independent qualification audits remain.
+
+The focused index/vector/checkpoint suites passed **54 tests / 4 subtests**.
+A generated 515-image Mac comparison returned identical manifests, artifacts and
+identities: vector read/decode calls fell from 1,030 to 515, JSON loads from 1,098
+to 583 and checkpoint inspections from 2,128 to 1,098 per audit. Three alternating
+pairs measured a median 1,453.685 ms before / 827.143 ms after. These are local
+model-free audit measurements, not native query latency or qualification.
+Exact code commit `13a94dd` passed **3,389 API tests / 4,037 subtests** and the
+generated demo with a clean, unchanged checkout. The matching runtime archive
+contains 295 verified source files. The later R68 run above completed native qualification of this exact code;
+semantic search stays **OFF**. No production deployment or
+activation is included.
+
+R65 started no model run and staged no candidate. Read-only admission initially
+refused a scheduled task state transition; a later host admission passed after
+natural task completion. The local final gate then refused an incorrect
+comparison between two different catalog digest contracts. That checker was
+repaired and the refused seal/evidence retained. A subsequent fresh acquisition
+could not reach the established SSH relay, leaving R65 blocked by connectivity.
+The later R68 result above supersedes that transport blocker. The last reachable metadata preserved the current 200-file report
+and all 12 retained report trees; a later trusted-TLS check still verified all
+200 public report files. These observations do not prove current Windows state
+or new native latency after connectivity was lost.
+See [the audit optimization contract](SEMANTIC_REQUEST_LATENCY.md#r65-audit-artifact-pass).
+
+
+**October 22 durable semantic diagnostics (R64, unmerged / undeployed):**
+source `8fbffd8` adds opt-in setup profiling and durable private phase checkpoints.
+The exact source passed **3,375 API tests / 4,037 subtests** plus the generated
+demo; both hosted Source checks and Android UI qualification passed. PR
+[#111](https://github.com/phoenixjyb/PhotoHouse/pull/111) remains draft.
+
+One isolated Windows attempt reached the unchanged **1,800-second child limit**
+during its final full audit. Independent readback validated **365 checkpoints**
+and all 295 extracted source files. The model-load marker recorded 56.172 s;
+the initial audit completed in 1,238.686 s, bulk-vector construction in 19.171 s,
+and the canary phase in 193.860 s. These are setup/phase costs, not per-query
+latencies. Twelve phases completed, but the journal was unclosed and no completed
+measurement/report survived. This does **not** qualify the source, establish new
+latency or prove the full protected result. No automatic retry occurred.
+
+Postflight preserved the live API, 73 file pins, four stores, model/index/catalog
+and ACL evidence, and the semantic-off policy. A separate authorized report
+publisher replaced the site task/process pair during the attempt, adding a home
+page and navigation; the original unchanged-baseline gate correctly refused.
+Separate verification preserved the newer 148-file site, all retained releases
+and trusted HTTPS. The original preflight was not restamped or restored.
+Candidate-owned process counts were zero; recorded test ports were lost on the
+hard stop, so direct per-port closure was not established.
+
+Semantic search remains **OFF**. Next: reduce repeated immutable-artifact
+verification within each full audit while retaining both independent audits,
+then repeat the bounded protected qualification. Keep setup profiling, interactive
+latency, relevance/coverage policy and device/WAN acceptance separate.
+See [durable diagnostic contract and result](SEMANTIC_REQUEST_LATENCY.md#r64-durable-qualification-diagnostics).
+
+**October 22 semantic latency increment (R63, unmerged / undeployed):** source
+`95b7f7f` reuses only a pure proof for exact freshly copied typed metadata; full
+file hashing and fresh source/policy/authorization checks remain intact. Focused
+suites passed 69 tests / 53 subtests, and the full API recheck passed **3,346 tests /
+4,037 subtests** plus the generated demo. Separate Mac warm-snapshot measurements
+were 49.16 ms before / 21.86 ms after with identical exact ranking; these do not
+establish native request latency.
+
+The single frozen Windows attempt hit its fixed **1,800-second child timeout**.
+No completed measurement or full protection result was produced, and no model
+retry occurred. The latest successful native timing remains `e85c6e4`: 7.860 s
+warm median / 8.328 s maximum / 14.843 s cold. Independent after-checks preserved
+106 tasks, 28 runtime identities, 55 file pins, 293 live API files, model/index/
+catalog/ACL state, phone v75 / TV v30 and all 125 trusted-TLS site assets. Owned
+candidate processes were zero; Windows was explicitly released after 272 seconds
+of offline cleanup. No production change or activation occurred.
+Semantic stays **OFF**. Next: preserve aggregate progress on timeout, profile
+full-index audit/setup cost, then repeat bounded qualification. Relevance,
+coverage-policy/lifecycle and device/WAN acceptance remain separate gates.
+See [latency contract and evidence](SEMANTIC_REQUEST_LATENCY.md).
+
 **October 22 combined-source release:** PR [#108](https://github.com/phoenixjyb/PhotoHouse/pull/108)
 merged as `a6dfe31f7df1149170a01fc5a171867b2aea0584`; the merge tree is identical to reviewed
 source `c5dd85018a36e9f574acabcd9ecaf47db609e051`. Hosted functional API, browser, Windows CPU,
@@ -515,7 +680,7 @@ only a valid explicit QuickTime capture timestamp, preserve its local day and
 leave unknown dates unknown; the worker fills null dates only. No historical
 backfill, production write, model or permission activation occurred. The
 [operator guide](SEARCH_READINESS_AND_RELEVANCE.md) records limitations and commands.
-The focused search/source/storage cohort passes **131 tests / 81 subchecks**.
+The focused search/source/storage cohort passes **132 tests / 81 subchecks**.
 The video cohort passes **12 tests / 13 subchecks**, including a generated MP4
 through real FFmpeg/ffprobe. Later full release profiles and native Windows,
 real-library relevance and family/device acceptance remain open. The Android

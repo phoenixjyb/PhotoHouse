@@ -7,6 +7,7 @@ complete bounded cohort using a separately qualified joint text/image space.
 from dataclasses import asdict, dataclass
 import hashlib
 import math
+import operator
 from pathlib import Path
 import re
 
@@ -30,6 +31,7 @@ from .semantic_eligibility import SemanticEligibilityStore, SemanticEligibilityU
 # Keep its private-file budget separate from the vector payload allowance.
 MAX_POLICY_READ_BYTES = 64 * 1024 * 1024
 _ARTIFACT_FIELDS = tuple(_COLUMNS.split(','))
+_ARTIFACT_GETTER = operator.attrgetter(*_ARTIFACT_FIELDS)
 
 
 def _typed_row_equal(current, previous):
@@ -66,7 +68,7 @@ def _freeze_artifacts(records, check):
     frozen = []
     for asset_id, record in records.items():
         check()
-        frozen.append((asset_id, tuple(getattr(record, field) for field in _ARTIFACT_FIELDS)))
+        frozen.append((asset_id, _ARTIFACT_GETTER(record)))
     return tuple(frozen)
 
 
@@ -90,12 +92,17 @@ def _valid_pilot_owner_account_id(value):
 
 class SemanticSearchReads(AssistantSearchReads):
     def __init__(self, access, provider, budget, *, vector_root, encoder, query,
-                 server_snapshot=None, serving_limits=None, bulk_vectors=None, eligibility=None):
+                 server_snapshot=None, serving_limits=None, bulk_vectors=None, eligibility=None,
+                 text_projection_required=True, media_only_facts=False):
         # This reader belongs to exactly one runtime call. Reuse derived facts
         # for an identical opaque binding during that call, while every _run
         # still reauthorizes and reads/validates the complete current source.
         # Never share this cache between readers, queries or requests.
-        super().__init__(access, provider, budget, facts_cache={})
+        super().__init__(access, provider, budget, facts_cache={},
+                         text_projection_required=text_projection_required)
+        if type(media_only_facts) is not bool:
+            raise d.DiscoveryInvalid()
+        self._media_only_facts = media_only_facts
         self.vector_root, self.encoder, self.query = vector_root, encoder, query
         self._vector_rows = ()
         self._source_hashes = {}
@@ -112,6 +119,65 @@ class SemanticSearchReads(AssistantSearchReads):
         self._matched_omitted_count = 0
         self._eligibility_bulk_generation = None
         self._eligibility_records_cache = None
+
+    def _facts(self, index, source, people, places, check):
+        """Build the minimal facts visible to an exact image-only query.
+
+        Fresh reads and source binding have already completed. Keep asset
+        conversion and reviewed-face/allow_zero checks, plus a poll for every
+        indexed row. The semantic search action accepts absent rows and empty
+        facets when its only filter is media.
+        """
+        if type(self._media_only_facts) is not bool:
+            raise d.DiscoveryUnavailable()
+        if not self._media_only_facts:
+            return super()._facts(index, source, people, places, check)
+        if self._text_projection_required is not False:
+            raise d.DiscoveryUnavailable()
+
+        assets = {}
+        for row in source['assets']:
+            check()
+            fields = list(row[:6])
+            try:
+                d.text(fields[1], 256)
+            except d.DiscoveryInvalid:
+                fields[1] = None
+            if d.taken_day(fields[5]) is None:
+                fields[5] = None
+            assets[str(row[0])] = d._asset(fields, index.library_id)
+
+        faces = {str(row[0]): (str(row[1]), str(row[2]), row[3])
+                 for row in source['faces']}
+        approved = set()
+        for assignment in index.assignments:
+            check()
+            if faces.get(assignment.id) != (
+                    assignment.asset_id, assignment.person_id, assignment.source):
+                raise d.DiscoveryChanged()
+            approved.add(assignment.person_id)
+        if any(person_id not in approved and not person.allow_zero
+               for person_id, person in people.items()):
+            raise d.DiscoveryUnavailable()
+
+        for _asset_id in index.indexed_ids:
+            check()
+        return assets, {}, {'people': [], 'locations': [], 'tags': []}, {}
+
+    def _search_action(self, library, binding, filters, page=1, page_size=50,
+                       fingerprint=None, *, allow_unbound_first_page=False,
+                       binding_observer=None):
+        if type(self._media_only_facts) is not bool:
+            raise d.DiscoveryUnavailable()
+        if self._media_only_facts and not (
+                type(filters) is dict and set(filters) == {'media'}
+                and type(filters['media']) is list
+                and filters['media'] == ['image']):
+            raise d.DiscoveryUnavailable()
+        return super()._search_action(
+            library, binding, filters, page, page_size, fingerprint,
+            allow_unbound_first_page=allow_unbound_first_page,
+            binding_observer=binding_observer)
 
     def _extra_source(self, index, source, read, check):
         # A new generation belongs only to this exact fresh source read. Clear
@@ -174,7 +240,18 @@ class SemanticSearchReads(AssistantSearchReads):
                         raise d.DiscoveryUnavailable()
                 else:
                     snapshot = _freeze_rows(rows, check)
-                    records = _validated_rows(rows, image_identity)
+                    if self.bulk_vectors is not None:
+                        try:
+                            records = self.bulk_vectors._artifacts_from_current_sql(
+                                snapshot, library_id=index.library_id,
+                                identity=image_identity, check=check,
+                            )
+                        except BulkVectorUnavailable:
+                            raise d.DiscoveryUnavailable() from None
+                    else:
+                        records = None
+                    if records is None:
+                        records = _validated_rows(rows, image_identity)
                     if len(records) != len(rows):
                         raise d.DiscoveryUnavailable()
                     # Capture only primitive values before passing artifact
@@ -489,16 +566,21 @@ class SemanticSearchRuntime:
         query = d.text(values['query'], 512)
         d.require(not any(ord(c) < 32 or 0x7f <= ord(c) < 0xa0 for c in query))
         d.require(type(values.get('page_size', 20)) is int and 1 <= values.get('page_size', 20) <= 20)
-        filters = values['filters']
-        d.require(type(filters) is dict)
-        d.require('media' not in filters or filters['media'] == ['image'])
-        filters = {**filters, 'media': ['image']}
+        supplied_filters = values['filters']
+        d.require(type(supplied_filters) is dict)
+        d.require('media' not in supplied_filters or supplied_filters['media'] == ['image'])
+        filters = {**supplied_filters, 'media': ['image']}
+        media_only_facts = (set(filters) == {'media'}
+                            and type(filters['media']) is list
+                            and filters['media'] == ['image'])
         with self.access.connection_factory() as connection:
             reader = SemanticSearchReads(AccessService(connection, clock=self.access.clock),
                 self.discovery.provider, budget, vector_root=self.vector_root,
                 encoder=self.encoder, query=query, server_snapshot=server_snapshot,
                 serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors,
-                eligibility=self.eligibility)
+                eligibility=self.eligibility,
+                text_projection_required=('text' in filters or 'descriptive' in filters),
+                media_only_facts=media_only_facts)
             binding = values.get('binding')
             page = values.get('page', 1)
             page_size = values.get('page_size', 20)
