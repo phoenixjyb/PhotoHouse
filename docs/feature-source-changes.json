@@ -30800,6 +30800,32 @@
         }
       ],
       "notes": "Optional lazy NumPy products for >=128 rows and >=128 dimensions retain exact math.fsum scores, numeric tie order, bounded private product/index arrays, callbacks, complete current-cohort/file/source checks. Python3.12/NumPy2.2.6 full CPU profile passed3432 tests/4090 subtests/generated demo; focused43 tests also passed3.14/2.4.2. Generated23,696/40,000-row comparisons matched frozenR71 score bits/order. Native Windows/full-request latency/relevance/serving activation remain gated; no deployment or limit increase."
+    },
+    {
+      "feature": "semantic-exact-artifact-field-copy-r88",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "memory_limits_changed": false,
+      "on_disk_vector_format_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "before_sha256": "4dbb739f1193629e6f8108234ebd353d5364a7d4a1555d54f7ba7bbaeedf57e1",
+          "sha256": "14d1e5c51ea3afa0c1966c7df5c39134b1bfdd806692d925e7ae153f45d0d6a8"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "f940dd9702584ec8851e61a12c8297344ec40b9247a9d381af0a6c9f471e80f0",
+          "sha256": "e9cdee8395b00ed41cc4b494babe6b3a78a270aebdfddf54a983c506f4f22681"
+        },
+        {
+          "path": "server/tests/security/test_semantic_artifact_field_extraction.py",
+          "before_sha256": null,
+          "sha256": "9a5a61a0314c8c17ec44719d43e12f3ee3c94b6952e493d47a0c2725740124fd"
+        }
+      ],
+      "notes": "C-backed extraction copies the same16 current artifact fields; C map iteration retains exact type identity and per-row callbacks. No cache, SQL, policy, source/file/generation or rank change. Focused70 tests passed Python3.12/NumPy2.2.6 and3.14/2.4.2. Generated23696x768 full API comparison18 measured requests retained exact full JSON/rank bits; noisy local mean2.775s vs2.987s is not Windows/model/network/2s or activation qualification."
     }
   ]
 }

@@ -46,6 +46,11 @@ _ARTIFACT_COHORT_FIELDS = (
     "normalization", "identity_sha256", "relative_path", "file_sha256",
     "component_sha256", "created_at", "status",
 )
+_ARTIFACT_COHORT_GETTER = operator.attrgetter(*_ARTIFACT_COHORT_FIELDS)
+_ARTIFACT_COHORT_TYPES = tuple(
+    int if name in ("dimension", "created_at") else str
+    for name in _ARTIFACT_COHORT_FIELDS
+)
 
 
 class BulkVectorUnavailable(ValueError):
@@ -148,9 +153,8 @@ def _artifact_cohort_key(artifacts, check):
         # exact primitive types plus equality with the prior validated rows.
         # Store values rather than frozen dataclass references: object.__setattr__
         # can still mutate a retained dataclass instance after this snapshot.
-        row = tuple(getattr(artifact, name) for name in _ARTIFACT_COHORT_FIELDS)
-        if any(type(value) is not (int if name in ("dimension", "created_at") else str)
-               for name, value in zip(_ARTIFACT_COHORT_FIELDS, row)):
+        row = _ARTIFACT_COHORT_GETTER(artifact)
+        if not all(map(operator.is_, map(type, row), _ARTIFACT_COHORT_TYPES)):
             _unavailable()
         rows.append(row)
     return tuple(rows)

@@ -7,6 +7,7 @@ complete bounded cohort using a separately qualified joint text/image space.
 from dataclasses import asdict, dataclass
 import hashlib
 import math
+import operator
 from pathlib import Path
 import re
 
@@ -30,6 +31,7 @@ from .semantic_eligibility import SemanticEligibilityStore, SemanticEligibilityU
 # Keep its private-file budget separate from the vector payload allowance.
 MAX_POLICY_READ_BYTES = 64 * 1024 * 1024
 _ARTIFACT_FIELDS = tuple(_COLUMNS.split(','))
+_ARTIFACT_GETTER = operator.attrgetter(*_ARTIFACT_FIELDS)
 
 
 def _typed_row_equal(current, previous):
@@ -66,7 +68,7 @@ def _freeze_artifacts(records, check):
     frozen = []
     for asset_id, record in records.items():
         check()
-        frozen.append((asset_id, tuple(getattr(record, field) for field in _ARTIFACT_FIELDS)))
+        frozen.append((asset_id, _ARTIFACT_GETTER(record)))
     return tuple(frozen)
 
 
