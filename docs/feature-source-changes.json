@@ -30907,6 +30907,20 @@
         }
       ],
       "notes": "Exact normalized image-only filters omit unused maps/facets/coverage derivation while retaining fresh SQL/source/policy/bulk/authorization checks, reviewed faces/allow_zero and cancellation. Five focused tests and generated23696x768+65 omission comparison preserve fullAPI/rankbits across9 warm EN/ZH/mixed pairs and3 page-two pairs. Mean2329 to2180ms is generated/fixedencoder evidence; max2615ms fails2000ms. ActualR92 c017 native9warm p50=6469/max7203ms remains failed/incomplete after localoffline normalizer; no deployment or activation."
+    },
+    {
+      "feature": "semantic-r92-actual-measurement-scope-clarification",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "51065bef3d8612477d269d2a28eb5260bc3422b8c3b4fd8c5344ef29dac64995",
+          "sha256": "15d7004baa5c0e58f6dcccd40c16a00e004ffb75048966049bbeee3d0e74ad5d"
+        }
+      ],
+      "notes": "Documentation only: actual R92 uses prepared vectors/frozen reviewed catalog in synthetic-account qualification database, with actual provider/network timing. Production database remained unopened and family relevance unmeasured/unaccepted; distinguish from fully generated local fixedencoder profiles."
     }
   ]
 }

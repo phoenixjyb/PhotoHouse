@@ -12,8 +12,9 @@ qualification-only omissions. Both full audits, all 15 protection cases and
 nine warm English/Chinese/mixed HTTPS requests ran. Warm requests measured
 **6.469 s median / 7.203 s maximum** (5.782 s minimum); the cold request took
 12.718 s. Every warm sample exceeded the unchanged 2 s target. These are actual
-native/provider/network timings on generated qualification data, without
-production-database or family-relevance acceptance.
+native/provider/network timings using prepared vectors and the reviewed frozen
+catalog in an isolated synthetic-account database. The production database was
+not opened, and family relevance was not measured or accepted.
 
 The operation stopped during local normalization of the first offline
 observation: its expected evaluation time preceded the actual captures. The
