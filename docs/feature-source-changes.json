@@ -30862,6 +30862,21 @@
         }
       ],
       "notes": "Documentation only: separates prior completed R68 native measurement from current c017 source-only results and the allocation-only R90 local orchestration failure. Captured unexpected stderr remains failed qualification; limited owned transport release does not claim Windows preservation, native success, deployment or activation."
+    },
+    {
+      "feature": "semantic-readiness-local-request-preparation-regressions-r91",
+      "source_commit": "c01758491b87c6e2a7fb3f8bfff66d949df8e2c2",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "7ced1893f11b8f3fe58c10c72d495371f2bbd75cfddec58b05be7676a2bb68a2",
+          "sha256": "c68f120e9efd3d439fc7890859d82ea467e3719cd0a20b43838a4784746da472"
+        }
+      ],
+      "notes": "Documentation only:12 real-driver request-preparation regressions,7 progress-suppression checks and an isolated4-phase actual-issuer integration are local source evidence. Runtime backend is fake, shared queue untouched, consumed run refused; successor rebinding and Windows qualification remain pending."
     }
   ]
 }

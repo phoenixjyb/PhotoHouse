@@ -19,9 +19,18 @@ stderr rule. Normal process closure and qualification acceptance are separate
 results; the limited release does not waive that failure or establish whole-host
 preservation.
 
+Follow-up source proposals passed 12 real-driver regression checks and seven
+progress-suppression checks, with independent source review. An isolated
+four-phase integration check also exercised the actual central grant issuer,
+request helper and phase driver against temporary state and a fake execution
+backend. It reproduced the old missing-request failure, then verified matching
+request hashes and one fake execution per phase after correcting the ordering.
+The helper refuses the consumed operation. These are local regression results;
+a newly bound operational successor and Windows verification are still pending.
+
 ## Before another full Windows run
 
-1. Fix and locally verify the coordinator's request-before-grant ordering. Each
+1. Integrate the reviewed request-before-grant proposal into a fresh operation. Each
    next request must bind the current completed prefix and result chain, without
    dispatching a phase or creating its claim before admission.
 2. Prevent PowerShell startup progress at its source in a newly reviewed
