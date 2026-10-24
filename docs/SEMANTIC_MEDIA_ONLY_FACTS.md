@@ -40,3 +40,37 @@ fresh source/policy passes and post-provider source/policy/membership changes.
 This source result does not meet the 2 s gate or establish native/model latency.
 The [readiness checkpoint](SEMANTIC_SEARCH_READINESS_2026-10-24.md) records the
 separate failed Windows run and remaining qualification/activation gates.
+
+## Existing bulk-cohort grammar proof
+
+A subsequent change avoids reparsing artifact grammar when the complete current
+SQL projection exactly matches a bulk store's existing validated immutable
+metadata. It requires the same file pin, library, model identity, canonical
+16-column order, row count, row order, exact primitive types and every field
+value. SQL asset IDs are exact positive signed-64-bit integers before conversion
+to artifact strings. A hit returns detached artifact copies; a miss retains the
+full parser. It adds no cache and retains per-row cancellation/deadline checks.
+
+This proof covers metadata grammar only. Both fresh source reads, current source
+hashes, eligibility-policy reads/validation, authorization and the bulk file's
+secure reopen/hash checks around encoding still execute. It does not reuse an
+authorization, policy, file-validity or source-freshness decision.
+
+Seventy focused store/eligibility/bridge tests passed. In one separate generated
+23,696-vector paired comparison, both modes enabled image-only facts; only this
+grammar bridge differed. All nine English/Chinese/mixed response and complete
+rank-bit pairs, plus three page-two pairs, matched. Each mode retained 18 fresh
+source-SQL calls per measured request.
+
+| Path | Mean wall | Median | Maximum | Exclusive source-extension mean |
+| --- | ---: | ---: | ---: | ---: |
+| Full parser | 2,102 ms | 1,977 ms | 2,805 ms | 332 ms |
+| Exact cohort match | 1,872 ms | 1,871 ms | 1,991 ms | 187 ms |
+
+All nine candidate warm samples were below 2 seconds in this fixture. Paired
+savings ranged from 78 to 984 ms, with a 106 ms median; one baseline outlier
+inflates the 230 ms mean difference. This single generated, fixed-encoder run
+does not qualify native/model/network or production latency. The profile stayed
+within its 768 MiB RSS and 180-second measurement limits and removed temporary
+data. Semantic search remains OFF pending the separate native and activation
+gates.

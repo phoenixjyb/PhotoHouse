@@ -30921,6 +30921,47 @@
         }
       ],
       "notes": "Documentation only: actual R92 uses prepared vectors/frozen reviewed catalog in synthetic-account qualification database, with actual provider/network timing. Production database remained unopened and family relevance unmeasured/unaccepted; distinguish from fully generated local fixedencoder profiles."
+    },
+    {
+      "feature": "semantic-existing-immutable-cohort-sql-grammar-proof-r96b",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "memory_limits_changed": false,
+      "new_cache_added": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "before_sha256": "14d1e5c51ea3afa0c1966c7df5c39134b1bfdd806692d925e7ae153f45d0d6a8",
+          "sha256": "f4b82e76914512ca6e86433c297786232b8dc7b76efae2a5c1279986b1576302"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "762a03a880f27428cc4165d25c785f6dc14ef647b34b07bb7785a85a43e0f7e5",
+          "sha256": "e94a8b159226d02945f6dcc1d6e9fd0083678105b326eb32b8f7d8503301d8d6"
+        },
+        {
+          "path": "server/tests/security/test_semantic_cached_sql_grammar.py",
+          "before_sha256": null,
+          "sha256": "9d673f899eae9ff50b1b3a3670c57eef8a2e40931332f21b6a462a4317620cc0"
+        },
+        {
+          "path": "server/tests/security/test_semantic_eligibility_search.py",
+          "before_sha256": "93947ec433578c1c40f905e9ea71c7aab41d5bcc05ecec150b0ff338e828e276",
+          "sha256": "b5e17e00ff314aa7fd1d537c8898ef2e70819a5c638b1f8401da365b3171f366"
+        },
+        {
+          "path": "docs/SEMANTIC_MEDIA_ONLY_FACTS.md",
+          "before_sha256": "2640363f77e954746e9297454777131938ed2d58258e93eb03871322642e542f",
+          "sha256": "d43ef255cca95ff9b402cc963a551da386e36e9682555bc5195e0bc17c62b96e"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "15d7004baa5c0e58f6dcccd40c16a00e004ffb75048966049bbeee3d0e74ad5d",
+          "sha256": "40facee957c07b1809a281385f7c757388643e08b5e6f74cd2bd246aa66de12d"
+        }
+      ],
+      "notes": "A Store-owned bridge compares the complete current ordered SQL cohort with existing constructor-validated immutable primitive metadata for exact file/library/model pins, all16fields/types and signed64bit asset IDs. Detached artifacts on hit; unchanged full parser on miss. All fresh SQL/source/policy/file/generation/authorization and perrow cancellation/deadline checks remain. Independent source review and70 focused store/eligibility/bridge tests passed. Generated23696x768+65 paired9EN/ZH/mixed requests pluspage2 matched fullAPI/rankbits with18SQLreads/request; candidate mean1872/median1871/max1991ms vs2102/1977/2805 baseline; pairedmedian106ms gain, mean230ms inflatedbyoneoutlier. One fixedencoder localrun is not Windows/model/production qualification. No activation/deployment."
     }
   ]
 }

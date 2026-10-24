@@ -23,7 +23,7 @@ from typing import Callable
 from .private_storage import require_private_directory, require_private_file
 from .visual_candidates import MAX_DIMENSION, VectorRecord, VectorSpaceIdentity, _canonical_components
 from .visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256, validate_artifact
-from .visual_vector_loader import _checked_root, _is_reparse, _read_vector, _root_snapshot, _same_file
+from .visual_vector_loader import _COLUMNS, _checked_root, _is_reparse, _read_vector, _root_snapshot, _same_file
 
 
 MAX_BULK_BYTES = 128 * 1024 * 1024
@@ -50,6 +50,11 @@ _ARTIFACT_COHORT_GETTER = operator.attrgetter(*_ARTIFACT_COHORT_FIELDS)
 _ARTIFACT_COHORT_TYPES = tuple(
     int if name in ("dimension", "created_at") else str
     for name in _ARTIFACT_COHORT_FIELDS
+)
+_ARTIFACT_SQL_FIELDS = tuple(_COLUMNS.split(","))
+_ARTIFACT_SQL_TYPES = tuple(
+    int if name == "asset_id" else expected
+    for name, expected in zip(_ARTIFACT_COHORT_FIELDS, _ARTIFACT_COHORT_TYPES)
 )
 
 
@@ -425,6 +430,80 @@ class BulkVectorStore:
     def descriptor(self):
         return {"path": str(self.path), "file_sha256": self.file_sha256,
                 "library_id": self.library_id, "identity_sha256": identity_sha256(self.identity)}
+
+    @_unwrap_callbacks
+    def _artifacts_from_current_sql(self, rows, *, library_id, identity, check=lambda: None):
+        """Reuse only the cached grammar proof for an exact fresh SQL cohort.
+
+        This bridge never authorizes or validates the cohort on its own. It
+        requires the current ordered SQL projection to exactly match the
+        primitive rows captured by a previously verified store generation;
+        callers retain all fresh source, policy, file and authorization checks.
+        """
+        _check_callback(check)
+        if (_ARTIFACT_SQL_FIELDS != _ARTIFACT_COHORT_FIELDS
+                or type(rows) is not tuple or len(rows) > MAX_CANDIDATES
+                or not _valid_library(library_id) or library_id != self.library_id
+                or type(identity) is not VectorSpaceIdentity
+                or type(self.identity) is not VectorSpaceIdentity):
+            return None
+        cached = _checked_cache(self._cache)
+        if type(cached) is not _CacheGeneration:
+            return None
+        if (type(cached[0]) is not tuple or len(cached[0]) != 4
+                or type(cached[1]) is not tuple):
+            _unavailable()
+        if len(cached[1]) != len(rows):
+            return None
+        try:
+            current_identity_digest = identity_sha256(identity)
+            store_identity_digest = identity_sha256(self.identity)
+        except (AttributeError, TypeError, ValueError, OverflowError):
+            return None
+        key = cached[0]
+        if (key[0] != self.file_sha256 or key[2] != library_id
+                or key[3] != current_identity_digest
+                or key[3] != store_identity_digest):
+            return None
+
+        artifacts = {}
+        for row, previous in zip(rows, cached[1]):
+            _check_callback(check)
+            if self._cache is not cached:
+                return None
+            # The exact _CacheGeneration constructor already validated every
+            # cached primitive type; retain shape checking here and poll once
+            # per paired indexed row.
+            if (type(previous) is not tuple
+                    or len(previous) != len(_ARTIFACT_COHORT_FIELDS)):
+                _unavailable()
+            if (type(row) is not tuple or len(row) != len(_ARTIFACT_COHORT_FIELDS)
+                    or not all(map(operator.is_, map(type, row), _ARTIFACT_SQL_TYPES))
+                    or not 1 <= row[1] <= 2**63 - 1):
+                return None
+            asset_id = str(row[1])
+            if row[:1] + (asset_id,) + row[2:] != previous:
+                return None
+            if asset_id in artifacts:
+                return None
+            artifacts[asset_id] = ImmutableVectorArtifact(*previous)
+
+        # A callback can mutate even a frozen identity or replace the store's
+        # cache via object.__setattr__; recheck all generation pins after the
+        # final callback before publishing fresh artifact copies.
+        _check_callback(check)
+        if self._cache is not cached:
+            return None
+        try:
+            if (identity_sha256(identity) != current_identity_digest
+                    or identity_sha256(self.identity) != store_identity_digest):
+                return None
+        except (AttributeError, TypeError, ValueError, OverflowError):
+            return None
+        if (self.file_sha256 != key[0] or self.library_id != key[2]
+                or library_id != self.library_id):
+            return None
+        return artifacts
 
     @_unwrap_callbacks
     def snapshot(self, artifacts, *, library_id, check=lambda: None, charge=lambda size: None):

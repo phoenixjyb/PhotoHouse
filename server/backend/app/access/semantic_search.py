@@ -240,7 +240,18 @@ class SemanticSearchReads(AssistantSearchReads):
                         raise d.DiscoveryUnavailable()
                 else:
                     snapshot = _freeze_rows(rows, check)
-                    records = _validated_rows(rows, image_identity)
+                    if self.bulk_vectors is not None:
+                        try:
+                            records = self.bulk_vectors._artifacts_from_current_sql(
+                                snapshot, library_id=index.library_id,
+                                identity=image_identity, check=check,
+                            )
+                        except BulkVectorUnavailable:
+                            raise d.DiscoveryUnavailable() from None
+                    else:
+                        records = None
+                    if records is None:
+                        records = _validated_rows(rows, image_identity)
                     if len(records) != len(rows):
                         raise d.DiscoveryUnavailable()
                     # Capture only primitive values before passing artifact

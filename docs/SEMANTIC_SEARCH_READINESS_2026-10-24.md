@@ -34,6 +34,14 @@ does not establish an improvement to the R92 native measurements or meet the
 performance gate. Deployment, activation, family relevance and Android/device
 acceptance remain pending.
 
+A further exact bulk-cohort grammar bridge retained all fresh checks and passed
+70 focused tests. In a separate generated comparison, nine warm candidate
+samples measured 1.871 s median / 1.991 s maximum, with identical full responses
+and ranking bits. The paired median saving was 106 ms; the mean saving of
+230 ms includes a baseline outlier. This is a local fixed-encoder result, not a
+Windows result or permission to activate. The implementation and its limits are
+in the [same preparation note](SEMANTIC_MEDIA_ONLY_FACTS.md#existing-bulk-cohort-grammar-proof).
+
 The following table and preparation discussion retain the earlier October 24
 checkpoint; R92 above supersedes its statement that only allocation occurred.
 
