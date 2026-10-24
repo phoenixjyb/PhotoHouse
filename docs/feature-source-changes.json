@@ -31075,6 +31075,20 @@
         }
       ],
       "notes": "Reproduced8generatedendpointqueries withclearChineseprohibition/exception orEnglishexcepting/freefrom reachingranking/provider. Addboundedsharedcue forms+Englishomissionwordforms, policy3 bindssemanticrankingrefresh. Positivelexical controls, exactliteralquotedtext opacity, authorizationbeforeguard andserver-snapshotguard preserved. Focused8modules132tests/423subtests passed; notnewfullAPI/native/ASR/Jinquality oractivation. No runtimeconfiguration/Windowschange. Added explicit API regression that policy2 boundranking returns409 underpolicy3 without anotherencoder invocation."
+    },
+    {
+      "feature": "assistant-turn-trail-keyboard-scroll-stability-diagnostics-r123",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_turn_trail_browser.cjs",
+          "before_sha256": "d19a499c5b721105c5f2fa1169bcc82814e3f1122c245522a688ac325ef4a2db",
+          "sha256": "c62acf2a2b14da7c77123fab009e315d12c4cba82af75bbf519b409a66967122"
+        }
+      ],
+      "notes": "Test-only: wait for fonts and stable viewport/list geometry after instant setup scrolling; focus the list without a scroll side effect; capture per-key page/list/focus/defaultPrevented diagnostics and retain the no-page-movement, focus, scroll and no-request assertions. Local pinned-browser run passed; the reported Ubuntu CI failure remains unreproduced and cause unproven. No UI runtime source change."
     }
   ]
 }
