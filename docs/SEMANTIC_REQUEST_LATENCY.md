@@ -1,8 +1,48 @@
 # Protected semantic request latency
 
+## October 25: later native measurement, incomplete qualification
+
+R94 on source `4254107` completed both audits and all 15 protection cases over
+23,761 frozen catalog entries / 23,696 prepared vectors / 65 qualification-only
+omissions. Nine warm HTTPS requests measured **5.250 s median, 5.703 s p95/max**
+(minimum 4.812 s); cold latency was **12.953 s**. The unchanged target is 2 s,
+so all nine warm requests failed it. R92's earlier median/max were 6.469/7.203 s;
+this is a descriptive comparison of separate shared-host runs, not a controlled
+source-change attribution.
+
+| R94 warm phase | Mean exclusive time | Calls per request |
+| --- | ---: | ---: |
+| Source SQL/fetch/packing/accounting | 1.192 s | 18 |
+| Bulk snapshot | 0.914 s | 2 |
+| Ranking | 0.692 s | 1 |
+| Eligibility validation | 0.602 s | 2 |
+| Source extension, exclusive | 0.430 s | 2 |
+| Canonical hashing | 0.428 s | 9 |
+| Encoder round trip | 0.418 s | 1 |
+
+These are means of exclusive costs joined to the same nine warm ordinals;
+they exclude other phases and are not a latency forecast. Source SQL includes
+Python accounting and fetch work, rather than SQLite engine time alone. Removing
+one bucket would still leave the 2 s target unmet. The initial/final full audits
+took 258.844/255.891 s of checkpoint wall time, separate from request latency.
+
+The native Job closed, but first offline collection then failed with SSH exit
+255 and zero stdout. The full qualification and offline pair remain incomplete.
+A separately admitted exact-reader cleanup verified native-handle closure and
+empty owned scope; after 192.824 s offline and a fresh local transport audit,
+that limited scope was released. Failed claims and timings are unchanged; no
+old operation was replayed. This is no whole-host or production-serving proof.
+
+See the [current readiness checkpoint](SEMANTIC_SEARCH_READINESS_2026-10-24.md)
+and [private result-observation contract](SEMANTIC_RESULT_OBSERVATION.md).
+The later observer has generated-only validation; the R94 run did not retain
+ranked IDs/scores, so it cannot establish bilingual result overlap or relevance.
+
+## Earlier source and complete R68 record
+
 The [October 24 readiness checkpoint](SEMANTIC_SEARCH_READINESS_2026-10-24.md)
-separates the current undeployed source candidate, the latest complete native
-measurement and the allocation-only preparation failure. Semantic remains OFF.
+separates the current undeployed source candidate, later incomplete native
+measurements and the earlier complete qualification record. Semantic remains OFF.
 
 The [exact artifact field copying note](SEMANTIC_ARTIFACT_FIELD_COPY.md) records
 a later source-only optimization and an alternating complete-request comparison

@@ -1,5 +1,39 @@
 # Current project status
 
+**October 25 current semantic checkpoint (R94 / OFF / undeployed):**
+application source `4254107` ran against the isolated synthetic-account fixture
+with the reviewed frozen catalog and prepared family vectors: 23,761 catalog
+entries, 23,696 vectors and 65 qualification-only omissions. Both full audits
+and all 15 protection cases ran. Nine warm English/Chinese/mixed HTTPS samples
+measured **5.250 s median / 5.703 s maximum**; cold latency was **12.953 s**.
+Every warm sample exceeded the unchanged 2 s target. These are native/provider/
+loopback-network measurements, not production, phone/WAN or family relevance
+acceptance. R92 previously measured 6.469 / 7.203 s; separate shared-host runs
+do not establish a causal saving from the intervening changes.
+
+The native Job closed, but the later first offline-collection SSH call timed
+out with no response. Whole qualification failed and the second observation
+was not run. A separately reviewed one-shot observer and exact native-handle
+cleanup stopped only the identified reader, preserved its parent, and verified
+its empty owned scope. After 192.824 s offline and a fresh local transport audit,
+the coordinator explicitly released that limited owned scope. Original failures
+and the incomplete offline pair remain; cleanup does not qualify the feature or
+establish that the whole shared host is free. No replay or activation occurred.
+
+**Current local source validation:** the exact image-only facts and immutable
+SQL-cohort grammar optimizations retain all fresh SQL, authorization, source,
+policy and file checks. Source `ab89fbd` passed **3,447 API tests / 4,138 subtests**
+and the generated demo. Its 295 runtime payloads are byte-identical to R94's
+`4254107` archive. The later `605ff8d` qualification-only
+[result observer](SEMANTIC_RESULT_OBSERVATION.md) passed 66 focused checks and
+then **3,475 API tests / 4,138 subtests** plus the generated demo on a clean,
+unchanged checkout. It captures bounded private rankings for future bilingual
+comparisons. It has no actual-family relevance result and does not change the default measurement
+report or enable serving. The
+[readiness checkpoint](SEMANTIC_SEARCH_READINESS_2026-10-24.md) records current
+performance, coverage, omission-policy and release gates. Earlier entries below
+retain their historical source and acceptance scope.
+
 **October 23 bounded metadata reader (R69, source only):** the read-only index
 inspector now parses and canonical-checks one bounded descriptor read, then
 retains a second complete digest/identity verification. Metadata is bound to its

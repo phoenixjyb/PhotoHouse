@@ -31022,6 +31022,30 @@
         }
       ],
       "notes": "Optional local qualification observer projects each successful measured response into a bounded redacted record for private result review. Default remains None with no observation fields and no query-plan digest work. Callback outputs retain library and top-result asset IDs and are private, linkable data. New generated-only tests verify sample/profile joins and partial READY/omitted coverage; no quality threshold, family acceptance, activation, runtime configuration or actual family data is added."
+    },
+    {
+      "feature": "semantic-r94-native-status-and-r107-source-checkpoint",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "9f5b2f226ec73b649b254a322b556bddc0cd2413b6de2d7b5a7f926dd2d0c721",
+          "sha256": "4655978bc4e11f581a5773c1090167ad9e31aeb2b2ea8f2ada5a72a1cb209adb"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "276060414ae9baa04582bf799d99e0f94f4e4f046138804c938f8836bc04fbea",
+          "sha256": "1e73cbaa19e960b580e6f303e898d898ba6cb166c4a89241e6656ecf9d56f2eb"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "40facee957c07b1809a281385f7c757388643e08b5e6f74cd2bd246aa66de12d",
+          "sha256": "64106c0553ae84eaafa12e40adf0908c0065912be0c5d060b82b0db343bc3b6d"
+        }
+      ],
+      "notes": "Document actual4254107 R94 ninewarm median5250/max5703/cold12953ms; unchanged2stargetfailed, bothaudits/15protectionsran, laterofflineSSHfailed. Exactone-reader R103cleanup and192.824soffline/freshlocalaudit yieldedlimitedownedrelease only; originalqualificationfalse retained. Sourceab89fbd full3447tests/4138subtests+demo had295runtimepayloads identical425. Later605ff8d privateobserver66focused andfull3475tests/4138subtests+generateddemo passed withunchangedsourceidentity. Noactualfamilyquality/activation/deployment; earlierrecords historical."
     }
   ]
 }

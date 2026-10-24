@@ -4,6 +4,42 @@ Semantic search remains **OFF**. The current source candidate is not deployed
 or qualified on Windows. This checkpoint separates the earlier native result
 from the later source improvements; it does not authorize activation.
 
+## Latest October 25 result: R94 measured, semantic search still OFF
+
+Exact source `4254107` completed native measurement with both full audits and
+15 protection cases over the same isolated 23,761-entry frozen catalog,
+23,696 prepared family vectors and 65 qualification-only omissions. The access
+accounts/database are synthetic; the production database was not opened.
+Nine warm English/Chinese/mixed HTTPS samples measured **5.250 s median /
+5.703 s maximum** (4.812 s minimum); cold latency was **12.953 s**. All nine
+warm samples exceeded the unchanged 2 s target. The initial/final audit phases
+took 258.844/255.891 s, separate from query latency. These separate shared-host
+runs do not causally attribute the descriptive improvement from R92 below.
+
+The native Job and local native transport closed. Later first offline collection
+failed with SSH exit 255 and zero stdout; no second observation was issued.
+Whole qualification remains failed. A separately reviewed and admitted observer
+identified one exact outer reader; handle-bound cleanup then verified its exit,
+handle closure and empty owned scope while preserving the parent. The coordinator
+released only that current owned scope after 192.824 s offline and a fresh local
+transport audit. Failure evidence, the incomplete pair and consumed claims are
+retained; release is neither a qualification pass nor whole-host freedom.
+
+The later local source `ab89fbd` passed **3,447 API tests / 4,138 subtests** and
+the generated demo. All 295 runtime payloads match the R94 archive exactly.
+The subsequent `605ff8d` adds an opt-in
+[private ranking observer](SEMANTIC_RESULT_OBSERVATION.md) and passed 66 focused
+qualification/coverage/profile/observer checks. Exact source `605ff8d` then
+passed **3,475 API tests / 4,138 subtests** and the generated demo with unchanged
+start/end source identity. The default measurement report is unchanged.
+No new Windows or actual-family ranking-quality result is established for that
+observer. R94 retained timings and counts, not ranked IDs/scores; its English,
+Chinese and mixed queries also differed in meaning. Comparable intent trios and
+representative result review remain necessary before a multilingual quality
+claim. Production omission treatment, owner-only configuration/rollback and
+release checks remain open. No deployment, activation or Android/device
+acceptance is included.
+
 ## October 25 follow-up: actual requests measured, qualification failed
 
 R92 executed application source `c017584` on Windows against the isolated
@@ -43,7 +79,7 @@ Windows result or permission to activate. The implementation and its limits are
 in the [same preparation note](SEMANTIC_MEDIA_ONLY_FACTS.md#existing-bulk-cohort-grammar-proof).
 
 The following table and preparation discussion retain the earlier October 24
-checkpoint; R92 above supersedes its statement that only allocation occurred.
+checkpoint; R92 and R94 above supersede its statement that only allocation occurred.
 
 | Evidence | Result and limit |
 | --- | --- |
