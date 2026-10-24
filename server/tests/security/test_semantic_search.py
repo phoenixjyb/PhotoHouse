@@ -99,7 +99,10 @@ class SemanticSearchTests(unittest.TestCase):
         original_reader = semantic_search.SemanticSearchReads
 
         def eager_reader(*args, **kwargs):
+            # The eager comparison is the general facts path, so keep its
+            # runtime mode coherent with its full text projection.
             kwargs['text_projection_required'] = True
+            kwargs['media_only_facts'] = False
             return original_reader(*args, **kwargs)
 
         with patch('app.access.discovery.digest', side_effect=counted):

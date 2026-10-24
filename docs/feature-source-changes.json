@@ -30976,6 +30976,20 @@
         }
       ],
       "notes": "Register existing artifact-field extraction, image-only facts and exact cached SQL grammar regression modules in the explicit standard API profile. This is source-check harness integration only; all295 server source payload blobs remain byteidentical to runtime candidate4254107. No Windows, model, runtime or activation change."
+    },
+    {
+      "feature": "semantic-eager-parity-fixture-mode-coherence-r98",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": "7ac9b455e38c93d3d7d5b09d52b45caf076990bc3690f6700ffd9194a65ba4fe",
+          "sha256": "5ee5272f12c37be308dc2357d9b9b67403c3dc5116285e2996bc4df7a0011e3f"
+        }
+      ],
+      "notes": "Test-only: force general facts along with eager text projection in the comparison reader. The prior helper left exact image-only facts enabled while forcing text projection, correctly tripping the product inconsistency guard. Preserve product guards and response/caption-digest assertions. Two previously failed tests and five media-only tests pass; original full-profile failure receipt retained. No server runtime payload or frozenR94 change."
     }
   ]
 }
