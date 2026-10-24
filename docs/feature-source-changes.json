@@ -30768,6 +30768,38 @@
       "semantic_search_enabled": false,
       "live_runtime_changed": false,
       "notes": "Immutable native-double private cache views retain portable on-disk vectors and exact math.fsum ranking/callback checks. Exact1148a82 passed3426 API tests/4085 subtests/generated demo. Generated Mac ranking gain does not establish Windows2s target, deployment or activation."
+    },
+    {
+      "feature": "semantic-exact-product-ranking-r80",
+      "source_commit": "11fc08e5db4ff92bbb6d761ba591d38292a0a073",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "memory_limits_changed": false,
+      "on_disk_vector_format_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "sha256": "4dbb739f1193629e6f8108234ebd353d5364a7d4a1555d54f7ba7bbaeedf57e1",
+          "before_sha256": "f76c36e6edade337b88bb6cd177dc52da2f825472aa0868ae917f573f54d1256"
+        },
+        {
+          "path": "server/tests/security/test_semantic_bulk_vectors.py",
+          "sha256": "539f462606934374381d0934e655f326b4e6c1e2eeea0b9ee820abb37fa4da11",
+          "before_sha256": "c3e0c94621bb23bd005597e0d0768458b9f0086ee309899f8dba85cadcf35053"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "sha256": "ca64e29bd577e61dbff7bbc62815d1ddb21dd12dc5be9ed5a0a08b1ad4c59003",
+          "before_sha256": "f150e245a3e798a40d93b0f23d46acb090bca204e730ad3f3e35e85af25014ad"
+        },
+        {
+          "path": "docs/SEMANTIC_EXACT_PRODUCT_RANKING.md",
+          "sha256": "ef1debd38c6dc0449cd653466c629d62f1f6604f7fea45bc6988a0a008788a71",
+          "before_sha256": null
+        }
+      ],
+      "notes": "Optional lazy NumPy products for >=128 rows and >=128 dimensions retain exact math.fsum scores, numeric tie order, bounded private product/index arrays, callbacks, complete current-cohort/file/source checks. Python3.12/NumPy2.2.6 full CPU profile passed3432 tests/4090 subtests/generated demo; focused43 tests also passed3.14/2.4.2. Generated23,696/40,000-row comparisons matched frozenR71 score bits/order. Native Windows/full-request latency/relevance/serving activation remain gated; no deployment or limit increase."
     }
   ]
 }

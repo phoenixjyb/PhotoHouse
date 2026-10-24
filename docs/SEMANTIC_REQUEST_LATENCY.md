@@ -1,5 +1,10 @@
 # Protected semantic request latency
 
+The [R80 exact-product source note](SEMANTIC_EXACT_PRODUCT_RANKING.md) records a
+later local ranking optimization, its generated 23,696/40,000-row comparisons
+and unchanged activation gates. It is not included in the Windows measurements
+below; semantic search remains **OFF**.
+
 Semantic remains **OFF**. The latest complete bounded Windows CPU qualification
 (R68, October 23, exact code `13a94dd`) passed both full audits and all
 **15 protection checks**. Nine English/Chinese/mixed loopback HTTPS/TCP requests
