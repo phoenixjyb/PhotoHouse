@@ -30962,6 +30962,20 @@
         }
       ],
       "notes": "A Store-owned bridge compares the complete current ordered SQL cohort with existing constructor-validated immutable primitive metadata for exact file/library/model pins, all16fields/types and signed64bit asset IDs. Detached artifacts on hit; unchanged full parser on miss. All fresh SQL/source/policy/file/generation/authorization and perrow cancellation/deadline checks remain. Independent source review and70 focused store/eligibility/bridge tests passed. Generated23696x768+65 paired9EN/ZH/mixed requests pluspage2 matched fullAPI/rankbits with18SQLreads/request; candidate mean1872/median1871/max1991ms vs2102/1977/2805 baseline; pairedmedian106ms gain, mean230ms inflatedbyoneoutlier. One fixedencoder localrun is not Windows/model/production qualification. No activation/deployment."
+    },
+    {
+      "feature": "semantic-regressions-in-standard-api-profile-r98",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "5247d5b16d99928c63545176763f5de5f5abe65c118be4fe1cad113a140717a2",
+          "sha256": "d63ee66a49de341ffaa5aec44f370310c1f8d142185770af68c0dbd66496828e"
+        }
+      ],
+      "notes": "Register existing artifact-field extraction, image-only facts and exact cached SQL grammar regression modules in the explicit standard API profile. This is source-check harness integration only; all295 server source payload blobs remain byteidentical to runtime candidate4254107. No Windows, model, runtime or activation change."
     }
   ]
 }
