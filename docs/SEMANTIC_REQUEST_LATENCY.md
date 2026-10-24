@@ -1,5 +1,9 @@
 # Protected semantic request latency
 
+The [October 24 readiness checkpoint](SEMANTIC_SEARCH_READINESS_2026-10-24.md)
+separates the current undeployed source candidate, the latest complete native
+measurement and the allocation-only preparation failure. Semantic remains OFF.
+
 The [exact artifact field copying note](SEMANTIC_ARTIFACT_FIELD_COPY.md) records
 a later source-only optimization and an alternating complete-request comparison
 on generated data. Its mean local request time was 2.775 versus 2.987 seconds;

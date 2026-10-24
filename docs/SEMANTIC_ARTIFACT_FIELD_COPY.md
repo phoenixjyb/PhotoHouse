@@ -4,6 +4,10 @@ Code `c01758491b87c6e2a7fb3f8bfff66d949df8e2c2` reduces Python iteration
 while copying current artifact metadata. Semantic search remains **OFF**; this
 source has not completed Windows qualification or been deployed.
 
+The [October 24 readiness checkpoint](SEMANTIC_SEARCH_READINESS_2026-10-24.md)
+records the later allocation-only attempt, its limited transport release and
+the remaining full-run and activation gates. It adds no native timing result.
+
 ## Change and preserved checks
 
 The bulk cohort key and request-local artifact snapshot still copy all 16 fields
