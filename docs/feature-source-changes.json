@@ -30837,6 +30837,31 @@
       ],
       "notes": "C-backed extraction copies the same16 current artifact fields; C map iteration retains exact type identity and per-row callbacks. No cache, SQL, policy, source/file/generation or rank change. Focused70 tests passed Python3.12/NumPy2.2.6 and3.14/2.4.2. Generated23696x768 full API comparison18 measured requests retained exact full JSON/rank bits; noisy local mean2.775s vs2.987s is not Windows/model/network/2s or activation qualification. Additional74 semantic endpoint/streaming tests passed on3.12; 122 unique cases across overlapping focused sets. Code and local synthetic results remain separate from native qualification.",
       "source_commit": "c01758491b87c6e2a7fb3f8bfff66d949df8e2c2"
+    },
+    {
+      "feature": "semantic-readiness-allocation-only-20261024",
+      "source_commit": "fa5b7657d294c155d29f8d8d7cab80739a059e76",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": null,
+          "sha256": "7ced1893f11b8f3fe58c10c72d495371f2bbd75cfddec58b05be7676a2bb68a2"
+        },
+        {
+          "path": "docs/SEMANTIC_ARTIFACT_FIELD_COPY.md",
+          "before_sha256": "66c4105c76e0173a4a9196020725b6c3cf6a71a0953be1ed4da31402ccfee1d0",
+          "sha256": "9654d4cca08ffdec0e16fe93ec5197c9198713db9589e85aaeeb9e16079b48eb"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "821adc360d336ee65aa92fbbf6d6e7aa587cb19e418a2fbb3deacb5772bb1c25",
+          "sha256": "276060414ae9baa04582bf799d99e0f94f4e4f046138804c938f8836bc04fbea"
+        }
+      ],
+      "notes": "Documentation only: separates prior completed R68 native measurement from current c017 source-only results and the allocation-only R90 local orchestration failure. Captured unexpected stderr remains failed qualification; limited owned transport release does not claim Windows preservation, native success, deployment or activation."
     }
   ]
 }
