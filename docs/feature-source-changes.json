@@ -30877,6 +30877,36 @@
         }
       ],
       "notes": "Documentation only:12 real-driver request-preparation regressions,7 progress-suppression checks and an isolated4-phase actual-issuer integration are local source evidence. Runtime backend is fake, shared queue untouched, consumed run refused; successor rebinding and Windows qualification remain pending."
+    },
+    {
+      "feature": "semantic-exact-image-only-derived-facts-r93",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "memory_limits_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "e9cdee8395b00ed41cc4b494babe6b3a78a270aebdfddf54a983c506f4f22681",
+          "sha256": "762a03a880f27428cc4165d25c785f6dc14ef647b34b07bb7785a85a43e0f7e5"
+        },
+        {
+          "path": "server/tests/security/test_semantic_media_only_facts.py",
+          "before_sha256": null,
+          "sha256": "cc7baa842c4386df8dad622bb63d7a6b3813172e474684c0241331eb292e74f3"
+        },
+        {
+          "path": "docs/SEMANTIC_MEDIA_ONLY_FACTS.md",
+          "before_sha256": null,
+          "sha256": "2640363f77e954746e9297454777131938ed2d58258e93eb03871322642e542f"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "c68f120e9efd3d439fc7890859d82ea467e3719cd0a20b43838a4784746da472",
+          "sha256": "51065bef3d8612477d269d2a28eb5260bc3422b8c3b4fd8c5344ef29dac64995"
+        }
+      ],
+      "notes": "Exact normalized image-only filters omit unused maps/facets/coverage derivation while retaining fresh SQL/source/policy/bulk/authorization checks, reviewed faces/allow_zero and cancellation. Five focused tests and generated23696x768+65 omission comparison preserve fullAPI/rankbits across9 warm EN/ZH/mixed pairs and3 page-two pairs. Mean2329 to2180ms is generated/fixedencoder evidence; max2615ms fails2000ms. ActualR92 c017 native9warm p50=6469/max7203ms remains failed/incomplete after localoffline normalizer; no deployment or activation."
     }
   ]
 }

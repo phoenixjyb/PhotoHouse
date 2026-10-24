@@ -4,6 +4,38 @@ Semantic search remains **OFF**. The current source candidate is not deployed
 or qualified on Windows. This checkpoint separates the earlier native result
 from the later source improvements; it does not authorize activation.
 
+## October 25 follow-up: actual requests measured, qualification failed
+
+R92 executed application source `c017584` on Windows against the isolated
+qualification fixture: 23,761 catalog entries, 23,696 vectors and the same 65
+qualification-only omissions. Both full audits, all 15 protection cases and
+nine warm English/Chinese/mixed HTTPS requests ran. Warm requests measured
+**6.469 s median / 7.203 s maximum** (5.782 s minimum); the cold request took
+12.718 s. Every warm sample exceeded the unchanged 2 s target. These are actual
+native/provider/network timings on generated qualification data, without
+production-database or family-relevance acceptance.
+
+The operation stopped during local normalization of the first offline
+observation: its expected evaluation time preceded the actual captures. The
+second offline observation was never issued. A later local review also found
+file-list ordering and source-policy hash joins that need correction in a new
+operation. Original requests, responses, failed claims and timings are retained;
+there is no complete qualification result. Independent limited release covered
+the exact owned process/transport scope after native closure and local audits;
+it does not establish that the whole shared host is free.
+
+The subsequent [image-only facts change](SEMANTIC_MEDIA_ONLY_FACTS.md) skips
+unused derived filter/facet work while retaining fresh authorization, source,
+policy, file and generation checks. A generated paired full-request comparison
+matched complete responses and ranking bits, reducing mean time from 2.329 s
+to 2.180 s. Its maximum remained 2.615 s. This is local source evidence, and
+does not establish an improvement to the R92 native measurements or meet the
+performance gate. Deployment, activation, family relevance and Android/device
+acceptance remain pending.
+
+The following table and preparation discussion retain the earlier October 24
+checkpoint; R92 above supersedes its statement that only allocation occurred.
+
 | Evidence | Result and limit |
 | --- | --- |
 | Latest complete protected Windows run | R68 on `13a94dd`: both full audits and all 15 protection checks passed. Nine warm HTTPS requests measured 8.000 s median / 8.438 s maximum; cold request 15.594 s. The 2 s backend target remains unmet. |
