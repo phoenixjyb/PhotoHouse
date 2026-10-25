@@ -221,11 +221,59 @@ class _LlamaEngine:
             op_offload=False, n_batch=256, n_ubatch=256,
             use_mmap=False, use_mlock=False, seed=0, verbose=False)
 
+    def _chat_prompt_tokens(self, prompt):
+        """Use the pinned model's chat template without promoting data to roles.
+
+        Render only host-controlled placeholders through the backend formatter.
+        Tokenize message contents separately with special-token recognition off,
+        so source text spelling a role delimiter cannot create another message.
+        The canonical request was already reconstructed and checked by _request.
+        """
+        from llama_cpp.llama_chat_format import Jinja2ChatFormatter
+        metadata = self.model.metadata
+        template = metadata.get('tokenizer.chat_template') if type(metadata) is dict else None
+        if (type(template) is not str or not template
+                or len(template.encode('utf-8')) > 32768):
+            _refuse('tokenize')  # No raw-completion or guessed-template fallback.
+        system, separator, body = prompt.partition('\nTask: ')
+        if not system or not separator or not body:
+            _refuse('tokenize')
+        eos = self.model.detokenize([self.model.token_eos()], special=True).decode('utf-8')
+        bos = self.model.detokenize([self.model.token_bos()], special=True).decode('utf-8')
+        if not eos or len(eos) > 256 or len(bos) > 256:
+            _refuse('tokenize')
+        system_slot = '__PHOTOHOUSE_SYSTEM_CONTENT__'
+        user_slot = '__PHOTOHOUSE_USER_CONTENT__'
+        messages = [{'role': 'system', 'content': system_slot},
+                    {'role': 'user', 'content': user_slot}]
+        formatted = Jinja2ChatFormatter(template=template, eos_token=eos, bos_token=bos,
+            add_generation_prompt=True)(messages=messages)
+        without_generation = Jinja2ChatFormatter(template=template, eos_token=eos, bos_token=bos,
+            add_generation_prompt=False)(messages=messages).prompt
+        frame = formatted.prompt
+        if (type(frame) is not str or len(frame.encode('utf-8')) > 65536
+                or type(without_generation) is not str or not without_generation
+                or not frame.startswith(without_generation) or frame == without_generation
+                or frame.count(system_slot) != 1 or frame.count(user_slot) != 1
+                or frame.index(system_slot) >= frame.index(user_slot)
+                or formatted.added_special is not True or formatted.stop != [eos]):
+            _refuse('tokenize')
+        before, rest = frame.split(system_slot)
+        between, after = rest.split(user_slot)
+        if not before or not between or not after:
+            _refuse('tokenize')
+        pieces = (before, system, between, 'Task: ' + body, after)
+        tokens = []
+        for index, piece in enumerate(pieces):
+            tokens.extend(self.model.tokenize(piece.encode('utf-8'), add_bos=False,
+                                             special=index % 2 == 0))
+        return tokens, formatted.stop
+
     def complete(self, generation, settings):
         phase = 'tokenize'
         try:
             from llama_cpp import LlamaGrammar
-            tokens = self.model.tokenize(generation['prompt'].encode('utf-8'), add_bos=True, special=False)
+            tokens, stop = self._chat_prompt_tokens(generation['prompt'])
             limit = generation['options']['num_predict']
             phase = 'context'
             actual_context = self.model.n_ctx()
@@ -240,7 +288,7 @@ class _LlamaEngine:
             phase = 'generation'
             result = self.model.create_completion(prompt=tokens, max_tokens=limit,
                 temperature=generation['options']['temperature'], seed=0,
-                stream=False, echo=False, grammar=grammar)
+                stream=False, echo=False, grammar=grammar, stop=stop)
             phase = 'completion'
             choices = result.get('choices') if type(result) is dict else None
             usage = result.get('usage') if type(result) is dict else None
