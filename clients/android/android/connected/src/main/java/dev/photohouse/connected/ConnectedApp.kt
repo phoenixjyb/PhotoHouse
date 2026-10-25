@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -1484,7 +1485,8 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                                                     TextButton(onClick = { store.openAsset(asset) },
                                                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("details-${asset.id}")) {
-                                                        Text(t("Details", "详情"), modifier = Modifier.testTag("details-label-${asset.id}"))
+                                                        Text(t("Details", "详情"), textAlign = TextAlign.Center,
+                                                            modifier = Modifier.fillMaxWidth().testTag("details-label-${asset.id}"))
                                                     }
                                                     stackGroups.firstOrNull { (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) == asset.id }?.let { group ->
                                                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,

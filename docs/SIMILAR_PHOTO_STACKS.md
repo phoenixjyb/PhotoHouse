@@ -143,6 +143,13 @@ every separated card's Chinese and English action is clickable, untruncated
 and laid out on one line. Rendered acceptance of this successor remains separate
 from the earlier screenshots and source/build checks.
 
+The first hosted successor reached the Chinese one-line check but failed its
+overflow assertion. The follow-up also gives the label the full available
+button-content width and centers it, instead of using a narrow intrinsic-width
+text box. The one-line and no-overflow assertions remain intact, with measured
+width/height diagnostics added to any failure. The first failure is retained;
+the follow-up still needs its own hosted rendered result.
+
 ### Local source checks — October 19
 
 The stack algorithm/route, ordinary library reads and duplicate-management

@@ -714,7 +714,11 @@ class ConnectedUiTest {
                     .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
                 assertEquals("One laid-out details label for card $id", 1, layouts.size)
                 assertEquals("Details must not wrap vertically in a narrow card", 1, layouts.single().lineCount)
-                assertFalse("The complete details label must fit", layouts.single().hasVisualOverflow)
+                val layout = layouts.single()
+                assertFalse("The complete details label must fit: id=$id label=$label size=${layout.size} " +
+                    "paragraph=${layout.multiParagraph.width}x${layout.multiParagraph.height} " +
+                    "widthOverflow=${layout.didOverflowWidth} heightOverflow=${layout.didOverflowHeight}",
+                    layout.hasVisualOverflow)
             }
         }
         assertReadableDetails("详情")

@@ -31712,6 +31712,31 @@
       "semantic_search_enabled": false,
       "live_runtime_changed": false,
       "notes": "Test-only inventory followup for the two reviewed R144 routes already present in source626. Explicit exact route set and cold-import/runtime counts now include scene-page capability GET and scoped scene-pages POST, total181. Duplicate-route, complete-set, import/no-runtime-I/O and anonymous ClosedBoundary checks remain strict. Exact626 hosted API had2 failures from these stale expectations,3537passed/4244subtests; focused closed-app plus page API39tests32subtests passed after correction. No full-suite rerun, Android render, deployment or activation claim."
+    },
+    {
+      "feature": "phone-details-label-content-width-20261025",
+      "source_base": "07096399d7d5f947aa2e231646dc65c614ffd402",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "24975c06d8a59304d3f206cb204c76c5102b77fa38c0061b3d315c9987b18ea2",
+          "sha256": "a3ca952eacd8022b3fa081ff0b3d6fbbacf39659afa5612b2dee3da007da0e27"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "before_sha256": "36f7960204c3112481729b55fe76c0b86fc4e118cb2d0c3dc5f8cfb8141d4aee",
+          "sha256": "6ca6d5f89b12d6dddfc3130ac23dcd1d1eb14c1071954444820b89304c152aea"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": "d2a2ee35bb1b677fef901d6adfa0aa2f8c59e6b3d03b92036fca71f29e83a303",
+          "sha256": "85aa1069e1225168011e2a12ae1afabc61cad63d2a7f2bff42dc4ff256a03f73"
+        }
+      ],
+      "notes": "Keep full-width separate Details action and give its centered label the available button-content width. Retain strong one-line/no-overflow assertions; add width/height diagnostics after actual hosted assertion failure. No font shrinking/truncation, callbacks/ordinals/store/wire changes. Rendered successor remains pending."
     }
   ]
 }
