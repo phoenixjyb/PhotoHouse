@@ -216,18 +216,23 @@ _OBSERVATION_UNSUPPORTED = object()
 
 
 def _observe(connection):
-    if (type(connection) is not RequestSnapshotConnection
-            or not connection._snapshot_environment_valid
-            or connection._snapshot_open_path is None
-            or connection._snapshot_open_identity is None
+    if type(connection) is not RequestSnapshotConnection:
+        return _OBSERVATION_UNSUPPORTED
+    if (connection._snapshot_open_path is None
+            or connection._snapshot_open_identity is None):
+        return _OBSERVATION_UNSUPPORTED
+    # Physical identity is independent of cache-environment eligibility. Check
+    # it first so a denied PRAGMA or other sticky environment failure cannot
+    # mask pathname replacement and permit a fallback on the old open handle.
+    current_path = path_identity(connection._snapshot_open_path)
+    if not _same_open_files(connection._snapshot_open_identity, current_path):
+        return _OBSERVATION_UNSAFE
+    if (not connection._snapshot_environment_valid
             or connection.in_transaction
             or connection.row_factory is not None
             or connection.text_factory is not str
             or connection.total_changes != 0):
         return _OBSERVATION_UNSUPPORTED
-    current_path = path_identity(connection._snapshot_open_path)
-    if not _same_open_files(connection._snapshot_open_identity, current_path):
-        return _OBSERVATION_UNSAFE
     try:
         databases = connection.execute('PRAGMA database_list').fetchall()
         mode = connection.execute('PRAGMA journal_mode').fetchone()

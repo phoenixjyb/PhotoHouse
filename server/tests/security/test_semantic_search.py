@@ -315,6 +315,58 @@ class SemanticSearchTests(unittest.TestCase):
             self.assertEqual(db.execute(
                 "SELECT taken_at FROM assets WHERE id=101").fetchone(), ('2040-01-01',))
 
+    def test_post_replay_environment_failure_cannot_mask_path_replacement(self):
+        from app.access.semantic_request_snapshot import RequestSnapshotConnection, RequestSourceSnapshot
+        self.enable_request_source_snapshot()
+        path = self.fixture.database.resolve()
+        replacement = path.with_name('replacement-unsupported.sqlite')
+        moved = path.with_name('opened-old-unsupported.sqlite')
+        with closing(sqlite3.connect(path)) as source, closing(sqlite3.connect(replacement)) as target:
+            source.backup(target)
+        with closing(sqlite3.connect(replacement)) as db, db:
+            db.execute("UPDATE assets SET taken_at='2041-01-01' WHERE id=101")
+        original_commit = RequestSnapshotConnection.commit
+        original_bind = RequestSourceSnapshot.bind
+        source_connections = set()
+        state = {'commits': 0, 'replay': False, 'pragma_denied': False, 'replaced': False}
+
+        def bind(snapshot, connection):
+            source_connections.add(id(connection))
+            return original_bind(snapshot, connection)
+
+        original_read = RequestSourceSnapshot.read
+        def read(snapshot, *args, **kwargs):
+            result = original_read(snapshot, *args, **kwargs)
+            state['replay'] = state['replay'] or snapshot.replay_used
+            return result
+
+        def commit(connection):
+            result = original_commit(connection)
+            if id(connection) in source_connections:
+                state['commits'] += 1
+                if state['commits'] == 2 and not state['replaced']:
+                    try:
+                        connection.execute('PRAGMA query_only=OFF')
+                    except sqlite3.Error:
+                        state['pragma_denied'] = True
+                    os.replace(path, moved)
+                    os.replace(replacement, path)
+                    state['replaced'] = True
+            return result
+
+        with patch.object(RequestSourceSnapshot, 'bind', bind), \
+                patch.object(RequestSourceSnapshot, 'read', read), \
+                patch.object(RequestSnapshotConnection, 'commit', commit):
+            response = self.query()
+        self.assertTrue(state['replay'])
+        self.assertTrue(state['pragma_denied'])
+        self.assertTrue(state['replaced'])
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
+        with closing(sqlite3.connect(path)) as db:
+            self.assertEqual(db.execute(
+                "SELECT taken_at FROM assets WHERE id=101").fetchone(), ('2041-01-01',))
+
     def test_cancel_exception_after_replay_and_unrelated_commit_propagates_same_object(self):
         from app.access.semantic_request_snapshot import NativeSnapshotDatabase, RequestSourceSnapshot
         from app.access.transport import AccessRuntime

@@ -31129,7 +31129,7 @@
       "files": [
         {
           "path": "server/backend/app/access/semantic_request_snapshot.py",
-          "sha256": "0ccba11a3e8d6585f36e9bfa1f5493fa841943f68b5319d47e4b5d2ec9d14179",
+          "sha256": "4b168d7ecfda1556087bd910d9a6bd5c9bb120315c3b942d4ea42565e8c9558d",
           "before_sha256": null
         },
         {
@@ -31179,7 +31179,7 @@
         },
         {
           "path": "server/tests/security/test_semantic_search.py",
-          "sha256": "2cc4aa3811c0218c89f41b40321448f9a641edfb889e901510214179b4d9890b",
+          "sha256": "9d70c29a01a0624046f58e9f35d54e9c1431d4a60012fdbbfadd6e372a067d06",
           "before_sha256": "14216778b6cf34b9b3f38174db5a1161831c65e8eb2c8a97cc0ac330e731ade4"
         },
         {
@@ -31188,7 +31188,7 @@
           "before_sha256": "5d936faadfa99c17a99362dd47b8e88e586c7e2a74d0a68ab9c6b378f28b3a7e"
         }
       ],
-      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Focused generated SQLite/request/coverage/qualifier/search tests passed (87 tests, 42 subtests); no full23696 comparison, native Windows, production or family acceptance claim."
+      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Focused generated SQLite/request/coverage/qualifier/search tests passed (88 tests, 42 subtests); no full23696 comparison, native Windows, production or family acceptance claim."
     }
   ]
 }
