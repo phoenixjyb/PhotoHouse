@@ -108,6 +108,12 @@ internal class Words(val zh: Boolean) {
     }
 }
 
+internal fun pagePhotoStackNotice(scope: String?, groups: List<PhotoStackGroup>?, words: Words): String? =
+    if (scope == "page" && !groups.isNullOrEmpty()) words.t(
+        "Similar photos on this page. Cover and separation choices reset when you refresh or change pages. All originals are kept.",
+        "这是本页照片的建议分组。封面和单独显示设置只在本次查看中生效，刷新或翻页后会重置。原照片都会保留。",
+    ) else null
+
 private enum class UploadDestinationAction { DIRECT, BATCH }
 private data class AnnotationWavSelection(
     val account: String, val generation: Long, val target: UploadAnnotationTarget,
@@ -1435,6 +1441,13 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     }
                                     state.gallery?.let { gallery ->
                                         if (gallery.items.isEmpty()) item { Text(t("No matching items on this page", "此页暂无符合条件的内容")) }
+                                        pagePhotoStackNotice(state.photoStackScope, state.photoStacks, words)?.let { notice ->
+                                            item {
+                                                Text(notice, style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.testTag("photo-stack-page-notice"))
+                                            }
+                                        }
                                         if (state.photoStackScope == "library") item {
                                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                                 Text(t("Cover and separate choices are saved for your account", "封面和单独显示设置已保存到你的账户"),

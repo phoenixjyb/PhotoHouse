@@ -671,12 +671,18 @@ class ConnectedUiTest {
             store.authenticate("+12025550123", "synthetic-password-only")
         }
         awaitLibrary(store); click("Libraries"); click("Open library")
+        reveal(hasTestTag("photo-stack-page-notice"))
+        rule.onNodeWithTag("photo-stack-page-notice").assertTextEquals(
+            "Similar photos on this page. Cover and separation choices reset when you refresh or change pages. All originals are kept.")
         reveal(hasTestTag("media-1")); reveal(hasTestTag("photo-stack-toggle-1"))
         rule.onNodeWithText("Same upload · 3 photos").assertIsDisplayed()
         rule.onNodeWithTag("photo-stack-toggle-1").assertIsDisplayed()
         capture("photo-stacks-en-150")
         val reads = api.photoStackReads
         click("简体中文")
+        reveal(hasTestTag("photo-stack-page-notice"))
+        rule.onNodeWithTag("photo-stack-page-notice").assertTextEquals(
+            "这是本页照片的建议分组。封面和单独显示设置只在本次查看中生效，刷新或翻页后会重置。原照片都会保留。")
         reveal(hasTestTag("media-1")); reveal(hasTestTag("photo-stack-toggle-1"))
         rule.onNodeWithText("同次上传 · 3 张相似照片").assertIsDisplayed()
         rule.onNodeWithTag("photo-stack-toggle-1").assertIsDisplayed()
@@ -712,6 +718,7 @@ class ConnectedUiTest {
         }
         awaitLibrary(store); click("Libraries"); click("Open library")
         reveal(hasTestTag("photo-stack-reset-preferences"))
+        rule.onNodeWithTag("photo-stack-page-notice").assertDoesNotExist()
         rule.onNodeWithText("Cover and separate choices are saved for your account").assertIsDisplayed()
         clickTag("photo-stack-reset-preferences")
         rule.waitUntil(5000) { api.photoStackPreferenceWrites.size == 1 && !store.state.value.photoStackPreferenceBusy }

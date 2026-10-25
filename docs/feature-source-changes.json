@@ -31447,6 +31447,35 @@
         }
       ],
       "notes": "Document the complete grouping delivery path, visible family journeys and outstanding schema/index/worker/client/TV/quality gates. Timings are advisory for product prioritization; preserve old frozen evidence and access/data/resource/cleanup requirements. Documentation only; no source/runtime/model/schema/OTA activation."
+    },
+    {
+      "feature": "phone-page-local-stack-choice-explanation-20261025",
+      "source_base": "bb343c223b87101ab1437fee26c81ae7ac6be14d",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "f5fc86ecaa04d0cff9cb2e07f08d01b508dc0d8abee59e7ea175136226189279",
+          "sha256": "334b13d685cd4336b49e118e96f54e25cabfda8c414d1f7421978df6b482d320"
+        },
+        {
+          "path": "clients/android/android/connected/src/test/java/dev/photohouse/connected/PhotoStackPageNoticeTest.kt",
+          "sha256": "e95d63e8b5f2fb2806194a528ae0dbb73105cf676b34f4f9ba39679224c44108"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "before_sha256": "383b3bbdf9fb262d59071dca2be8a3b7b2e61340fe720e00b47b6eaef01b201f",
+          "sha256": "adbd71610bf0737d5bd18ee8301e84db87d203a123efb67152a213210849650e"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": "3f413c376fb8e47a26775e0bd7dde722be2036c9c8540832ff627f62aee4ad04",
+          "sha256": "6f4a80b56965e2980b1028c62f9096e5db0285558979a1419944a8448ca7aced"
+        }
+      ],
+      "notes": "Show bilingual temporary-choice explanation only for page-local suggestions with nonempty groups. Preserve v2 saved/private wording and all gallery/store/wire/access behavior. Add targeted copy/scope JVM cases and enlarged-text UI assertions; emulator/device/publication remain separate."
     }
   ]
 }

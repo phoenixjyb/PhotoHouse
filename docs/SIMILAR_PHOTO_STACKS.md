@@ -117,6 +117,16 @@ An expanded Web stack can release an individual member to its own card. The
 phone's current-view **Show separately** action dissolves the whole suggested
 stack. Both are temporary presentation choices, cleared on gallery reload.
 
+### Phone page-local explanation — October 25 source
+
+The phone shows a short Chinese/English explanation when the current gallery has
+page-local grouping suggestions: cover and separation choices reset on refresh
+or a page change, and all originals are retained. An empty, missing or unknown
+grouping scope does not display that notice. Library-wide v2 keeps its existing
+saved-account-choice message. This is display copy only; gallery requests,
+preferences, authorization and fallback behavior are unchanged. Signed APK
+delivery and rendered emulator/device acceptance remain separate gates.
+
 Source checks, synthetic UI renders, signed app delivery, Windows deployment and
 family acceptance are separate gates. This document does not authorize a service
 switch, APK publication, photo deletion or model activation.
