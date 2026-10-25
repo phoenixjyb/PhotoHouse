@@ -20,10 +20,13 @@ The native factory uses a direct regular file in `mode=ro`, `query_only=1`,
 attached/TEMP state, virtual or generated tables, changed connection
 environment, unsupported journal mode, unsafe path identity and same-connection
 writes. Only fixed source SQL templates and exact string arguments are eligible;
-unknown queries use ordinary SQL. A source change before reuse disables the
-snapshot and uses live SQL. A change detected after final replay causes one
+unknown queries use ordinary SQL. A stable source-version change before reuse
+disables the snapshot and uses live SQL. If final replay completes normally but
+a supported source-version check detects a change, the runtime performs one
 ordinary full fresh validation against the original binding before final owner
-authorization. No replay can trigger the encoder or ranking again.
+authorization. Unsafe path or connection identity fails closed; it never falls
+back to an old SQLite handle. An exception during final validation propagates
+without retry. No replay can trigger the encoder or ranking again.
 
 This remains a local experiment, not deployment or activation evidence. Path
 metadata checks do not atomically bind SQLite file descriptors and do not prove

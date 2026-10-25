@@ -18,7 +18,7 @@ from os import name as _os_name
 _READ_PRAGMAS = frozenset({
     'data_version', 'foreign_keys', 'trusted_schema', 'query_only',
     'read_uncommitted', 'journal_mode', 'database_list', 'table_list',
-    'table_xinfo', 'schema_version', 'user_version',
+    'table_info', 'table_xinfo', 'schema_version', 'user_version',
 })
 _WRITE_ACTIONS = frozenset(getattr(sqlite3, name) for name in (
     'SQLITE_INSERT', 'SQLITE_UPDATE', 'SQLITE_DELETE', 'SQLITE_CREATE_INDEX',
@@ -139,7 +139,8 @@ class RequestSnapshotConnection(sqlite3.Connection):
                         'read_uncommitted', 'journal_mode', 'schema_version', 'user_version'}
                     if (pragma not in _READ_PRAGMAS
                             or pragma in setters and arg2 is not None
-                            or pragma == 'table_xinfo' and type(arg2) is not str):
+                            or pragma in {'table_info', 'table_xinfo'}
+                                and type(arg2) is not str):
                         object.__setattr__(self, '_snapshot_environment_valid', False)
                         return sqlite3.SQLITE_DENY
                 return sqlite3.SQLITE_OK
@@ -307,15 +308,8 @@ class NativeSnapshotDatabase:
             connection.close()
 
 
-@dataclass(frozen=True)
-class _ReplayChunk:
-    rows: tuple
-    packed_bytes: int
-
-
 _SNAPSHOT_CREATE_TOKEN = object()
 _ATTEMPT_CREATE_TOKEN = object()
-_BUDGET_CAPTURE_TOKEN = object()
 _SNAPSHOT_STATES = weakref.WeakKeyDictionary()
 _ATTEMPT_STATES = weakref.WeakKeyDictionary()
 
@@ -349,7 +343,7 @@ class RequestSourceSnapshot:
             'connection': None, 'entries': {}, 'baseline': None,
             'disabled': False, 'final_requested': False,
             'replay_used': False, 'fallback_required': False,
-            'stored_rows': 0, 'stored_bytes': 0,
+            'identity_unsafe': False, 'stored_rows': 0, 'stored_bytes': 0,
         }
 
     @property
@@ -384,7 +378,8 @@ class RequestSourceSnapshot:
     def request_final_replay(self):
         state = _snapshot_state(self)
         if state is not None:
-            state['final_requested'] = not state['disabled'] and bool(state['entries'])
+            state['final_requested'] = (not state['disabled'] and not state['identity_unsafe']
+                                         and bool(state['entries']))
             state['replay_used'] = False
             state['fallback_required'] = False
 
@@ -399,6 +394,10 @@ class RequestSourceSnapshot:
             return False
         value, state['fallback_required'] = state['fallback_required'], False
         return value
+
+    def consume_identity_unsafe(self):
+        state = _snapshot_state(self)
+        return bool(state and state['identity_unsafe'])
 
     def disable(self):
         state = _snapshot_state(self)
@@ -425,22 +424,37 @@ class RequestSourceSnapshot:
 
     def begin_attempt(self, connection, *, rows_limit, bytes_limit):
         state = _snapshot_state(self)
-        if (state is None or state['disabled'] or state['connection'] is None
-                or connection is not state['connection']):
+        if state is None:
             return _new_attempt(self, {'start': None, 'replay': False,
                 'capture': False, 'staged': {}, 'excluded': set(), 'rows': 0,
-                'bytes': 0, 'replay_used': False})
+                'bytes': 0, 'replay_used': False, 'owned': False,
+                'rows_limit': min(rows_limit, self._MAX_ROWS),
+                'bytes_limit': min(bytes_limit, self._MAX_BYTES)})
+        if state['connection'] is None or connection is not state['connection']:
+            return _new_attempt(self, {'start': None, 'replay': False,
+                'capture': False, 'staged': {}, 'excluded': set(), 'rows': 0,
+                'bytes': 0, 'replay_used': False, 'owned': False,
+                'rows_limit': min(rows_limit, self._MAX_ROWS),
+                'bytes_limit': min(bytes_limit, self._MAX_BYTES)})
+        if state['identity_unsafe']:
+            raise sqlite3.OperationalError('snapshot source identity is unsafe')
         observed = _observe(connection)
         if observed is _OBSERVATION_UNSAFE:
+            state['identity_unsafe'] = True
             self.disable()
             raise sqlite3.OperationalError('snapshot source identity/environment changed')
         if observed is _OBSERVATION_UNSUPPORTED:
             self.disable()
             return _new_attempt(self, {'start': None, 'replay': False,
                 'capture': False, 'staged': {}, 'excluded': set(), 'rows': 0,
-                'bytes': 0, 'replay_used': False})
+                'bytes': 0, 'replay_used': False, 'owned': True,
+                'rows_limit': min(rows_limit, self._MAX_ROWS),
+                'bytes_limit': min(bytes_limit, self._MAX_BYTES)})
         opened_identity = connection._snapshot_open_identity
-        if state['baseline'] is None:
+        if state['disabled']:
+            start_matches = False
+            capture = False
+        elif state['baseline'] is None:
             if observed[2] != opened_identity:
                 # A legitimate in-place source update since connection setup
                 # disables reuse; the normal query still sees the live source.
@@ -462,66 +476,98 @@ class RequestSourceSnapshot:
                    'excluded': set(), 'rows': 0, 'bytes': 0,
                    'rows_limit': min(rows_limit, self._MAX_ROWS),
                    'bytes_limit': min(bytes_limit, self._MAX_BYTES),
-                   'replay_used': False}
+                   'replay_used': False, 'owned': True, 'query_calls': {}}
         return _new_attempt(self, attempt)
 
-    def query_key(self, sql, args):
-        state = _snapshot_state(self)
-        return None if state is None else self._key(sql, args, state['library_id'])
-
-    def can_replay(self, attempt, key):
+    def owns_attempt(self, attempt, connection):
         state = _snapshot_state(self)
         payload = _attempt_payload(self, attempt)
-        return bool(state and payload and key is not None and payload['replay']
-                    and key in state['entries'])
+        return bool(state and payload and payload['owned']
+                    and state['connection'] is connection)
 
-    def replay_chunks(self, attempt, key):
+    def attempt_accounting(self, attempt):
         state = _snapshot_state(self)
         payload = _attempt_payload(self, attempt)
-        if not state or not payload or not self.can_replay(attempt, key):
-            return ()
-        payload['replay_used'] = True
-        state['replay_used'] = True
-        return state['entries'][key]
+        if state is None or payload is None:
+            raise ValueError('valid snapshot attempt required')
+        return (payload['rows'], payload['bytes'])
 
-    def capture_chunk(self, attempt, key, chunk, packed_bytes, *, _budget_token=None):
+    def read(self, attempt, sql, args, *, check):
+        """Fetch, account, and optionally replay rows on the bound native handle."""
         state = _snapshot_state(self)
         payload = _attempt_payload(self, attempt)
-        if (_budget_token is not _BUDGET_CAPTURE_TOKEN or not state or not payload
-                or not payload['capture'] or key is None
+        if (state is None or payload is None or not payload['owned']
                 or state['connection'] is None):
-            return
-        if key in payload['excluded']:
-            return
-        if type(chunk) is not list or type(packed_bytes) is not int or packed_bytes < 0:
-            self._exclude_query(payload, key)
-            return
-        frozen = []
-        for row in chunk:
-            if type(row) is not tuple or any(type(value) not in (str, int, float, type(None))
-                                              for value in row):
+            raise sqlite3.ProgrammingError('owned snapshot read required')
+        from . import discovery as d
+        connection = state['connection']
+        check()
+        key = self._key(sql, args, state['library_id'])
+        if (payload['replay'] and key is not None and key in state['entries']
+                and key not in payload['excluded']):
+            payload['replay_used'] = True
+            state['replay_used'] = True
+            result = []
+            for frozen_rows, packed_bytes in state['entries'][key]:
+                check()
+                self._charge(payload, len(frozen_rows), packed_bytes)
+                result.extend(frozen_rows)
+            return result
+
+        if key is not None:
+            count = payload['query_calls'].get(key, 0) + 1
+            payload['query_calls'][key] = count
+            if count > 1:
                 self._exclude_query(payload, key)
-                return
-            if any(type(value) is int and not -(2**63) <= value <= 2**63 - 1
-                   or type(value) is float and not math.isfinite(value) for value in row):
-                self._exclude_query(payload, key)
-                return
-            frozen.append(tuple(row))
-        rows = len(frozen)
-        if (payload['rows'] + rows > payload['rows_limit']
+            elif payload['capture']:
+                payload['staged'][key] = []
+
+        cursor = connection.execute(sql, args)
+        result = []
+        while True:
+            chunk = cursor.fetchmany(128)
+            if not chunk:
+                break
+            check()
+            if payload['rows'] + len(chunk) > payload['rows_limit']:
+                raise d.DiscoveryUnavailable()
+            chunk_size = d._packed_chunk_size(chunk,
+                payload['bytes_limit'] - payload['bytes'])
+            if chunk_size is None:
+                if payload['capture'] and key is not None:
+                    self._exclude_query(payload, key)
+                for row in chunk:
+                    size = len(d.packed(row))
+                    if payload['bytes'] + size > payload['bytes_limit']:
+                        raise d.DiscoveryUnavailable()
+                    payload['rows'] += 1
+                    payload['bytes'] += size
+                    result.append(row)
+            else:
+                if payload['bytes'] + chunk_size > payload['bytes_limit']:
+                    raise d.DiscoveryUnavailable()
+                payload['rows'] += len(chunk)
+                payload['bytes'] += chunk_size
+                result.extend(chunk)
+                if (payload['capture'] and key is not None
+                        and key not in payload['excluded']):
+                    payload['staged'][key].append((tuple(tuple(row) for row in chunk),
+                                                   chunk_size))
+        return result
+
+    def _charge(self, payload, rows, packed_bytes):
+        from . import discovery as d
+        if (type(rows) is not int or type(packed_bytes) is not int
+                or rows < 0 or packed_bytes < 0
+                or payload['rows'] + rows > payload['rows_limit']
                 or payload['bytes'] + packed_bytes > payload['bytes_limit']):
-            self._exclude_query(payload, key)
-            return
-        chunks = payload['staged'].setdefault(key, [])
-        chunks.append(_ReplayChunk(tuple(frozen), packed_bytes))
+            raise d.DiscoveryUnavailable()
         payload['rows'] += rows
         payload['bytes'] += packed_bytes
 
     @staticmethod
     def _exclude_query(attempt, key):
-        prior = attempt['staged'].pop(key, ())
-        attempt['rows'] -= sum(len(chunk.rows) for chunk in prior)
-        attempt['bytes'] -= sum(chunk.packed_bytes for chunk in prior)
+        attempt['staged'].pop(key, None)
         attempt['excluded'].add(key)
 
     def end_attempt(self, connection, attempt, *, success):
@@ -530,15 +576,20 @@ class RequestSourceSnapshot:
         if (state is None or payload is None or connection is not state['connection']):
             return
         observed = _observe(connection)
-        if observed in (_OBSERVATION_UNSAFE, _OBSERVATION_UNSUPPORTED):
-            if payload['replay_used']:
+        if observed is _OBSERVATION_UNSAFE:
+            state['identity_unsafe'] = True
+            self.disable()
+            return
+        if observed is _OBSERVATION_UNSUPPORTED:
+            if success and payload['replay_used']:
                 state['fallback_required'] = True
             self.disable()
             return
         if payload['replay_used']:
             state['replay_used'] = True
             if observed != payload['start']:
-                state['fallback_required'] = True
+                if success:
+                    state['fallback_required'] = True
                 self.disable()
             return
         if not success:
@@ -553,7 +604,10 @@ class RequestSourceSnapshot:
                 return
             state['entries'] = {key: tuple(chunks)
                 for key, chunks in payload['staged'].items()}
-            state['stored_rows'], state['stored_bytes'] = payload['rows'], payload['bytes']
+            state['stored_rows'] = sum(len(rows) for chunks in state['entries'].values()
+                                       for rows, _size in chunks)
+            state['stored_bytes'] = sum(size for chunks in state['entries'].values()
+                                        for _rows, size in chunks)
             if state['entries']:
                 state['baseline'] = observed
         elif state['baseline'] is not None and observed != state['baseline']:
@@ -576,6 +630,10 @@ def _snapshot_state(snapshot):
 
 
 def _new_attempt(snapshot, payload):
+    payload.setdefault('query_calls', {})
+    payload.setdefault('owned', False)
+    payload.setdefault('rows_limit', RequestSourceSnapshot._MAX_ROWS)
+    payload.setdefault('bytes_limit', RequestSourceSnapshot._MAX_BYTES)
     attempt = _SnapshotAttempt(_ATTEMPT_CREATE_TOKEN)
     _ATTEMPT_STATES[attempt] = {'owner': snapshot, 'payload': payload,
                                 'auth': _ATTEMPT_CREATE_TOKEN}
@@ -600,10 +658,6 @@ def create_request_source_snapshot(library_id):
 def is_request_source_snapshot(snapshot):
     return _snapshot_state(snapshot) is not None
 
-
-def _capture_token_for_budget():
-    """Internal capability used only by ReadBudget after fetching SQL rows."""
-    return _BUDGET_CAPTURE_TOKEN
 
 def _known_query(sql):
     return sql in _query_templates()

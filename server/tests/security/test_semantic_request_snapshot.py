@@ -200,6 +200,103 @@ def test_windows_reparse_attribute_is_not_accepted_as_regular_file(tmp_path, mon
     assert snapshot_module._file_identity(tmp_path / 'linked.sqlite') is False
 
 
+def test_duplicate_query_is_not_cached_as_concatenated_rows(tmp_path, monkeypatch):
+    path = tmp_path / 'source.sqlite'
+    _database(path)
+    calls = []
+    original = RequestSnapshotConnection.execute
+    def counted(connection, sql, *args):
+        if sql == ASSET_SQL:
+            calls.append(sql)
+        return original(connection, sql, *args)
+    monkeypatch.setattr(RequestSnapshotConnection, 'execute', counted)
+    snapshot = create_request_source_snapshot('lib')
+    with NativeSnapshotDatabase(path)() as connection:
+        snapshot.bind(connection)
+        attempt = snapshot.begin_attempt(connection, rows_limit=20, bytes_limit=4096)
+        first = snapshot.read(attempt, ASSET_SQL, ('lib',), check=lambda: None)
+        second = snapshot.read(attempt, ASSET_SQL, ('lib',), check=lambda: None)
+        assert first == second
+        assert snapshot.attempt_accounting(attempt)[0] == 2
+        snapshot.end_attempt(connection, attempt, success=True)
+        assert not snapshot.has_entries
+        snapshot.request_final_replay()
+        replay_attempt = snapshot.begin_attempt(connection, rows_limit=20, bytes_limit=4096)
+        assert snapshot.read(replay_attempt, ASSET_SQL, ('lib',), check=lambda: None) == first
+        assert not snapshot.replay_used
+        assert calls == [ASSET_SQL, ASSET_SQL, ASSET_SQL]
+        snapshot.close()
+
+
+def test_empty_result_has_immutable_internal_replay_record(tmp_path, monkeypatch):
+    path = tmp_path / 'source.sqlite'
+    _database(path)
+    with closing(sqlite3.connect(path)) as writer, writer:
+        writer.execute('DELETE FROM access_asset_libraries WHERE library_id=?', ('lib',))
+    calls = []
+    original = RequestSnapshotConnection.execute
+    def counted(connection, sql, *args):
+        if sql == ASSET_SQL:
+            calls.append(sql)
+        return original(connection, sql, *args)
+    monkeypatch.setattr(RequestSnapshotConnection, 'execute', counted)
+    snapshot = create_request_source_snapshot('lib')
+    budget = d.ReadBudget(rows=20, source_bytes=4096, seconds=5)
+    with NativeSnapshotDatabase(path)() as connection:
+        assert _read(connection, snapshot, budget) == []
+        assert snapshot.has_entries
+        snapshot.request_final_replay()
+        assert _read(connection, snapshot, budget) == []
+        assert calls == [ASSET_SQL]
+        assert snapshot.replay_used
+        snapshot.close()
+
+
+def test_existing_readonly_snapshot_keeps_deletion_journal_checks_fresh(tmp_path):
+    sys.path.insert(0, str(ROOT))
+    from test_original_deletions import OriginalDeletionTests
+    from app.access.runtime import ExistingDatabase
+    from app.access.transport import TransportError
+    OriginalDeletionTests.setUpClass()
+    case = OriginalDeletionTests('test_append_rejects_stale_or_mismatched_fetched_row_without_ledger_change')
+    try:
+        case.setUp()
+        ident, _batch = case._insert_upload()
+        journal = case.journal
+        snapshot = create_request_source_snapshot('family-a')
+        factory = ExistingDatabase(case.fixture.path.resolve(), read_only=True,
+            original_deletions=journal)
+        budget = d.ReadBudget(rows=100, source_bytes=8192, seconds=5)
+        access = None
+        with factory.source_snapshot() as connection:
+            snapshot.bind(connection)
+            access = AccessService(connection, clock=lambda: case.fixture.now)
+            view = budget.with_request_source_snapshot(snapshot)
+            with view.attempt(connection, lambda: False) as (_check, read):
+                with access._transaction():
+                    assert read(ASSET_SQL, ('family-a',))
+
+            # Commit only to the durable external journal; rolling back the
+            # primary transaction leaves its marker stale for the next source
+            # transaction on this already-sealed read-only connection.
+            with case.fixture.connection() as writer:
+                writer.execute('PRAGMA secure_delete=ON')
+                writer.execute('BEGIN IMMEDIATE')
+                cursor = writer.execute(
+                    'SELECT * FROM access_upload_annotations WHERE id=?', (ident,))
+                row = dict(zip((column[0] for column in cursor.description), cursor.fetchone()))
+                journal.append(writer, 'upload', row, case.fixture.now)
+                writer.rollback()
+            with pytest.raises(TransportError):
+                with view.attempt(connection, lambda: False) as (_check, read):
+                    with access._transaction():
+                        read(ASSET_SQL, ('family-a',))
+        snapshot.close()
+    finally:
+        case.doCleanups()
+        OriginalDeletionTests.tearDownClass()
+
+
 def test_path_replacement_refuses_replay_before_any_cached_rows_are_used(tmp_path,
                                                                         monkeypatch):
     path = tmp_path / 'source.sqlite'
@@ -267,7 +364,7 @@ def test_replay_recharges_original_limits_and_observes_cancellation(tmp_path):
         snapshot.close()
 
 
-def test_snapshot_and_attempt_state_are_opaque_and_budget_capability_is_required(tmp_path):
+def test_snapshot_reads_only_actual_sql_and_exposes_no_caller_capture_path(tmp_path):
     path = tmp_path / 'source.sqlite'
     _database(path)
     with pytest.raises(TypeError):
@@ -277,15 +374,31 @@ def test_snapshot_and_attempt_state_are_opaque_and_budget_capability_is_required
     with NativeSnapshotDatabase(path)() as connection:
         snapshot.bind(connection)
         attempt = snapshot.begin_attempt(connection, rows_limit=20, bytes_limit=4096)
-        key = snapshot.query_key(ASSET_SQL, ('lib',))
-        # No public dicts or caller-created attempt can inject rows or byte counts.
+        # No public dicts, capture helper or supplied byte count can inject rows.
         assert not hasattr(snapshot, 'baseline')
         assert not hasattr(snapshot, 'entries')
         assert not hasattr(attempt, '__dict__')
-        snapshot.capture_chunk(attempt, key, [(99, 'forged')], 0)
-        assert not snapshot.has_entries
+        assert not hasattr(snapshot, 'capture_chunk')
+        assert not hasattr(snapshot, 'query_key')
+        assert not hasattr(snapshot, 'replay_chunks')
+        assert not hasattr(__import__('app.access.semantic_request_snapshot',
+            fromlist=['_capture_token_for_budget']), '_capture_token_for_budget')
+        with pytest.raises(TypeError):
+            snapshot.read(attempt, ASSET_SQL, ('lib',), check=lambda: None,
+                packed_bytes=0, rows=[(99, 'forged')])
+        actual = snapshot.read(attempt, ASSET_SQL, ('lib',), check=lambda: None)
+        assert actual == [(1, 'image/jpeg', 16, 16, None, None, None)]
+        charged = snapshot.attempt_accounting(attempt)
+        assert charged[0] == 1 and charged[1] > 0
+        snapshot.end_attempt(connection, attempt, success=True)
+        assert snapshot.has_entries
+        snapshot.request_final_replay()
+        replay_attempt = snapshot.begin_attempt(connection, rows_limit=20, bytes_limit=4096)
+        replayed = snapshot.read(replay_attempt, ASSET_SQL, ('lib',), check=lambda: None)
+        assert replayed == actual and snapshot.replay_used
         with pytest.raises(ValueError):
             budget.with_request_source_snapshot(object())
+        snapshot.end_attempt(connection, replay_attempt, success=True)
         snapshot.close()
 
 

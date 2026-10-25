@@ -210,17 +210,10 @@ class ReadBudget:
                 except (DiscoveryUnavailable,DiscoveryCancelled): return 1
             def read(sql, args):
                 nonlocal count,size
+                if (snapshot is not None
+                        and snapshot.owns_attempt(attempt, connection)):
+                    return snapshot.read(attempt, sql, args, check=check)
                 check(); result=[]
-                key = snapshot.query_key(sql, args) if snapshot is not None else None
-                if snapshot is not None and snapshot.can_replay(attempt, key):
-                    for saved in snapshot.replay_chunks(attempt, key):
-                        check()
-                        count += len(saved.rows)
-                        if count > self.rows: raise DiscoveryUnavailable()
-                        size += saved.packed_bytes
-                        if size > self.source_bytes: raise DiscoveryUnavailable()
-                        result.extend(saved.rows)
-                    return result
                 cursor=connection.execute(sql,args)
                 while True:
                     chunk=cursor.fetchmany(128)
@@ -237,10 +230,6 @@ class ReadBudget:
                         size+=chunk_size
                         if size>self.source_bytes: raise DiscoveryUnavailable()
                         result.extend(chunk)
-                    if snapshot is not None and key is not None:
-                        from .semantic_request_snapshot import _capture_token_for_budget
-                        snapshot.capture_chunk(attempt, key, chunk, chunk_size,
-                            _budget_token=_capture_token_for_budget())
                 return result
             check(); connection.set_progress_handler(progress,1000)
             successful = False

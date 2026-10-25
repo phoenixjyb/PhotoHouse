@@ -4,6 +4,7 @@ from dataclasses import replace
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import sqlite3
 import sys
@@ -83,6 +84,17 @@ class SemanticSearchTests(unittest.TestCase):
     def query(self, *, query='a child flying a kite', filters=None, token=TOKEN, **kwargs):
         return self.client.post(BASE, headers={'Authorization': 'Bearer ' + token},
                                 json={'query': query, 'filters': filters or {}, **kwargs})
+
+    def enable_request_source_snapshot(self):
+        from app.access.semantic_request_snapshot import NativeSnapshotDatabase
+        from app.access.transport import AccessRuntime
+        access = AccessRuntime(NativeSnapshotDatabase(self.fixture.database.resolve()),
+            self.fixture.access.web_origin, clock=self.fixture.access.clock)
+        discovery = replace(self.fixture.discovery_runtime, access=access)
+        self.runtime = replace(self.runtime, discovery=discovery, request_source_snapshot=True)
+        self.client.app.state.access_runtime = access
+        self.client.app.state.discovery_runtime = discovery
+        self.client.app.state.semantic_search_runtime = self.runtime
 
     def _query_with_caption_digest_count(self, *, query, filters, force_eager=False, **request_kwargs):
         from app.access import semantic_search
@@ -255,6 +267,92 @@ class SemanticSearchTests(unittest.TestCase):
                 binding=first['binding'], fingerprint=first['fingerprint'])
             self.assertEqual(changed.status_code, 409, changed.text)
             self.assertNotIn('items', changed.json())
+
+    def test_post_replay_path_replacement_fails_closed_without_old_handle_fallback(self):
+        from app.access.semantic_request_snapshot import RequestSnapshotConnection, RequestSourceSnapshot
+        self.enable_request_source_snapshot()
+        path = self.fixture.database.resolve()
+        replacement = path.with_name('replacement.sqlite')
+        moved = path.with_name('opened-old.sqlite')
+        with closing(sqlite3.connect(path)) as source, closing(sqlite3.connect(replacement)) as target:
+            source.backup(target)
+        with closing(sqlite3.connect(replacement)) as db, db:
+            db.execute("UPDATE assets SET taken_at='2040-01-01' WHERE id=101")
+        original_commit = RequestSnapshotConnection.commit
+        original_bind = RequestSourceSnapshot.bind
+        original_read = RequestSourceSnapshot.read
+        source_connections = set()
+        state = {'commits': 0, 'replay': False, 'replaced': False}
+
+        def bind(snapshot, connection):
+            source_connections.add(id(connection))
+            return original_bind(snapshot, connection)
+
+        def read(snapshot, *args, **kwargs):
+            result = original_read(snapshot, *args, **kwargs)
+            state['replay'] = state['replay'] or snapshot.replay_used
+            return result
+
+        def commit(connection):
+            result = original_commit(connection)
+            if id(connection) in source_connections:
+                state['commits'] += 1
+                if state['commits'] == 2 and not state['replaced']:
+                    os.replace(path, moved)
+                    os.replace(replacement, path)
+                    state['replaced'] = True
+            return result
+
+        with patch.object(RequestSourceSnapshot, 'bind', bind), \
+                patch.object(RequestSourceSnapshot, 'read', read), \
+                patch.object(RequestSnapshotConnection, 'commit', commit):
+            response = self.query()
+        self.assertTrue(state['replay'])
+        self.assertTrue(state['replaced'])
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
+        with closing(sqlite3.connect(path)) as db:
+            self.assertEqual(db.execute(
+                "SELECT taken_at FROM assets WHERE id=101").fetchone(), ('2040-01-01',))
+
+    def test_cancel_exception_after_replay_and_unrelated_commit_propagates_same_object(self):
+        from app.access.semantic_request_snapshot import NativeSnapshotDatabase, RequestSourceSnapshot
+        from app.access.transport import AccessRuntime
+        path = self.fixture.database.resolve()
+        with closing(sqlite3.connect(path)) as db, db:
+            db.execute('CREATE TABLE snapshot_unrelated_noise(value INTEGER NOT NULL)')
+            db.execute('INSERT INTO snapshot_unrelated_noise VALUES(0)')
+        access = AccessRuntime(NativeSnapshotDatabase(path), self.fixture.access.web_origin,
+            clock=self.fixture.access.clock)
+        discovery = replace(self.fixture.discovery_runtime, access=access)
+        runtime = replace(self.runtime, discovery=discovery, request_source_snapshot=True)
+        snapshot_holder = {}
+        original_bind = RequestSourceSnapshot.bind
+        def bind(snapshot, connection):
+            snapshot_holder['snapshot'] = snapshot
+            return original_bind(snapshot, connection)
+        marker = d.DiscoveryCancelled()
+        state = {'cancelled': False}
+
+        def cancelled():
+            snapshot = snapshot_holder.get('snapshot')
+            if snapshot is not None and snapshot.replay_used and not state['cancelled']:
+                state['cancelled'] = True
+                with closing(sqlite3.connect(path)) as db, db:
+                    db.execute('UPDATE snapshot_unrelated_noise SET value=value+1')
+                raise marker
+            return False
+
+        values = {'query': 'a child flying a kite', 'filters': {}, 'page': 1,
+                  'page_size': 20}
+        with patch.object(RequestSourceSnapshot, 'bind', bind):
+            with self.assertRaises(d.DiscoveryCancelled) as caught:
+                runtime.call('search', TOKEN, 'family-a', cancelled, values)
+        self.assertIs(caught.exception, marker)
+        self.assertTrue(state['cancelled'])
+        self.assertEqual(len(self.calls), 1)
+        with closing(sqlite3.connect(path)) as db:
+            self.assertEqual(db.execute('SELECT value FROM snapshot_unrelated_noise').fetchone(), (1,))
 
     def test_literal_text_filters_keep_caption_and_note_fallback_eager(self):
         # Explicit literal filters must still project current captions and

@@ -31129,12 +31129,12 @@
       "files": [
         {
           "path": "server/backend/app/access/semantic_request_snapshot.py",
-          "sha256": "42c287ee2b03e515cf0f090d03d0e5d57c26554ffde626fa180473eeca4c9ae1",
+          "sha256": "0ccba11a3e8d6585f36e9bfa1f5493fa841943f68b5319d47e4b5d2ec9d14179",
           "before_sha256": null
         },
         {
           "path": "server/backend/app/access/discovery.py",
-          "sha256": "85438a80f8e05d2e4d856d7bb79ff99ba5cda8e2948612e49b69f365092e1bb6",
+          "sha256": "bb501d2d99b4af72275c4fd20ec2d2e8b07abe5123d94651661f4b1d27350d6b",
           "before_sha256": "ee26145c4b861e2e9ccab3f17b833eda0bd9ff30af5283ba9f3fbacdc33849af"
         },
         {
@@ -31144,7 +31144,7 @@
         },
         {
           "path": "server/backend/app/access/semantic_search.py",
-          "sha256": "26e8f6169130665165e2c15ae360c99ebecb9f196df83422eb12ed3b4e1b538d",
+          "sha256": "498fe861eddccd818bea87121229d2bf2127a2c206f7740005f39a7a9b4172c1",
           "before_sha256": "d5f0a76430b85b9d69f13f74666893eedd350d015638c43d874ccf03b8be1633"
         },
         {
@@ -31154,7 +31154,7 @@
         },
         {
           "path": "server/tests/security/test_semantic_request_snapshot.py",
-          "sha256": "d9e730b8f63a2fe5e4e0f749072bccf011895c1a81bbe3f1d4ea5734b42f88f0",
+          "sha256": "b2cf419422b4d2cdb63191c81a035ea47cb10b25adc17b28435a6cdce43e384f",
           "before_sha256": null
         },
         {
@@ -31174,12 +31174,12 @@
         },
         {
           "path": "docs/SEMANTIC_REQUEST_SNAPSHOT.md",
-          "sha256": "64dd3b44244a8bf1d8403187a374673cedd5035e6ef370c1c6520c5f1ee1dad9",
+          "sha256": "8c86a07388015cfa0a7e9fa1aa3da46816a76a29bcc07d4c7291683eb51dcb43",
           "before_sha256": null
         },
         {
           "path": "server/tests/security/test_semantic_search.py",
-          "sha256": "52ab0faf11267406e4ad831ccbd3e16e7a001c63b58b131925161c711c2c6c42",
+          "sha256": "2cc4aa3811c0218c89f41b40321448f9a641edfb889e901510214179b4d9890b",
           "before_sha256": "14216778b6cf34b9b3f38174db5a1161831c65e8eb2c8a97cc0ac330e731ade4"
         },
         {
@@ -31188,7 +31188,7 @@
           "before_sha256": "5d936faadfa99c17a99362dd47b8e88e586c7e2a74d0a68ab9c6b378f28b3a7e"
         }
       ],
-      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only ReadBudget's capture capability may stage SQL-fetched rows. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Focused generated SQLite/request/coverage/qualifier/search tests passed (82 tests, 42 subtests); no full23696 comparison, native Windows, production or family acceptance claim."
+      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Focused generated SQLite/request/coverage/qualifier/search tests passed (87 tests, 42 subtests); no full23696 comparison, native Windows, production or family acceptance claim."
     }
   ]
 }

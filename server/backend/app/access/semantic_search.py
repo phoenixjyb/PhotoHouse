@@ -641,20 +641,16 @@ class SemanticSearchRuntime:
                         reader._run(token, library, expected_binding,
                             lambda _index, _facts, _context, _member, _check: None,
                             bounded_cancelled)
-                    except Exception:
-                        if snapshot is None or not snapshot.consume_fallback_required():
-                            raise
-                        bounded_cancelled()
-                        snapshot.stop_final_replay()
-                        reader._run(token, library, expected_binding,
-                            lambda _index, _facts, _context, _member, _check: None,
-                            bounded_cancelled)
-                    else:
-                        if snapshot is not None and snapshot.consume_fallback_required():
-                            snapshot.stop_final_replay()
-                            reader._run(token, library, expected_binding,
-                                lambda _index, _facts, _context, _member, _check: None,
-                                bounded_cancelled)
+                        if snapshot is not None:
+                            if snapshot.consume_identity_unsafe():
+                                raise d.DiscoveryUnavailable()
+                            if snapshot.consume_fallback_required():
+                                snapshot.stop_final_replay()
+                                reader._run(token, library, expected_binding,
+                                    lambda _index, _facts, _context, _member, _check: None,
+                                    bounded_cancelled)
+                                if snapshot.consume_identity_unsafe():
+                                    raise d.DiscoveryUnavailable()
                     finally:
                         if snapshot is not None:
                             snapshot.stop_final_replay()
