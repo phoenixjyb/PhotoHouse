@@ -28,8 +28,19 @@ class QueryPolicyUnavailable(RuntimeError):
     """Current policy bytes or a bound guard cannot be verified."""
 
 
-def _identity(info):
-    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+def _identity(info, *, windows=None):
+    # Match private_storage's path/handle identity contract. Windows Python can
+    # give stat and fstat different ctime meanings; birthtime is stable there.
+    # Keep this logic in the source-bound verifier rather than an unbound helper.
+    if windows is None:
+        windows = os.name == "nt"
+    identity = (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns)
+    if windows:
+        birthtime = getattr(info, "st_birthtime_ns", None)
+        if type(birthtime) is not int:
+            raise QueryPolicyUnavailable()
+        return identity + (birthtime,)
+    return identity + (info.st_ctime_ns,)
 
 
 def _read_source(path: Path) -> bytes:
@@ -40,7 +51,8 @@ def _read_source(path: Path) -> bytes:
         if (not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(before.st_mode)
                 or before.st_size <= 0 or before.st_size > MAX_SOURCE_BYTES):
             raise QueryPolicyUnavailable()
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+                     | getattr(os, "O_BINARY", 0))
         with os.fdopen(fd, "rb") as stream:
             opened = os.fstat(stream.fileno())
             if not stat.S_ISREG(opened.st_mode):

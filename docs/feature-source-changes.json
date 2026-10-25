@@ -31529,6 +31529,31 @@
       "semantic_search_enabled": false,
       "live_runtime_changed": false,
       "notes": "After exact7041 Windows CPU import failed at the expected-policy source digest guard, a real isolated Git checkout with core.autocrlf=true reproduced CRLF conversion and the same refusal. Declare Python text eol=lf at checkout, retaining canonical Git blob bytes for all Python policies/encoder receipts. A standard-library regression checks five bound source files, actual verifier import/canonical digests and refusal after explicit CRLF rewrite. No runtime hash normalization, alternate digest or pin change. The hosted failure alone did not include actual source bytes; successor hosted validation remains separate."
+    },
+    {
+      "feature": "query-policy-windows-stable-stat-identity-r145",
+      "files": [
+        {
+          "path": "server/backend/app/access/search_policy_binding.py",
+          "before_sha256": "3b86a28a0c44c359eb99ecaba9868901c06de8c5588315ce427dc62cfd51805d",
+          "sha256": "351d2f4f0dbcb7d68edb162e455d42c36297f5a8e3b5482281e936c63acef8a8"
+        },
+        {
+          "path": "tools/tests/test_policy_source_identity.py",
+          "before_sha256": null,
+          "sha256": "c4b05cfea5deb0153719806358a59ca880c5ef7fc18611369afea3baa0c61af1"
+        },
+        {
+          "path": "docs/SOURCE_PACKAGING.md",
+          "before_sha256": "00cd65ce41e66c7cebafb5ce022180e3eef0ae72d9c2097fc73157ffa618e7c2",
+          "sha256": "9d050634b77d4ca6cc65c98a883adbcc2b09b9ca5716ad99569e09e305dc38e7"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "model_receipts_changed": false,
+      "query_policy_verifier_binding_changed": true,
+      "notes": "After f899 removed collection failures, Windows CPU had 455 passing tests / 314 subtests and one extracted package import refusal at the combined length/identity guard. Host stat tuples were not captured. Align the bound verifier with the existing private-storage Windows birthtime identity contract, keeping device/inode/size/mtime and POSIX ctime plus all byte hashes and source checks; require exact integer Windows birthtime or refuse. Keep the logic inside the hashed verifier rather than adding an unbound helper dependency. Explicit binary low-level open preserves exact bytes. Generated real-reader metadata cases accept Windows ctime aliases only with matching required fields and refuse every identity drift/missing-invalid birthtime; real same-byte inode replacement and CRLF rewrite still refuse. The verifier hash changes its separate query-policy binding; legacy indexed model receipts are unchanged. Current hosted successor not yet verified."
     }
   ]
 }
