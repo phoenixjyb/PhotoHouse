@@ -31696,6 +31696,22 @@
         }
       ],
       "notes": "Give gallery Details its own full-width action line with minimum48dp target; preserve full bilingual labels, card/open/detail/group callbacks and ordinals. Extend existing separated-photo150percent UI journey with actual text-layout fit and click-action checks for three cards in both languages. Existing hosted screenshots retain their historical wrap defect; successor rendering/device/publication remain separate."
+    },
+    {
+      "feature": "scene-pages-closed-route-inventory-20261025",
+      "source_base": "626b6c8e318bad6f178b30941a2ebbb8d0861c55",
+      "files": [
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "de673b90d64ccac9516009308b72e2c776a41ce30c5a024dd4ae84684a205874",
+          "sha256": "bef2c784f00ebfb2b522a173318f08b8979b4ce322220454de168052a3d68afe"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "notes": "Test-only inventory followup for the two reviewed R144 routes already present in source626. Explicit exact route set and cold-import/runtime counts now include scene-page capability GET and scoped scene-pages POST, total181. Duplicate-route, complete-set, import/no-runtime-I/O and anonymous ClosedBoundary checks remain strict. Exact626 hosted API had2 failures from these stale expectations,3537passed/4244subtests; focused closed-app plus page API39tests32subtests passed after correction. No full-suite rerun, Android render, deployment or activation claim."
     }
   ]
 }
