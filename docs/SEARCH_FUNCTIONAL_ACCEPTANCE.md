@@ -93,13 +93,15 @@ freedom. No operation is replayed by this document.
 
 ## Remaining completion work
 
-- Publish the independently reviewed refusal-reopen source checkpoint. Its
+- The independently reviewed refusal-reopen source checkpoint is committed. Its
   focused HTTP checks passed 8 tests / 14 subtests, controller checks passed
   26/26, and the generated browser flow passed nine checkpoints. These are
   local synthetic checks; hosted CI, deployment and device acceptance remain
   separate.
-- Integrate only reviewed grouping delivery changes. Keep live schema/index,
-  refresh scheduling and APK/family acceptance separate from source presence.
+- Reviewed grouping delivery documentation and the Android page-local notice
+  are integrated from two focused commits. Keep live schema/index, refresh
+  scheduling and APK/family acceptance separate from source presence. See the
+  [grouping delivery checklist](PHOTO_STACK_DELIVERY.md).
 - Treat workspace scene pagination beyond the first 20 as an explicit remaining
   journey, rather than claiming the direct API's page support exists in the UI.
 - Review representative multilingual result relevance, production coverage and

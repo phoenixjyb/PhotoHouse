@@ -31476,6 +31476,24 @@
         }
       ],
       "notes": "Show bilingual temporary-choice explanation only for page-local suggestions with nonempty groups. Preserve v2 saved/private wording and all gallery/store/wire/access behavior. Add targeted copy/scope JVM cases and enlarged-text UI assertions; emulator/device/publication remain separate."
+    },
+    {
+      "feature": "search-functional-and-grouping-delivery-links-r142",
+      "files": [
+        {
+          "path": "docs/README.md",
+          "before_sha256": "4cc395c6b3b9633feae3723f4f9f4ffd59bce4a105cd29669d6dd4bcb65f9bd7",
+          "sha256": "a70d984f69d60eef8d8554b3abb0a469b564b2c161077c9a0bd8e2503f097a97"
+        },
+        {
+          "path": "docs/SEARCH_FUNCTIONAL_ACCEPTANCE.md",
+          "before_sha256": "aa447752fd83293184fc06c641bc54d0c40960a4178af3ee583e8568cfaf1e91",
+          "sha256": "e8c7cbcae698da50317ec798c0291223d688ec04b9c9ba241c824d64b28ea05b"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "notes": "Link the functional acceptance matrix and accurately mark the two reviewed grouping source increments as integrated. No installed Android, live schema, refresh schedule or family acceptance claim."
     }
   ]
 }
