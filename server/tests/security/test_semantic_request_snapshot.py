@@ -336,6 +336,38 @@ def test_failed_attempt_preserves_cancellation_when_parent_stat_is_denied(tmp_pa
         snapshot.close()
 
 
+def test_wal_sidecar_stat_error_is_unsafe_not_an_absent_sidecar(tmp_path, monkeypatch):
+    path = tmp_path / 'source.sqlite'
+    _database(path)
+    writer = sqlite3.connect(path)
+    writer.execute('PRAGMA journal_mode=WAL')
+    writer.execute('PRAGMA wal_autocheckpoint=0')
+    writer.execute('UPDATE assets SET width=24 WHERE id=1')
+    writer.commit()
+    wal = path.with_name(path.name + '-wal')
+    assert wal.is_file()
+    snapshot = create_request_source_snapshot('lib')
+    try:
+        with NativeSnapshotDatabase(path)() as connection:
+            snapshot.bind(connection)
+            path_type = type(path)
+            original_lstat = path_type.lstat
+
+            def deny_actual_wal(candidate, *args, **kwargs):
+                if candidate == wal:
+                    raise PermissionError('synthetic isolated WAL metadata denial')
+                return original_lstat(candidate, *args, **kwargs)
+
+            monkeypatch.setattr(path_type, 'lstat', deny_actual_wal)
+            with pytest.raises(sqlite3.OperationalError):
+                snapshot.begin_attempt(connection, rows_limit=20, bytes_limit=4096)
+            assert snapshot.disabled is True
+            assert not snapshot.has_entries
+    finally:
+        snapshot.close()
+        writer.close()
+
+
 def test_path_replacement_refuses_replay_before_any_cached_rows_are_used(tmp_path,
                                                                         monkeypatch):
     path = tmp_path / 'source.sqlite'

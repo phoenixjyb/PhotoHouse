@@ -61,6 +61,7 @@ FILES = (
     'backend/app/access/semantic_streaming.py',
     'backend/app/access/semantic_bulk_vectors.py',
     'backend/app/access/semantic_eligibility.py',
+    'backend/app/access/semantic_request_snapshot.py',
     'backend/app/access/semantic_search_transport.py',
     'backend/app/access/semantic_provider_transport.py',
     'backend/app/access/search_text.py',

@@ -203,6 +203,7 @@ class StagingPackageTests(unittest.TestCase):
                          'backend/app/access/semantic_configuration.py',
                          'backend/app/access/semantic_streaming.py',
                          'backend/app/access/semantic_eligibility.py',
+                         'backend/app/access/semantic_request_snapshot.py',
                          'scripts/multilingual_index_collection.py',
                          'scripts/semantic_bilingual_clothing.py',
                          'backend/app/access/people_review.py',
@@ -265,6 +266,7 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.semantic_configuration import load_semantic_runtime\n'
                 'from app.access.semantic_streaming import SemanticServingLimits\n'
                 'from app.access.semantic_eligibility import SemanticEligibilityStore\n'
+                'from app.access.semantic_request_snapshot import RequestSourceSnapshot\n'
                 'import multilingual_index_collection, semantic_bilingual_clothing\n'
                 'import semantic_coverage_qualification, semantic_request_profile\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'

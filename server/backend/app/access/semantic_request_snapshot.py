@@ -162,8 +162,10 @@ class RequestSnapshotConnection(sqlite3.Connection):
 def _file_identity(path):
     try:
         item = Path(path).lstat()
-    except OSError:
+    except FileNotFoundError:
         return None
+    except OSError:
+        return False
     reparse_flag = getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)
     if (stat.S_ISLNK(item.st_mode)
             or _os_name == 'nt' and item.st_file_attributes & reparse_flag
