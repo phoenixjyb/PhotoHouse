@@ -16,7 +16,8 @@ from .assistant_search import AssistantSearchReads
 from .discovery_transport import DiscoveryRuntime
 from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, SemanticUnsupported, TextVector, rank_semantic
 from .service import AccessDenied, AccessService
-from .search_exclusions import EXCLUSION_POLICY_VERSION, requires_semantic_clarification
+from .search_policy import EXCLUSION_POLICY_VERSION, requires_semantic_clarification
+from .search_policy_binding import QueryPolicyUnavailable, capture_current_query_policy_binding
 from .visual_candidates import MAX_CANDIDATES, VectorRecord, _canonical_components
 from .visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256
 from .visual_vector_loader import _COLUMNS, _checked_root, _read_vector, _validated_rows
@@ -224,6 +225,10 @@ class SemanticSearchReads(AssistantSearchReads):
     def _extra_source_fresh(self, index, source, read, check):
         extra = super()._extra_source(index, source, read, check)
         check()
+        try:
+            query_policy_binding = capture_current_query_policy_binding(check=check)
+        except QueryPolicyUnavailable:
+            raise d.DiscoveryUnavailable() from None
         if not verify_visual_vector_schema(self.access.db):
             raise d.DiscoveryUnavailable()
         image_identity = self.encoder.binding.image_identity
@@ -302,6 +307,7 @@ class SemanticSearchReads(AssistantSearchReads):
                 **({'bulk_vectors': self.bulk_vectors.descriptor} if self.bulk_vectors else {}),
                 **({'serving_limits': asdict(self.serving_limits)} if self.serving_limits else {}),
                 'exclusion_policy': EXCLUSION_POLICY_VERSION,
+                'query_policy_binding': query_policy_binding,
                 'score_presentation_policy': SCORE_PRESENTATION_POLICY_VERSION,
                 'joint_space_binding': self.encoder.binding.binding_sha256,
                 'semantic_query': d.digest(self.query), 'image_vector_records': rows,

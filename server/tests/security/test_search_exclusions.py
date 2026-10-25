@@ -8,7 +8,7 @@ SERVER = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(SERVER / 'backend'), str(SERVER / 'tests/security')]
 
 from app.access import discovery as d
-from app.access.search_exclusions import (requires_exclusion_clarification,
+from app.access.search_policy import (requires_exclusion_clarification,
     explicit_media_exclusion, exclusion_reply)
 import test_assistant_query_plan as literal
 import test_semantic_search as semantic

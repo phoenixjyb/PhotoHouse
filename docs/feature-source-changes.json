@@ -31204,6 +31204,154 @@
         }
       ],
       "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Failed attempts now discard replay state without filesystem revalidation, preserving the original body exception; successful path-identity observation errors fail closed. Only FileNotFoundError means an absent optional sidecar; other metadata OSErrors are unsafe, with an actual WAL plus isolated lstat-permission-fault regression. Focused generated SQLite/request/coverage/qualifier/search tests passed (91 tests, 42 subtests); the separate extracted staging-package suite passed 10 tests / 5 subtests and imports this module from the archive without checkout fallback. One R127 generated full-route comparison on source 001a039 used 23,696 eligible rows, 65 synthetic omissions, 768D vectors and a fixed 418 ms MockTransport. Nine warm mean/median were 2369.294/2347.977 ms baseline and 2132.612/2024.980 ms candidate; candidate max was 2756.605 ms, 8/9 pairs faster and 2/9 at or below 2 seconds, so the all-sample target remains unmet. All 13 cold/warm/page-two pairs matched full API JSON, full-rank IDs/score bits and per-attempt charged rows/bytes; physical source reads were 18 baseline versus 9 plus 9 final-pass replays candidate. The run used configured setup/profile/RSS limits, but exact peak RSS and separate setup/profile timings are absent from the result. No native Windows, production, family relevance, language quality or activation claim."
+    },
+    {
+      "feature": "semantic-policy3-supported-adapter-separation-r134",
+      "source_commit": "0bbcf4d5931ea11ce2d0f68427acff86036a186f",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "production_data_used": false,
+      "family_relevance_measured": false,
+      "model_receipts_changed": false,
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": "0642381776fe7d8223a52ffc6e994c78c29b8a4fdca0bb745eabf2048f8a9ef7",
+          "sha256": "d5d86810a7532f0ee03a3977e3b04bf6868e05853f2217f249db20099f0ff461"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "0777af17e41608ac1e470a90d7ea39a036a681d4dd77be62b390ae7c33413879",
+          "sha256": "5b0f9922363917181cb689114e6b7b999f24bedc4c0c9b455a33ad2a6963834f"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "a5b0d99d7ff6d212ec0ddabbba446b5806708477b59f63c32965015774319e09",
+          "sha256": "8872755eb2a8d606b8489e1e8cd24ed555a8d8c69197966995210d0718546761"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "c82098388053955505fbe2d0a315567ab59335ee8dd08a9070065ef3dbf73550",
+          "sha256": "81f33f9ffec4d2961214dd6851c2f46f9b55f42eea99ee5a0ed37636a5d69fc9"
+        },
+        {
+          "path": "server/backend/app/access/search_description.py",
+          "before_sha256": "d6adca8a8413f7e50f0f53ea129b8eae40a5dc09e7f8e21c44d06fd3dbe7576a",
+          "sha256": "6f99c06e22e6de1d1ae4e813ef45cc09a986419de75a64c16a486a0a2902adcc"
+        },
+        {
+          "path": "server/backend/app/access/search_exclusions.py",
+          "before_sha256": "cb7aeb07d6e1642de82acd764ad089e46471d1d9cb589e5fd8ab2b4ac6ec4444",
+          "sha256": "248e8722470ae6e5b1f95b5b8dced59dc1353af234a9d380fcaef6310f18017d"
+        },
+        {
+          "path": "server/backend/app/access/search_policy.py",
+          "before_sha256": null,
+          "sha256": "cb7aeb07d6e1642de82acd764ad089e46471d1d9cb589e5fd8ab2b4ac6ec4444"
+        },
+        {
+          "path": "server/backend/app/access/search_policy_binding.py",
+          "before_sha256": null,
+          "sha256": "3b86a28a0c44c359eb99ecaba9868901c06de8c5588315ce427dc62cfd51805d"
+        },
+        {
+          "path": "server/backend/app/access/semantic_encoder.py",
+          "before_sha256": "b6011d47ae32a2ed81f8977a8fa5a0cb9e6a906fd21a3b274f90c634bb15ebdf",
+          "sha256": "44c33972e0ea8f5eb3f0179657dfe4080b02add88df5932517e5e4b3c496641b"
+        },
+        {
+          "path": "server/backend/app/access/semantic_provider_transport.py",
+          "before_sha256": "1368eea62f858183e0e3383a524834314a2b347a6e6b4fe2375f9be7988f866b",
+          "sha256": "fd76de797aef1ca94c4176fe5af377570ac6b81feb097949ea4ee077e689794b"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "498fe861eddccd818bea87121229d2bf2127a2c206f7740005f39a7a9b4172c1",
+          "sha256": "055e6ee6267e38235eeff43f667fc8e38c78daf8f1e29810f774bc72b97de2c5"
+        },
+        {
+          "path": "server/scripts/_semantic_siglip_encoding.py",
+          "before_sha256": null,
+          "sha256": "22419b729d665f43c99e75eb4587a5f4540bcf0e8f1a8ede24b45aba2101e489"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "5b97f33ac2998ed90bdd21933fcff3dfff744c30a53e8a50c94d0573b90d7852",
+          "sha256": "72c38db0ba0a71d3d9e650dd95c4116ca0cdfd8b49561884ae79f225616cf0f2"
+        },
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "before_sha256": "39eb8f5f2f2bfab84e156d1fa89ac00c3bd35e406b0a6303f00caa4d2140776b",
+          "sha256": "2c38378f908c2ec56ac2adad2b009b3af383a8530a0eb2b64fdd808a5a2c4ad9"
+        },
+        {
+          "path": "server/scripts/qualify_multilingual_pilot.py",
+          "before_sha256": "ef8cf957eb7e76d4fe2b4f681d1e41462595455b453e248c75bb617f2e05ba6a",
+          "sha256": "87535a891bce962c903ed919eb717602b44dffb245de7d035936660c8d784a19"
+        },
+        {
+          "path": "server/scripts/semantic_bilingual_clothing.py",
+          "before_sha256": "58455055639d0feafc96070d98043727fe8db526134ac44f9c478a782dd4e464",
+          "sha256": "9bd5699100d3cc08281c5ee6a19bfd2963a49d649807ac81d482be4ee6c2dfea"
+        },
+        {
+          "path": "server/scripts/semantic_openclip.py",
+          "before_sha256": "02b8c0eaee7cb4d35eaccecd3a054db601382941530c2df2364c1ea43fdb0b10",
+          "sha256": "515fb6d019125e9fb5eeb021c06b6dde24da679c88a7d5ce0fd14c9f97f9e883"
+        },
+        {
+          "path": "server/scripts/semantic_reviewed_projection.py",
+          "before_sha256": "880f768df81a99216e5fcc036de126740594f6e0477a45a61dd1ae14921a3e1d",
+          "sha256": "65c4563d0fb3d639320b5111c1e4a828dd7f46ec22e579ffe058b94fdb8f7b02"
+        },
+        {
+          "path": "server/scripts/semantic_siglip.py",
+          "before_sha256": "22419b729d665f43c99e75eb4587a5f4540bcf0e8f1a8ede24b45aba2101e489",
+          "sha256": "98207e42a784eb46bcc7dbdaa3f0f90c090712f7524caf9c028f4de41841186e"
+        },
+        {
+          "path": "server/scripts/serve_multilingual_semantic_text.py",
+          "before_sha256": "0fb21f122dffd31daf7a4d6bab17e9bc53ff634409fc1928f5391b3cbf5ef542",
+          "sha256": "8f71368d966efb9b984065e46994f1a6d729852c7ae114a29cf30d90c2d35153"
+        },
+        {
+          "path": "server/tests/security/test_multilingual_index_provider.py",
+          "before_sha256": "653720fa6fe7c4dc276d9208414a6cb62738e7ae1cb16c8f10aa7ebb4e407b51",
+          "sha256": "ab83922eb7f317f0284b29cf9dfd4dc93040741b552de76f2f3705315ad1b3cd"
+        },
+        {
+          "path": "server/tests/security/test_qualify_library_semantic.py",
+          "before_sha256": "fb8dc2ee25f5924f6876949314f479509ec628d700092070972a4381e373c7ae",
+          "sha256": "6c58f4dbfa037030a12ba0b5ba402acc1c708cd3d45a15793e6dd93f29893cb1"
+        },
+        {
+          "path": "server/tests/security/test_search_constraint_admission.py",
+          "before_sha256": "b6a6496551429ad807271f718320ae1b1473a0c1b22f04ed981859acc8c4135c",
+          "sha256": "979e92626687512c7fe0717b1ca9b4a6da272d6487637109e71edb4c25b44896"
+        },
+        {
+          "path": "server/tests/security/test_search_exclusions.py",
+          "before_sha256": "84e5d36babc44789d5b7918813f123dc89e0b2907501f9c7689e36a5cb343118",
+          "sha256": "04d49b442d87fafd6d2d2996dadcb23e3a5964dd1b6de581f0bcf090c003f035"
+        },
+        {
+          "path": "server/tests/security/test_semantic_policy_separation.py",
+          "before_sha256": null,
+          "sha256": "b19603055caf3db7215a34b1604a5a557dcb1fde458aeaf161e82b72dedea956"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "e633b4014bafdb65ec3198d9b2ebf608afe24ed3559dc9245dc4df590c9fe05e",
+          "sha256": "91e451a7d0644245a5ebb724856b0282c47db03642c7281f0fca82b777536949"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "3291fbf58a64caae0887c261d5ef2d7da22621c65de3ca65977c871b4eb8afbc",
+          "sha256": "407f9380ce28f5a552ee862b382172e91733a7bda65f97841b7e6de72da70961"
+        }
+      ],
+      "notes": "Separate policy-3 query admission from the indexed SigLIP recipe. The exact previous SigLIP implementation is retained as scripts/_semantic_siglip_encoding.py (SHA-256 22419b729d665f43c99e75eb4587a5f4540bcf0e8f1a8ede24b45aba2101e489), and its historical app.access.search_exclusions dependency is restored byte-for-byte (SHA-256 248e8722470ae6e5b1f95b5b8dced59dc1353af234a9d380fcaef6310f18017d); current policy-3 code moves to app.access.search_policy.py (SHA-256 cb7aeb07d6e1642de82acd764ad089e46471d1d9cb589e5fd8ab2b4ac6ec4444). Supported public encoders/wrappers and the provider boundary enforce fresh policy binding; semantic-search fingerprints and supported qualification metadata carry query_policy_binding separately from unchanged model receipts. Encoders now recheck policy after successful provider response parsing and before releasing a validated 422 refusal; the provider boundary rechecks after completion before releasing 200 or opted-in 422. Generated temporary policy-file drift during mock 200 and 422 responses is refused, and restored-source recovery succeeds. Provider probe reports the binding separately for v1/v2; readiness explicitly states index_or_policy_audited=false. Post-review focused checks passed: 137 tests and 843 subtests, including the final-source-read deadline regression. Three isolated extracted-package smoke methods passed using current worktree bytes; standard git-blob tests await a local commit containing the new files. No model, native host, activation, index publication or runtime configuration was used."
     }
   ]
 }

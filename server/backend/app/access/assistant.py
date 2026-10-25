@@ -857,7 +857,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
         if plan.status != 'ready':
             reply = _search_clarification_guidance(enabled, lang)
             if plan.reason == 'unsupported_negation':
-                from .search_exclusions import exclusion_reply
+                from .search_policy import exclusion_reply
                 reply = exclusion_reply(lang)
             elif 'people' not in enabled and plan.reason in (
                     'ambiguous_date_entity', 'ambiguous_media_entity',

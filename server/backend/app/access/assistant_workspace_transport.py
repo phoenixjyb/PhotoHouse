@@ -930,7 +930,7 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
         interpretation = {key: value for key, value in presentation.items()
                           if key != 'version'}
         interpretation.update(people=[], tags=[], locations=[])
-        from .search_exclusions import exclusion_reply
+        from .search_policy import exclusion_reply
         reply = exclusion_reply(lang, continuation=True, expired=expired)
         context = previous if existing is not None else None
         return {'version': engine.search_version, 'kind': 'clarification',

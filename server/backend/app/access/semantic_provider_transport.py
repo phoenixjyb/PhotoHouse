@@ -23,6 +23,12 @@ from fastapi.responses import JSONResponse, Response
 from app.access.semantic_encoder import (JointSpaceBinding, TextVector, _query_digest,
                                          _unique_object, _valid_query, SemanticUnsupported)
 from app.access.visual_candidates import VectorRecord, _canonical_components
+from app.access.search_policy import requires_semantic_clarification
+from app.access.search_policy_binding import (
+    QueryPolicyUnavailable,
+    capture_current_query_policy_binding,
+    verify_query_policy_binding,
+)
 
 
 _PATH = "/v1/encode-text"
@@ -194,6 +200,11 @@ def create_provider_app(provider: Any, *, bearer_token: str, port: int,
             or not callable(getattr(provider, "encode", None))):
         raise ValueError("invalid_provider_transport_configuration")
 
+    try:
+        process_policy_binding = capture_current_query_policy_binding()
+    except QueryPolicyUnavailable:
+        raise ValueError("invalid_provider_transport_configuration") from None
+
     lock = threading.Lock()
     lease = {"active": False}
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="semantic-provider")
@@ -226,6 +237,10 @@ def create_provider_app(provider: Any, *, bearer_token: str, port: int,
                 or not _valid_query(data.get("query")) or _C1_CONTROL.search(data["query"])):
             return JSONResponse({"error": "invalid_request"}, status_code=400)
         query = data["query"]
+        try:
+            verify_query_policy_binding(process_policy_binding)
+        except QueryPolicyUnavailable:
+            return JSONResponse({"error": "provider_unavailable"}, status_code=503)
         query_sha256 = _query_digest(query)
         refusal_headers = request.headers.getlist('x-photohouse-semantic-refusal')
         if refusal_headers not in ([], ['1']):
@@ -243,9 +258,15 @@ def create_provider_app(provider: Any, *, bearer_token: str, port: int,
             if cancelled.is_set() or time.monotonic() >= deadline:
                 raise RuntimeError("request_unavailable")
 
+        def encode_supported() -> TextVector:
+            check()
+            if requires_semantic_clarification(query):
+                raise SemanticUnsupported()
+            return provider.encode(query, check=check)
+
         try:
             check()
-            worker = executor.submit(provider.encode, query, check=check)
+            worker = executor.submit(encode_supported)
         except Exception:
             with lock:
                 lease["active"] = False
@@ -308,6 +329,11 @@ def create_provider_app(provider: Any, *, bearer_token: str, port: int,
             except SemanticUnsupported:
                 check()
                 if refusal_opt_in and getattr(provider, 'binding', None) == binding:
+                    try:
+                        verify_query_policy_binding(process_policy_binding, check=check)
+                        check()
+                    except Exception:
+                        return JSONResponse({"error": "provider_unavailable"}, status_code=503)
                     return JSONResponse({'version': 1, 'error': 'unsupported_query',
                         'binding_sha256': binding.binding_sha256,
                         'query_sha256': query_sha256}, status_code=422)
@@ -335,6 +361,11 @@ def create_provider_app(provider: Any, *, bearer_token: str, port: int,
             except Exception:
                 return JSONResponse({"error": "provider_unavailable"}, status_code=503)
             check()
+            try:
+                verify_query_policy_binding(process_policy_binding, check=check)
+                check()
+            except Exception:
+                return JSONResponse({"error": "provider_unavailable"}, status_code=503)
             return Response(response, status_code=200,
                             headers={"content-type": "application/json; charset=utf-8"})
         except asyncio.CancelledError:

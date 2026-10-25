@@ -21,6 +21,7 @@ from app.access.semantic_encoder import TextVector
 from app.access.semantic_bulk_vectors import BulkVectorStore, BulkVectorUnavailable
 from app.access.visual_candidates import VectorSpaceIdentity, canonical_vector_checksum
 from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256
+from app.access.search_policy_binding import capture_current_query_policy_binding
 
 
 def _npy(vector):
@@ -39,6 +40,7 @@ class FakeLibraryModel:
         self.binding = None
         self.bind_count = 0
         self.encode_count = 0
+        self.query_policy_binding = capture_current_query_policy_binding()
 
     def receipt(self):
         return {"schema": "generated-library-model-receipt.v1",

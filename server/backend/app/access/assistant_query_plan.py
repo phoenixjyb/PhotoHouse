@@ -10,7 +10,7 @@ from datetime import date, datetime, timedelta
 import re
 
 from . import discovery as d
-from .search_exclusions import (NEGATION as _NEGATION, explicit_media_exclusion,
+from .search_policy import (NEGATION as _NEGATION, explicit_media_exclusion,
                                 requires_semantic_clarification)
 
 

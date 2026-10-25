@@ -29,6 +29,12 @@ from app.access.visual_candidates import (
     _valid_identity,
     canonical_vector_checksum,
 )
+from app.access.search_policy import requires_semantic_clarification
+from app.access.search_policy_binding import (
+    QueryPolicyUnavailable,
+    capture_current_query_policy_binding,
+    verify_query_policy_binding,
+)
 
 
 _BINDING_PREFIX = b"photohouse-joint-space-binding-v1\0"
@@ -166,16 +172,28 @@ class LocalSemanticEncoder:
         if bearer_token is not None and (type(bearer_token) is not str or
                 re.fullmatch(r'[A-Za-z0-9_-]{32,128}', bearer_token, flags=re.ASCII) is None):
             raise ValueError("invalid_encoder_configuration")
+        try:
+            query_policy_binding = capture_current_query_policy_binding()
+        except QueryPolicyUnavailable:
+            raise ValueError("invalid_encoder_configuration") from None
         self._binding = binding
         self._url = url
         self._timeout = float(timeout)
         self._transport = transport
         self._bearer_token = bearer_token
         self._monotonic = monotonic or time.monotonic
+        self._query_policy_binding = query_policy_binding
 
     @property
     def binding(self) -> JointSpaceBinding:
         return self._binding
+
+    @property
+    def query_policy_binding(self) -> dict:
+        try:
+            return verify_query_policy_binding(self._query_policy_binding)
+        except QueryPolicyUnavailable:
+            raise SemanticUnavailable() from None
 
     def encode(self, query: str, *, check: Callable[[], None] = lambda: None) -> TextVector:
         if not _valid_query(query):
@@ -209,8 +227,23 @@ class LocalSemanticEncoder:
                 raise SemanticUnavailable()
             return deadline - current
 
+        def verify_policy_binding() -> None:
+            check_deadline()
+            try:
+                verify_query_policy_binding(
+                    self._query_policy_binding,
+                    check=lambda: (_checked(check), check_deadline()),
+                )
+            except QueryPolicyUnavailable:
+                raise SemanticUnavailable() from None
+            check_deadline()
+
         try:
             _checked(check)
+            verify_policy_binding()
+            if requires_semantic_clarification(query):
+                verify_policy_binding()
+                raise SemanticUnsupported()
             remaining = check_deadline()
             timeout = httpx.Timeout(remaining)
             with httpx.Client(transport=self._transport, timeout=timeout,
@@ -252,6 +285,7 @@ class LocalSemanticEncoder:
                         or data['binding_sha256'] != self._binding.binding_sha256
                         or data['query_sha256'] != query_sha256):
                     raise SemanticUnavailable()
+                verify_policy_binding()
                 raise SemanticUnsupported()
             if (type(data) is not dict
                     or set(data) != {"version", "binding_sha256", "query_sha256", "vector", "checksum_sha256"}
@@ -274,6 +308,7 @@ class LocalSemanticEncoder:
                                 data["checksum_sha256"])
             _checked(check)
             check_deadline()
+            verify_policy_binding()
             return result
         except SemanticUnavailable:
             raise

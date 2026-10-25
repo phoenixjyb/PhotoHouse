@@ -22,12 +22,13 @@ from unittest.mock import patch
 
 from build_multilingual_image_index import inspect_index, validate_cohort, npy_bytes
 from semantic_siglip import SiglipModel
+from semantic_siglip import query_policy_binding_for
 import qualify_multilingual_scenes as qualification
 from qualify_semantic_pair import canonical, output_target, write_record, quiet_dependencies
 from app.access.model_deployment import _load_private_document
 from app.access.private_storage import require_private_directory, require_private_file
 from app.access.semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, _valid_query
-from app.access.search_exclusions import requires_semantic_clarification
+from app.access.search_policy import requires_semantic_clarification
 from app.access.visual_vector_loader import _read_vector, _COLUMNS
 
 
@@ -325,7 +326,9 @@ def _measure(model, index_path, cohort, config, target, deadline, resources):
         'index_sha256':hashlib.sha256(Path(index_path).read_bytes()).hexdigest(),
         'query_plan_sha256':hashlib.sha256(canonical(config['queries'])).hexdigest(),
         'cohort_sha256':manifest['cohort_sha256'],'image_count':len(records),
-        'model_receipt':model.receipt(),'samples':rows,'warmup_ms':warmup,
+        'model_receipt':model.receipt(),
+        'query_policy_binding':query_policy_binding_for(model),
+        'samples':rows,'warmup_ms':warmup,
         'protected_request_latency':_summary([r['elapsed_ms']for r in rows]),
         'denial_latency':_summary(denial_times),'protected_checks':protected,
         **counters,

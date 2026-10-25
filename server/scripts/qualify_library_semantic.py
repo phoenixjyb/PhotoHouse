@@ -37,7 +37,7 @@ def _require(value, reason="contract_refused"):
 
 def _valid_queries(queries):
     from app.access.semantic_encoder import _valid_query
-    from app.access.search_exclusions import requires_semantic_clarification
+    from app.access.search_policy import requires_semantic_clarification
 
     _require(type(queries) is list and 1 <= len(queries) <= 12)
     seen = set()
@@ -431,6 +431,7 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
     if str(repo_backend) not in sys.path:
         sys.path.insert(0, str(repo_backend))
     from app.access.semantic_encoder import JointSpaceBinding
+    from semantic_siglip import query_policy_binding_for
     from app.access.semantic_streaming import SemanticServingLimits
     from app.access import discovery as d
     from app.access.discovery_provider import MemoryIndexProvider, ReviewedIndex
@@ -685,6 +686,7 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
         "index_processing_complete": manifest["processing_complete"],
         "full_family_index_complete": manifest["complete"],
         "model_receipt": model.receipt(),
+        "query_policy_binding": query_policy_binding_for(model),
         "query_plan_sha256": hashlib.sha256(canonical(list(query_plan))).hexdigest(),
         "samples": rows,
         "warmup_ms": result["warmup_ms"],

@@ -27,6 +27,8 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/search_intent_local.py',
             'backend/app/access/search_pending.py',
             'backend/app/access/search_exclusions.py',
+            'backend/app/access/search_policy.py',
+            'backend/app/access/search_policy_binding.py',
             'backend/app/access/search_evaluation.py',
             'backend/app/access/kinship.py',
             'backend/app/access/photo_stacks.py',
@@ -53,6 +55,7 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/semantic_scene_translation_fidelity.py',
             'scripts/qualify_multilingual_scenes.py',
             'scripts/semantic_siglip.py',
+            'scripts/_semantic_siglip_encoding.py',
             'scripts/build_multilingual_image_index.py',
             'scripts/serve_multilingual_semantic_text.py',
             'scripts/qualify_multilingual_pilot.py',
@@ -261,8 +264,10 @@ class StagingPackageTests(unittest.TestCase):
                 'import check_private_search\n'
                 'import export_visual_people_review, inspect_reviewed_people_readiness, reviewed_people_source\n'
                 'from app.access.search_evaluation import evaluate_cases\n'
-                'from app.access.search_exclusions import requires_exclusion_clarification\n'
+                'from app.access.search_policy import requires_exclusion_clarification\n'
                 "assert requires_exclusion_clarification('不在grass上的dog')\n"
+                'from app.access.search_policy_binding import capture_current_query_policy_binding\n'
+                'assert capture_current_query_policy_binding()["policy_version"] == 3\n'
                 'from app.access.semantic_configuration import load_semantic_runtime\n'
                 'from app.access.semantic_streaming import SemanticServingLimits\n'
                 'from app.access.semantic_eligibility import SemanticEligibilityStore\n'
@@ -306,7 +311,7 @@ class StagingPackageTests(unittest.TestCase):
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'
-                'import semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness\n'
+                'import semantic_siglip,_semantic_siglip_encoding,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness\n'
                 'for module in (semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness):\n'
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 'for module in (build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot):\n'
