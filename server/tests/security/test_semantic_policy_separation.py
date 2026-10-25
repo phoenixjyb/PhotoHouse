@@ -328,6 +328,39 @@ def test_reviewed_provider_policy3_refusal_precedes_projection_and_inner_encode(
         provider.encode(query)
 
 
+def test_reviewed_provider_rejects_policy3_projected_input_before_inner_encode():
+    original = "a quiet family garden"
+    projected = "people omitting hats"
+    assert not requires_semantic_clarification(original)
+    assert requires_semantic_clarification(projected)
+
+    inner = PermissiveGeneratedProvider()
+    document = {
+        "schema": "photohouse.reviewed_scene_projection.v1",
+        "policy": "exact_reviewed_only",
+        "review": {"status": "operator_reviewed", "reference_sha256": "f" * 64},
+        "entries": [{"original": original, "model_input": projected}],
+    }
+    projection = ReviewedProjection(
+        document, expected_sha256=reviewed_document_sha256(document))
+    from semantic_reviewed_projection import composition_recipe
+    from dataclasses import replace
+
+    recipe = composition_recipe(inner.binding, projection, "a" * 64)
+    text_identity = replace(
+        inner.binding.text_identity,
+        preprocessing_sha256=recipe["recipe_sha256"],
+    )
+    outer = JointSpaceBinding(
+        inner.binding.image_identity, text_identity, "b" * 64)
+    provider = ReviewedSemanticProvider(
+        inner, projection, outer, adapter_source_sha256="a" * 64)
+
+    with pytest.raises(SemanticUnsupported):
+        provider.encode(original)
+    assert inner.calls == []
+
+
 def _write_private_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, sort_keys=True), encoding="utf-8")
     path.chmod(0o600)

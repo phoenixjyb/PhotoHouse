@@ -31338,7 +31338,7 @@
         {
           "path": "server/tests/security/test_semantic_policy_separation.py",
           "before_sha256": null,
-          "sha256": "b19603055caf3db7215a34b1604a5a557dcb1fde458aeaf161e82b72dedea956"
+          "sha256": "d96b8215af72e7e46e9af3d7a829181752febc1e0fa05cb09616a36fd6752a04"
         },
         {
           "path": "server/tests/security/test_staging_package.py",
@@ -31349,9 +31349,14 @@
           "path": "tools/check.py",
           "before_sha256": "3291fbf58a64caae0887c261d5ef2d7da22621c65de3ca65977c871b4eb8afbc",
           "sha256": "407f9380ce28f5a552ee862b382172e91733a7bda65f97841b7e6de72da70961"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_scene_measurement.py",
+          "before_sha256": "30ab0d3d6d1291c748855a318532dc3f01a7543dd7c9ba55944a67436f3c3601",
+          "sha256": "dce8ff54a1f5f6c391f7f6bbddc73cac7d19cd58f4105e6ab6d21beee40ebf7f"
         }
       ],
-      "notes": "Separate policy-3 query admission from the indexed SigLIP recipe. The exact previous SigLIP implementation is retained as scripts/_semantic_siglip_encoding.py (SHA-256 22419b729d665f43c99e75eb4587a5f4540bcf0e8f1a8ede24b45aba2101e489), and its historical app.access.search_exclusions dependency is restored byte-for-byte (SHA-256 248e8722470ae6e5b1f95b5b8dced59dc1353af234a9d380fcaef6310f18017d); current policy-3 code moves to app.access.search_policy.py (SHA-256 cb7aeb07d6e1642de82acd764ad089e46471d1d9cb589e5fd8ab2b4ac6ec4444). Supported public encoders/wrappers and the provider boundary enforce fresh policy binding; semantic-search fingerprints and supported qualification metadata carry query_policy_binding separately from unchanged model receipts. Encoders now recheck policy after successful provider response parsing and before releasing a validated 422 refusal; the provider boundary rechecks after completion before releasing 200 or opted-in 422. Generated temporary policy-file drift during mock 200 and 422 responses is refused, and restored-source recovery succeeds. Provider probe reports the binding separately for v1/v2; readiness explicitly states index_or_policy_audited=false. Post-review focused checks passed: 137 tests and 843 subtests, including the final-source-read deadline regression. Three isolated extracted-package smoke methods passed using current worktree bytes; standard git-blob tests await a local commit containing the new files. No model, native host, activation, index publication or runtime configuration was used."
+      "notes": "Separate policy-3 query admission from the indexed SigLIP recipe. The exact previous SigLIP implementation is retained as scripts/_semantic_siglip_encoding.py (SHA-256 22419b729d665f43c99e75eb4587a5f4540bcf0e8f1a8ede24b45aba2101e489), and its historical app.access.search_exclusions dependency is restored byte-for-byte (SHA-256 248e8722470ae6e5b1f95b5b8dced59dc1353af234a9d380fcaef6310f18017d); current policy-3 code moves to app.access.search_policy.py (SHA-256 cb7aeb07d6e1642de82acd764ad089e46471d1d9cb589e5fd8ab2b4ac6ec4444). Supported public encoders/wrappers and the provider boundary enforce fresh policy binding; semantic-search fingerprints and supported qualification metadata carry query_policy_binding separately from unchanged model receipts. Encoders now recheck policy after successful provider response parsing and before releasing a validated 422 refusal; the provider boundary rechecks after completion before releasing 200 or opted-in 422. Generated temporary policy-file drift during mock 200 and 422 responses is refused, and restored-source recovery succeeds. Provider probe reports the binding separately for v1/v2; readiness explicitly states index_or_policy_audited=false. Post-review focused checks passed: 137 tests and 843 subtests, including the final-source-read deadline regression. Three isolated extracted-package smoke methods passed using current worktree bytes; standard git-blob tests await a local commit containing the new files. No model, native host, activation, index publication or runtime configuration was used. Follow-up after the first committed full API run: synthetic reviewed-scene labels now use alpha/beta instead of a zero numeral and assert both original and projected text are policy-3 admissible. A focused public ReviewedSemanticProvider test confirms an admissible original mapped to a negative projected string is refused before the inner encoder. No policy, model, or runtime source changed."
     }
   ]
 }
