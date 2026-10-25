@@ -1,0 +1,3 @@
+# Python source receipts and query-policy bindings use exact Git blob bytes.
+# Keep checkout bytes identical on Windows without normalizing runtime hashes.
+*.py text eol=lf

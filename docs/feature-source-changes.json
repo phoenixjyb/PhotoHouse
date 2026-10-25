@@ -31505,6 +31505,30 @@
         }
       ],
       "notes": "Include the new generated refusal-reopen HTTP regression in the existing explicit API CI inventory. No new profile, service or runtime behavior."
+    },
+    {
+      "feature": "byte-bound-python-lf-checkout-r143",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "before_sha256": null,
+          "sha256": "8569ab241aeb7396fbec04486a44d126ee89ba9901c650b35cac84480579ad8b"
+        },
+        {
+          "path": "tools/tests/test_python_checkout_identity.py",
+          "before_sha256": null,
+          "sha256": "08bbe5c2351e8b44c08fe1aff899f06b227f32736a7c267b7cbde40a9e53fc36"
+        },
+        {
+          "path": "docs/SOURCE_PACKAGING.md",
+          "before_sha256": "44b55d53b9c4b2b24c77ecaa1be28639c5553d45f62771504395704d3465299b",
+          "sha256": "00cd65ce41e66c7cebafb5ce022180e3eef0ae72d9c2097fc73157ffa618e7c2"
+        }
+      ],
+      "runtime_source_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "notes": "After exact7041 Windows CPU import failed at the expected-policy source digest guard, a real isolated Git checkout with core.autocrlf=true reproduced CRLF conversion and the same refusal. Declare Python text eol=lf at checkout, retaining canonical Git blob bytes for all Python policies/encoder receipts. A standard-library regression checks five bound source files, actual verifier import/canonical digests and refusal after explicit CRLF rewrite. No runtime hash normalization, alternate digest or pin change. The hosted failure alone did not include actual source bytes; successor hosted validation remains separate."
     }
   ]
 }
