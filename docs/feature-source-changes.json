@@ -31423,6 +31423,30 @@
       "live_runtime_changed": false,
       "production_data_used": false,
       "notes": "Optional scene-reword metadata version 1 on private thread GET recovers only the current latest confirmed unsupported-scene input. Default body and old-server compatibility remain. Fresh scoped principal checks, strict text and revisions, cue identity confirmation, explicit scope reload, stale-card suppression and capability-off read-only controls are preserved. No provider/search/POST/browser persistence is used for draft recovery. Independent generated HTTP 8 tests / 14 subtests, controller 26/26 and synthetic browser 9 checkpoints passed. The related 83-test cohort passed before the narrow BOM blankness correction; the final HTTP module covers that correction. No full-suite, hosted-CI, deployment, activation, device or relevance claim. Functional acceptance matrix separates delivery and remaining journeys from unchanged historical performance qualification."
+    },
+    {
+      "feature": "photo-stack-product-delivery-checklist-20261025",
+      "source_base": "7910852cbbeddfb8202908d7f4cd4ac2b289c0c4",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PHOTO_STACK_DELIVERY.md",
+          "sha256": "a04c7f49dbd30c3166b73592695ea6e93f22b9adcae163a81b2a94405aa6b64e"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "0d92245770d19f70ba66de2d45de1ab5cbe282088eca81371f51bdcfe31c84a9",
+          "sha256": "4cc395c6b3b9633feae3723f4f9f4ffd59bce4a105cd29669d6dd4bcb65f9bd7"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "2307414a3b75b55a05a0c8c0bf2eb9b53e49356a3f13f4755e7512f6f541b171",
+          "sha256": "aaacb257e2ea998966db27ded86b3d5a50dda95dd539eb21aab2cc945105fa06"
+        }
+      ],
+      "notes": "Document the complete grouping delivery path, visible family journeys and outstanding schema/index/worker/client/TV/quality gates. Timings are advisory for product prioritization; preserve old frozen evidence and access/data/resource/cleanup requirements. Documentation only; no source/runtime/model/schema/OTA activation."
     }
   ]
 }
