@@ -59,6 +59,12 @@ class WorkspaceRoute(APIRoute):
             try:
                 _runtime(request, allow_query=request.method == 'GET')
                 version = _single(request, 'x-photohouse-search-version')
+                scene_reword = _single(request, 'x-photohouse-scene-reword-version')
+                if (scene_reword is not None and
+                        (scene_reword != '1' or request.method != 'GET' or
+                         re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+',
+                                      request.url.path) is None)):
+                    raise TransportError(400, 'Scene reword projection is not supported on this endpoint')
                 if (version not in (None, '1', '2', '3', '4') or
                         (version in ('2', '3') and not assistant_engine._search_v2_endpoint(request)) or
                         (version == '4' and not assistant_engine._scene_endpoint(request))):
@@ -1821,18 +1827,30 @@ async def create_thread(request: Request):
 async def read_thread(request: Request, thread_id: str):
     query = _query(request, {'library_id'}, {'library_id'})
     library = _library(query['library_id'])
+    search_version = _single(request, 'x-photohouse-search-version')
+    scene_reword_version = _single(request, 'x-photohouse-scene-reword-version')
+    if (scene_reword_version is not None and
+            (scene_reword_version != '1' or search_version not in (None, '4'))):
+        raise WorkspaceInvalid()
+    include_scene_reword = scene_reword_version == '1'
     account = await _principal(request, library)
     store = _workspace(request)
     selected = _thread_id(thread_id)
-    result = await _call(store, 'get_thread', account, library, selected)
+    result = await _call(store, 'get_thread', account, library, selected,
+                         include_scene_reword=include_scene_reword)
+    if include_scene_reword and await _principal(request, library) != account:
+        raise AccessDenied()
     latest = result.get('latest_request_id')
     all_rows = result['exchanges']
 
     def response(rows, has_older):
-        return {'version': 1, 'thread': _safe_thread(result['thread']),
-                'exchanges': [_safe_exchange(row) for row in rows],
-                'has_older_exchanges': has_older,
-                'latest_request_id': latest}
+        value = {'version': 1, 'thread': _safe_thread(result['thread']),
+                 'exchanges': [_safe_exchange(row) for row in rows],
+                 'has_older_exchanges': has_older,
+                 'latest_request_id': latest}
+        if include_scene_reword:
+            value['scene_reword'] = result['scene_reword']
+        return value
 
     selected_rows = all_rows[-20:]
     bounded, has_older = _bounded_exchange_rows(

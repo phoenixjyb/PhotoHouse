@@ -1,10 +1,29 @@
 # Semantic search readiness — October 24, 2026
 
+## October 25 functional priority
+
+Current work follows the [functional acceptance matrix](SEARCH_FUNCTIONAL_ACCEPTANCE.md).
+The owner prioritizes complete, private API/UI user journeys; latency is
+diagnostic for that work. The older frozen performance qualification below is
+retained, including its failed target. Completing a functional change does not
+restamp it or enable serving.
+
+The later isolated component on `7910852` has reaccepted native source evidence
+for two audits, 15 protective cases and nine HTTPS samples. Its recovered raw
+warm median/maximum were 4.718/5.094 seconds. It did not complete full
+qualification: local family observations remained partial, later readback hit
+the staged archive's per-file guard and no offline pair completed. A separate
+limited current-owned-scope release is not successful readback, Windows/global
+inventory, relevance, deployment or device acceptance. See the matrix for the
+current delivery boundaries and remaining functional work.
+
+The following sections preserve their original checkpoint and gate meanings.
+
 Semantic search remains **OFF**. The current source candidate is not deployed
 or qualified on Windows. This checkpoint separates the earlier native result
 from the later source improvements; it does not authorize activation.
 
-## Latest October 25 result: R94 measured, semantic search still OFF
+## Earlier October 25 result: R94 measured, semantic search still OFF
 
 Exact source `4254107` completed native measurement with both full audits and
 15 protection cases over the same isolated 23,761-entry frozen catalog,

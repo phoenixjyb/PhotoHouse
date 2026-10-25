@@ -1,5 +1,32 @@
 # Current project status
 
+**October 25 functional-completion priority (local source / semantic OFF):**
+current work follows the [functional acceptance matrix](SEARCH_FUNCTIONAL_ACCEPTANCE.md):
+correct retrieval, privacy, clarification, recovery, API/Web integration and
+reviewable delivery. Latency is diagnostic for this work. Earlier frozen
+2-second qualification contracts and their failures remain unchanged; they are
+not a circular prerequisite for completing these functional journeys.
+
+The active source change restores a confirmed unsupported scene request's
+private wording and reword guidance when a thread is reopened. Its negotiated
+metadata read uses existing private storage, hides older cards and requires an
+explicit fresh scope review before a corrected search. It adds no model call,
+sharing permission, database migration or browser persistence. Targeted source,
+API, controller and browser evidence belongs to the final reviewed head; this
+entry does not claim deployment or activation.
+
+The later isolated Windows component on `7910852` completed two full audits,
+15 protection cases and nine English/Chinese/mixed HTTPS samples. Recovered
+measurement copies and the native completion component were reaccepted. Raw
+warm timings were **4.718 s median / 5.094 s maximum**, with all nine above the
+historical 2 s target. Full qualification remains failed: historical local
+family scans were partial, and later readback hit the staged source archive's
+file-size guard after the Windows query ran; no successful readback/offline
+pair was returned. An explicit supplemental release covers current known owned
+scopes only. It neither repairs historical receipts nor establishes Windows
+inventory, global host freedom, relevance, serving or family/device acceptance.
+The earlier entries below retain their dated evidence scope.
+
 **October 25 exclusion phrase repair (source only / OFF):** policy 3 requests
 clarification for additional explicit English/Chinese/mixed prohibition,
 exception and omission phrases before vectors or model calls. Eight generated
@@ -9,7 +36,7 @@ usable. This is later source than the full API and native results below, and
 is no ASR/dialect or model-negation qualification. See the
 [admission repair](SEMANTIC_EXCLUSION_QUALIFICATION.md#october-25-admission-phrase-repair-policy-3-source-only).
 
-**October 25 current semantic checkpoint (R94 / OFF / undeployed):**
+**October 25 earlier semantic checkpoint (R94 / OFF / undeployed):**
 application source `4254107` ran against the isolated synthetic-account fixture
 with the reviewed frozen catalog and prepared family vectors: 23,761 catalog
 entries, 23,696 vectors and 65 qualification-only omissions. Both full audits
@@ -54,7 +81,7 @@ were faster, but the candidate maximum was **2.757 s** and only **2/9** samples
 met the 2 s target. All 13 cold/warm/page-two pairs matched complete API JSON,
 full ranked IDs and score bits, and charged rows/bytes. The candidate performed
 nine physical source reads plus nine final-pass replays per request, versus 18
-physical reads in baseline. The latest actual Windows result remains R94 at
+physical reads in baseline. At that checkpoint the latest actual Windows result was R94 at
 **5.250 s median / 5.703 s max**, with all nine warm samples above target and
 whole qualification false; R127 does not update that result. The local source
 candidate is unmerged and undeployed. No native-performance, family relevance,

@@ -98,6 +98,72 @@ test('durable unsupported scene failure clears results, keeps both drafts, and o
  assert.equal(sent.body.expected_revision,1);assert.equal(f.c.state().draft,'unsent ordinary conditions');assert.equal(f.c.state().sceneDraft,'');
  assert.equal(f.calls.filter(c=>c.path.includes('/requests/')).length,1);assert.equal(f.calls.filter(c=>c.method==='GET').length-getsBeforeReload,3);f.c.close();
 });
+test('opt-in thread read restores only the newest refusal cue and never hydrates the older result',async()=>{
+ const cue={version:1,request_id:rid,revision:1,query:'a dog not on grass'};
+ const f=setup({turn:options=>failed(options.body.request_id),
+  read:path=>({...env(scene(),path.split('/requests/')[1].split('?')[0],true),revision:1}),
+  detail:()=>({version:1,thread:thread(1),exchanges:[],latest_request_id:rid,scene_reword:cue})});
+ await ready(f);f.c.setDraft('ordinary draft');f.c.setSceneDraft(query);await f.c.sendScene();
+ f.c.setSceneDraft('');
+ const before=f.calls.filter(c=>c.path.includes('/requests/')).length;
+ const restored=await f.c.read(tid);
+ const threadRead=f.calls.filter(c=>c.path.includes('/threads/')&&!c.path.includes('/requests/')).at(-1);
+ assert.equal(threadRead.extraHeaders['X-PhotoHouse-Search-Version'],undefined);
+ assert.equal(threadRead.extraHeaders['X-PhotoHouse-Scene-Reword-Version'],'1');
+ assert.equal(restored.scene_reword.query,cue.query);assert.equal(f.c.state().sceneDraft,cue.query);
+ assert.equal(f.c.state().sceneRewordRequired,true);assert.equal(f.c.state().currentResult,null);
+ assert.equal(f.c.state().contextState,'requires_search');
+ assert.equal(f.calls.filter(c=>c.path.includes('/requests/')).length,before);
+ const posts=f.calls.filter(c=>c.path.endsWith('/turns')).length;
+ f.c.setSceneDraft('reword typed after reload');
+ await f.c.read(tid,{sceneReloadGuard:true});
+ assert.equal(f.c.state().sceneDraft,'reword typed after reload');
+ assert.equal(f.c.state().sceneRewordRequired,false);assert.equal(f.c.state().currentResult.version,4);
+ assert.equal(f.calls.filter(c=>c.path.endsWith('/turns')).length,posts);
+ await f.c.sendScene();
+ assert.equal(f.calls.filter(c=>c.path.endsWith('/turns')).at(-1).body.text,'reword typed after reload');
+ assert.equal(f.c.state().draft,'ordinary draft');f.c.close();
+});
+test('opt-in thread read rejects malformed refusal projection without publishing it',async()=>{
+ for(const scene_reword of [
+  {version:1,request_id:rid,revision:0,query:'a dog not on grass'},
+  {version:1,request_id:rid,revision:1,query:'bad\nquery'},
+  {version:1,request_id:rid,revision:1,query:'a'.repeat(513)},
+  {version:1,request_id:rid,revision:1,query:'a dog not on grass',extra:true}
+ ]){
+  const f=setup({detail:()=>({version:1,thread:thread(1),exchanges:[],latest_request_id:null,scene_reword})});
+  await ready(f);await assert.rejects(f.c.read(tid),error=>error.code==='invalid_response');
+  assert.equal(f.c.state().sceneDraft,'');assert.equal(f.c.state().sceneRewordRequired,false);f.c.close();
+ }
+});
+test('thread-read confirmation binds the cue identity as well as revision and completed pointer',async()=>{
+ for(const guarded of [false,true]){
+  const firstCue={version:1,request_id:rid,revision:1,query:'a dog not on grass'};
+  const secondCue={version:1,request_id:'33333333-3333-4333-8333-333333333333',revision:1,query:'a phone not in a house'};
+  let details=0;
+  const f=setup({turn:options=>failed(options.body.request_id),
+   read:path=>({...env(scene(),path.split('/requests/')[1].split('?')[0],true),revision:1}),
+   detail:()=>({version:1,thread:thread(1),exchanges:[],latest_request_id:rid,scene_reword:++details===1?firstCue:secondCue})});
+  await ready(f);await f.c.sendScene(query);f.c.setSceneDraft('edited draft survives cue change');
+  const posts=f.calls.filter(c=>c.path.endsWith('/turns')).length;
+  await assert.rejects(f.c.read(tid,{sceneReloadGuard:guarded}),error=>error.code==='conflict');
+  assert.equal(details,2);assert.equal(f.c.state().sceneDraft,'edited draft survives cue change');
+  assert.equal(f.c.state().sceneRewordRequired,true);assert.equal(f.c.state().currentResult,null);
+  assert.equal(f.c.state().contextState,'requires_search');
+  assert.equal(f.calls.filter(c=>c.path.endsWith('/turns')).length,posts);f.c.close();
+ }
+});
+test('refusal draft is retained as read-only guidance when scene capability is unavailable',async()=>{
+ const cue={version:1,request_id:rid,revision:1,query:'a dog not on grass'};
+ const f=setup({probe:{...sceneCaps,available:false},detail:()=>({version:1,thread:thread(1),exchanges:[],latest_request_id:rid,scene_reword:cue})});
+ await f.c.capabilities();assert.equal(await f.c.sceneCapabilities(),false);await f.c.create();
+ const detail=await f.c.read(tid);
+ const threadRead=f.calls.filter(c=>c.path.includes('/threads/')&&!c.path.includes('/requests/')).at(-1);
+ assert.equal(threadRead.extraHeaders['X-PhotoHouse-Scene-Reword-Version'],'1');
+ assert.equal(f.c.state().sceneAvailable,false);assert.equal(f.c.state().sceneDraft,cue.query);
+ assert.equal(f.c.state().sceneRewordRequired,true);assert.equal(f.c.state().sceneReady,false);
+ assert.equal(f.c.state().currentResult,null);assert.equal(detail.scene_reword.query,cue.query);f.c.close();
+});
 test('lost unsupported scene response is resolved by one v4 GET and preserves a newer draft edit',async()=>{
  const f=setup({turn:()=>{throw error(503);},read:path=>path.includes('/requests/')?failed(path.split('/requests/')[1].split('?')[0],true):env(ordinary(),rid,true)});
  await ready(f);f.c.setSceneDraft(query);await assert.rejects(f.c.sendScene());f.c.setSceneDraft('edited after response was lost');

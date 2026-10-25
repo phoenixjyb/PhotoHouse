@@ -325,15 +325,21 @@
     if((v.status==='pending'||v.status==='completed')&&v.error!==null)fail('invalid_response');
     return Object.freeze({...v,result:v.result?validateResult(v.result,library,v.recovered,allowMemory&&mode==='POST'&&!v.recovered,allowMemoryActions&&mode==='POST'&&!v.recovered,searchVersion):null});
   }
-  function validateThreadDetail(v, library, expectedId) {
-    if(!exactKeys(v,['version','thread','exchanges'],['latest_request_id','has_older_exchanges'])||v.version!==1||!Array.isArray(v.exchanges)||
+  function validateThreadDetail(v, library, expectedId, sceneRewordOptIn=false) {
+    if(typeof sceneRewordOptIn!=='boolean'||!exactKeys(v,['version','thread','exchanges'],['latest_request_id','has_older_exchanges',...(sceneRewordOptIn?['scene_reword']:[])])||v.version!==1||!Array.isArray(v.exchanges)||
       v.exchanges.length>20||
       (Object.hasOwn(v,'latest_request_id')&&v.latest_request_id!==null&&!uuid(v.latest_request_id))||
       (Object.hasOwn(v,'has_older_exchanges')&&typeof v.has_older_exchanges!=='boolean'))fail('invalid_response');
     const thread=validateThread(v.thread,library);if(thread.thread_id!==expectedId)fail('invalid_response');
+    let sceneReword;
+    if(Object.hasOwn(v,'scene_reword')){
+      const cue=v.scene_reword;
+      if(cue!==null&&(!exactKeys(cue,['version','request_id','revision','query'])||cue.version!==1||!uuid(cue.request_id)||!safeInt(cue.revision)||cue.revision!==thread.revision||!validSceneQuery(cue.query)))fail('invalid_response');
+      sceneReword=cue===null?null:Object.freeze({...cue});
+    }
     const exchanges=v.exchanges.map(validateExchange);let previous=0;const ids=new Set();for(const e of exchanges){if(e.revision<=previous||ids.has(e.exchange_id))fail('invalid_response');previous=e.revision;ids.add(e.exchange_id);}
     if(v.has_older_exchanges===true&&exchanges.length===0)fail('invalid_response');
-    return Object.freeze({version:1,thread,exchanges:Object.freeze(exchanges),...(Object.hasOwn(v,'latest_request_id')?{latest_request_id:v.latest_request_id}:{}),...(Object.hasOwn(v,'has_older_exchanges')?{has_older_exchanges:v.has_older_exchanges}:{})});
+    return Object.freeze({version:1,thread,exchanges:Object.freeze(exchanges),...(Object.hasOwn(v,'latest_request_id')?{latest_request_id:v.latest_request_id}:{}),...(Object.hasOwn(v,'has_older_exchanges')?{has_older_exchanges:v.has_older_exchanges}:{}),...(Object.hasOwn(v,'scene_reword')?{scene_reword:sceneReword}:{})});
   }
   function validateHistoryPage(v, threadId, library, snapshotRevision, beforeRevision) {
     if(!exactKeys(v,['version','thread_id','snapshot_revision','before_revision','exchanges','has_older_exchanges','next_before_revision'])||
@@ -512,17 +518,50 @@
     async function list(){const t=begin();const query=new URLSearchParams({library_id:t.base.library});const includeLabels=capabilities?.thread_labels===true;if(includeLabels)query.set('include_labels','true');const raw=await call(`${BASE}/threads?${query}`,'GET',undefined,t.base,t.token);if(!exactKeys(raw,['version','threads'])||raw.version!==1||!Array.isArray(raw.threads))fail('invalid_response');const values=raw.threads.map(x=>validateThread(x,t.base.library,includeLabels));threads=values;publish();return values;}
     const threadPath=id=>`${BASE}/threads/${encodeURIComponent(id)}`;
     function beginHistoryRead(id){historyNonce++;historyLoading=false;const sameThread=historyDetail?.thread.thread_id===id;historyDetail=sameThread?staleHistory(historyDetail):null;historyRefreshRequired=!!sameThread;}
-    async function read(id,{hydrate=true,sceneReloadGuard=false}={}){if(!uuid(id))fail('invalid_input');const t=begin();if(pendingTurn)fail('conflict');const reloadBase=sceneReloadGuard?{threadId:activeThread?.thread_id,revision}:null;if(reloadBase&&(!sceneRewordRequired||reloadBase.threadId!==id||!safeInt(reloadBase.revision)))fail('conflict');if(activeThread?.thread_id!==id)sceneRewordRequired=false;clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;publish();abortHydrations();const ticket=++readGeneration;beginHistoryRead(id);publish();const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');let detail=validateThreadDetail(raw,t.base.library,id);if(reloadBase&&(detail.thread.revision!==reloadBase.revision||detail.thread.thread_id!==reloadBase.threadId))fail('conflict');historyDetail=ownHistory(detail);historyRefreshRequired=false;publish();let latest=null,guardedResult=null;const readVersion=sceneAvailable?4:negotiatedSearchVersion();
-      currentResult=null;contextState=detail.latest_request_id?'unloaded':'requires_search';
-      if(detail.latest_request_id&&hydrate&&capabilities?.server_owned_turns!==false){try{latest=await getRequest(id,detail.latest_request_id,{_ticket:{base:t.base,token:t.token,readTicket:ticket},hydrate:false,searchVersion:readVersion});
+    async function read(id,{hydrate=true,sceneReloadGuard=false}={}){
+      if(!uuid(id))fail('invalid_input');
+      const t=begin();if(pendingTurn)fail('conflict');
+      const reloadBase=sceneReloadGuard?{threadId:activeThread?.thread_id,revision}:null;
+      if(reloadBase&&(!sceneRewordRequired||reloadBase.threadId!==id||!safeInt(reloadBase.revision)))fail('conflict');
+      if(activeThread?.thread_id!==id)sceneRewordRequired=false;
+      const hadRewordHint=sceneRewordRequired;
+      clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;publish();abortHydrations();
+      const ticket=++readGeneration;beginHistoryRead(id);publish();
+      const readVersion=sceneAvailable?4:negotiatedSearchVersion();
+      // This is private input metadata, independent of whether v4 ranking is
+      // currently available. Older servers ignore the unknown header and keep
+      // their legacy response shape.
+      const sceneProjection=true;
+      const detailHeaders={extraHeaders:{'X-PhotoHouse-Scene-Reword-Version':'1'}};
+      const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders);
+      assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');
+      let detail=validateThreadDetail(raw,t.base.library,id,sceneProjection);
+      if(reloadBase&&(detail.thread.revision!==reloadBase.revision||detail.thread.thread_id!==reloadBase.threadId))fail('conflict');
+      const rewordCue=Object.hasOwn(detail,'scene_reword')?detail.scene_reword:null;
+      if(rewordCue&&!reloadBase){
+        const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders),t.base.library,id,sceneProjection);
+        assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');
+        if(confirm.thread.revision!==detail.thread.revision||confirm.latest_request_id!==detail.latest_request_id||canonical(confirm.scene_reword??null)!==canonical(detail.scene_reword??null)){
+          currentResult=null;contextState='requires_search';publish();fail('conflict');
+        }
+      }
+      historyDetail=ownHistory(detail);historyRefreshRequired=false;publish();
+      let latest=null,guardedResult=null;
+      const suppressOldResult=!!(!reloadBase&&(rewordCue||(hadRewordHint&&!Object.hasOwn(detail,'scene_reword'))));
+      if(sceneProjection&&!reloadBase&&Object.hasOwn(detail,'scene_reword')){
+        sceneRewordRequired=!!rewordCue;
+        if(rewordCue&&!sceneDraft)sceneDraft=rewordCue.query;
+      }
+      currentResult=null;contextState=suppressOldResult?'requires_search':detail.latest_request_id?'unloaded':'requires_search';
+      if(!suppressOldResult&&detail.latest_request_id&&hydrate&&capabilities?.server_owned_turns!==false){try{latest=await getRequest(id,detail.latest_request_id,{_ticket:{base:t.base,token:t.token,readTicket:ticket},hydrate:false,searchVersion:readVersion});
           if(latest.status==='completed'&&latest.revision===detail.thread.revision){const hydrated=await hydrateResult(latest.result,t,{readTicket:ticket,threadId:id,revision:latest.revision});if(reloadBase)guardedResult=hydrated;else{currentResult=hydrated;contextState=resultContextState(currentResult);}}
           else if(latest.status==='completed')contextState='stale';
           else if(latest.status==='pending')contextState='pending';
           else contextState='requires_search';
           if(latest.status==='pending'){const saved=detail.exchanges.find(x=>x.request_id===latest.request_id);pendingTurn={thread_id:id,request_id:latest.request_id,expected_revision:latest.revision,text:saved?.input_text||'',status:'pending',search_version:readVersion};}
         }catch(e){const safe=safeFailure(e);if(safe.status===409||safe.status===404){latest=null;currentResult=null;contextState='requires_search';}else throw safe;}}
-      if(reloadBase){const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token),t.base.library,id);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');if(confirm.thread.revision!==reloadBase.revision||confirm.latest_request_id!==detail.latest_request_id||activeThread?.thread_id!==reloadBase.threadId||revision!==reloadBase.revision){currentResult=null;contextState='requires_search';publish();fail('conflict');}}
-      assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');activeThread=latest?.status==='completed'?Object.freeze({...detail.thread,revision:latest.revision}):detail.thread;revision=latest?.status==='completed'?latest.revision:detail.thread.revision;if(reloadBase){currentResult=guardedResult;if(guardedResult)contextState=resultContextState(guardedResult);}if(activeThread.thread_id===id&&activeThread.revision===revision&&contextState==='ready'&&currentResult?.context)sceneRewordRequired=false;publish();
+      if(reloadBase){const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders),t.base.library,id,sceneProjection);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');if(confirm.thread.revision!==reloadBase.revision||confirm.latest_request_id!==detail.latest_request_id||canonical(confirm.scene_reword??null)!==canonical(detail.scene_reword??null)||activeThread?.thread_id!==reloadBase.threadId||revision!==reloadBase.revision){currentResult=null;contextState='requires_search';publish();fail('conflict');}}
+      assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');activeThread=latest?.status==='completed'?Object.freeze({...detail.thread,revision:latest.revision}):detail.thread;revision=latest?.status==='completed'?latest.revision:detail.thread.revision;if(reloadBase){currentResult=guardedResult;if(guardedResult)contextState=resultContextState(guardedResult);}if(sceneAvailable&&activeThread.thread_id===id&&activeThread.revision===revision&&contextState==='ready'&&currentResult?.context)sceneRewordRequired=false;publish();
       const latestSummary=latest?Object.freeze({request_id:latest.request_id,status:latest.status,revision:latest.revision,error:latest.error}):null;
       return Object.freeze({...historyDetail,current_result:currentResult,context_state:contextState,...(latestSummary?{latest_request:latestSummary}:{})});}
     async function create({retry=false}={}){const t=begin();if(pendingTurn)fail('conflict');sceneRewordRequired=false;clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;let id;if(pendingCreation){if(!retry)fail('conflict');id=pendingCreation.thread_id;}else{id=typeof newUUID==='function'?newUUID():null;if(!uuid(id))fail('invalid_input');pendingCreation={thread_id:id,library_id:t.base.library,account:t.base.account};}clearHistory();publish();abortHydrations();const ticket=++readGeneration;

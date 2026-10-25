@@ -1518,7 +1518,7 @@
   }
   function renderAssistantSceneControls(snapshot){
     const panel=$('assistant-scene');if(!panel)return;
-    panel.hidden=!snapshot?.sceneAvailable||snapshot.locked||!snapshot.activeThread;
+    panel.hidden=(!snapshot?.sceneAvailable&&!snapshot?.sceneRewordRequired)||snapshot.locked||!snapshot.activeThread;
     $('assistant-scene-new-search').hidden=snapshot?.currentResult?.version!==4;
     if(snapshot?.locked||!snapshot?.currentResult)renderAssistantSceneRanking(null);
     const key=JSON.stringify([snapshot?.account,snapshot?.library,snapshot?.activeThread?.thread_id,snapshot?.revision]);

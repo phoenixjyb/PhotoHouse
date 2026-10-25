@@ -187,6 +187,16 @@ def _search_v2_endpoint(request):
 
 def _scene_endpoint(request):
     # The stateless assistant and speech routes never accept server-owned v4 state.
+    scene_reword = _single(request, 'x-photohouse-scene-reword-version')
+    if (request.method == 'GET' and
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+',
+                          request.url.path) is not None):
+        # Thread detail may expose the refusal cue through an explicit,
+        # separately versioned metadata projection. The route validates again.
+        return (_single(request, 'x-photohouse-search-version') == '4' and
+                scene_reword == '1')
+    if scene_reword is not None:
+        return False
     return re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/(?:turns|requests/[0-9a-f-]+)',
                         request.url.path) is not None
 
