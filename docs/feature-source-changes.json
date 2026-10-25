@@ -31671,6 +31671,31 @@
       "live_runtime_changed": false,
       "model_receipts_changed": false,
       "notes": "Separate authenticated capability and explicit scene-page POST derive query/scope from the newest retained completed scene request at the current revision. Initial page2 verifies saved first20 presented bits and establishes a new complete raw-rank digest; later pages require it, without claiming the unretained original tail. The original turn/history schemas and model-free recovery remain. Read-only scoped workspace projection is rechecked after inference; final principal, pilot owner, runtime availability/identity, shared cancellation/deadline and response budget checks withhold stale cards. Page-only legacy vector reads are charged and fully revalidated after provider work; ordinary legacy searches stay single-read. Closed client page validation, nonce/generation fences, return-first narration/command isolation and bilingual Next/Previous/global-rank/range/omission controls keep at most20 ephemeral cards. Focused generated API12 tests14subtests, controller32, existing scene20 tests12subtests and combined rendered browser12 checkpoints with46eligible65omitted passed; source and final reviewer records retain earlier scope/vector/cancel/owner/UI failures. Browser profile now runs that combined page/coverage fixture; new API module is in supported checks. No full-suite, current hosted CI, native model/relevance, activation, deployment or device/family claim."
+    },
+    {
+      "feature": "phone-separated-card-readable-details-action-20261025",
+      "source_base": "e8afb7c9df4c31237dac0d5b815f91b1579e194e",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "334b13d685cd4336b49e118e96f54e25cabfda8c414d1f7421978df6b482d320",
+          "sha256": "24975c06d8a59304d3f206cb204c76c5102b77fa38c0061b3d315c9987b18ea2"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "before_sha256": "adbd71610bf0737d5bd18ee8301e84db87d203a123efb67152a213210849650e",
+          "sha256": "36f7960204c3112481729b55fe76c0b86fc4e118cb2d0c3dc5f8cfb8141d4aee"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": "6f4a80b56965e2980b1028c62f9096e5db0285558979a1419944a8448ca7aced",
+          "sha256": "d2a2ee35bb1b677fef901d6adfa0aa2f8c59e6b3d03b92036fca71f29e83a303"
+        }
+      ],
+      "notes": "Give gallery Details its own full-width action line with minimum48dp target; preserve full bilingual labels, card/open/detail/group callbacks and ordinals. Extend existing separated-photo150percent UI journey with actual text-layout fit and click-action checks for three cards in both languages. Existing hosted screenshots retain their historical wrap defect; successor rendering/device/publication remain separate."
     }
   ]
 }

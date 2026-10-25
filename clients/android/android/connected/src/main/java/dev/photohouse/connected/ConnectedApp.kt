@@ -1478,15 +1478,13 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                 Column(Modifier.padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)) {
                                                     Text(words.date(asset), style = MaterialTheme.typography.titleSmall,
                                                         maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.SpaceBetween) {
-                                                        Text(t("${if (asset.kind == "video") "Video" else "Photo"} · No. ${asset.id}",
-                                                            "${if (asset.kind == "video") "视频" else "照片"} · 编号 ${asset.id}"),
-                                                            style = MaterialTheme.typography.labelSmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                                                        TextButton(onClick = { store.openAsset(asset) }, modifier = Modifier.testTag("details-${asset.id}")) {
-                                                            Text(t("Details", "详情"))
-                                                        }
+                                                    Text(t("${if (asset.kind == "video") "Video" else "Photo"} · No. ${asset.id}",
+                                                        "${if (asset.kind == "video") "视频" else "照片"} · 编号 ${asset.id}"),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                                                    TextButton(onClick = { store.openAsset(asset) },
+                                                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("details-${asset.id}")) {
+                                                        Text(t("Details", "详情"), modifier = Modifier.testTag("details-label-${asset.id}"))
                                                     }
                                                     stackGroups.firstOrNull { (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) == asset.id }?.let { group ->
                                                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,

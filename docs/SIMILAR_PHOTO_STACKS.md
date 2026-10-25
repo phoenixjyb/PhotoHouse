@@ -131,6 +131,18 @@ Source checks, synthetic UI renders, signed app delivery, Windows deployment and
 family acceptance are separate gates. This document does not authorize a service
 switch, APK publication, photo deletion or model activation.
 
+### Phone card action layout — October 25 follow-up source
+
+Hosted API 34 emulator evidence confirmed the page-local explanation in English
+and Chinese at 150% text size, and exposed vertical wrapping of “详情” in the
+two-column separated-photo view. The follow-up places Details on its own
+full-width action line below the media type and number, retaining the full label
+and a minimum 48 dp touch target. Card opening, detail actions, ordinals and
+grouping choices remain unchanged. The existing large-text journey checks that
+every separated card's Chinese and English action is clickable, untruncated
+and laid out on one line. Rendered acceptance of this successor remains separate
+from the earlier screenshots and source/build checks.
+
 ### Local source checks — October 19
 
 The stack algorithm/route, ordinary library reads and duplicate-management

@@ -6,6 +6,8 @@ import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.compose.ui.test.*
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.photohouse.connected.core.*
@@ -702,7 +704,23 @@ class ConnectedUiTest {
         rule.onNodeWithTag("media-2").assertIsDisplayed()
         rule.onNodeWithTag("media-3").assertIsDisplayed()
         assertEquals("Dissolving a stack is local view state", reads, api.photoStackReads)
+        fun assertReadableDetails(label: String) {
+            for (id in listOf("1", "2", "3")) {
+                reveal(hasTestTag("details-$id"))
+                rule.onNodeWithTag("details-$id").assertIsDisplayed().assertHasClickAction()
+                val layouts = mutableListOf<TextLayoutResult>()
+                rule.onNodeWithTag("details-label-$id", useUnmergedTree = true)
+                    .assertTextEquals(label)
+                    .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                assertEquals("One laid-out details label for card $id", 1, layouts.size)
+                assertEquals("Details must not wrap vertically in a narrow card", 1, layouts.single().lineCount)
+                assertFalse("The complete details label must fit", layouts.single().hasVisualOverflow)
+            }
+        }
+        assertReadableDetails("详情")
         capture("photo-stacks-separated-zh-150")
+        click("English")
+        assertReadableDetails("Details")
     }
     @Test fun libraryPhotoStackResetIsVisibleEvenWhenNoGroupsRemain() {
         val indexRevision = "123e4567-e89b-42d3-a456-426614174000"
