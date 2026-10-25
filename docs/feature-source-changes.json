@@ -31772,6 +31772,41 @@
         }
       ],
       "notes": "Derive Chinese/English prose instruction only from validated closed zh/en outside untrusted bundle for narrator and companion, retaining IDs/quotations/evidence and canonical worker refusal. Synthetic Ollama/local-provider/actual-local-child GGUF-worker protocol coverage; no model quality, actual failure-cause, native Windows, serving activation or deployment claim."
+    },
+    {
+      "feature": "multilingual-quotation-chapter-grounding-20261026",
+      "source_base": "434650178a84a868ab97d4e9350c6380fd934d54",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "85215776be270ac88da76e4642e6ea5ebebbf7778016809596f215593bc9826f",
+          "sha256": "56b7936ba282f3d7055df33a789c63c587454bfb9c6ea126d3af8197bb6b28aa"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "b89dbd7927de14e921b1b2e175e5bb51b8e4d3e1250363df28514ea5d99b7e97",
+          "sha256": "82fbd9e68023d43fbb5181b22e6cc90232256be0e049d50ba7098701fd3c5630"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_local.py",
+          "before_sha256": "9f794025a383240d90d8f8084a81336869b4b232e058a111b32a878ec798dac0",
+          "sha256": "5dee565c3e9852928ba4179107c8c628c06a10c3aaf13449f69f2b0c3dac2568"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "b500bc9aacda4e5c6f767ac4109efeb70aa6bb92b869c6af1773a3284ac77e28",
+          "sha256": "d8892cb9ca007c0a92b8305788519a18bd675e24a6a7d7f0fb4d595b289880ab"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "acd6cb16381b1caa019b4ef0843506df094f77aa673074ab181329e18571ddaa",
+          "sha256": "e60b33bfaa17d6365c50732fcdfc700f879b4aac2bbce555e289ab3a9782f8fb"
+        }
+      ],
+      "notes": "Fixed trusted guidance for requested brief original-language family-source quotation only within existing authorship/citation/source-kind rules; keep narration physical/causal details within cited chapter evidence. Existing safety constants, imprecise-date/question rules, output thresholds, language enum, providers and flags unchanged. Synthetic payload/provider/local-worker conformance is not real model grounding or qualification."
     }
   ]
 }

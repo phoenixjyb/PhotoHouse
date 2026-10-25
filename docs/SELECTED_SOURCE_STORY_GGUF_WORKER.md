@@ -70,6 +70,16 @@ instruction is refused before model loading. Synthetic provider/worker round tri
 check this binding; they do not establish real model language quality or prove
 the cause of an earlier generation failure. Provider activation remains separate.
 
+A request for a brief original-source quotation is an optional focus preference.
+The trusted instructions allow its original language within otherwise Chinese or
+English prose only under the existing exact-wording, family authorship, available
+author and citation rules. Transcript, AI and editorial wording do not become
+direct quotations. Chapter narration and proposals must keep every action,
+physical detail and causal claim within that chapter's cited evidence, without
+transferring another chapter's mechanism or outcome. This is prompt guidance;
+structural validation and synthetic tests do not establish semantic grounding.
+Imprecise source dates remain imprecise; optional details do not force questions.
+
 The default context is 8,192 tokens (explicit range 4,096–16,384), two CPU threads
 (range 1–8) and zero GPU layers (explicit range 0–128). GPU splitting is disabled.
 GPU layers require an explicit `--gpu-device`
