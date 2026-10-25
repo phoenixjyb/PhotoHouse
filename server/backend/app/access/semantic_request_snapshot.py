@@ -162,7 +162,7 @@ class RequestSnapshotConnection(sqlite3.Connection):
 def _file_identity(path):
     try:
         item = Path(path).lstat()
-    except FileNotFoundError:
+    except OSError:
         return None
     reparse_flag = getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)
     if (stat.S_ISLNK(item.st_mode)
@@ -580,6 +580,12 @@ class RequestSourceSnapshot:
         payload = _attempt_payload(self, attempt)
         if (state is None or payload is None or connection is not state['connection']):
             return
+        if not success:
+            # The caller is already failing closed. Do not let diagnostic
+            # revalidation replace its original cancellation/provider error
+            # with a filesystem or SQLite observation failure.
+            self.disable()
+            return
         observed = _observe(connection)
         if observed is _OBSERVATION_UNSAFE:
             state['identity_unsafe'] = True
@@ -596,9 +602,6 @@ class RequestSourceSnapshot:
                 if success:
                     state['fallback_required'] = True
                 self.disable()
-            return
-        if not success:
-            self.disable()
             return
         if state['baseline'] is None and payload['capture']:
             if observed != payload['start']:

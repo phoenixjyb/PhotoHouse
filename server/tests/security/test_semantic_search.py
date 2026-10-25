@@ -7,6 +7,7 @@ import math
 import os
 from pathlib import Path
 import sqlite3
+import stat
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -366,6 +367,31 @@ class SemanticSearchTests(unittest.TestCase):
         with closing(sqlite3.connect(path)) as db:
             self.assertEqual(db.execute(
                 "SELECT taken_at FROM assets WHERE id=101").fetchone(), ('2041-01-01',))
+
+    def test_successful_read_fails_closed_when_source_parent_becomes_unreadable(self):
+        if os.name != 'posix' or not hasattr(os, 'geteuid') or os.geteuid() == 0:
+            self.skipTest('requires a non-root POSIX user for real parent-directory denial')
+        self.enable_request_source_snapshot()
+        path = self.fixture.database.resolve()
+        parent = path.parent
+        original_mode = stat.S_IMODE(parent.stat().st_mode)
+        state = {'permission_denied': False}
+
+        def deny_parent_access():
+            parent.chmod(0)
+            try:
+                path.lstat()
+            except PermissionError:
+                state['permission_denied'] = True
+
+        self.during_encode = deny_parent_access
+        try:
+            response = self.query()
+        finally:
+            parent.chmod(original_mode)
+        self.assertTrue(state['permission_denied'])
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
 
     def test_cancel_exception_after_replay_and_unrelated_commit_propagates_same_object(self):
         from app.access.semantic_request_snapshot import NativeSnapshotDatabase, RequestSourceSnapshot

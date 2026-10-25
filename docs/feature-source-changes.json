@@ -31129,7 +31129,7 @@
       "files": [
         {
           "path": "server/backend/app/access/semantic_request_snapshot.py",
-          "sha256": "4b168d7ecfda1556087bd910d9a6bd5c9bb120315c3b942d4ea42565e8c9558d",
+          "sha256": "800d017b34ed43974f260ffe80dffc5e22edf2ae7f1c307df937038565d15216",
           "before_sha256": null
         },
         {
@@ -31154,7 +31154,7 @@
         },
         {
           "path": "server/tests/security/test_semantic_request_snapshot.py",
-          "sha256": "b2cf419422b4d2cdb63191c81a035ea47cb10b25adc17b28435a6cdce43e384f",
+          "sha256": "c2085bbf1c0284659b4c9ad4b131f8f8e2083405245be54696a2c2a5efd11bba",
           "before_sha256": null
         },
         {
@@ -31184,7 +31184,7 @@
         },
         {
           "path": "server/tests/security/test_semantic_search.py",
-          "sha256": "9d70c29a01a0624046f58e9f35d54e9c1431d4a60012fdbbfadd6e372a067d06",
+          "sha256": "5d0ef0c87db5c9facec5086c1e225b1c4938d74b7faf912734776d5a3b0827d6",
           "before_sha256": "14216778b6cf34b9b3f38174db5a1161831c65e8eb2c8a97cc0ac330e731ade4"
         },
         {
@@ -31193,7 +31193,7 @@
           "before_sha256": "5d936faadfa99c17a99362dd47b8e88e586c7e2a74d0a68ab9c6b378f28b3a7e"
         }
       ],
-      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Focused generated SQLite/request/coverage/qualifier/search tests passed (88 tests, 42 subtests). One R127 generated full-route comparison on source 001a039 used 23,696 eligible rows, 65 synthetic omissions, 768D vectors and a fixed 418 ms MockTransport. Nine warm mean/median were 2369.294/2347.977 ms baseline and 2132.612/2024.980 ms candidate; candidate max was 2756.605 ms, 8/9 pairs faster and 2/9 at or below 2 seconds, so the all-sample target remains unmet. All 13 cold/warm/page-two pairs matched full API JSON, full-rank IDs/score bits and per-attempt charged rows/bytes; physical source reads were 18 baseline versus 9 plus 9 final-pass replays candidate. The run used configured setup/profile/RSS limits, but exact peak RSS and separate setup/profile timings are absent from the result. No native Windows, production, family relevance, language quality or activation claim."
+      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Failed attempts now discard replay state without filesystem revalidation, preserving the original body exception; successful path-identity observation errors fail closed. Focused generated SQLite/request/coverage/qualifier/search tests passed (90 tests, 42 subtests). One R127 generated full-route comparison on source 001a039 used 23,696 eligible rows, 65 synthetic omissions, 768D vectors and a fixed 418 ms MockTransport. Nine warm mean/median were 2369.294/2347.977 ms baseline and 2132.612/2024.980 ms candidate; candidate max was 2756.605 ms, 8/9 pairs faster and 2/9 at or below 2 seconds, so the all-sample target remains unmet. All 13 cold/warm/page-two pairs matched full API JSON, full-rank IDs/score bits and per-attempt charged rows/bytes; physical source reads were 18 baseline versus 9 plus 9 final-pass replays candidate. The run used configured setup/profile/RSS limits, but exact peak RSS and separate setup/profile timings are absent from the result. No native Windows, production, family relevance, language quality or activation claim."
     }
   ]
 }

@@ -1,5 +1,6 @@
 """Generated SQLite checks for opt-in, one-request source SQL replay."""
 from contextlib import closing
+import os
 import sqlite3
 
 import pytest
@@ -295,6 +296,44 @@ def test_existing_readonly_snapshot_keeps_deletion_journal_checks_fresh(tmp_path
     finally:
         case.doCleanups()
         OriginalDeletionTests.tearDownClass()
+
+
+def test_failed_attempt_preserves_cancellation_when_parent_stat_is_denied(tmp_path):
+    if os.name != 'posix' or not hasattr(os, 'geteuid') or os.geteuid() == 0:
+        pytest.skip('requires a non-root POSIX user for real parent-directory denial')
+    parent = tmp_path / 'private-source'
+    parent.mkdir(mode=0o700)
+    path = parent / 'source.sqlite'
+    _database(path)
+    snapshot = create_request_source_snapshot('lib')
+    budget = d.ReadBudget(rows=20, source_bytes=4096, seconds=5)
+    marker = d.DiscoveryCancelled()
+    state = {'checks': 0, 'permission_denied': False}
+
+    def cancelled():
+        state['checks'] += 1
+        if state['checks'] == 2:
+            parent.chmod(0)
+            try:
+                path.lstat()
+            except PermissionError:
+                state['permission_denied'] = True
+            raise marker
+        return False
+
+    try:
+        with NativeSnapshotDatabase(path)() as connection:
+            snapshot.bind(connection)
+            view = budget.with_request_source_snapshot(snapshot)
+            with pytest.raises(d.DiscoveryCancelled) as caught:
+                with view.attempt(connection, cancelled) as (_check, read):
+                    read(ASSET_SQL, ('lib',))
+            assert caught.value is marker
+            assert state['permission_denied'] is True
+            assert snapshot.disabled is True
+    finally:
+        parent.chmod(0o700)
+        snapshot.close()
 
 
 def test_path_replacement_refuses_replay_before_any_cached_rows_are_used(tmp_path,
