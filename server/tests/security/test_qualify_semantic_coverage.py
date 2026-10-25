@@ -84,13 +84,31 @@ def test_draft_stays_unreviewed_and_cannot_start_canary(full_catalog, tmp_path):
     assert model.bind_count == model.encode_count == 0
 
 
-def test_full_catalog_canary_preserves_65_omissions_and_profiles_actual_runtime(full_catalog, tmp_path):
+def test_full_catalog_canary_preserves_65_omissions_and_profiles_actual_runtime(
+        full_catalog, tmp_path, monkeypatch):
     index, model, manifest, records, snapshot, draft, review_path = full_catalog
     output = tmp_path / 'full-catalog-canary'
     checkpoints = tmp_path / 'full-catalog-checkpoints'
+    from app.access.semantic_request_snapshot import RequestSourceSnapshot
+    from app.access.semantic_search import SemanticSearchRuntime
+    order = []
+    original_authorize = SemanticSearchRuntime.authorize
+    original_end_attempt = RequestSourceSnapshot.end_attempt
+    def observed_authorize(runtime, *args, **kwargs):
+        order.append('authorize')
+        return original_authorize(runtime, *args, **kwargs)
+    def observed_end_attempt(snapshot, connection, attempt, *, success):
+        try:
+            return original_end_attempt(snapshot, connection, attempt, success=success)
+        finally:
+            if attempt is not None and snapshot.replay_used:
+                order.append('final_source_bracket')
+    monkeypatch.setattr(SemanticSearchRuntime, 'authorize', observed_authorize)
+    monkeypatch.setattr(RequestSourceSnapshot, 'end_attempt', observed_end_attempt)
     result = subject.measure(index, output, model=model, bulk_vectors=True,
         omission_review_path=review_path, profile_requests=True,
         profile_setup=True, checkpoint_directory=checkpoints,
+        request_source_snapshot=True,
         queries=[{'id': 'en', 'language': 'en', 'text': 'a garden scene'},
                  {'id': 'zh', 'language': 'zh', 'text': '花园里的家人'},
                  {'id': 'mixed', 'language': 'zh-en', 'text': '花园 family scene'}])
@@ -99,6 +117,10 @@ def test_full_catalog_canary_preserves_65_omissions_and_profiles_actual_runtime(
     assert result['available_image_count'] == 515
     assert result['reviewed_omission_count'] == 65
     assert result['eligibility_scope'] == 'synthetic_accounts_only'
+    assert result['request_source_snapshot'] is True
+    assert any(order[offset:offset + 3] == [
+        'authorize', 'final_source_bracket', 'authorize']
+        for offset in range(max(0, len(order) - 2)))
     assert result['vector_reads'] == 0
     assert not result['activation_performed'] and not result['family_relevance_accepted']
     assert not result['production_database_opened'] and not result['production_index_published']
@@ -110,6 +132,7 @@ def test_full_catalog_canary_preserves_65_omissions_and_profiles_actual_runtime(
         'mid_encode_omitted_source_change_withheld_cards',
     } <= set(result['protected_checks'])
     with sqlite3.connect(output / 'synthetic.sqlite') as db:
+        assert db.execute('PRAGMA journal_mode').fetchone() == ('wal',)
         assert db.execute('SELECT count(*) FROM assets').fetchone()[0] == 580
         assert db.execute('SELECT count(*) FROM image_vector_artifacts').fetchone()[0] == 515
         assert db.execute('SELECT hash_sha256 FROM assets WHERE id=580').fetchone()[0] == snapshot['assets'][-1]['sha256']

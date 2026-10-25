@@ -165,6 +165,16 @@ class ReadBudget:
             require(type(search_seconds) in (int, float) and math.isfinite(search_seconds) and search_seconds > 0)
         self.search_seconds = seconds if search_seconds is None else search_seconds
         self.slots=threading.BoundedSemaphore(concurrency)
+        self._request_source_snapshot = None
+
+    def with_request_source_snapshot(self, snapshot):
+        """Return a budget view bound to one private synchronous request."""
+        from .semantic_request_snapshot import is_request_source_snapshot
+        if not is_request_source_snapshot(snapshot):
+            raise ValueError('private request snapshot capability required')
+        view = copy(self)
+        view._request_source_snapshot = snapshot
+        return view
 
     def search_view(self):
         """Use an explicit text allowance while retaining the SAME admission pool.
@@ -181,8 +191,16 @@ class ReadBudget:
     @contextmanager
     def attempt(self, connection, cancelled):
         if not self.slots.acquire(blocking=False): raise DiscoveryBusy()
+        snapshot = self._request_source_snapshot
+        attempt = None
         try:
             start=self.clock(); count=0; size=0
+            if snapshot is not None:
+                try:
+                    attempt = snapshot.begin_attempt(connection, rows_limit=self.rows,
+                        bytes_limit=self.source_bytes)
+                except sqlite3.Error:
+                    raise DiscoveryUnavailable() from None
             def check():
                 if cancelled(): raise DiscoveryCancelled()
                 now=self.clock()
@@ -192,7 +210,18 @@ class ReadBudget:
                 except (DiscoveryUnavailable,DiscoveryCancelled): return 1
             def read(sql, args):
                 nonlocal count,size
-                check(); result=[]; cursor=connection.execute(sql,args)
+                check(); result=[]
+                key = snapshot.query_key(sql, args) if snapshot is not None else None
+                if snapshot is not None and snapshot.can_replay(attempt, key):
+                    for saved in snapshot.replay_chunks(attempt, key):
+                        check()
+                        count += len(saved.rows)
+                        if count > self.rows: raise DiscoveryUnavailable()
+                        size += saved.packed_bytes
+                        if size > self.source_bytes: raise DiscoveryUnavailable()
+                        result.extend(saved.rows)
+                    return result
+                cursor=connection.execute(sql,args)
                 while True:
                     chunk=cursor.fetchmany(128)
                     if not chunk: break
@@ -208,14 +237,27 @@ class ReadBudget:
                         size+=chunk_size
                         if size>self.source_bytes: raise DiscoveryUnavailable()
                         result.extend(chunk)
+                    if snapshot is not None and key is not None:
+                        from .semantic_request_snapshot import _capture_token_for_budget
+                        snapshot.capture_chunk(attempt, key, chunk, chunk_size,
+                            _budget_token=_capture_token_for_budget())
                 return result
             check(); connection.set_progress_handler(progress,1000)
-            try: yield check,read
+            successful = False
+            try:
+                yield check,read
+                successful = True
             except sqlite3.Error:
                 check(); raise DiscoveryUnavailable() from None
         finally:
-            try: connection.set_progress_handler(None,0)
-            finally: self.slots.release()
+            try:
+                connection.set_progress_handler(None,0)
+            finally:
+                try:
+                    if snapshot is not None:
+                        snapshot.end_attempt(connection, attempt, success=locals().get('successful', False))
+                finally:
+                    self.slots.release()
 
 
 def scoped_source(library, read):

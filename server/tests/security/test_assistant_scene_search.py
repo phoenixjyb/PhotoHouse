@@ -63,6 +63,23 @@ class AssistantSceneSearchTests(unittest.TestCase):
         return self.client.get(f'{BASE}/threads/{self.thread}/requests/{rid}?library_id=family-a',
                                headers=headers or self.headers)
 
+    def enable_request_source_snapshot(self):
+        from app.access.semantic_request_snapshot import NativeSnapshotDatabase
+        from app.access.transport import AccessRuntime
+        with closing(sqlite3.connect(self.source.database)) as db:
+            self.assertEqual(db.execute('PRAGMA journal_mode=WAL').fetchone(), ('wal',))
+        access = AccessRuntime(NativeSnapshotDatabase(self.source.database.resolve()),
+            self.source.access.web_origin, clock=self.source.access.clock)
+        discovery = replace(self.pilot.runtime.discovery, access=access)
+        self.pilot.runtime = replace(self.pilot.runtime, discovery=discovery,
+            request_source_snapshot=True)
+        self.app.state.access_runtime = access
+        self.app.state.discovery_runtime = discovery
+        self.app.state.semantic_search_runtime = self.pilot.runtime
+        self.pilot.client.app.state.access_runtime = access
+        self.pilot.client.app.state.discovery_runtime = discovery
+        self.pilot.client.app.state.semantic_search_runtime = self.pilot.runtime
+
     def test_opt_in_is_separate_and_closed_default_does_not_admit_v4(self):
         legacy = self.client.get(BASE + '/capabilities?library_id=family-a', headers=self.auth).json()
         self.assertNotIn('scene_search', legacy)
@@ -103,6 +120,7 @@ class AssistantSceneSearchTests(unittest.TestCase):
                 self.assertNotIn('vector', response.text)
 
     def test_post_retry_and_get_recovery_keep_order_and_never_reencode(self):
+        self.enable_request_source_snapshot()
         base = self.scope()
         rid = str(uuid.uuid4())
         first = self.send('a child flying a kite', 1, scene=True, rid=rid)
@@ -182,8 +200,7 @@ class AssistantSceneSearchTests(unittest.TestCase):
                                            transport=httpx.MockTransport(provider))
             scenario.pilot.encoder = encoder
             scenario.pilot.runtime = replace(scenario.pilot.runtime, encoder=encoder)
-            scenario.pilot.client.app.state.semantic_search_runtime = scenario.pilot.runtime
-            scenario.app.state.semantic_search_runtime = scenario.pilot.runtime
+            scenario.enable_request_source_snapshot()
 
             direct = scenario.pilot.query(query='same vector', filters={}, token=TOKEN)
             self.assertEqual(direct.status_code, 200, direct.text)
@@ -288,6 +305,7 @@ class AssistantSceneSearchTests(unittest.TestCase):
         self.assertEqual(self.pilot.calls, [])
 
     def test_changes_during_encoding_withhold_results_and_preserve_prior_context(self):
+        self.enable_request_source_snapshot()
         self.scope()
         self.pilot.during_encode = lambda: self.source.mutate(
             "UPDATE access_stories SET revision=2,text='changed' WHERE id='note-101'")
@@ -295,6 +313,23 @@ class AssistantSceneSearchTests(unittest.TestCase):
         self.assertEqual(response.status_code, 409, response.text)
         self.assertNotIn('items', response.text)
         self.assertEqual(self.store.get_thread('one', 'family-a', self.thread)['thread']['revision'], 1)
+        with closing(sqlite3.connect(self.source.database)) as db:
+            self.assertEqual(db.execute(
+                "SELECT revision,text FROM access_stories WHERE id='note-101'").fetchone(),
+                (2, 'changed'))
+
+    def test_membership_revocation_commits_during_snapshot_request_and_withholds_cards(self):
+        self.enable_request_source_snapshot()
+        self.scope()
+        self.pilot.during_encode = lambda: self.source.mutate(
+            "UPDATE access_memberships SET status='revoked' WHERE account_id='one'")
+        response = self.send('a bright kite', 1, scene=True)
+        self.assertEqual(response.status_code, 401, response.text)
+        self.assertNotIn('items', response.text)
+        with closing(sqlite3.connect(self.source.database)) as db:
+            self.assertEqual(db.execute(
+                "SELECT status FROM access_memberships WHERE account_id='one'").fetchone(),
+                ('revoked',))
 
     def test_recovery_refuses_changed_source_vector_and_encoder_identity_without_model(self):
         self.scope()

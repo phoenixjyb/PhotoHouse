@@ -24,6 +24,7 @@ from .visual_vector_schema import verify_visual_vector_schema
 from .semantic_streaming import SemanticServingLimits, VECTOR_BATCH_SIZE, MAX_VECTOR_READ_BYTES, rank_semantic_batches
 from .semantic_bulk_vectors import BulkVectorStore, BulkVectorUnavailable
 from .semantic_eligibility import SemanticEligibilityStore, SemanticEligibilityUnavailable
+from .semantic_request_snapshot import NativeSnapshotDatabase, create_request_source_snapshot
 
 
 # The policy is reread on each source pass; an unbound first page derives its
@@ -508,8 +509,11 @@ class SemanticSearchRuntime:
     serving_limits: SemanticServingLimits | None = None
     bulk_vectors: BulkVectorStore | None = None
     eligibility: SemanticEligibilityStore | None = None
+    request_source_snapshot: bool = False
 
     def __post_init__(self):
+        if type(self.request_source_snapshot) is not bool:
+            raise ValueError('Explicit request snapshot flag required')
         if (type(self.discovery) is not DiscoveryRuntime or
                 not isinstance(self.vector_root, Path) or not self.vector_root.is_absolute() or
                 '..' in self.vector_root.parts or type(self.encoder) is not LocalSemanticEncoder or
@@ -595,63 +599,104 @@ class SemanticSearchRuntime:
         media_only_facts = (set(filters) == {'media'}
                             and type(filters['media']) is list
                             and filters['media'] == ['image'])
-        with self.access.connection_factory() as connection:
-            reader = SemanticSearchReads(AccessService(connection, clock=self.access.clock),
-                self.discovery.provider, budget, vector_root=self.vector_root,
-                encoder=self.encoder, query=query, server_snapshot=server_snapshot,
-                serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors,
-                eligibility=self.eligibility,
-                text_projection_required=('text' in filters or 'descriptive' in filters),
-                media_only_facts=media_only_facts)
-            binding = values.get('binding')
-            page = values.get('page', 1)
-            page_size = values.get('page_size', 20)
-            fingerprint = values.get('fingerprint')
-            unbound_first_page = (binding is None and type(page) is int and page == 1
-                                  and fingerprint is None and server_snapshot is None)
-            ranking_binding = None
+        snapshot = None
+        factory = self.access.connection_factory
+        from .runtime import ExistingDatabase
+        snapshot_factory = None
+        if self.request_source_snapshot and type(factory) is ExistingDatabase:
+            snapshot = create_request_source_snapshot(library)
+            snapshot_factory = factory.source_snapshot
+        elif self.request_source_snapshot and type(factory) is NativeSnapshotDatabase:
+            snapshot = create_request_source_snapshot(library)
+            snapshot_factory = factory
+        connection_context = snapshot_factory() if snapshot_factory is not None else factory()
+        try:
+            with connection_context as connection:
+                if snapshot is not None:
+                    snapshot.bind(connection)
+                    budget = budget.with_request_source_snapshot(snapshot)
+                reader = SemanticSearchReads(AccessService(connection, clock=self.access.clock),
+                    self.discovery.provider, budget, vector_root=self.vector_root,
+                    encoder=self.encoder, query=query, server_snapshot=server_snapshot,
+                    serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors,
+                    eligibility=self.eligibility,
+                    text_projection_required=('text' in filters or 'descriptive' in filters),
+                    media_only_facts=media_only_facts)
+                binding = values.get('binding')
+                page = values.get('page', 1)
+                page_size = values.get('page_size', 20)
+                fingerprint = values.get('fingerprint')
+                unbound_first_page = (binding is None and type(page) is int and page == 1
+                                      and fingerprint is None and server_snapshot is None)
+                ranking_binding = None
 
-            def observe_binding(context):
-                nonlocal ranking_binding
-                ranking_binding = context
+                def observe_binding(context):
+                    nonlocal ranking_binding
+                    ranking_binding = context
 
-            if binding is None and not unbound_first_page:
-                # presentation intentionally omits the internal binding; use
-                # an authorized source read to obtain it before pagination,
-                # fingerprint validation, or server-owned recovery.
-                binding = reader._run(token, library, None,
-                    lambda _index, _facts, context, _member, _check: context, bounded_cancelled)
-            try:
-                if unbound_first_page:
-                    action = reader._search_action(library, None, filters, page, page_size,
-                        fingerprint, allow_unbound_first_page=True,
-                        binding_observer=observe_binding)
-                    result = reader._run(token, library, None, action, bounded_cancelled)
-                else:
-                    result = reader.search(token, library, binding=binding, filters=filters,
-                        page=page, page_size=page_size, fingerprint=fingerprint,
-                        cancelled=bounded_cancelled)
-            except SemanticUnsupported:
-                # A refusal is meaningful only while this authorized cohort is
-                # still current. Re-read after the provider transaction unwinds.
-                expected_binding = ranking_binding if unbound_first_page else binding
-                if expected_binding is None:
-                    raise d.DiscoveryUnavailable() from None
-                reader._run(token, library, expected_binding,
-                    lambda _index, _facts, _context, _member, _check: None, bounded_cancelled)
-                raise d.DiscoveryQueryUnsupported() from None
-            # A provider call can outlive a concurrent membership or source
-            # change. Re-read in a fresh transaction before releasing cards.
-            reader._run(token, library, result['binding'],
-                lambda _index, _facts, _context, _member, _check: None, bounded_cancelled)
-            # The ranking transaction, including any encoder call, has committed.
-            # Re-authorize the configured principal and owner role before release,
-            # including first-page recovery from a server-owned ranking snapshot.
-            self.authorize(token, library)
-            result.update(filters=filters, semantic={'mode': 'text_to_image',
-                'score_kind': 'cosine', 'candidate_count': reader._candidate_count,
-                'coverage': 'complete_eligible_images', 'needs_review': True})
-            if reader._eligibility_policy is not None:
-                result['semantic']['coverage_details'] = reader._eligibility_policy.coverage(
-                    reader._matched_omitted_count)
-            return result
+                def validate_final(expected_binding):
+                    if snapshot is not None:
+                        snapshot.request_final_replay()
+                    try:
+                        reader._run(token, library, expected_binding,
+                            lambda _index, _facts, _context, _member, _check: None,
+                            bounded_cancelled)
+                    except Exception:
+                        if snapshot is None or not snapshot.consume_fallback_required():
+                            raise
+                        bounded_cancelled()
+                        snapshot.stop_final_replay()
+                        reader._run(token, library, expected_binding,
+                            lambda _index, _facts, _context, _member, _check: None,
+                            bounded_cancelled)
+                    else:
+                        if snapshot is not None and snapshot.consume_fallback_required():
+                            snapshot.stop_final_replay()
+                            reader._run(token, library, expected_binding,
+                                lambda _index, _facts, _context, _member, _check: None,
+                                bounded_cancelled)
+                    finally:
+                        if snapshot is not None:
+                            snapshot.stop_final_replay()
+
+                if binding is None and not unbound_first_page:
+                    # presentation intentionally omits the internal binding; use
+                    # an authorized source read to obtain it before pagination,
+                    # fingerprint validation, or server-owned recovery.
+                    binding = reader._run(token, library, None,
+                        lambda _index, _facts, context, _member, _check: context, bounded_cancelled)
+                try:
+                    if unbound_first_page:
+                        action = reader._search_action(library, None, filters, page, page_size,
+                            fingerprint, allow_unbound_first_page=True,
+                            binding_observer=observe_binding)
+                        result = reader._run(token, library, None, action, bounded_cancelled)
+                    else:
+                        result = reader.search(token, library, binding=binding, filters=filters,
+                            page=page, page_size=page_size, fingerprint=fingerprint,
+                            cancelled=bounded_cancelled)
+                except SemanticUnsupported:
+                    # A refusal is meaningful only while this authorized cohort is
+                    # still current. Re-read after the provider transaction unwinds.
+                    expected_binding = ranking_binding if unbound_first_page else binding
+                    if expected_binding is None:
+                        raise d.DiscoveryUnavailable() from None
+                    validate_final(expected_binding)
+                    raise d.DiscoveryQueryUnsupported() from None
+                # A provider call can outlive a concurrent membership or source
+                # change. Re-read in a fresh transaction before releasing cards.
+                validate_final(result['binding'])
+                # The ranking transaction, including any encoder call, has committed.
+                # Re-authorize the configured principal and owner role before release,
+                # including first-page recovery from a server-owned ranking snapshot.
+                self.authorize(token, library)
+                result.update(filters=filters, semantic={'mode': 'text_to_image',
+                    'score_kind': 'cosine', 'candidate_count': reader._candidate_count,
+                    'coverage': 'complete_eligible_images', 'needs_review': True})
+                if reader._eligibility_policy is not None:
+                    result['semantic']['coverage_details'] = reader._eligibility_policy.coverage(
+                        reader._matched_omitted_count)
+                return result
+        finally:
+            if snapshot is not None:
+                snapshot.close()

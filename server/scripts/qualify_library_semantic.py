@@ -346,13 +346,15 @@ def prepare_omission_review(index_path, output_directory):
 
 def measure(index_path, output_directory, *, model, queries, repetitions=1, network=None,
             bulk_vectors=False, omission_review_path=None, profile_requests=False,
-            profile_setup=False, checkpoint_directory=None, result_observer=None):
+            profile_setup=False, checkpoint_directory=None, result_observer=None,
+            request_source_snapshot=False):
     """Run the explicit canary, optionally observing private request phases.
 
     A full-catalog run requires a separately reviewed omission document. No
     builder promotes an unreviewed draft, and no production accounts are used.
     """
     _require(type(profile_requests) is bool and type(profile_setup) is bool)
+    _require(type(request_source_snapshot) is bool)
     _require(result_observer is None or callable(result_observer), "invalid_result_observer")
     repo_backend = str(Path(__file__).parents[1] / 'backend')
     if repo_backend not in sys.path:
@@ -390,7 +392,8 @@ def measure(index_path, output_directory, *, model, queries, repetitions=1, netw
             result = _measure(index_path, output_directory, model=model, queries=queries,
                 repetitions=repetitions, network=network, bulk_vectors=bulk_vectors,
                 omission_review_path=omission_review_path, request_observer=observer,
-                setup_observer=setup, result_observer=result_observer)
+                setup_observer=setup, result_observer=result_observer,
+                request_source_snapshot=request_source_snapshot)
             if observer is not None:
                 result['request_profile'] = observer.snapshot()
             if setup is not None:
@@ -416,7 +419,7 @@ def _phase(observer, name):
 
 def _measure(index_path, output_directory, *, model, queries, repetitions, network,
              bulk_vectors, omission_review_path, request_observer, setup_observer=None,
-             result_observer=None):
+             result_observer=None, request_source_snapshot=False):
     """Run a bounded synthetic-account canary over a verified immutable index.
 
     ``model`` must be the caller's real, loaded, UNBOUND LibrarySiglipModel.
@@ -433,6 +436,7 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
     from app.access.discovery_provider import MemoryIndexProvider, ReviewedIndex
     from app.access.discovery_transport import DiscoveryRuntime
     from app.access.private_storage import require_private_directory, require_private_file
+    from app.access.semantic_request_snapshot import NativeSnapshotDatabase
     from app.access.semantic_provider_transport import create_provider_app
     from app.access.transport import AccessRuntime
     from app.access.visual_vector_artifacts import identity_sha256, validate_artifact
@@ -442,6 +446,7 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
     from qualify_semantic_pair import canonical, output_target, write_record
 
     _require(type(bulk_vectors) is bool)
+    _require(type(request_source_snapshot) is bool)
     _require(type(repetitions) is int and 1 <= repetitions <= 10)
     query_plan = _valid_queries(queries)
     _require(model is not None and all(hasattr(model, name) for name in (
@@ -513,6 +518,12 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
         pass
     database.chmod(0o600)
     require_private_file(database)
+    # This generated fixture uses WAL in both baseline and opt-in candidate
+    # runs so the mid-encode guard can prove a concurrent source mutation
+    # committed rather than treating a DELETE-journal lock timeout as evidence.
+    with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
+        mode = db.execute('PRAGMA journal_mode=WAL').fetchone()
+        _require(mode == ('wal',), 'synthetic_fixture_requires_wal')
     library = manifest["library_id"]
     bulk_store = None
     if bulk_vectors:
@@ -618,7 +629,9 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
                     callback()
                 return model.encode(query, check=check)
 
-        access = AccessRuntime(connection, origin, clock=lambda: now)
+        access_factory = (NativeSnapshotDatabase(database)
+            if request_source_snapshot else connection)
+        access = AccessRuntime(access_factory, origin, clock=lambda: now)
         discovery = DiscoveryRuntime(access, MemoryIndexProvider((reviewed,)), base_budget)
         provider_app = create_provider_app(ObservedProvider(), bearer_token=provider_token, port=port)
         if network_enabled:
@@ -639,6 +652,7 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
                 warmup_holder=[None], bulk_store=bulk_store, eligibility=eligibility,
                 omitted=omitted, during_encode=during_encode, request_observer=request_observer,
                 result_observer=result_observer,
+                request_source_snapshot=request_source_snapshot,
                 query_plan_sha256=(hashlib.sha256(canonical(list(query_plan))).hexdigest()
                     if result_observer is not None else None))
 
@@ -706,6 +720,8 @@ def _measure(index_path, output_directory, *, model, queries, repetitions, netwo
         "human_relevance_measured": False,
         "family_relevance_accepted": False,
     })
+    if request_source_snapshot:
+        result['request_source_snapshot'] = True
     return result
 
 
@@ -716,7 +732,8 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
                 denial_latencies, rows, index_path, index_root, index_hash,
                 manifest, original_vector_hashes, net_files, warmup_holder, bulk_store=None,
                 eligibility=None, omitted=(), during_encode=None, request_observer=None,
-                result_observer=None, query_plan_sha256=None):
+                result_observer=None, query_plan_sha256=None,
+                request_source_snapshot=False):
     import httpx
     from app.access.semantic_encoder import LocalSemanticEncoder
     from app.access.semantic_search import SemanticSearchRuntime
@@ -741,7 +758,7 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
         transport=None if network_enabled else httpx.MockTransport(forward))
     runtime = SemanticSearchRuntime(discovery, index_root, encoder,
         pilot_owner_account_id="pilot-owner", serving_limits=limits, bulk_vectors=bulk_store,
-        eligibility=eligibility)
+        eligibility=eligibility, request_source_snapshot=request_source_snapshot)
     runtime_budget = runtime.budget
     _require(runtime_budget.slots is base_budget.slots, "admission_pool_not_shared")
     app = create_app(access_runtime=access, discovery_runtime=discovery,
@@ -891,10 +908,21 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
 
             if omitted:
                 row = omitted[0]
+                mutation_evidence = {'attempted': False, 'committed': False,
+                                     'changed_sha256': None}
                 def change_omitted_source():
                     with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
                         db.execute('UPDATE assets SET hash_sha256=? WHERE id=?',
                             ('0' * 64 if row.source_sha256 != '0' * 64 else '1' * 64, int(row.asset_id)))
+                    with closing(sqlite3.connect(database, timeout=0.25)) as verify_db:
+                        current = verify_db.execute('SELECT hash_sha256 FROM assets WHERE id=?',
+                            (int(row.asset_id),)).fetchone()
+                    mutation_evidence.update(attempted=True,
+                        committed=current is not None and current[0] != row.source_sha256,
+                        changed_sha256=current[0] if current is not None else None)
+                    if not mutation_evidence['committed']:
+                        raise RuntimeError('synthetic_omitted_source_update_not_committed')
+                    return current[0]
                 def restore_omitted_source():
                     with closing(sqlite3.connect(database, timeout=0.25)) as db, db:
                         db.execute('UPDATE assets SET hash_sha256=? WHERE id=?',
@@ -910,14 +938,25 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
                     restore_omitted_source()
                 protected.append('filtered_out_omitted_source_change_refused_before_inference')
                 try:
+                    mutation_evidence.update(attempted=False, committed=False, changed_sha256=None)
                     during_encode[0] = change_omitted_source
                     changed, _elapsed = request(queries[0]['text'])
+                    _require(mutation_evidence['attempted'] and mutation_evidence['committed']
+                        and mutation_evidence['changed_sha256'] != row.source_sha256,
+                        'mid_encode_omitted_source_mutation_not_committed')
+                    # With the full-catalog eligibility gate, the fresh policy
+                    # source check refuses the changed omitted hash as 503.
                     _require(changed.status_code == 503 and 'items' not in changed.json()
                         and counters['model_encode_calls'] == before['model_encode_calls'] + 1,
                         'mid_encode_omitted_source_change_released_cards')
                 finally:
                     during_encode[0] = None
                     restore_omitted_source()
+                    with closing(sqlite3.connect(database, timeout=0.25)) as verify_db:
+                        restored_hash = verify_db.execute('SELECT hash_sha256 FROM assets WHERE id=?',
+                            (int(row.asset_id),)).fetchone()
+                    _require(restored_hash == (row.source_sha256,),
+                        'synthetic_omitted_source_restore_not_committed')
                 restored, _elapsed = request(queries[0]['text'], filters=omitted_filter)
                 _require(restored.status_code == 200, 'synthetic_omitted_source_restore_failed')
                 coverage(restored.json(), len(omitted))

@@ -221,6 +221,41 @@ class SemanticSearchTests(unittest.TestCase):
         self.assertEqual(page_minimal.json(), page_eager.json())
         self.assertEqual([item['id'] for item in page_minimal.json()['items']], ['101'])
 
+    def test_native_request_snapshot_replays_only_final_projection_and_keeps_page2(self):
+        from app.access.semantic_request_snapshot import NativeSnapshotDatabase, RequestSnapshotConnection
+        from app.access.transport import AccessRuntime
+        source_sql = ("SELECT a.id,CASE WHEN length(CAST(a.mime AS BLOB))<=256 THEN a.mime END,"
+            "a.width,a.height,a.duration_sec,CASE WHEN length(CAST(a.taken_at AS BLOB))<=64 "
+            "THEN a.taken_at END,length(CAST(a.taken_at AS BLOB)) FROM assets a JOIN "
+            "access_asset_libraries m ON m.asset_id=a.id WHERE m.library_id=? AND "
+            "(a.status='active' OR a.status IS NULL) ORDER BY a.id")
+        access = AccessRuntime(NativeSnapshotDatabase(self.fixture.database.resolve()),
+            self.fixture.access.web_origin, clock=self.fixture.access.clock)
+        discovery = replace(self.fixture.discovery_runtime, access=access)
+        runtime = replace(self.runtime, discovery=discovery, request_source_snapshot=True)
+        self.client.app.state.access_runtime = access
+        self.client.app.state.discovery_runtime = discovery
+        self.client.app.state.semantic_search_runtime = runtime
+        source_sql_calls = []
+        original_execute = RequestSnapshotConnection.execute
+        def counted(connection, sql, *args):
+            if sql == source_sql:
+                source_sql_calls.append(sql)
+            return original_execute(connection, sql, *args)
+        with patch.object(RequestSnapshotConnection, 'execute', counted):
+            first_response = self.query(page_size=1)
+            self.assertEqual(first_response.status_code, 200, first_response.text)
+            first = first_response.json()
+            second = self.query(page=2, page_size=1, binding=first['binding'],
+                fingerprint=first['fingerprint'])
+            self.assertEqual(second.status_code, 200, second.text)
+            self.assertEqual([item['id'] for item in second.json()['items']], ['101'])
+            self.assertEqual(len(source_sql_calls), 2)
+            changed = self.query(query='different query', page=2, page_size=1,
+                binding=first['binding'], fingerprint=first['fingerprint'])
+            self.assertEqual(changed.status_code, 409, changed.text)
+            self.assertNotIn('items', changed.json())
+
     def test_literal_text_filters_keep_caption_and_note_fallback_eager(self):
         # Explicit literal filters must still project current captions and
         # saved notes, including note-only matches.

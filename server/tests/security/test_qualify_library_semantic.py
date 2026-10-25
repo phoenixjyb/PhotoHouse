@@ -140,6 +140,7 @@ def test_measurement_uses_synthetic_515_record_cohort_and_keeps_semantic_off(
         "vector_read_bytes": 256 * 1024**2, "batch_size": 128,
         "shared_admission_pool": True}
     assert result["transport_boundary"] == "listener_free_asgi_api_and_authenticated_provider_cpu"
+    assert "request_source_snapshot" not in result
     assert result["model_encode_calls"] == result["provider_calls"] >= 2
     assert result["vector_reads"] > 0
     assert result["latency_ms"]["count"] == 1

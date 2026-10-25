@@ -19,6 +19,7 @@ from .family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES
 from .memory_group_schema import GROUP_REVISIONS, TABLE as GROUP_TABLE, REVISION_TABLE as GROUP_HISTORY
 
 from .photo_stack_schema import REVISION as PHOTO_STACK_REVISION, TABLES as PHOTO_STACK_TABLES
+from .semantic_request_snapshot import RequestSnapshotConnection, RequestSourceSnapshot
 
 REQUIRED_REVISION = 'a0c9d2e4f817'
 EDITORIAL_REVISION = 'b1d7e4a9c230'
@@ -163,6 +164,92 @@ class ExistingDatabase:
         finally:
             # Includes successful callers that forgot to commit and failed requests.
             # The domain layer owns commits; the adapter never commits on their behalf.
+            if connection.in_transaction:
+                connection.rollback()
+            connection.close()
+
+    @contextmanager
+    def source_snapshot(self):
+        """Open a fresh, guarded read-only connection for one semantic request."""
+        connection = None
+        try:
+            before = self.path.lstat()
+            if (not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(before.st_mode)
+                    or before.st_nlink != 1 or self.path.resolve(strict=True) != self.path):
+                raise RuntimeUnavailable('Access unavailable')
+            from .semantic_request_snapshot import path_identity
+            before_identity = path_identity(self.path)
+            if before_identity is None:
+                raise RuntimeUnavailable('Access unavailable')
+            connection = sqlite3.connect(self.path.as_uri() + '?mode=ro', uri=True,
+                timeout=self.timeout, factory=RequestSnapshotConnection)
+            connection.original_deletions = self.original_deletions
+            after = self.path.lstat()
+            after_identity = path_identity(self.path)
+            if ((before.st_dev, before.st_ino) != (after.st_dev, after.st_ino)
+                    or after_identity is None
+                    or before_identity[0] != after_identity[0]
+                    or (before_identity[1][0][1] is not None
+                        and before_identity[1][0] != after_identity[1][0])):
+                raise RuntimeUnavailable('Access unavailable')
+            connection.execute('PRAGMA foreign_keys=ON')
+            connection.execute('PRAGMA trusted_schema=OFF')
+            connection.execute('PRAGMA query_only=ON')
+            if connection.execute('PRAGMA foreign_keys').fetchone()[0] != 1:
+                raise RuntimeUnavailable('Access unavailable')
+            versions = connection.execute('SELECT version_num FROM alembic_version').fetchall()
+            if len(versions) != 1 or versions[0][0] not in COMPATIBLE_REVISIONS:
+                raise RuntimeUnavailable('Access unavailable')
+            tables = {row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            if not required_tables_for_revision(versions[0][0]) <= tables:
+                raise RuntimeUnavailable('Access unavailable')
+            if versions[0][0] == PHOTO_STACK_REVISION:
+                from .photo_stack_schema import available as photo_stack_schema_available
+                if not photo_stack_schema_available(connection):
+                    raise RuntimeUnavailable('Access unavailable')
+            if versions[0][0] in GROUP_REVISIONS:
+                from .memory_group_schema import verify_memory_group_schema
+                if not verify_memory_group_schema(connection):
+                    raise RuntimeUnavailable('Access unavailable')
+            if versions[0][0] in IDENTITY_REVISIONS:
+                from .family_note_identity import verify_family_note_identity_schema
+                from .transport import TransportError
+                try:
+                    verify_family_note_identity_schema(connection)
+                except TransportError:
+                    raise RuntimeUnavailable('Access unavailable') from None
+            key = connection.execute(
+                'SELECT typeof(secret),length(secret) FROM access_admission_key WHERE id=1').fetchone()
+            if key != ('blob', 32):
+                raise RuntimeUnavailable('Access unavailable')
+            if (versions[0][0] in COLLABORATION_REVISIONS and self.original_deletions is None
+                    and connection.execute(
+                        'SELECT count(*) FROM access_original_deletion_state').fetchone()[0]):
+                raise RuntimeUnavailable('Access unavailable')
+            if self.original_deletions is not None:
+                try:
+                    self.original_deletions.assert_current(connection)
+                except RuntimeError:
+                    raise RuntimeUnavailable('Access unavailable') from None
+            checked_identity = path_identity(self.path)
+            from .semantic_request_snapshot import _stable_during_sqlite_setup
+            if (checked_identity is None or checked_identity[0] != after_identity[0]
+                    or not _stable_during_sqlite_setup(before_identity, checked_identity)):
+                raise RuntimeUnavailable('Access unavailable')
+            connection.seal_read_only_environment()
+            opened_identity = path_identity(self.path)
+            if (opened_identity is None
+                    or not _stable_during_sqlite_setup(checked_identity, opened_identity)):
+                raise RuntimeUnavailable('Access unavailable')
+            connection.bind_open_identity(self.path, opened_identity)
+        except (OSError, sqlite3.Error, ValueError, RuntimeUnavailable):
+            if connection is not None:
+                connection.close()
+            raise RuntimeUnavailable('Access unavailable') from None
+        try:
+            yield connection
+        finally:
             if connection.in_transaction:
                 connection.rollback()
             connection.close()
