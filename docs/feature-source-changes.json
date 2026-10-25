@@ -31129,7 +31129,7 @@
       "files": [
         {
           "path": "server/backend/app/access/semantic_request_snapshot.py",
-          "sha256": "800d017b34ed43974f260ffe80dffc5e22edf2ae7f1c307df937038565d15216",
+          "sha256": "c4f6f9b19a087b586252d592a27ff1bc1275e039adee1af1f280c63a26e16029",
           "before_sha256": null
         },
         {
@@ -31153,8 +31153,18 @@
           "before_sha256": "f8c1781ee4360d727ec507846e7592e9a2d1b06b8d1f3ed5489ab650ca2f6646"
         },
         {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "5b97f33ac2998ed90bdd21933fcff3dfff744c30a53e8a50c94d0573b90d7852",
+          "before_sha256": "de55e5767b3b5f623ace9cd48b87015c841cb533d42bc130550de8de71a93fdd"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "e633b4014bafdb65ec3198d9b2ebf608afe24ed3559dc9245dc4df590c9fe05e",
+          "before_sha256": "2a14fae7b107c0dd607bb621dcae8a7f592ce08fd3fabc8dd4cfad5d3921d8f6"
+        },
+        {
           "path": "server/tests/security/test_semantic_request_snapshot.py",
-          "sha256": "c2085bbf1c0284659b4c9ad4b131f8f8e2083405245be54696a2c2a5efd11bba",
+          "sha256": "3c7b0554c45f375c01d87eba0c357d3d2f13310e5563935b37f50284e21f7522",
           "before_sha256": null
         },
         {
@@ -31193,7 +31203,7 @@
           "before_sha256": "5d936faadfa99c17a99362dd47b8e88e586c7e2a74d0a68ab9c6b378f28b3a7e"
         }
       ],
-      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Failed attempts now discard replay state without filesystem revalidation, preserving the original body exception; successful path-identity observation errors fail closed. Focused generated SQLite/request/coverage/qualifier/search tests passed (90 tests, 42 subtests). One R127 generated full-route comparison on source 001a039 used 23,696 eligible rows, 65 synthetic omissions, 768D vectors and a fixed 418 ms MockTransport. Nine warm mean/median were 2369.294/2347.977 ms baseline and 2132.612/2024.980 ms candidate; candidate max was 2756.605 ms, 8/9 pairs faster and 2/9 at or below 2 seconds, so the all-sample target remains unmet. All 13 cold/warm/page-two pairs matched full API JSON, full-rank IDs/score bits and per-attempt charged rows/bytes; physical source reads were 18 baseline versus 9 plus 9 final-pass replays candidate. The run used configured setup/profile/RSS limits, but exact peak RSS and separate setup/profile timings are absent from the result. No native Windows, production, family relevance, language quality or activation claim."
+      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Failed attempts now discard replay state without filesystem revalidation, preserving the original body exception; successful path-identity observation errors fail closed. Only FileNotFoundError means an absent optional sidecar; other metadata OSErrors are unsafe, with an actual WAL plus isolated lstat-permission-fault regression. Focused generated SQLite/request/coverage/qualifier/search tests passed (91 tests, 42 subtests); the separate extracted staging-package suite passed 10 tests / 5 subtests and imports this module from the archive without checkout fallback. One R127 generated full-route comparison on source 001a039 used 23,696 eligible rows, 65 synthetic omissions, 768D vectors and a fixed 418 ms MockTransport. Nine warm mean/median were 2369.294/2347.977 ms baseline and 2132.612/2024.980 ms candidate; candidate max was 2756.605 ms, 8/9 pairs faster and 2/9 at or below 2 seconds, so the all-sample target remains unmet. All 13 cold/warm/page-two pairs matched full API JSON, full-rank IDs/score bits and per-attempt charged rows/bytes; physical source reads were 18 baseline versus 9 plus 9 final-pass replays candidate. The run used configured setup/profile/RSS limits, but exact peak RSS and separate setup/profile timings are absent from the result. No native Windows, production, family relevance, language quality or activation claim."
     }
   ]
 }
