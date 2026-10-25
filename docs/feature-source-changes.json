@@ -31737,6 +31737,41 @@
         }
       ],
       "notes": "Keep full-width separate Details action and give its centered label the available button-content width. Retain strong one-line/no-overflow assertions; add width/height diagnostics after actual hosted assertion failure. No font shrinking/truncation, callbacks/ordinals/store/wire changes. Rendered successor remains pending."
+    },
+    {
+      "feature": "trusted-memory-generation-language-20261026",
+      "source_base": "7e1ccac22445273f1c4782292530aef4e6a46782",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "aa065adf5ade30f1a9ce2d6b6091fbc41d206ab0f28535904a5ccbc764222568",
+          "sha256": "85215776be270ac88da76e4642e6ea5ebebbf7778016809596f215593bc9826f"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "992c3c1bc871e6d0d014ff3634863252d77a17fd3e26acd6503b63e58e0b2a68",
+          "sha256": "b89dbd7927de14e921b1b2e175e5bb51b8e4d3e1250363df28514ea5d99b7e97"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_local.py",
+          "before_sha256": "494793a253852e51a6e780bb14be5281685e31ab19ef3d4be4698dbdf852283b",
+          "sha256": "9f794025a383240d90d8f8084a81336869b4b232e058a111b32a878ec798dac0"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "84c1b8552a3e93eb80482153e0cb167a404a3867ead393ff442817643d9a8596",
+          "sha256": "b500bc9aacda4e5c6f767ac4109efeb70aa6bb92b869c6af1773a3284ac77e28"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "b3ee4e3319d1d309caeb33be976a11bf7982f3abb2f5fefa96286b7b3a0f5e5c",
+          "sha256": "acd6cb16381b1caa019b4ef0843506df094f77aa673074ab181329e18571ddaa"
+        }
+      ],
+      "notes": "Derive Chinese/English prose instruction only from validated closed zh/en outside untrusted bundle for narrator and companion, retaining IDs/quotations/evidence and canonical worker refusal. Synthetic Ollama/local-provider/actual-local-child GGUF-worker protocol coverage; no model quality, actual failure-cause, native Windows, serving activation or deployment claim."
     }
   ]
 }

@@ -59,6 +59,17 @@ match the host's validated v3 selected-source bundle. It regenerates the host
 prompt/schema/options and uses those reconstructed values. Input cannot supply
 arbitrary grammar references, executable/import paths or generation settings.
 
+The shared host payload explicitly requests Chinese or English generated prose
+from the validated, closed `language` value (`zh` or `en`). This instruction is
+outside the untrusted bundle JSON and covers narration, titles, replies,
+questions and nested companion proposals. Source text cannot select another
+output language. JSON keys and identifiers stay unchanged; names and verbatim
+quotations are preserved under the existing evidence rules. The process provider
+and worker must use matching payload-builder source: a changed trusted language
+instruction is refused before model loading. Synthetic provider/worker round trips
+check this binding; they do not establish real model language quality or prove
+the cause of an earlier generation failure. Provider activation remains separate.
+
 The default context is 8,192 tokens (explicit range 4,096–16,384), two CPU threads
 (range 1–8) and zero GPU layers (explicit range 0–128). GPU splitting is disabled.
 GPU layers require an explicit `--gpu-device`
