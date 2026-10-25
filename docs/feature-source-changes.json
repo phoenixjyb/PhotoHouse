@@ -31494,6 +31494,17 @@
       "semantic_search_enabled": false,
       "live_runtime_changed": false,
       "notes": "Link the functional acceptance matrix and accurately mark the two reviewed grouping source increments as integrated. No installed Android, live schema, refresh schedule or family acceptance claim."
+    },
+    {
+      "feature": "scene-refusal-recovery-supported-api-check-r142",
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "407f9380ce28f5a552ee862b382172e91733a7bda65f97841b7e6de72da70961",
+          "sha256": "d243d4af4edd12a5da827e422ec128bd6d5eb620bf34439a461e96305cb37b3e"
+        }
+      ],
+      "notes": "Include the new generated refusal-reopen HTTP regression in the existing explicit API CI inventory. No new profile, service or runtime behavior."
     }
   ]
 }

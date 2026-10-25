@@ -33,7 +33,7 @@ API_TESTS = (
     "test_search_pending.py", "test_assistant_pending_intent.py", "test_assistant_pending_intent_store.py", "test_assistant_description_pending.py",
     "test_search_exclusions.py", "test_search_exclusion_pending.py", "test_assistant_exclusion_pending.py",
     "test_search_constraint_admission.py",
-    "test_semantic_configuration.py", "test_semantic_provider_readiness.py", "test_semantic_encoder.py", "test_semantic_search.py", "test_semantic_initial_search.py", "test_assistant_scene_search.py", "test_semantic_provider_transport.py",
+    "test_semantic_configuration.py", "test_semantic_provider_readiness.py", "test_semantic_encoder.py", "test_semantic_search.py", "test_semantic_initial_search.py", "test_assistant_scene_search.py", "test_assistant_scene_reword_recovery.py", "test_semantic_provider_transport.py",
     "test_semantic_openclip.py", "test_serve_semantic_text.py", "test_semantic_provider_integration.py",
     "test_semantic_pair_cases.py", "test_semantic_pair_canary.py",
     "test_semantic_scene_cases.py", "test_semantic_exclusion_cases.py", "test_qualify_semantic_scenes.py",
