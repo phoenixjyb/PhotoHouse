@@ -31089,6 +31089,35 @@
         }
       ],
       "notes": "Test-only: wait for fonts and stable viewport/list geometry after instant setup scrolling; focus the list without a scroll side effect; capture per-key page/list/focus/defaultPrevented diagnostics and retain the no-page-movement, focus, scroll and no-request assertions. Local pinned-browser run passed; the reported Ubuntu CI failure remains unreproduced and cause unproven. No UI runtime source change."
+    },
+    {
+      "feature": "semantic-score-presentation-roundoff-guard-r125",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "e94a8b159226d02945f6dcc1d6e9fd0083678105b326eb32b8f7d8503301d8d6",
+          "sha256": "d5f0a76430b85b9d69f13f74666893eedd350d015638c43d874ccf03b8be1633"
+        },
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": "5ee5272f12c37be308dc2357d9b9b67403c3dc5116285e2996bc4df7a0011e3f",
+          "sha256": "14216778b6cf34b9b3f38174db5a1161831c65e8eb2c8a97cc0ac330e731ade4"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_search.py",
+          "before_sha256": "680baac381c37c5b921f461c984bb7c808922f14c3343742efba911f885ec321",
+          "sha256": "5d936faadfa99c17a99362dd47b8e88e586c7e2a74d0a68ab9c6b378f28b3a7e"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": "a35838b6557aaea2799139d5ba6414c094b82c5233dcbf0f263944df886ff6f6",
+          "sha256": "0642381776fe7d8223a52ffc6e994c78c29b8a4fdca0bb745eabf2048f8a9ef7"
+        }
+      ],
+      "notes": "After full raw ranking, materialized direct and trusted-snapshot cards require exact built-in finite int/float scores. Only overshoots within 16 binary64 ULPs are clamped to the closed endpoint; in-range bits and raw rank order are unchanged. A versioned source-binding field rejects prior bindings before encoder work. Generated 768D scalar/bulk and API/workspace recovery tests cover the reproduced boundary; 4096D representative guard coverage and gross/nonfinite/invalid refusal are included. The encoder comment now reflects that inference runs inside the first ranking transaction. No ranker, validator, vector, numerical kernel, schema, or activation change."
     }
   ]
 }

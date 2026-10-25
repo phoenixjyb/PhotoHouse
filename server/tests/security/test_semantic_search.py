@@ -3,6 +3,7 @@ from contextlib import closing
 from dataclasses import replace
 import hashlib
 import json
+import math
 from pathlib import Path
 import sqlite3
 import sys
@@ -288,6 +289,109 @@ class SemanticSearchTests(unittest.TestCase):
             self.assertNotIn(private, response.text)
         literal = self.fixture.turn('find photos containing "a child flying a kite"').json()
         self.assertEqual(literal['total'], 0)
+
+    def test_score_presentation_guard_preserves_ranker_values_and_only_clamps_endpoint_roundoff(self):
+        from app.access import discovery as discovery_module
+        from app.access.semantic_encoder import JointSpaceBinding, TextVector, rank_semantic
+        from app.access.semantic_search import _SCORE_PRESENTATION_ROUNDOFF, _present_semantic_score
+        from app.access.visual_candidates import (
+            VectorRecord, VectorSpaceIdentity, _canonical_components, _score,
+            canonical_vector_checksum,
+        )
+        import test_semantic_bulk_vectors as bulk_fixtures
+
+        ulp = math.ulp(1.0)
+        guard = 16 * ulp
+        self.assertEqual(_SCORE_PRESENTATION_ROUNDOFF, guard)
+        in_range = math.nextafter(1.0, 0.0)
+        self.assertIs(_present_semantic_score(in_range), in_range,
+                      'in-range float values are returned without conversion or rounding')
+        for raw, expected in ((1.0 + guard, 1.0), (-1.0 - guard, -1.0),
+                              (math.nextafter(1.0, 0.0), math.nextafter(1.0, 0.0)),
+                              (-1.0, -1.0), (0.375, 0.375), (1, 1)):
+            with self.subTest(raw=raw):
+                self.assertEqual(_present_semantic_score(raw), expected)
+        for raw in (math.nextafter(1.0 + guard, math.inf),
+                    math.nextafter(-1.0 - guard, -math.inf), 1.01, -1.01,
+                    math.nan, math.inf, -math.inf, True, False, '1.0', None, 10**400):
+            with self.subTest(rejected=repr(raw)):
+                with self.assertRaises(discovery_module.DiscoveryUnavailable):
+                    _present_semantic_score(raw)
+
+        image = VectorSpaceIdentity('a' * 64, 'b' * 64, 'synthetic-score-space',
+                                    'synthetic-v1', 768, 'unit_l2')
+        text = replace(image, artifact_sha256='c' * 64,
+                       preprocessing_sha256='d' * 64, model_version='text-v1')
+        binding = JointSpaceBinding(image, text, 'e' * 64)
+        vector = (1 / math.sqrt(5),) * 5 + (0.0,) * 763
+        checksum = canonical_vector_checksum(vector)
+        record = VectorRecord('101', image, vector, checksum)
+        canonical = _canonical_components(record, image)
+        raw_score = _score(canonical, canonical)
+        query = TextVector(binding.binding_sha256, hashlib.sha256(b'same vector').hexdigest(),
+                           vector, checksum)
+        scalar = rank_semantic(query, binding, (record,))
+        self.assertEqual(scalar, (('101', raw_score),))
+        self.assertEqual(raw_score, 1.0000000000000002)
+        self.assertEqual(_present_semantic_score(raw_score), 1.0)
+
+        bulk = bulk_fixtures.SemanticBulkVectorTests()
+        bulk.setUp()
+        try:
+            store, artifacts = bulk.build(((101, 'a', vector),), image)
+            snapshot = store.snapshot(artifacts, library_id='family-a')
+            self.assertEqual(snapshot.rank(canonical, ('101',)), (('101', raw_score),))
+        finally:
+            bulk.doCleanups()
+
+        identity4096 = replace(image, dimension=4096)
+        vector4096 = (1 / math.sqrt(5),) * 5 + (0.0,) * 4091
+        record4096 = VectorRecord('4096', identity4096, vector4096,
+                                  canonical_vector_checksum(vector4096))
+        canonical4096 = _canonical_components(record4096, identity4096)
+        raw4096 = _score(canonical4096, canonical4096)
+        self.assertGreaterEqual(raw4096, 1.0)
+        self.assertLessEqual(raw4096, 1.0 + guard)
+        self.assertEqual(_present_semantic_score(raw4096), 1.0)
+
+    def test_presented_roundoff_ties_keep_raw_rank_order_and_invalid_scores_refuse(self):
+        import math
+        from app.access.semantic_search import _SCORE_PRESENTATION_ROUNDOFF
+
+        higher_raw = 1.0 + 2 * math.ulp(1.0)
+        lower_raw = 1.0 + math.ulp(1.0)
+        self.assertLess(higher_raw, 1.0 + _SCORE_PRESENTATION_ROUNDOFF)
+        with patch('app.access.semantic_search.rank_semantic',
+                   return_value=(('103', higher_raw), ('101', lower_raw))):
+            response = self.query()
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual([item['id'] for item in response.json()['items']], ['103', '101'])
+        self.assertEqual([item['semantic_score'] for item in response.json()['items']], [1.0, 1.0])
+
+        outside = 1.0 + 17 * math.ulp(1.0)
+        with patch('app.access.semantic_search.rank_semantic', return_value=(('103', outside),)):
+            refused = self.query()
+        self.assertEqual(refused.status_code, 503, refused.text)
+        self.assertNotIn('items', refused.json())
+
+    def test_score_presentation_policy_binding_rejects_previous_version_before_encoding(self):
+        from app.access.semantic_search import SemanticSearchReads
+
+        original = SemanticSearchReads._extra_source_fresh
+        def legacy_binding(reader, *args, **kwargs):
+            value = original(reader, *args, **kwargs)
+            value.pop('score_presentation_policy')
+            return value
+
+        with patch.object(SemanticSearchReads, '_extra_source_fresh', legacy_binding):
+            first = self.query()
+        self.assertEqual(first.status_code, 200, first.text)
+        old = first.json()
+        self.assertEqual(len(self.calls), 1)
+        stale = self.query(binding=old['binding'], fingerprint=old['fingerprint'])
+        self.assertEqual(stale.status_code, 409, stale.text)
+        self.assertNotIn('items', stale.json())
+        self.assertEqual(len(self.calls), 1, 'stale presentation binding is rejected before encoding')
 
     def test_people_date_location_tags_and_literal_text_are_joint_hard_filters(self):
         cases = (

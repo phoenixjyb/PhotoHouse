@@ -73,6 +73,18 @@ No vector components, original prose, local paths or model qualification
 documents are returned. Existing text/person/date match reasons retain their
 original meanings; a semantic score is not presented as literal text evidence.
 
+All candidates are ranked using the original full-precision scores before
+presentation. The card boundary accepts only exact built-in integers/floats
+with finite values. It preserves every in-range score unchanged; an endpoint
+overshoot is clamped only when it is at most 16 binary64 ULPs beyond `-1` or
+`1` (about `3.55e-15`), and larger/nonfinite/invalid values refuse the result.
+This explicit presentation guard is far narrower than the `1e-3` vector norm
+tolerance and is not a pruning certificate or a change to the numerical ranking
+kernel. The raw score order and numeric-ID tie-break stay intact, so distinct
+raw scores can display as equal endpoint values. `score_presentation_policy` is
+part of the opaque source binding; a prior binding is stale and rejected before
+encoding.
+
 The opaque binding covers the exact query, reviewed metadata, current image
 source hashes, immutable vector manifests and joint-space configuration.
 Page sizes and filters participate in the fingerprint. Membership and source

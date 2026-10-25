@@ -30,8 +30,27 @@ from .semantic_eligibility import SemanticEligibilityStore, SemanticEligibilityU
 # binding in the ranking pass and keeps the final fresh source check.
 # Keep its private-file budget separate from the vector payload allowance.
 MAX_POLICY_READ_BYTES = 64 * 1024 * 1024
+SCORE_PRESENTATION_POLICY_VERSION = 1
+_SCORE_PRESENTATION_ROUNDOFF = 16 * math.ulp(1.0)
 _ARTIFACT_FIELDS = tuple(_COLUMNS.split(','))
 _ARTIFACT_GETTER = operator.attrgetter(*_ARTIFACT_FIELDS)
+
+
+def _present_semantic_score(score):
+    """Bound only binary64 endpoint roundoff after ranking has completed."""
+    if type(score) not in (int, float):
+        raise d.DiscoveryUnavailable()
+    try:
+        if (not math.isfinite(score) or score < -1.0 - _SCORE_PRESENTATION_ROUNDOFF
+                or score > 1.0 + _SCORE_PRESENTATION_ROUNDOFF):
+            raise d.DiscoveryUnavailable()
+    except (OverflowError, TypeError, ValueError):
+        raise d.DiscoveryUnavailable() from None
+    if score > 1.0:
+        return 1.0
+    if score < -1.0:
+        return -1.0
+    return score
 
 
 def _typed_row_equal(current, previous):
@@ -282,6 +301,7 @@ class SemanticSearchReads(AssistantSearchReads):
                 **({'bulk_vectors': self.bulk_vectors.descriptor} if self.bulk_vectors else {}),
                 **({'serving_limits': asdict(self.serving_limits)} if self.serving_limits else {}),
                 'exclusion_policy': EXCLUSION_POLICY_VERSION,
+                'score_presentation_policy': SCORE_PRESENTATION_POLICY_VERSION,
                 'joint_space_binding': self.encoder.binding.binding_sha256,
                 'semantic_query': d.digest(self.query), 'image_vector_records': rows,
                 'image_source_hashes': hashes}
@@ -431,7 +451,8 @@ class SemanticSearchReads(AssistantSearchReads):
                     any(aid not in by_id for aid, _score in snapshot)):
                 raise d.DiscoveryChanged()
             selected = {aid for aid, _score in snapshot}
-            return ([dict(by_id[aid], semantic_score=score) for aid, score in snapshot] +
+            return ([dict(by_id[aid], semantic_score=_present_semantic_score(score))
+                     for aid, score in snapshot] +
                     [by_id[aid] for aid in sorted(set(by_id) - selected, key=int)])
         if not found:
             return []
@@ -474,7 +495,8 @@ class SemanticSearchReads(AssistantSearchReads):
                 expected_count=len(found), candidate_limit=self.serving_limits.candidate_limit, check=check)
         by_id = {item['id']: item for item in found}
         check()
-        return [dict(by_id[aid], semantic_score=score) for aid, score in ranked]
+        return [dict(by_id[aid], semantic_score=_present_semantic_score(score))
+                for aid, score in ranked]
 
 
 @dataclass(frozen=True)
@@ -622,9 +644,9 @@ class SemanticSearchRuntime:
             # change. Re-read in a fresh transaction before releasing cards.
             reader._run(token, library, result['binding'],
                 lambda _index, _facts, _context, _member, _check: None, bounded_cancelled)
-            # The encoder runs outside the access transaction. Re-authorize the
-            # configured principal and owner role after it completes, including
-            # first-page recovery from a server-owned ranking snapshot.
+            # The ranking transaction, including any encoder call, has committed.
+            # Re-authorize the configured principal and owner role before release,
+            # including first-page recovery from a server-owned ranking snapshot.
             self.authorize(token, library)
             result.update(filters=filters, semantic={'mode': 'text_to_image',
                 'score_kind': 'cosine', 'candidate_count': reader._candidate_count,
