@@ -31174,8 +31174,13 @@
         },
         {
           "path": "docs/SEMANTIC_REQUEST_SNAPSHOT.md",
-          "sha256": "8c86a07388015cfa0a7e9fa1aa3da46816a76a29bcc07d4c7291683eb51dcb43",
+          "sha256": "45d32a7ef3b84c741329568a7988e5c0a592c6a8c720e45a02a8fcd83cda5386",
           "before_sha256": null
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "3706a28be45d6d14af6f33bba933d75bd677c592aec6e82ce36425f15f5ac09d",
+          "before_sha256": "7edeb0abf953dabd3040204a1c9f4953d7ace12f8440a4c2f97ed73d04eecde1"
         },
         {
           "path": "server/tests/security/test_semantic_search.py",
@@ -31188,7 +31193,7 @@
           "before_sha256": "5d936faadfa99c17a99362dd47b8e88e586c7e2a74d0a68ab9c6b378f28b3a7e"
         }
       ],
-      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Focused generated SQLite/request/coverage/qualifier/search tests passed (88 tests, 42 subtests); no full23696 comparison, native Windows, production or family acceptance claim."
+      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Focused generated SQLite/request/coverage/qualifier/search tests passed (88 tests, 42 subtests). One R127 generated full-route comparison on source 001a039 used 23,696 eligible rows, 65 synthetic omissions, 768D vectors and a fixed 418 ms MockTransport. Nine warm mean/median were 2369.294/2347.977 ms baseline and 2132.612/2024.980 ms candidate; candidate max was 2756.605 ms, 8/9 pairs faster and 2/9 at or below 2 seconds, so the all-sample target remains unmet. All 13 cold/warm/page-two pairs matched full API JSON, full-rank IDs/score bits and per-attempt charged rows/bytes; physical source reads were 18 baseline versus 9 plus 9 final-pass replays candidate. The run used configured setup/profile/RSS limits, but exact peak RSS and separate setup/profile timings are absent from the result. No native Windows, production, family relevance, language quality or activation claim."
     }
   ]
 }

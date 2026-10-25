@@ -43,6 +43,26 @@ report or enable serving. The
 performance, coverage, omission-policy and release gates. Earlier entries below
 retain their historical source and acceptance scope.
 
+**October 25 generated full-request profile (R127 / source only / OFF):** local
+source `001a039` compared the same native read-only SQLite factory with the
+request-local snapshot flag off/on, using a generated 23,696-eligible-row,
+768D WAL fixture, 65 qualification-only omissions and fixed 418 ms
+`MockTransport`.
+Nine warm English/Chinese/mixed pairs averaged **2.369 s baseline / 2.133 s
+candidate** (9.99% lower); medians were 2.348 / 2.025 s. Eight of nine pairs
+were faster, but the candidate maximum was **2.757 s** and only **2/9** samples
+met the 2 s target. All 13 cold/warm/page-two pairs matched complete API JSON,
+full ranked IDs and score bits, and charged rows/bytes. The candidate performed
+nine physical source reads plus nine final-pass replays per request, versus 18
+physical reads in baseline. The latest actual Windows result remains R94 at
+**5.250 s median / 5.703 s max**, with all nine warm samples above target and
+whole qualification false; R127 does not update that result. The local source
+candidate is unmerged and undeployed. No native-performance, family relevance,
+language-quality or activation claim follows from this generated profile. The
+record confirms configured resource limits but does not serialize exact peak
+RSS or separate setup/profile durations.
+See the [profile detail](SEMANTIC_REQUEST_SNAPSHOT.md#generated-full-request-profile-r127).
+
 **October 23 bounded metadata reader (R69, source only):** the read-only index
 inspector now parses and canonical-checks one bounded descriptor read, then
 retains a second complete digest/identity verification. Metadata is bound to its

@@ -37,6 +37,27 @@ second connection. The guard requires a fresh readback of the changed value,
 withheld cards and the existing refusal response; a lock timeout alone is not
 counted as mutation evidence.
 
+## Generated full-request profile (R127)
+
+On local source `001a039`, one generated 23,696-eligible-row / 65-omission,
+768-dimensional WAL fixture compared the same native read-only factory with
+`request_source_snapshot` off and on. The provider was a fixed 418 ms
+`MockTransport`; this is not a learned-model or native-Windows run. Across nine
+warm English, Chinese and mixed-language pairs, mean latency was 2,369.294 ms
+baseline and 2,132.612 ms candidate (9.99% lower); medians were 2,347.977 ms
+and 2,024.980 ms. The candidate maximum was slower at 2,756.605 ms, 8/9 paired
+samples were faster, and only 2/9 candidate samples met 2 seconds, so the
+all-sample target remains unmet.
+
+All 13 cold, warm and page-two pairs matched complete API JSON, full ranked IDs
+and score bits, and per-attempt charged rows/bytes. The candidate used nine
+physical source SQL reads and nine final-pass replays per request instead of 18
+physical reads. Cold and page-two samples are separate from the nine-warm
+summary. The recorded process passed configured setup/profile/RSS limits, but
+the result does not contain exact peak RSS or separate setup/profile timings.
+This modest generated result does not establish native Windows latency, family
+relevance, language quality, default enablement or activation.
+
 Correctness coverage here is generated local SQLite and synthetic account data.
-No family relevance, native Windows, GPU/model-runtime, production, latency or
-activation claim is made by this experiment.
+No family relevance, native Windows, GPU/model-runtime, production or activation
+claim is made by this experiment.
