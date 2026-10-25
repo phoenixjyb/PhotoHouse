@@ -197,8 +197,10 @@ def _scene_endpoint(request):
                 scene_reword == '1')
     if scene_reword is not None:
         return False
-    return re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/(?:turns|requests/[0-9a-f-]+)',
-                        request.url.path) is not None
+    return (re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/(?:turns|requests/[0-9a-f-]+)',
+                         request.url.path) is not None or
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+/scene-pages',
+                         request.url.path) is not None)
 
 
 def _engine(request):

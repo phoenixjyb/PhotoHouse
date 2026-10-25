@@ -7,13 +7,29 @@ reviewable delivery. Latency is diagnostic for this work. Earlier frozen
 2-second qualification contracts and their failures remain unchanged; they are
 not a circular prerequisite for completing these functional journeys.
 
-The active source change restores a confirmed unsupported scene request's
+The reviewed refusal-reopen source change restores a confirmed unsupported scene request's
 private wording and reword guidance when a thread is reopened. Its negotiated
 metadata read uses existing private storage, hides older cards and requires an
 explicit fresh scope review before a corrected search. It adds no model call,
 sharing permission, database migration or browser persistence. Targeted source,
 API, controller and browser evidence belongs to the final reviewed head; this
 entry does not claim deployment or activation.
+
+The new [protected scene-page source increment](SCENE_RESULT_PAGING.md) adds
+Next/Previous and fresh Return in the private Web conversation. It derives the
+query and reviewed conditions from the latest completed server record, checks
+current source/access/runtime/revision and full-rank continuity, and keeps page
+cards out of conversation/voice scope. Generated checks passed 12 API tests /
+14 subtests, 32 controller tests and 12 browser checkpoints over 46 eligible and
+65 omitted synthetic images, including English/Chinese at 390px and 150% text.
+Serving remains OFF; current-head hosted checks and delivery are separate.
+
+Predecessor `7bdca5a` passed both hosted Windows CPU, API, Android and private-reader
+jobs, plus Android fixture and security checks. One Web job passed; another
+failed when Chromium exited with SIGSEGV while launching the intent fixture,
+after all nine scene checkpoints passed. The failed job is retained without a
+manual rerun or inferred application assertion failure. Those results do not
+validate the later page source.
 
 The later isolated Windows component on `7910852` completed two full audits,
 15 protection cases and nine English/Chinese/mixed HTTPS samples. Recovered

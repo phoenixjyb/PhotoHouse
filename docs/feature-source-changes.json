@@ -31554,6 +31554,123 @@
       "model_receipts_changed": false,
       "query_policy_verifier_binding_changed": true,
       "notes": "After f899 removed collection failures, Windows CPU had 455 passing tests / 314 subtests and one extracted package import refusal at the combined length/identity guard. Host stat tuples were not captured. Align the bound verifier with the existing private-storage Windows birthtime identity contract, keeping device/inode/size/mtime and POSIX ctime plus all byte hashes and source checks; require exact integer Windows birthtime or refuse. Keep the logic inside the hashed verifier rather than adding an unbound helper dependency. Explicit binary low-level open preserves exact bytes. Generated real-reader metadata cases accept Windows ctime aliases only with matching required fields and refuse every identity drift/missing-invalid birthtime; real same-byte inode replacement and CRLF rewrite still refuse. The verifier hash changes its separate query-policy binding; legacy indexed model receipts are unchanged. Current hosted successor not yet verified."
+    },
+    {
+      "feature": "protected-workspace-scene-continuation-r144",
+      "source_commit": "7bdca5a77a607cb5f5eb52ebc66ad82b91cb6d87",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "60d01e7cfd902617790b5eff20f4bd14df7ccace88e31fe0e1f203b5833ffc6d",
+          "sha256": "069524b8bc1b9f92d08280f8af5dec1356d55574eaf56de70588cc3737e14737"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "df7b1c78bbf8b4e8b678ca176d49b9f40fb02f7140961d8fab0f797eda246f42",
+          "sha256": "5c34be10cd0635656fcb26b5c2142564ba160db4f43f041f525c1cceb0539fa5"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "a70d984f69d60eef8d8554b3abb0a469b564b2c161077c9a0bd8e2503f097a97",
+          "sha256": "3cc2e974b13ef0ec7802d43bf313e5f56824aaf2935c75e614594d939cdde1ec"
+        },
+        {
+          "path": "docs/SCENE_RESULT_PAGING.md",
+          "before_sha256": null,
+          "sha256": "45c7c961bfa9466c830c89ade589b6802db472897df9b3a81099d1dedd0e0557"
+        },
+        {
+          "path": "docs/SEARCH_FUNCTIONAL_ACCEPTANCE.md",
+          "before_sha256": "e8c7cbcae698da50317ec798c0291223d688ec04b9c9ba241c824d64b28ea05b",
+          "sha256": "0b2462821e531d8b15dab8de7d51ebe79c71d9b798fc4d669d3cc544019903f1"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "658dc3df7581954120f117042a333ccf7d5aee40e5a8a82fd627af0bd80616dd",
+          "sha256": "b611d63232f300475d53dcd482f92c285c2b40a196236a18579941303c4a9eab"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "dba5c08576b73e8acef12f93f4fd4d94468bb0b144144c8f99de098b5168fcd6",
+          "sha256": "9b226c1782a4a36c46566bd257a4d0a90fede8e5ab254f8c97689ebfb91f5df9"
+        },
+        {
+          "path": "server/backend/app/access/assistant_scene_search.py",
+          "before_sha256": "d0e55a65c43fa66f518d48bf6fc01528a0a1c0208c28114ab66eefadf8f91839",
+          "sha256": "a743b5feda80c8f24461816be561f9145dae26133081b2fa745f163243c6b4e6"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "ed79f6f9db04519469db62ec44734a0a1bad34aadf9112168fc3dcd8cf024df6",
+          "sha256": "1477901d23a11b7ad9e2c3ca462622c055b0d8cdcc787fcb1e588e23ccc02f96"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "602f110d24b0cbc50e7a401f42fc22202022d44b8b22fe949ef8cca42f79f1ab",
+          "sha256": "499b0cbfcdf8f069af9408058ad144d34979a33e77ab91235850fbe267517ec8"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "0f247ccc83ad309738f1242a0d2584abcae0d0ac182e25c57fb82149ee9bde20",
+          "sha256": "7f46f1b524f898b60719b1a8c93af165f9282d59fd6ee80f2e9b8b9d0301f484"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "055e6ee6267e38235eeff43f667fc8e38c78daf8f1e29810f774bc72b97de2c5",
+          "sha256": "73aba0407359478a6f3acb34502e8df1f7b0572b25e59773597bdaba105784e3"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "0207dc70e4b47ffda11a862655b6c433903732d0fc9074bbdedb1669d8f91437",
+          "sha256": "bb32a18e88ff21468319b1d1c795b822ebedf6526d9a4fad1b3e32afa750980b"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "b29e51bd5a7c17ad60a42fdd98fc424ae3d310bbea219e1a94d223cc86438523",
+          "sha256": "6bddd332fc4966d8c753b4cd89ca2aec807131ed88cefd3082ddcc09d3b0832a"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "e610a71a3823d1c5c2707abcb94ed92ff61e0991c05c0b9913079c2671ed4502",
+          "sha256": "0a3b34def734966dd46ba0db2fba864e19435a0c4ce7bb223cdaee4a5366d5c8"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "2ff6a299c6b0a50483dac3b1a766906642e2bcdcc970950435c347d40d784640",
+          "sha256": "fa2ba2095b743c9a824993cc669075e9631af176787f992246b11ebbbe1b9f9d"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "fba5530673d91c7da79a6f248a157a02c12fd1a4afc4b228dabdd8b2d4733cba",
+          "sha256": "5ae264d4b4451210caab0035fbe986affb1c84b6705ba0aa4befa916c084d73e"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_browser.cjs",
+          "before_sha256": "75260a1651b210a44990a478fe216eb680dfdbac133a5f7bdf3cbfbf2f4c78f3",
+          "sha256": "bc646bda69659d71dffbfcd8b163c0c70355ac3ae02b41431abe3bd60dad14e3"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_pages.py",
+          "before_sha256": null,
+          "sha256": "2cbc8ed1900c470cd96c99593c038045d764fb28639062cc2fd08997a700748b"
+        },
+        {
+          "path": "server/tests/ui/assistant-scene-workspace.test.mjs",
+          "before_sha256": "31509d0dd1f8a6b412b0aed99011faace4053cb240788b53f5b85bf21f0b4cb8",
+          "sha256": "fa251e0f4204c54a58575019a6c39d43ca082f115f3bd2dbb65489d6cd180960"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d243d4af4edd12a5da827e422ec128bd6d5eb620bf34439a461e96305cb37b3e",
+          "sha256": "25b8355be6b764f115f0a6126ade59b6d748c6773f06785a2b1066fa4c2a8285"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "model_receipts_changed": false,
+      "notes": "Separate authenticated capability and explicit scene-page POST derive query/scope from the newest retained completed scene request at the current revision. Initial page2 verifies saved first20 presented bits and establishes a new complete raw-rank digest; later pages require it, without claiming the unretained original tail. The original turn/history schemas and model-free recovery remain. Read-only scoped workspace projection is rechecked after inference; final principal, pilot owner, runtime availability/identity, shared cancellation/deadline and response budget checks withhold stale cards. Page-only legacy vector reads are charged and fully revalidated after provider work; ordinary legacy searches stay single-read. Closed client page validation, nonce/generation fences, return-first narration/command isolation and bilingual Next/Previous/global-rank/range/omission controls keep at most20 ephemeral cards. Focused generated API12 tests14subtests, controller32, existing scene20 tests12subtests and combined rendered browser12 checkpoints with46eligible65omitted passed; source and final reviewer records retain earlier scope/vector/cancel/owner/UI failures. Browser profile now runs that combined page/coverage fixture; new API module is in supported checks. No full-suite, current hosted CI, native model/relevance, activation, deployment or device/family claim."
     }
   ]
 }

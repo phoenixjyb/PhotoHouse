@@ -882,6 +882,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .assistant-scene .assistant-form{min-width:0;margin-top:.6rem}.assistant-scene .assistant-scene-confirm{display:flex;align-items:flex-start;gap:.65rem;line-height:1.5;margin:.4rem 0}
 .assistant-scene-confirm input{flex:0 0 auto;width:1.2rem;height:1.2rem;margin:.2rem 0}.assistant-scene-confirm span{min-width:0}
 .assistant-scene-scope{padding-left:1.25rem;line-height:1.6}.assistant-scene-ranking{padding:.8rem 1rem;margin:.8rem 0;border-left:3px solid #62856a;background:#edf1e6;overflow-wrap:anywhere}
+.assistant-scene-pages{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}.assistant-scene-pages [aria-live]{flex:1 1 12rem}
 .assistant-scene-ranking h3{font-size:1rem;margin:0 0 .5rem}.assistant-scene-rank{color:#47644d;font-size:.9em}
 .photo-stack-tools{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin:0 0 1rem;padding:.75rem 1rem;border:1px solid var(--line);border-radius:8px;background:#fffdf9}
 .photo-stack-tools p{margin:0;flex:1 1 16rem}.asset-open{display:block;width:100%;padding:0;border:0;background:transparent;text-align:left;color:inherit}

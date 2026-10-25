@@ -33,7 +33,7 @@ API_TESTS = (
     "test_search_pending.py", "test_assistant_pending_intent.py", "test_assistant_pending_intent_store.py", "test_assistant_description_pending.py",
     "test_search_exclusions.py", "test_search_exclusion_pending.py", "test_assistant_exclusion_pending.py",
     "test_search_constraint_admission.py",
-    "test_semantic_configuration.py", "test_semantic_provider_readiness.py", "test_semantic_encoder.py", "test_semantic_search.py", "test_semantic_initial_search.py", "test_assistant_scene_search.py", "test_assistant_scene_reword_recovery.py", "test_semantic_provider_transport.py",
+    "test_semantic_configuration.py", "test_semantic_provider_readiness.py", "test_semantic_encoder.py", "test_semantic_search.py", "test_semantic_initial_search.py", "test_assistant_scene_search.py", "test_assistant_scene_reword_recovery.py", "test_assistant_scene_pages.py", "test_semantic_provider_transport.py",
     "test_semantic_openclip.py", "test_serve_semantic_text.py", "test_semantic_provider_integration.py",
     "test_semantic_pair_cases.py", "test_semantic_pair_canary.py",
     "test_semantic_scene_cases.py", "test_semantic_exclusion_cases.py", "test_qualify_semantic_scenes.py",
@@ -276,6 +276,10 @@ def web():
 
     for path in paths:
         suite_env = env.copy()
+        if path.name == "test_assistant_scene_browser.cjs":
+            # One generated scene journey includes continuation pages and
+            # partial coverage; avoid silently checking only its first page.
+            suite_env.update(PH_SCENE_PAGES="1", PH_SCENE_COVERAGE="1")
         if env.get("PH_BROWSER_ARTIFACTS"):
             # Suites use common result filenames. Give each its own directory
             # so a later journey cannot replace an earlier acceptance record.

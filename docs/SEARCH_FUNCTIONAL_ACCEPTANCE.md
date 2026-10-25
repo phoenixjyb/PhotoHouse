@@ -21,7 +21,7 @@ library access. Deployment and activation need their own reviewed decision.
 | Rank photos by a vague visual description | Require explicit scene opt-in and a freshly reviewed photo scope. Keep hard constraints outside similarity inference and refuse unsupported exclusions/counts. | [Scene qualification](SEMANTIC_SCENE_QUALIFICATION.md), scene-refusal and protected semantic tests. Serving remains default-off; real relevance needs reviewed examples. |
 | Correct or clarify a request | Preserve unresolved conditions and the current authorized scope. A short reply or recovery cannot silently discard an exclusion. | [Rewording](SCENE_QUERY_REWORDING.md), pending-intent and bilingual correction fixtures. No automatic query translation or identity inference. |
 | Reopen a refused scene request | Recover the exact private draft and reword guidance, hide older cards, and require an explicit fresh scope read before another scene submission. | The negotiated projection below; store, HTTP, controller and browser regressions are required. It performs no search or model call. |
-| Browse and recover ranked results | Keep exact rank order and finite presentation scores; bind continuations and recovery to the current query, source and authorization. | Semantic direct-API pagination and workspace recovery tests. The workspace scene view deliberately shows the first 20 matches and discloses that limit; it has no next-page journey yet. |
+| Browse and recover ranked results | Keep exact rank order and finite presentation scores; bind continuations and recovery to the current query, source and authorization. | [Protected workspace paging](SCENE_RESULT_PAGING.md), direct-API pagination and model-free saved-result recovery tests. Older servers keep the disclosed first-20 fallback. Paging does not replace the saved conversation scope. |
 | Cancel, lose the connection or retry | Distinguish unconfirmed delivery from a confirmed refusal. Read receipts without resubmitting; preserve edits and discard stale cards after scope changes. | Workspace/controller recovery and cancellation fixtures. Cooperative cancellation is not proof that a remote model process was terminated. |
 | Change membership, source or policy | Recheck access and source before releasing derived results and after provider work. Refuse stale bindings and retain a safe recovery path. | Semantic mutation, membership, postflight-policy and deadline tests. Recovering the owner's own input text is not a claim that an old result remains valid. |
 | See incomplete coverage or no matches | Explain searchable coverage and omissions. An empty or partial result must not claim that an object/person is absent from the whole library. | [Eligibility contract](SEMANTIC_ELIGIBILITY_DESIGN.md), coverage HTTP/UI fixtures. Qualification-only omissions do not authorize production omissions. |
@@ -102,8 +102,11 @@ freedom. No operation is replayed by this document.
   are integrated from two focused commits. Keep live schema/index, refresh
   scheduling and APK/family acceptance separate from source presence. See the
   [grouping delivery checklist](PHOTO_STACK_DELIVERY.md).
-- Treat workspace scene pagination beyond the first 20 as an explicit remaining
-  journey, rather than claiming the direct API's page support exists in the UI.
+- Complete current-head hosted checks for the new protected workspace paging
+  journey. Local acceptance passed 12 API tests / 14 subtests, 32 controller
+  tests and 12 rendered browser checkpoints with 46 eligible and 65 omitted
+  synthetic images. These checks do not measure model relevance or installed
+  Android behavior.
 - Review representative multilingual result relevance, production coverage and
   omission treatment before any proposed serving activation.
 - For a future newly reviewed operator only, resolve the readback archive-size

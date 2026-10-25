@@ -38,7 +38,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Title from authored chapter wording | [Chapter-opening title contract](CHAPTER_OPENING_TITLE.md) |
 | Guided phone story creation | [Flow, draft boundary and trial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) |
 | Failed story/memoir images | [Preview recovery](READER_PREVIEW_RECOVERY.md) |
-| Current search delivery, capabilities and remaining gates | [Functional acceptance matrix](SEARCH_FUNCTIONAL_ACCEPTANCE.md), [October 22 combined-source release](SEARCH_RELEASE_2026-10-22.md), [October 20 guarded-search release](SEARCH_RELEASE_2026-10-20.md), [exclusion/clarification contract](SCENE_QUERY_REWORDING.md), [bilingual behavior](BILINGUAL_SEARCH_REQUIREMENTS.md) |
+| Current search delivery, capabilities and remaining gates | [Functional acceptance matrix](SEARCH_FUNCTIONAL_ACCEPTANCE.md), [protected scene-result paging](SCENE_RESULT_PAGING.md), [October 22 combined-source release](SEARCH_RELEASE_2026-10-22.md), [October 20 guarded-search release](SEARCH_RELEASE_2026-10-20.md), [exclusion/clarification contract](SCENE_QUERY_REWORDING.md), [bilingual behavior](BILINGUAL_SEARCH_REQUIREMENTS.md) |
 | Earlier natural-language search diagnosis | [October 15 search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md), [historical redesign handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md) |
 | Private search coverage, relevance cases and video dates | [Readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md) |
 | Installed bilingual intent model quality | [October 16 native trial](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md) |

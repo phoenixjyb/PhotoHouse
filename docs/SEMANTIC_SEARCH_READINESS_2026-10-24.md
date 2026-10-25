@@ -8,6 +8,13 @@ diagnostic for that work. The older frozen performance qualification below is
 retained, including its failed target. Completing a functional change does not
 restamp it or enable serving.
 
+The [workspace paging increment](SCENE_RESULT_PAGING.md) now has generated
+three-page API/controller and bilingual narrow-screen browser evidence. This
+extends the user journey while preserving server-owned scope, current source
+and authorization, rank continuity, cancellation and model-free history reads.
+It is source evidence, with semantic serving still OFF; it does not qualify
+representative multilingual relevance or a live deployment.
+
 The later isolated component on `7910852` has reaccepted native source evidence
 for two audits, 15 protective cases and nine HTTPS samples. Its recovered raw
 warm median/maximum were 4.718/5.094 seconds. It did not complete full

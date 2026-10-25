@@ -10,6 +10,7 @@ import math
 import operator
 from pathlib import Path
 import re
+import struct
 
 from . import discovery as d
 from .assistant_search import AssistantSearchReads
@@ -114,7 +115,8 @@ def _valid_pilot_owner_account_id(value):
 class SemanticSearchReads(AssistantSearchReads):
     def __init__(self, access, provider, budget, *, vector_root, encoder, query,
                  server_snapshot=None, serving_limits=None, bulk_vectors=None, eligibility=None,
-                 text_projection_required=True, media_only_facts=False):
+                 text_projection_required=True, media_only_facts=False,
+                 ranking_observer=None):
         # This reader belongs to exactly one runtime call. Reuse derived facts
         # for an identical opaque binding during that call, while every _run
         # still reauthorizes and reads/validates the complete current source.
@@ -129,6 +131,7 @@ class SemanticSearchReads(AssistantSearchReads):
         self._source_hashes = {}
         self._candidate_count = 0
         self._server_snapshot = server_snapshot
+        self._ranking_observer = ranking_observer
         self.serving_limits = serving_limits
         self.bulk_vectors = bulk_vectors
         self._bulk_artifacts = ()
@@ -385,15 +388,18 @@ class SemanticSearchReads(AssistantSearchReads):
         if self._vector_read_bytes > MAX_VECTOR_READ_BYTES:
             raise d.DiscoveryUnavailable()
 
-    def _vector_records(self, root, records, *, validate_components=True):
+    def _vector_records(self, root, records, *, validate_components=True,
+                        charge_vector_bytes=False):
         check = self._check
         for artifact in records:
             aid = artifact.asset_id
             check()
             if artifact.source_sha256 != self._source_hashes.get(aid):
                 raise d.DiscoveryUnavailable()
-            vector = (_read_vector(root, artifact, charge=self._charge_vector_bytes)
-                      if self.serving_limits else _read_vector(root, artifact))
+            charge = (self._charge_vector_bytes
+                      if self.serving_limits is not None or charge_vector_bytes else None)
+            vector = (_read_vector(root, artifact, charge=charge)
+                      if charge is not None else _read_vector(root, artifact))
             check()
             if vector is None:
                 raise d.DiscoveryUnavailable()
@@ -406,9 +412,10 @@ class SemanticSearchReads(AssistantSearchReads):
                     raise d.DiscoveryUnavailable() from None
             yield record
 
-    def _vectors(self, found):
+    def _vectors(self, found, *, charge_vector_bytes=False):
         root, records = self._artifacts(found)
-        return list(self._vector_records(root, records))
+        return list(self._vector_records(root, records,
+                                         charge_vector_bytes=charge_vector_bytes))
 
     def _bulk_snapshot(self):
         try:
@@ -435,8 +442,17 @@ class SemanticSearchReads(AssistantSearchReads):
                 bulk_snapshot = self._bulk_snapshot()
             vectors = None
         elif self.serving_limits is None:
-            vectors = self._vectors(found)
+            # Page continuation must retain the same exact file/hash budget as
+            # the bounded serving path. The ordinary legacy search path keeps
+            # its historical single-read behavior.
+            vectors = self._vectors(found,
+                charge_vector_bytes=self._ranking_observer is not None)
             root, artifacts = None, ()
+            # Keep the source artifacts for a page-only post-provider read.
+            # The legacy ordinary search path continues to use its historical
+            # pre-provider in-memory cohort without another filesystem pass.
+            if self._ranking_observer is not None:
+                root, artifacts = self._artifacts(found)
         else:
             root, artifacts = self._artifacts(found)
             # Complete file validation precedes inference. Never hide a corrupt
@@ -462,8 +478,30 @@ class SemanticSearchReads(AssistantSearchReads):
                      for aid, score in snapshot] +
                     [by_id[aid] for aid in sorted(set(by_id) - selected, key=int)])
         if not found:
+            if self._ranking_observer is not None:
+                self._ranking_observer((), check)
             return []
         query_vector = self.encoder.encode(self.query, check=check)
+        if (self._ranking_observer is not None and self.serving_limits is None
+                and self.bulk_vectors is None):
+            # The legacy, non-streaming branch loaded vectors before calling
+            # the provider. For private page continuation only, reread and
+            # hash the complete same cohort after provider execution, using
+            # the existing byte/cancellation budget, and prove the rank basis
+            # did not change while the query was encoded.
+            if root is None or len(vectors) != len(artifacts):
+                raise d.DiscoveryUnavailable()
+            fresh_vectors = list(self._vector_records(
+                root, artifacts, charge_vector_bytes=True))
+            if (len(fresh_vectors) != len(vectors) or
+                    any(type(before) is not VectorRecord or
+                        type(after) is not VectorRecord or
+                        before.asset_id != after.asset_id or
+                        before.identity != after.identity or
+                        before.checksum_sha256 != after.checksum_sha256 or
+                        before.vector != after.vector
+                        for before, after in zip(vectors, fresh_vectors))):
+                raise d.DiscoveryUnavailable()
         if self.bulk_vectors is not None:
             # Read/hash the pinned container again after provider execution.
             # Reusing canonical immutable bytes never bypasses current files.
@@ -502,6 +540,8 @@ class SemanticSearchReads(AssistantSearchReads):
                 expected_count=len(found), candidate_limit=self.serving_limits.candidate_limit, check=check)
         by_id = {item['id']: item for item in found}
         check()
+        if self._ranking_observer is not None:
+            self._ranking_observer(ranked, check)
         return [dict(by_id[aid], semantic_score=_present_semantic_score(score))
                 for aid, score in ranked]
 
@@ -573,7 +613,75 @@ class SemanticSearchRuntime:
                   and values.get('page_size', 20) == 20)
         return self._call('search', token, library, cancelled, values, server_snapshot=snapshot)
 
-    def _call(self, operation, token, library, cancelled, values, *, server_snapshot=None):
+    def _continue_server_ranking(self, token, library, cancelled, values, prefix,
+                                 expected_ranking_sha256=None):
+        """Rank a fresh complete cohort from a validated private scene prefix.
+
+        This private workspace path never restores a numeric-ID tail. The
+        prefix only verifies the first 20 presented scores retained by the
+        durable result; a new raw-score digest commits later explicit pages to
+        this newly computed full ordering.
+        """
+        if (type(prefix) is not tuple or not prefix or len(prefix) > 20
+                or any(type(item) is not tuple or len(item) != 2
+                       or type(item[0]) is not str
+                       or type(item[1]) is not float
+                       or not math.isfinite(item[1])
+                       for item in prefix)):
+            raise d.DiscoveryUnavailable()
+        if expected_ranking_sha256 is not None and (
+                type(expected_ranking_sha256) is not str or
+                re.fullmatch(r'[0-9a-f]{64}', expected_ranking_sha256) is None):
+            raise d.DiscoveryInvalid()
+
+        observed = {}
+
+        def observe(ranked, check):
+            if type(ranked) not in (tuple, list) or not ranked:
+                raise d.DiscoveryChanged()
+            if len(ranked) < len(prefix):
+                raise d.DiscoveryChanged()
+            digest = hashlib.sha256()
+            digest.update(b'PhotoHouse scene full ranking v1\x00')
+            digest.update(struct.pack('>Q', len(ranked)))
+            for position, item in enumerate(ranked):
+                check()
+                if (type(item) is not tuple or len(item) != 2
+                        or type(item[0]) is not str
+                        or re.fullmatch(r'[1-9][0-9]{0,18}', item[0]) is None
+                        or type(item[1]) not in (float, int)):
+                    raise d.DiscoveryUnavailable()
+                try:
+                    raw_score = float(item[1])
+                    presented = _present_semantic_score(raw_score)
+                    encoded_id = item[0].encode('ascii')
+                    if len(encoded_id) > 19 or not math.isfinite(raw_score):
+                        raise ValueError()
+                    digest.update(struct.pack('>I', len(encoded_id)))
+                    digest.update(encoded_id)
+                    digest.update(struct.pack('>d', raw_score))
+                except (UnicodeError, ValueError, OverflowError, struct.error):
+                    raise d.DiscoveryUnavailable() from None
+                if position < len(prefix):
+                    expected_id, expected_score = prefix[position]
+                    if (item[0] != expected_id or
+                            struct.pack('>d', presented) != struct.pack('>d', expected_score)):
+                        raise d.DiscoveryChanged()
+            observed['sha256'] = digest.hexdigest()
+            check()
+
+        result = self._call('search', token, library, cancelled, values,
+                            ranking_observer=observe)
+        ranking_sha256 = observed.get('sha256')
+        if type(ranking_sha256) is not str:
+            raise d.DiscoveryUnavailable()
+        if expected_ranking_sha256 is not None and ranking_sha256 != expected_ranking_sha256:
+            raise d.DiscoveryChanged()
+        result['ranking_sha256'] = ranking_sha256
+        return result
+
+    def _call(self, operation, token, library, cancelled, values, *, server_snapshot=None,
+              ranking_observer=None):
         # Authorization precedes query validation, metadata and provider I/O
         # for direct callers as well as the HTTP admission check.
         self.authorize(token, library)
@@ -627,7 +735,8 @@ class SemanticSearchRuntime:
                     serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors,
                     eligibility=self.eligibility,
                     text_projection_required=('text' in filters or 'descriptive' in filters),
-                    media_only_facts=media_only_facts)
+                    media_only_facts=media_only_facts,
+                    ranking_observer=ranking_observer)
                 binding = values.get('binding')
                 page = values.get('page', 1)
                 page_size = values.get('page_size', 20)
