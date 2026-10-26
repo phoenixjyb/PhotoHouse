@@ -31807,6 +31807,27 @@
         }
       ],
       "notes": "Fixed trusted guidance for requested brief original-language family-source quotation only within existing authorship/citation/source-kind rules; keep narration physical/causal details within cited chapter evidence. Existing safety constants, imprecise-date/question rules, output thresholds, language enum, providers and flags unchanged. Synthetic payload/provider/local-worker conformance is not real model grounding or qualification."
+    },
+    {
+      "feature": "selected-story-chat-template-conditioning-20261026",
+      "source_base": "adc38db28589dda957e75973dbecd556a800cbb9",
+      "source_commit": "b82f75c91e150908da326ab3c4e74169af6a89d8",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": "9f21e38e07fd60aa5384f0eb83a5bb2f70a2705e8de11605fe2086436c644d61",
+          "sha256": "cb41f60332d063713dc2201366de1242f948d7dd269ffa20454fa46de6ab8b19"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "d8892cb9ca007c0a92b8305788519a18bd675e24a6a7d7f0fb4d595b289880ab",
+          "sha256": "3694d438dbe2ded5777160970337b43876e521181ac00179f0672a63e1238f1a"
+        }
+      ],
+      "notes": "Record the reviewed worker chat-template conditioning and its focused tests already committed in b82f75c. This reconciliation changes only the ordered source ledger; executable bytes, model configuration, provider selection, serving flags and native package inputs are unchanged."
     }
   ]
 }
