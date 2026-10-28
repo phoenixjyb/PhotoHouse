@@ -136,7 +136,7 @@ class SelectedStoryServiceRecipeTests(RecipeFixture):
 
     def test_parser_rejects_bad_types_caps_path_spellings_and_cpu_bindings(self):
         self.invalid(self.encode(self.recipe | {'timeout_seconds': True}))
-        self.invalid(self.encode(self.recipe | {'timeout_seconds': 30.01}))
+        self.invalid(self.encode(self.recipe | {'timeout_seconds': 60.01}))
         self.invalid(self.encode(self.recipe | {'cleanup_seconds': 10.01}))
         self.invalid(self.encode(self.recipe | {'model': 'http://model'}))
         self.invalid(self.encode(self.recipe | {'model': 'model\nname'}))
@@ -176,6 +176,17 @@ class SelectedStoryServiceRecipeTests(RecipeFixture):
         with self.assertRaises(ValueError):
             build_recipe_provider(self.raw, expected_model=MODEL,
                 expected_launch_sha256='bad', expected_profile_sha256=self.expected_profile_sha256)
+
+    def test_service_accepts_the_application_work_window_and_shorter_request_limits(self):
+        for seconds in (30, 60):
+            with self.subTest(seconds=seconds):
+                raw = self.encode(self.recipe | {'timeout_seconds': seconds})
+                provider = build_recipe_provider(raw, expected_model=MODEL,
+                    expected_launch_sha256=self.expected_launch_sha256,
+                    expected_profile_sha256=self.expected_profile_sha256)
+                self.assertEqual(seconds, provider.timeout)
+                self.assertFalse(provider.enabled)
+                self.assertEqual([], list(self.root.iterdir()))
 
     def test_real_provider_factory_is_inert_default_off_and_does_not_initialize_paths(self):
         import selected_story_native_owner as factory

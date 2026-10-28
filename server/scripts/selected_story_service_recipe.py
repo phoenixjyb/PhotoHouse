@@ -132,7 +132,9 @@ def strict_recipe(raw: bytes) -> dict:
                 or launch.minimum_free_ram < 8 * 1024**3
                 or profile.minimum_free_ram < launch.minimum_free_ram):
             raise ValueError()
-        timeout = _number(recipe['timeout_seconds'], 30)
+        # Match DraftOperations' maximum work window. A caller's shorter scope
+        # deadline still wins inside ProcessSelectedStoryProvider.prepare().
+        timeout = _number(recipe['timeout_seconds'], 60)
         cleanup = _number(recipe['cleanup_seconds'], 10)
         if type(recipe['timeout_seconds']) not in (int, float) or type(recipe['cleanup_seconds']) not in (int, float):
             raise ValueError()

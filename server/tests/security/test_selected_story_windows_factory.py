@@ -126,7 +126,7 @@ class PersistentWindowsStoryFactoryTests(unittest.TestCase):
                 provider=factory.windows_story_service_provider(spec,MODEL,**kwargs)
             self.assertFalse(provider.enabled);self.assertFalse(provider.host_admission.enabled)
             self.assertIs(type(provider.host_admission.probe),WindowsStoryServiceCapacityProbe)
-            self.assertFalse(provider.host_admission.probe.enabled);self.assertEqual(provider.timeout,30)
+            self.assertFalse(provider.host_admission.probe.enabled);self.assertEqual(provider.timeout,60)
             self.assertIsNone(provider.host_admission.probe._metrics)
             self.assertIsNone(provider.host_admission.probe._conflicts)
             self.assertEqual(list(base.iterdir()),[]);kernel.assert_not_called();activate.assert_not_called()
@@ -140,7 +140,7 @@ class PersistentWindowsStoryFactoryTests(unittest.TestCase):
                     dict(spec.environment),memory_limit=changes.get('memory_limit',spec.memory_limit),
                     process_limit=changes.get('process_limit',spec.process_limit),minimum_free_ram=changes.get('minimum_free_ram',spec.minimum_free_ram))
                 with self.assertRaises(ValueError):factory.windows_story_service_provider(invalid,MODEL,**kwargs)
-            for extra in [dict(timeout=31),dict(conflict_images=()),dict(profile=replace(kwargs['profile'],capacity_sha256='f'*64))]:
+            for extra in [dict(timeout=60.01),dict(conflict_images=()),dict(profile=replace(kwargs['profile'],capacity_sha256='f'*64))]:
                 with self.assertRaises(ValueError):factory.windows_story_service_provider(spec,MODEL,**dict(kwargs,**extra))
 
 

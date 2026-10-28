@@ -33,7 +33,7 @@ def windows_story_process_provider(launch, model, *, enabled=False, timeout=45, 
 
 def windows_story_service_provider(launch, model, *, host_directory, capacity_directory,
                                    profile, policy_id, identity, conflict_images,
-                                   exchange_root, enabled=False, timeout=30, cleanup_seconds=5):
+                                   exchange_root, enabled=False, timeout=60, cleanup_seconds=5):
     """Compose the default-off persistent CPU service with actual capacity reads.
 
     Pass the provider to RuntimeConfiguration.selected_story_provider. Explicit
@@ -49,7 +49,7 @@ def windows_story_service_provider(launch, model, *, host_directory, capacity_di
             or launch.memory_limit > 2 * gib or launch.process_limit > 8
             or launch.minimum_free_ram < 8 * gib
             or profile.minimum_free_ram < launch.minimum_free_ram
-            or type(timeout) not in (int, float) or not 0 < timeout <= 30):
+            or type(timeout) not in (int, float) or not 0 < timeout <= 60):
         raise ValueError('Explicit bounded CPU story service configuration required')
     probe = WindowsStoryServiceCapacityProbe(profile, capacity_directory, policy_id,
         conflict_images, identity=identity, enabled=enabled)
