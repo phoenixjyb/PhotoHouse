@@ -189,11 +189,16 @@ class _Boundary:
 
 def create_provider_app(provider: Any, *, bearer_token: str, port: int,
                         seconds: float = 2.0) -> FastAPI:
-    """Return the private ASGI adapter for one explicitly configured provider."""
+    """Return the private ASGI adapter with a bounded, explicit request budget.
+
+    Ordinary callers retain the two-second default. CPU deployments may select
+    up to thirty seconds; authentication, one-worker admission and cancellation
+    use the same deadline for either budget.
+    """
     if (type(port) is not int or not 1024 <= port <= 65535
             or type(bearer_token) is not str or _SAFE_TOKEN.fullmatch(bearer_token) is None
             or type(seconds) not in (int, float) or not math.isfinite(float(seconds))
-            or not 0 < float(seconds) <= 2.0):
+            or not 0 < float(seconds) <= 30.0):
         raise ValueError("invalid_provider_transport_configuration")
     binding = getattr(provider, "binding", None)
     if (type(binding) is not JointSpaceBinding
