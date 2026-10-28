@@ -101,6 +101,49 @@ class SelectedStoryRuntimeProcessIntegrationTests(unittest.IsolatedAsyncioTestCa
             selected_story_ui_enabled=True, memory_collaboration_enabled=True)
         self.app = self.configuration.build_app()
 
+    def bind_persistent_service(self, delay='0'):
+        from unittest.mock import Mock
+        from app.access.windows_story_capacity import NativeCapacity, WindowsProbeIdentity
+        from app.access import windows_story_service_capacity as service_capacity
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        import selected_story_native_owner as factory
+        launch = NativeStoryLaunch(self.launch.executable, self.launch.executable_sha256,
+            self.launch.argv[:-2] + (delay, '0'), self.launch.cwd, dict(self.launch.environment),
+            memory_limit=2*GiB, minimum_free_ram=8*GiB)
+        capacity_directory = self.root / 'capacity'
+        capacity_directory.mkdir(mode=0o700)
+        identity = WindowsProbeIdentity('synthetic-host', 'S-1-5-21-111-1001',
+            '55555555-5555-4555-8555-555555555555')
+        images = (r'C:\Synthetic\caption.exe',)
+        profile = HostResourceProfile('cpu', process_launch_digest(launch, exchange_root=self.exchange_root),
+            8*GiB, GiB, capacity_sha256=service_capacity.windows_service_probe_digest(
+                identity, capacity_directory, CLEARANCE, images))
+        self.service_conflict_busy = False
+        self.service_metrics = Mock()
+        self.service_metrics.capture.side_effect = lambda resource, directory: NativeCapacity(
+            'cpu', 16*GiB, 4*GiB, 0, identity.host_id, identity.principal_sid, identity.volume_id, 3600)
+        self.service_conflicts = Mock()
+        self.service_conflicts.capture.side_effect = lambda images: service_capacity.WindowsStoryConflictSample(
+            time.monotonic(), self.service_conflict_busy)
+        # Real synthetic child on Mac; Windows path precheck and Job kernel are
+        # simulated explicitly. The production capacity/factory/app wiring runs.
+        with patch.object(factory, 'windows_story_process_owner'), \
+                patch.object(factory, 'WindowsAPI', return_value=self.kernel), \
+                patch.object(service_capacity, 'WindowsCapacityMetrics', return_value=self.service_metrics), \
+                patch.object(service_capacity, 'WindowsStoryProcessConflicts', return_value=self.service_conflicts):
+            self.provider = factory.windows_story_service_provider(launch, 'synthetic-local',
+                host_directory=self.host_root, capacity_directory=capacity_directory,
+                profile=profile, policy_id=CLEARANCE, identity=identity, conflict_images=images,
+                exchange_root=self.exchange_root, enabled=True, cleanup_seconds=2)
+        self.host = self.provider.host_admission
+        # Explicit synthetic operator decisions; construction did not activate.
+        self.host.set_maintenance(True)
+        self.host.set_maintenance(False, clearance_id=CLEARANCE)
+        self.configuration = RuntimeConfiguration(self.database, ORIGIN, (self.originals,), self.derived,
+            selected_story_provider=self.provider, selected_story_drafts_enabled=True,
+            selected_story_ui_enabled=True, memory_collaboration_enabled=True)
+        self.app = self.configuration.build_app()
+
     async def client(self):
         return httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url=ORIGIN)
 
@@ -386,6 +429,101 @@ class SelectedStoryRuntimeProcessIntegrationTests(unittest.IsolatedAsyncioTestCa
         self.assertTrue(all(not directory.exists() for directory in self.kernel.exchanges))
         self.assertEqual(self.claim_count(), 0)
         self.assertEqual(self.saved_story_count(), before)
+
+
+    async def test_persistent_service_producer_flows_through_protected_api_and_never_saves(self):
+        self.bind_persistent_service()
+        before = self.saved_story_count()
+        with patch('app.access.memory_jobs.maintenance', return_value=None):
+            async with self.app.router.lifespan_context(self.app):
+                async with await self.client() as client:
+                    first, body = await self.prepare_request(client)
+                    self.assertEqual(first.status_code, 200, first.text)
+                    draft = first.json()
+                    self.assertEqual(draft['state'], 'needs_review')
+                    self.assertTrue(draft['needs_review'])
+                    self.assertTrue(draft['chapters'][0]['narration'].strip())
+                    self.assertEqual(self.service_metrics.capture.call_count, 2)
+                    self.assertEqual(self.service_conflicts.capture.call_count, 2)
+                    retry = await client.post('/story-workspace/drafts/prepare?library='+LIBRARY,
+                        headers={'Authorization':'Bearer '+library_fixture.LibraryReadTests.owner_token},json=body)
+                    self.assertEqual(first.json(), retry.json())
+                    self.assertEqual(self.service_metrics.capture.call_count, 2)
+                    self.service_conflict_busy = True
+                    busy, retry_body = await self.prepare_request(client, OTHER_REQUEST_ID)
+                    self.assertEqual((busy.status_code,busy.json()['code']), (429,'draft_busy'))
+                    self.assertEqual(len(self.kernel.children), 1)
+                    self.assertEqual(self.claim_count(), 0)
+                    self.service_conflict_busy = False
+                    next_draft = await client.post('/story-workspace/drafts/prepare?library='+LIBRARY,
+                        headers={'Authorization':'Bearer '+library_fixture.LibraryReadTests.owner_token},json=retry_body)
+                    self.assertEqual(next_draft.status_code, 200, next_draft.text)
+                    self.assertEqual(len(self.kernel.children), 2)
+                    self.assertEqual(self.service_metrics.capture.call_count, 6)
+        self.assertEqual(self.saved_story_count(), before)
+        self.assertEqual(self.claim_count(), 0)
+        self.assertTrue(all(child.poll() is not None for child in self.kernel.children))
+        self.assertTrue(all(not p.exists() for p in self.kernel.exchanges))
+
+    async def test_persistent_service_cancel_releases_exact_claim_and_preserves_revocation(self):
+        from app.access.host_inference_admission import HostAdmissionError
+        self.bind_persistent_service('120')
+        before = self.saved_story_count()
+        with patch('app.access.memory_jobs.maintenance', return_value=None):
+            async with self.app.router.lifespan_context(self.app):
+                async with await self.client() as client:
+                    pending = asyncio.create_task(self.prepare_request(client))
+                    self.assertTrue(await asyncio.to_thread(self.kernel.resumed.wait,5))
+                    self.assertEqual(self.claim_count(),1)
+                    other = HostInferenceAdmission(self.host_root,self.host.profile,
+                        capacity_probe=self.host.probe,enabled=True)
+                    with self.assertRaises(HostAdmissionError) as caught:
+                        other.acquire(str(uuid.uuid4()))
+                    self.assertEqual(caught.exception.reason,'busy')
+                    self.host.set_maintenance(True)
+                    cancelled = await self.cancel(client)
+                    self.assertEqual(cancelled.status_code,200,cancelled.text)
+                    response,_=await asyncio.wait_for(pending,5)
+                    self.assertEqual((response.status_code,response.json()['code']),(409,'draft_cancelled'))
+                    # Cancellation fences delivery first; the durable permit
+                    # remains held until actual owner/exchange reconciliation.
+                    deadline=time.monotonic()+5
+                    while self.claim_count():
+                        if time.monotonic()>=deadline:self.fail('owned claim did not reconcile')
+                        await asyncio.sleep(0.01)
+                    self.assertIsNone(self.provider._active)
+                    refused,_=await self.prepare_request(client,OTHER_REQUEST_ID)
+                    self.assertEqual(refused.status_code,503,refused.text)
+                    self.assertEqual(len(self.kernel.children),1)
+                    self.assertEqual(self.service_metrics.capture.call_count,2)
+        self.assertEqual(self.saved_story_count(),before)
+        self.assertTrue(all(child.poll() is not None for child in self.kernel.children))
+        self.assertTrue(all(not p.exists() for p in self.kernel.exchanges))
+
+    async def test_persistent_service_real_thirty_second_timeout_reconciles_without_draft(self):
+        self.bind_persistent_service('120')
+        before = self.saved_story_count()
+        with patch('app.access.memory_jobs.maintenance', return_value=None):
+            async with self.app.router.lifespan_context(self.app):
+                async with await self.client() as client:
+                    started=time.monotonic()
+                    pending=asyncio.create_task(self.prepare_request(client))
+                    self.assertTrue(await asyncio.to_thread(self.kernel.resumed.wait,5))
+                    self.assertFalse(pending.done())
+                    self.assertEqual(self.claim_count(),1)
+                    response,_=await asyncio.wait_for(pending,40)
+                    elapsed=time.monotonic()-started
+                    self.assertGreaterEqual(elapsed,29)
+                    self.assertLess(elapsed,38)
+                    self.assertEqual(response.status_code,503,response.text)
+                    self.assertNotIn('Beans together',response.text)
+                    self.assertNotIn(str(self.root),response.text)
+        self.assertEqual(self.saved_story_count(),before)
+        self.assertEqual(self.claim_count(),0)
+        self.assertIsNone(self.provider._active)
+        self.assertTrue(all(child.poll() is not None for child in self.kernel.children))
+        self.assertTrue(all(job.closed for job in self.kernel.jobs))
+        self.assertTrue(all(not p.exists() for p in self.kernel.exchanges))
 
 
 if __name__ == '__main__':

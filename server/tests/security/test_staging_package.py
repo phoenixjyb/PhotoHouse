@@ -79,6 +79,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/inference_admission.py',
             'backend/app/access/host_inference_admission.py',
             'backend/app/access/windows_story_capacity.py',
+            'backend/app/access/windows_story_service_capacity.py',
             'backend/app/access/selected_story_snapshot.py',
             'backend/app/access/selected_story_operations.py',
             'backend/app/access/selected_story_lifecycle.py',
@@ -88,6 +89,8 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/selected_story_process.py',
             'backend/app/access/selected_story_grammar.py',
             'scripts/selected_story_native_owner.py',
+            'scripts/selected_story_service_recipe.py',
+            'scripts/serve_library_semantic_text.py',
             'scripts/qualify_selected_story.py',
             'scripts/selected_story_gguf_worker.py',
             'backend/app/access/captions.py',
@@ -236,7 +239,9 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.selected_story_local import LocalSelectedStoryProvider\n'
                 'from app.access.selected_story_native import NativeStoryLaunch\n'
                 'from app.access.selected_story_grammar import bounded_schema_to_gbnf\n'
-                'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider\n'
+                'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider, windows_story_service_provider\n'
+                'from selected_story_service_recipe import strict_recipe, build_recipe_provider\n'
+                'from serve_library_semantic_text import run as library_provider_run\n'
                 'import qualify_selected_story, selected_story_gguf_worker, json\n'
                 "assert 'llama_cpp' not in sys.modules\n"
                 "manifest=json.loads((root/'manifest.json').read_text())\nassert qualify_selected_story._source_identity(manifest['source_commit'])==manifest['source_commit']\n"
@@ -282,7 +287,7 @@ class StagingPackageTests(unittest.TestCase):
                 'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker', 'qualify_selected_story', 'selected_story_gguf_worker'):\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'selected_story_service_recipe', 'serve_library_semantic_text', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker', 'qualify_selected_story', 'selected_story_gguf_worker'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"
