@@ -31919,6 +31919,32 @@
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
+    },
+    {
+      "feature": "persistent-story-service-application-work-deadline",
+      "source_commit": "6b4dbf82ddc32b78030e83eab3d291768ed11feb",
+      "files": [
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "sha256": "08f7e2ba0c28b60244e47d4fe83472953869fa8ddd953e476167cc0362d9c63f"
+        },
+        {
+          "path": "server/scripts/selected_story_service_recipe.py",
+          "sha256": "a0725f1b42d8944cb6b3f10d4d8ddd14f8dee25af484248a70953c4ad9d19d3e"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_service_recipe.py",
+          "sha256": "a4629238ca49f254f1f7e271dced479bac1013fdc21b9dc85f10a79f4e47400f"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_windows_factory.py",
+          "sha256": "13cd7aba27a830d0a0eb4652c4e68b77e7a0071a08f231d216d2b79a43b21474"
+        }
+      ],
+      "description": "Align optional persistent story provider with DraftOperations maximum60s work; caller deadlines including30s expiry remain binding. CPU/model/framing/privacy/cleanup limits unchanged.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
     }
   ]
 }
