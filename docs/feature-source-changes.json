@@ -31807,6 +31807,118 @@
         }
       ],
       "notes": "Fixed trusted guidance for requested brief original-language family-source quotation only within existing authorship/citation/source-kind rules; keep narration physical/causal details within cited chapter evidence. Existing safety constants, imprecise-date/question rules, output thresholds, language enum, providers and flags unchanged. Synthetic payload/provider/local-worker conformance is not real model grounding or qualification."
+    },
+    {
+      "feature": "persistent-ai-current-f2-search-integration",
+      "source_commit": "e96f26b0b0169cce8570006b911dbff93d06e618",
+      "base_source_commit": "0e0733fb029d73a369c69cf21b248a8088ccf834",
+      "AI_import_commit": "c041da900968fdd2cac537ffcae868e34702c00f",
+      "files": [
+        {
+          "path": "server/backend/app/access/windows_story_service_capacity.py",
+          "sha256": "253631dd6776189a4c3663fab140875d18ed54f162ccd031dfc569ee4c9dac6d"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "d26383d9073d2b7c5eb9b19d1a535b14331c94ffcc61b613043b6311806f5372"
+        },
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "sha256": "72b626318a5a51f52447b63d4b148ac136b3de61b3c434ea47515c8986ca3e8b"
+        },
+        {
+          "path": "server/scripts/selected_story_service_recipe.py",
+          "sha256": "aba45c94d22f0354e9ac9b318c515543141e40757241fb042740667d166f8d3b"
+        },
+        {
+          "path": "server/scripts/serve_library_semantic_text.py",
+          "sha256": "a08fb2d407726d705b9dc5788718263966b29c8b56d6f5482577aa68194a66d5"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "sha256": "36726e339be0711825307ea46fe0f5adfbd77b73abb2ba32871a15010738a6bb"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_service_recipe.py",
+          "sha256": "5b5897325b4943dfd5bb4bcff49d996f614f192e381db3c558e8b392a342bc5b"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_windows_factory.py",
+          "sha256": "4fe42019bf2b15adee60a76f3866fc2e76a4dafe8a26916cf51494759db901f8"
+        },
+        {
+          "path": "server/tests/security/test_serve_library_semantic_text.py",
+          "sha256": "2e77553f3103ea20a0b8c662cdbc2e7ba2108262f067a080c334d6784381f61c"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "e102ba4c0e508285393621346534b8b9982afd9dcfb9c49a3391b5984d7c5619"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_capacity.py",
+          "sha256": "e33a60192601c81033fe135175424c028ea5830984165ff2eb744718f4ee1661"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_process_conflicts.py",
+          "sha256": "a2bf256973c45d2e3121f59e97e95904cb61528888498b13f6060f8c61d8b595"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_service_capacity.py",
+          "sha256": "aecadfaf79f0b781aafdbcffb95a21a5a169699b473648ae07803ad7908cdbb2"
+        }
+      ],
+      "description": "Integrate persistent CPU story recipe and library-bound text service while preserving the current explicit Search request budget. Service launch forwards an explicit bounded request budget; default remains two seconds.",
+      "routes_added": false,
+      "schema_changed": false,
+      "feature_default_off": true,
+      "native_qualified": false,
+      "Windows_deployed": false,
+      "GitHub_CI_paused": true
+    },
+    {
+      "feature": "explicit-cpu-search-budget-preserved-in-ai-integration",
+      "source_commit": "0e0733fb029d73a369c69cf21b248a8088ccf834",
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_encoder.py",
+          "sha256": "67d57333e2ed7b70d290bb02387de987dd43bff6e3fa84283a263d1fdaa14f40"
+        },
+        {
+          "path": "server/backend/app/access/semantic_provider_transport.py",
+          "sha256": "3ee7be7e43dcc792a6c21131d98314f174764a5e9c1b2e14d6c351f010e8bf4c"
+        },
+        {
+          "path": "server/tests/security/test_semantic_encoder.py",
+          "sha256": "a710fe45249bd3f53ab9efbc10541398b58162ede1d60333053e1d42de83a1f0"
+        },
+        {
+          "path": "server/tests/security/test_semantic_provider_transport.py",
+          "sha256": "9aa07a88c7127559636d857b34b6adeec8c5372be8c3d46ac5a3fcb66246989b"
+        }
+      ],
+      "description": "Retain the already implemented explicit CPU request budget up to thirty seconds and two-second default; existing fifteen-second deployment remains compatible.",
+      "routes_added": false,
+      "schema_changed": false,
+      "default_timeout_seconds": 2,
+      "maximum_explicit_timeout_seconds": 30
+    },
+    {
+      "feature": "preserved-current-system-startup-source-in-ai-integration",
+      "source_commit": "0e0733fb029d73a369c69cf21b248a8088ccf834",
+      "files": [
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "sha256": "cb41f60332d063713dc2201366de1242f948d7dd269ffa20454fa46de6ab8b19"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "sha256": "3694d438dbe2ded5777160970337b43876e521181ac00179f0672a63e1238f1a"
+        }
+      ],
+      "description": "Record existing current baseline bytes exactly; no implementation changes made by this ledger entry.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
     }
   ]
 }
