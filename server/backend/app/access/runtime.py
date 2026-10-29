@@ -299,6 +299,7 @@ class RuntimeConfiguration:
     assistant_intent_timeout_seconds: float = 20
     semantic_configuration_path: Path | None = None
     assistant_semantic_search_enabled: bool = False
+    assistant_agent_runtime: object = None
     selected_story_provider: object = None
     selected_story_drafts_enabled: bool = False
     selected_story_ui_enabled: bool = False
@@ -339,6 +340,11 @@ class RuntimeConfiguration:
         here, which refuses an incoming root that overlaps an original root — the invariant
         that keeps an unassigned upload unservable.
         """
+        if self.assistant_agent_runtime is not None and (
+                not self.assistant_enabled or self.assistant_workspace_path is None
+                or not self.discovery_indexes or
+                not callable(getattr(self.assistant_agent_runtime, 'run', None))):
+            raise ValueError('Agent requires explicit assistant, workspace, discovery and runtime')
         # Validate this boundary before storage is opened or optional providers
         # are constructed. This mirrors create_app while keeping this a pure
         # object-injection point.
@@ -551,6 +557,7 @@ class RuntimeConfiguration:
                           assistant_saved_memory_cards_enabled=self.assistant_saved_memory_cards_enabled,
                           semantic_search_runtime=semantic_search_runtime,
                           assistant_semantic_search_enabled=self.assistant_semantic_search_enabled,
+                          assistant_agent_runtime=self.assistant_agent_runtime,
                           selected_story_provider=self.selected_story_provider,
                           selected_story_drafts_enabled=self.selected_story_drafts_enabled,
                           selected_story_ui_enabled=self.selected_story_ui_enabled,

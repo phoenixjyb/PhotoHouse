@@ -40,7 +40,8 @@ from app.access.search_policy_binding import (
 _BINDING_PREFIX = b"photohouse-joint-space-binding-v1\0"
 _MAX_QUERY_BYTES = 512
 _MAX_RESPONSE_BYTES = 64 * 1024
-_MAX_TIMEOUT = 2.0
+# Explicit CPU deployments can allow slow inference; the default remains 2s.
+_MAX_TIMEOUT = 30.0
 _ENCODE_PATH = "/v1/encode-text"
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 

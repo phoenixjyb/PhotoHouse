@@ -180,7 +180,8 @@ router = APIRouter(route_class=AssistantRoute)
 def _search_v2_endpoint(request):
     path = request.url.path
     return (path in ('/assistant/v1/turns', '/assistant/v1/speech', '/assistant/v1/capabilities',
-                     '/assistant/workspace/v1/capabilities') or
+                     '/assistant/workspace/v1/capabilities',
+                     '/assistant/workspace/v1/agent-capabilities') or
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/turns', path) is not None or
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+(?:/speech)?', path) is not None)
 

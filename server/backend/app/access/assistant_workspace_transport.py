@@ -1147,6 +1147,9 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
             return await operation.dispatch(tools, name, arguments)
 
         operation.runtime_started = True
+        bind_scope = getattr(operation.owner.runtime, 'bind_scope', None)
+        if bind_scope is not None:
+            bind_scope(operation.scope)
         runtime_task = operation.spawn(operation.owner.runtime.run(
             {'version': 1, 'text': ident.text, 'locale': preferences['locale']},
             dispatch, operation.invalidation))
@@ -1862,6 +1865,23 @@ async def scene_page(request: Request, thread_id: str, request_id: str):
         watcher.cancel()
         with suppress(asyncio.CancelledError):
             await watcher
+
+
+@router.get('/assistant/workspace/v1/agent-capabilities')
+async def agent_capabilities(request: Request):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    store = _workspace(request)
+    await _call(store, 'get_preferences', account)
+    supervisor = getattr(request.app.state, 'assistant_agent_supervisor', None)
+    _access, engine = assistant_engine._engine(request)
+    available = bool(supervisor is not None and supervisor.healthy and not supervisor.closed
+                     and engine is not None and engine.search_version == 2)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'available': available,
+                         'profile': 'agent_media_search_v1'}, headers=PRIVACY_HEADERS)
 
 
 @router.get('/assistant/workspace/v1/capabilities')

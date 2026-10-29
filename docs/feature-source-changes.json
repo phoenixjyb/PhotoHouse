@@ -31828,6 +31828,350 @@
         }
       ],
       "notes": "Record the reviewed worker chat-template conditioning and its focused tests already committed in b82f75c. This reconciliation changes only the ordered source ledger; executable bytes, model configuration, provider selection, serving flags and native package inputs are unchanged."
+    },
+    {
+      "feature": "persistent-ai-current-f2-search-integration",
+      "source_commit": "e96f26b0b0169cce8570006b911dbff93d06e618",
+      "base_source_commit": "0e0733fb029d73a369c69cf21b248a8088ccf834",
+      "AI_import_commit": "c041da900968fdd2cac537ffcae868e34702c00f",
+      "files": [
+        {
+          "path": "server/backend/app/access/windows_story_service_capacity.py",
+          "sha256": "253631dd6776189a4c3663fab140875d18ed54f162ccd031dfc569ee4c9dac6d"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "d26383d9073d2b7c5eb9b19d1a535b14331c94ffcc61b613043b6311806f5372"
+        },
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "sha256": "72b626318a5a51f52447b63d4b148ac136b3de61b3c434ea47515c8986ca3e8b"
+        },
+        {
+          "path": "server/scripts/selected_story_service_recipe.py",
+          "sha256": "aba45c94d22f0354e9ac9b318c515543141e40757241fb042740667d166f8d3b"
+        },
+        {
+          "path": "server/scripts/serve_library_semantic_text.py",
+          "sha256": "a08fb2d407726d705b9dc5788718263966b29c8b56d6f5482577aa68194a66d5"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "sha256": "36726e339be0711825307ea46fe0f5adfbd77b73abb2ba32871a15010738a6bb"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_service_recipe.py",
+          "sha256": "5b5897325b4943dfd5bb4bcff49d996f614f192e381db3c558e8b392a342bc5b"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_windows_factory.py",
+          "sha256": "4fe42019bf2b15adee60a76f3866fc2e76a4dafe8a26916cf51494759db901f8"
+        },
+        {
+          "path": "server/tests/security/test_serve_library_semantic_text.py",
+          "sha256": "2e77553f3103ea20a0b8c662cdbc2e7ba2108262f067a080c334d6784381f61c"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "e102ba4c0e508285393621346534b8b9982afd9dcfb9c49a3391b5984d7c5619"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_capacity.py",
+          "sha256": "e33a60192601c81033fe135175424c028ea5830984165ff2eb744718f4ee1661"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_process_conflicts.py",
+          "sha256": "a2bf256973c45d2e3121f59e97e95904cb61528888498b13f6060f8c61d8b595"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_service_capacity.py",
+          "sha256": "aecadfaf79f0b781aafdbcffb95a21a5a169699b473648ae07803ad7908cdbb2"
+        }
+      ],
+      "description": "Integrate persistent CPU story recipe and library-bound text service while preserving the current explicit Search request budget. Service launch forwards an explicit bounded request budget; default remains two seconds.",
+      "routes_added": false,
+      "schema_changed": false,
+      "feature_default_off": true,
+      "native_qualified": false,
+      "Windows_deployed": false,
+      "GitHub_CI_paused": true
+    },
+    {
+      "feature": "explicit-cpu-search-budget-preserved-in-ai-integration",
+      "source_commit": "0e0733fb029d73a369c69cf21b248a8088ccf834",
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_encoder.py",
+          "sha256": "67d57333e2ed7b70d290bb02387de987dd43bff6e3fa84283a263d1fdaa14f40"
+        },
+        {
+          "path": "server/backend/app/access/semantic_provider_transport.py",
+          "sha256": "3ee7be7e43dcc792a6c21131d98314f174764a5e9c1b2e14d6c351f010e8bf4c"
+        },
+        {
+          "path": "server/tests/security/test_semantic_encoder.py",
+          "sha256": "a710fe45249bd3f53ab9efbc10541398b58162ede1d60333053e1d42de83a1f0"
+        },
+        {
+          "path": "server/tests/security/test_semantic_provider_transport.py",
+          "sha256": "9aa07a88c7127559636d857b34b6adeec8c5372be8c3d46ac5a3fcb66246989b"
+        }
+      ],
+      "description": "Retain the already implemented explicit CPU request budget up to thirty seconds and two-second default; existing fifteen-second deployment remains compatible.",
+      "routes_added": false,
+      "schema_changed": false,
+      "default_timeout_seconds": 2,
+      "maximum_explicit_timeout_seconds": 30
+    },
+    {
+      "feature": "preserved-current-system-startup-source-in-ai-integration",
+      "source_commit": "0e0733fb029d73a369c69cf21b248a8088ccf834",
+      "files": [
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "sha256": "cb41f60332d063713dc2201366de1242f948d7dd269ffa20454fa46de6ab8b19"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "sha256": "3694d438dbe2ded5777160970337b43876e521181ac00179f0672a63e1238f1a"
+        }
+      ],
+      "description": "Record existing current baseline bytes exactly; no implementation changes made by this ledger entry.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "persistent-story-service-application-work-deadline",
+      "source_commit": "6b4dbf82ddc32b78030e83eab3d291768ed11feb",
+      "files": [
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "sha256": "08f7e2ba0c28b60244e47d4fe83472953869fa8ddd953e476167cc0362d9c63f"
+        },
+        {
+          "path": "server/scripts/selected_story_service_recipe.py",
+          "sha256": "a0725f1b42d8944cb6b3f10d4d8ddd14f8dee25af484248a70953c4ad9d19d3e"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_service_recipe.py",
+          "sha256": "a4629238ca49f254f1f7e271dced479bac1013fdc21b9dc85f10a79f4e47400f"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_windows_factory.py",
+          "sha256": "13cd7aba27a830d0a0eb4652c4e68b77e7a0071a08f231d216d2b79a43b21474"
+        }
+      ],
+      "description": "Align optional persistent story provider with DraftOperations maximum60s work; caller deadlines including30s expiry remain binding. CPU/model/framing/privacy/cleanup limits unchanged.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "selected-story-reviewed-save-reopen-roundtrip",
+      "source_commit": "8487da2e7c5945bb014db85c8d3c3219219208f9",
+      "files": [
+        {
+          "path": "server/tests/security/test_story_draft_preparation_browser.cjs",
+          "sha256": "216a2df75d7bf658879ecbacb6209bf330a7382fe6cf20221723cfe142b75410"
+        }
+      ],
+      "description": "Extend the generated browser-to-ASGI selected-source story journey through reopening the exact story saved after a lost response. Assert author-edited narration, chapter source policy and current authorized family evidence survive, without a second prepare or save. Synthetic provider only; no runtime, model, API or client UI behavior changed.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "owned-local-model-media-search-agent",
+      "source_commit": "0ce2d8b016a25c69e28e905eef0567c36aac7bc7",
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_decision.py",
+          "sha256": "73e8003374c472222bab76ae01e94be5b9be6383735de4097906e2507df628f8"
+        },
+        {
+          "path": "server/backend/app/access/agent_local_runtime.py",
+          "sha256": "1426888b43ca2e203dcb9773099025d49c441932b2cbe8caa0a312e9112f1363"
+        },
+        {
+          "path": "server/backend/app/access/agent_process.py",
+          "sha256": "13f092640c166b848ce5c56db30a7089803d374758ad28c66e055f919d62747d"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "sha256": "2611abc6444d5e83e51c56c15cbd31adca164be932e77d81c76fbad6a04bf4a2"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "sha256": "0d260c3219ffa832b5159a4a1356d706e3ebcbd1a188691dce7ac012f102deb2"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "d56551b2d1dcb2134b046732d12b61bab326cd78c4be4d0c4f20c31aa71f49dc"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "sha256": "fb09316f1e285b8f31366c9db242b5eaca9fc8a117a84df8384619a131aa7ee0"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "5eda716ae7ffd2919134d34764d1f8a8fb00054632ef6d8a41aa78c1282797bc"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "sha256": "a46c224eaf504b78e72891195d0d0eb15d1c6bd3de829de50bab69661fad3488"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "sha256": "014109950d6c53963ee48a65cdcea40a097e1bf4225c923e62b9b1ce9156dd12"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "90fcb22ad1e2dd3f35f221d0ca4614df2bb77e0ce86c4db291be18f07af331b7"
+        },
+        {
+          "path": "server/scripts/household_agent_factory.py",
+          "sha256": "8810128cb3c6f2f67b9c240ef6eb0c920912d0f0f4089ce03f1a9c63d13e818b"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "sha256": "2dea94527cd50a73d99d3b284c32dd25e285fc0d93ac6b1e0f27140f74c11edf"
+        },
+        {
+          "path": "server/tests/security/agent_browser_bridge.py",
+          "sha256": "4accf7161d88f6a86d4bf237ca0ccedf46bf612950f67d9dd7ac70724b20dd36"
+        },
+        {
+          "path": "server/tests/security/test_agent_decision.py",
+          "sha256": "b8ebd498206299a106c31a3c7d25d6a636f722824bbe381939145397b6cc3d74"
+        },
+        {
+          "path": "server/tests/security/test_household_agent_factory.py",
+          "sha256": "cf5d676f0f24127b6962a30f8f1182d4b5caabc6fbd84686e373d11f4654b177"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "sha256": "8649afbb5e44e62a16df8ae1f7b0bb8cfe803f68f45579cc4905ff8cd9bb8535"
+        },
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "sha256": "5b0838e779c236a87066afc1a46f94d6bed6ff0c8bffff675d321db2cbe7730b"
+        },
+        {
+          "path": "server/tests/security/test_local_tool_agent.py",
+          "sha256": "2bd90597771e8182446b7ac5d9ea709706eca7dda3bc2e74ebe502a84c89028f"
+        },
+        {
+          "path": "server/tests/security/test_private_assistant_agent.cjs",
+          "sha256": "1dbb52172ac2cd43c4ec2da081238b64346e8652f8b849022f5af50cc6df00a9"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "a789709e64d739b02a63f954dda6d412036d9f2a43f306a346a09f6f4a72a756"
+        }
+      ],
+      "description": "Explicit local-model PH-A1 media-search runtime with closed decision grammar and existing owned native process/host admission, same pinned story model and shared CPU claim. Optional protected capability route and separate bilingual Web agent action; normal Search remains unchanged. Agent tools retain canonical interpretation, authorization, opaque outcomes and recoverable same-request results. Source/local tests only; real Windows generation and activation are separate delivery evidence.",
+      "routes_added": true,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "bilingual-assistant-name-jude-xiaojia",
+      "source_commit": "b1fb3ffafb3fcfed4a4f38b01d09d5a163197f6a",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "b0ee798ee6c413188a20abca433e2c6295307b0f6ace368ee3500e50b73608cf"
+        },
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "sha256": "7584b50ffb7a3dbe3cdf997506a6702dbd0574bef4a437700834be8764314eb0"
+        }
+      ],
+      "description": "Name the assistant Jude in English and 小贾 in Chinese, including its explicit agent action. Behavior unchanged.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "agent-route-inventory-and-explicit-timeout-fixture",
+      "source_commit": "7acfcd8a4609a8652f968aebc6ac18d739198398",
+      "files": [
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "sha256": "27d51776cef1811b9ab53a388874aec070c3fb2a7070d6ec8f0f4f6dba7d8398"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "5a1e58b8e0d4c76641e76379f1a522b6de7f01888a23ca11cf282588d0a0a3a9"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "sha256": "6b6d7fea95dce765c5b2129cf7992de77bc8e35a1ab898806cc5a49a683c5862"
+        }
+      ],
+      "description": "Register the explicit protected agent capability route in the active inventory and update both exact route-count assertions. Exercise the existing 30s selected-story timeout explicitly in its fixture and assert the documented504 timeout response; closure, deadline, no-draft and privacy assertions retained. No production implementation or native package change.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "household-worker-real-isolated-cli-import",
+      "source_commit": "26aa12370d9cc7bc8b7d68236cb9e724e2b0cd31",
+      "files": [
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "sha256": "4b28798d7304e6c4fbe2800b697fcadfc1fd1bf8e81a075e94332d6cd0342476"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "sha256": "15994dbe81b0a567f6dd171f5fbf2b259760d3d014137a641567f7a7ddfebc76"
+        }
+      ],
+      "description": "Fix the actual -I worker entry by explicitly adding its pinned sibling scripts directory before importing the unchanged story worker. Test the cold isolated CLI --help without model or runtime I/O. Same model, provider, grammar, settings and native ownership.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "local-agent-terminal-current-inspection",
+      "source_commit": "fb5163a3045613c8568cdf651faff7134b4460dc",
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_local_runtime.py",
+          "sha256": "68e298b5511dad5e93f7303befae926aab55cae502c375a1c2a9095338944d1b"
+        },
+        {
+          "path": "server/tests/security/test_local_tool_agent.py",
+          "sha256": "2b408348f13378a95cb4b505c69805d39ed78c1504110d4d6a5b77c5efd52dc5"
+        },
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "sha256": "de43b557aa374e55feaeabc48cd717839481a39159f55309c4f897bf84d9206c"
+        }
+      ],
+      "description": "Finish the read-only agent search profile once the actual model chooses inspect_current_results and that tool returns a valid current host-issued projection. Avoid redundant finish inference; preserve original deadline, authorization, schema, opaque handle validation and native reconciliation. Reject malformed terminal inspection even when an earlier search issued a valid handle.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "local-agent-monotonic-read-only-tool-progress",
+      "source_commit": "141bde5b95159d0a835b921e113b92ae32e3874a",
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_decision.py",
+          "sha256": "74c5c6ce48ccdf5a781c06b302508340c6d97cf5f915f3e5f39dae678ec5ca8b"
+        },
+        {
+          "path": "server/tests/security/test_agent_decision.py",
+          "sha256": "89674e22bff6ec9057e77ae7d39bb583b074bd6fb0b960714052853afdb5c2cb"
+        }
+      ],
+      "description": "Prevent the observed redundant identical Search call within one immutable turn. The same closed schema and decision validator expose each no-argument capability/search tool once until an outcome exists, then only inspection or finish using host-issued handles. Same prompt/model/settings/deadline/auth/source/privacy/native cleanup; a fresh user turn can search again. No timeout fallback or fabricated completion.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
     }
   ]
 }
