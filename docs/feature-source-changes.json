@@ -32093,6 +32093,24 @@
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
+    },
+    {
+      "feature": "household-worker-real-isolated-cli-import",
+      "source_commit": "26aa12370d9cc7bc8b7d68236cb9e724e2b0cd31",
+      "files": [
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "sha256": "4b28798d7304e6c4fbe2800b697fcadfc1fd1bf8e81a075e94332d6cd0342476"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "sha256": "15994dbe81b0a567f6dd171f5fbf2b259760d3d014137a641567f7a7ddfebc76"
+        }
+      ],
+      "description": "Fix the actual -I worker entry by explicitly adding its pinned sibling scripts directory before importing the unchanged story worker. Test the cold isolated CLI --help without model or runtime I/O. Same model, provider, grammar, settings and native ownership.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
     }
   ]
 }

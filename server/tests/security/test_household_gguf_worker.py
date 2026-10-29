@@ -1,5 +1,5 @@
 """Household dispatcher fixtures only; actual pinned model runs on Windows."""
-import hashlib,json,os,sys,unittest
+import hashlib,json,os,subprocess,sys,unittest
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -26,3 +26,12 @@ class HouseholdWorkerTests(unittest.TestCase):
     def test_disabled_does_not_read_exchange_or_load_backend(self):
         with self.assertRaises(worker.story.WorkerUnavailable):worker.run(self.settings,environment=self.env,backend_factory=self.factory)
         self.factory.assert_not_called();self.assertFalse(self.response.exists())
+
+class HouseholdIsolatedCLITests(unittest.TestCase):
+    def test_real_isolated_cli_help_imports_without_model_or_runtime(self):
+        # Production launch uses -I, which removes the script directory from
+        # sys.path. Execute that actual cold entry rather than an imported fixture.
+        value=subprocess.run([sys.executable,'-I','-B',str(SCRIPTS/'household_gguf_worker.py'),'--help'],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=10)
+        self.assertEqual(value.returncode,0,value.stderr.decode('utf-8','replace'))
+        self.assertIn(b'--model-file',value.stdout)
+        self.assertNotIn(b'Traceback',value.stderr)

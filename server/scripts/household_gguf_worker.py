@@ -11,7 +11,7 @@ import sys
 
 sys.dont_write_bytecode = True
 SERVER = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(SERVER / 'backend'))
+sys.path[:0] = [str(SERVER / 'backend'), str(SERVER / 'scripts')]
 
 import selected_story_gguf_worker as story
 _STORY_RUN = story.run
