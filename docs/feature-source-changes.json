@@ -32172,6 +32172,57 @@
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
+    },
+    {
+      "feature": "jude-conversation-voice-review-recovery-20261029",
+      "source_base": "837990253934c12614158b8f3c80fe89d1d6db67",
+      "source_commit": "f49d3eaa7342c349426e1b75d7c9a0e783ec3036",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "b0ee798ee6c413188a20abca433e2c6295307b0f6ace368ee3500e50b73608cf",
+          "sha256": "fa6f4f04aac4d618333e1151fb38ad7ad014500dc05ef6d052679f19fa70f8a4"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "a46c224eaf504b78e72891195d0d0eb15d1c6bd3de829de50bab69661fad3488",
+          "sha256": "c0eb8be3ef7a4d14feda9e95cd7d6f89826f963ffeb85640ffedb43e401bc194"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "014109950d6c53963ee48a65cdcea40a097e1bf4225c923e62b9b1ce9156dd12",
+          "sha256": "4e09337e6f7880c2b60232c6adae4e9c73de466daeef28446498ef9a8a2340cd"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "fa2ba2095b743c9a824993cc669075e9631af176787f992246b11ebbbe1b9f9d",
+          "sha256": "a939b92123b02ee649167cf09931617eeb6e898115ef684c502d4bfaba6875b6"
+        },
+        {
+          "path": "server/tests/security/test_assistant_private_workspace_v3.cjs",
+          "before_sha256": "dd8d85d7b48bd27af4a6e0000f6f6c856cf1950ea7f4bcab85c73d8fc4a9c8c4",
+          "sha256": "a1d8e8f709c3a8d5700d15f1bd4dc83491897f8f29e3f3750f4fad45bb15b341"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "dcf6f445454280a98d86d0c53c906b6c034283c43b0ce6a6ce3b22b01b117305",
+          "sha256": "2890d90dcc53b666c0589c5b2a499fc392ac98071e509ee1e14403223ca2c32a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "c24ba52c751951805add84b5f844f9d75c38695bf9cdb7458e100d962f34dc8f",
+          "sha256": "29f2c9277938d4d85ec5c6760318647b2e7139cca7380567a1b7e479c6d6b9d6"
+        }
+      ],
+      "notes": [
+        "Unify the Jude conversation workspace typography, compact controls, voice presence and composer; explicit foreground Start/Pause/End remains unchanged.",
+        "Display recognized speech while a turn is pending; preserve unsent text and require receipt recovery for uncertain dispatched requests.",
+        "Explicitly checked successful transcription receipts can restore bounded same-account/library/generation text for review; end the owned voice loop, keep the microphone off and require Use transcript plus Send.",
+        "Link private Search turns to the succeeded ASR receipt through a validated optional parent request header; ordinary typed turns and JSON bodies remain unchanged.",
+        "No backend/provider/model/schema/permissions or production activation change in this source entry; GitHub Actions remains disabled."
+      ]
     }
   ]
 }
