@@ -92,7 +92,7 @@ const turns=()=>requests.filter(item=>item.method==='POST'&&/\/threads\/[0-9a-f-
   await page.locator('#assistant-text').fill('find photos containing beach');
   await page.screenshot({path:path.join(artifacts,'agent-control-phone-zh-390-150.png'),fullPage:false});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
-  assert.match(await page.locator('#assistant-agent-send').innerText(),/AI 查找/);
+  assert.match(await page.locator('#assistant-agent-send').innerText(),/小贾查找/);
 
   // A real response is returned by the protected ASGI route, then deliberately
   // dropped at the browser boundary to exercise same-request GET recovery.
@@ -126,7 +126,7 @@ const turns=()=>requests.filter(item=>item.method==='POST'&&/\/threads\/[0-9a-f-
   await page.locator('#assistant-text').fill('find photos about beach');
   await page.locator('#assistant-agent-send').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(artifacts,'agent-control-phone-en-390-150.png'),fullPage:false});
-  assert.match(await page.locator('#assistant-agent-send').innerText(),/Ask local AI/);
+  assert.match(await page.locator('#assistant-agent-send').innerText(),/Ask Jude/);
   assert.equal(await page.locator('#assistant-agent-send').isDisabled(),false);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   checkpoint('Chinese and English 390px layouts at 150% text retain the explicit AI control without horizontal overflow');

@@ -32053,6 +32053,24 @@
       "routes_added": true,
       "schema_changed": false,
       "native_qualification_created": false
+    },
+    {
+      "feature": "bilingual-assistant-name-jude-xiaojia",
+      "source_commit": "b1fb3ffafb3fcfed4a4f38b01d09d5a163197f6a",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "b0ee798ee6c413188a20abca433e2c6295307b0f6ace368ee3500e50b73608cf"
+        },
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "sha256": "7584b50ffb7a3dbe3cdf997506a6702dbd0574bef4a437700834be8764314eb0"
+        }
+      ],
+      "description": "Name the assistant Jude in English and 小贾 in Chinese, including its explicit agent action. Behavior unchanged.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
     }
   ]
 }
