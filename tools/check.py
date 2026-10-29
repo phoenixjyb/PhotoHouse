@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 API_TESTS = (
     "test_inference_admission.py", "test_host_inference_admission.py", "test_windows_story_capacity.py",
     "test_assistant_agent_tools.py", "test_assistant_agent_workspace.py",
+    "test_agent_decision.py", "test_local_tool_agent.py", "test_household_gguf_worker.py", "test_household_agent_factory.py",
     "test_discovery_text_validation.py", "test_discovery_chunk_accounting.py",
     "test_refreshing_people.py", "test_refreshing_people_http.py",
     "test_reviewed_people_readiness.py",
@@ -140,6 +141,7 @@ ANDROID_TASKS = (
     ":connected:lintDebug", ":tv:lintDebug", ":connected:assembleDebug", ":tv:assembleDebug",
 )
 WEB_TESTS = (
+    "server/tests/security/test_local_agent_browser.cjs",
     "server/tests/security/test_story_draft_preparation_browser.cjs",
     "server/tests/security/test_people_review_browser.cjs",
     "server/tests/ui/voice-session-control.test.mjs",
@@ -148,6 +150,7 @@ WEB_TESTS = (
     "server/tests/ui/assistant-scene-workspace.test.mjs",
     "server/tests/security/test_assistant_scene_browser.cjs",
     "server/tests/security/test_assistant_private_workspace_v3.cjs",
+    "server/tests/security/test_private_assistant_agent.cjs",
     "server/tests/security/test_assistant_intent_browser.cjs",
     "server/tests/security/test_assistant_workspace_browser.cjs",
     "server/tests/security/test_assistant_search_browser.cjs",

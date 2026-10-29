@@ -36,6 +36,8 @@
   Object.assign(words.en,{libraryTools:'Explore this library'});
   Object.assign(words.zh,{libraryTools:'浏览相册库'});
   Object.assign(words.en,{assistantTitle:'PhotoHouse Memory Assistant',assistantHelp:'Search this library only. Add details to refine; matching photos are shown before you open one. After a search, ask “describe these results” for a brief overview. To request a specific item, say “open asset ID 123”. Recognized text, submitted commands, and processing status are kept for 30 days. Recordings are transient. This is separate from saved family notes.',assistantPrompt:'What would you like to find?',assistantSend:'Find',assistantClear:'Clear',assistantCancel:'Cancel request',assistantCancelled:'Request canceled.',assistantWorking:'Looking in this library…',assistantError:'The assistant could not complete that request. Try again.',assistantDenied:'Your access could not be confirmed. Sign in again or contact the library owner.',assistantConflict:'The library changed. Clear this search and try again.',assistantLimited:'Too many requests. Please wait and try again.',assistantUnavailable:'The assistant is temporarily unavailable. Please try again later.',assistantInvalid:'The reply could not be safely displayed. Please try again.',assistantNoResults:'No matching photos were found.',assistantOpen:'Open photo',assistantUnsupported:'This request is not supported yet.'});
+  Object.assign(words.zh,{assistantAgentSend:'AI 查找'});
+  Object.assign(words.en,{assistantAgentSend:'Ask local AI'});
   Object.assign(words.zh,{assistantTitle:'拾光助手',assistantHelp:'仅在当前相册库中查找。你可以继续补充条件；打开照片前会显示匹配结果。搜索后，可以问“介绍这些结果”来听简要概览。需要指定项目时，可以说“打开编号 123”。识别文本、发送的命令和处理状态将保留 30 天。录音仅临时使用，与保存的家人故事分开。',assistantPrompt:'你想找什么？',assistantSend:'查找',assistantClear:'清空',assistantCancel:'取消请求',assistantCancelled:'已取消请求。',assistantWorking:'正在这个相册库中查找…',assistantError:'暂时无法完成查找，请重试。',assistantDenied:'无法确认你的访问权限，请重新登录或联系相册主人。',assistantConflict:'相册库信息已更新，请清空后重新查找。',assistantLimited:'请求过于频繁，请稍后再试。',assistantUnavailable:'助手暂时不可用，请稍后重试。',assistantInvalid:'无法安全显示这条回复，请重试。',assistantNoResults:'没有找到匹配的照片。',assistantOpen:'打开照片',assistantUnsupported:'暂不支持这个请求。'});
   Object.assign(words.en,{assistantSearchPerspective:'Search perspective: {label}',assistantSearchPerspectiveDefault:'Search perspective: current library',assistantSearchSummaryTitle:'Search conditions',assistantSearchPeopleAny:'Any of: {labels}',assistantSearchPeopleAll:'Together in the photo: {labels}',assistantSearchText:'Text: {text}',assistantSearchDescriptive:'Scene: {surface}',assistantSearchDate:'Capture date: {range}',assistantSearchMedia:'Media: {media}',assistantSearchTags:'Tags: {labels}',assistantSearchLocations:'Places: {labels}',assistantReasonMemory:'Saved photo memory match',assistantReasonEdited:'Edited caption match',assistantReasonGenerated:'AI-generated caption match',assistantReasonPerson:'Person: {label}',assistantReasonDate:'Capture date match: {date}'});
   Object.assign(words.zh,{assistantSearchPerspective:'检索视角：{label}',assistantSearchPerspectiveDefault:'检索视角：当前相册库',assistantSearchSummaryTitle:'检索条件',assistantSearchPeopleAny:'任一人物：{labels}',assistantSearchPeopleAll:'同时出现：{labels}',assistantSearchText:'文字内容：{text}',assistantSearchDescriptive:'画面描述：{surface}',assistantSearchDate:'拍摄日期：{range}',assistantSearchMedia:'媒体类型：{media}',assistantSearchTags:'标签：{labels}',assistantSearchLocations:'地点：{labels}',assistantReasonMemory:'匹配已保存的照片回忆',assistantReasonEdited:'匹配已编辑的照片说明',assistantReasonGenerated:'匹配 AI 生成的照片说明',assistantReasonPerson:'人物：{label}',assistantReasonDate:'拍摄日期匹配：{date}'});
@@ -770,6 +772,7 @@
     const blocked=privateUnavailable||privateSnapshot?.scenePageActive===true||privateSnapshot?.scenePageLoading===true||privateAssistantBusy||!!privatePending||assistantState.busy||!!assistantState.pendingTurn||!!recoveryPending||state.locked||assistantState.captureStarting||!!assistantState.capture||assistantState.transcribing||assistantState.transcriptReviewPending;
     $('assistant-text').disabled=sessionOwnsVoice;
     $('assistant-send').disabled=blocked||sessionOwnsVoice||!$('assistant-text').value.trim();
+    if($('assistant-agent-send')){$('assistant-agent-send').hidden=privateSnapshot?.agentAvailable!==true;$('assistant-agent-send').disabled=blocked||sessionOwnsVoice||!$('assistant-text').value.trim();}
     $('assistant-mic').disabled=blocked||restorePending||sessionOwnsVoice;
     $('assistant-voice-session').hidden=!assistantState.transcribe;
     $('assistant-workspace-footer').hidden=$('assistant-workspace-dialog').open&&(sessionOwnsVoice||$('assistant-form').hidden||$('assistant-scene').open&&!$('assistant-scene').hidden);
@@ -1668,7 +1671,7 @@
       if(item&&turn.kind==='open'&&!stale(epoch)&&!state.locked){if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();reportAssistantOutcome(assistantState.turnReceipt,'open_requested');void openAsset(item,{sequence:turn.items,origin:'assistant'});}
     }
   }
-  async function submitAssistant(event,overrideText=null,voiceToken=null) {
+  async function submitAssistant(event,overrideText=null,voiceToken=null,agent=false) {
     event?.preventDefault();
     if(Number.isSafeInteger(voiceToken)&&assistantRestoreGate)return;
     if(Number.isSafeInteger(voiceToken)&&!currentAssistantVoice(voiceToken))return;
@@ -1678,10 +1681,11 @@
     if(new TextEncoder().encode(text).length>1024){$('assistant-status').textContent=t('assistantTextTooLong');return;}
     const privateScope=privateAssistant?.state(),privateRoute=!!(privateScope?.activeThread||privateScope?.capabilities?.server_owned_turns);
     if(privateRoute&&privateScope?.capabilities?.server_owned_turns!==true){$('assistant-status').textContent=t('assistantPrivateSearchOffline');return;}
+    if(agent&&(!privateRoute||privateScope?.agentAvailable!==true)){$('assistant-status').textContent=t('assistantPrivateSearchOffline');return;}
     const send=$('assistant-send'),composer=$('assistant-text');
     if(event?.submitter===send&&document.activeElement===send)composer.focus({preventScroll:true});
     if(privateRoute){
-      await submitPrivateAssistant(text,voiceToken);return;
+      await submitPrivateAssistant(text,voiceToken,agent);return;
     }
     stopAssistantSpeech();
     const epoch=state.generation,binding=Object.freeze({library:String(state.library),account:String(state.profile.account_id),generation:epoch});
@@ -1871,6 +1875,7 @@
     if(!privateAssistant)return;
     try{const capabilities=await privateAssistant.capabilities();if(stale(epoch)||!capabilities.available||!capabilities.threads)return;await privateAssistant.list();await privateAssistant.readPreferences();
       if(!stale(epoch))await privateAssistant.sceneCapabilities();
+      if(!stale(epoch)&&typeof privateAssistant.agentCapabilities==='function')await privateAssistant.agentCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.scenePageCapabilities==='function')await privateAssistant.scenePageCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryCapabilities==='function')await privateAssistant.savedMemoryCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryActionsCapabilities==='function')await privateAssistant.savedMemoryActionsCapabilities();
@@ -1957,7 +1962,7 @@
     });
   }
 
-  async function submitPrivateAssistant(text,voiceToken){
+  async function submitPrivateAssistant(text,voiceToken,agent=false){
     const epoch=state.generation,binding=Object.freeze({account:String(state.profile.account_id),library:String(state.library),generation:epoch});
     let voiceMemoryAction=null;
     if(privateAssistantBusy)return;
@@ -1966,7 +1971,7 @@
     try{
       privateAssistant.setDraft(text);
       if(!privateAssistant.state().activeThread)await privateAssistant.create();
-      const envelope=await privateAssistant.send(text);
+      const envelope=await privateAssistant.send(text,{agent});
       if(!assistantBindingCurrent(binding))return;
       if(envelope.status==='completed'){
         $('assistant-text').value=privateAssistant.state().draft;
@@ -4262,6 +4267,7 @@
   $('assistant-pending-check').addEventListener('click',()=>{void checkAssistantReceipt();});
   $('assistant-pending-ack').addEventListener('click',()=>acknowledgeAssistantPending(false));
   $('assistant-pending-restore').addEventListener('click',()=>acknowledgeAssistantPending(true));
+  $('assistant-agent-send')?.addEventListener('click',()=>{if($('assistant-agent-send').disabled)return;void submitAssistant(null,null,null,true);});
   $('assistant-text').addEventListener('input',()=>{if(privateAssistant?.state().capabilities?.available&&privateAssistant.state().capabilities?.threads){try{privateAssistant.setDraft($('assistant-text').value);}catch{}}syncAssistantControls();});
   $('assistant-clear').addEventListener('click',()=>{if(state.locked)return;if(privateAssistant?.state().capabilities?.available&&privateAssistant.state().capabilities?.threads){if(privateAssistant.state().pendingTurn||privateAssistant.state().pendingCreation){$('assistant-private-status').textContent=t('assistantPrivateUnknown');return;}void newPrivateConversation();return;}if(assistantState.receipt?.recovered&&!assistantState.receipt.recoveryCleared){acknowledgeAssistantRecovery();return;}if(assistantState.pendingTurn){$('assistant-text').value='';syncAssistantControls();return;}clearAssistantRecoveryPointer();resetAssistant();});
   $('assistant-cancel').addEventListener('click',()=>{if(!assistantState.busy)return;if(assistantState.pendingTurn){assistantState.pendingTurn.receipt.cancelled=true;renderAssistantPending();}$('assistant-status').textContent=t('assistantPendingCancelled');assistantState.controller?.abort();});

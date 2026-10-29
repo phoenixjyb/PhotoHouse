@@ -31959,6 +31959,100 @@
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
+    },
+    {
+      "feature": "owned-local-model-media-search-agent",
+      "source_commit": "0ce2d8b016a25c69e28e905eef0567c36aac7bc7",
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_decision.py",
+          "sha256": "73e8003374c472222bab76ae01e94be5b9be6383735de4097906e2507df628f8"
+        },
+        {
+          "path": "server/backend/app/access/agent_local_runtime.py",
+          "sha256": "1426888b43ca2e203dcb9773099025d49c441932b2cbe8caa0a312e9112f1363"
+        },
+        {
+          "path": "server/backend/app/access/agent_process.py",
+          "sha256": "13f092640c166b848ce5c56db30a7089803d374758ad28c66e055f919d62747d"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "sha256": "2611abc6444d5e83e51c56c15cbd31adca164be932e77d81c76fbad6a04bf4a2"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "sha256": "0d260c3219ffa832b5159a4a1356d706e3ebcbd1a188691dce7ac012f102deb2"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "d56551b2d1dcb2134b046732d12b61bab326cd78c4be4d0c4f20c31aa71f49dc"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "sha256": "fb09316f1e285b8f31366c9db242b5eaca9fc8a117a84df8384619a131aa7ee0"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "5eda716ae7ffd2919134d34764d1f8a8fb00054632ef6d8a41aa78c1282797bc"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "sha256": "a46c224eaf504b78e72891195d0d0eb15d1c6bd3de829de50bab69661fad3488"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "sha256": "014109950d6c53963ee48a65cdcea40a097e1bf4225c923e62b9b1ce9156dd12"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "90fcb22ad1e2dd3f35f221d0ca4614df2bb77e0ce86c4db291be18f07af331b7"
+        },
+        {
+          "path": "server/scripts/household_agent_factory.py",
+          "sha256": "8810128cb3c6f2f67b9c240ef6eb0c920912d0f0f4089ce03f1a9c63d13e818b"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "sha256": "2dea94527cd50a73d99d3b284c32dd25e285fc0d93ac6b1e0f27140f74c11edf"
+        },
+        {
+          "path": "server/tests/security/agent_browser_bridge.py",
+          "sha256": "4accf7161d88f6a86d4bf237ca0ccedf46bf612950f67d9dd7ac70724b20dd36"
+        },
+        {
+          "path": "server/tests/security/test_agent_decision.py",
+          "sha256": "b8ebd498206299a106c31a3c7d25d6a636f722824bbe381939145397b6cc3d74"
+        },
+        {
+          "path": "server/tests/security/test_household_agent_factory.py",
+          "sha256": "cf5d676f0f24127b6962a30f8f1182d4b5caabc6fbd84686e373d11f4654b177"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "sha256": "8649afbb5e44e62a16df8ae1f7b0bb8cfe803f68f45579cc4905ff8cd9bb8535"
+        },
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "sha256": "5b0838e779c236a87066afc1a46f94d6bed6ff0c8bffff675d321db2cbe7730b"
+        },
+        {
+          "path": "server/tests/security/test_local_tool_agent.py",
+          "sha256": "2bd90597771e8182446b7ac5d9ea709706eca7dda3bc2e74ebe502a84c89028f"
+        },
+        {
+          "path": "server/tests/security/test_private_assistant_agent.cjs",
+          "sha256": "1dbb52172ac2cd43c4ec2da081238b64346e8652f8b849022f5af50cc6df00a9"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "a789709e64d739b02a63f954dda6d412036d9f2a43f306a346a09f6f4a72a756"
+        }
+      ],
+      "description": "Explicit local-model PH-A1 media-search runtime with closed decision grammar and existing owned native process/host admission, same pinned story model and shared CPU claim. Optional protected capability route and separate bilingual Web agent action; normal Search remains unchanged. Agent tools retain canonical interpretation, authorization, opaque outcomes and recoverable same-request results. Source/local tests only; real Windows generation and activation are separate delivery evidence.",
+      "routes_added": true,
+      "schema_changed": false,
+      "native_qualification_created": false
     }
   ]
 }
