@@ -32071,6 +32071,28 @@
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
+    },
+    {
+      "feature": "agent-route-inventory-and-explicit-timeout-fixture",
+      "source_commit": "7acfcd8a4609a8652f968aebc6ac18d739198398",
+      "files": [
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "sha256": "27d51776cef1811b9ab53a388874aec070c3fb2a7070d6ec8f0f4f6dba7d8398"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "5a1e58b8e0d4c76641e76379f1a522b6de7f01888a23ca11cf282588d0a0a3a9"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "sha256": "6b6d7fea95dce765c5b2129cf7992de77bc8e35a1ab898806cc5a49a683c5862"
+        }
+      ],
+      "description": "Register the explicit protected agent capability route in the active inventory and update both exact route-count assertions. Exercise the existing 30s selected-story timeout explicitly in its fixture and assert the documented504 timeout response; closure, deadline, no-draft and privacy assertions retained. No production implementation or native package change.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
     }
   ]
 }

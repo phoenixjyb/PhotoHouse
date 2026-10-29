@@ -505,6 +505,9 @@ class SelectedStoryRuntimeProcessIntegrationTests(unittest.IsolatedAsyncioTestCa
         before = self.saved_story_count()
         with patch('app.access.memory_jobs.maintenance', return_value=None):
             async with self.app.router.lifespan_context(self.app):
+                # This route fixture uses the production DraftOperations wiring,
+                # whose default is 60s. Exercise the named 30s deadline here.
+                self.app.state.selected_story_operations.work_seconds = 30
                 async with await self.client() as client:
                     started=time.monotonic()
                     pending=asyncio.create_task(self.prepare_request(client))
@@ -515,7 +518,7 @@ class SelectedStoryRuntimeProcessIntegrationTests(unittest.IsolatedAsyncioTestCa
                     elapsed=time.monotonic()-started
                     self.assertGreaterEqual(elapsed,29)
                     self.assertLess(elapsed,38)
-                    self.assertEqual(response.status_code,503,response.text)
+                    self.assertEqual(response.status_code,504,response.text)
                     self.assertNotIn('Beans together',response.text)
                     self.assertNotIn(str(self.root),response.text)
         self.assertEqual(self.saved_story_count(),before)
