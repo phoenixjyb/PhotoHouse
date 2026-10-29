@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -107,6 +108,12 @@ internal class Words(val zh: Boolean) {
         else -> t("Library unavailable", "资料库不可用")
     }
 }
+
+internal fun pagePhotoStackNotice(scope: String?, groups: List<PhotoStackGroup>?, words: Words): String? =
+    if (scope == "page" && !groups.isNullOrEmpty()) words.t(
+        "Similar photos on this page. Cover and separation choices reset when you refresh or change pages. All originals are kept.",
+        "这是本页照片的建议分组。封面和单独显示设置只在本次查看中生效，刷新或翻页后会重置。原照片都会保留。",
+    ) else null
 
 private enum class UploadDestinationAction { DIRECT, BATCH }
 private data class AnnotationWavSelection(
@@ -1435,6 +1442,13 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     }
                                     state.gallery?.let { gallery ->
                                         if (gallery.items.isEmpty()) item { Text(t("No matching items on this page", "此页暂无符合条件的内容")) }
+                                        pagePhotoStackNotice(state.photoStackScope, state.photoStacks, words)?.let { notice ->
+                                            item {
+                                                Text(notice, style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.testTag("photo-stack-page-notice"))
+                                            }
+                                        }
                                         if (state.photoStackScope == "library") item {
                                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                                 Text(t("Cover and separate choices are saved for your account", "封面和单独显示设置已保存到你的账户"),
@@ -1465,15 +1479,14 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                 Column(Modifier.padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)) {
                                                     Text(words.date(asset), style = MaterialTheme.typography.titleSmall,
                                                         maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.SpaceBetween) {
-                                                        Text(t("${if (asset.kind == "video") "Video" else "Photo"} · No. ${asset.id}",
-                                                            "${if (asset.kind == "video") "视频" else "照片"} · 编号 ${asset.id}"),
-                                                            style = MaterialTheme.typography.labelSmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                                                        TextButton(onClick = { store.openAsset(asset) }, modifier = Modifier.testTag("details-${asset.id}")) {
-                                                            Text(t("Details", "详情"))
-                                                        }
+                                                    Text(t("${if (asset.kind == "video") "Video" else "Photo"} · No. ${asset.id}",
+                                                        "${if (asset.kind == "video") "视频" else "照片"} · 编号 ${asset.id}"),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                                                    TextButton(onClick = { store.openAsset(asset) },
+                                                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("details-${asset.id}")) {
+                                                        Text(t("Details", "详情"), textAlign = TextAlign.Center,
+                                                            modifier = Modifier.fillMaxWidth().testTag("details-label-${asset.id}"))
                                                     }
                                                     stackGroups.firstOrNull { (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) == asset.id }?.let { group ->
                                                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,

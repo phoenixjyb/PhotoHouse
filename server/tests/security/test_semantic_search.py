@@ -3,8 +3,11 @@ from contextlib import closing
 from dataclasses import replace
 import hashlib
 import json
+import math
+import os
 from pathlib import Path
 import sqlite3
+import stat
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -83,6 +86,399 @@ class SemanticSearchTests(unittest.TestCase):
         return self.client.post(BASE, headers={'Authorization': 'Bearer ' + token},
                                 json={'query': query, 'filters': filters or {}, **kwargs})
 
+    def enable_request_source_snapshot(self):
+        from app.access.semantic_request_snapshot import NativeSnapshotDatabase
+        from app.access.transport import AccessRuntime
+        access = AccessRuntime(NativeSnapshotDatabase(self.fixture.database.resolve()),
+            self.fixture.access.web_origin, clock=self.fixture.access.clock)
+        discovery = replace(self.fixture.discovery_runtime, access=access)
+        self.runtime = replace(self.runtime, discovery=discovery, request_source_snapshot=True)
+        self.client.app.state.access_runtime = access
+        self.client.app.state.discovery_runtime = discovery
+        self.client.app.state.semantic_search_runtime = self.runtime
+
+    def _query_with_caption_digest_count(self, *, query, filters, force_eager=False, **request_kwargs):
+        from app.access import semantic_search
+
+        with closing(sqlite3.connect(self.fixture.database)) as db:
+            caption_ids = {row[0] for row in db.execute('SELECT id FROM captions')}
+        original_digest = d.digest
+        caption_digests = []
+
+        def counted(value):
+            if (type(value) is tuple and len(value) == 7 and value[0] in caption_ids):
+                caption_digests.append(value[0])
+            return original_digest(value)
+
+        original_reader = semantic_search.SemanticSearchReads
+
+        def eager_reader(*args, **kwargs):
+            # The eager comparison is the general facts path, so keep its
+            # runtime mode coherent with its full text projection.
+            kwargs['text_projection_required'] = True
+            kwargs['media_only_facts'] = False
+            return original_reader(*args, **kwargs)
+
+        with patch('app.access.discovery.digest', side_effect=counted):
+            if force_eager:
+                with patch.object(semantic_search, 'SemanticSearchReads', side_effect=eager_reader):
+                    response = self.query(query=query, filters=filters, **request_kwargs)
+            else:
+                response = self.query(query=query, filters=filters, **request_kwargs)
+        return response, caption_digests
+
+    def _assistant_reader(self, *, cache=None, text_projection_required=True):
+        from app.access.assistant_search import AssistantSearchReads
+
+        with closing(sqlite3.connect(self.fixture.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            access = AccessService(db, clock=lambda: NOW)
+            return AssistantSearchReads(access, self.fixture.discovery_runtime.provider,
+                d.ReadBudget(), facts_cache=cache,
+                text_projection_required=text_projection_required)
+
+    def test_projection_cache_is_mode_bound_and_non_boolean_modes_are_invalid(self):
+        cache = {}
+        reader = self._assistant_reader(cache=cache, text_projection_required=False)
+        calls = []
+
+        def derive(*_args):
+            calls.append(reader._text_projection_required)
+            return {'derived_mode': reader._text_projection_required}
+
+        reader._facts = derive
+        minimal = reader._prepared_facts(None, None, None, None, lambda: None, 'same-binding')
+        reader._text_projection_required = True
+        eager = reader._prepared_facts(None, None, None, None, lambda: None, 'same-binding')
+        self.assertEqual(calls, [False, True])
+        self.assertEqual(minimal, {'derived_mode': False})
+        self.assertEqual(eager, {'derived_mode': True})
+        self.assertIs(cache['text_projection_required'], True)
+
+        from app.access.assistant_search import AssistantSearchReads
+        with closing(sqlite3.connect(self.fixture.database)) as db:
+            db.execute('PRAGMA foreign_keys=ON')
+            with self.assertRaises(d.DiscoveryInvalid):
+                AssistantSearchReads(AccessService(db, clock=lambda: NOW),
+                    self.fixture.discovery_runtime.provider, d.ReadBudget(),
+                    text_projection_required=1)
+
+    def test_projection_mode_change_during_derivation_clears_cache_and_refuses(self):
+        cache = {'binding': 'previous', 'text_projection_required': False, 'facts': 'old'}
+        reader = self._assistant_reader(cache=cache, text_projection_required=False)
+
+        def switch_mode(*_args):
+            reader._text_projection_required = True
+            return 'partially-derived'
+
+        reader._facts = switch_mode
+        with self.assertRaises(d.DiscoveryUnavailable):
+            reader._prepared_facts(None, None, None, None, lambda: None, 'new-binding')
+        self.assertEqual(cache, {})
+
+        minimal = self._assistant_reader(text_projection_required=False)
+        with self.assertRaises(d.DiscoveryUnavailable):
+            minimal._content_match({'text_sources': []}, {'text': 'family beach'})
+
+    def test_cancellation_is_checked_before_cached_facts_are_reused(self):
+        cache = {'binding': 'same-binding', 'text_projection_required': False,
+                 'facts': 'cached'}
+        reader = self._assistant_reader(cache=cache, text_projection_required=False)
+        reader._facts = lambda *_args: self.fail('cache miss unexpectedly derived facts')
+
+        def cancelled():
+            raise d.DiscoveryCancelled()
+
+        with self.assertRaises(d.DiscoveryCancelled):
+            reader._prepared_facts(None, None, None, None, cancelled, 'same-binding')
+        self.assertEqual(cache['facts'], 'cached')
+
+    def test_minimal_text_projection_matches_eager_semantic_results(self):
+        # These requests exercise English, Chinese, mixed-language queries and
+        # hard filters. With no literal text filter, the semantic reader can
+        # skip caption/note fact derivation while preserving the same result.
+        cases = (
+            ('a child flying a kite', {}),
+            ('海边的孩子', {'date': {'from': '2032-09-01', 'to': '2032-09-01'}}),
+            ('Family beach 家庭海边', {'people': {'ids': ['301'], 'match': 'all'}}),
+            ('family beach', {'tags': {'ids': ['501'], 'match': 'all'}}),
+            ('孩子在海边', {'locations': ['601']}),
+        )
+        for query, filters in cases:
+            with self.subTest(query=query, filters=filters):
+                minimal, minimal_caption_digests = self._query_with_caption_digest_count(
+                    query=query, filters=filters)
+                eager, eager_caption_digests = self._query_with_caption_digest_count(
+                    query=query, filters=filters, force_eager=True)
+                self.assertEqual(minimal.status_code, 200, minimal.text)
+                self.assertEqual(eager.status_code, 200, eager.text)
+                self.assertEqual(minimal.json(), eager.json())
+                self.assertEqual(minimal_caption_digests, [])
+                self.assertGreater(len(eager_caption_digests), 0)
+
+    def test_minimal_projection_preserves_pagination_binding_and_fingerprint(self):
+        first_minimal, _ = self._query_with_caption_digest_count(
+            query='scene', filters={}, page_size=1)
+        first_eager, _ = self._query_with_caption_digest_count(
+            query='scene', filters={}, force_eager=True, page_size=1)
+        self.assertEqual(first_minimal.status_code, 200, first_minimal.text)
+        self.assertEqual(first_minimal.json(), first_eager.json())
+        page_args = {'page': 2, 'page_size': 1,
+                     'binding': first_minimal.json()['binding'],
+                     'fingerprint': first_minimal.json()['fingerprint']}
+        page_minimal, _ = self._query_with_caption_digest_count(
+            query='scene', filters={}, **page_args)
+        page_eager, _ = self._query_with_caption_digest_count(
+            query='scene', filters={}, force_eager=True, **page_args)
+        self.assertEqual(page_minimal.status_code, 200, page_minimal.text)
+        self.assertEqual(page_minimal.json(), page_eager.json())
+        self.assertEqual([item['id'] for item in page_minimal.json()['items']], ['101'])
+
+    def test_native_request_snapshot_replays_only_final_projection_and_keeps_page2(self):
+        from app.access.semantic_request_snapshot import NativeSnapshotDatabase, RequestSnapshotConnection
+        from app.access.transport import AccessRuntime
+        source_sql = ("SELECT a.id,CASE WHEN length(CAST(a.mime AS BLOB))<=256 THEN a.mime END,"
+            "a.width,a.height,a.duration_sec,CASE WHEN length(CAST(a.taken_at AS BLOB))<=64 "
+            "THEN a.taken_at END,length(CAST(a.taken_at AS BLOB)) FROM assets a JOIN "
+            "access_asset_libraries m ON m.asset_id=a.id WHERE m.library_id=? AND "
+            "(a.status='active' OR a.status IS NULL) ORDER BY a.id")
+        access = AccessRuntime(NativeSnapshotDatabase(self.fixture.database.resolve()),
+            self.fixture.access.web_origin, clock=self.fixture.access.clock)
+        discovery = replace(self.fixture.discovery_runtime, access=access)
+        runtime = replace(self.runtime, discovery=discovery, request_source_snapshot=True)
+        self.client.app.state.access_runtime = access
+        self.client.app.state.discovery_runtime = discovery
+        self.client.app.state.semantic_search_runtime = runtime
+        source_sql_calls = []
+        original_execute = RequestSnapshotConnection.execute
+        def counted(connection, sql, *args):
+            if sql == source_sql:
+                source_sql_calls.append(sql)
+            return original_execute(connection, sql, *args)
+        with patch.object(RequestSnapshotConnection, 'execute', counted):
+            first_response = self.query(page_size=1)
+            self.assertEqual(first_response.status_code, 200, first_response.text)
+            first = first_response.json()
+            second = self.query(page=2, page_size=1, binding=first['binding'],
+                fingerprint=first['fingerprint'])
+            self.assertEqual(second.status_code, 200, second.text)
+            self.assertEqual([item['id'] for item in second.json()['items']], ['101'])
+            self.assertEqual(len(source_sql_calls), 2)
+            changed = self.query(query='different query', page=2, page_size=1,
+                binding=first['binding'], fingerprint=first['fingerprint'])
+            self.assertEqual(changed.status_code, 409, changed.text)
+            self.assertNotIn('items', changed.json())
+
+    def test_post_replay_path_replacement_fails_closed_without_old_handle_fallback(self):
+        from app.access.semantic_request_snapshot import RequestSnapshotConnection, RequestSourceSnapshot
+        self.enable_request_source_snapshot()
+        path = self.fixture.database.resolve()
+        replacement = path.with_name('replacement.sqlite')
+        moved = path.with_name('opened-old.sqlite')
+        with closing(sqlite3.connect(path)) as source, closing(sqlite3.connect(replacement)) as target:
+            source.backup(target)
+        with closing(sqlite3.connect(replacement)) as db, db:
+            db.execute("UPDATE assets SET taken_at='2040-01-01' WHERE id=101")
+        original_commit = RequestSnapshotConnection.commit
+        original_bind = RequestSourceSnapshot.bind
+        original_read = RequestSourceSnapshot.read
+        source_connections = set()
+        state = {'commits': 0, 'replay': False, 'replaced': False}
+
+        def bind(snapshot, connection):
+            source_connections.add(id(connection))
+            return original_bind(snapshot, connection)
+
+        def read(snapshot, *args, **kwargs):
+            result = original_read(snapshot, *args, **kwargs)
+            state['replay'] = state['replay'] or snapshot.replay_used
+            return result
+
+        def commit(connection):
+            result = original_commit(connection)
+            if id(connection) in source_connections:
+                state['commits'] += 1
+                if state['commits'] == 2 and not state['replaced']:
+                    os.replace(path, moved)
+                    os.replace(replacement, path)
+                    state['replaced'] = True
+            return result
+
+        with patch.object(RequestSourceSnapshot, 'bind', bind), \
+                patch.object(RequestSourceSnapshot, 'read', read), \
+                patch.object(RequestSnapshotConnection, 'commit', commit):
+            response = self.query()
+        self.assertTrue(state['replay'])
+        self.assertTrue(state['replaced'])
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
+        with closing(sqlite3.connect(path)) as db:
+            self.assertEqual(db.execute(
+                "SELECT taken_at FROM assets WHERE id=101").fetchone(), ('2040-01-01',))
+
+    def test_post_replay_environment_failure_cannot_mask_path_replacement(self):
+        from app.access.semantic_request_snapshot import RequestSnapshotConnection, RequestSourceSnapshot
+        self.enable_request_source_snapshot()
+        path = self.fixture.database.resolve()
+        replacement = path.with_name('replacement-unsupported.sqlite')
+        moved = path.with_name('opened-old-unsupported.sqlite')
+        with closing(sqlite3.connect(path)) as source, closing(sqlite3.connect(replacement)) as target:
+            source.backup(target)
+        with closing(sqlite3.connect(replacement)) as db, db:
+            db.execute("UPDATE assets SET taken_at='2041-01-01' WHERE id=101")
+        original_commit = RequestSnapshotConnection.commit
+        original_bind = RequestSourceSnapshot.bind
+        source_connections = set()
+        state = {'commits': 0, 'replay': False, 'pragma_denied': False, 'replaced': False}
+
+        def bind(snapshot, connection):
+            source_connections.add(id(connection))
+            return original_bind(snapshot, connection)
+
+        original_read = RequestSourceSnapshot.read
+        def read(snapshot, *args, **kwargs):
+            result = original_read(snapshot, *args, **kwargs)
+            state['replay'] = state['replay'] or snapshot.replay_used
+            return result
+
+        def commit(connection):
+            result = original_commit(connection)
+            if id(connection) in source_connections:
+                state['commits'] += 1
+                if state['commits'] == 2 and not state['replaced']:
+                    try:
+                        connection.execute('PRAGMA query_only=OFF')
+                    except sqlite3.Error:
+                        state['pragma_denied'] = True
+                    os.replace(path, moved)
+                    os.replace(replacement, path)
+                    state['replaced'] = True
+            return result
+
+        with patch.object(RequestSourceSnapshot, 'bind', bind), \
+                patch.object(RequestSourceSnapshot, 'read', read), \
+                patch.object(RequestSnapshotConnection, 'commit', commit):
+            response = self.query()
+        self.assertTrue(state['replay'])
+        self.assertTrue(state['pragma_denied'])
+        self.assertTrue(state['replaced'])
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
+        with closing(sqlite3.connect(path)) as db:
+            self.assertEqual(db.execute(
+                "SELECT taken_at FROM assets WHERE id=101").fetchone(), ('2041-01-01',))
+
+    def test_successful_read_fails_closed_when_source_parent_becomes_unreadable(self):
+        if os.name != 'posix' or not hasattr(os, 'geteuid') or os.geteuid() == 0:
+            self.skipTest('requires a non-root POSIX user for real parent-directory denial')
+        self.enable_request_source_snapshot()
+        path = self.fixture.database.resolve()
+        parent = path.parent
+        original_mode = stat.S_IMODE(parent.stat().st_mode)
+        state = {'permission_denied': False}
+
+        def deny_parent_access():
+            parent.chmod(0)
+            try:
+                path.lstat()
+            except PermissionError:
+                state['permission_denied'] = True
+
+        self.during_encode = deny_parent_access
+        try:
+            response = self.query()
+        finally:
+            parent.chmod(original_mode)
+        self.assertTrue(state['permission_denied'])
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
+
+    def test_cancel_exception_after_replay_and_unrelated_commit_propagates_same_object(self):
+        from app.access.semantic_request_snapshot import NativeSnapshotDatabase, RequestSourceSnapshot
+        from app.access.transport import AccessRuntime
+        path = self.fixture.database.resolve()
+        with closing(sqlite3.connect(path)) as db, db:
+            db.execute('CREATE TABLE snapshot_unrelated_noise(value INTEGER NOT NULL)')
+            db.execute('INSERT INTO snapshot_unrelated_noise VALUES(0)')
+        access = AccessRuntime(NativeSnapshotDatabase(path), self.fixture.access.web_origin,
+            clock=self.fixture.access.clock)
+        discovery = replace(self.fixture.discovery_runtime, access=access)
+        runtime = replace(self.runtime, discovery=discovery, request_source_snapshot=True)
+        snapshot_holder = {}
+        original_bind = RequestSourceSnapshot.bind
+        def bind(snapshot, connection):
+            snapshot_holder['snapshot'] = snapshot
+            return original_bind(snapshot, connection)
+        marker = d.DiscoveryCancelled()
+        state = {'cancelled': False}
+
+        def cancelled():
+            snapshot = snapshot_holder.get('snapshot')
+            if snapshot is not None and snapshot.replay_used and not state['cancelled']:
+                state['cancelled'] = True
+                with closing(sqlite3.connect(path)) as db, db:
+                    db.execute('UPDATE snapshot_unrelated_noise SET value=value+1')
+                raise marker
+            return False
+
+        values = {'query': 'a child flying a kite', 'filters': {}, 'page': 1,
+                  'page_size': 20}
+        with patch.object(RequestSourceSnapshot, 'bind', bind):
+            with self.assertRaises(d.DiscoveryCancelled) as caught:
+                runtime.call('search', TOKEN, 'family-a', cancelled, values)
+        self.assertIs(caught.exception, marker)
+        self.assertTrue(state['cancelled'])
+        self.assertEqual(len(self.calls), 1)
+        with closing(sqlite3.connect(path)) as db:
+            self.assertEqual(db.execute('SELECT value FROM snapshot_unrelated_noise').fetchone(), (1,))
+
+    def test_literal_text_filters_keep_caption_and_note_fallback_eager(self):
+        # Explicit literal filters must still project current captions and
+        # saved notes, including note-only matches.
+        for literal, expected_id in (('Family beach', '101'), ('secret memory phrase', '101')):
+            with self.subTest(literal=literal):
+                response, caption_digests = self._query_with_caption_digest_count(
+                    query='scene', filters={'text': literal})
+                eager, _ = self._query_with_caption_digest_count(
+                    query='scene', filters={'text': literal}, force_eager=True)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(eager.status_code, 200, eager.text)
+                self.assertEqual(response.json(), eager.json())
+                self.assertGreater(len(caption_digests), 0)
+                self.assertEqual([item['id'] for item in response.json()['items']], [expected_id])
+
+    def test_caption_and_deleted_note_mutation_during_encoding_withhold_cards(self):
+        self.during_encode = lambda: self.fixture.mutate(
+            "UPDATE captions SET text='changed while encoding' WHERE id=1")
+        caption_change = self.query()
+        self.assertEqual(caption_change.status_code, 409, caption_change.text)
+        self.assertNotIn('items', caption_change.json())
+        self.during_encode = None
+        self.fixture.mutate("UPDATE captions SET text='海边 Ｆａｍｉｌｙ Beach Day 示例儿童' WHERE id=1")
+
+        self.during_encode = lambda: self.fixture.mutate(
+            "UPDATE access_stories SET deleted=1,revision=2 WHERE id='note-101'")
+        note_delete = self.query()
+        self.assertEqual(note_delete.status_code, 409, note_delete.text)
+        self.assertNotIn('items', note_delete.json())
+        self.during_encode = None
+
+    def test_ordinary_assistant_search_keeps_eager_text_projection(self):
+        with closing(sqlite3.connect(self.fixture.database)) as db:
+            caption_ids = {row[0] for row in db.execute('SELECT id FROM captions')}
+        original_digest = d.digest
+        caption_digests = []
+
+        def counted(value):
+            if type(value) is tuple and len(value) == 7 and value[0] in caption_ids:
+                caption_digests.append(value[0])
+            return original_digest(value)
+
+        with patch('app.access.discovery.digest', side_effect=counted):
+            response = self.fixture.turn('find photos containing "Family beach"')
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertGreater(len(caption_digests), 0)
+
     def test_semantic_scores_replace_literal_eligibility_only_on_the_explicit_api(self):
         seen = []
         def checked(root, artifact):
@@ -104,6 +500,109 @@ class SemanticSearchTests(unittest.TestCase):
             self.assertNotIn(private, response.text)
         literal = self.fixture.turn('find photos containing "a child flying a kite"').json()
         self.assertEqual(literal['total'], 0)
+
+    def test_score_presentation_guard_preserves_ranker_values_and_only_clamps_endpoint_roundoff(self):
+        from app.access import discovery as discovery_module
+        from app.access.semantic_encoder import JointSpaceBinding, TextVector, rank_semantic
+        from app.access.semantic_search import _SCORE_PRESENTATION_ROUNDOFF, _present_semantic_score
+        from app.access.visual_candidates import (
+            VectorRecord, VectorSpaceIdentity, _canonical_components, _score,
+            canonical_vector_checksum,
+        )
+        import test_semantic_bulk_vectors as bulk_fixtures
+
+        ulp = math.ulp(1.0)
+        guard = 16 * ulp
+        self.assertEqual(_SCORE_PRESENTATION_ROUNDOFF, guard)
+        in_range = math.nextafter(1.0, 0.0)
+        self.assertIs(_present_semantic_score(in_range), in_range,
+                      'in-range float values are returned without conversion or rounding')
+        for raw, expected in ((1.0 + guard, 1.0), (-1.0 - guard, -1.0),
+                              (math.nextafter(1.0, 0.0), math.nextafter(1.0, 0.0)),
+                              (-1.0, -1.0), (0.375, 0.375), (1, 1)):
+            with self.subTest(raw=raw):
+                self.assertEqual(_present_semantic_score(raw), expected)
+        for raw in (math.nextafter(1.0 + guard, math.inf),
+                    math.nextafter(-1.0 - guard, -math.inf), 1.01, -1.01,
+                    math.nan, math.inf, -math.inf, True, False, '1.0', None, 10**400):
+            with self.subTest(rejected=repr(raw)):
+                with self.assertRaises(discovery_module.DiscoveryUnavailable):
+                    _present_semantic_score(raw)
+
+        image = VectorSpaceIdentity('a' * 64, 'b' * 64, 'synthetic-score-space',
+                                    'synthetic-v1', 768, 'unit_l2')
+        text = replace(image, artifact_sha256='c' * 64,
+                       preprocessing_sha256='d' * 64, model_version='text-v1')
+        binding = JointSpaceBinding(image, text, 'e' * 64)
+        vector = (1 / math.sqrt(5),) * 5 + (0.0,) * 763
+        checksum = canonical_vector_checksum(vector)
+        record = VectorRecord('101', image, vector, checksum)
+        canonical = _canonical_components(record, image)
+        raw_score = _score(canonical, canonical)
+        query = TextVector(binding.binding_sha256, hashlib.sha256(b'same vector').hexdigest(),
+                           vector, checksum)
+        scalar = rank_semantic(query, binding, (record,))
+        self.assertEqual(scalar, (('101', raw_score),))
+        self.assertEqual(raw_score, 1.0000000000000002)
+        self.assertEqual(_present_semantic_score(raw_score), 1.0)
+
+        bulk = bulk_fixtures.SemanticBulkVectorTests()
+        bulk.setUp()
+        try:
+            store, artifacts = bulk.build(((101, 'a', vector),), image)
+            snapshot = store.snapshot(artifacts, library_id='family-a')
+            self.assertEqual(snapshot.rank(canonical, ('101',)), (('101', raw_score),))
+        finally:
+            bulk.doCleanups()
+
+        identity4096 = replace(image, dimension=4096)
+        vector4096 = (1 / math.sqrt(5),) * 5 + (0.0,) * 4091
+        record4096 = VectorRecord('4096', identity4096, vector4096,
+                                  canonical_vector_checksum(vector4096))
+        canonical4096 = _canonical_components(record4096, identity4096)
+        raw4096 = _score(canonical4096, canonical4096)
+        self.assertGreaterEqual(raw4096, 1.0)
+        self.assertLessEqual(raw4096, 1.0 + guard)
+        self.assertEqual(_present_semantic_score(raw4096), 1.0)
+
+    def test_presented_roundoff_ties_keep_raw_rank_order_and_invalid_scores_refuse(self):
+        import math
+        from app.access.semantic_search import _SCORE_PRESENTATION_ROUNDOFF
+
+        higher_raw = 1.0 + 2 * math.ulp(1.0)
+        lower_raw = 1.0 + math.ulp(1.0)
+        self.assertLess(higher_raw, 1.0 + _SCORE_PRESENTATION_ROUNDOFF)
+        with patch('app.access.semantic_search.rank_semantic',
+                   return_value=(('103', higher_raw), ('101', lower_raw))):
+            response = self.query()
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual([item['id'] for item in response.json()['items']], ['103', '101'])
+        self.assertEqual([item['semantic_score'] for item in response.json()['items']], [1.0, 1.0])
+
+        outside = 1.0 + 17 * math.ulp(1.0)
+        with patch('app.access.semantic_search.rank_semantic', return_value=(('103', outside),)):
+            refused = self.query()
+        self.assertEqual(refused.status_code, 503, refused.text)
+        self.assertNotIn('items', refused.json())
+
+    def test_score_presentation_policy_binding_rejects_previous_version_before_encoding(self):
+        from app.access.semantic_search import SemanticSearchReads
+
+        original = SemanticSearchReads._extra_source_fresh
+        def legacy_binding(reader, *args, **kwargs):
+            value = original(reader, *args, **kwargs)
+            value.pop('score_presentation_policy')
+            return value
+
+        with patch.object(SemanticSearchReads, '_extra_source_fresh', legacy_binding):
+            first = self.query()
+        self.assertEqual(first.status_code, 200, first.text)
+        old = first.json()
+        self.assertEqual(len(self.calls), 1)
+        stale = self.query(binding=old['binding'], fingerprint=old['fingerprint'])
+        self.assertEqual(stale.status_code, 409, stale.text)
+        self.assertNotIn('items', stale.json())
+        self.assertEqual(len(self.calls), 1, 'stale presentation binding is rejected before encoding')
 
     def test_people_date_location_tags_and_literal_text_are_joint_hard_filters(self):
         cases = (

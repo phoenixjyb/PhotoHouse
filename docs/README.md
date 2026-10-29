@@ -16,7 +16,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Phone/TV entry | [Android README](../clients/android/README.md) |
 | Phone import progress and receipt/readiness meanings | [Import status contract](PHONE_IMPORT_STATUS.md) |
 | Own-upload server processing evidence | [Preparation read contract](UPLOAD_PREPARATION.md) |
-| Collapse and inspect similar photos | [Delivered page-local contract](SIMILAR_PHOTO_STACKS.md); [library-wide source increment](LIBRARY_PHOTO_STACKS.md) |
+| Collapse and inspect similar photos | [Delivery checklist and family journeys](PHOTO_STACK_DELIVERY.md); [page-local contract](SIMILAR_PHOTO_STACKS.md); [library-wide source increment](LIBRARY_PHOTO_STACKS.md) |
 | Family trial | [Delivered v70 import/upload guide](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md), [v70 release](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md), [retained voice guide](../clients/android/docs/PHONE_V68_TEST_GUIDE_ZH.md), [proposal adoption guide](../clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md) |
 | Deployment/recovery workflow | [Operations](OPERATIONS.md), [source packaging](SOURCE_PACKAGING.md), [API package inspection](API_PACKAGE_INSPECTION.md) |
 | Replaceable models and infrastructure | [Provider architecture](MODEL_PROVIDER_ARCHITECTURE.md), [model directory](../models/README.md) |
@@ -38,7 +38,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Title from authored chapter wording | [Chapter-opening title contract](CHAPTER_OPENING_TITLE.md) |
 | Guided phone story creation | [Flow, draft boundary and trial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) |
 | Failed story/memoir images | [Preview recovery](READER_PREVIEW_RECOVERY.md) |
-| Current search delivery, capabilities and remaining gates | [October 22 combined-source release](SEARCH_RELEASE_2026-10-22.md), [October 20 guarded-search release](SEARCH_RELEASE_2026-10-20.md), [exclusion/clarification contract](SCENE_QUERY_REWORDING.md), [bilingual behavior](BILINGUAL_SEARCH_REQUIREMENTS.md) |
+| Current search delivery, capabilities and remaining gates | [Functional acceptance matrix](SEARCH_FUNCTIONAL_ACCEPTANCE.md), [protected scene-result paging](SCENE_RESULT_PAGING.md), [October 22 combined-source release](SEARCH_RELEASE_2026-10-22.md), [October 20 guarded-search release](SEARCH_RELEASE_2026-10-20.md), [exclusion/clarification contract](SCENE_QUERY_REWORDING.md), [bilingual behavior](BILINGUAL_SEARCH_REQUIREMENTS.md) |
 | Earlier natural-language search diagnosis | [October 15 search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md), [historical redesign handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md) |
 | Private search coverage, relevance cases and video dates | [Readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md) |
 | Installed bilingual intent model quality | [October 16 native trial](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md) |

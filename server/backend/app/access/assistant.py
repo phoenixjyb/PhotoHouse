@@ -180,15 +180,28 @@ router = APIRouter(route_class=AssistantRoute)
 def _search_v2_endpoint(request):
     path = request.url.path
     return (path in ('/assistant/v1/turns', '/assistant/v1/speech', '/assistant/v1/capabilities',
-                     '/assistant/workspace/v1/capabilities') or
+                     '/assistant/workspace/v1/capabilities',
+                     '/assistant/workspace/v1/agent-capabilities') or
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/turns', path) is not None or
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+(?:/speech)?', path) is not None)
 
 
 def _scene_endpoint(request):
     # The stateless assistant and speech routes never accept server-owned v4 state.
-    return re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/(?:turns|requests/[0-9a-f-]+)',
-                        request.url.path) is not None
+    scene_reword = _single(request, 'x-photohouse-scene-reword-version')
+    if (request.method == 'GET' and
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+',
+                          request.url.path) is not None):
+        # Thread detail may expose the refusal cue through an explicit,
+        # separately versioned metadata projection. The route validates again.
+        return (_single(request, 'x-photohouse-search-version') == '4' and
+                scene_reword == '1')
+    if scene_reword is not None:
+        return False
+    return (re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/(?:turns|requests/[0-9a-f-]+)',
+                         request.url.path) is not None or
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+/scene-pages',
+                         request.url.path) is not None)
 
 
 def _engine(request):
@@ -857,7 +870,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
         if plan.status != 'ready':
             reply = _search_clarification_guidance(enabled, lang)
             if plan.reason == 'unsupported_negation':
-                from .search_exclusions import exclusion_reply
+                from .search_policy import exclusion_reply
                 reply = exclusion_reply(lang)
             elif 'people' not in enabled and plan.reason in (
                     'ambiguous_date_entity', 'ambiguous_media_entity',

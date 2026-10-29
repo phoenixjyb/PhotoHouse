@@ -41,6 +41,7 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
    saveBodies.push(row.body);
    if(loseSave&&status===200){loseSave=false;status=503;body=Buffer.from('{"detail":"Synthetic lost response after commit"}');}
   }
+  if(url.pathname.startsWith('/memory-stories')&&status===200)row.responseBody=body.toString('utf8');
   const output={...response.headers};delete output['content-length'];delete output['content-encoding'];
   try{await route.fulfill({status,headers:output,body});}catch(error){if(!/closed|handled|cancel|InterceptionId/i.test(error.message))throw error;}
  });
@@ -88,7 +89,19 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  await page.locator('#story-save-memory').click();await page.waitForFunction(()=>document.getElementById('story-workspace-status').textContent.includes('已保存'));
  assert.equal(saveBodies.length,2);assert.equal(saveBodies[0],saveBodies[1]);const saved=JSON.parse(saveBodies[0]);assert.equal(saved.source_policy,'chapter_sources_v1');assert.equal(JSON.parse(saved.chapters)[0].narration,'家人核对并再次修改后的故事。');assert.equal('citations' in JSON.parse(saved.chapters)[0],false);
  pass('Only explicit Save writes; a lost save response retries the identical mutation');
- await page.locator('#story-workspace-close').click();await open();await chooseSources();await words().fill('取消前保留的家人文字。');
+ const createResult=JSON.parse(writes().at(-1).responseBody);assert.equal(createResult.saved,true);assert.match(createResult.id,/^[0-9a-f-]{36}$/);assert.equal(createResult.source_policy,'chapter_sources_v1');
+ const chosenSourceId=sent.selection.chapters[0].evidence_ids[0];assert(createResult.items.some(item=>item.evidence.some(evidence=>evidence.id===chosenSourceId&&evidence.source==='family')));
+ const savesBeforeReopen=saveBodies.length,preparesBeforeReopen=prepareRows().length;
+ await page.locator('#story-workspace-close').click();await page.locator('#saved-memory-list .saved-memory-card button').first().waitFor();
+ await page.locator('#saved-memory-list .saved-memory-card button').first().click();await page.locator('#story-reader').waitFor({state:'visible'});
+ await page.waitForFunction(()=>document.querySelector('#story-reader')?.open===true&&document.querySelector('#story-reader-text')?.textContent==='家人核对并再次修改后的故事。');
+ const reopenedRequest=requests.find(row=>{if(row.method!=='GET'||!row.path.startsWith(`/memory-stories/${createResult.id}?`))return false;const query=new URLSearchParams(row.path.split('?')[1]);return query.get('source_review')==='1'&&query.get('library')==='family-a';});assert(reopenedRequest);const reopened=JSON.parse(reopenedRequest.responseBody);
+ assert.equal(reopened.saved,true);assert.equal(reopened.source_policy,'chapter_sources_v1');assert.equal(reopened.chapters[0].narration,'家人核对并再次修改后的故事。');
+ assert(reopened.chapters[0].evidence_ids.includes(chosenSourceId));assert(reopened.items.some(item=>item.evidence.some(evidence=>evidence.id===chosenSourceId&&evidence.source==='family')));
+ const reopenedSources=page.locator('#story-reader .story-reader-sources');await reopenedSources.locator('summary').click();assert.match(await reopenedSources.textContent(),/合成家人原话/);
+ assert.equal(saveBodies.length,savesBeforeReopen);assert.equal(prepareRows().length,preparesBeforeReopen);
+ pass('The exact saved story reopens with edited wording and current authorized evidence, without another prepare or save');
+ await page.locator('#story-reader-close').click();await open();await chooseSources();await words().fill('取消前保留的家人文字。');
  const gate={arrived:delay(),release:delay(),finished:delay()};held=gate;await page.locator('.story-draft-prepare').click();await gate.arrived.promise;await page.locator('.story-draft-cancel').click();gate.release.done();await gate.finished.promise;await page.waitForTimeout(100);
  assert.equal(await words().inputValue(),'取消前保留的家人文字。');assert.equal(await page.locator('.story-draft-reviewed').isChecked(),false);assert.equal(await page.locator('.story-draft-reviewed').isDisabled(),true);pass('Cancel fences late replies and preserves prior family wording');
  corrupt=true;await page.locator('.story-draft-prepare').click();await page.locator('.story-draft-retry:visible').waitFor();

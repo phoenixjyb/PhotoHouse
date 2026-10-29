@@ -7,6 +7,7 @@ the entire source/vector cohort again without re-encoding the user's query.
 """
 from dataclasses import dataclass, replace
 import math
+import re
 
 from . import discovery as d
 from .assistant_search import SearchRuntime, SearchPlan
@@ -93,18 +94,33 @@ class SceneSearchRuntime:
         return SearchRuntime(discovery, self.kinship_provider,
                              search_version=scope['search_version'])
 
-    def scope_result(self, token, library, scope):
-        from .assistant import _context_result
-        return _context_result(self.base_engine(scope), token, library, scope)
+    def scope_result(self, token, library, scope, check=None):
+        from .assistant import _normalize_cards
+        check = check or (lambda: None)
+        result = _normalize_cards(self.base_engine(scope).call('search', token, library, check,
+            {'binding': scope['binding'], 'filters': scope['filters'], 'page': 1,
+             'page_size': 20, 'fingerprint': scope['fingerprint']}))
+        if (result['binding'] != scope['binding'] or
+                result['fingerprint'] != scope['fingerprint'] or
+                [item['id'] for item in result['items']] != scope['visible_ids'] or
+                result['total'] != scope['total']):
+            from .assistant import AssistantChanged
+            raise AssistantChanged()
+        return result
 
-    def deadline(self):
+    def deadline(self, cancelled=None, release_check=None):
         # One allowance across scope reads, ranking, and final scope validation.
         # Individual synchronous reads/provider phases retain their own bounds;
         # checks are cooperative rather than a provider cancellation receipt.
         clock = self.semantic.budget.clock
+        cancelled = cancelled or (lambda: False)
+        release_check = release_check or (lambda: None)
         started = previous = clock()
         def check():
             nonlocal previous
+            release_check()
+            if cancelled():
+                raise d.DiscoveryCancelled()
             now = clock()
             if (not math.isfinite(started) or not math.isfinite(now) or now < previous or
                     now - started > self.semantic.budget.search_seconds):
@@ -124,12 +140,12 @@ class SceneSearchRuntime:
         except ValueError:
             raise AssistantInvalid() from None
         check = self.deadline()
-        self.scope_result(token, library, scope)
+        self.scope_result(token, library, scope, check)
         check()
         found = _normalize_cards(self.semantic.call('search', token, library, check,
             {'query': query, 'filters': scope['filters'], 'page_size': 20}))
         check()
-        presentation = self.scope_result(token, library, scope)
+        presentation = self.scope_result(token, library, scope, check)
         check()
         if found['total'] > scope['total']:
             raise AssistantChanged()
@@ -148,6 +164,71 @@ class SceneSearchRuntime:
                 'filters': ctx['filters'], 'items': found['items'], 'total': found['total'],
                 'has_more': found['has_more'], 'effect': None,
                 'interpretation': presentation['interpretation'], 'semantic': found['semantic']}
+
+    def page(self, token, library, request_id, expected_revision, page,
+             ranking_sha256, source, cancelled, release_check, request_check=None):
+        """Read one explicit page from a freshly reranked private scene result."""
+        from .assistant import AssistantChanged, AssistantInvalid, _normalize_cards
+        try:
+            if (type(source) is not dict or type(source.get('summary')) is not dict or
+                    type(source.get('request')) is not dict):
+                raise ValueError()
+            summary = source['summary']
+            context = context_value(summary.get('context'), library)
+            if (summary.get('version') != 4 or summary.get('kind') != 'results' or
+                    context is None or type(context.get('scene')) is not dict or
+                    source['request'].get('request_id') != request_id or
+                    source['request'].get('revision') != expected_revision):
+                raise ValueError()
+            scope = _scope(context['scene']['scope'], library)
+        except (ValueError, TypeError, KeyError):
+            raise AssistantInvalid() from None
+        total = context['total']
+        page_count = (total + 19) // 20
+        if (page_count < 2 or type(page) is not int or page < 1 or page > 5000 or page > page_count or
+                (page == 1 and (type(ranking_sha256) is not str or
+                                re.fullmatch(r'[0-9a-f]{64}', ranking_sha256) is None)) or
+                (page > 2 and (type(ranking_sha256) is not str or
+                               re.fullmatch(r'[0-9a-f]{64}', ranking_sha256) is None)) or
+                (page == 2 and ranking_sha256 is not None and
+                 (type(ranking_sha256) is not str or
+                  re.fullmatch(r'[0-9a-f]{64}', ranking_sha256) is None))):
+            raise AssistantInvalid()
+        check = (request_check if request_check is not None else
+                 self.deadline(cancelled=cancelled, release_check=release_check))
+        check()
+        self.scope_result(token, library, scope, check)
+        check()
+        prefix = tuple(zip(context['visible_ids'], context['scene']['scores']))
+        found = _normalize_cards(self.semantic._continue_server_ranking(
+            token, library, check,
+            {'query': context['scene']['query'], 'filters': context['filters'],
+             'binding': context['binding'], 'fingerprint': context['fingerprint'],
+             'page': page, 'page_size': 20},
+            prefix, expected_ranking_sha256=ranking_sha256))
+        check()
+        offset = (page - 1) * 20
+        expected_items = min(20, max(0, total - offset))
+        if (found['binding'] != context['binding'] or
+                found['fingerprint'] != context['fingerprint'] or
+                found['total'] != total or found['page'] != page or
+                found['page_size'] != 20 or len(found['items']) != expected_items or
+                type(found.get('ranking_sha256')) is not str or
+                re.fullmatch(r'[0-9a-f]{64}', found['ranking_sha256']) is None):
+            raise AssistantChanged()
+        presentation = self.scope_result(token, library, scope, check)
+        check()
+        # The response intentionally excludes the stored query, filters, and
+        # source binding. They are re-read from the server-owned result above.
+        result = {'version': 1, 'thread_id': source['thread']['thread_id'],
+                  'request_id': request_id, 'revision': expected_revision,
+                  'page': page, 'page_size': 20, 'total': total,
+                  'has_more': offset + 20 < total,
+                  'binding': context['binding'], 'fingerprint': context['fingerprint'],
+                  'ranking_sha256': found['ranking_sha256'],
+                  'items': found['items'], 'semantic': found['semantic']}
+        check()
+        return result
 
     def restore(self, token, library, summary):
         from .assistant import AssistantChanged, _normalize_cards

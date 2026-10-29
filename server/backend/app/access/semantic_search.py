@@ -7,15 +7,18 @@ complete bounded cohort using a separately qualified joint text/image space.
 from dataclasses import asdict, dataclass
 import hashlib
 import math
+import operator
 from pathlib import Path
 import re
+import struct
 
 from . import discovery as d
 from .assistant_search import AssistantSearchReads
 from .discovery_transport import DiscoveryRuntime
 from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, SemanticUnsupported, TextVector, rank_semantic
 from .service import AccessDenied, AccessService
-from .search_exclusions import EXCLUSION_POLICY_VERSION, requires_semantic_clarification
+from .search_policy import EXCLUSION_POLICY_VERSION, requires_semantic_clarification
+from .search_policy_binding import QueryPolicyUnavailable, capture_current_query_policy_binding
 from .visual_candidates import MAX_CANDIDATES, VectorRecord, _canonical_components
 from .visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256
 from .visual_vector_loader import _COLUMNS, _checked_root, _read_vector, _validated_rows
@@ -23,13 +26,34 @@ from .visual_vector_schema import verify_visual_vector_schema
 from .semantic_streaming import SemanticServingLimits, VECTOR_BATCH_SIZE, MAX_VECTOR_READ_BYTES, rank_semantic_batches
 from .semantic_bulk_vectors import BulkVectorStore, BulkVectorUnavailable
 from .semantic_eligibility import SemanticEligibilityStore, SemanticEligibilityUnavailable
+from .semantic_request_snapshot import NativeSnapshotDatabase, create_request_source_snapshot
 
 
 # The policy is reread on each source pass; an unbound first page derives its
 # binding in the ranking pass and keeps the final fresh source check.
 # Keep its private-file budget separate from the vector payload allowance.
 MAX_POLICY_READ_BYTES = 64 * 1024 * 1024
+SCORE_PRESENTATION_POLICY_VERSION = 1
+_SCORE_PRESENTATION_ROUNDOFF = 16 * math.ulp(1.0)
 _ARTIFACT_FIELDS = tuple(_COLUMNS.split(','))
+_ARTIFACT_GETTER = operator.attrgetter(*_ARTIFACT_FIELDS)
+
+
+def _present_semantic_score(score):
+    """Bound only binary64 endpoint roundoff after ranking has completed."""
+    if type(score) not in (int, float):
+        raise d.DiscoveryUnavailable()
+    try:
+        if (not math.isfinite(score) or score < -1.0 - _SCORE_PRESENTATION_ROUNDOFF
+                or score > 1.0 + _SCORE_PRESENTATION_ROUNDOFF):
+            raise d.DiscoveryUnavailable()
+    except (OverflowError, TypeError, ValueError):
+        raise d.DiscoveryUnavailable() from None
+    if score > 1.0:
+        return 1.0
+    if score < -1.0:
+        return -1.0
+    return score
 
 
 def _typed_row_equal(current, previous):
@@ -66,7 +90,7 @@ def _freeze_artifacts(records, check):
     frozen = []
     for asset_id, record in records.items():
         check()
-        frozen.append((asset_id, tuple(getattr(record, field) for field in _ARTIFACT_FIELDS)))
+        frozen.append((asset_id, _ARTIFACT_GETTER(record)))
     return tuple(frozen)
 
 
@@ -90,17 +114,24 @@ def _valid_pilot_owner_account_id(value):
 
 class SemanticSearchReads(AssistantSearchReads):
     def __init__(self, access, provider, budget, *, vector_root, encoder, query,
-                 server_snapshot=None, serving_limits=None, bulk_vectors=None, eligibility=None):
+                 server_snapshot=None, serving_limits=None, bulk_vectors=None, eligibility=None,
+                 text_projection_required=True, media_only_facts=False,
+                 ranking_observer=None):
         # This reader belongs to exactly one runtime call. Reuse derived facts
         # for an identical opaque binding during that call, while every _run
         # still reauthorizes and reads/validates the complete current source.
         # Never share this cache between readers, queries or requests.
-        super().__init__(access, provider, budget, facts_cache={})
+        super().__init__(access, provider, budget, facts_cache={},
+                         text_projection_required=text_projection_required)
+        if type(media_only_facts) is not bool:
+            raise d.DiscoveryInvalid()
+        self._media_only_facts = media_only_facts
         self.vector_root, self.encoder, self.query = vector_root, encoder, query
         self._vector_rows = ()
         self._source_hashes = {}
         self._candidate_count = 0
         self._server_snapshot = server_snapshot
+        self._ranking_observer = ranking_observer
         self.serving_limits = serving_limits
         self.bulk_vectors = bulk_vectors
         self._bulk_artifacts = ()
@@ -112,6 +143,65 @@ class SemanticSearchReads(AssistantSearchReads):
         self._matched_omitted_count = 0
         self._eligibility_bulk_generation = None
         self._eligibility_records_cache = None
+
+    def _facts(self, index, source, people, places, check):
+        """Build the minimal facts visible to an exact image-only query.
+
+        Fresh reads and source binding have already completed. Keep asset
+        conversion and reviewed-face/allow_zero checks, plus a poll for every
+        indexed row. The semantic search action accepts absent rows and empty
+        facets when its only filter is media.
+        """
+        if type(self._media_only_facts) is not bool:
+            raise d.DiscoveryUnavailable()
+        if not self._media_only_facts:
+            return super()._facts(index, source, people, places, check)
+        if self._text_projection_required is not False:
+            raise d.DiscoveryUnavailable()
+
+        assets = {}
+        for row in source['assets']:
+            check()
+            fields = list(row[:6])
+            try:
+                d.text(fields[1], 256)
+            except d.DiscoveryInvalid:
+                fields[1] = None
+            if d.taken_day(fields[5]) is None:
+                fields[5] = None
+            assets[str(row[0])] = d._asset(fields, index.library_id)
+
+        faces = {str(row[0]): (str(row[1]), str(row[2]), row[3])
+                 for row in source['faces']}
+        approved = set()
+        for assignment in index.assignments:
+            check()
+            if faces.get(assignment.id) != (
+                    assignment.asset_id, assignment.person_id, assignment.source):
+                raise d.DiscoveryChanged()
+            approved.add(assignment.person_id)
+        if any(person_id not in approved and not person.allow_zero
+               for person_id, person in people.items()):
+            raise d.DiscoveryUnavailable()
+
+        for _asset_id in index.indexed_ids:
+            check()
+        return assets, {}, {'people': [], 'locations': [], 'tags': []}, {}
+
+    def _search_action(self, library, binding, filters, page=1, page_size=50,
+                       fingerprint=None, *, allow_unbound_first_page=False,
+                       binding_observer=None):
+        if type(self._media_only_facts) is not bool:
+            raise d.DiscoveryUnavailable()
+        if self._media_only_facts and not (
+                type(filters) is dict and set(filters) == {'media'}
+                and type(filters['media']) is list
+                and filters['media'] == ['image']):
+            raise d.DiscoveryUnavailable()
+        return super()._search_action(
+            library, binding, filters, page, page_size, fingerprint,
+            allow_unbound_first_page=allow_unbound_first_page,
+            binding_observer=binding_observer)
 
     def _extra_source(self, index, source, read, check):
         # A new generation belongs only to this exact fresh source read. Clear
@@ -138,6 +228,10 @@ class SemanticSearchReads(AssistantSearchReads):
     def _extra_source_fresh(self, index, source, read, check):
         extra = super()._extra_source(index, source, read, check)
         check()
+        try:
+            query_policy_binding = capture_current_query_policy_binding(check=check)
+        except QueryPolicyUnavailable:
+            raise d.DiscoveryUnavailable() from None
         if not verify_visual_vector_schema(self.access.db):
             raise d.DiscoveryUnavailable()
         image_identity = self.encoder.binding.image_identity
@@ -174,7 +268,18 @@ class SemanticSearchReads(AssistantSearchReads):
                         raise d.DiscoveryUnavailable()
                 else:
                     snapshot = _freeze_rows(rows, check)
-                    records = _validated_rows(rows, image_identity)
+                    if self.bulk_vectors is not None:
+                        try:
+                            records = self.bulk_vectors._artifacts_from_current_sql(
+                                snapshot, library_id=index.library_id,
+                                identity=image_identity, check=check,
+                            )
+                        except BulkVectorUnavailable:
+                            raise d.DiscoveryUnavailable() from None
+                    else:
+                        records = None
+                    if records is None:
+                        records = _validated_rows(rows, image_identity)
                     if len(records) != len(rows):
                         raise d.DiscoveryUnavailable()
                     # Capture only primitive values before passing artifact
@@ -205,6 +310,8 @@ class SemanticSearchReads(AssistantSearchReads):
                 **({'bulk_vectors': self.bulk_vectors.descriptor} if self.bulk_vectors else {}),
                 **({'serving_limits': asdict(self.serving_limits)} if self.serving_limits else {}),
                 'exclusion_policy': EXCLUSION_POLICY_VERSION,
+                'query_policy_binding': query_policy_binding,
+                'score_presentation_policy': SCORE_PRESENTATION_POLICY_VERSION,
                 'joint_space_binding': self.encoder.binding.binding_sha256,
                 'semantic_query': d.digest(self.query), 'image_vector_records': rows,
                 'image_source_hashes': hashes}
@@ -281,15 +388,18 @@ class SemanticSearchReads(AssistantSearchReads):
         if self._vector_read_bytes > MAX_VECTOR_READ_BYTES:
             raise d.DiscoveryUnavailable()
 
-    def _vector_records(self, root, records, *, validate_components=True):
+    def _vector_records(self, root, records, *, validate_components=True,
+                        charge_vector_bytes=False):
         check = self._check
         for artifact in records:
             aid = artifact.asset_id
             check()
             if artifact.source_sha256 != self._source_hashes.get(aid):
                 raise d.DiscoveryUnavailable()
-            vector = (_read_vector(root, artifact, charge=self._charge_vector_bytes)
-                      if self.serving_limits else _read_vector(root, artifact))
+            charge = (self._charge_vector_bytes
+                      if self.serving_limits is not None or charge_vector_bytes else None)
+            vector = (_read_vector(root, artifact, charge=charge)
+                      if charge is not None else _read_vector(root, artifact))
             check()
             if vector is None:
                 raise d.DiscoveryUnavailable()
@@ -302,9 +412,10 @@ class SemanticSearchReads(AssistantSearchReads):
                     raise d.DiscoveryUnavailable() from None
             yield record
 
-    def _vectors(self, found):
+    def _vectors(self, found, *, charge_vector_bytes=False):
         root, records = self._artifacts(found)
-        return list(self._vector_records(root, records))
+        return list(self._vector_records(root, records,
+                                         charge_vector_bytes=charge_vector_bytes))
 
     def _bulk_snapshot(self):
         try:
@@ -331,8 +442,17 @@ class SemanticSearchReads(AssistantSearchReads):
                 bulk_snapshot = self._bulk_snapshot()
             vectors = None
         elif self.serving_limits is None:
-            vectors = self._vectors(found)
+            # Page continuation must retain the same exact file/hash budget as
+            # the bounded serving path. The ordinary legacy search path keeps
+            # its historical single-read behavior.
+            vectors = self._vectors(found,
+                charge_vector_bytes=self._ranking_observer is not None)
             root, artifacts = None, ()
+            # Keep the source artifacts for a page-only post-provider read.
+            # The legacy ordinary search path continues to use its historical
+            # pre-provider in-memory cohort without another filesystem pass.
+            if self._ranking_observer is not None:
+                root, artifacts = self._artifacts(found)
         else:
             root, artifacts = self._artifacts(found)
             # Complete file validation precedes inference. Never hide a corrupt
@@ -354,11 +474,34 @@ class SemanticSearchReads(AssistantSearchReads):
                     any(aid not in by_id for aid, _score in snapshot)):
                 raise d.DiscoveryChanged()
             selected = {aid for aid, _score in snapshot}
-            return ([dict(by_id[aid], semantic_score=score) for aid, score in snapshot] +
+            return ([dict(by_id[aid], semantic_score=_present_semantic_score(score))
+                     for aid, score in snapshot] +
                     [by_id[aid] for aid in sorted(set(by_id) - selected, key=int)])
         if not found:
+            if self._ranking_observer is not None:
+                self._ranking_observer((), check)
             return []
         query_vector = self.encoder.encode(self.query, check=check)
+        if (self._ranking_observer is not None and self.serving_limits is None
+                and self.bulk_vectors is None):
+            # The legacy, non-streaming branch loaded vectors before calling
+            # the provider. For private page continuation only, reread and
+            # hash the complete same cohort after provider execution, using
+            # the existing byte/cancellation budget, and prove the rank basis
+            # did not change while the query was encoded.
+            if root is None or len(vectors) != len(artifacts):
+                raise d.DiscoveryUnavailable()
+            fresh_vectors = list(self._vector_records(
+                root, artifacts, charge_vector_bytes=True))
+            if (len(fresh_vectors) != len(vectors) or
+                    any(type(before) is not VectorRecord or
+                        type(after) is not VectorRecord or
+                        before.asset_id != after.asset_id or
+                        before.identity != after.identity or
+                        before.checksum_sha256 != after.checksum_sha256 or
+                        before.vector != after.vector
+                        for before, after in zip(vectors, fresh_vectors))):
+                raise d.DiscoveryUnavailable()
         if self.bulk_vectors is not None:
             # Read/hash the pinned container again after provider execution.
             # Reusing canonical immutable bytes never bypasses current files.
@@ -397,7 +540,10 @@ class SemanticSearchReads(AssistantSearchReads):
                 expected_count=len(found), candidate_limit=self.serving_limits.candidate_limit, check=check)
         by_id = {item['id']: item for item in found}
         check()
-        return [dict(by_id[aid], semantic_score=score) for aid, score in ranked]
+        if self._ranking_observer is not None:
+            self._ranking_observer(ranked, check)
+        return [dict(by_id[aid], semantic_score=_present_semantic_score(score))
+                for aid, score in ranked]
 
 
 @dataclass(frozen=True)
@@ -409,8 +555,11 @@ class SemanticSearchRuntime:
     serving_limits: SemanticServingLimits | None = None
     bulk_vectors: BulkVectorStore | None = None
     eligibility: SemanticEligibilityStore | None = None
+    request_source_snapshot: bool = False
 
     def __post_init__(self):
+        if type(self.request_source_snapshot) is not bool:
+            raise ValueError('Explicit request snapshot flag required')
         if (type(self.discovery) is not DiscoveryRuntime or
                 not isinstance(self.vector_root, Path) or not self.vector_root.is_absolute() or
                 '..' in self.vector_root.parts or type(self.encoder) is not LocalSemanticEncoder or
@@ -464,7 +613,75 @@ class SemanticSearchRuntime:
                   and values.get('page_size', 20) == 20)
         return self._call('search', token, library, cancelled, values, server_snapshot=snapshot)
 
-    def _call(self, operation, token, library, cancelled, values, *, server_snapshot=None):
+    def _continue_server_ranking(self, token, library, cancelled, values, prefix,
+                                 expected_ranking_sha256=None):
+        """Rank a fresh complete cohort from a validated private scene prefix.
+
+        This private workspace path never restores a numeric-ID tail. The
+        prefix only verifies the first 20 presented scores retained by the
+        durable result; a new raw-score digest commits later explicit pages to
+        this newly computed full ordering.
+        """
+        if (type(prefix) is not tuple or not prefix or len(prefix) > 20
+                or any(type(item) is not tuple or len(item) != 2
+                       or type(item[0]) is not str
+                       or type(item[1]) is not float
+                       or not math.isfinite(item[1])
+                       for item in prefix)):
+            raise d.DiscoveryUnavailable()
+        if expected_ranking_sha256 is not None and (
+                type(expected_ranking_sha256) is not str or
+                re.fullmatch(r'[0-9a-f]{64}', expected_ranking_sha256) is None):
+            raise d.DiscoveryInvalid()
+
+        observed = {}
+
+        def observe(ranked, check):
+            if type(ranked) not in (tuple, list) or not ranked:
+                raise d.DiscoveryChanged()
+            if len(ranked) < len(prefix):
+                raise d.DiscoveryChanged()
+            digest = hashlib.sha256()
+            digest.update(b'PhotoHouse scene full ranking v1\x00')
+            digest.update(struct.pack('>Q', len(ranked)))
+            for position, item in enumerate(ranked):
+                check()
+                if (type(item) is not tuple or len(item) != 2
+                        or type(item[0]) is not str
+                        or re.fullmatch(r'[1-9][0-9]{0,18}', item[0]) is None
+                        or type(item[1]) not in (float, int)):
+                    raise d.DiscoveryUnavailable()
+                try:
+                    raw_score = float(item[1])
+                    presented = _present_semantic_score(raw_score)
+                    encoded_id = item[0].encode('ascii')
+                    if len(encoded_id) > 19 or not math.isfinite(raw_score):
+                        raise ValueError()
+                    digest.update(struct.pack('>I', len(encoded_id)))
+                    digest.update(encoded_id)
+                    digest.update(struct.pack('>d', raw_score))
+                except (UnicodeError, ValueError, OverflowError, struct.error):
+                    raise d.DiscoveryUnavailable() from None
+                if position < len(prefix):
+                    expected_id, expected_score = prefix[position]
+                    if (item[0] != expected_id or
+                            struct.pack('>d', presented) != struct.pack('>d', expected_score)):
+                        raise d.DiscoveryChanged()
+            observed['sha256'] = digest.hexdigest()
+            check()
+
+        result = self._call('search', token, library, cancelled, values,
+                            ranking_observer=observe)
+        ranking_sha256 = observed.get('sha256')
+        if type(ranking_sha256) is not str:
+            raise d.DiscoveryUnavailable()
+        if expected_ranking_sha256 is not None and ranking_sha256 != expected_ranking_sha256:
+            raise d.DiscoveryChanged()
+        result['ranking_sha256'] = ranking_sha256
+        return result
+
+    def _call(self, operation, token, library, cancelled, values, *, server_snapshot=None,
+              ranking_observer=None):
         # Authorization precedes query validation, metadata and provider I/O
         # for direct callers as well as the HTTP admission check.
         self.authorize(token, library)
@@ -489,65 +706,108 @@ class SemanticSearchRuntime:
         query = d.text(values['query'], 512)
         d.require(not any(ord(c) < 32 or 0x7f <= ord(c) < 0xa0 for c in query))
         d.require(type(values.get('page_size', 20)) is int and 1 <= values.get('page_size', 20) <= 20)
-        filters = values['filters']
-        d.require(type(filters) is dict)
-        d.require('media' not in filters or filters['media'] == ['image'])
-        filters = {**filters, 'media': ['image']}
-        with self.access.connection_factory() as connection:
-            reader = SemanticSearchReads(AccessService(connection, clock=self.access.clock),
-                self.discovery.provider, budget, vector_root=self.vector_root,
-                encoder=self.encoder, query=query, server_snapshot=server_snapshot,
-                serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors,
-                eligibility=self.eligibility)
-            binding = values.get('binding')
-            page = values.get('page', 1)
-            page_size = values.get('page_size', 20)
-            fingerprint = values.get('fingerprint')
-            unbound_first_page = (binding is None and type(page) is int and page == 1
-                                  and fingerprint is None and server_snapshot is None)
-            ranking_binding = None
+        supplied_filters = values['filters']
+        d.require(type(supplied_filters) is dict)
+        d.require('media' not in supplied_filters or supplied_filters['media'] == ['image'])
+        filters = {**supplied_filters, 'media': ['image']}
+        media_only_facts = (set(filters) == {'media'}
+                            and type(filters['media']) is list
+                            and filters['media'] == ['image'])
+        snapshot = None
+        factory = self.access.connection_factory
+        from .runtime import ExistingDatabase
+        snapshot_factory = None
+        if self.request_source_snapshot and type(factory) is ExistingDatabase:
+            snapshot = create_request_source_snapshot(library)
+            snapshot_factory = factory.source_snapshot
+        elif self.request_source_snapshot and type(factory) is NativeSnapshotDatabase:
+            snapshot = create_request_source_snapshot(library)
+            snapshot_factory = factory
+        connection_context = snapshot_factory() if snapshot_factory is not None else factory()
+        try:
+            with connection_context as connection:
+                if snapshot is not None:
+                    snapshot.bind(connection)
+                    budget = budget.with_request_source_snapshot(snapshot)
+                reader = SemanticSearchReads(AccessService(connection, clock=self.access.clock),
+                    self.discovery.provider, budget, vector_root=self.vector_root,
+                    encoder=self.encoder, query=query, server_snapshot=server_snapshot,
+                    serving_limits=self.serving_limits, bulk_vectors=self.bulk_vectors,
+                    eligibility=self.eligibility,
+                    text_projection_required=('text' in filters or 'descriptive' in filters),
+                    media_only_facts=media_only_facts,
+                    ranking_observer=ranking_observer)
+                binding = values.get('binding')
+                page = values.get('page', 1)
+                page_size = values.get('page_size', 20)
+                fingerprint = values.get('fingerprint')
+                unbound_first_page = (binding is None and type(page) is int and page == 1
+                                      and fingerprint is None and server_snapshot is None)
+                ranking_binding = None
 
-            def observe_binding(context):
-                nonlocal ranking_binding
-                ranking_binding = context
+                def observe_binding(context):
+                    nonlocal ranking_binding
+                    ranking_binding = context
 
-            if binding is None and not unbound_first_page:
-                # presentation intentionally omits the internal binding; use
-                # an authorized source read to obtain it before pagination,
-                # fingerprint validation, or server-owned recovery.
-                binding = reader._run(token, library, None,
-                    lambda _index, _facts, context, _member, _check: context, bounded_cancelled)
-            try:
-                if unbound_first_page:
-                    action = reader._search_action(library, None, filters, page, page_size,
-                        fingerprint, allow_unbound_first_page=True,
-                        binding_observer=observe_binding)
-                    result = reader._run(token, library, None, action, bounded_cancelled)
-                else:
-                    result = reader.search(token, library, binding=binding, filters=filters,
-                        page=page, page_size=page_size, fingerprint=fingerprint,
-                        cancelled=bounded_cancelled)
-            except SemanticUnsupported:
-                # A refusal is meaningful only while this authorized cohort is
-                # still current. Re-read after the provider transaction unwinds.
-                expected_binding = ranking_binding if unbound_first_page else binding
-                if expected_binding is None:
-                    raise d.DiscoveryUnavailable() from None
-                reader._run(token, library, expected_binding,
-                    lambda _index, _facts, _context, _member, _check: None, bounded_cancelled)
-                raise d.DiscoveryQueryUnsupported() from None
-            # A provider call can outlive a concurrent membership or source
-            # change. Re-read in a fresh transaction before releasing cards.
-            reader._run(token, library, result['binding'],
-                lambda _index, _facts, _context, _member, _check: None, bounded_cancelled)
-            # The encoder runs outside the access transaction. Re-authorize the
-            # configured principal and owner role after it completes, including
-            # first-page recovery from a server-owned ranking snapshot.
-            self.authorize(token, library)
-            result.update(filters=filters, semantic={'mode': 'text_to_image',
-                'score_kind': 'cosine', 'candidate_count': reader._candidate_count,
-                'coverage': 'complete_eligible_images', 'needs_review': True})
-            if reader._eligibility_policy is not None:
-                result['semantic']['coverage_details'] = reader._eligibility_policy.coverage(
-                    reader._matched_omitted_count)
-            return result
+                def validate_final(expected_binding):
+                    if snapshot is not None:
+                        snapshot.request_final_replay()
+                    try:
+                        reader._run(token, library, expected_binding,
+                            lambda _index, _facts, _context, _member, _check: None,
+                            bounded_cancelled)
+                        if snapshot is not None:
+                            if snapshot.consume_identity_unsafe():
+                                raise d.DiscoveryUnavailable()
+                            if snapshot.consume_fallback_required():
+                                snapshot.stop_final_replay()
+                                reader._run(token, library, expected_binding,
+                                    lambda _index, _facts, _context, _member, _check: None,
+                                    bounded_cancelled)
+                                if snapshot.consume_identity_unsafe():
+                                    raise d.DiscoveryUnavailable()
+                    finally:
+                        if snapshot is not None:
+                            snapshot.stop_final_replay()
+
+                if binding is None and not unbound_first_page:
+                    # presentation intentionally omits the internal binding; use
+                    # an authorized source read to obtain it before pagination,
+                    # fingerprint validation, or server-owned recovery.
+                    binding = reader._run(token, library, None,
+                        lambda _index, _facts, context, _member, _check: context, bounded_cancelled)
+                try:
+                    if unbound_first_page:
+                        action = reader._search_action(library, None, filters, page, page_size,
+                            fingerprint, allow_unbound_first_page=True,
+                            binding_observer=observe_binding)
+                        result = reader._run(token, library, None, action, bounded_cancelled)
+                    else:
+                        result = reader.search(token, library, binding=binding, filters=filters,
+                            page=page, page_size=page_size, fingerprint=fingerprint,
+                            cancelled=bounded_cancelled)
+                except SemanticUnsupported:
+                    # A refusal is meaningful only while this authorized cohort is
+                    # still current. Re-read after the provider transaction unwinds.
+                    expected_binding = ranking_binding if unbound_first_page else binding
+                    if expected_binding is None:
+                        raise d.DiscoveryUnavailable() from None
+                    validate_final(expected_binding)
+                    raise d.DiscoveryQueryUnsupported() from None
+                # A provider call can outlive a concurrent membership or source
+                # change. Re-read in a fresh transaction before releasing cards.
+                validate_final(result['binding'])
+                # The ranking transaction, including any encoder call, has committed.
+                # Re-authorize the configured principal and owner role before release,
+                # including first-page recovery from a server-owned ranking snapshot.
+                self.authorize(token, library)
+                result.update(filters=filters, semantic={'mode': 'text_to_image',
+                    'score_kind': 'cosine', 'candidate_count': reader._candidate_count,
+                    'coverage': 'complete_eligible_images', 'needs_review': True})
+                if reader._eligibility_policy is not None:
+                    result['semantic']['coverage_details'] = reader._eligibility_policy.coverage(
+                        reader._matched_omitted_count)
+                return result
+        finally:
+            if snapshot is not None:
+                snapshot.close()

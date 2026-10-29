@@ -16,10 +16,12 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "backend"), str(ROOT / "scripts")]
 
 import qualify_library_semantic as subject
+import library_semantic_index as real_library_index
 from app.access.semantic_encoder import TextVector
 from app.access.semantic_bulk_vectors import BulkVectorStore, BulkVectorUnavailable
 from app.access.visual_candidates import VectorSpaceIdentity, canonical_vector_checksum
 from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256
+from app.access.search_policy_binding import capture_current_query_policy_binding
 
 
 def _npy(vector):
@@ -38,6 +40,7 @@ class FakeLibraryModel:
         self.binding = None
         self.bind_count = 0
         self.encode_count = 0
+        self.query_policy_binding = capture_current_query_policy_binding()
 
     def receipt(self):
         return {"schema": "generated-library-model-receipt.v1",
@@ -101,8 +104,9 @@ def generated_index(monkeypatch, tmp_path):
             file_sha256=hashlib.sha256(raw).hexdigest(),
             component_sha256=canonical_vector_checksum(vector), created_at=1))
 
-    index_module = SimpleNamespace(inspect_library_index=lambda path, **kwargs:
-        (manifest, tuple(records), {"image": image, "text": text}))
+    index_module = SimpleNamespace(**vars(real_library_index))
+    index_module.inspect_library_index = lambda path, **kwargs: (
+        manifest, tuple(records), {"image": image, "text": text})
     monkeypatch.setitem(sys.modules, "library_semantic_index", index_module)
     return index_path, model, manifest, tuple(records), vector_root
 
@@ -138,6 +142,7 @@ def test_measurement_uses_synthetic_515_record_cohort_and_keeps_semantic_off(
         "vector_read_bytes": 256 * 1024**2, "batch_size": 128,
         "shared_admission_pool": True}
     assert result["transport_boundary"] == "listener_free_asgi_api_and_authenticated_provider_cpu"
+    assert "request_source_snapshot" not in result
     assert result["model_encode_calls"] == result["provider_calls"] >= 2
     assert result["vector_reads"] > 0
     assert result["latency_ms"]["count"] == 1
@@ -154,6 +159,7 @@ def test_measurement_uses_synthetic_515_record_cohort_and_keeps_semantic_off(
         "synthetic_source_change_refused_and_restored_separately",
     } <= set(result["protected_checks"])
     assert model.bind_count == 1
+    assert 'setup_profile' not in result
     assert json.loads((output / "measurement.json").read_text()) == result
     for record in records:
         assert hashlib.sha256((vector_root / record.relative_path).read_bytes()).hexdigest() == record.file_sha256
@@ -167,6 +173,51 @@ def test_measurement_refuses_rebound_model_before_output(generated_index, tmp_pa
         subject.measure(index_path, output, model=model,
             queries=[{"id": "q1", "language": "zh", "text": "花园里的家人"}])
     assert not output.exists()
+
+
+def test_opt_in_setup_journal_retains_audit_failure_without_measurement(
+        generated_index, tmp_path, monkeypatch):
+    import library_semantic_index
+    from semantic_qualification_journal import read_checkpoints
+    index_path, model, _manifest, _records, _root = generated_index
+    index_path.write_bytes(real_library_index.canonical(_manifest) + b'\n')
+    index_path.chmod(0o600)
+    failure = RuntimeError('private-audit-failure')
+    def refuse(*args, **kwargs):
+        # A completed small operation makes partial audit work observable.
+        library_semantic_index._load_json(index_path, 1024 * 1024)
+        raise failure
+    monkeypatch.setattr(library_semantic_index, 'inspect_library_index', refuse)
+    output = tmp_path / 'no-report'
+    checkpoints = tmp_path / 'partial-checkpoints'
+    with pytest.raises(RuntimeError) as error:
+        subject.measure(index_path, output, model=model,
+            queries=[{'id': 'q1', 'language': 'zh', 'text': '花园里的家人'}],
+            checkpoint_directory=checkpoints)
+    assert error.value is failure
+    assert not output.exists()
+    records = read_checkpoints(checkpoints)
+    assert records[0]['event'] == 'phase_started'
+    assert records[0]['phase'] == 'initial_audit'
+    assert records[-1]['status'] == 'failed'
+    assert records[-1]['operations']['audit_json']['calls'] == 1
+    assert all(item['qualification_passed'] is False for item in records)
+    assert 'private-audit-failure' not in json.dumps(records)
+    assert model.bind_count == model.encode_count == 0
+
+
+@pytest.mark.parametrize('overlap', ['same', 'inside', 'parent', 'index'])
+def test_checkpoint_directory_overlap_refused_before_io(generated_index, tmp_path, overlap):
+    index_path, model, _manifest, _records, _root = generated_index
+    output = tmp_path / 'output'
+    checkpoints = {'same': output, 'inside': output / 'checkpoints',
+        'parent': tmp_path, 'index': index_path.parent / 'checkpoints'}[overlap]
+    with pytest.raises(ValueError):
+        subject.measure(index_path, output, model=model,
+            queries=[{'id': 'q1', 'language': 'en', 'text': 'a quiet garden'}],
+            checkpoint_directory=checkpoints)
+    assert not output.exists()
+    assert model.bind_count == model.encode_count == 0
 
 
 def _loopback_tls_files(directory):

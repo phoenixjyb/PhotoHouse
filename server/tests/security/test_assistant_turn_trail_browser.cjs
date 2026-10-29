@@ -154,6 +154,28 @@ let browser,context,page;
     assert(state.stable,`responsive page scroll/layout did not stabilize within 120 animation frames: ${JSON.stringify(state)}`);
     return state;
   };
+  const stableTrailViewport=()=>page.evaluate(()=>new Promise(resolve=>{
+    let previous=null,stableFrames=0,frames=0;
+    const sample=()=>{
+      const list=document.querySelector('#assistant-turn-trail-list'),rect=list.getBoundingClientRect();
+      const current={pageY:window.scrollY,documentScrollTop:document.documentElement.scrollTop,
+        documentScrollHeight:document.documentElement.scrollHeight,viewportWidth:window.innerWidth,viewportHeight:window.innerHeight,
+        list:{top:rect.top,bottom:rect.bottom,height:rect.height,scrollTop:list.scrollTop,scrollHeight:list.scrollHeight,clientHeight:list.clientHeight}};
+      frames++;
+      if(previous&&JSON.stringify(current)===JSON.stringify(previous))stableFrames++;else stableFrames=0;
+      if(stableFrames>=3){resolve({stable:true,frames,current});return;}
+      if(frames>=120){resolve({stable:false,frames,current,previous});return;}
+      previous=current;requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }));
+  const sampleTrailKeyboardState=async()=>{
+    const state=await stableTrailViewport();
+    assert(state.stable,`turn-trail viewport/list did not stabilize within 120 animation frames: ${JSON.stringify(state)}`);
+    return page.evaluate(viewport=>({viewport,focus:document.activeElement?.id,
+      keyEvents:window.__assistantTrailKeyEvents?.map(event=>({...event}))||[]}),state.current);
+  };
+  const pressTrailKeyAndSample=async key=>{await page.keyboard.press(key);return sampleTrailKeyboardState();};
   await page.setViewportSize({width:390,height:1024});
   await submit('<img src=x onerror="window.__trailXss=1">');
   assert.equal(await page.locator('#assistant-turn-trail-list img').count(),0,'HTML-looking user and assistant text creates no elements');
@@ -207,7 +229,11 @@ let browser,context,page;
   assert.equal(await page.locator('#assistant-turn-trail-latest').textContent(),'跳到最新','returning locale restores the Chinese control label');
   const afterChineseLocale=await trailReadingPosition();assert.equal(afterChineseLocale.visible[0].id,beforeLocale.visible[0].id,'round-trip locale render retains the same reading row');
   assert(Math.abs(afterChineseLocale.visible[0].offset-beforeLocale.visible[0].offset)<2,'round-trip locale render retains the reading offset');
-  const zhFonts=await scaleTrailText150();await page.locator('#assistant-turn-trail-title').evaluate(node=>node.scrollIntoView({block:'center',inline:'nearest'}));
+  await page.evaluate(()=>document.fonts.ready.then(()=>true));
+  const zhFonts=await scaleTrailText150();
+  await page.locator('#assistant-turn-trail-title').evaluate(node=>node.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}));
+  const zhSetupViewport=await stableTrailViewport();
+  assert(zhSetupViewport.stable,`Chinese trail setup did not stabilize before geometry checks: ${JSON.stringify(zhSetupViewport)}`);
   const zhLayout=await trailGeometry();
   assert.equal(zhLayout.width,390,'Chinese capture keeps the actual 390px viewport');
   assert(zhLayout.pageWidth<=390,'Chinese trail has no page overflow at 390px');
@@ -219,20 +245,43 @@ let browser,context,page;
   assert(zhLayout.entries.every(item=>item.rect.left>=0&&item.rect.right<=390&&item.scrollWidth<=item.clientWidth+1),'Chinese trail cards stay in bounds and wrap');
   const zhScaled=await page.evaluate(rows=>{const root=document.querySelector('#assistant-turn-trail'),nodes=[root,...root.querySelectorAll('*')].filter(node=>[...node.childNodes].some(child=>child.nodeType===Node.TEXT_NODE&&child.textContent.trim()));return rows.every(row=>Math.abs(parseFloat(getComputedStyle(nodes[row.index]).fontSize)-row.size*1.5)<0.2);},zhFonts);
   assert(zhScaled,'Chinese trail text is individually scaled to 150%');
-  await page.locator('#assistant-turn-trail-list').focus();
+  await page.locator('#assistant-turn-trail-list').evaluate(list=>list.focus({preventScroll:true}));
   assert.equal(await page.locator('#assistant-turn-trail-list').getAttribute('aria-labelledby'),'assistant-turn-trail-title','scroll region has a localized accessible name');
   assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-turn-trail-list','scroll region is keyboard focusable');
-  const zhKeyboardPageY=await page.evaluate(()=>window.scrollY);
-  await page.keyboard.press('Home');const zhTop=await page.locator('#assistant-turn-trail-list').evaluate(list=>list.scrollTop);
-  await page.keyboard.press('PageDown');const zhPageDown=await page.locator('#assistant-turn-trail-list').evaluate(list=>list.scrollTop);
+  await page.evaluate(()=>{
+    window.__assistantTrailKeyEvents=[];
+    window.addEventListener('keydown',event=>{
+      if(event.target?.id==='assistant-turn-trail-list'&&['Home','PageDown','End'].includes(event.key)){
+        const list=event.target;window.__assistantTrailKeyEvents.push({key:event.key,defaultPrevented:event.defaultPrevented,
+          target:event.target.id,focus:document.activeElement?.id,pageY:window.scrollY,listScrollTop:list.scrollTop});
+      }
+    });
+  });
+  const zhKeyboardSetup=await sampleTrailKeyboardState(),postsBeforeKeyboard=requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns').length;
+  const zhHome=await pressTrailKeyAndSample('Home'),zhTop=zhHome.viewport.list.scrollTop;
+  const zhDown=await pressTrailKeyAndSample('PageDown'),zhPageDown=zhDown.viewport.list.scrollTop;
   assert.equal(await page.locator('#assistant-turn-trail-latest').isVisible(),true,'keyboard scrolling through older rows preserves the jump indicator');
-  const zhCapture=path.join(artifacts,'assistant-turn-trail-zh-390px-text150.png');await page.screenshot({path:zhCapture,fullPage:false});fs.chmodSync(zhCapture,0o600);
-  await page.keyboard.press('End');const zhKeyboardEnd=await page.locator('#assistant-turn-trail-list').evaluate(list=>({scrollTop:list.scrollTop,
-    pageY:window.scrollY,focus:document.activeElement.id,latestBottom:list.lastElementChild.getBoundingClientRect().bottom,listBottom:list.getBoundingClientRect().bottom}));
-  assert(zhTop<=1&&zhPageDown>zhTop&&zhKeyboardEnd.scrollTop>=zhPageDown,'keyboard Home/PageDown/End scrolls the trail region');
-  assert(zhKeyboardEnd.latestBottom<=zhKeyboardEnd.listBottom+1,'keyboard End reveals the newest Chinese turn');
-  assert.equal(zhKeyboardEnd.focus,'assistant-turn-trail-list','keyboard scrolling retains focus in the trail');
-  assert.equal(zhKeyboardEnd.pageY,zhKeyboardPageY,'keyboard scrolling does not move the page');
+  const beforeCapture=await sampleTrailKeyboardState(),zhCapture=path.join(artifacts,'assistant-turn-trail-zh-390px-text150.png');
+  await page.screenshot({path:zhCapture,fullPage:false});fs.chmodSync(zhCapture,0o600);
+  const afterCapture=await sampleTrailKeyboardState(),zhEnd=await pressTrailKeyAndSample('End');
+  const zhKeyboardEnd=await page.locator('#assistant-turn-trail-list').evaluate(list=>({latestBottom:list.lastElementChild.getBoundingClientRect().bottom,listBottom:list.getBoundingClientRect().bottom}));
+  const keyboardDiagnostics={setup:zhKeyboardSetup,home:zhHome,pageDown:zhDown,beforeCapture,afterCapture,end:zhEnd,
+    events:zhEnd.keyEvents,postsBefore:postsBeforeKeyboard,postsAfter:requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns').length};
+  assert(zhTop<=1&&zhPageDown>zhTop&&zhEnd.viewport.list.scrollTop>=zhPageDown,
+    `keyboard Home/PageDown/End scrolls the trail region: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert(zhKeyboardEnd.latestBottom<=zhKeyboardEnd.listBottom+1,`keyboard End reveals the newest Chinese turn: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(zhEnd.focus,'assistant-turn-trail-list',`keyboard scrolling retains focus in the trail: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.deepEqual(zhEnd.keyEvents.map(event=>({key:event.key,defaultPrevented:event.defaultPrevented,target:event.target})),
+    [{key:'Home',defaultPrevented:true,target:'assistant-turn-trail-list'},
+      {key:'PageDown',defaultPrevented:true,target:'assistant-turn-trail-list'},
+      {key:'End',defaultPrevented:true,target:'assistant-turn-trail-list'}],
+    `trail key handlers prevent document-level scrolling: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(zhHome.viewport.pageY,zhKeyboardSetup.viewport.pageY,`Home does not move the page: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(zhDown.viewport.pageY,zhKeyboardSetup.viewport.pageY,`PageDown does not move the page: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(beforeCapture.viewport.pageY,zhKeyboardSetup.viewport.pageY,`page remains stationary before screenshot: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(afterCapture.viewport.pageY,beforeCapture.viewport.pageY,`screenshot does not move the page: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(zhEnd.viewport.pageY,zhKeyboardSetup.viewport.pageY,`End does not move the page: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(keyboardDiagnostics.postsAfter,postsBeforeKeyboard,`keyboard scrolling starts no assistant request: ${JSON.stringify(keyboardDiagnostics)}`);
   await page.waitForFunction(()=>document.querySelector('#assistant-turn-trail-latest').hidden===true);
   assert.equal(await page.locator('#assistant-turn-trail-latest').isVisible(),false,'natural keyboard End clears the jump indicator at the trail tail');
   await page.locator('#assistant-turn-trail-list').evaluate(list=>list.scrollTop=list.scrollHeight);

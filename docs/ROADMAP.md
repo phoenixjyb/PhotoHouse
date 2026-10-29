@@ -1,5 +1,14 @@
 # Product roadmap
 
+**October 25 delivery priority:** complete the existing photo-grouping path and
+its paired client experience. The [delivery checklist](PHOTO_STACK_DELIVERY.md)
+separates implemented source from private-copy qualification, live schema/index
+activation, recurring refresh, Web/APK delivery and family acceptance. Preserve
+the current search and AI work. Search timings are advisory diagnostics for this
+product milestone; older frozen thresholds/results remain unchanged, and access,
+data, resource and owned-cleanup checks still apply. TV grouping and missed-pair
+calibration remain explicit product work rather than assumed delivery.
+
 **October 20 local-agent plan, source only:** the
 [household AI revision](LOCAL_AGENT_DEVELOPMENT_PLAN.md) targets several
 independent family conversations with bounded shared inference scheduling.

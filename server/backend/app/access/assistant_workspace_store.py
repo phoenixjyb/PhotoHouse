@@ -648,7 +648,9 @@ class AssistantWorkspaceStore:
             return collapsed or None
         return collapsed[:63].rstrip() + '…'
 
-    def get_thread(self, account_id, library_id, thread_id):
+    def get_thread(self, account_id, library_id, thread_id, *, include_scene_reword=False):
+        if type(include_scene_reword) is not bool:
+            raise ValueError('Invalid scene reword projection')
         account_id, library_id = _scope(account_id), _scope(library_id)
         thread_id = _uuid4(thread_id, 'thread ID')
         now = int(self.clock())
@@ -666,9 +668,98 @@ class AssistantWorkspaceStore:
                 AND account_id=? AND library_id=? AND status='completed' AND expires_at>?
                 AND revision<=? ORDER BY revision DESC LIMIT 1''',
                 (thread_id, account_id, library_id, now, row['revision'])).fetchone()
-            return dict(version=1, thread=self._thread(row, len(exchanges)),
-                        exchanges=[self._exchange(item) for item in exchanges],
-                        latest_request_id=None if latest is None else latest['request_id'])
+            result = dict(version=1, thread=self._thread(row, len(exchanges)),
+                          exchanges=[self._exchange(item) for item in exchanges],
+                          latest_request_id=None if latest is None else latest['request_id'])
+            if include_scene_reword:
+                # Select the newest retained request before inspecting its status
+                # or expiry. A later request must suppress an older refusal cue.
+                newest = db.execute('''SELECT request_id,status,error_code,expires_at,
+                    expected_revision,revision,input_text FROM turn_requests
+                    WHERE thread_id=? AND account_id=? AND library_id=?
+                    ORDER BY rowid DESC LIMIT 1''',
+                    (thread_id, account_id, library_id)).fetchone()
+                cue = None
+                if (newest is not None and newest['status'] == 'failed' and
+                        newest['error_code'] == 'scene_query_unsupported' and
+                        newest['expires_at'] > now and
+                        type(newest['revision']) is int and
+                        type(newest['expected_revision']) is int and
+                        type(row['revision']) is int and
+                        newest['revision'] == newest['expected_revision'] == row['revision']):
+                    query = newest['input_text']
+                    try:
+                        if (type(query) is not str or len(query.encode('utf-8')) > 512 or
+                                any(ord(char) < 32 or 0x7f <= ord(char) < 0xa0 for char in query)):
+                            raise ValueError()
+                        request_id = _uuid4(newest['request_id'], 'request ID')
+                    except (ValueError, UnicodeError):
+                        raise WorkspaceStoreUnavailable() from None
+                    if query.replace('\ufeff', '').strip():
+                        cue = dict(version=1, request_id=request_id,
+                                   revision=newest['revision'], query=query)
+                result['scene_reword'] = cue
+            return result
+
+    def get_scene_page_source(self, account_id, library_id, thread_id, request_id,
+                              expected_revision):
+        """Read the latest completed scene result without mutating its history.
+
+        The selected request must still be the newest retained request across
+        every status. A newer pending, failed, interrupted, or expired row
+        therefore blocks continuation instead of reviving an older ranking.
+        The opaque source tuple is for an exact post-inference reread only; it
+        carries no authorization or ranking authority by itself.
+        """
+        account_id, library_id = _scope(account_id), _scope(library_id)
+        thread_id = _uuid4(thread_id, 'thread ID')
+        request_id = _uuid4(request_id, 'request ID')
+        expected_revision = _expected_revision(expected_revision)
+        now = int(self.clock())
+        with self.connection() as db:
+            db.execute('BEGIN')
+            thread = db.execute('''SELECT *
+                FROM threads WHERE thread_id=? AND account_id=? AND library_id=? AND expires_at>?''',
+                (thread_id, account_id, library_id, now)).fetchone()
+            if thread is None:
+                raise WorkspaceStoreMissing()
+            if type(thread['revision']) is not int or thread['revision'] != expected_revision:
+                raise WorkspaceStoreConflict()
+            newest = db.execute('''SELECT rowid AS _request_rowid,* FROM turn_requests
+                WHERE thread_id=? AND account_id=? AND library_id=?
+                ORDER BY rowid DESC LIMIT 1''',
+                (thread_id, account_id, library_id)).fetchone()
+            if newest is None or newest['request_id'] != request_id:
+                raise WorkspaceStoreConflict()
+            if (newest['status'] != 'completed' or type(newest['expires_at']) is not int
+                    or newest['expires_at'] <= now or type(newest['revision']) is not int
+                    or type(newest['expected_revision']) is not int
+                    or newest['revision'] != expected_revision
+                    or newest['expected_revision'] + 1 != expected_revision
+                    or newest['error_code'] is not None or newest['result_summary'] is None):
+                raise WorkspaceStoreConflict()
+            summary = _stored_summary(newest['result_summary'], library_id)
+            if (summary['version'] != 4 or summary['kind'] != 'results'
+                    or summary['context'] is None or summary['context']['search_version'] != 4
+                    or summary['context']['scene']['scope']['library_id'] != library_id
+                    or newest['input_text'] != summary['context']['scene']['query']):
+                raise WorkspaceStoreConflict()
+            identity = (
+                thread['thread_id'], thread['account_id'], thread['library_id'],
+                thread['revision'], thread['expires_at'],
+                newest['_request_rowid'], newest['request_id'], newest['thread_id'],
+                newest['account_id'], newest['library_id'], newest['status'],
+                newest['created_at'], newest['expires_at'], newest['expected_revision'],
+                newest['input_text'], newest['lease_id'], newest['lease_expires_at'],
+                newest['revision'], newest['result_summary'], newest['error_code'])
+            return {'thread': self._thread(thread, 0),
+                    'request': {'request_id': newest['request_id'],
+                                'status': newest['status'],
+                                'expected_revision': newest['expected_revision'],
+                                'revision': newest['revision'],
+                                'expires_at': newest['expires_at'],
+                                'input_text': newest['input_text']},
+                    'summary': summary, 'source_identity': identity}
 
     def get_thread_history_page(self, account_id, library_id, thread_id,
                                 snapshot_revision, before_revision):

@@ -7,9 +7,10 @@ const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||process.env.PLAYWRIGHT_MODULE_PATH||'playwright-core');
 const root=path.resolve(__dirname,'../..');
 const coverageMode=process.env.PH_SCENE_COVERAGE==='1';
+const pageMode=process.env.PH_SCENE_PAGES==='1';
 const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-assistant-workspace-'));
 fs.mkdirSync(artifacts,{recursive:true});console.log('ARTIFACTS_DIR '+artifacts);
-const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'../.venv/bin/python'),[path.join(__dirname,'assistant_workspace_browser_bridge.py')],{cwd:root,env:{...process.env,PH_SCENE_FIXTURE:'1'},stdio:['pipe','pipe','pipe']});
+const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'../.venv/bin/python'),[path.join(__dirname,'assistant_workspace_browser_bridge.py')],{cwd:root,env:{...process.env,PH_SCENE_FIXTURE:'1',...(pageMode?{PH_SCENE_PAGES:'1'}:{})},stdio:['pipe','pipe','pipe']});
 let serial=0,readyResolve,readyReject;const pendingRpc=new Map();
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
 bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
@@ -109,11 +110,12 @@ async function installSyntheticTransport(targetContext){
   checkpoint('Scene input shows reviewed person/date/photo conditions, requires acknowledgement, and rejects overflow and multiline wording');
   const search=await submitScene('孩子 flying a kite 蓝桥旁');
   assert.equal(search.status,200,JSON.stringify(search.response));assert.equal(search.headers['x-photohouse-search-version'],'4');assert.deepEqual(JSON.parse(search.body).accepts,['scene_search_v1']);
-  assert.deepEqual(search.response.result.items.map(x=>x.id),['102','101']);assert.equal(search.response.result.filters.people.ids[0],'301');assert.equal(search.response.result.filters.date.from,'2026-01-01');
+  if(pageMode){assert.equal(search.response.result.total,46);assert.equal(search.response.result.items.length,20);assert.equal(search.response.result.has_more,true);assert.equal(search.response.result.context.visible_ids.length,20);}
+  else assert.deepEqual(search.response.result.items.map(x=>x.id),['102','101']);assert.equal(search.response.result.filters.people.ids[0],'301');assert.equal(search.response.result.filters.date.from,'2026-01-01');
   if(coverageMode){
     const details=search.response.result.semantic.coverage_details;
     assert.match(details.policy_sha256,/^[0-9a-f]{64}$/);
-    assert.deepEqual({...details,policy_sha256:'<pinned-policy>'},{version:1,policy_sha256:'<pinned-policy>',state:'partial',catalog_images:67,searchable_images:2,omitted_images:65,matched_omitted_images:0});
+    assert.deepEqual({...details,policy_sha256:'<pinned-policy>'},{version:1,policy_sha256:'<pinned-policy>',state:'partial',catalog_images:pageMode?111:67,searchable_images:pageMode?46:2,omitted_images:65,matched_omitted_images:0});
     coverageSummary={state:details.state,catalog_images:details.catalog_images,searchable_images:details.searchable_images,omitted_images:details.omitted_images,matched_omitted_images:details.matched_omitted_images,reply_languages:[]};
     const reply=search.response.result.reply;assert.match(reply,/65 张尚未建立索引/);assert.match(reply,/0 张未参与相似度排序/);assert.match(reply,/仍可通过普通搜索查找/);
     await captureCoverageReply('zh-desktop',1280,'');await captureCoverageReply('zh-phone-150',390,'150%');
@@ -121,13 +123,35 @@ async function installSyntheticTransport(targetContext){
     coverageSummary.reply_languages.push('zh');
   }
   await page.locator('#assistant-scene-ranking').waitFor({state:'visible'});assert.match(await page.locator('#assistant-scene-ranking').innerText(),/近似排序/);
-  assert.equal(await page.locator('.assistant-scene-rank').count(),2);assert.equal(await page.locator('#assistant-speech').isVisible(),false);assert.equal(await page.locator('#viewer').isVisible(),false);
+  assert.equal(await page.locator('.assistant-scene-rank').count(),pageMode?20:2);assert.equal(await page.locator('#assistant-speech').isVisible(),false);assert.equal(await page.locator('#viewer').isVisible(),false);
+  if(pageMode)assert.doesNotMatch(await page.locator('#assistant-scene-ranking-help').innerText(),/当前只提供前 20|Only the first 20/);
   assert.equal(await page.locator('#assistant-scene-confirm').isChecked(),false);
   await page.locator('#assistant-scene-ranking').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-desktop-zh.png'),fullPage:false});
   checkpoint('Explicit mixed-language scene turn preserves hard filters, shows approximate ranking separately, and performs no speech/open action');
+  if(pageMode){
+    assert.equal(await page.locator('#assistant-scene-page-next').isEnabled(),true);assert.equal(await page.locator('#assistant-scene-page-previous').isDisabled(),true);
+    await page.setViewportSize({width:390,height:845});await page.evaluate(()=>document.documentElement.style.fontSize='150%');
+    await page.locator('#assistant-scene-page-next').click();await page.waitForFunction(()=>document.querySelector('#assistant-scene-page-position')?.textContent.includes('21–40'));
+    assert.match(await page.locator('#assistant-scene-page-position').innerText(),/46/);assert.match(await page.locator('#assistant-scene-page-position').innerText(),/2\/3/);
+    let visibleRanks=await page.locator('#assistant-results .assistant-scene-rank').allTextContents();assert.equal(visibleRanks.length,20);assert.equal(visibleRanks[0],'画面相似度排序 #21');assert.equal(visibleRanks.at(-1),'画面相似度排序 #40');
+    if(coverageMode)assert.match(await page.locator('#assistant-reply').innerText(),/65 张尚未建立索引/);
+    await page.locator('#assistant-scene-ranking').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-page-zh-phone-150.png'),fullPage:false});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+    await page.locator('#assistant-scene-page-next').click();await page.waitForFunction(()=>document.querySelector('#assistant-scene-page-position')?.textContent.includes('41–46'));
+    visibleRanks=await page.locator('#assistant-results .assistant-scene-rank').allTextContents();assert.equal(visibleRanks.length,6);assert.equal(visibleRanks[0],'画面相似度排序 #41');assert.equal(visibleRanks.at(-1),'画面相似度排序 #46');
+    if(coverageMode)assert.match(await page.locator('#assistant-reply').innerText(),/65 张尚未建立索引/);
+    await page.locator('#assistant-scene-page-previous').click();await page.waitForFunction(()=>document.querySelector('#assistant-scene-page-position')?.textContent.includes('21–40'));
+    const threadDetailReadsBefore=browserRequests.filter(x=>x.method==='GET'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\?/.test(x.path)).length;
+    await page.locator('#assistant-scene-page-return').click();await page.locator('#assistant-scene-page-return').waitFor({state:'hidden'});
+    assert.equal(browserRequests.filter(x=>x.method==='GET'&&/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\?/.test(x.path)).length,threadDetailReadsBefore+1);
+    await page.waitForFunction(()=>document.querySelectorAll('#assistant-results .assistant-scene-rank').length===20);
+    visibleRanks=await page.locator('#assistant-results .assistant-scene-rank').allTextContents();assert.equal(visibleRanks.length,20);assert.equal(visibleRanks[0],'画面相似度排序 #1');assert.equal(visibleRanks.at(-1),'画面相似度排序 #20');
+    await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
+    checkpoint('Chinese continuation pages show 20/6 cards with global ranks, support Previous and fresh Return, and fit 390px at 150%');
+  }
   const english=await submitScene('a child flying a kite beside a blue bridge');assert.equal(english.response.result.context.scene.query,'a child flying a kite beside a blue bridge');
   if(coverageMode){
-    const details=english.response.result.semantic.coverage_details;assert.deepEqual({...details,policy_sha256:'<pinned-policy>'},{version:1,policy_sha256:'<pinned-policy>',state:'partial',catalog_images:67,searchable_images:2,omitted_images:65,matched_omitted_images:0});
+    const details=english.response.result.semantic.coverage_details;assert.deepEqual({...details,policy_sha256:'<pinned-policy>'},{version:1,policy_sha256:'<pinned-policy>',state:'partial',catalog_images:pageMode?111:67,searchable_images:pageMode?46:2,omitted_images:65,matched_omitted_images:0});
     const reply=english.response.result.reply;assert.match(reply,/65 are not indexed yet/);assert.match(reply,/0 photos within your current filters were not ranked/);assert.match(reply,/You can still look for those photos using ordinary search/);
     await captureCoverageReply('en-desktop',1280,'');await captureCoverageReply('en-phone-150',390,'150%');
     await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
@@ -150,6 +174,23 @@ async function installSyntheticTransport(targetContext){
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
   await page.locator('#assistant-scene-reword').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-reword-zh.png'),fullPage:false});
+  const selectedThread=await page.locator('#assistant-private-select').inputValue(),beforeHardReload=browserRequests.length;
+  await page.reload();await page.locator('#grid .asset').first().waitFor();await page.locator('[href="#assistant-panel"]').first().click();
+  await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});await reopen(selectedThread);
+  if(!await page.locator('#assistant-scene').evaluate(el=>el.open))await page.locator('#assistant-scene > summary').click();
+  await page.locator('#assistant-scene-reword').waitFor({state:'visible'});
+  assert.equal(await page.locator('#assistant-scene-text').inputValue(),'孩子在紫色桥边放风筝，但不要有红色汽车');
+  assert.equal(await page.locator('#assistant-results .assistant-result').count(),0);
+  assert.equal(await page.locator('#assistant-scene-send').isDisabled(),true);
+  await page.locator('#assistant-scene-reword').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'scene-reword-hard-reload-zh.png'),fullPage:false});
+  const hardReloadRequests=browserRequests.slice(beforeHardReload);
+  const projectedRead=hardReloadRequests.find(x=>x.method==='GET'&&x.path.includes(`/threads/${selectedThread}?`));
+  assert(projectedRead,'reopening the thread after a page reload should request durable refusal state');
+  assert.equal(projectedRead.headers['x-photohouse-search-version'],undefined);
+  assert.equal(projectedRead.headers['x-photohouse-scene-reword-version'],'1');
+  assert.equal(hardReloadRequests.some(x=>x.method==='POST'&&x.path.endsWith('/turns')),false);
+  assert.equal((await rpc({command:'scene-stats'})).calls,encoderBeforeRefusal);
   const beforeReload=browserRequests.length;
   await page.locator('#assistant-scene-reload').click();await page.locator('#assistant-scene-reword').waitFor({state:'hidden'});
   assert.equal(await page.locator('#assistant-scene-text').inputValue(),'孩子在紫色桥边放风筝，但不要有红色汽车');
@@ -181,12 +222,12 @@ async function installSyntheticTransport(targetContext){
   await page.locator('#assistant-private-recover').waitFor({state:'visible'});await page.waitForFunction(()=>!document.querySelector('#assistant-private-recover').disabled);
   assert.equal(turns().length,before+1);const lost=turns().at(-1);const calls=(await rpc({command:'scene-stats'})).calls;await rpc({command:'scene-encoder-off'});
   await page.locator('#assistant-private-recover').click();
-  await page.waitForFunction(()=>document.querySelectorAll('.assistant-scene-rank').length===2&&!document.querySelector('#assistant-private-new').disabled);
+  await page.waitForFunction(expected=>document.querySelectorAll('.assistant-scene-rank').length===expected&&!document.querySelector('#assistant-private-new').disabled,pageMode?20:2);
   assert.equal(turns().length,before+1);assert.equal((await rpc({command:'scene-stats'})).calls,calls);
   const reads=browserRequests.filter(x=>x.method==='GET'&&x.path.includes('/requests/'+lost.response.request_id));assert.equal(reads.at(-1).headers['x-photohouse-search-version'],'4');
   assert.equal(await page.locator('#assistant-speech').isVisible(),false);
   await reopen();
-  await page.waitForFunction(()=>document.querySelectorAll('.assistant-scene-rank').length===2&&!document.querySelector('#assistant-private-new').disabled);
+  await page.waitForFunction(expected=>document.querySelectorAll('.assistant-scene-rank').length===expected&&!document.querySelector('#assistant-private-new').disabled,pageMode?20:2);
   assert.equal((await rpc({command:'scene-stats'})).calls,calls);
   checkpoint('Lost response and history reopen retain v4 order through GET only with encoder disabled');
   // User-facing enlarged bilingual controls, within the real assistant dialog.
@@ -203,6 +244,19 @@ async function installSyntheticTransport(targetContext){
   await page.locator('[href="#assistant-panel"]').first().click();await reopen(savedThread);
   await page.locator('#assistant-scene-ranking').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-phone-en-ranking-150.png'),fullPage:false});
   assert.match(await page.locator('#assistant-scene-ranking').innerText(),/approximate ranking/);
+  if(pageMode){
+    assert.match(await page.locator('#assistant-scene-ranking-help').innerText(),/Return to the first results before changing your search/);
+    await rpc({command:'scene-encoder-on'});
+    await page.locator('#assistant-scene-page-next').click();await page.waitForFunction(()=>document.querySelector('#assistant-scene-page-position')?.textContent.includes('21–40'));
+    const enPosition=await page.locator('#assistant-scene-page-position').innerText();assert.match(enPosition,/46/);assert.match(enPosition,/2 of 3/);
+    const enRanks=await page.locator('#assistant-results .assistant-scene-rank').allTextContents();assert.equal(enRanks.length,20);assert.equal(enRanks[0],'Scene similarity rank #21');assert.equal(enRanks.at(-1),'Scene similarity rank #40');
+    if(coverageMode)assert.match(await page.locator('#assistant-reply').innerText(),/65 张尚未建立索引/);
+    await page.locator('#assistant-scene-ranking').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-page-en-phone-150.png'),fullPage:false});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+    await page.locator('#assistant-scene-page-return').click();await page.locator('#assistant-scene-page-return').waitFor({state:'hidden'});
+    await page.waitForFunction(()=>document.querySelectorAll('#assistant-results .assistant-scene-rank').length===20);
+    const firstPageRanks=await page.locator('#assistant-results .assistant-scene-rank').allTextContents();assert.equal(firstPageRanks.length,20);assert.equal(firstPageRanks[0],'Scene similarity rank #1');assert.equal(firstPageRanks.at(-1),'Scene similarity rank #20');
+    checkpoint('English continuation page and Return stay understandable at 390px/150% and preserve global ranks');
+  }
   const englishPriorScene=await page.locator('#assistant-scene-query').innerText(),englishEncoderBefore=(await rpc({command:'scene-stats'})).calls,englishTurnsBefore=turns().length;
   await rpc({command:'scene-encoder-on'});
   const englishRefusal=await submitScene('a child flying beside a purple bridge, but no red cars');
@@ -242,7 +296,29 @@ async function installSyntheticTransport(targetContext){
   const clean=await ordinary('find photos of Sample Child in 2026');assert.equal(clean.response.result.kind,'results');assert.equal(clean.response.result.version,2);
   assert.equal(await page.locator('#assistant-scene-ranking').isVisible(),false);
   checkpoint('Unresolved conditions block scene action; a complete ordinary search leaves the scene and resolves scope');
+  const capOffQuery='a child beside a purple bridge, but no red cars';
+  const capOffRefusal=await submitScene(capOffQuery);assert.equal(capOffRefusal.response.status,'failed');assert.equal(capOffRefusal.response.error,'scene_query_unsupported');
+  const capOffThread=await page.locator('#assistant-private-select').inputValue(),beforeCapOffReload=browserRequests.length;
+  await rpc({command:'scene-off'});await page.reload();await page.locator('#grid .asset').first().waitFor();
+  await page.locator('[href="#assistant-panel"]').first().click();await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});await reopen(capOffThread);
+  if(!await page.locator('#assistant-scene').evaluate(el=>el.open))await page.locator('#assistant-scene > summary').click();
+  await page.locator('#assistant-scene-reword').waitFor({state:'visible'});
+  assert.equal(await page.locator('#assistant-scene-text').inputValue(),capOffQuery);
+  assert.equal(await page.locator('#assistant-scene-text').isDisabled(),true);
+  assert.equal(await page.locator('#assistant-scene-confirm').isDisabled(),true);
+  assert.equal(await page.locator('#assistant-scene-send').isDisabled(),true);
+  assert.equal(await page.locator('#assistant-results .assistant-result').count(),0);
+  const capOffReads=browserRequests.slice(beforeCapOffReload);
+  assert.equal(capOffReads.some(x=>x.method==='POST'&&x.path.endsWith('/turns')),false);
+  const capOffDetail=capOffReads.find(x=>x.method==='GET'&&x.path.includes(`/threads/${capOffThread}?`));
+  assert(capOffDetail);assert.equal(capOffDetail.headers['x-photohouse-scene-reword-version'],'1');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  await page.locator('#assistant-scene-reword').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'scene-reword-capability-off-zh.png'),fullPage:false});
+  await page.locator('#assistant-scene-text').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'scene-reword-capability-off-draft-zh.png'),fullPage:false});
+  checkpoint('Persisted refusal remains visible with exact draft and no cards when scene capability is off; reword controls stay disabled');
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);assert.equal(browserRequests.filter(r=>/\/speech$/.test(new URL(r.path,'https://photohouse.test').pathname)).length,0);
-  fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,pageErrors,blockedOrigins,generatedVectors:true,mockEncoder:true,modelRelevanceQualified:false,coverage:coverageSummary},null,2));
+  fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,pageErrors,blockedOrigins,generatedVectors:true,mockEncoder:true,modelRelevanceQualified:false,scenePageFixture:pageMode?{generated_assets:44,eligible_total:46,page_size:20}:null,coverage:coverageSummary},null,2));
   console.log(`Scene browser checks: ${checkpoints.length} passed. Artifacts: ${artifacts}`);
-})().catch(async error=>{console.error(error);try{await page?.screenshot({path:path.join(artifacts,'failure.png'),fullPage:false});console.error(JSON.stringify(browserRequests.slice(-5).map(x=>({path:x.path,status:x.status,response:x.response})),null,2));}catch{}process.exitCode=1;}).finally(async()=>{await context?.close();await browser?.close();try{bridge.stdin.write(JSON.stringify({command:'quit'})+'\n');}catch{}bridge.kill();});
+})().catch(async error=>{console.error(error);try{await page?.screenshot({path:path.join(artifacts,'failure.png'),fullPage:false});console.error(JSON.stringify(await page?.evaluate(()=>Object.fromEntries(['assistant-scene-page-next','assistant-scene-page-previous','assistant-scene-page-position','assistant-private-status'].map(id=>{const el=document.getElementById(id);return[id,el?{disabled:el.disabled,text:el.textContent,hidden:el.hidden}:null]}))),null,2));console.error(JSON.stringify(browserRequests.filter(x=>x.path.includes('/scene-pages')||x.path.includes('/scene-page-capabilities')).map(x=>({method:x.method,path:x.path,status:x.status,error:x.response?.error||null,page:x.response?.page||null,item_count:x.response?.items?.length||0})),null,2));}catch{}process.exitCode=1;}).finally(async()=>{await context?.close();await browser?.close();try{bridge.stdin.write(JSON.stringify({command:'quit'})+'\n');}catch{}bridge.kill();});

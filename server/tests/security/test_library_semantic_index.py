@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import threading
@@ -189,6 +190,125 @@ def test_snapshot_membership_and_vector_tampering_fail_closed(tmp_path):
         index.inspect_library_index(output)
 
 
+def _completed_index(tmp_path, count=2):
+    snapshot, roots, parent = _fixture(tmp_path, count)
+    output = parent / "index-run"
+    index.execute(snapshot, output, model=FakeModel(), original_roots=[roots],
+        free_space_floor=0)
+    return snapshot, roots, output
+
+
+def _replace_json(path, value):
+    path.write_bytes(index.canonical(value) + b"\n")
+    path.chmod(0o600)
+
+
+def test_each_independent_audit_verifies_every_artifact_once(monkeypatch, tmp_path):
+    snapshot, _roots, output = _completed_index(tmp_path, count=9)
+    read_vector = index._read_vector
+    reads = []
+
+    def observed(root, record):
+        reads.append(record.asset_id)
+        return read_vector(root, record)
+
+    monkeypatch.setattr(index, "_read_vector", observed)
+    first = index.inspect_library_index(output, expected_snapshot=snapshot)
+    assert reads == [str(number) for number in range(1, 10)]
+    reads.clear()
+    second = index.inspect_library_index(output, expected_snapshot=snapshot)
+    assert reads == [str(number) for number in range(1, 10)]
+    assert first == second
+    # No result survives into another audit: fresh byte tampering is refused.
+    target = next(output.glob("image-vectors/*/*.npy"))
+    target.write_bytes(target.read_bytes()[:-1] + b"\x01")
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output, expected_snapshot=snapshot)
+
+
+def test_checkpoint_manifest_mismatch_refuses_before_any_artifact_read(monkeypatch, tmp_path):
+    _snapshot, _roots, output = _completed_index(tmp_path, count=9)
+    path = output / "index.json"
+    manifest = json.loads(path.read_bytes())
+    manifest["records"][-1]["metadata_sha256"] = "a" * 64
+    _replace_json(path, manifest)
+    reads = []
+    monkeypatch.setattr(index, "_read_vector", lambda *args: reads.append(args))
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output)
+    assert reads == []
+
+
+@pytest.mark.parametrize("field,value", [
+    ("asset_id", "999"),
+    ("source_sha256", "a" * 64),
+    ("identity_sha256", "a" * 64),
+    ("file_sha256", "a" * 64),
+    ("component_sha256", "a" * 64),
+    ("relative_path", "image-vectors/" + "a" * 64 + "/" + "b" * 64 + ".npy"),
+])
+def test_rebound_metadata_still_requires_artifact_and_source_identity(tmp_path, field, value):
+    _snapshot, _roots, output = _completed_index(tmp_path)
+    manifest_path = output / "index.json"
+    manifest = json.loads(manifest_path.read_bytes())
+    summary = manifest["records"][0]
+    metadata_path = next(output.glob(f"image-vectors/*/{summary['record_id']}.json"))
+    metadata = json.loads(metadata_path.read_bytes())
+    metadata[field] = value
+    _replace_json(metadata_path, metadata)
+    summary["metadata_sha256"] = _digest(metadata_path)
+    batch_path = output / "checkpoints" / "batch-00000000.json"
+    batch = json.loads(batch_path.read_bytes())
+    batch["results"][0]["metadata_sha256"] = summary["metadata_sha256"]
+    _replace_json(batch_path, batch)
+    _replace_json(manifest_path, manifest)
+    # Even agreement between the manifest and checkpoint does not authorize
+    # stale source/identity bindings, an alias path, or wrong vector checksums.
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output)
+
+
+def test_canonical_metadata_change_requires_original_checkpoint_digest(tmp_path):
+    _snapshot, _roots, output = _completed_index(tmp_path)
+    path = next(output.glob("image-vectors/*/*.json"))
+    metadata = json.loads(path.read_bytes())
+    metadata["created_at"] += 1
+    _replace_json(path, metadata)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output)
+
+
+@pytest.mark.parametrize("suffix,alias", [("json", "symlink"), ("npy", "symlink"),
+                                         ("json", "hardlink"), ("npy", "hardlink")])
+def test_audit_refuses_linked_artifacts(tmp_path, suffix, alias):
+    _snapshot, _roots, output = _completed_index(tmp_path)
+    path = next(output.glob(f"image-vectors/*/*.{suffix}"))
+    other = output.parent / f"alias.{suffix}"
+    if alias == "symlink":
+        other.write_bytes(path.read_bytes())
+        other.chmod(0o600)
+        path.unlink()
+        path.symlink_to(other)
+    else:
+        os.link(path, other)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output)
+
+
+def test_source_drift_after_checkpoint_validation_is_still_refused(monkeypatch, tmp_path):
+    snapshot, _roots, output = _completed_index(tmp_path)
+    verify_batch = index._verify_batch
+
+    def change_after_batch(*args, **kwargs):
+        verify_batch(*args, **kwargs)
+        source = Path(snapshot["assets"][0]["path"])
+        source.write_bytes(source.read_bytes() + b"changed")
+
+    monkeypatch.setattr(index, "_verify_batch", change_after_batch)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index.inspect_library_index(output)
+
+
 def test_uncommitted_orphan_is_preserved_and_resume_refuses_it(tmp_path):
     snapshot, roots, parent = _fixture(tmp_path, 8)
     model = FakeModel()
@@ -232,3 +352,184 @@ def test_retained_failed_scratch_is_capped_before_next_preparation(monkeypatch, 
     assert model.calls == 0
     assert not (output / "checkpoints" / "batch-00000000.json").exists()
 
+
+
+def _private_json(path, raw):
+    path.write_bytes(raw)
+    path.chmod(0o600)
+    return path
+
+
+def test_inspector_json_reader_is_bounded_single_descriptor_and_preserves_value(monkeypatch, tmp_path):
+    path = _private_json(tmp_path / "inspector.json", b'{"a":1}\n')
+    original = index._open_pinned
+    reads = []
+
+    class Tracked:
+        def __init__(self, stream): self.stream = stream
+        def __enter__(self): return self
+        def __exit__(self, *args): return self.stream.__exit__(*args)
+        def fileno(self): return self.stream.fileno()
+        def read(self, size):
+            reads.append(size)
+            return self.stream.read(size)
+
+    monkeypatch.setattr(index, "_open_pinned", lambda *args: Tracked(original(*args)))
+    monkeypatch.setattr(Path, "read_bytes", lambda _self: (_ for _ in ()).throw(AssertionError("path reread")))
+    assert index._load_json_inspector(path, 64) == {"a": 1}
+    assert reads == [65]
+
+
+@pytest.mark.parametrize("raw", [b'{"a":1,"a":2}\n', b'{"a":NaN}\n', b'{ "a": 1 }\n', b'{"a":1}'])
+def test_inspector_json_reader_rejects_duplicate_nonfinite_noncanonical_and_truncated(raw, tmp_path):
+    path = _private_json(tmp_path / "invalid.json", raw)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(path, 64)
+
+
+def test_inspector_json_reader_binds_expected_metadata_digest_to_loaded_bytes(tmp_path):
+    path = _private_json(tmp_path / "metadata.json", b'{"a":1}\n')
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(path, 64, expected_sha256="0" * 64)
+    assert index._load_json_inspector(path, 64,
+        expected_sha256=hashlib.sha256(path.read_bytes()).hexdigest()) == {"a": 1}
+
+
+@pytest.mark.parametrize("race", ["before_open", "after_open_before_read", "after_read"])
+def test_inspector_json_reader_rejects_pre_open_and_descriptor_mutations(monkeypatch, tmp_path, race):
+    path = _private_json(tmp_path / "raced.json", b'{"a":1}\n')
+    original_open = index._open_pinned
+    original = b'{"a":1}\n'
+    changed = b'{"a":2}\n'
+
+    def mutate():
+        path.write_bytes(changed)
+        path.chmod(0o600)
+
+    if race == "before_open":
+        def open_after_mutation(*args):
+            mutate()
+            return original_open(*args)
+        monkeypatch.setattr(index, "_open_pinned", open_after_mutation)
+    elif race == "after_open_before_read":
+        class MutateBeforeRead:
+            def __init__(self, stream): self.stream = stream
+            def __enter__(self): return self
+            def __exit__(self, *args): return self.stream.__exit__(*args)
+            def fileno(self): return self.stream.fileno()
+            def read(self, size): mutate(); return self.stream.read(size)
+        monkeypatch.setattr(index, "_open_pinned", lambda *args: MutateBeforeRead(original_open(*args)))
+    else:
+        class MutateAfterRead:
+            def __init__(self, stream): self.stream = stream
+            def __enter__(self): return self
+            def __exit__(self, *args): return self.stream.__exit__(*args)
+            def fileno(self): return self.stream.fileno()
+            def read(self, size):
+                data = self.stream.read(size)
+                mutate()
+                return data
+        monkeypatch.setattr(index, "_open_pinned", lambda *args: MutateAfterRead(original_open(*args)))
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(path, 64)
+
+
+
+def test_inspector_growth_after_open_stays_bounded_and_refuses(monkeypatch, tmp_path):
+    path = _private_json(tmp_path / "growth-race.json", b'{"a":1}\n')
+    original_open = index._open_pinned
+    sizes = []
+
+    class GrowBeforeRead:
+        def __init__(self, stream): self.stream = stream
+        def __enter__(self): return self
+        def __exit__(self, *args): return self.stream.__exit__(*args)
+        def fileno(self): return self.stream.fileno()
+        def read(self, size):
+            sizes.append(size)
+            path.write_bytes(b'{"a":1}\n' + b' ' * 4096)
+            path.chmod(0o600)
+            return self.stream.read(size)
+
+    monkeypatch.setattr(index, "_open_pinned", lambda *args: GrowBeforeRead(original_open(*args)))
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(path, 64)
+    assert sizes == [65]
+
+
+def test_inspector_final_digest_rejects_same_size_restored_mtime_mutation(monkeypatch, tmp_path):
+    import image_embedding_receipts as receipts
+    path = _private_json(tmp_path / "final-race.json", b'{"a":1}\n')
+    identity = receipts._stat_identity(path.stat())
+    monkeypatch.setattr(receipts, "_stat_identity", lambda _info: identity)
+    monkeypatch.setattr(index, "_stat_identity", lambda _info: identity)
+    verify = index.verify_checkpoint
+
+    def mutate_before_final_verify(pin):
+        info = path.stat()
+        path.write_bytes(b'{"a":2}\n')
+        path.chmod(0o600)
+        os.utime(path, ns=(info.st_atime_ns, info.st_mtime_ns))
+        return verify(pin)
+
+    monkeypatch.setattr(index, "verify_checkpoint", mutate_before_final_verify)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(path, 64)
+
+
+def test_inspector_json_reader_refuses_links_reparse_and_private_gate_failure(monkeypatch, tmp_path):
+    target = _private_json(tmp_path / "target.json", b'{"a":1}\n')
+    hardlink = tmp_path / "hardlink.json"
+    os.link(target, hardlink)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(hardlink, 64)
+    symlink = tmp_path / "symlink.json"
+    symlink.symlink_to(target)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(symlink, 64)
+    hardlink.unlink()  # Restore the original single-link precondition.
+    calls = []
+    def refuse_reparse(_path):
+        calls.append(1)
+        raise ValueError("reparse")
+    monkeypatch.setattr(index, "_checkpoint_path", refuse_reparse)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(target, 64)
+    assert calls == [1]
+
+
+def test_inspector_json_reader_requires_private_file_gate(monkeypatch, tmp_path):
+    path = _private_json(tmp_path / "acl.json", b'{"a":1}\n')
+    calls = []
+    def refuse(_path):
+        calls.append(1)
+        raise ValueError("ACL refusal")
+    monkeypatch.setattr(index, "require_private_file", refuse)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(path, 64)
+    assert calls == [1]
+
+
+
+def test_inspector_rechecks_private_file_gate_after_final_digest(monkeypatch, tmp_path):
+    path = _private_json(tmp_path / "final-acl.json", b'{"a":1}\n')
+    original_gate = index.require_private_file
+    calls = []
+    def refuse_third_gate(selected):
+        calls.append(selected)
+        if len(calls) == 3:
+            raise ValueError("final ACL refusal")
+        return original_gate(selected)
+    monkeypatch.setattr(index, "require_private_file", refuse_third_gate)
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(path, 64)
+    assert len(calls) == 3
+
+
+def test_inspector_json_reader_rejects_size_before_open(monkeypatch, tmp_path):
+    path = _private_json(tmp_path / "large.json", b'{"a":1}\n')
+    opened = []
+    monkeypatch.setattr(index, "_open_pinned", lambda *_: opened.append(True))
+    with pytest.raises(index.LibraryIndexUnavailable):
+        index._load_json_inspector(path, 4)
+    assert opened == []

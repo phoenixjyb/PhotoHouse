@@ -310,3 +310,10 @@ class NativeBindingsTests(unittest.TestCase):
             with patch('ctypes.CDLL',return_value=api):
                 with self.assertRaises(HostAdmissionError):self.native(capacity.WindowsCapacityMetrics(nvml=selection))
             api.nvmlShutdown.assert_called_once_with()
+
+
+def load_tests(loader, tests, pattern):
+    # Existing API/Windows CPU profiles select this module explicitly.
+    tests.addTests(loader.loadTestsFromName('test_windows_story_service_capacity'))
+    tests.addTests(loader.loadTestsFromName('test_windows_story_process_conflicts'))
+    return tests

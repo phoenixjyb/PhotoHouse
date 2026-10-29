@@ -27,6 +27,8 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/search_intent_local.py',
             'backend/app/access/search_pending.py',
             'backend/app/access/search_exclusions.py',
+            'backend/app/access/search_policy.py',
+            'backend/app/access/search_policy_binding.py',
             'backend/app/access/search_evaluation.py',
             'backend/app/access/kinship.py',
             'backend/app/access/photo_stacks.py',
@@ -53,6 +55,7 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/semantic_scene_translation_fidelity.py',
             'scripts/qualify_multilingual_scenes.py',
             'scripts/semantic_siglip.py',
+            'scripts/_semantic_siglip_encoding.py',
             'scripts/build_multilingual_image_index.py',
             'scripts/serve_multilingual_semantic_text.py',
             'scripts/qualify_multilingual_pilot.py',
@@ -76,6 +79,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/inference_admission.py',
             'backend/app/access/host_inference_admission.py',
             'backend/app/access/windows_story_capacity.py',
+            'backend/app/access/windows_story_service_capacity.py',
             'backend/app/access/selected_story_snapshot.py',
             'backend/app/access/selected_story_operations.py',
             'backend/app/access/selected_story_lifecycle.py',
@@ -85,6 +89,8 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/selected_story_process.py',
             'backend/app/access/selected_story_grammar.py',
             'scripts/selected_story_native_owner.py',
+            'scripts/selected_story_service_recipe.py',
+            'scripts/serve_library_semantic_text.py',
             'scripts/qualify_selected_story.py',
             'scripts/selected_story_gguf_worker.py',
             'backend/app/access/captions.py',
@@ -203,6 +209,7 @@ class StagingPackageTests(unittest.TestCase):
                          'backend/app/access/semantic_configuration.py',
                          'backend/app/access/semantic_streaming.py',
                          'backend/app/access/semantic_eligibility.py',
+                         'backend/app/access/semantic_request_snapshot.py',
                          'scripts/multilingual_index_collection.py',
                          'scripts/semantic_bilingual_clothing.py',
                          'backend/app/access/people_review.py',
@@ -232,7 +239,9 @@ class StagingPackageTests(unittest.TestCase):
                 'from app.access.selected_story_local import LocalSelectedStoryProvider\n'
                 'from app.access.selected_story_native import NativeStoryLaunch\n'
                 'from app.access.selected_story_grammar import bounded_schema_to_gbnf\n'
-                'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider\n'
+                'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider, windows_story_service_provider\n'
+                'from selected_story_service_recipe import strict_recipe, build_recipe_provider\n'
+                'from serve_library_semantic_text import run as library_provider_run\n'
                 'import qualify_selected_story, selected_story_gguf_worker, json\n'
                 "assert 'llama_cpp' not in sys.modules\n"
                 "manifest=json.loads((root/'manifest.json').read_text())\nassert qualify_selected_story._source_identity(manifest['source_commit'])==manifest['source_commit']\n"
@@ -260,11 +269,14 @@ class StagingPackageTests(unittest.TestCase):
                 'import check_private_search\n'
                 'import export_visual_people_review, inspect_reviewed_people_readiness, reviewed_people_source\n'
                 'from app.access.search_evaluation import evaluate_cases\n'
-                'from app.access.search_exclusions import requires_exclusion_clarification\n'
+                'from app.access.search_policy import requires_exclusion_clarification\n'
                 "assert requires_exclusion_clarification('不在grass上的dog')\n"
+                'from app.access.search_policy_binding import capture_current_query_policy_binding\n'
+                'assert capture_current_query_policy_binding()["policy_version"] == 3\n'
                 'from app.access.semantic_configuration import load_semantic_runtime\n'
                 'from app.access.semantic_streaming import SemanticServingLimits\n'
                 'from app.access.semantic_eligibility import SemanticEligibilityStore\n'
+                'from app.access.semantic_request_snapshot import RequestSourceSnapshot\n'
                 'import multilingual_index_collection, semantic_bilingual_clothing\n'
                 'import semantic_coverage_qualification, semantic_request_profile\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
@@ -275,7 +287,7 @@ class StagingPackageTests(unittest.TestCase):
                 'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker', 'qualify_selected_story', 'selected_story_gguf_worker'):\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'selected_story_service_recipe', 'serve_library_semantic_text', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker', 'qualify_selected_story', 'selected_story_gguf_worker'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"
@@ -304,7 +316,7 @@ class StagingPackageTests(unittest.TestCase):
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'
-                'import semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness\n'
+                'import semantic_siglip,_semantic_siglip_encoding,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness\n'
                 'for module in (semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness):\n'
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 'for module in (build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot):\n'

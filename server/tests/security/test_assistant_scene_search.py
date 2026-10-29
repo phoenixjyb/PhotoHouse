@@ -63,6 +63,23 @@ class AssistantSceneSearchTests(unittest.TestCase):
         return self.client.get(f'{BASE}/threads/{self.thread}/requests/{rid}?library_id=family-a',
                                headers=headers or self.headers)
 
+    def enable_request_source_snapshot(self):
+        from app.access.semantic_request_snapshot import NativeSnapshotDatabase
+        from app.access.transport import AccessRuntime
+        with closing(sqlite3.connect(self.source.database)) as db:
+            self.assertEqual(db.execute('PRAGMA journal_mode=WAL').fetchone(), ('wal',))
+        access = AccessRuntime(NativeSnapshotDatabase(self.source.database.resolve()),
+            self.source.access.web_origin, clock=self.source.access.clock)
+        discovery = replace(self.pilot.runtime.discovery, access=access)
+        self.pilot.runtime = replace(self.pilot.runtime, discovery=discovery,
+            request_source_snapshot=True)
+        self.app.state.access_runtime = access
+        self.app.state.discovery_runtime = discovery
+        self.app.state.semantic_search_runtime = self.pilot.runtime
+        self.pilot.client.app.state.access_runtime = access
+        self.pilot.client.app.state.discovery_runtime = discovery
+        self.pilot.client.app.state.semantic_search_runtime = self.pilot.runtime
+
     def test_opt_in_is_separate_and_closed_default_does_not_admit_v4(self):
         legacy = self.client.get(BASE + '/capabilities?library_id=family-a', headers=self.auth).json()
         self.assertNotIn('scene_search', legacy)
@@ -103,6 +120,7 @@ class AssistantSceneSearchTests(unittest.TestCase):
                 self.assertNotIn('vector', response.text)
 
     def test_post_retry_and_get_recovery_keep_order_and_never_reencode(self):
+        self.enable_request_source_snapshot()
         base = self.scope()
         rid = str(uuid.uuid4())
         first = self.send('a child flying a kite', 1, scene=True, rid=rid)
@@ -120,6 +138,108 @@ class AssistantSceneSearchTests(unittest.TestCase):
         self.assertEqual(legacy.status_code, 409, legacy.text)
         self.assertNotIn('items', legacy.text)
         self.assertEqual(legacy.headers['cache-control'], 'no-store')
+
+    def test_768d_roundoff_score_is_bounded_for_workspace_and_snapshot_recovery(self):
+        import hashlib
+        import json
+        import math
+        import httpx
+        from app.access.semantic_encoder import JointSpaceBinding, LocalSemanticEncoder
+        from app.access.semantic_search import _present_semantic_score
+        from app.access.visual_candidates import VectorSpaceIdentity, canonical_vector_checksum
+        import test_visual_vector_loader as vector_fixture
+
+        vector = (1 / math.sqrt(5),) * 5 + (0.0,) * 763
+        image = VectorSpaceIdentity('a' * 64, 'b' * 64, 'synthetic-space',
+                                    'synthetic-v1', 768, 'unit_l2')
+        text = replace(image, artifact_sha256='c' * 64,
+                       preprocessing_sha256='d' * 64, model_version='text-v1')
+        binding = JointSpaceBinding(image, text, 'e' * 64)
+        checksum = canonical_vector_checksum(vector)
+
+        original_identity = vector_fixture.IDENTITY
+        original_add_vector = vector_fixture.VisualVectorLoaderTests.add_vector
+        original_semantic_identity = semantic_fixture.IDENTITY
+        original_semantic_binding = semantic_fixture.BINDING
+        original_runtime_class = semantic_fixture.SemanticSearchRuntime
+        original_token = globals()['TOKEN']
+        calls = []
+        scenario = None
+
+        def add_768(self, asset_id, _original_vector, **kwargs):
+            kwargs['identity'] = image
+            return original_add_vector(self, asset_id, vector, **kwargs)
+
+        def make_pilot_runtime(discovery, root, encoder):
+            with discovery.access.connection_factory() as connection:
+                owner_id = AccessService(connection, clock=discovery.access.clock)._require(
+                    TOKEN, 'family-a', 'library.read')['account_id']
+            return original_runtime_class(discovery, root, encoder,
+                                          pilot_owner_account_id=owner_id)
+
+        def provider(request):
+            body = json.loads(request.content)
+            calls.append(body)
+            return httpx.Response(200, json={'version': 1,
+                'binding_sha256': binding.binding_sha256,
+                'query_sha256': hashlib.sha256(body['query'].encode('utf-8')).hexdigest(),
+                'vector': list(vector), 'checksum_sha256': checksum})
+
+        try:
+            TOKEN = semantic_fixture.SECOND
+            globals()['TOKEN'] = TOKEN
+            vector_fixture.IDENTITY = image
+            semantic_fixture.IDENTITY = image
+            semantic_fixture.BINDING = binding
+            semantic_fixture.SemanticSearchRuntime = make_pilot_runtime
+            with patch.object(vector_fixture.VisualVectorLoaderTests, 'add_vector', add_768):
+                scenario = AssistantSceneSearchTests(
+                    'test_post_retry_and_get_recovery_keep_order_and_never_reencode')
+                scenario.setUp()
+            encoder = LocalSemanticEncoder(binding, 'http://127.0.0.1:43210/v1/encode-text',
+                                           transport=httpx.MockTransport(provider))
+            scenario.pilot.encoder = encoder
+            scenario.pilot.runtime = replace(scenario.pilot.runtime, encoder=encoder)
+            scenario.enable_request_source_snapshot()
+
+            direct = scenario.pilot.query(query='same vector', filters={}, token=TOKEN)
+            self.assertEqual(direct.status_code, 200, direct.text)
+            direct_result = direct.json()
+            self.assertEqual([item['id'] for item in direct_result['items']], ['101', '103'])
+            self.assertEqual([item['semantic_score'] for item in direct_result['items']], [1.0, 1.0])
+            base = scenario.scope()
+            rid = 'f09dbe5d-802c-4cf9-9068-bb1ecac94312'
+            first = scenario.send('same vector', revision=1, scene=True, rid=rid)
+            self.assertEqual(first.status_code, 200, first.text)
+            result = first.json()['result']
+            self.assertEqual([item['id'] for item in result['items']], ['101', '103'])
+            self.assertEqual([item['semantic_score'] for item in result['items']], [1.0, 1.0])
+            self.assertEqual(result['context']['scene']['scores'], [1.0, 1.0])
+            self.assertEqual(len(calls), 2)
+
+            with patch('app.access.semantic_search._present_semantic_score',
+                       wraps=_present_semantic_score) as score_guard, \
+                    patch.object(type(encoder), 'encode', side_effect=AssertionError('model replay')):
+                recovered = scenario.read(rid)
+                self.assertEqual(recovered.status_code, 200, recovered.text)
+                self.assertTrue(recovered.json()['recovered'])
+                self.assertEqual(recovered.json()['result'], result)
+                retried = scenario.send('same vector', revision=1, scene=True, rid=rid)
+                self.assertEqual(retried.status_code, 200, retried.text)
+                self.assertTrue(retried.json()['recovered'])
+                self.assertEqual(retried.json()['result'], result)
+            self.assertGreaterEqual(score_guard.call_count, 2)
+            self.assertTrue(all(call.args == (1.0,) for call in score_guard.call_args_list))
+            self.assertEqual(len(calls), 2)
+            self.assertGreater(base['total'], 0)
+        finally:
+            if scenario is not None:
+                scenario.doCleanups()
+            globals()['TOKEN'] = original_token
+            vector_fixture.IDENTITY = original_identity
+            semantic_fixture.IDENTITY = original_semantic_identity
+            semantic_fixture.BINDING = original_semantic_binding
+            semantic_fixture.SemanticSearchRuntime = original_runtime_class
 
     def test_an_empty_hard_scope_never_calls_encoder(self):
         base = self.scope('find photos of Sample Adult in 2020')
@@ -185,6 +305,7 @@ class AssistantSceneSearchTests(unittest.TestCase):
         self.assertEqual(self.pilot.calls, [])
 
     def test_changes_during_encoding_withhold_results_and_preserve_prior_context(self):
+        self.enable_request_source_snapshot()
         self.scope()
         self.pilot.during_encode = lambda: self.source.mutate(
             "UPDATE access_stories SET revision=2,text='changed' WHERE id='note-101'")
@@ -192,6 +313,23 @@ class AssistantSceneSearchTests(unittest.TestCase):
         self.assertEqual(response.status_code, 409, response.text)
         self.assertNotIn('items', response.text)
         self.assertEqual(self.store.get_thread('one', 'family-a', self.thread)['thread']['revision'], 1)
+        with closing(sqlite3.connect(self.source.database)) as db:
+            self.assertEqual(db.execute(
+                "SELECT revision,text FROM access_stories WHERE id='note-101'").fetchone(),
+                (2, 'changed'))
+
+    def test_membership_revocation_commits_during_snapshot_request_and_withholds_cards(self):
+        self.enable_request_source_snapshot()
+        self.scope()
+        self.pilot.during_encode = lambda: self.source.mutate(
+            "UPDATE access_memberships SET status='revoked' WHERE account_id='one'")
+        response = self.send('a bright kite', 1, scene=True)
+        self.assertEqual(response.status_code, 401, response.text)
+        self.assertNotIn('items', response.text)
+        with closing(sqlite3.connect(self.source.database)) as db:
+            self.assertEqual(db.execute(
+                "SELECT status FROM access_memberships WHERE account_id='one'").fetchone(),
+                ('revoked',))
 
     def test_recovery_refuses_changed_source_vector_and_encoder_identity_without_model(self):
         self.scope()

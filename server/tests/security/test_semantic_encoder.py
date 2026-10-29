@@ -276,3 +276,32 @@ def test_rank_checks_cancellation_for_each_scored_candidate(binding):
 
     with pytest.raises(Cancelled, match="score cancel"):
         rank_semantic(text, binding, records, check=check)
+
+
+def test_explicit_cpu_timeout_accepts_slow_valid_response(binding):
+    now = [0.0]
+    def slow_response(request):
+        now[0] = 3.0
+        return httpx.Response(200, content=response(binding))
+    result = encoder(binding, slow_response, timeout=30.0,
+                     monotonic=lambda: now[0]).encode("blue sky")
+    assert result.vector == (1.0, 0.0)
+    now[0] = 0.0
+    with pytest.raises(SemanticUnavailable):
+        encoder(binding, slow_response, monotonic=lambda: now[0]).encode("blue sky")
+
+
+def test_explicit_cpu_timeout_still_has_a_hard_total_deadline(binding):
+    now = [0.0]
+    def expired_response(request):
+        now[0] = 30.01
+        return httpx.Response(200, content=response(binding))
+    with pytest.raises(SemanticUnavailable):
+        encoder(binding, expired_response, timeout=30.0,
+                monotonic=lambda: now[0]).encode("blue sky")
+
+
+@pytest.mark.parametrize("timeout", [30.01, float("inf"), float("nan"), -1, 0, True])
+def test_explicit_cpu_timeout_refuses_invalid_or_unbounded_values(binding, timeout):
+    with pytest.raises(ValueError, match="invalid_encoder_configuration"):
+        encoder(binding, lambda request: None, timeout=timeout)

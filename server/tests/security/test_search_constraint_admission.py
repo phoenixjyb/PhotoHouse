@@ -10,7 +10,7 @@ SERVER = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(SERVER / 'backend'), str(SERVER / 'tests/security')]
 
 from app.access import discovery as d
-from app.access.search_exclusions import (requires_exclusion_clarification,
+from app.access.search_policy import (requires_exclusion_clarification,
                                          requires_semantic_clarification)
 from app.access.search_description import match_description
 from app.access.search_text import normalize_sources

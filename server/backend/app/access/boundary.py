@@ -196,7 +196,9 @@ class ClosedBoundary:
             return True
         if (method, path) in {
                 ('GET', '/assistant/workspace/v1/capabilities'),
+                ('GET', '/assistant/workspace/v1/agent-capabilities'),
                 ('GET', '/assistant/workspace/v1/scene-search-capabilities'),
+                ('GET', '/assistant/workspace/v1/scene-page-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-action-capabilities'),
@@ -213,6 +215,9 @@ class ClosedBoundary:
         if re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', path):
             return method in {'GET', 'DELETE'}
         if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/turns', path):
+            return True
+        if method == 'POST' and re.fullmatch(
+                r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/scene-pages', path):
             return True
         if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/speech', path):
             return True

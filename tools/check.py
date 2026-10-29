@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 API_TESTS = (
     "test_inference_admission.py", "test_host_inference_admission.py", "test_windows_story_capacity.py",
     "test_assistant_agent_tools.py", "test_assistant_agent_workspace.py",
+    "test_agent_decision.py", "test_local_tool_agent.py", "test_household_gguf_worker.py", "test_household_agent_factory.py",
     "test_discovery_text_validation.py", "test_discovery_chunk_accounting.py",
     "test_refreshing_people.py", "test_refreshing_people_http.py",
     "test_reviewed_people_readiness.py",
@@ -33,20 +34,26 @@ API_TESTS = (
     "test_search_pending.py", "test_assistant_pending_intent.py", "test_assistant_pending_intent_store.py", "test_assistant_description_pending.py",
     "test_search_exclusions.py", "test_search_exclusion_pending.py", "test_assistant_exclusion_pending.py",
     "test_search_constraint_admission.py",
-    "test_semantic_configuration.py", "test_semantic_provider_readiness.py", "test_semantic_encoder.py", "test_semantic_search.py", "test_semantic_initial_search.py", "test_assistant_scene_search.py", "test_semantic_provider_transport.py",
+    "test_semantic_configuration.py", "test_semantic_provider_readiness.py", "test_semantic_encoder.py", "test_semantic_search.py", "test_semantic_initial_search.py", "test_assistant_scene_search.py", "test_assistant_scene_reword_recovery.py", "test_assistant_scene_pages.py", "test_semantic_provider_transport.py",
     "test_semantic_openclip.py", "test_serve_semantic_text.py", "test_semantic_provider_integration.py",
     "test_semantic_pair_cases.py", "test_semantic_pair_canary.py",
     "test_semantic_scene_cases.py", "test_semantic_exclusion_cases.py", "test_qualify_semantic_scenes.py",
     "test_semantic_scene_translation.py", "test_semantic_scene_translation_fidelity.py",
     "test_qualify_multilingual_scenes.py",
+    "test_semantic_policy_separation.py",
     "test_multilingual_index_provider.py",
     "test_multilingual_library_coverage.py", "test_semantic_loopback_network.py",
     "test_multilingual_index_collection.py", "test_semantic_streaming_search.py", "test_semantic_bulk_vectors.py", "test_semantic_bulk_search.py",
+    "test_semantic_artifact_field_extraction.py",
     "test_semantic_eligibility.py", "test_semantic_eligibility_search.py",
+    "test_semantic_request_snapshot.py",
+    "test_semantic_media_only_facts.py", "test_semantic_cached_sql_grammar.py",
     "test_semantic_coverage_qualification.py", "test_semantic_request_profile.py", "test_qualify_semantic_coverage.py",
+    "test_semantic_setup_profile.py", "test_semantic_qualification_journal.py",
     "test_semantic_bilingual_clothing.py",
     "test_library_image_inputs.py", "test_library_mpo_inputs.py", "test_library_siglip.py",
     "test_library_semantic_index.py", "test_qualify_library_semantic.py",
+    "test_semantic_result_observation.py",
     "test_semantic_scene_comparison.py",
     "test_semantic_reviewed_projection.py", "test_serve_reviewed_semantic_text.py",
     "test_reviewed_semantic_provider_integration.py",
@@ -134,6 +141,7 @@ ANDROID_TASKS = (
     ":connected:lintDebug", ":tv:lintDebug", ":connected:assembleDebug", ":tv:assembleDebug",
 )
 WEB_TESTS = (
+    "server/tests/security/test_local_agent_browser.cjs",
     "server/tests/security/test_story_draft_preparation_browser.cjs",
     "server/tests/security/test_people_review_browser.cjs",
     "server/tests/ui/voice-session-control.test.mjs",
@@ -142,6 +150,7 @@ WEB_TESTS = (
     "server/tests/ui/assistant-scene-workspace.test.mjs",
     "server/tests/security/test_assistant_scene_browser.cjs",
     "server/tests/security/test_assistant_private_workspace_v3.cjs",
+    "server/tests/security/test_private_assistant_agent.cjs",
     "server/tests/security/test_assistant_intent_browser.cjs",
     "server/tests/security/test_assistant_workspace_browser.cjs",
     "server/tests/security/test_assistant_search_browser.cjs",
@@ -270,6 +279,10 @@ def web():
 
     for path in paths:
         suite_env = env.copy()
+        if path.name == "test_assistant_scene_browser.cjs":
+            # One generated scene journey includes continuation pages and
+            # partial coverage; avoid silently checking only its first page.
+            suite_env.update(PH_SCENE_PAGES="1", PH_SCENE_COVERAGE="1")
         if env.get("PH_BROWSER_ARTIFACTS"):
             # Suites use common result filenames. Give each its own directory
             # so a later journey cannot replace an earlier acceptance record.

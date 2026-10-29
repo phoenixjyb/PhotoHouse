@@ -30381,6 +30381,1848 @@
         }
       ],
       "notes": "Clarify static asset count and selected-story generation/provider scope; speech and other existing local services are not described as disabled."
+    },
+    {
+      "feature": "semantic-warm-exact-cohort-validation-proof-r63",
+      "source_base": "885c428333cd952b8a22802bb7789aa9cfe8eb98",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "before_sha256": "e9971843a851534957db137a255986791d79654821a3615396a851a619fe40a6",
+          "sha256": "9fa380ac576725370a04b091ab7a56640f20f95fe3471a4d8bffb2eff527e006"
+        },
+        {
+          "path": "server/tests/security/test_semantic_bulk_vectors.py",
+          "before_sha256": "c5ef235f11938924042a869793aaee051f302f9136f8c5f34277b619be6ac021",
+          "sha256": "a8c9836b50dc97c63968e5c17428c7b8b27d8c54fe2738c65bc9bd00cfad4adf"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "e46db0f80de45d4723e6411fd6e1c891f334ca79fb970f6c54ebf5b3c4d65008",
+          "sha256": "fa4adf64bce303c893f2b347a8294bb546ce5e415b4155aa9469fd878cb13b37"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "0ceaedfb080f8ce7965eaf875a4476a59ef020b74eef0849a9e597f5d50a96e8",
+          "sha256": "0be330c4f1cc30f2090841bdca7790b29663bcfb6002107e5237d06e5a14ec58"
+        }
+      ],
+      "notes": "Reuse only a pure validation proof for exact freshly copied typed cohort metadata. Preserve complete secure file reads and hashes, scope/identity/source/policy checks, per-row cancellation and exact ranking. Native latency qualification remains separate."
+    },
+    {
+      "feature": "semantic-r63-native-timeout-evidence-20261022",
+      "source_base": "95b7f7f6b31b604766219b8155f480641995a594",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "fa4adf64bce303c893f2b347a8294bb546ce5e415b4155aa9469fd878cb13b37",
+          "sha256": "28026c872fa791adca769810442925ee6aac1d989a1f4cc47c2e91f39eb56576"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "0be330c4f1cc30f2090841bdca7790b29663bcfb6002107e5237d06e5a14ec58",
+          "sha256": "3b3bac7be7dbbf55a2e0d9ce55331e380d0f00bff1022985b80bdd2e2fd88dde"
+        },
+        {
+          "path": "docs/SEMANTIC_LIBRARY_SCALE.md",
+          "before_sha256": "20ab4c5ef25ddff752797efa8aafa11081cb906135d4331b8a404943d4d92cc6",
+          "sha256": "2c2fde8ad564663eab90b5973bbc4f9eb091ca1a13f56eb8150b4387cccfb14a"
+        }
+      ],
+      "notes": "Record full local source validation, one bounded failed native attempt without accepted latency/protection results, preserved external state, and distinct source implementation versus unapproved serving policy. Keep semantic OFF."
+    },
+    {
+      "feature": "semantic-durable-phase-checkpoints-and-setup-profile-r64",
+      "source_base": "9a859d6ecb03457fd74f29ccb574bec10c59daf2",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "1eb3435fa3df7e4b1ca98995ee3126e91bb4e753a6bd77ae9f1f26c92c5a7646",
+          "before_sha256": "3b3bac7be7dbbf55a2e0d9ce55331e380d0f00bff1022985b80bdd2e2fd88dde"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "sha256": "add0a7987756c6b9c6d7df27499c38412c5396e604b0d8f90507cf4e222a108b",
+          "before_sha256": "28026c872fa791adca769810442925ee6aac1d989a1f4cc47c2e91f39eb56576"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "de55e5767b3b5f623ace9cd48b87015c841cb533d42bc130550de8de71a93fdd",
+          "before_sha256": "398d83cb89843733efb0f84891004f9d37166b28383c09753349caf00608a688"
+        },
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "sha256": "66b208bc5e9f4272aebf914cea6f03f725de28ecccd67ea5bde94683f8a51245",
+          "before_sha256": "08387cc542e77459a0c8fafd59cc18d815ba6763b361402c8dd06255c36a85bc"
+        },
+        {
+          "path": "server/scripts/semantic_qualification_journal.py",
+          "sha256": "0ebc8e5ffd47632348ceb836bd165e359d80ac1411c9b98113b728cc7f09350d"
+        },
+        {
+          "path": "server/scripts/semantic_setup_profile.py",
+          "sha256": "67bec5b86f260978da0870aa5aa8a928a5cf1a421da55a3071173c7beaae2fdd"
+        },
+        {
+          "path": "server/tests/security/test_qualify_library_semantic.py",
+          "sha256": "f1330845be89eb96458000ed00919af6ee9330b81e4c80a4761a21fd2853ffb6",
+          "before_sha256": "943b27be88cec1520eb55edc9fe9e2cdaad5d07c3f896742559df205ff9f8e3c"
+        },
+        {
+          "path": "server/tests/security/test_qualify_semantic_coverage.py",
+          "sha256": "bf58fa90d074017f725e050f95e85bfc87bb0c2f600e9198abc81d3156347660",
+          "before_sha256": "0c6463bb4aad7fefce2bf734596e02d991b1755579da2e093edac2bc357b6972"
+        },
+        {
+          "path": "server/tests/security/test_semantic_qualification_journal.py",
+          "sha256": "01721cca8ce34b9d357690c23237bdb6b3250a98d233e7a3e1178492536e96be"
+        },
+        {
+          "path": "server/tests/security/test_semantic_setup_profile.py",
+          "sha256": "ca3e5f17426b97e54a609ec88483fc27c4fe18633529b45e84e576c7e804bdd3"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "5247d5b16d99928c63545176763f5de5f5abe65c118be4fe1cad113a140717a2",
+          "before_sha256": "23d7d2f2f8b4e3a11f70a05e0f97ae7bb9be4cf1f9b1733e744e49bc37341ce7"
+        }
+      ],
+      "notes": "Opt-in diagnostic-only private atomic bounded progress before both full audits, fixed numeric operation timing, exact result/exception and patch restoration checks. Preserve full protected qualification, permissions/integrity and fixed Job deadline. Native qualification remains separate; no production activation."
+    },
+    {
+      "feature": "semantic-checkpoint-windows-publication-handle-close-r64",
+      "source_base": "3195a601a1254ab49f7027671eb9d1a83c811071",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/semantic_qualification_journal.py",
+          "before_sha256": "0ebc8e5ffd47632348ceb836bd165e359d80ac1411c9b98113b728cc7f09350d",
+          "sha256": "ef4b6252bc5d0cc8e173c9e48f9dd90c10f6778bdf199a194546910737acfd45"
+        },
+        {
+          "path": "server/tests/security/test_semantic_qualification_journal.py",
+          "before_sha256": "01721cca8ce34b9d357690c23237bdb6b3250a98d233e7a3e1178492536e96be",
+          "sha256": "393cd970eabb8d9eb4fdd9355da4254a8b358b500cffea83bc69491f6e7a6c38"
+        }
+      ],
+      "notes": "Close fsynced temporary descriptor before no-overwrite hard-link publication and temporary-name deletion, retaining inode/size/type/reparse checks. Regression enforces closed descriptor before filesystem publication; native Windows qualification remains separate."
+    },
+    {
+      "feature": "semantic-windows-single-operation-checkpoint-publication-r64",
+      "source_base": "20cfe7415a85b4284068bad92b79f488482209c5",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/semantic_qualification_journal.py",
+          "before_sha256": "ef4b6252bc5d0cc8e173c9e48f9dd90c10f6778bdf199a194546910737acfd45",
+          "sha256": "bb49ba35da7d1c77f4df777e98b583840a7cbf2428fc05e1e05fbf4686d1bbca"
+        },
+        {
+          "path": "server/tests/security/test_semantic_qualification_journal.py",
+          "before_sha256": "393cd970eabb8d9eb4fdd9355da4254a8b358b500cffea83bc69491f6e7a6c38",
+          "sha256": "f2ac71fab582271c48f37681d02c716e32b5bb2d700949b6f7d43bb10a9e0e8b"
+        }
+      ],
+      "notes": "Use Windows no-overwrite rename after closing the fsynced temporary file, avoiding a hard termination between link and unlink that leaves two names rejected by strict private readers. Keep POSIX no-overwrite hard-link publication. Generated subprocess termination immediately after the Windows publication branch preserves a readable single-link checkpoint; native acceptance remains separate."
+    },
+    {
+      "feature": "semantic-durable-native-diagnostics-result-r64",
+      "source_base": "8fbffd8966ec68216b30ffd7dc29e9e9d30256e4",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "1eb3435fa3df7e4b1ca98995ee3126e91bb4e753a6bd77ae9f1f26c92c5a7646",
+          "sha256": "900fba04c7981ea5fbaaf7d4f51f02e0e9f0e33cc98754d023975f22d571c5ed"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "add0a7987756c6b9c6d7df27499c38412c5396e604b0d8f90507cf4e222a108b",
+          "sha256": "f1c910860b875da72923a44838086b0aae99b6fac923a987811fe17cb593317e"
+        }
+      ],
+      "notes": "Record the single bounded native timeout with 365 validated diagnostic checkpoints, measured setup phase boundaries, incomplete final audit and no accepted latency. Distinguish independently authorized report publication from unchanged PhotoHouse pins; preserve semantic OFF and both audit/closure gates."
+    },
+    {
+      "feature": "semantic-phase-start-duration-precision-r64",
+      "source_base": "a52bb257a1f9ea8c30ac1aacd2e67daa693023d5",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "900fba04c7981ea5fbaaf7d4f51f02e0e9f0e33cc98754d023975f22d571c5ed",
+          "sha256": "f21e2aecc2144fad2b30ecb5796873ce121a9c4c56f7c5b63eb270ce38192ced"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "f1c910860b875da72923a44838086b0aae99b6fac923a987811fe17cb593317e",
+          "sha256": "89318d72cc23fb187d43dec5caf4812a6c327464b1ade62dc72f1992adff1f95"
+        }
+      ],
+      "notes": "Compute phase durations from matching phase_started and phase_completed events, rather than neighboring completion boundaries. Documentation precision only; no new qualification or runtime action."
+    },
+    {
+      "feature": "semantic-index-single-artifact-audit-pass-r65",
+      "source_base": "9b307fba82f454f06c0aca97a024d919a84142e1",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/library_semantic_index.py",
+          "before_sha256": "ce9fc3e0ec4c1945271401724501caf0f2932b0303364042999e67ca491a64e9",
+          "sha256": "1ed5c80814b2877717ae1c5da8d26c36de6d3961a124bf6a0816adc1d5dfca2d"
+        },
+        {
+          "path": "server/tests/security/test_library_semantic_index.py",
+          "before_sha256": "08485576ffb4a89504194f719a4dcab442076b2a45f71b04d26c53f329a5eba0",
+          "sha256": "461a87e07a202657d8fe76ff435f7de3f09ee4aa2eba7e70f05fed9681d0f87f"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "f21e2aecc2144fad2b30ecb5796873ce121a9c4c56f7c5b63eb270ce38192ced",
+          "sha256": "758b098744e160b1476b6c3f6d97232d69527fa2ad9c6af82362d1a04b703b7b"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "89318d72cc23fb187d43dec5caf4812a6c327464b1ade62dc72f1992adff1f95",
+          "sha256": "786f41900532a910097e900f7623800b916793de8e57b5c79ba1af3aa9c6a7fd"
+        }
+      ],
+      "notes": "Validate all checkpoint provenance before one artifact-verification pass; retain writer/resume, protected JSON and vector checkpoint/hash/identity checks, canonical components, source checks and both independent full qualification audits. Generated mutation/refusal and exact-output comparison only; native qualification and activation remain separate."
+    },
+    {
+      "feature": "semantic-audit-r65-source-validation-and-connectivity-checkpoint",
+      "source_base": "13a94dd515fd20670a6171178202a2eee6524fbf",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "758b098744e160b1476b6c3f6d97232d69527fa2ad9c6af82362d1a04b703b7b",
+          "sha256": "a421992b39e9d7f2df8ff13ae8df8efdaaff76b60fe5de5781f52d30afc15ad2"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "786f41900532a910097e900f7623800b916793de8e57b5c79ba1af3aa9c6a7fd",
+          "sha256": "17622a2a0a2220bc247d63f909964cce01d4f22671e216a3eed0780b0ad9f30c"
+        }
+      ],
+      "notes": "Record exact 3389-test API pass and generated audit comparison separately from native qualification. Native attempt/staging remain zero; expired baselines and refused local gate retained, then SSH relay connectivity blocked fresh acquisition. No deployment or activation."
+    },
+    {
+      "feature": "semantic-r66-r68-transport-and-complete-native-qualification",
+      "source_base": "ac47a9746fcac67ef666d003729493c6aca58eef",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "a421992b39e9d7f2df8ff13ae8df8efdaaff76b60fe5de5781f52d30afc15ad2",
+          "sha256": "33f249b726f548404571c27228db896a23051152014e08659ba9d528f93b7b20"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "17622a2a0a2220bc247d63f909964cce01d4f22671e216a3eed0780b0ad9f30c",
+          "sha256": "9b90d6d0af25dc01ac8a71a86298ad74333f0e7eda8e21e1c341a25eeeb7ef96"
+        },
+        {
+          "path": "docs/SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md",
+          "before_sha256": "bfd8d1be281843adff6f5cf0b02e1339c86572bc6f3fb26a2ab0d64e9f10b0e8",
+          "sha256": "30ac58d06bb62665b961b2bab1954cfc175355f90b1be94629568e79c96fadef"
+        }
+      ],
+      "notes": "Record R66 partial stage and R67 full stage without a native start separately from R68 completed exact13a native qualification: two audits, 15 cases, nine samples, 8s warm median; postflight preserves source/stores/tasks/catalog/models/site and OFF policy. No performance/SLO, family relevance or activation acceptance."
+    },
+    {
+      "feature": "semantic-r68-independent-closure-and-explicit-release",
+      "source_base": "7c3e714732d8f1ed015749b54becbbcadb764eb7",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "33f249b726f548404571c27228db896a23051152014e08659ba9d528f93b7b20",
+          "sha256": "18913b8ed0437f67bcfb85f32d1d3ee5d2f0dc12c5ef045d5edec3acb01d0dda"
+        }
+      ],
+      "notes": "Record independent local closure after actual 185.668-second offline interval and explicit resource release before expiry; no remaining owned transport/queue, no deployment/activation."
+    },
+    {
+      "feature": "semantic-r69-bounded-inspector-json-with-final-digest",
+      "source_base": "e3b62cbfd81efea1cdf1e210602d1187e1622648",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/library_semantic_index.py",
+          "before_sha256": "1ed5c80814b2877717ae1c5da8d26c36de6d3961a124bf6a0816adc1d5dfca2d",
+          "sha256": "038ff5a22a005ae160a2076abd322e1acb50738cbf34d5ab38a9763dd5fa687d"
+        },
+        {
+          "path": "server/scripts/semantic_setup_profile.py",
+          "before_sha256": "67bec5b86f260978da0870aa5aa8a928a5cf1a421da55a3071173c7beaae2fdd",
+          "sha256": "53cf19b708a7075f4b43b5b9fb34e19b860385be5ec13ab0af6fa5377211bb2c"
+        },
+        {
+          "path": "server/tests/security/test_library_semantic_index.py",
+          "before_sha256": "461a87e07a202657d8fe76ff435f7de3f09ee4aa2eba7e70f05fed9681d0f87f",
+          "sha256": "1a3f91c836c5db610e2d7d7625338dc75b24448dc9ed3ea9326c21e96fcc947a"
+        },
+        {
+          "path": "server/tests/security/test_semantic_setup_profile.py",
+          "before_sha256": "ca3e5f17426b97e54a609ec88483fc27c4fe18633529b45e84e576c7e804bdd3",
+          "sha256": "44042837e814c07535f7e7edce9349d5a99f07ad962f8d0395012a38d569f15b"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "18913b8ed0437f67bcfb85f32d1d3ee5d2f0dc12c5ef045d5edec3acb01d0dda",
+          "sha256": "9f5b2f226ec73b649b254a322b556bddc0cd2413b6de2d7b5a7f926dd2d0c721"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "9b90d6d0af25dc01ac8a71a86298ad74333f0e7eda8e21e1c341a25eeeb7ef96",
+          "sha256": "f150e245a3e798a40d93b0f23d46acb090bca204e730ad3f3e35e85af25014ad"
+        }
+      ],
+      "notes": "Inspector-only bounded first JSON read with duplicate/nonfinite/canonical validation and expected metadata SHA, retaining final full digest/identity and private-file checks; writer/resume/source/vector/both full audits remain. 41 focused tests and independent source review passed; clean exact c534805 passed 3405 API tests/4037 subtests plus generated demo. Separate unqualified source, not in R68 native metrics, no runtime or activation."
+    },
+    {
+      "feature": "semantic-request-local-conditional-text-provenance-r70",
+      "source_commit": "21c2b7d15e155829157ad0c9b459f779a8b675e8",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "39b901aece2bf49af3ecbae90433fa4251a9d35f60a843652ed4b18d1d1a466a",
+          "sha256": "26b79c7c37dfd90cb819b1c953937cbf9a3a11baff0d1dd49f3f295bf770b5f2"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "0b39acd7092785a389b1f9439211e812f2f3d4b967736a9c76cecc1974767962",
+          "sha256": "f940dd9702584ec8851e61a12c8297344ec40b9247a9d381af0a6c9f471e80f0"
+        },
+        {
+          "path": "server/tests/security/test_semantic_eligibility_search.py",
+          "before_sha256": "f93210edb8f5942994ce5220f05c9dc289958c4844b2c292ba41e74a3ecf774d",
+          "sha256": "93947ec433578c1c40f905e9ea71c7aab41d5bcc05ecec150b0ff338e828e276"
+        },
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": "fb1a28b7c91039e66124ae5cc9fc5f65e40b27ab3684bab945c0d1143b35f1f5",
+          "sha256": "7ac9b455e38c93d3d7d5b09d52b45caf076990bc3690f6700ffd9194a65ba4fe"
+        }
+      ],
+      "notes": "Conditional request-local text provenance for validated semantic-only filters; SQL/source/auth/final hashes and ordinary lexical behavior remain. Local exact-source API qualification recorded separately; native latency and activation remain gated."
+    },
+    {
+      "feature": "semantic-native-f64-immutable-cache-ranking-r71",
+      "files": [
+        {
+          "before_sha256": "9fa380ac576725370a04b091ab7a56640f20f95fe3471a4d8bffb2eff527e006",
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "sha256": "f76c36e6edade337b88bb6cd177dc52da2f825472aa0868ae917f573f54d1256"
+        },
+        {
+          "before_sha256": "f82473bf76fa438328a11539feb64484576c000519cc23e9337c1c8707f62a8c",
+          "path": "server/tests/security/test_semantic_bulk_search.py",
+          "sha256": "53fe82bc2f81ad327b8a97ced0adf255031070e6bf10b35ecaa5c14ec16c66ff"
+        },
+        {
+          "before_sha256": "a8c9836b50dc97c63968e5c17428c7b8b27d8c54fe2738c65bc9bd00cfad4adf",
+          "path": "server/tests/security/test_semantic_bulk_vectors.py",
+          "sha256": "c3e0c94621bb23bd005597e0d0768458b9f0086ee309899f8dba85cadcf35053"
+        }
+      ],
+      "generation_enabled": false,
+      "memory_limits_changed": false,
+      "on_disk_vector_format_changed": false,
+      "private_cache_layout_changed": true,
+      "routes_added": false,
+      "schema_changed": false,
+      "semantic_enabled": false,
+      "source_commit": "1148a820b393a6eb7def885e51056bcbc05fa06e",
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "notes": "Immutable native-double private cache views retain portable on-disk vectors and exact math.fsum ranking/callback checks. Exact1148a82 passed3426 API tests/4085 subtests/generated demo. Generated Mac ranking gain does not establish Windows2s target, deployment or activation."
+    },
+    {
+      "feature": "semantic-exact-product-ranking-r80",
+      "source_commit": "11fc08e5db4ff92bbb6d761ba591d38292a0a073",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "memory_limits_changed": false,
+      "on_disk_vector_format_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "sha256": "4dbb739f1193629e6f8108234ebd353d5364a7d4a1555d54f7ba7bbaeedf57e1",
+          "before_sha256": "f76c36e6edade337b88bb6cd177dc52da2f825472aa0868ae917f573f54d1256"
+        },
+        {
+          "path": "server/tests/security/test_semantic_bulk_vectors.py",
+          "sha256": "539f462606934374381d0934e655f326b4e6c1e2eeea0b9ee820abb37fa4da11",
+          "before_sha256": "c3e0c94621bb23bd005597e0d0768458b9f0086ee309899f8dba85cadcf35053"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "sha256": "ca64e29bd577e61dbff7bbc62815d1ddb21dd12dc5be9ed5a0a08b1ad4c59003",
+          "before_sha256": "f150e245a3e798a40d93b0f23d46acb090bca204e730ad3f3e35e85af25014ad"
+        },
+        {
+          "path": "docs/SEMANTIC_EXACT_PRODUCT_RANKING.md",
+          "sha256": "ef1debd38c6dc0449cd653466c629d62f1f6604f7fea45bc6988a0a008788a71",
+          "before_sha256": null
+        }
+      ],
+      "notes": "Optional lazy NumPy products for >=128 rows and >=128 dimensions retain exact math.fsum scores, numeric tie order, bounded private product/index arrays, callbacks, complete current-cohort/file/source checks. Python3.12/NumPy2.2.6 full CPU profile passed3432 tests/4090 subtests/generated demo; focused43 tests also passed3.14/2.4.2. Generated23,696/40,000-row comparisons matched frozenR71 score bits/order. Native Windows/full-request latency/relevance/serving activation remain gated; no deployment or limit increase."
+    },
+    {
+      "feature": "semantic-exact-artifact-field-copy-r88",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "memory_limits_changed": false,
+      "on_disk_vector_format_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "before_sha256": "4dbb739f1193629e6f8108234ebd353d5364a7d4a1555d54f7ba7bbaeedf57e1",
+          "sha256": "14d1e5c51ea3afa0c1966c7df5c39134b1bfdd806692d925e7ae153f45d0d6a8"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "f940dd9702584ec8851e61a12c8297344ec40b9247a9d381af0a6c9f471e80f0",
+          "sha256": "e9cdee8395b00ed41cc4b494babe6b3a78a270aebdfddf54a983c506f4f22681"
+        },
+        {
+          "path": "server/tests/security/test_semantic_artifact_field_extraction.py",
+          "before_sha256": null,
+          "sha256": "9a5a61a0314c8c17ec44719d43e12f3ee3c94b6952e493d47a0c2725740124fd"
+        },
+        {
+          "path": "docs/SEMANTIC_ARTIFACT_FIELD_COPY.md",
+          "before_sha256": null,
+          "sha256": "66c4105c76e0173a4a9196020725b6c3cf6a71a0953be1ed4da31402ccfee1d0"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "ca64e29bd577e61dbff7bbc62815d1ddb21dd12dc5be9ed5a0a08b1ad4c59003",
+          "sha256": "821adc360d336ee65aa92fbbf6d6e7aa587cb19e418a2fbb3deacb5772bb1c25"
+        }
+      ],
+      "notes": "C-backed extraction copies the same16 current artifact fields; C map iteration retains exact type identity and per-row callbacks. No cache, SQL, policy, source/file/generation or rank change. Focused70 tests passed Python3.12/NumPy2.2.6 and3.14/2.4.2. Generated23696x768 full API comparison18 measured requests retained exact full JSON/rank bits; noisy local mean2.775s vs2.987s is not Windows/model/network/2s or activation qualification. Additional74 semantic endpoint/streaming tests passed on3.12; 122 unique cases across overlapping focused sets. Code and local synthetic results remain separate from native qualification.",
+      "source_commit": "c01758491b87c6e2a7fb3f8bfff66d949df8e2c2"
+    },
+    {
+      "feature": "semantic-readiness-allocation-only-20261024",
+      "source_commit": "fa5b7657d294c155d29f8d8d7cab80739a059e76",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": null,
+          "sha256": "7ced1893f11b8f3fe58c10c72d495371f2bbd75cfddec58b05be7676a2bb68a2"
+        },
+        {
+          "path": "docs/SEMANTIC_ARTIFACT_FIELD_COPY.md",
+          "before_sha256": "66c4105c76e0173a4a9196020725b6c3cf6a71a0953be1ed4da31402ccfee1d0",
+          "sha256": "9654d4cca08ffdec0e16fe93ec5197c9198713db9589e85aaeeb9e16079b48eb"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "821adc360d336ee65aa92fbbf6d6e7aa587cb19e418a2fbb3deacb5772bb1c25",
+          "sha256": "276060414ae9baa04582bf799d99e0f94f4e4f046138804c938f8836bc04fbea"
+        }
+      ],
+      "notes": "Documentation only: separates prior completed R68 native measurement from current c017 source-only results and the allocation-only R90 local orchestration failure. Captured unexpected stderr remains failed qualification; limited owned transport release does not claim Windows preservation, native success, deployment or activation."
+    },
+    {
+      "feature": "semantic-readiness-local-request-preparation-regressions-r91",
+      "source_commit": "c01758491b87c6e2a7fb3f8bfff66d949df8e2c2",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "7ced1893f11b8f3fe58c10c72d495371f2bbd75cfddec58b05be7676a2bb68a2",
+          "sha256": "c68f120e9efd3d439fc7890859d82ea467e3719cd0a20b43838a4784746da472"
+        }
+      ],
+      "notes": "Documentation only:12 real-driver request-preparation regressions,7 progress-suppression checks and an isolated4-phase actual-issuer integration are local source evidence. Runtime backend is fake, shared queue untouched, consumed run refused; successor rebinding and Windows qualification remain pending."
+    },
+    {
+      "feature": "semantic-exact-image-only-derived-facts-r93",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "memory_limits_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "e9cdee8395b00ed41cc4b494babe6b3a78a270aebdfddf54a983c506f4f22681",
+          "sha256": "762a03a880f27428cc4165d25c785f6dc14ef647b34b07bb7785a85a43e0f7e5"
+        },
+        {
+          "path": "server/tests/security/test_semantic_media_only_facts.py",
+          "before_sha256": null,
+          "sha256": "cc7baa842c4386df8dad622bb63d7a6b3813172e474684c0241331eb292e74f3"
+        },
+        {
+          "path": "docs/SEMANTIC_MEDIA_ONLY_FACTS.md",
+          "before_sha256": null,
+          "sha256": "2640363f77e954746e9297454777131938ed2d58258e93eb03871322642e542f"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "c68f120e9efd3d439fc7890859d82ea467e3719cd0a20b43838a4784746da472",
+          "sha256": "51065bef3d8612477d269d2a28eb5260bc3422b8c3b4fd8c5344ef29dac64995"
+        }
+      ],
+      "notes": "Exact normalized image-only filters omit unused maps/facets/coverage derivation while retaining fresh SQL/source/policy/bulk/authorization checks, reviewed faces/allow_zero and cancellation. Five focused tests and generated23696x768+65 omission comparison preserve fullAPI/rankbits across9 warm EN/ZH/mixed pairs and3 page-two pairs. Mean2329 to2180ms is generated/fixedencoder evidence; max2615ms fails2000ms. ActualR92 c017 native9warm p50=6469/max7203ms remains failed/incomplete after localoffline normalizer; no deployment or activation."
+    },
+    {
+      "feature": "semantic-r92-actual-measurement-scope-clarification",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "51065bef3d8612477d269d2a28eb5260bc3422b8c3b4fd8c5344ef29dac64995",
+          "sha256": "15d7004baa5c0e58f6dcccd40c16a00e004ffb75048966049bbeee3d0e74ad5d"
+        }
+      ],
+      "notes": "Documentation only: actual R92 uses prepared vectors/frozen reviewed catalog in synthetic-account qualification database, with actual provider/network timing. Production database remained unopened and family relevance unmeasured/unaccepted; distinguish from fully generated local fixedencoder profiles."
+    },
+    {
+      "feature": "semantic-existing-immutable-cohort-sql-grammar-proof-r96b",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "memory_limits_changed": false,
+      "new_cache_added": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_bulk_vectors.py",
+          "before_sha256": "14d1e5c51ea3afa0c1966c7df5c39134b1bfdd806692d925e7ae153f45d0d6a8",
+          "sha256": "f4b82e76914512ca6e86433c297786232b8dc7b76efae2a5c1279986b1576302"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "762a03a880f27428cc4165d25c785f6dc14ef647b34b07bb7785a85a43e0f7e5",
+          "sha256": "e94a8b159226d02945f6dcc1d6e9fd0083678105b326eb32b8f7d8503301d8d6"
+        },
+        {
+          "path": "server/tests/security/test_semantic_cached_sql_grammar.py",
+          "before_sha256": null,
+          "sha256": "9d673f899eae9ff50b1b3a3670c57eef8a2e40931332f21b6a462a4317620cc0"
+        },
+        {
+          "path": "server/tests/security/test_semantic_eligibility_search.py",
+          "before_sha256": "93947ec433578c1c40f905e9ea71c7aab41d5bcc05ecec150b0ff338e828e276",
+          "sha256": "b5e17e00ff314aa7fd1d537c8898ef2e70819a5c638b1f8401da365b3171f366"
+        },
+        {
+          "path": "docs/SEMANTIC_MEDIA_ONLY_FACTS.md",
+          "before_sha256": "2640363f77e954746e9297454777131938ed2d58258e93eb03871322642e542f",
+          "sha256": "d43ef255cca95ff9b402cc963a551da386e36e9682555bc5195e0bc17c62b96e"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "15d7004baa5c0e58f6dcccd40c16a00e004ffb75048966049bbeee3d0e74ad5d",
+          "sha256": "40facee957c07b1809a281385f7c757388643e08b5e6f74cd2bd246aa66de12d"
+        }
+      ],
+      "notes": "A Store-owned bridge compares the complete current ordered SQL cohort with existing constructor-validated immutable primitive metadata for exact file/library/model pins, all16fields/types and signed64bit asset IDs. Detached artifacts on hit; unchanged full parser on miss. All fresh SQL/source/policy/file/generation/authorization and perrow cancellation/deadline checks remain. Independent source review and70 focused store/eligibility/bridge tests passed. Generated23696x768+65 paired9EN/ZH/mixed requests pluspage2 matched fullAPI/rankbits with18SQLreads/request; candidate mean1872/median1871/max1991ms vs2102/1977/2805 baseline; pairedmedian106ms gain, mean230ms inflatedbyoneoutlier. One fixedencoder localrun is not Windows/model/production qualification. No activation/deployment."
+    },
+    {
+      "feature": "semantic-regressions-in-standard-api-profile-r98",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "5247d5b16d99928c63545176763f5de5f5abe65c118be4fe1cad113a140717a2",
+          "sha256": "d63ee66a49de341ffaa5aec44f370310c1f8d142185770af68c0dbd66496828e"
+        }
+      ],
+      "notes": "Register existing artifact-field extraction, image-only facts and exact cached SQL grammar regression modules in the explicit standard API profile. This is source-check harness integration only; all295 server source payload blobs remain byteidentical to runtime candidate4254107. No Windows, model, runtime or activation change."
+    },
+    {
+      "feature": "semantic-eager-parity-fixture-mode-coherence-r98",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": "7ac9b455e38c93d3d7d5b09d52b45caf076990bc3690f6700ffd9194a65ba4fe",
+          "sha256": "5ee5272f12c37be308dc2357d9b9b67403c3dc5116285e2996bc4df7a0011e3f"
+        }
+      ],
+      "notes": "Test-only: force general facts along with eager text projection in the comparison reader. The prior helper left exact image-only facts enabled while forcing text projection, correctly tripping the product inconsistency guard. Preserve product guards and response/caption-digest assertions. Two previously failed tests and five media-only tests pass; original full-profile failure receipt retained. No server runtime payload or frozenR94 change."
+    },
+    {
+      "feature": "semantic-private-result-observation-r99",
+      "source_commit": "ab89fbd61017627bf45df25e53a75f57a1df60c9",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "production_data_used": false,
+      "family_relevance_measured": false,
+      "files": [
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "before_sha256": "66b208bc5e9f4272aebf914cea6f03f725de28ecccd67ea5bde94683f8a51245",
+          "sha256": "f8c1781ee4360d727ec507846e7592e9a2d1b06b8d1f3ed5489ab650ca2f6646"
+        },
+        {
+          "path": "server/tests/security/test_semantic_result_observation.py",
+          "before_sha256": null,
+          "sha256": "f9938784f3ee96bcc0129aab0f6a9f21c52ecf602092ba358b15b217bad2e1af"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d63ee66a49de341ffaa5aec44f370310c1f8d142185770af68c0dbd66496828e",
+          "sha256": "5793c229043d9cb21df60c4b5317898bc54a642a9859910bff81db11daa4a0ca"
+        },
+        {
+          "path": "docs/SEMANTIC_RESULT_OBSERVATION.md",
+          "before_sha256": null,
+          "sha256": "57ec5d9416a5763414ee5b8de7a955481c9663e1a22a19b10202fbd2c6f861e2"
+        }
+      ],
+      "notes": "Optional local qualification observer projects each successful measured response into a bounded redacted record for private result review. Default remains None with no observation fields and no query-plan digest work. Callback outputs retain library and top-result asset IDs and are private, linkable data. New generated-only tests verify sample/profile joins and partial READY/omitted coverage; no quality threshold, family acceptance, activation, runtime configuration or actual family data is added."
+    },
+    {
+      "feature": "semantic-r94-native-status-and-r107-source-checkpoint",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "9f5b2f226ec73b649b254a322b556bddc0cd2413b6de2d7b5a7f926dd2d0c721",
+          "sha256": "4655978bc4e11f581a5773c1090167ad9e31aeb2b2ea8f2ada5a72a1cb209adb"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_LATENCY.md",
+          "before_sha256": "276060414ae9baa04582bf799d99e0f94f4e4f046138804c938f8836bc04fbea",
+          "sha256": "1e73cbaa19e960b580e6f303e898d898ba6cb166c4a89241e6656ecf9d56f2eb"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "40facee957c07b1809a281385f7c757388643e08b5e6f74cd2bd246aa66de12d",
+          "sha256": "64106c0553ae84eaafa12e40adf0908c0065912be0c5d060b82b0db343bc3b6d"
+        }
+      ],
+      "notes": "Document actual4254107 R94 ninewarm median5250/max5703/cold12953ms; unchanged2stargetfailed, bothaudits/15protectionsran, laterofflineSSHfailed. Exactone-reader R103cleanup and192.824soffline/freshlocalaudit yieldedlimitedownedrelease only; originalqualificationfalse retained. Sourceab89fbd full3447tests/4138subtests+demo had295runtimepayloads identical425. Later605ff8d privateobserver66focused andfull3475tests/4138subtests+generateddemo passed withunchangedsourceidentity. Noactualfamilyquality/activation/deployment; earlierrecords historical."
+    },
+    {
+      "feature": "semantic-exclusion-prohibition-exception-omission-cues-r119",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/search_exclusions.py",
+          "before_sha256": "248e8722470ae6e5b1f95b5b8dced59dc1353af234a9d380fcaef6310f18017d",
+          "sha256": "cb7aeb07d6e1642de82acd764ad089e46471d1d9cb589e5fd8ab2b4ac6ec4444"
+        },
+        {
+          "path": "server/tests/security/test_search_exclusions.py",
+          "before_sha256": "f235bc25d25c9115bacc7e0ee18e15df1d24e0573036f2dff6bb095d0b9719f0",
+          "sha256": "84e5d36babc44789d5b7918813f123dc89e0b2907501f9c7689e36a5cb343118"
+        },
+        {
+          "path": "docs/SEMANTIC_EXCLUSION_QUALIFICATION.md",
+          "before_sha256": "33eb41eee531424547fa4a2e43d25205eb1b92d148be1682331e989f155a2d83",
+          "sha256": "4f5bbec7837feffb94ad9364e7bf496db25c95665c3304c5d37edcaf9eea9cf1"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "4655978bc4e11f581a5773c1090167ad9e31aeb2b2ea8f2ada5a72a1cb209adb",
+          "sha256": "7edeb0abf953dabd3040204a1c9f4953d7ace12f8440a4c2f97ed73d04eecde1"
+        }
+      ],
+      "notes": "Reproduced8generatedendpointqueries withclearChineseprohibition/exception orEnglishexcepting/freefrom reachingranking/provider. Addboundedsharedcue forms+Englishomissionwordforms, policy3 bindssemanticrankingrefresh. Positivelexical controls, exactliteralquotedtext opacity, authorizationbeforeguard andserver-snapshotguard preserved. Focused8modules132tests/423subtests passed; notnewfullAPI/native/ASR/Jinquality oractivation. No runtimeconfiguration/Windowschange. Added explicit API regression that policy2 boundranking returns409 underpolicy3 without anotherencoder invocation."
+    },
+    {
+      "feature": "assistant-turn-trail-keyboard-scroll-stability-diagnostics-r123",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/tests/security/test_assistant_turn_trail_browser.cjs",
+          "before_sha256": "d19a499c5b721105c5f2fa1169bcc82814e3f1122c245522a688ac325ef4a2db",
+          "sha256": "c62acf2a2b14da7c77123fab009e315d12c4cba82af75bbf519b409a66967122"
+        }
+      ],
+      "notes": "Test-only: wait for fonts and stable viewport/list geometry after instant setup scrolling; focus the list without a scroll side effect; capture per-key page/list/focus/defaultPrevented diagnostics and retain the no-page-movement, focus, scroll and no-request assertions. Local pinned-browser run passed; the reported Ubuntu CI failure remains unreproduced and cause unproven. No UI runtime source change."
+    },
+    {
+      "feature": "semantic-score-presentation-roundoff-guard-r125",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "e94a8b159226d02945f6dcc1d6e9fd0083678105b326eb32b8f7d8503301d8d6",
+          "sha256": "d5f0a76430b85b9d69f13f74666893eedd350d015638c43d874ccf03b8be1633"
+        },
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": "5ee5272f12c37be308dc2357d9b9b67403c3dc5116285e2996bc4df7a0011e3f",
+          "sha256": "14216778b6cf34b9b3f38174db5a1161831c65e8eb2c8a97cc0ac330e731ade4"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_search.py",
+          "before_sha256": "680baac381c37c5b921f461c984bb7c808922f14c3343742efba911f885ec321",
+          "sha256": "5d936faadfa99c17a99362dd47b8e88e586c7e2a74d0a68ab9c6b378f28b3a7e"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": "a35838b6557aaea2799139d5ba6414c094b82c5233dcbf0f263944df886ff6f6",
+          "sha256": "0642381776fe7d8223a52ffc6e994c78c29b8a4fdca0bb745eabf2048f8a9ef7"
+        }
+      ],
+      "notes": "After full raw ranking, materialized direct and trusted-snapshot cards require exact built-in finite int/float scores. Only overshoots within 16 binary64 ULPs are clamped to the closed endpoint; in-range bits and raw rank order are unchanged. A versioned source-binding field rejects prior bindings before encoder work. Generated 768D scalar/bulk and API/workspace recovery tests cover the reproduced boundary; 4096D representative guard coverage and gross/nonfinite/invalid refusal are included. The encoder comment now reflects that inference runs inside the first ranking transaction. No ranker, validator, vector, numerical kernel, schema, or activation change."
+    },
+    {
+      "feature": "semantic-request-local-source-snapshot-r126",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "request_source_snapshot_default": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_request_snapshot.py",
+          "sha256": "c4f6f9b19a087b586252d592a27ff1bc1275e039adee1af1f280c63a26e16029",
+          "before_sha256": null
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "sha256": "bb501d2d99b4af72275c4fd20ec2d2e8b07abe5123d94651661f4b1d27350d6b",
+          "before_sha256": "ee26145c4b861e2e9ccab3f17b833eda0bd9ff30af5283ba9f3fbacdc33849af"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "sha256": "0f9e843f03fdbf76d7eafd7aecf04981f51c3637458bce8026fed95bc554c4b3",
+          "before_sha256": "0fc3f60264b3a5fbfd7b420d77269be593fddf7290baa7d1af0c645951801a72"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "sha256": "498fe861eddccd818bea87121229d2bf2127a2c206f7740005f39a7a9b4172c1",
+          "before_sha256": "d5f0a76430b85b9d69f13f74666893eedd350d015638c43d874ccf03b8be1633"
+        },
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "sha256": "39eb8f5f2f2bfab84e156d1fa89ac00c3bd35e406b0a6303f00caa4d2140776b",
+          "before_sha256": "f8c1781ee4360d727ec507846e7592e9a2d1b06b8d1f3ed5489ab650ca2f6646"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "5b97f33ac2998ed90bdd21933fcff3dfff744c30a53e8a50c94d0573b90d7852",
+          "before_sha256": "de55e5767b3b5f623ace9cd48b87015c841cb533d42bc130550de8de71a93fdd"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "e633b4014bafdb65ec3198d9b2ebf608afe24ed3559dc9245dc4df590c9fe05e",
+          "before_sha256": "2a14fae7b107c0dd607bb621dcae8a7f592ce08fd3fabc8dd4cfad5d3921d8f6"
+        },
+        {
+          "path": "server/tests/security/test_semantic_request_snapshot.py",
+          "sha256": "3c7b0554c45f375c01d87eba0c357d3d2f13310e5563935b37f50284e21f7522",
+          "before_sha256": null
+        },
+        {
+          "path": "server/tests/security/test_qualify_semantic_coverage.py",
+          "sha256": "f6bb76cfeec65516c6de0a75eafd0e39881ce38f4bf23d9ec964785f1384b830",
+          "before_sha256": "bf58fa90d074017f725e050f95e85bfc87bb0c2f600e9198abc81d3156347660"
+        },
+        {
+          "path": "server/tests/security/test_qualify_library_semantic.py",
+          "sha256": "fb8dc2ee25f5924f6876949314f479509ec628d700092070972a4381e373c7ae",
+          "before_sha256": "f1330845be89eb96458000ed00919af6ee9330b81e4c80a4761a21fd2853ffb6"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "3291fbf58a64caae0887c261d5ef2d7da22621c65de3ca65977c871b4eb8afbc",
+          "before_sha256": "5793c229043d9cb21df60c4b5317898bc54a642a9859910bff81db11daa4a0ca"
+        },
+        {
+          "path": "docs/SEMANTIC_REQUEST_SNAPSHOT.md",
+          "sha256": "45d32a7ef3b84c741329568a7988e5c0a592c6a8c720e45a02a8fcd83cda5386",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "3706a28be45d6d14af6f33bba933d75bd677c592aec6e82ce36425f15f5ac09d",
+          "before_sha256": "7edeb0abf953dabd3040204a1c9f4953d7ace12f8440a4c2f97ed73d04eecde1"
+        },
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "sha256": "5d0ef0c87db5c9facec5086c1e225b1c4938d74b7faf912734776d5a3b0827d6",
+          "before_sha256": "14216778b6cf34b9b3f38174db5a1161831c65e8eb2c8a97cc0ac330e731ade4"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_search.py",
+          "sha256": "ae4e37ee49983198f80b30086cc33d249808bcfbbb72efb99c4546e13d3d3bec",
+          "before_sha256": "5d936faadfa99c17a99362dd47b8e88e586c7e2a74d0a68ab9c6b378f28b3a7e"
+        }
+      ],
+      "notes": "Explicit opt-in only. First source pass remains live SQL; exact current immutable rows from the same read-only connection can be replayed only for final no-op source validation under stable source brackets. Replay state and attempt rows are opaque weak-key state; only the snapshot's bound native SQL reader stages rows it fetched itself. Fresh membership, source binding, eligibility policy/roster, hashes, vectors, budgets and owner authorization remain fresh. Generated WAL qualification requires the mid-encode source mutation to commit and read back before its refusal/no-cards guard is counted. Failed attempts now discard replay state without filesystem revalidation, preserving the original body exception; successful path-identity observation errors fail closed. Only FileNotFoundError means an absent optional sidecar; other metadata OSErrors are unsafe, with an actual WAL plus isolated lstat-permission-fault regression. Focused generated SQLite/request/coverage/qualifier/search tests passed (91 tests, 42 subtests); the separate extracted staging-package suite passed 10 tests / 5 subtests and imports this module from the archive without checkout fallback. One R127 generated full-route comparison on source 001a039 used 23,696 eligible rows, 65 synthetic omissions, 768D vectors and a fixed 418 ms MockTransport. Nine warm mean/median were 2369.294/2347.977 ms baseline and 2132.612/2024.980 ms candidate; candidate max was 2756.605 ms, 8/9 pairs faster and 2/9 at or below 2 seconds, so the all-sample target remains unmet. All 13 cold/warm/page-two pairs matched full API JSON, full-rank IDs/score bits and per-attempt charged rows/bytes; physical source reads were 18 baseline versus 9 plus 9 final-pass replays candidate. The run used configured setup/profile/RSS limits, but exact peak RSS and separate setup/profile timings are absent from the result. No native Windows, production, family relevance, language quality or activation claim."
+    },
+    {
+      "feature": "semantic-policy3-supported-adapter-separation-r134",
+      "source_commit": "0bbcf4d5931ea11ce2d0f68427acff86036a186f",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "production_data_used": false,
+      "family_relevance_measured": false,
+      "model_receipts_changed": false,
+      "files": [
+        {
+          "path": "docs/SEMANTIC_SEARCH_PILOT.md",
+          "before_sha256": "0642381776fe7d8223a52ffc6e994c78c29b8a4fdca0bb745eabf2048f8a9ef7",
+          "sha256": "d5d86810a7532f0ee03a3977e3b04bf6868e05853f2217f249db20099f0ff461"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "0777af17e41608ac1e470a90d7ea39a036a681d4dd77be62b390ae7c33413879",
+          "sha256": "5b0f9922363917181cb689114e6b7b999f24bedc4c0c9b455a33ad2a6963834f"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "a5b0d99d7ff6d212ec0ddabbba446b5806708477b59f63c32965015774319e09",
+          "sha256": "8872755eb2a8d606b8489e1e8cd24ed555a8d8c69197966995210d0718546761"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "c82098388053955505fbe2d0a315567ab59335ee8dd08a9070065ef3dbf73550",
+          "sha256": "81f33f9ffec4d2961214dd6851c2f46f9b55f42eea99ee5a0ed37636a5d69fc9"
+        },
+        {
+          "path": "server/backend/app/access/search_description.py",
+          "before_sha256": "d6adca8a8413f7e50f0f53ea129b8eae40a5dc09e7f8e21c44d06fd3dbe7576a",
+          "sha256": "6f99c06e22e6de1d1ae4e813ef45cc09a986419de75a64c16a486a0a2902adcc"
+        },
+        {
+          "path": "server/backend/app/access/search_exclusions.py",
+          "before_sha256": "cb7aeb07d6e1642de82acd764ad089e46471d1d9cb589e5fd8ab2b4ac6ec4444",
+          "sha256": "248e8722470ae6e5b1f95b5b8dced59dc1353af234a9d380fcaef6310f18017d"
+        },
+        {
+          "path": "server/backend/app/access/search_policy.py",
+          "before_sha256": null,
+          "sha256": "cb7aeb07d6e1642de82acd764ad089e46471d1d9cb589e5fd8ab2b4ac6ec4444"
+        },
+        {
+          "path": "server/backend/app/access/search_policy_binding.py",
+          "before_sha256": null,
+          "sha256": "3b86a28a0c44c359eb99ecaba9868901c06de8c5588315ce427dc62cfd51805d"
+        },
+        {
+          "path": "server/backend/app/access/semantic_encoder.py",
+          "before_sha256": "b6011d47ae32a2ed81f8977a8fa5a0cb9e6a906fd21a3b274f90c634bb15ebdf",
+          "sha256": "44c33972e0ea8f5eb3f0179657dfe4080b02add88df5932517e5e4b3c496641b"
+        },
+        {
+          "path": "server/backend/app/access/semantic_provider_transport.py",
+          "before_sha256": "1368eea62f858183e0e3383a524834314a2b347a6e6b4fe2375f9be7988f866b",
+          "sha256": "fd76de797aef1ca94c4176fe5af377570ac6b81feb097949ea4ee077e689794b"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "498fe861eddccd818bea87121229d2bf2127a2c206f7740005f39a7a9b4172c1",
+          "sha256": "055e6ee6267e38235eeff43f667fc8e38c78daf8f1e29810f774bc72b97de2c5"
+        },
+        {
+          "path": "server/scripts/_semantic_siglip_encoding.py",
+          "before_sha256": null,
+          "sha256": "22419b729d665f43c99e75eb4587a5f4540bcf0e8f1a8ede24b45aba2101e489"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "5b97f33ac2998ed90bdd21933fcff3dfff744c30a53e8a50c94d0573b90d7852",
+          "sha256": "72c38db0ba0a71d3d9e650dd95c4116ca0cdfd8b49561884ae79f225616cf0f2"
+        },
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "before_sha256": "39eb8f5f2f2bfab84e156d1fa89ac00c3bd35e406b0a6303f00caa4d2140776b",
+          "sha256": "2c38378f908c2ec56ac2adad2b009b3af383a8530a0eb2b64fdd808a5a2c4ad9"
+        },
+        {
+          "path": "server/scripts/qualify_multilingual_pilot.py",
+          "before_sha256": "ef8cf957eb7e76d4fe2b4f681d1e41462595455b453e248c75bb617f2e05ba6a",
+          "sha256": "87535a891bce962c903ed919eb717602b44dffb245de7d035936660c8d784a19"
+        },
+        {
+          "path": "server/scripts/semantic_bilingual_clothing.py",
+          "before_sha256": "58455055639d0feafc96070d98043727fe8db526134ac44f9c478a782dd4e464",
+          "sha256": "9bd5699100d3cc08281c5ee6a19bfd2963a49d649807ac81d482be4ee6c2dfea"
+        },
+        {
+          "path": "server/scripts/semantic_openclip.py",
+          "before_sha256": "02b8c0eaee7cb4d35eaccecd3a054db601382941530c2df2364c1ea43fdb0b10",
+          "sha256": "515fb6d019125e9fb5eeb021c06b6dde24da679c88a7d5ce0fd14c9f97f9e883"
+        },
+        {
+          "path": "server/scripts/semantic_reviewed_projection.py",
+          "before_sha256": "880f768df81a99216e5fcc036de126740594f6e0477a45a61dd1ae14921a3e1d",
+          "sha256": "65c4563d0fb3d639320b5111c1e4a828dd7f46ec22e579ffe058b94fdb8f7b02"
+        },
+        {
+          "path": "server/scripts/semantic_siglip.py",
+          "before_sha256": "22419b729d665f43c99e75eb4587a5f4540bcf0e8f1a8ede24b45aba2101e489",
+          "sha256": "98207e42a784eb46bcc7dbdaa3f0f90c090712f7524caf9c028f4de41841186e"
+        },
+        {
+          "path": "server/scripts/serve_multilingual_semantic_text.py",
+          "before_sha256": "0fb21f122dffd31daf7a4d6bab17e9bc53ff634409fc1928f5391b3cbf5ef542",
+          "sha256": "8f71368d966efb9b984065e46994f1a6d729852c7ae114a29cf30d90c2d35153"
+        },
+        {
+          "path": "server/tests/security/test_multilingual_index_provider.py",
+          "before_sha256": "653720fa6fe7c4dc276d9208414a6cb62738e7ae1cb16c8f10aa7ebb4e407b51",
+          "sha256": "ab83922eb7f317f0284b29cf9dfd4dc93040741b552de76f2f3705315ad1b3cd"
+        },
+        {
+          "path": "server/tests/security/test_qualify_library_semantic.py",
+          "before_sha256": "fb8dc2ee25f5924f6876949314f479509ec628d700092070972a4381e373c7ae",
+          "sha256": "6c58f4dbfa037030a12ba0b5ba402acc1c708cd3d45a15793e6dd93f29893cb1"
+        },
+        {
+          "path": "server/tests/security/test_search_constraint_admission.py",
+          "before_sha256": "b6a6496551429ad807271f718320ae1b1473a0c1b22f04ed981859acc8c4135c",
+          "sha256": "979e92626687512c7fe0717b1ca9b4a6da272d6487637109e71edb4c25b44896"
+        },
+        {
+          "path": "server/tests/security/test_search_exclusions.py",
+          "before_sha256": "84e5d36babc44789d5b7918813f123dc89e0b2907501f9c7689e36a5cb343118",
+          "sha256": "04d49b442d87fafd6d2d2996dadcb23e3a5964dd1b6de581f0bcf090c003f035"
+        },
+        {
+          "path": "server/tests/security/test_semantic_policy_separation.py",
+          "before_sha256": null,
+          "sha256": "d96b8215af72e7e46e9af3d7a829181752febc1e0fa05cb09616a36fd6752a04"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "e633b4014bafdb65ec3198d9b2ebf608afe24ed3559dc9245dc4df590c9fe05e",
+          "sha256": "91e451a7d0644245a5ebb724856b0282c47db03642c7281f0fca82b777536949"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "3291fbf58a64caae0887c261d5ef2d7da22621c65de3ca65977c871b4eb8afbc",
+          "sha256": "407f9380ce28f5a552ee862b382172e91733a7bda65f97841b7e6de72da70961"
+        },
+        {
+          "path": "server/tests/security/test_reviewed_scene_measurement.py",
+          "before_sha256": "30ab0d3d6d1291c748855a318532dc3f01a7543dd7c9ba55944a67436f3c3601",
+          "sha256": "dce8ff54a1f5f6c391f7f6bbddc73cac7d19cd58f4105e6ab6d21beee40ebf7f"
+        }
+      ],
+      "notes": "Separate policy-3 query admission from the indexed SigLIP recipe. The exact previous SigLIP implementation is retained as scripts/_semantic_siglip_encoding.py (SHA-256 22419b729d665f43c99e75eb4587a5f4540bcf0e8f1a8ede24b45aba2101e489), and its historical app.access.search_exclusions dependency is restored byte-for-byte (SHA-256 248e8722470ae6e5b1f95b5b8dced59dc1353af234a9d380fcaef6310f18017d); current policy-3 code moves to app.access.search_policy.py (SHA-256 cb7aeb07d6e1642de82acd764ad089e46471d1d9cb589e5fd8ab2b4ac6ec4444). Supported public encoders/wrappers and the provider boundary enforce fresh policy binding; semantic-search fingerprints and supported qualification metadata carry query_policy_binding separately from unchanged model receipts. Encoders now recheck policy after successful provider response parsing and before releasing a validated 422 refusal; the provider boundary rechecks after completion before releasing 200 or opted-in 422. Generated temporary policy-file drift during mock 200 and 422 responses is refused, and restored-source recovery succeeds. Provider probe reports the binding separately for v1/v2; readiness explicitly states index_or_policy_audited=false. Post-review focused checks passed: 137 tests and 843 subtests, including the final-source-read deadline regression. Three isolated extracted-package smoke methods passed using current worktree bytes; standard git-blob tests await a local commit containing the new files. No model, native host, activation, index publication or runtime configuration was used. Follow-up after the first committed full API run: synthetic reviewed-scene labels now use alpha/beta instead of a zero numeral and assert both original and projected text are policy-3 admissible. A focused public ReviewedSemanticProvider test confirms an admissible original mapped to a negative projected string is refused before the inner encoder. No policy, model, or runtime source changed."
+    },
+    {
+      "feature": "private-scene-refusal-reopen-r142",
+      "source_commit": "7910852cbbeddfb8202908d7f4cd4ac2b289c0c4",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "3706a28be45d6d14af6f33bba933d75bd677c592aec6e82ce36425f15f5ac09d",
+          "sha256": "df7b1c78bbf8b4e8b678ca176d49b9f40fb02f7140961d8fab0f797eda246f42"
+        },
+        {
+          "path": "docs/SEARCH_FUNCTIONAL_ACCEPTANCE.md",
+          "before_sha256": null,
+          "sha256": "aa447752fd83293184fc06c641bc54d0c40960a4178af3ee583e8568cfaf1e91"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "64106c0553ae84eaafa12e40adf0908c0065912be0c5d060b82b0db343bc3b6d",
+          "sha256": "658dc3df7581954120f117042a333ccf7d5aee40e5a8a82fd627af0bd80616dd"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "5b0f9922363917181cb689114e6b7b999f24bedc4c0c9b455a33ad2a6963834f",
+          "sha256": "dba5c08576b73e8acef12f93f4fd4d94468bb0b144144c8f99de098b5168fcd6"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "02491433111d0c51d0e60f9262fd8f31e34fc576d00a4dd124f919592d5d423e",
+          "sha256": "ed79f6f9db04519469db62ec44734a0a1bad34aadf9112168fc3dcd8cf024df6"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "81f33f9ffec4d2961214dd6851c2f46f9b55f42eea99ee5a0ed37636a5d69fc9",
+          "sha256": "602f110d24b0cbc50e7a401f42fc22202022d44b8b22fe949ef8cca42f79f1ab"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "b519097d421dfc247ce772656e49e3d5f21bb55faa547b6e64dd9dcf0dfe7db2",
+          "sha256": "0207dc70e4b47ffda11a862655b6c433903732d0fc9074bbdedb1669d8f91437"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "05633a91eeb17ed312e91f2344c0120a1f68e754ddaa73e82f73e61d239ab0de",
+          "sha256": "b29e51bd5a7c17ad60a42fdd98fc424ae3d310bbea219e1a94d223cc86438523"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_browser.cjs",
+          "before_sha256": "d608044bd5b84fe98b8d4729b9ba2ffc4e6c8faf3c732fb20b604d37c38ed5f6",
+          "sha256": "75260a1651b210a44990a478fe216eb680dfdbac133a5f7bdf3cbfbf2f4c78f3"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_reword_recovery.py",
+          "before_sha256": null,
+          "sha256": "b4b9a8e60e270d8b7870eec6c96d466596ae7323acb94e62f7972081086f6545"
+        },
+        {
+          "path": "server/tests/ui/assistant-scene-workspace.test.mjs",
+          "before_sha256": "1f46de095bb46321d95ecc11747d78bd5aed8685eada8bf81b14dd8512a4cd00",
+          "sha256": "31509d0dd1f8a6b412b0aed99011faace4053cb240788b53f5b85bf21f0b4cb8"
+        }
+      ],
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "production_data_used": false,
+      "notes": "Optional scene-reword metadata version 1 on private thread GET recovers only the current latest confirmed unsupported-scene input. Default body and old-server compatibility remain. Fresh scoped principal checks, strict text and revisions, cue identity confirmation, explicit scope reload, stale-card suppression and capability-off read-only controls are preserved. No provider/search/POST/browser persistence is used for draft recovery. Independent generated HTTP 8 tests / 14 subtests, controller 26/26 and synthetic browser 9 checkpoints passed. The related 83-test cohort passed before the narrow BOM blankness correction; the final HTTP module covers that correction. No full-suite, hosted-CI, deployment, activation, device or relevance claim. Functional acceptance matrix separates delivery and remaining journeys from unchanged historical performance qualification."
+    },
+    {
+      "feature": "photo-stack-product-delivery-checklist-20261025",
+      "source_base": "7910852cbbeddfb8202908d7f4cd4ac2b289c0c4",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PHOTO_STACK_DELIVERY.md",
+          "sha256": "a04c7f49dbd30c3166b73592695ea6e93f22b9adcae163a81b2a94405aa6b64e"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "0d92245770d19f70ba66de2d45de1ab5cbe282088eca81371f51bdcfe31c84a9",
+          "sha256": "4cc395c6b3b9633feae3723f4f9f4ffd59bce4a105cd29669d6dd4bcb65f9bd7"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "2307414a3b75b55a05a0c8c0bf2eb9b53e49356a3f13f4755e7512f6f541b171",
+          "sha256": "aaacb257e2ea998966db27ded86b3d5a50dda95dd539eb21aab2cc945105fa06"
+        }
+      ],
+      "notes": "Document the complete grouping delivery path, visible family journeys and outstanding schema/index/worker/client/TV/quality gates. Timings are advisory for product prioritization; preserve old frozen evidence and access/data/resource/cleanup requirements. Documentation only; no source/runtime/model/schema/OTA activation."
+    },
+    {
+      "feature": "phone-page-local-stack-choice-explanation-20261025",
+      "source_base": "bb343c223b87101ab1437fee26c81ae7ac6be14d",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "f5fc86ecaa04d0cff9cb2e07f08d01b508dc0d8abee59e7ea175136226189279",
+          "sha256": "334b13d685cd4336b49e118e96f54e25cabfda8c414d1f7421978df6b482d320"
+        },
+        {
+          "path": "clients/android/android/connected/src/test/java/dev/photohouse/connected/PhotoStackPageNoticeTest.kt",
+          "sha256": "e95d63e8b5f2fb2806194a528ae0dbb73105cf676b34f4f9ba39679224c44108"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "before_sha256": "383b3bbdf9fb262d59071dca2be8a3b7b2e61340fe720e00b47b6eaef01b201f",
+          "sha256": "adbd71610bf0737d5bd18ee8301e84db87d203a123efb67152a213210849650e"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": "3f413c376fb8e47a26775e0bd7dde722be2036c9c8540832ff627f62aee4ad04",
+          "sha256": "6f4a80b56965e2980b1028c62f9096e5db0285558979a1419944a8448ca7aced"
+        }
+      ],
+      "notes": "Show bilingual temporary-choice explanation only for page-local suggestions with nonempty groups. Preserve v2 saved/private wording and all gallery/store/wire/access behavior. Add targeted copy/scope JVM cases and enlarged-text UI assertions; emulator/device/publication remain separate."
+    },
+    {
+      "feature": "search-functional-and-grouping-delivery-links-r142",
+      "files": [
+        {
+          "path": "docs/README.md",
+          "before_sha256": "4cc395c6b3b9633feae3723f4f9f4ffd59bce4a105cd29669d6dd4bcb65f9bd7",
+          "sha256": "a70d984f69d60eef8d8554b3abb0a469b564b2c161077c9a0bd8e2503f097a97"
+        },
+        {
+          "path": "docs/SEARCH_FUNCTIONAL_ACCEPTANCE.md",
+          "before_sha256": "aa447752fd83293184fc06c641bc54d0c40960a4178af3ee583e8568cfaf1e91",
+          "sha256": "e8c7cbcae698da50317ec798c0291223d688ec04b9c9ba241c824d64b28ea05b"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "notes": "Link the functional acceptance matrix and accurately mark the two reviewed grouping source increments as integrated. No installed Android, live schema, refresh schedule or family acceptance claim."
+    },
+    {
+      "feature": "scene-refusal-recovery-supported-api-check-r142",
+      "files": [
+        {
+          "path": "tools/check.py",
+          "before_sha256": "407f9380ce28f5a552ee862b382172e91733a7bda65f97841b7e6de72da70961",
+          "sha256": "d243d4af4edd12a5da827e422ec128bd6d5eb620bf34439a461e96305cb37b3e"
+        }
+      ],
+      "notes": "Include the new generated refusal-reopen HTTP regression in the existing explicit API CI inventory. No new profile, service or runtime behavior."
+    },
+    {
+      "feature": "byte-bound-python-lf-checkout-r143",
+      "files": [
+        {
+          "path": ".gitattributes",
+          "before_sha256": null,
+          "sha256": "8569ab241aeb7396fbec04486a44d126ee89ba9901c650b35cac84480579ad8b"
+        },
+        {
+          "path": "tools/tests/test_python_checkout_identity.py",
+          "before_sha256": null,
+          "sha256": "08bbe5c2351e8b44c08fe1aff899f06b227f32736a7c267b7cbde40a9e53fc36"
+        },
+        {
+          "path": "docs/SOURCE_PACKAGING.md",
+          "before_sha256": "44b55d53b9c4b2b24c77ecaa1be28639c5553d45f62771504395704d3465299b",
+          "sha256": "00cd65ce41e66c7cebafb5ce022180e3eef0ae72d9c2097fc73157ffa618e7c2"
+        }
+      ],
+      "runtime_source_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "notes": "After exact7041 Windows CPU import failed at the expected-policy source digest guard, a real isolated Git checkout with core.autocrlf=true reproduced CRLF conversion and the same refusal. Declare Python text eol=lf at checkout, retaining canonical Git blob bytes for all Python policies/encoder receipts. A standard-library regression checks five bound source files, actual verifier import/canonical digests and refusal after explicit CRLF rewrite. No runtime hash normalization, alternate digest or pin change. The hosted failure alone did not include actual source bytes; successor hosted validation remains separate."
+    },
+    {
+      "feature": "query-policy-windows-stable-stat-identity-r145",
+      "files": [
+        {
+          "path": "server/backend/app/access/search_policy_binding.py",
+          "before_sha256": "3b86a28a0c44c359eb99ecaba9868901c06de8c5588315ce427dc62cfd51805d",
+          "sha256": "351d2f4f0dbcb7d68edb162e455d42c36297f5a8e3b5482281e936c63acef8a8"
+        },
+        {
+          "path": "tools/tests/test_policy_source_identity.py",
+          "before_sha256": null,
+          "sha256": "c4b05cfea5deb0153719806358a59ca880c5ef7fc18611369afea3baa0c61af1"
+        },
+        {
+          "path": "docs/SOURCE_PACKAGING.md",
+          "before_sha256": "00cd65ce41e66c7cebafb5ce022180e3eef0ae72d9c2097fc73157ffa618e7c2",
+          "sha256": "9d050634b77d4ca6cc65c98a883adbcc2b09b9ca5716ad99569e09e305dc38e7"
+        }
+      ],
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "model_receipts_changed": false,
+      "query_policy_verifier_binding_changed": true,
+      "notes": "After f899 removed collection failures, Windows CPU had 455 passing tests / 314 subtests and one extracted package import refusal at the combined length/identity guard. Host stat tuples were not captured. Align the bound verifier with the existing private-storage Windows birthtime identity contract, keeping device/inode/size/mtime and POSIX ctime plus all byte hashes and source checks; require exact integer Windows birthtime or refuse. Keep the logic inside the hashed verifier rather than adding an unbound helper dependency. Explicit binary low-level open preserves exact bytes. Generated real-reader metadata cases accept Windows ctime aliases only with matching required fields and refuse every identity drift/missing-invalid birthtime; real same-byte inode replacement and CRLF rewrite still refuse. The verifier hash changes its separate query-policy binding; legacy indexed model receipts are unchanged. Current hosted successor not yet verified."
+    },
+    {
+      "feature": "protected-workspace-scene-continuation-r144",
+      "source_commit": "7bdca5a77a607cb5f5eb52ebc66ad82b91cb6d87",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_SCENE_SEARCH.md",
+          "before_sha256": "60d01e7cfd902617790b5eff20f4bd14df7ccace88e31fe0e1f203b5833ffc6d",
+          "sha256": "069524b8bc1b9f92d08280f8af5dec1356d55574eaf56de70588cc3737e14737"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "df7b1c78bbf8b4e8b678ca176d49b9f40fb02f7140961d8fab0f797eda246f42",
+          "sha256": "5c34be10cd0635656fcb26b5c2142564ba160db4f43f041f525c1cceb0539fa5"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "a70d984f69d60eef8d8554b3abb0a469b564b2c161077c9a0bd8e2503f097a97",
+          "sha256": "3cc2e974b13ef0ec7802d43bf313e5f56824aaf2935c75e614594d939cdde1ec"
+        },
+        {
+          "path": "docs/SCENE_RESULT_PAGING.md",
+          "before_sha256": null,
+          "sha256": "45c7c961bfa9466c830c89ade589b6802db472897df9b3a81099d1dedd0e0557"
+        },
+        {
+          "path": "docs/SEARCH_FUNCTIONAL_ACCEPTANCE.md",
+          "before_sha256": "e8c7cbcae698da50317ec798c0291223d688ec04b9c9ba241c824d64b28ea05b",
+          "sha256": "0b2462821e531d8b15dab8de7d51ebe79c71d9b798fc4d669d3cc544019903f1"
+        },
+        {
+          "path": "docs/SEMANTIC_SEARCH_READINESS_2026-10-24.md",
+          "before_sha256": "658dc3df7581954120f117042a333ccf7d5aee40e5a8a82fd627af0bd80616dd",
+          "sha256": "b611d63232f300475d53dcd482f92c285c2b40a196236a18579941303c4a9eab"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "dba5c08576b73e8acef12f93f4fd4d94468bb0b144144c8f99de098b5168fcd6",
+          "sha256": "9b226c1782a4a36c46566bd257a4d0a90fede8e5ab254f8c97689ebfb91f5df9"
+        },
+        {
+          "path": "server/backend/app/access/assistant_scene_search.py",
+          "before_sha256": "d0e55a65c43fa66f518d48bf6fc01528a0a1c0208c28114ab66eefadf8f91839",
+          "sha256": "a743b5feda80c8f24461816be561f9145dae26133081b2fa745f163243c6b4e6"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "ed79f6f9db04519469db62ec44734a0a1bad34aadf9112168fc3dcd8cf024df6",
+          "sha256": "1477901d23a11b7ad9e2c3ca462622c055b0d8cdcc787fcb1e588e23ccc02f96"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "602f110d24b0cbc50e7a401f42fc22202022d44b8b22fe949ef8cca42f79f1ab",
+          "sha256": "499b0cbfcdf8f069af9408058ad144d34979a33e77ab91235850fbe267517ec8"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "0f247ccc83ad309738f1242a0d2584abcae0d0ac182e25c57fb82149ee9bde20",
+          "sha256": "7f46f1b524f898b60719b1a8c93af165f9282d59fd6ee80f2e9b8b9d0301f484"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "055e6ee6267e38235eeff43f667fc8e38c78daf8f1e29810f774bc72b97de2c5",
+          "sha256": "73aba0407359478a6f3acb34502e8df1f7b0572b25e59773597bdaba105784e3"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "0207dc70e4b47ffda11a862655b6c433903732d0fc9074bbdedb1669d8f91437",
+          "sha256": "bb32a18e88ff21468319b1d1c795b822ebedf6526d9a4fad1b3e32afa750980b"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "b29e51bd5a7c17ad60a42fdd98fc424ae3d310bbea219e1a94d223cc86438523",
+          "sha256": "6bddd332fc4966d8c753b4cd89ca2aec807131ed88cefd3082ddcc09d3b0832a"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "e610a71a3823d1c5c2707abcb94ed92ff61e0991c05c0b9913079c2671ed4502",
+          "sha256": "0a3b34def734966dd46ba0db2fba864e19435a0c4ce7bb223cdaee4a5366d5c8"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "2ff6a299c6b0a50483dac3b1a766906642e2bcdcc970950435c347d40d784640",
+          "sha256": "fa2ba2095b743c9a824993cc669075e9631af176787f992246b11ebbbe1b9f9d"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "fba5530673d91c7da79a6f248a157a02c12fd1a4afc4b228dabdd8b2d4733cba",
+          "sha256": "5ae264d4b4451210caab0035fbe986affb1c84b6705ba0aa4befa916c084d73e"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_browser.cjs",
+          "before_sha256": "75260a1651b210a44990a478fe216eb680dfdbac133a5f7bdf3cbfbf2f4c78f3",
+          "sha256": "bc646bda69659d71dffbfcd8b163c0c70355ac3ae02b41431abe3bd60dad14e3"
+        },
+        {
+          "path": "server/tests/security/test_assistant_scene_pages.py",
+          "before_sha256": null,
+          "sha256": "2cbc8ed1900c470cd96c99593c038045d764fb28639062cc2fd08997a700748b"
+        },
+        {
+          "path": "server/tests/ui/assistant-scene-workspace.test.mjs",
+          "before_sha256": "31509d0dd1f8a6b412b0aed99011faace4053cb240788b53f5b85bf21f0b4cb8",
+          "sha256": "fa251e0f4204c54a58575019a6c39d43ca082f115f3bd2dbb65489d6cd180960"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "d243d4af4edd12a5da827e422ec128bd6d5eb620bf34439a461e96305cb37b3e",
+          "sha256": "25b8355be6b764f115f0a6126ade59b6d748c6773f06785a2b1066fa4c2a8285"
+        }
+      ],
+      "routes_added": true,
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "model_receipts_changed": false,
+      "notes": "Separate authenticated capability and explicit scene-page POST derive query/scope from the newest retained completed scene request at the current revision. Initial page2 verifies saved first20 presented bits and establishes a new complete raw-rank digest; later pages require it, without claiming the unretained original tail. The original turn/history schemas and model-free recovery remain. Read-only scoped workspace projection is rechecked after inference; final principal, pilot owner, runtime availability/identity, shared cancellation/deadline and response budget checks withhold stale cards. Page-only legacy vector reads are charged and fully revalidated after provider work; ordinary legacy searches stay single-read. Closed client page validation, nonce/generation fences, return-first narration/command isolation and bilingual Next/Previous/global-rank/range/omission controls keep at most20 ephemeral cards. Focused generated API12 tests14subtests, controller32, existing scene20 tests12subtests and combined rendered browser12 checkpoints with46eligible65omitted passed; source and final reviewer records retain earlier scope/vector/cancel/owner/UI failures. Browser profile now runs that combined page/coverage fixture; new API module is in supported checks. No full-suite, current hosted CI, native model/relevance, activation, deployment or device/family claim."
+    },
+    {
+      "feature": "phone-separated-card-readable-details-action-20261025",
+      "source_base": "e8afb7c9df4c31237dac0d5b815f91b1579e194e",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "334b13d685cd4336b49e118e96f54e25cabfda8c414d1f7421978df6b482d320",
+          "sha256": "24975c06d8a59304d3f206cb204c76c5102b77fa38c0061b3d315c9987b18ea2"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "before_sha256": "adbd71610bf0737d5bd18ee8301e84db87d203a123efb67152a213210849650e",
+          "sha256": "36f7960204c3112481729b55fe76c0b86fc4e118cb2d0c3dc5f8cfb8141d4aee"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": "6f4a80b56965e2980b1028c62f9096e5db0285558979a1419944a8448ca7aced",
+          "sha256": "d2a2ee35bb1b677fef901d6adfa0aa2f8c59e6b3d03b92036fca71f29e83a303"
+        }
+      ],
+      "notes": "Give gallery Details its own full-width action line with minimum48dp target; preserve full bilingual labels, card/open/detail/group callbacks and ordinals. Extend existing separated-photo150percent UI journey with actual text-layout fit and click-action checks for three cards in both languages. Existing hosted screenshots retain their historical wrap defect; successor rendering/device/publication remain separate."
+    },
+    {
+      "feature": "scene-pages-closed-route-inventory-20261025",
+      "source_base": "626b6c8e318bad6f178b30941a2ebbb8d0861c55",
+      "files": [
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "de673b90d64ccac9516009308b72e2c776a41ce30c5a024dd4ae84684a205874",
+          "sha256": "bef2c784f00ebfb2b522a173318f08b8979b4ce322220454de168052a3d68afe"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "notes": "Test-only inventory followup for the two reviewed R144 routes already present in source626. Explicit exact route set and cold-import/runtime counts now include scene-page capability GET and scoped scene-pages POST, total181. Duplicate-route, complete-set, import/no-runtime-I/O and anonymous ClosedBoundary checks remain strict. Exact626 hosted API had2 failures from these stale expectations,3537passed/4244subtests; focused closed-app plus page API39tests32subtests passed after correction. No full-suite rerun, Android render, deployment or activation claim."
+    },
+    {
+      "feature": "phone-details-label-content-width-20261025",
+      "source_base": "07096399d7d5f947aa2e231646dc65c614ffd402",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "24975c06d8a59304d3f206cb204c76c5102b77fa38c0061b3d315c9987b18ea2",
+          "sha256": "a3ca952eacd8022b3fa081ff0b3d6fbbacf39659afa5612b2dee3da007da0e27"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/ConnectedUiTest.kt",
+          "before_sha256": "36f7960204c3112481729b55fe76c0b86fc4e118cb2d0c3dc5f8cfb8141d4aee",
+          "sha256": "6ca6d5f89b12d6dddfc3130ac23dcd1d1eb14c1071954444820b89304c152aea"
+        },
+        {
+          "path": "docs/SIMILAR_PHOTO_STACKS.md",
+          "before_sha256": "d2a2ee35bb1b677fef901d6adfa0aa2f8c59e6b3d03b92036fca71f29e83a303",
+          "sha256": "85aa1069e1225168011e2a12ae1afabc61cad63d2a7f2bff42dc4ff256a03f73"
+        }
+      ],
+      "notes": "Keep full-width separate Details action and give its centered label the available button-content width. Retain strong one-line/no-overflow assertions; add width/height diagnostics after actual hosted assertion failure. No font shrinking/truncation, callbacks/ordinals/store/wire changes. Rendered successor remains pending."
+    },
+    {
+      "feature": "trusted-memory-generation-language-20261026",
+      "source_base": "7e1ccac22445273f1c4782292530aef4e6a46782",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "aa065adf5ade30f1a9ce2d6b6091fbc41d206ab0f28535904a5ccbc764222568",
+          "sha256": "85215776be270ac88da76e4642e6ea5ebebbf7778016809596f215593bc9826f"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "992c3c1bc871e6d0d014ff3634863252d77a17fd3e26acd6503b63e58e0b2a68",
+          "sha256": "b89dbd7927de14e921b1b2e175e5bb51b8e4d3e1250363df28514ea5d99b7e97"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_local.py",
+          "before_sha256": "494793a253852e51a6e780bb14be5281685e31ab19ef3d4be4698dbdf852283b",
+          "sha256": "9f794025a383240d90d8f8084a81336869b4b232e058a111b32a878ec798dac0"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "84c1b8552a3e93eb80482153e0cb167a404a3867ead393ff442817643d9a8596",
+          "sha256": "b500bc9aacda4e5c6f767ac4109efeb70aa6bb92b869c6af1773a3284ac77e28"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "b3ee4e3319d1d309caeb33be976a11bf7982f3abb2f5fefa96286b7b3a0f5e5c",
+          "sha256": "acd6cb16381b1caa019b4ef0843506df094f77aa673074ab181329e18571ddaa"
+        }
+      ],
+      "notes": "Derive Chinese/English prose instruction only from validated closed zh/en outside untrusted bundle for narrator and companion, retaining IDs/quotations/evidence and canonical worker refusal. Synthetic Ollama/local-provider/actual-local-child GGUF-worker protocol coverage; no model quality, actual failure-cause, native Windows, serving activation or deployment claim."
+    },
+    {
+      "feature": "multilingual-quotation-chapter-grounding-20261026",
+      "source_base": "434650178a84a868ab97d4e9350c6380fd934d54",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "85215776be270ac88da76e4642e6ea5ebebbf7778016809596f215593bc9826f",
+          "sha256": "56b7936ba282f3d7055df33a789c63c587454bfb9c6ea126d3af8197bb6b28aa"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "b89dbd7927de14e921b1b2e175e5bb51b8e4d3e1250363df28514ea5d99b7e97",
+          "sha256": "82fbd9e68023d43fbb5181b22e6cc90232256be0e049d50ba7098701fd3c5630"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_local.py",
+          "before_sha256": "9f794025a383240d90d8f8084a81336869b4b232e058a111b32a878ec798dac0",
+          "sha256": "5dee565c3e9852928ba4179107c8c628c06a10c3aaf13449f69f2b0c3dac2568"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "b500bc9aacda4e5c6f767ac4109efeb70aa6bb92b869c6af1773a3284ac77e28",
+          "sha256": "d8892cb9ca007c0a92b8305788519a18bd675e24a6a7d7f0fb4d595b289880ab"
+        },
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_GGUF_WORKER.md",
+          "before_sha256": "acd6cb16381b1caa019b4ef0843506df094f77aa673074ab181329e18571ddaa",
+          "sha256": "e60b33bfaa17d6365c50732fcdfc700f879b4aac2bbce555e289ab3a9782f8fb"
+        }
+      ],
+      "notes": "Fixed trusted guidance for requested brief original-language family-source quotation only within existing authorship/citation/source-kind rules; keep narration physical/causal details within cited chapter evidence. Existing safety constants, imprecise-date/question rules, output thresholds, language enum, providers and flags unchanged. Synthetic payload/provider/local-worker conformance is not real model grounding or qualification."
+    },
+    {
+      "feature": "selected-story-chat-template-conditioning-20261026",
+      "source_base": "adc38db28589dda957e75973dbecd556a800cbb9",
+      "source_commit": "b82f75c91e150908da326ab3c4e74169af6a89d8",
+      "schema_changed": false,
+      "semantic_search_enabled": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": "9f21e38e07fd60aa5384f0eb83a5bb2f70a2705e8de11605fe2086436c644d61",
+          "sha256": "cb41f60332d063713dc2201366de1242f948d7dd269ffa20454fa46de6ab8b19"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "d8892cb9ca007c0a92b8305788519a18bd675e24a6a7d7f0fb4d595b289880ab",
+          "sha256": "3694d438dbe2ded5777160970337b43876e521181ac00179f0672a63e1238f1a"
+        }
+      ],
+      "notes": "Record the reviewed worker chat-template conditioning and its focused tests already committed in b82f75c. This reconciliation changes only the ordered source ledger; executable bytes, model configuration, provider selection, serving flags and native package inputs are unchanged."
+    },
+    {
+      "feature": "persistent-ai-current-f2-search-integration",
+      "source_commit": "e96f26b0b0169cce8570006b911dbff93d06e618",
+      "base_source_commit": "0e0733fb029d73a369c69cf21b248a8088ccf834",
+      "AI_import_commit": "c041da900968fdd2cac537ffcae868e34702c00f",
+      "files": [
+        {
+          "path": "server/backend/app/access/windows_story_service_capacity.py",
+          "sha256": "253631dd6776189a4c3663fab140875d18ed54f162ccd031dfc569ee4c9dac6d"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "d26383d9073d2b7c5eb9b19d1a535b14331c94ffcc61b613043b6311806f5372"
+        },
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "sha256": "72b626318a5a51f52447b63d4b148ac136b3de61b3c434ea47515c8986ca3e8b"
+        },
+        {
+          "path": "server/scripts/selected_story_service_recipe.py",
+          "sha256": "aba45c94d22f0354e9ac9b318c515543141e40757241fb042740667d166f8d3b"
+        },
+        {
+          "path": "server/scripts/serve_library_semantic_text.py",
+          "sha256": "a08fb2d407726d705b9dc5788718263966b29c8b56d6f5482577aa68194a66d5"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "sha256": "36726e339be0711825307ea46fe0f5adfbd77b73abb2ba32871a15010738a6bb"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_service_recipe.py",
+          "sha256": "5b5897325b4943dfd5bb4bcff49d996f614f192e381db3c558e8b392a342bc5b"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_windows_factory.py",
+          "sha256": "4fe42019bf2b15adee60a76f3866fc2e76a4dafe8a26916cf51494759db901f8"
+        },
+        {
+          "path": "server/tests/security/test_serve_library_semantic_text.py",
+          "sha256": "2e77553f3103ea20a0b8c662cdbc2e7ba2108262f067a080c334d6784381f61c"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "sha256": "e102ba4c0e508285393621346534b8b9982afd9dcfb9c49a3391b5984d7c5619"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_capacity.py",
+          "sha256": "e33a60192601c81033fe135175424c028ea5830984165ff2eb744718f4ee1661"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_process_conflicts.py",
+          "sha256": "a2bf256973c45d2e3121f59e97e95904cb61528888498b13f6060f8c61d8b595"
+        },
+        {
+          "path": "server/tests/security/test_windows_story_service_capacity.py",
+          "sha256": "aecadfaf79f0b781aafdbcffb95a21a5a169699b473648ae07803ad7908cdbb2"
+        }
+      ],
+      "description": "Integrate persistent CPU story recipe and library-bound text service while preserving the current explicit Search request budget. Service launch forwards an explicit bounded request budget; default remains two seconds.",
+      "routes_added": false,
+      "schema_changed": false,
+      "feature_default_off": true,
+      "native_qualified": false,
+      "Windows_deployed": false,
+      "GitHub_CI_paused": true
+    },
+    {
+      "feature": "explicit-cpu-search-budget-preserved-in-ai-integration",
+      "source_commit": "0e0733fb029d73a369c69cf21b248a8088ccf834",
+      "files": [
+        {
+          "path": "server/backend/app/access/semantic_encoder.py",
+          "sha256": "67d57333e2ed7b70d290bb02387de987dd43bff6e3fa84283a263d1fdaa14f40"
+        },
+        {
+          "path": "server/backend/app/access/semantic_provider_transport.py",
+          "sha256": "3ee7be7e43dcc792a6c21131d98314f174764a5e9c1b2e14d6c351f010e8bf4c"
+        },
+        {
+          "path": "server/tests/security/test_semantic_encoder.py",
+          "sha256": "a710fe45249bd3f53ab9efbc10541398b58162ede1d60333053e1d42de83a1f0"
+        },
+        {
+          "path": "server/tests/security/test_semantic_provider_transport.py",
+          "sha256": "9aa07a88c7127559636d857b34b6adeec8c5372be8c3d46ac5a3fcb66246989b"
+        }
+      ],
+      "description": "Retain the already implemented explicit CPU request budget up to thirty seconds and two-second default; existing fifteen-second deployment remains compatible.",
+      "routes_added": false,
+      "schema_changed": false,
+      "default_timeout_seconds": 2,
+      "maximum_explicit_timeout_seconds": 30
+    },
+    {
+      "feature": "preserved-current-system-startup-source-in-ai-integration",
+      "source_commit": "0e0733fb029d73a369c69cf21b248a8088ccf834",
+      "files": [
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "sha256": "cb41f60332d063713dc2201366de1242f948d7dd269ffa20454fa46de6ab8b19"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "sha256": "3694d438dbe2ded5777160970337b43876e521181ac00179f0672a63e1238f1a"
+        }
+      ],
+      "description": "Record existing current baseline bytes exactly; no implementation changes made by this ledger entry.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "persistent-story-service-application-work-deadline",
+      "source_commit": "6b4dbf82ddc32b78030e83eab3d291768ed11feb",
+      "files": [
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "sha256": "08f7e2ba0c28b60244e47d4fe83472953869fa8ddd953e476167cc0362d9c63f"
+        },
+        {
+          "path": "server/scripts/selected_story_service_recipe.py",
+          "sha256": "a0725f1b42d8944cb6b3f10d4d8ddd14f8dee25af484248a70953c4ad9d19d3e"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_service_recipe.py",
+          "sha256": "a4629238ca49f254f1f7e271dced479bac1013fdc21b9dc85f10a79f4e47400f"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_windows_factory.py",
+          "sha256": "13cd7aba27a830d0a0eb4652c4e68b77e7a0071a08f231d216d2b79a43b21474"
+        }
+      ],
+      "description": "Align optional persistent story provider with DraftOperations maximum60s work; caller deadlines including30s expiry remain binding. CPU/model/framing/privacy/cleanup limits unchanged.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "selected-story-reviewed-save-reopen-roundtrip",
+      "source_commit": "8487da2e7c5945bb014db85c8d3c3219219208f9",
+      "files": [
+        {
+          "path": "server/tests/security/test_story_draft_preparation_browser.cjs",
+          "sha256": "216a2df75d7bf658879ecbacb6209bf330a7382fe6cf20221723cfe142b75410"
+        }
+      ],
+      "description": "Extend the generated browser-to-ASGI selected-source story journey through reopening the exact story saved after a lost response. Assert author-edited narration, chapter source policy and current authorized family evidence survive, without a second prepare or save. Synthetic provider only; no runtime, model, API or client UI behavior changed.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "owned-local-model-media-search-agent",
+      "source_commit": "0ce2d8b016a25c69e28e905eef0567c36aac7bc7",
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_decision.py",
+          "sha256": "73e8003374c472222bab76ae01e94be5b9be6383735de4097906e2507df628f8"
+        },
+        {
+          "path": "server/backend/app/access/agent_local_runtime.py",
+          "sha256": "1426888b43ca2e203dcb9773099025d49c441932b2cbe8caa0a312e9112f1363"
+        },
+        {
+          "path": "server/backend/app/access/agent_process.py",
+          "sha256": "13f092640c166b848ce5c56db30a7089803d374758ad28c66e055f919d62747d"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "sha256": "2611abc6444d5e83e51c56c15cbd31adca164be932e77d81c76fbad6a04bf4a2"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "sha256": "0d260c3219ffa832b5159a4a1356d706e3ebcbd1a188691dce7ac012f102deb2"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "d56551b2d1dcb2134b046732d12b61bab326cd78c4be4d0c4f20c31aa71f49dc"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "sha256": "fb09316f1e285b8f31366c9db242b5eaca9fc8a117a84df8384619a131aa7ee0"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "5eda716ae7ffd2919134d34764d1f8a8fb00054632ef6d8a41aa78c1282797bc"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "sha256": "a46c224eaf504b78e72891195d0d0eb15d1c6bd3de829de50bab69661fad3488"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "sha256": "014109950d6c53963ee48a65cdcea40a097e1bf4225c923e62b9b1ce9156dd12"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "sha256": "90fcb22ad1e2dd3f35f221d0ca4614df2bb77e0ce86c4db291be18f07af331b7"
+        },
+        {
+          "path": "server/scripts/household_agent_factory.py",
+          "sha256": "8810128cb3c6f2f67b9c240ef6eb0c920912d0f0f4089ce03f1a9c63d13e818b"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "sha256": "2dea94527cd50a73d99d3b284c32dd25e285fc0d93ac6b1e0f27140f74c11edf"
+        },
+        {
+          "path": "server/tests/security/agent_browser_bridge.py",
+          "sha256": "4accf7161d88f6a86d4bf237ca0ccedf46bf612950f67d9dd7ac70724b20dd36"
+        },
+        {
+          "path": "server/tests/security/test_agent_decision.py",
+          "sha256": "b8ebd498206299a106c31a3c7d25d6a636f722824bbe381939145397b6cc3d74"
+        },
+        {
+          "path": "server/tests/security/test_household_agent_factory.py",
+          "sha256": "cf5d676f0f24127b6962a30f8f1182d4b5caabc6fbd84686e373d11f4654b177"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "sha256": "8649afbb5e44e62a16df8ae1f7b0bb8cfe803f68f45579cc4905ff8cd9bb8535"
+        },
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "sha256": "5b0838e779c236a87066afc1a46f94d6bed6ff0c8bffff675d321db2cbe7730b"
+        },
+        {
+          "path": "server/tests/security/test_local_tool_agent.py",
+          "sha256": "2bd90597771e8182446b7ac5d9ea709706eca7dda3bc2e74ebe502a84c89028f"
+        },
+        {
+          "path": "server/tests/security/test_private_assistant_agent.cjs",
+          "sha256": "1dbb52172ac2cd43c4ec2da081238b64346e8652f8b849022f5af50cc6df00a9"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "a789709e64d739b02a63f954dda6d412036d9f2a43f306a346a09f6f4a72a756"
+        }
+      ],
+      "description": "Explicit local-model PH-A1 media-search runtime with closed decision grammar and existing owned native process/host admission, same pinned story model and shared CPU claim. Optional protected capability route and separate bilingual Web agent action; normal Search remains unchanged. Agent tools retain canonical interpretation, authorization, opaque outcomes and recoverable same-request results. Source/local tests only; real Windows generation and activation are separate delivery evidence.",
+      "routes_added": true,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "bilingual-assistant-name-jude-xiaojia",
+      "source_commit": "b1fb3ffafb3fcfed4a4f38b01d09d5a163197f6a",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "sha256": "b0ee798ee6c413188a20abca433e2c6295307b0f6ace368ee3500e50b73608cf"
+        },
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "sha256": "7584b50ffb7a3dbe3cdf997506a6702dbd0574bef4a437700834be8764314eb0"
+        }
+      ],
+      "description": "Name the assistant Jude in English and 小贾 in Chinese, including its explicit agent action. Behavior unchanged.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "agent-route-inventory-and-explicit-timeout-fixture",
+      "source_commit": "7acfcd8a4609a8652f968aebc6ac18d739198398",
+      "files": [
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "sha256": "27d51776cef1811b9ab53a388874aec070c3fb2a7070d6ec8f0f4f6dba7d8398"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "5a1e58b8e0d4c76641e76379f1a522b6de7f01888a23ca11cf282588d0a0a3a9"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_runtime_process.py",
+          "sha256": "6b6d7fea95dce765c5b2129cf7992de77bc8e35a1ab898806cc5a49a683c5862"
+        }
+      ],
+      "description": "Register the explicit protected agent capability route in the active inventory and update both exact route-count assertions. Exercise the existing 30s selected-story timeout explicitly in its fixture and assert the documented504 timeout response; closure, deadline, no-draft and privacy assertions retained. No production implementation or native package change.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "household-worker-real-isolated-cli-import",
+      "source_commit": "26aa12370d9cc7bc8b7d68236cb9e724e2b0cd31",
+      "files": [
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "sha256": "4b28798d7304e6c4fbe2800b697fcadfc1fd1bf8e81a075e94332d6cd0342476"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "sha256": "15994dbe81b0a567f6dd171f5fbf2b259760d3d014137a641567f7a7ddfebc76"
+        }
+      ],
+      "description": "Fix the actual -I worker entry by explicitly adding its pinned sibling scripts directory before importing the unchanged story worker. Test the cold isolated CLI --help without model or runtime I/O. Same model, provider, grammar, settings and native ownership.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "local-agent-terminal-current-inspection",
+      "source_commit": "fb5163a3045613c8568cdf651faff7134b4460dc",
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_local_runtime.py",
+          "sha256": "68e298b5511dad5e93f7303befae926aab55cae502c375a1c2a9095338944d1b"
+        },
+        {
+          "path": "server/tests/security/test_local_tool_agent.py",
+          "sha256": "2b408348f13378a95cb4b505c69805d39ed78c1504110d4d6a5b77c5efd52dc5"
+        },
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "sha256": "de43b557aa374e55feaeabc48cd717839481a39159f55309c4f897bf84d9206c"
+        }
+      ],
+      "description": "Finish the read-only agent search profile once the actual model chooses inspect_current_results and that tool returns a valid current host-issued projection. Avoid redundant finish inference; preserve original deadline, authorization, schema, opaque handle validation and native reconciliation. Reject malformed terminal inspection even when an earlier search issued a valid handle.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "local-agent-monotonic-read-only-tool-progress",
+      "source_commit": "141bde5b95159d0a835b921e113b92ae32e3874a",
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_decision.py",
+          "sha256": "74c5c6ce48ccdf5a781c06b302508340c6d97cf5f915f3e5f39dae678ec5ca8b"
+        },
+        {
+          "path": "server/tests/security/test_agent_decision.py",
+          "sha256": "89674e22bff6ec9057e77ae7d39bb583b074bd6fb0b960714052853afdb5c2cb"
+        }
+      ],
+      "description": "Prevent the observed redundant identical Search call within one immutable turn. The same closed schema and decision validator expose each no-argument capability/search tool once until an outcome exists, then only inspection or finish using host-issued handles. Same prompt/model/settings/deadline/auth/source/privacy/native cleanup; a fresh user turn can search again. No timeout fallback or fabricated completion.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
+    },
+    {
+      "feature": "jude-conversation-voice-review-recovery-20261029",
+      "source_base": "837990253934c12614158b8f3c80fe89d1d6db67",
+      "source_commit": "f49d3eaa7342c349426e1b75d7c9a0e783ec3036",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "b0ee798ee6c413188a20abca433e2c6295307b0f6ace368ee3500e50b73608cf",
+          "sha256": "fa6f4f04aac4d618333e1151fb38ad7ad014500dc05ef6d052679f19fa70f8a4"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "a46c224eaf504b78e72891195d0d0eb15d1c6bd3de829de50bab69661fad3488",
+          "sha256": "c0eb8be3ef7a4d14feda9e95cd7d6f89826f963ffeb85640ffedb43e401bc194"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "014109950d6c53963ee48a65cdcea40a097e1bf4225c923e62b9b1ce9156dd12",
+          "sha256": "4e09337e6f7880c2b60232c6adae4e9c73de466daeef28446498ef9a8a2340cd"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "fa2ba2095b743c9a824993cc669075e9631af176787f992246b11ebbbe1b9f9d",
+          "sha256": "a939b92123b02ee649167cf09931617eeb6e898115ef684c502d4bfaba6875b6"
+        },
+        {
+          "path": "server/tests/security/test_assistant_private_workspace_v3.cjs",
+          "before_sha256": "dd8d85d7b48bd27af4a6e0000f6f6c856cf1950ea7f4bcab85c73d8fc4a9c8c4",
+          "sha256": "a1d8e8f709c3a8d5700d15f1bd4dc83491897f8f29e3f3750f4fad45bb15b341"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "dcf6f445454280a98d86d0c53c906b6c034283c43b0ce6a6ce3b22b01b117305",
+          "sha256": "2890d90dcc53b666c0589c5b2a499fc392ac98071e509ee1e14403223ca2c32a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "c24ba52c751951805add84b5f844f9d75c38695bf9cdb7458e100d962f34dc8f",
+          "sha256": "29f2c9277938d4d85ec5c6760318647b2e7139cca7380567a1b7e479c6d6b9d6"
+        }
+      ],
+      "notes": [
+        "Unify the Jude conversation workspace typography, compact controls, voice presence and composer; explicit foreground Start/Pause/End remains unchanged.",
+        "Display recognized speech while a turn is pending; preserve unsent text and require receipt recovery for uncertain dispatched requests.",
+        "Explicitly checked successful transcription receipts can restore bounded same-account/library/generation text for review; end the owned voice loop, keep the microphone off and require Use transcript plus Send.",
+        "Link private Search turns to the succeeded ASR receipt through a validated optional parent request header; ordinary typed turns and JSON bodies remain unchanged.",
+        "No backend/provider/model/schema/permissions or production activation change in this source entry; GitHub Actions remains disabled."
+      ]
     }
   ]
 }

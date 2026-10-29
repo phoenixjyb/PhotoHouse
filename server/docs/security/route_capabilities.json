@@ -3399,7 +3399,7 @@
    ],
    "scope": "Exact duplicate groups within one library: active assets this library maps that share a hash_sha256 with at least one other active asset in the same library.",
    "current_control": "Same reviewed closed boundary and shared bearer/cookie/CSRF policy as the other member reads; library.read rather than an owner capability, matching the tag catalog and the people directory; the repeat predicate is scoped to the library, so a copy that is deleted, in another library or unmapped never counts and never appears; 25 groups per page, 25 copies per group, bounded page number, 3-second query deadline. The response carries no filesystem path, no filename and no content hash: a group is identified by its lowest asset id, which is stable for paging without letting a caller test whether a known image is in the library.",
-   "gap": "Source/synthetic evidence only; no member UI control yet. Exact duplicates only \u2014 perceptual near-duplicates (legacy /duplicates/reduction/*) need the phash task output and an explicit threshold decision, and are a separate contract. Nothing here deletes, suppresses or merges a copy, and deletion stays EXCLUDED, so the view explains the duplication rather than resolving it. On the deployed library that is 3,081 groups covering 6,189 of 27,842 active assets, caused by the same material being imported twice under two naming schemes. No physical acceptance."
+   "gap": "Source/synthetic evidence only; no member UI control yet. Exact duplicates only — perceptual near-duplicates (legacy /duplicates/reduction/*) need the phash task output and an explicit threshold decision, and are a separate contract. Nothing here deletes, suppresses or merges a copy, and deletion stays EXCLUDED, so the view explains the duplication rather than resolving it. On the deployed library that is 3,081 groups covering 6,189 of 27,842 active assets, caused by the same material being imported twice under two naming schemes. No physical acceptance."
   },
   {
    "source": "backend/app/access/captions.py",
@@ -4828,6 +4828,20 @@
    "scope": "Current account/session and approved membership in exactly one library. Capability readiness is not a preparation or save grant.",
    "current_control": "Fresh protected library.read even when optional UI is off. Separate default-off UI/API flags and started lifecycle; can_prepare additionally requires current owner/contributor role. Strict library-only query; existing private transport headers.",
    "gap": "Source-only UI negotiation. No native model or family/device qualification, provider installation or deployment."
+  },
+  {
+   "source": "backend/app/access/assistant_workspace_transport.py",
+   "owner": "router",
+   "method": "GET",
+   "path": "/assistant/workspace/v1/agent-capabilities",
+   "handler": "agent_capabilities",
+   "surface": "photohouse",
+   "scope": "Current approved selected-library membership and private workspace; read-only availability of the explicitly injected local media-search agent.",
+   "capabilities": [
+    "library.read"
+   ],
+   "current_control": "Exact closed-boundary handler, strict query, current account/library recheck, healthy server-owned supervisor and Search v2; returns closed availability/profile only. No model or tool invoked.",
+   "gap": "Optional local source. Actual Windows model/tool execution, current deployment and device acceptance remain separate evidence."
   }
  ]
 }
