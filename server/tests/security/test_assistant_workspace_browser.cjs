@@ -76,8 +76,13 @@ async function installSyntheticTransport(targetContext){
   const negotiatedWorkspaceProbes=requests('GET',workspace+'/capabilities?').filter(item=>['2','3'].includes(item.headers['x-photohouse-search-version']));
   assert.deepEqual(negotiatedWorkspaceProbes.map(item=>item.headers['x-photohouse-search-version']),['3','2'],
     'the real unconfigured server rejects v3 explicitly, then admits its supported v2 contract');
-  assert.match(await page.locator('#assistant-private-new').innerText(),/新对话|新建|创建|开始/,'Chinese is the default private pane language');
-  assert.equal(await management.evaluate(el=>el.open),true,'management is available while no conversation is selected');
+  assert.match(await page.locator('#assistant-private-new').innerText(),/开始/,'the empty conversation view offers a clear start action');
+  assert.equal(await page.locator('#assistant-private-welcome').isVisible(),true,'the empty workspace explains how to begin a conversation');
+  assert.equal(await management.evaluate(el=>el.open),false,'conversation management stays secondary when no conversation is selected');
+  const noThreadStart=page.locator('#assistant-private-new');
+  assert.equal(await noThreadStart.isVisible(),true,'starting a conversation does not require opening management');
+  await managementToggle.click();assert.equal(await management.evaluate(el=>el.open),true,'saved-conversation management remains available on request');
+  await managementToggle.click();assert.equal(await management.evaluate(el=>el.open),false);
   await page.locator('#assistant-private-status').waitFor();
   checkpoint('The signed-in page exposes the private workspace in the default Chinese UI');
 
@@ -389,6 +394,7 @@ async function installSyntheticTransport(targetContext){
   await page.locator('#assistant-panel').evaluate(el=>{if(!el.open)el.open=true;});
   await page.locator('#assistant-private').waitFor({state:'visible'});
   await page.locator('#assistant-private').evaluate(el=>{el.open=true;});
+  if(!await page.locator('#assistant-private-management').evaluate(el=>el.open))await page.locator('#assistant-private-management-toggle').click();
   await page.locator('#assistant-private-select').waitFor();
   await page.locator(`#assistant-private-select option[value="${historyThreadId}"]`).waitFor({state:'attached'});
   assert.match(await page.locator('#assistant-private-status').innerText(),/检索暂不可用|Search is unavailable/);
@@ -424,6 +430,7 @@ async function installSyntheticTransport(targetContext){
   await page.locator('#assistant-panel').evaluate(el=>{if(!el.open)el.open=true;});
   await page.locator('#assistant-private').waitFor({state:'visible'});
   await page.locator('#assistant-private').evaluate(el=>{el.open=true;});
+  if(!await page.locator('#assistant-private-management').evaluate(el=>el.open))await page.locator('#assistant-private-management-toggle').click();
   await page.locator('#assistant-private-select').waitFor();
   await page.locator(`#assistant-private-select option[value="${threadId}"]`).waitFor({state:'attached'});
   await page.locator('#assistant-private-select').selectOption(threadId);
@@ -491,6 +498,7 @@ async function installSyntheticTransport(targetContext){
   assert.equal(await page.locator('#assistant-private').evaluate(el=>el.closest('#assistant-workspace-content')?.id),'assistant-workspace-content');
   const assertVisibleInWorkspace=async ids=>{
     for(const id of ids){
+      if(['assistant-private-select','assistant-private-refresh'].includes(id)&&!await page.locator('#assistant-private-management').evaluate(el=>el.open))await page.locator('#assistant-private-management-toggle').click();
       const control=page.locator('#'+id);await control.scrollIntoViewIfNeeded();assert(await control.isVisible(),`${id} is visible after scrolling`);
       const measurement=await control.evaluate(el=>{const r=el.getBoundingClientRect(),c=document.getElementById('assistant-workspace-content').getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,contentTop:c.top,contentBottom:c.bottom,contentLeft:c.left,contentRight:c.right};});
       assert(measurement.top>=measurement.contentTop-1&&measurement.bottom<=measurement.contentBottom+1&&measurement.left>=measurement.contentLeft-1&&measurement.right<=measurement.contentRight+1,
