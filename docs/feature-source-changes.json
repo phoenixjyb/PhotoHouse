@@ -31945,6 +31945,20 @@
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
+    },
+    {
+      "feature": "selected-story-reviewed-save-reopen-roundtrip",
+      "source_commit": "8487da2e7c5945bb014db85c8d3c3219219208f9",
+      "files": [
+        {
+          "path": "server/tests/security/test_story_draft_preparation_browser.cjs",
+          "sha256": "216a2df75d7bf658879ecbacb6209bf330a7382fe6cf20221723cfe142b75410"
+        }
+      ],
+      "description": "Extend the generated browser-to-ASGI selected-source story journey through reopening the exact story saved after a lost response. Assert author-edited narration, chapter source policy and current authorized family evidence survive, without a second prepare or save. Synthetic provider only; no runtime, model, API or client UI behavior changed.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
     }
   ]
 }
