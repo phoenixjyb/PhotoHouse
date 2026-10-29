@@ -114,7 +114,7 @@ const turns=()=>requests.filter(item=>item.method==='POST'&&/\/threads\/[0-9a-f-
   assert.equal(turns().length,turnBefore+1,'recovery must not send a second POST');
   assert.equal(await page.locator('#assistant-results .assistant-result').count(),agentTurn.response.result.items.length);
   assert.equal(agentTurn.response.result.kind,'results');assert.ok(agentTurn.response.result.total>0);
-  stats=await rpc({command:'agent-stats'});assert.equal(stats.calls,4);assert.deepEqual(stats.tools,
+  stats=await rpc({command:'agent-stats'});assert.equal(stats.calls,3);assert.deepEqual(stats.tools,
     ['get_search_capabilities','search_media','inspect_current_results']);
   checkpoint('LocalToolAgentRuntime decisions drive protected Search; authorized results reopen by GET without another turn or generation');
 

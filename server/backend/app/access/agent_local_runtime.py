@@ -95,6 +95,14 @@ class LocalToolAgentRuntime:
             self._check(run)
             observations.append({'tool': name, 'result': value})
             state = validate_state(turn_input, observations)
+            if name == 'inspect_current_results':
+                # Inspection is the terminal domain tool for this read-only
+                # search profile. Its current host projection is authoritative;
+                # another model call cannot add facts or approve access.
+                inspected = validate_state(turn_input, [observations[-1]])
+                terminal = validate_decision({'finish': value.get('outcome_handle')}, inspected)
+                run.finished = True
+                return {'outcome_handle': terminal['finish']}
         raise AgentUnavailable()
 
     async def cleanup(self, scope):

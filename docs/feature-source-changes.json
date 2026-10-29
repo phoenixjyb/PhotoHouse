@@ -32111,6 +32111,28 @@
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
+    },
+    {
+      "feature": "local-agent-terminal-current-inspection",
+      "source_commit": "fb5163a3045613c8568cdf651faff7134b4460dc",
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_local_runtime.py",
+          "sha256": "68e298b5511dad5e93f7303befae926aab55cae502c375a1c2a9095338944d1b"
+        },
+        {
+          "path": "server/tests/security/test_local_tool_agent.py",
+          "sha256": "2b408348f13378a95cb4b505c69805d39ed78c1504110d4d6a5b77c5efd52dc5"
+        },
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "sha256": "de43b557aa374e55feaeabc48cd717839481a39159f55309c4f897bf84d9206c"
+        }
+      ],
+      "description": "Finish the read-only agent search profile once the actual model chooses inspect_current_results and that tool returns a valid current host-issued projection. Avoid redundant finish inference; preserve original deadline, authorization, schema, opaque handle validation and native reconciliation. Reject malformed terminal inspection even when an earlier search issued a valid handle.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
     }
   ]
 }

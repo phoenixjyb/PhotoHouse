@@ -79,8 +79,18 @@ class LocalRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(await runtime.cleanup(replace(selected, request_id=str(uuid.uuid4()))))
         self.assertTrue(await runtime.cleanup(selected))
         self.assertTrue(runtime.last_trace['completed'])
-        self.assertEqual(runtime.last_trace['model_invocations'], 4)
+        self.assertEqual(runtime.last_trace['model_invocations'], 3)
         self.assertTrue(invalidation.is_set())
+
+    async def test_terminal_inspection_must_itself_issue_a_valid_current_projection(self):
+        provider=ScriptedDecisionProvider();runtime=LocalToolAgentRuntime(provider,enabled=True);selected=scope();runtime.bind_scope(selected)
+        async def dispatch(name,arguments):
+            if name=='get_search_capabilities':return {'search_version':2}
+            if name=='inspect_current_results':return {'outcome_handle':'owned_outcome_123'}
+            return projection()
+        with self.assertRaises(ValueError):
+            await runtime.run({'version':1,'text':'Find photos','locale':'en'},dispatch,threading.Event())
+        self.assertTrue(await runtime.cleanup(selected));self.assertFalse(runtime.last_trace['completed'])
 
     async def test_default_off_forged_outcome_and_uncertain_native_cleanup_refuse(self):
         provider = ScriptedDecisionProvider()
