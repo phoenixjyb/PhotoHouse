@@ -32133,6 +32133,24 @@
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
+    },
+    {
+      "feature": "local-agent-monotonic-read-only-tool-progress",
+      "source_commit": "141bde5b95159d0a835b921e113b92ae32e3874a",
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_decision.py",
+          "sha256": "74c5c6ce48ccdf5a781c06b302508340c6d97cf5f915f3e5f39dae678ec5ca8b"
+        },
+        {
+          "path": "server/tests/security/test_agent_decision.py",
+          "sha256": "89674e22bff6ec9057e77ae7d39bb583b074bd6fb0b960714052853afdb5c2cb"
+        }
+      ],
+      "description": "Prevent the observed redundant identical Search call within one immutable turn. The same closed schema and decision validator expose each no-argument capability/search tool once until an outcome exists, then only inspection or finish using host-issued handles. Same prompt/model/settings/deadline/auth/source/privacy/native cleanup; a fresh user turn can search again. No timeout fallback or fabricated completion.",
+      "routes_added": false,
+      "schema_changed": false,
+      "native_qualification_created": false
     }
   ]
 }

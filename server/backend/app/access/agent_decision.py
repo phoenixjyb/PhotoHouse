@@ -160,17 +160,24 @@ def _closed_object(properties: dict[str, Any]) -> dict[str, Any]:
             'required': list(properties), 'additionalProperties': False}
 
 
-def _decision_schema(handles: tuple[str, ...]) -> dict[str, Any]:
-    decisions = [
-        _closed_object({'tool': {'type': 'string', 'const': 'get_search_capabilities'}}),
-        _closed_object({'tool': {'type': 'string', 'const': 'search_media'}}),
-    ]
+def _decision_schema(handles: tuple[str, ...], completed: frozenset[str]) -> dict[str, Any]:
+    # Tools take no model-authored search arguments: an identical tool call
+    # cannot refine this turn. Expose only uncompleted work and issued outcomes.
+    decisions = []
+    if not handles:
+        decisions = [
+            _closed_object({'tool': {'type': 'string', 'const': tool}})
+            for tool in ('get_search_capabilities', 'search_media')
+            if tool not in completed
+        ]
     if handles:
         decisions.extend((
             _closed_object({'tool': {'type': 'string', 'const': 'inspect_current_results'},
                             'outcome_handle': {'type': 'string', 'enum': list(handles)}}),
             _closed_object({'finish': {'type': 'string', 'enum': list(handles)}}),
         ))
+    if not decisions:
+        raise ValueError('invalid state')
     return {'oneOf': decisions}
 
 
@@ -191,7 +198,8 @@ def generation(state: Any, model: Any) -> dict[str, Any]:
         'model': model,
         'prompt': SYSTEM_PROMPT + '\nTask: ' + serialized,
         'stream': False,
-        'format': _decision_schema(_issued_handles(state)),
+        'format': _decision_schema(_issued_handles(state), frozenset(
+            observation['tool'] for observation in state['observations'])),
         'options': {'temperature': 0, 'num_predict': 128},
     }
 
@@ -205,7 +213,9 @@ def validate_decision(value: Any, state: Any) -> dict[str, str]:
     if type(value) is not dict:
         raise ValueError('invalid decision')
     if set(value) == {'tool'} and type(value.get('tool')) is str:
-        if value['tool'] in ('get_search_capabilities', 'search_media'):
+        if (value['tool'] in ('get_search_capabilities', 'search_media')
+                and not handles
+                and value['tool'] not in {entry['tool'] for entry in state['observations']}):
             return {'tool': value['tool']}
     elif set(value) == {'tool', 'outcome_handle'}:
         tool, handle = value.get('tool'), value.get('outcome_handle')

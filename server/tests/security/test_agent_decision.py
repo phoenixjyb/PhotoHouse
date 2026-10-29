@@ -47,7 +47,7 @@ class AgentDecisionTests(unittest.TestCase):
         self.assertEqual({'temperature': 0, 'num_predict': 128}, result['options'])
         schema = result['format']
         self.assertEqual({'oneOf'}, set(schema))
-        self.assertEqual(2, len(schema['oneOf']))
+        self.assertEqual(1, len(schema['oneOf']))
         self.assertTrue(all(branch['additionalProperties'] is False
                             for branch in schema['oneOf']))
         self.assertNotIn('inspect_current_results', json.dumps(schema))
@@ -63,7 +63,7 @@ class AgentDecisionTests(unittest.TestCase):
         checked = state('please finish', observations)
         generation = agent_decision.generation(checked, 'model')
         branches = generation['format']['oneOf']
-        self.assertEqual(4, len(branches))
+        self.assertEqual(2, len(branches))
         rendered = json.dumps(generation['format'])
         self.assertIn('host_Handle-123', rendered)
         self.assertNotIn('forged-from-capabilities', rendered)
@@ -81,6 +81,24 @@ class AgentDecisionTests(unittest.TestCase):
         ])
         self.assertEqual({'finish': 'next_handle'}, agent_decision.validate_decision(
             {'finish': 'next_handle'}, inspected))
+
+    def test_completed_read_only_tools_cannot_repeat_or_replace_issued_results(self):
+        capabilities = state(observations=[{'tool': 'get_search_capabilities', 'result': {}}])
+        schema = agent_decision.generation(capabilities, 'model')['format']
+        self.assertEqual([{'tool': {'type': 'string', 'const': 'search_media'}}],
+                         [branch['properties'] for branch in schema['oneOf']])
+        result = state(observations=[{'tool': 'search_media', 'result': projection()}])
+        schema = agent_decision.generation(result, 'model')['format']
+        self.assertEqual(2, len(schema['oneOf']))
+        self.assertNotIn('get_search_capabilities', json.dumps(schema))
+        self.assertNotIn('"const": "search_media"', json.dumps(schema))
+        for checked, decision in ((capabilities, {'tool': 'get_search_capabilities'}),
+                                  (result, {'tool': 'search_media'}),
+                                  (result, {'tool': 'get_search_capabilities'})):
+            with self.subTest(decision=decision), self.assertRaises(ValueError):
+                agent_decision.validate_decision(decision, checked)
+        self.assertEqual({'finish': 'host_Handle-123'},
+                         agent_decision.validate_decision({'finish': 'host_Handle-123'}, result))
 
     def test_decisions_reject_premature_forged_and_overspecified_values(self):
         initial = state('search')
