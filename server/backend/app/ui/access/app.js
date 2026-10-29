@@ -915,8 +915,8 @@
     $('assistant-receipt').hidden=true;$('assistant-receipt-status').textContent='';$('assistant-receipt-id').value='';
     syncAssistantControls();$('assistant-text').focus();
   }
-  Object.assign(words.zh,{assistantAsrAwaitingReceipt:'正在发送录音并等待识别结果；可查询服务器回执。',assistantAsrReceiptRecovered:'已确认这次录音的处理状态；已停止等待原响应，麦克风已关闭。请重新录音或输入文字，不会自动重发。'});
-  Object.assign(words.en,{assistantAsrAwaitingReceipt:'Sending the recording and waiting for recognition. You can check its server receipt.',assistantAsrReceiptRecovered:'Receipt confirmed. Stopped waiting for the original response; microphone off. Record again or type your request. Nothing was resent.'});
+  Object.assign(words.zh,{assistantAsrAwaitingReceipt:'正在发送录音并等待识别结果；可查询服务器回执。',assistantAsrReceiptRecovered:'已确认这次录音的处理状态；已停止等待原响应，麦克风已关闭。请重新录音或输入文字，不会自动重发。',assistantAsrReceiptTranscriptReady:'已从服务器回执恢复识别文本。请检查后选择“放入搜索框”，再手动发送。'});
+  Object.assign(words.en,{assistantAsrAwaitingReceipt:'Sending the recording and waiting for recognition. You can check its server receipt.',assistantAsrReceiptRecovered:'Receipt confirmed. Stopped waiting for the original response; microphone off. Record again or type your request. Nothing was resent.',assistantAsrReceiptTranscriptReady:'Recovered the recognized text from the server receipt. Review it, choose “Use transcript,” then send it yourself.'});
   function releaseAssistantTranscriptionReceipt(receipt){
     const attempt=assistantState.transcriptionAttempt;
     if(receipt.operation!=='transcribe'||!['succeeded','failed','interrupted'].includes(receipt.status)||
@@ -933,6 +933,10 @@
     }
     $('assistant-status').textContent=t('assistantAsrReceiptRecovered');
   }
+  function validRecoveredAssistantTranscript(value){
+    if(typeof value!=='string'||!value.trim()||value.length>1024)return false;
+    try{const bytes=new TextEncoder().encode(value);return bytes.length<=1024&&new TextDecoder('utf-8',{fatal:true}).decode(bytes)===value;}catch{return false;}
+  }
   async function checkAssistantReceipt(){
     if(privateAssistant?.state().pendingTurn){await recoverPrivateAssistant();return;}
     const receipt=assistantState.receipt;
@@ -947,6 +951,16 @@
       if(assistantState.receipt!==receipt)return;
       receipt.tracking='enabled';receipt.status=data.status;receipt.checkFailed=false;
       releaseAssistantTranscriptionReceipt(receipt);
+      if(data.operation==='transcribe'&&data.status==='succeeded'&&validRecoveredAssistantTranscript(data.recognized_text)&&
+        assistantBindingCurrent(receipt.binding)&&assistantState.receipt===receipt&&!document.hidden){
+        const session=assistantState.voiceSession;
+        if(session.phase!=='idle'&&sameAssistantVoiceBinding(session.binding,receipt.binding))endAssistantVoice();
+        assistantState.pendingTranscriptRequestId=receipt.id;assistantState.transcriptReviewBinding={...receipt.binding};
+        assistantState.transcriptReviewPending=true;assistantState.transcriptLanguage='unknown';
+        $('assistant-transcript').value=data.recognized_text;$('assistant-transcript-review').hidden=false;
+        renderAssistantTranscriptLanguage();$('assistant-status').textContent=t('assistantAsrReceiptTranscriptReady');
+        reportAssistantOutcome(receipt,'displayed');syncAssistantControls();
+      }
       if(data.status!=='received')clearAssistantRecoveryPointer(receipt.id);
       if(receipt.recovered&&data.status!=='received')receipt.recoveryCleared=true;
       showAssistantReceipt(receipt,receipt.recovered?recoveryStatusKey(data.status):assistantReceiptLabel(data.status));syncAssistantControls();
@@ -1716,7 +1730,12 @@
     const send=$('assistant-send'),composer=$('assistant-text');
     if(event?.submitter===send&&document.activeElement===send)composer.focus({preventScroll:true});
     if(privateRoute){
-      await submitPrivateAssistant(text,voiceToken,agent);return;
+      const parentReceipt=assistantState.receipt,parentBinding=parentReceipt?.binding;
+      const parentRequestId=assistantState.transcriptRequestId&&assistantState.transcriptRequestId===parentReceipt?.id&&
+        parentReceipt.operation==='transcribe'&&parentReceipt.status==='succeeded'&&assistantBindingCurrent(parentBinding)&&
+        parentBinding.account===String(state.profile.account_id)&&parentBinding.library===String(state.library)&&parentBinding.generation===state.generation
+        ?assistantState.transcriptRequestId:null;
+      await submitPrivateAssistant(text,voiceToken,agent,parentRequestId);return;
     }
     stopAssistantSpeech();
     const epoch=state.generation,binding=Object.freeze({library:String(state.library),account:String(state.profile.account_id),generation:epoch});
@@ -1998,7 +2017,7 @@
     });
   }
 
-  async function submitPrivateAssistant(text,voiceToken,agent=false){
+  async function submitPrivateAssistant(text,voiceToken,agent=false,parentRequestId=null){
     const epoch=state.generation,binding=Object.freeze({account:String(state.profile.account_id),library:String(state.library),generation:epoch});
     let voiceMemoryAction=null;
     if(privateAssistantBusy)return;
@@ -2007,7 +2026,7 @@
     try{
       privateAssistant.setDraft(text);
       if(!privateAssistant.state().activeThread)await privateAssistant.create();
-      const envelope=await privateAssistant.send(text,{agent});
+      const envelope=await privateAssistant.send(text,{agent,parentRequestId});
       if(!assistantBindingCurrent(binding))return;
       if(envelope.status==='completed'){
         $('assistant-text').value=privateAssistant.state().draft;
