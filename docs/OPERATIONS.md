@@ -5,6 +5,20 @@ instruction to execute a service change. Windows owns live data, models and GPU
 runtimes; the source checkout contains application code, contracts and tools.
 [Project Status](PROJECT_STATUS.md) is the dated installation snapshot.
 
+## Current operating reference
+
+[October 29 release](RELEASE_2026-10-29.md) records the Windows main/UI/voice
+rollout and 15-minute SYSTEM photo-stack refresh. It is dated evidence, not an
+instruction to restart a service or reuse an old claim. The October 29 work
+window is closed; production services were retained and experimental cleanup
+completed. Physical microphone/speaker testing was deferred by the user.
+
+GitHub Actions remains cost-paused. Use local checks and [the CI policy](CI.md);
+this documentation task authorizes no push, deployment, migration or task change.
+For a UI-only release, bind the selected API commit **and** its complete manifest
+in all startup/refresh controls; preserve the separate grouping-worker identity.
+Keep rollback available until actual API, Search, grouping and refresh checks pass.
+
 ## Release sequence
 
 1. **Pin source and artifacts.** Record repository/branch/commit, clean/dirty state,
@@ -51,8 +65,9 @@ not establish recovery of the complete multi-store system.
 
 ## Reboot, tasks and workers
 
-The v58 deployment preserves the approved 30-second API startup trigger. The
-October 14 snapshot shows five upload workers and ASR/TTS running. Home TV has
+The October 29 rollout preserved existing task contracts and verified the new
+SYSTEM refresh after selection. Earlier v58/October 14 startup and worker counts
+are historical, not a current process inventory. Home TV has
 an interactive desktop dependency and was Ready; feed/APK publication does not
 make that media listener available. Validate the relevant identity and startup
 path after reboot rather than starting every old task.

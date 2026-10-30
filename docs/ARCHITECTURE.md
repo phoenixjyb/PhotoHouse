@@ -10,6 +10,78 @@ and isolated inference runtimes. The offline catalog is descriptive; it does not
 load weights or select a live deployment. New embedding spaces require versioned
 artifacts and explicit comparison/reindex qualification.
 
+## Conversation and refinement
+
+The October 30 compact UI and bounded conversation projection are deployed
+from `daa7e14`; saved-story refinement remains local source awaiting its matching
+Windows worker and rollout. The conversation store remains the authority for
+account/library ownership, thread revision, retention and current result scope.
+Each model invocation receives a bounded projection rather than an unbounded
+transcript: at most four prior user/assistant pairs, 1,024 UTF-8 bytes per message
+and 4,096 bytes of dialogue text in total. The current request is preserved.
+The retained native worker's 1,024-byte turn contract can require an even smaller
+projection; older context is removed first and truncation is explicit. History
+is untrusted data and never grants a tool, source or library permission.
+
+Search filter state is separate from prose history. Follow-ups update supported
+conditions while preserving the others; results still come from authorized
+retrieval. The model is invoked for the application's bounded purpose, not kept
+running as an independent background conversation process.
+
+Saved-story refinement uses a revision-bound, idempotent background job. Its
+provider is explicitly injected by runtime configuration and remains default-off
+in portable examples. Original text/audio, derived transcription, a proposed
+refinement and adopted story text are separate records/states. A completed job
+exposes a proposal for review; it cannot automatically overwrite the original or
+publish it. Editing or withdrawing a source fences stale work. This increment
+needs its matching Windows worker contract and a separate observed rollout;
+source tests alone do not establish a refined household story.
+
+
+## Current integration reference
+
+Reviewed **2026-10-30**: main `e808e30`, with deployed increment `daa7e14`
+not yet merged. [Current status](PROJECT_STATUS.md) and the historical
+[October 29 delivery](RELEASE_2026-10-29.md) distinguish these installations. The portable application still
+requires explicit configuration. Historical default-off qualification documents
+are not a live inventory. The current system combines protected Search, library
+photo stacks, the Jude/小贾 workspace, local speech and a bounded model/tool agent.
+
+```mermaid
+flowchart TD
+    UI[Web / phone capture and controls] --> API[Protected API: account + library + revision]
+    API --> ASR[Local ASR adapter]
+    ASR --> R[Owned transcript receipt]
+    R --> REVIEW[Review or authorized foreground session]
+    REVIEW --> TURN[Owned workspace turn]
+    TURN --> HOST[Host-owned Search interpretation and authorization]
+    TURN --> AGENT[Optional bounded agent runtime]
+    AGENT --> TOOLS[Three typed read-only tools]
+    TOOLS --> HOST
+    HOST --> CARDS[Authorized result cards and durable outcome]
+    CARDS --> TTS[Protected local reply speech]
+    TTS --> UI
+    WORKER[Separate CPU grouping refresh] --> INDEX[Versioned library stack index]
+    INDEX --> API
+```
+
+The agent does not own identity, SQL, source selection or persistence. Its
+`agent_media_search_v1` profile negotiates the existing workspace turn API and
+can call only `get_search_capabilities`, `search_media` and
+`inspect_current_results`. It selects an opaque host-owned outcome; it cannot
+invent asset IDs, change access, run shell commands or save a story. The real
+model-backed adapter lives in `agent_local_runtime.py` (`LocalToolAgentRuntime`); supervision, tools and
+runtime wiring remain separate from speech and selected-story generation.
+See [agent boundary](LOCAL_AGENT_RUNTIME.md) and [inference admission](HOUSEHOLD_INFERENCE_ADMISSION.md).
+
+The UI owns recording, visible state, rendering and audio playback. The server
+owns accepted requests and receipts. ASR, Search and reply-speech request IDs
+are linked through parent receipts. An explicit GET can recover a completed
+transcript for review without recording or resending audio; a subsequent Send
+carries its original ASR parent ID. Scope/lifecycle changes fence late output.
+The foreground voice mode remains half duplex, with visible Start/Pause/End;
+this is not a cloud Realtime integration or unrestricted background listening.
+
 ## System map and ownership
 
 The protected server is a modular application with separate worker/provider
@@ -197,8 +269,10 @@ anonymous Home TV catalog. The following [library-wide indexed contract](LIBRARY
 adds a CPU-built atomic index, 12 collapsed positions per page and account-private
 revisioned cover/separation preferences. Its complete group metadata preserves
 full viewer navigation. Request-time authorization and source fingerprints dissolve
-stale groups; absent indexes negotiate v1. The new optional f2 schema and refresh
-entry point are source only, without a live migration or worker activation.
+stale groups; absent indexes negotiate v1. The optional F2 schema and refresh entry point are active in the October 29
+Windows installation, including a verified 15-minute SYSTEM schedule. Other
+installations still require their own schema, index and worker admission; no
+new Android/TV package or family grouping-quality acceptance is implied.
 The [operations layer](PHOTO_STACK_OPERATIONS.md) now prepares an explicit paired-
 backup migration and a one-sweep host: read-only preflight, private direct inputs,
 current external deletion history, exclusive worker lock, CPU/SQL cancellation
