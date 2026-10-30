@@ -149,6 +149,56 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('outcome_handle', response.text)
         self.assertNotIn('item_handle', response.text)
 
+    async def test_media_only_followup_changes_media_and_keeps_results(self):
+        first = await self.post_turn('Find photos', agent=True)
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(first.json()['status'], 'completed')
+        self.assertEqual(first.json()['result']['kind'], 'results')
+        self.assertEqual(first.json()['result']['filters']['media'], ['image'])
+
+        self.runtime = SyntheticRuntime()
+        self.app.state.assistant_agent_supervisor.runtime = self.runtime
+        followup = await self.post_turn(
+            'Refine my last search to show videos only', revision=1, agent=True)
+        self.assertEqual(followup.status_code, 200, followup.text)
+        body = followup.json()
+        self.assertEqual(body['status'], 'completed')
+        self.assertEqual(body['revision'], 2)
+        self.assertEqual(body['result']['kind'], 'results')
+        self.assertEqual(body['result']['filters']['media'], ['video'])
+        self.assertTrue(all(item['kind'] == 'video' for item in body['result']['items']))
+        self.assertEqual(len(self.runtime.calls), 1)
+
+    async def test_video_only_followup_preserves_then_replaces_date(self):
+        first = await self.post_turn('Find photos in September 2025', agent=True)
+        self.assertEqual(first.status_code, 200, first.text)
+        first_result = first.json()['result']
+        self.assertEqual(first_result['kind'], 'results')
+        self.assertEqual(first_result['filters']['media'], ['image'])
+        self.assertEqual(first_result['filters']['date'], {
+            'from': '2025-09-01', 'to': '2025-09-30'})
+
+        self.runtime = SyntheticRuntime()
+        self.app.state.assistant_agent_supervisor.runtime = self.runtime
+        videos = await self.post_turn(
+            'Refine my last search to show videos only', revision=1, agent=True)
+        self.assertEqual(videos.status_code, 200, videos.text)
+        video_result = videos.json()['result']
+        self.assertEqual(video_result['kind'], 'results')
+        self.assertEqual(video_result['filters']['media'], ['video'])
+        self.assertEqual(video_result['filters']['date'], {
+            'from': '2025-09-01', 'to': '2025-09-30'})
+
+        self.runtime = SyntheticRuntime()
+        self.app.state.assistant_agent_supervisor.runtime = self.runtime
+        october = await self.post_turn('October 2025', revision=2, agent=True)
+        self.assertEqual(october.status_code, 200, october.text)
+        october_result = october.json()['result']
+        self.assertEqual(october_result['kind'], 'results')
+        self.assertEqual(october_result['filters']['media'], ['video'])
+        self.assertEqual(october_result['filters']['date'], {
+            'from': '2025-10-01', 'to': '2025-10-31'})
+
     async def test_ordinary_turn_is_default_and_never_calls_injected_runtime(self):
         response = await self.post_turn('find photos in 2032')
         self.assertEqual(response.status_code, 200, response.text)

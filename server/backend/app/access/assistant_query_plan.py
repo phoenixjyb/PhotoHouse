@@ -42,6 +42,15 @@ _MEDIA = (
     ('video', re.compile(r'影片|视频|(?a:\b)(?:videos?|movies?)(?a:\b)', re.I)),
     ('image', re.compile(r'照片|图片|相片|(?a:\b)(?:photos?|photographs?|pictures?|images?)(?a:\b)', re.I)),
 )
+_MEDIA_ONLY_EN = r'(?:videos?|movies?|photos?|photographs?|pictures?|images?)'
+_MEDIA_ONLY_REFINEMENT = re.compile(
+    rf'^(?:'
+    rf'refine(?a:\b)\s+my(?a:\b)\s+last(?a:\b)\s+search(?a:\b)\s+'
+    rf'to(?a:\b)\s+show(?a:\b)\s+(?P<full>{_MEDIA_ONLY_EN})\s+only(?a:\b)|'
+    rf'only(?a:\b)\s+(?P<prefix>{_MEDIA_ONLY_EN})|'
+    rf'(?P<suffix>{_MEDIA_ONLY_EN})\s+only(?a:\b)|'
+    rf'只看(?P<chinese>视频|影片|照片|图片|相片)'
+    rf')[。.!！?？]*$', re.I)
 _SEARCH_OPEN = re.compile(
     r'^(?:'
     r'(?:(?:please\s+)?(?:i(?:\s+am|[\x27’]m)\s+looking\s+for|'
@@ -106,11 +115,25 @@ def _clarify(reason, filters=None):
     return QueryPlan(1, 'clarification', dict(filters or {}), reason)
 
 
+def _media_only_refinement(words):
+    """Mask only a closed, media-only exclusivity refinement phrase."""
+    value = words.strip()
+    match = _MEDIA_ONLY_REFINEMENT.fullmatch(value)
+    if match is None:
+        return None
+    group = next(name for name in ('full', 'prefix', 'suffix', 'chinese')
+                 if match.group(name) is not None)
+    start, end = match.span(group)
+    return ' ' * start + value[start:end] + ' ' * (len(value) - end)
+
+
 def query_mode(words):
     """Classify only explicit search/refine openings and closed bare followups."""
     if type(words) is not str or not words.strip():
         return None
     value = d.fold(words.strip())
+    if _MEDIA_ONLY_REFINEMENT.fullmatch(value):
+        return 'refine'
     if _SEARCH_OPEN.match(value):
         return 'search'
     if _REFINE_OPEN.match(value):
@@ -541,6 +564,12 @@ def plan_query(words, *, now: datetime, entities: dict,
         return _clarify('invalid_previous_filters')
 
     query = words.strip()
+    media_only_mask = _media_only_refinement(query)
+    if media_only_mask is not None and not _consumed_label(query, media_only_mask, labels):
+        # Keep this as a positive media-slot replacement only. Other text,
+        # including quoted text and every exclusion/safety condition, retains
+        # the normal closed parser and clarification behavior.
+        query = media_only_mask
     quoted = list(_QUOTE.finditer(query))
     quote_removed = _QUOTE.sub(' ', query)
     # Any remaining quote glyph means an unmatched quote; multiple literals

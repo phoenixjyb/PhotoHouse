@@ -32327,6 +32327,34 @@
         "The worker wire budget stays 1024 UTF-8 bytes; retain the latest request in full and discard or clip older history first. The server-side history budget remains separate.",
         "Keep the native executable, packet schema, worker, model, settings, host-owned filters and outcome authority unchanged; no fallback provider or extra inference."
       ]
+    },
+    {
+      "feature": "positive-media-only-search-refinement-20261030",
+      "source_base": "19927225de3abc07a63efb74a2892942468f0964",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "bbc51a799de09db3c6a56dd13df0313b9f8a5e5c2e37abd5a5116c7bffbf0ce4",
+          "sha256": "6e2bb9437fa09260211c07854170f24f357df4aac01243b5026b2d5ecb2f8cf6"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": "da57682a1de6287b55390f79a9d5f1fc529c7a10a7549baeecab230276c55db2",
+          "sha256": "9c25a3c3cfb135baf326204a96d428af6ce9364adb471917b1f2d7e9396f7c27"
+        },
+        {
+          "path": "server/tests/security/test_assistant_agent_workspace.py",
+          "before_sha256": "7aa2fa2a1380501ed8f2197479a8b5ebeeaa6efce0e9371249d24a2b3e6c3b7d",
+          "sha256": "be3b04ad051bc981eb9b3e23d6cec7f0403f65c0b7370ff82cce8fddc151f267"
+        }
+      ],
+      "notes": [
+        "Recognize only closed positive media-only refinements before generic strict-condition refusal, preserving all prior non-media filters and entity-label collision checks.",
+        "Quoted content and unsupported residual/exclusion requests retain their original policy. No shared search_policy, model/provider, runtime budget or permission change.",
+        "Exact two-turn and date/media follow-ups have focused synthetic application evidence; current native/live outcome remains separate."
+      ]
     }
   ]
 }
