@@ -46,6 +46,21 @@ def plan(words, *, entities=None, previous=None, refine=False):
 
 
 class AssistantQueryPlanTests(unittest.TestCase):
+    def test_month_refinement_keeps_the_prior_year_but_explicit_dates_override(self):
+        prior = {'media': ['video'], 'date': {'from': '2031-09-01', 'to': '2031-09-30'}}
+        for words in ('改成十月份', '换成10月', 'only October'):
+            with self.subTest(words=words):
+                self.assert_ready(words, {**prior, 'date': {'from': '2031-10-01', 'to': '2031-10-31'}},
+                                  previous=prior, refine=True)
+        for words, year in (('改成今年十月份', 2032), ('改成2030年10月', 2030)):
+            self.assert_ready(words, {**prior, 'date': {'from': f'{year}-10-01', 'to': f'{year}-10-31'}},
+                              previous=prior, refine=True)
+        self.assert_ready('找十月份照片', {'media': ['image'], 'date': {'from': '2032-10-01', 'to': '2032-10-31'}})
+        multiple = {**prior, 'date': {'from': '2030-09-01', 'to': '2031-09-30'}}
+        self.assert_clarifies('改成十月份', 'conflicting_dates', previous=multiple, refine=True)
+        self.assert_ready('改成今年十月份', {**prior, 'date': {'from': '2032-10-01', 'to': '2032-10-31'}},
+                          previous=multiple, refine=True)
+
     def test_reviewed_labels_cannot_silently_become_date_or_media_conditions(self):
         for label in ('May', 'September', '今天', 'videos'):
             with self.subTest(label=label):

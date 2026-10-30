@@ -117,6 +117,28 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
                 revision INTEGER, title TEXT, text TEXT, updated_at INTEGER, deleted INTEGER)''')
         return self.auth | {'X-PhotoHouse-Search-Version': '2'}
 
+    def test_three_turn_month_refinement_preserves_context_and_is_recoverable(self):
+        from datetime import datetime, timezone
+        self.now[0] = datetime(2026, 10, 30, 12, tzinfo=timezone.utc).timestamp()
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        cases = (
+            ('找去年九月份的照片', 'image', '2025-09-01', '2025-09-30'),
+            ('只看视频', 'video', '2025-09-01', '2025-09-30'),
+            ('改成十月份', 'video', '2025-10-01', '2025-10-31'),
+        )
+        for revision, (words, media, start, end) in enumerate(cases):
+            rid = new_id()
+            response = self.turn(tid, rid, revision, words, headers=headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            value = response.json()
+            self.assertEqual(value['revision'], revision + 1)
+            self.assertEqual(value['result']['kind'], 'results')
+            self.assertEqual(value['result']['filters'], {'media': [media], 'date': {'from': start, 'to': end}})
+            recovered = self.request('GET', f'/threads/{tid}/requests/{rid}?library_id=family-a', headers=headers)
+            self.assertEqual(recovered.status_code, 200, recovered.text)
+            self.assertEqual(recovered.json()['result'], value['result'])
+
     def test_bilingual_year_ranges_use_capture_dates_in_owned_recoverable_turns(self):
         self.enable_search()
         self.update("UPDATE assets SET mime='video/mp4',taken_at='2019-01-01 00:00:00.000000' WHERE id=101")

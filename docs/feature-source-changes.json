@@ -32088,7 +32088,7 @@
           "sha256": "7584b50ffb7a3dbe3cdf997506a6702dbd0574bef4a437700834be8764314eb0"
         }
       ],
-      "description": "Name the assistant Jude in English and \u5c0f\u8d3e in Chinese, including its explicit agent action. Behavior unchanged.",
+      "description": "Name the assistant Jude in English and 小贾 in Chinese, including its explicit agent action. Behavior unchanged.",
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
@@ -32501,6 +32501,34 @@
       ],
       "notes": [
         "Exercise actual RuntimeConfiguration replacement and app construction so story refinement enablement reaches the application. No production implementation change."
+      ]
+    },
+    {
+      "feature": "conversational-month-year-refinement-20261030",
+      "source_base": "daa7e14c1e89f4608db907bb07b6f92bf9a8f6ca",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "6e2bb9437fa09260211c07854170f24f357df4aac01243b5026b2d5ecb2f8cf6",
+          "sha256": "d13832573daf00bc9be2f5752c4d309302d84faa654e3a36e7d40b60c9071d11"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "ab66a18eae1ee5b25842edc48cab0357d9ab403b83c352fe5d165080ae68b08f",
+          "sha256": "b8706326c9ac65186d9cf4f543864ce948859f4806cd91dd02c0cdb286f64932"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "3841036e05ac6c529723dee5284e52e4035ac98b99b6a9befcee140a82705bcb",
+          "sha256": "f14be7f4cf58f2a6105e09b1cb903af138c3fae4318c4acbacecb8f08d90ac40"
+        }
+      ],
+      "notes": [
+        "Bare month refinements preserve the prior date range year when it is unambiguous; multi-year or open-ended context clarifies instead of silently choosing a year.",
+        "Fresh searches and explicit absolute or relative dates keep their existing calendar meaning. Authorization, entities, exclusions, providers and resource limits are unchanged.",
+        "Synthetic three-turn HTTP recovery and bilingual planner checks are separate from native voice and live deployment evidence."
       ]
     }
   ]
