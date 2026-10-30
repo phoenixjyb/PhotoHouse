@@ -1540,7 +1540,33 @@
     }
   }
 
-  function clearAssistantSearchSummary(){const summary=$('assistant-search-summary'),items=$('assistant-search-summary-items');if(items)items.replaceChildren();if(summary)summary.hidden=true;const ranking=$('assistant-scene-ranking');if(ranking)ranking.hidden=true;}
+  Object.assign(words.zh,{assistantRefineHint:'继续补充条件，我会保留当前查找的其他条件。',assistantRefinePhotos:'只看照片',assistantRefineVideos:'只看视频',assistantRefineMonth:'更改月份',assistantRefineUseMonth:'使用这个月份',assistantRefineMonthLabel:'拍摄月份',assistantRefineDraftFirst:'输入框里已有草稿，请先发送或保留它，再调整条件。',assistantRefineReady:'条件已放入输入框，请检查后发送。'});
+  Object.assign(words.en,{assistantRefineHint:'Keep refining this search. Your other conditions stay in place.',assistantRefinePhotos:'Photos only',assistantRefineVideos:'Videos only',assistantRefineMonth:'Change month',assistantRefineUseMonth:'Use this month',assistantRefineMonthLabel:'Capture month',assistantRefineDraftFirst:'Your composer already has a draft. Send or keep it before changing conditions.',assistantRefineReady:'The condition is in the composer. Review it, then send.'});
+  function renderAssistantRefinements(turn,epoch){
+    $('assistant-search-refinements')?.remove();
+    const summary=$('assistant-search-summary');
+    if(!summary||turn.kind!=='results'||![2,3].includes(turn.version)||!turn.context||turn.scene_page)return;
+    const box=document.createElement('div');box.id='assistant-search-refinements';box.className='assistant-refinements';
+    const hint=document.createElement('p');hint.className='fine';hint.dataset.i18n='assistantRefineHint';hint.textContent=t('assistantRefineHint');box.append(hint);
+    const actions=document.createElement('div');actions.className='assistant-actions';box.append(actions);
+    const current=()=>!stale(epoch)&&!state.locked&&!assistantState.busy&&!privateAssistantBusy&&
+      $('assistant-results').__assistantRenderedTurn===turn&&(!privateAssistant||(!privateAssistant.state().pendingTurn&&!privateAssistant.state().pendingCreation));
+    const fill=text=>{
+      if(!current())return;
+      if($('assistant-text').value.trim()||privateAssistant?.state().draft?.trim()){$('assistant-status').textContent=t('assistantRefineDraftFirst');$('assistant-text').focus();return;}
+      endAssistantVoice();$('assistant-text').value=text;privateAssistant?.setDraft(text);$('assistant-text').dispatchEvent(new Event('input',{bubbles:true}));$('assistant-text').focus();$('assistant-status').textContent=t('assistantRefineReady');syncAssistantControls();
+    };
+    const button=(key,action)=>{const b=document.createElement('button');b.type='button';b.className='quiet';b.dataset.i18n=key;b.textContent=t(key);b.addEventListener('click',action);actions.append(b);return b;};
+    button('assistantRefinePhotos',()=>fill(state.language==='zh'?'只看照片':'only photos'));
+    button('assistantRefineVideos',()=>fill(state.language==='zh'?'只看视频':'only videos'));
+    const monthRow=document.createElement('div');monthRow.className='assistant-actions';monthRow.hidden=true;
+    button('assistantRefineMonth',()=>{if(!current())return;monthRow.hidden=!monthRow.hidden;if(!monthRow.hidden)month.focus();});
+    const month=document.createElement('input');month.type='month';month.id='assistant-refine-month';month.min='1900-01';month.max='2099-12';month.setAttribute('aria-label',t('assistantRefineMonthLabel'));
+    const from=turn.filters?.date?.from;if(typeof from==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(from))month.value=from.slice(0,7);
+    const use=document.createElement('button');use.type='button';use.className='quiet';use.dataset.i18n='assistantRefineUseMonth';use.textContent=t('assistantRefineUseMonth');use.addEventListener('click',()=>{const value=month.value;if(!/^(?:19|20)\d{2}-(?:0[1-9]|1[0-2])$/.test(value))return;const [year,m]=value.split('-');fill(state.language==='zh'?`只看${year}年${Number(m)}月`:`only ${year}-${m}`);});monthRow.append(month,use);box.append(monthRow);summary.append(box);
+  }
+
+  function clearAssistantSearchSummary(){$('assistant-search-refinements')?.remove();const summary=$('assistant-search-summary'),items=$('assistant-search-summary-items');if(items)items.replaceChildren();if(summary)summary.hidden=true;const ranking=$('assistant-scene-ranking');if(ranking)ranking.hidden=true;}
   function assistantSearchLines(turn){
     if(![2,3,4].includes(turn?.version)||!turn.interpretation||!turn.filters)return [];
     const lines=[],labels=rows=>rows.map(row=>row.label).join('、');
@@ -1630,6 +1656,7 @@
     const root=$('assistant-results');root.replaceChildren();root.__assistantRenderedTurn=turn;root.__assistantRenderedEpoch=epoch;assistantState.items=turn.items;
     const summary=$('assistant-search-summary'),summaryItems=$('assistant-search-summary-items');
     if(summary&&summaryItems){summaryItems.replaceChildren();for(const line of assistantSearchLines(turn)){const item=document.createElement('li');item.textContent=line;summaryItems.append(item);}summary.hidden=summaryItems.childElementCount===0;}
+    renderAssistantRefinements(turn,epoch);
     renderAssistantSceneRanking(turn);
     $('assistant-reply').textContent=turn.reply;
     const privateSpeech=privateAssistant?.state(),privateReplyReady=assistantState.speech&&privateSpeech?.speechReady===true;

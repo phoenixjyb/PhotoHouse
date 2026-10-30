@@ -17,6 +17,7 @@ sys.path[:0] = [str(ROOT / 'backend'), str(ROOT / 'tests' / 'security')]
 from app.main import create_app
 from app.access.assistant_agent import AgentBudget
 from app.access.assistant_workspace_store import initialize_v2, LEASE_SECONDS
+from app.access.assistant_workspace_transport import _agent_dialogue
 from app.access.assistant_journal import initialize as initialize_journal
 from app.access.search_pending import PENDING_TTL_SECONDS
 import test_semantic_search as generated
@@ -141,7 +142,8 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.runtime.calls), 1)
         self.assertEqual(self.runtime.inputs[0], {
             'version': 1, 'text': 'find photos of Sample Child in September 2032',
-            'locale': None})
+            'locale': None,
+            'dialogue': {'version': 1, 'turns': [], 'truncated': False}})
         self.assertEqual([name for name, _ in self.runtime.tools], [
             'get_search_capabilities', 'search_media', 'inspect_current_results'])
         self.assertNotIn('outcome_handle', response.text)
@@ -452,6 +454,73 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result['filters']['date'], {
             'from': '2032-01-01', 'to': '2032-12-31'})
         self.assertEqual(self.runtime.calls[0]['text'], 'in 2032')
+
+    async def test_followup_agent_turn_receives_latest_persisted_exchange(self):
+        first = await self.post_turn('find photos in 2032', agent=True)
+        self.assertEqual(first.status_code, 200, first.text)
+        first_reply = first.json()['result']['reply']
+        self.assertTrue(first_reply)
+
+        # A new adapter instance models a reloaded local assistant. History is
+        # fetched from the durable thread store, not retained by the client.
+        self.runtime = SyntheticRuntime()
+        self.app.state.assistant_agent_supervisor.runtime = self.runtime
+        followup = await self.post_turn('show me videos too', revision=1, agent=True)
+        self.assertEqual(followup.status_code, 200, followup.text)
+        self.assertEqual(self.runtime.inputs[0]['dialogue'], {
+            'version': 1,
+            'turns': [{'user': 'find photos in 2032', 'assistant': first_reply}],
+            'truncated': False,
+        })
+        self.assertNotIn('cards', str(self.runtime.inputs[0]['dialogue']))
+        self.assertNotIn('receipts', str(self.runtime.inputs[0]['dialogue']))
+
+    async def test_dialogue_revision_mismatch_refuses_runtime_before_model_call(self):
+        original = self.store.get_thread
+
+        def stale_history(account, library, thread):
+            history = original(account, library, thread)
+            history['thread']['revision'] += 1
+            return history
+
+        with patch.object(self.store, 'get_thread', side_effect=stale_history):
+            response = await self.post_turn('find photos in 2032', agent=True)
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(self.runtime.calls, [])
+
+        for field, value in (('thread_id', str(uuid.uuid4())),
+                             ('library_id', 'another-library')):
+            def foreign_history(account, library, thread, field=field, value=value):
+                history = original(account, library, thread)
+                history['thread'][field] = value
+                return history
+
+            with patch.object(self.store, 'get_thread', side_effect=foreign_history):
+                response = await self.post_turn('find photos in 2032', agent=True)
+            self.assertEqual(response.status_code, 409, response.text)
+            self.assertEqual(self.runtime.calls, [])
+
+    async def test_dialogue_projection_caps_utf8_and_keeps_newest_complete_pairs(self):
+        exchanges = [
+            {'input_text': f'user-{i}', 'reply': f'assistant-{i}',
+             'cards': [{'id': 'must-not-pass'}], 'receipts': ['must-not-pass']}
+            for i in range(6)
+        ]
+        projection = _agent_dialogue(exchanges)
+        self.assertEqual(len(projection['turns']), 4)
+        self.assertEqual(projection['turns'][0]['user'], 'user-2')
+        self.assertEqual(projection['turns'][-1]['assistant'], 'assistant-5')
+        self.assertTrue(projection['truncated'])
+        self.assertEqual(set(projection), {'version', 'turns', 'truncated'})
+
+        clipped = _agent_dialogue([{'input_text': '你' * 500,
+                                    'reply': 'é' * 700}])
+        self.assertTrue(clipped['truncated'])
+        self.assertLessEqual(len(clipped['turns'][0]['user'].encode('utf-8')), 1024)
+        self.assertLessEqual(len(clipped['turns'][0]['assistant'].encode('utf-8')), 1024)
+        self.assertLessEqual(sum(len(pair[key].encode('utf-8'))
+                                 for pair in clipped['turns']
+                                 for key in ('user', 'assistant')), 4096)
 
     async def test_stale_reservation_conflict_does_not_disable_future_valid_work(self):
         class ScopedCleanup(SyntheticRuntime):

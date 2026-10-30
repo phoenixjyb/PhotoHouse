@@ -61,6 +61,7 @@ async function installSyntheticTransport(targetContext){
   await page.goto('https://photohouse.test/ui');await page.locator('#auth').waitFor({state:'visible'});
   await page.locator('#phone').fill('+12025550102');await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();
   await page.locator('#grid .asset').first().waitFor();
+  const desktopPage=page;
   const assistantPanel=page.locator('#assistant-panel');
   if(!await assistantPanel.evaluate(el=>el.open))await assistantPanel.locator(':scope > summary').click();
   const workspace='/assistant/workspace/v1';
@@ -524,6 +525,8 @@ async function installSyntheticTransport(targetContext){
   if(!await preferences.evaluate(el=>el.open))await preferences.locator(':scope > summary').click();
   await assertVisibleInWorkspace(['assistant-private-locale']);await assertDialogRows('desktop 1280px');
   await content.evaluate(el=>{el.scrollTop=0;});await page.screenshot({path:path.join(artifacts,'assistant-private-dialog-desktop.png'),fullPage:false});
+  await page.setViewportSize({width:1440,height:980});await assertDialogRows('desktop 1440px');
+  await content.evaluate(el=>{el.scrollTop=0;});await page.screenshot({path:path.join(artifacts,'assistant-private-dialog-desktop-1440.png'),fullPage:false});
 
   // A larger default font is a separate, layout-realistic stress case at the
   // 390 CSS-pixel phone width. It does not claim native browser zoom behavior.
@@ -532,6 +535,8 @@ async function installSyntheticTransport(targetContext){
   await assertVisibleInWorkspace(['assistant-private-new','assistant-private-select','assistant-private-refresh']);
   await page.locator('#assistant-text').scrollIntoViewIfNeeded();await page.locator('#assistant-send').scrollIntoViewIfNeeded();
   await assertDialogRows('390px with 150% root font size');
+  await page.locator('#assistant-workspace-content').evaluate(el=>{el.scrollTop=0;});
+  await page.screenshot({path:path.join(artifacts,'assistant-private-dialog-phone-390-css-150-text.png'),fullPage:false});
   await page.evaluate(()=>{document.documentElement.style.fontSize='';});
 
   // Model a 390x844 physical phone view at 150% with its corresponding CSS
@@ -560,6 +565,57 @@ async function installSyntheticTransport(targetContext){
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[],'all browser requests use the synthetic photohouse.test origin');
   checkpoint('Centered dialog screenshots confirm scrollable workspace controls and an unobstructed composer footer at desktop and a 260x563 CSS viewport rendered at device scale 1.5');
   checkpoint('Desktop and 390px with 150% root font size render without horizontal overflow; the focused phone dialog uses 260x563 CSS pixels at device scale 1.5; controls have accessible names and no page errors');
+
+  // A completed, real private v2 search exposes refinements that only fill a
+  // draft. Keep this isolated after the existing revision/history assertions.
+  page=desktopPage;await page.setViewportSize({width:1280,height:900});
+  const beforeRefinementThread=await page.locator('#assistant-private-select').inputValue();
+  await page.locator('#assistant-private-new').click();
+  await page.waitForFunction(previous=>{const value=document.getElementById('assistant-private-select')?.value;return !!value&&value!==previous;},beforeRefinementThread);
+  const refinementThreadId=await page.locator('#assistant-private-select').inputValue();
+  await page.locator('#assistant-text').fill('找照片');const turnsBeforeRefinements=turns().length;
+  const initialRefinementResponse=page.waitForResponse(response=>response.request().method()==='POST'&&response.url().includes(`/threads/${refinementThreadId}/turns`)&&response.status()===200);
+  await page.locator('#assistant-send').click();await initialRefinementResponse;await page.waitForFunction(()=>document.querySelector('#assistant-reply').textContent.length>0);
+  await page.waitForFunction(()=>document.querySelector('#assistant-private-status').textContent.length>0);
+  const refinementResult=turns().at(-1).response?.result;
+  assert([2,3].includes(refinementResult?.version),'the authorized private search fixture returns a negotiated v2/v3 result');
+  assert.equal(refinementResult.kind,'results');assert(refinementResult.context,'refinement controls require a current search context');
+  const refinementControls=page.locator('#assistant-search-refinements');await refinementControls.waitFor({state:'visible'});
+  for(const label of ['只看照片','只看视频','更改月份'])assert.equal(await refinementControls.getByRole('button',{name:label}).isVisible(),true,`${label} appears after a completed private search`);
+  const completedTurnCount=turns().length;assert.equal(completedTurnCount,turnsBeforeRefinements+1,'the base query adds one result turn');
+  await refinementControls.getByRole('button',{name:'更改月份'}).click();
+  const monthInput=page.locator('#assistant-refine-month');assert.equal(await monthInput.isVisible(),true,'Change month opens the month picker');
+  await monthInput.fill('2025-09');await page.locator('#assistant-text').fill('保留这段草稿');
+  await refinementControls.getByRole('button',{name:'使用这个月份'}).click();
+  assert.equal(await page.locator('#assistant-text').inputValue(),'保留这段草稿','month refinement never overwrites a nonempty draft');
+  assert.equal(turns().length,completedTurnCount,'opening the picker and protecting a draft send no search');
+  await page.locator('#assistant-text').fill('');await refinementControls.getByRole('button',{name:'使用这个月份'}).click();
+  assert.equal(await page.locator('#assistant-text').inputValue(),'只看2025年9月','September 2025 is placed in the composer as an editable refinement');
+  assert.equal(turns().length,completedTurnCount,'preparing the month refinement sends no search');
+  await refinementControls.scrollIntoViewIfNeeded();
+  const assertRefinementsUncovered=async label=>{
+    const layout=await page.evaluate(()=>{const card=document.querySelector('#assistant-search-refinements').getBoundingClientRect(),content=document.querySelector('#assistant-workspace-content').getBoundingClientRect(),footer=document.querySelector('#assistant-workspace-footer').getBoundingClientRect();return {card:{top:card.top,bottom:card.bottom,left:card.left,right:card.right},content:{top:content.top,bottom:content.bottom},footer:{top:footer.top,bottom:footer.bottom},viewport:{width:innerWidth,height:innerHeight},scrollWidth:document.documentElement.scrollWidth};});
+    assert(layout.card.top>=layout.content.top-1&&layout.card.bottom<=layout.footer.top+1,`${label}: refinement controls are fully above the sticky composer ${JSON.stringify(layout)}`);
+    assert(layout.card.left>=0&&layout.card.right<=layout.viewport.width+1&&layout.scrollWidth<=layout.viewport.width,`${label}: refinement controls fit horizontally ${JSON.stringify(layout)}`);
+  };
+  await assertRefinementsUncovered('desktop 1280px');
+  const refinementDesktop=path.join(artifacts,'assistant-search-refinements-desktop-1280.png');await page.screenshot({path:refinementDesktop,fullPage:false});
+  await page.setViewportSize({width:390,height:844});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'refinement controls fit at 390px with 150% text');
+  await refinementControls.scrollIntoViewIfNeeded();await assertRefinementsUncovered('390px with 150% text');
+  for(const label of ['只看照片','只看视频','更改月份','使用这个月份'])assert.equal(await refinementControls.getByRole('button',{name:label}).isVisible(),true,`${label} stays visible on mobile`);
+  const refinementPhone=path.join(artifacts,'assistant-search-refinements-phone-390-150.png');await page.screenshot({path:refinementPhone,fullPage:false});
+  await page.evaluate(()=>{document.documentElement.style.fontSize='';});await page.setViewportSize({width:1280,height:900});
+  const explicitRefinementResponse=page.waitForResponse(response=>response.request().method()==='POST'&&response.url().includes(`/threads/${refinementThreadId}/turns`)&&response.status()===200);
+  await page.locator('#assistant-send').click();await explicitRefinementResponse;
+  await page.waitForFunction(()=>document.getElementById('assistant-private-status').textContent.length>0&&document.getElementById('assistant-text').value==='');
+  assert.equal(turns().length,completedTurnCount+1,'only the explicit Send submits the prepared refinement');
+  assert.equal(JSON.parse(turns().at(-1).body).text,'只看2025年9月');
+  const finalRefinements=page.locator('#assistant-search-refinements');await finalRefinements.waitFor({state:'visible'});
+  await page.locator('#assistant-workspace-lock').click();await page.locator('#auth').waitFor({state:'visible'});
+  assert.equal(await page.locator('#assistant-search-refinements').count(),0,'logout removes account-scoped refinement controls');
+  checkpoint('Private v2 search refinements preserve drafts, fit desktop/mobile, require explicit Send, and disappear on logout');
+  console.log('REFINEMENT_SCREENSHOTS '+refinementDesktop+' '+refinementPhone);
 
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,requests:browserRequests.map(x=>({method:x.method,path:x.path})),pageErrors,syntheticBackend:true,transport:'Chromium requests intercepted and fulfilled through an in-process ASGI TestClient; only photohouse.test is allowed; no external network'},null,2));
   console.log(`Assistant private workspace browser checks: ${checkpoints.length} passed. Artifacts: ${artifacts}`);

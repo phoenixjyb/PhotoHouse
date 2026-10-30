@@ -42,6 +42,9 @@ MAX_REVISION = (1 << 63) - 2
 MAX_RESPONSE_BYTES = 240 * 1024
 MAX_MEMORY_READER_RESPONSE_BYTES = 1024 * 1024
 MAX_MEMORY_READER_ORDINAL = 11
+MAX_AGENT_DIALOGUE_PAIRS = 4
+MAX_AGENT_DIALOGUE_TEXT_BYTES = 1024
+MAX_AGENT_DIALOGUE_BYTES = 4096
 
 
 class WorkspaceInvalid(ValueError):
@@ -292,6 +295,37 @@ def _canonical_revision(value, *, positive=False):
     if parsed > MAX_REVISION or positive and parsed == 0:
         raise WorkspaceInvalid()
     return parsed
+
+
+def _agent_dialogue(exchanges):
+    """Project only bounded user/assistant text, newest complete pairs first."""
+    def bounded(text):
+        encoded = text.encode('utf-8', errors='strict')
+        if len(encoded) <= MAX_AGENT_DIALOGUE_TEXT_BYTES:
+            return text, False
+        clipped = encoded[:MAX_AGENT_DIALOGUE_TEXT_BYTES]
+        while clipped:
+            try:
+                return clipped.decode('utf-8'), True
+            except UnicodeDecodeError:
+                clipped = clipped[:-1]
+        return '', True
+
+    selected = []
+    used = 0
+    truncated = len(exchanges) > MAX_AGENT_DIALOGUE_PAIRS
+    for exchange in reversed(exchanges):
+        user, user_clipped = bounded(exchange['input_text'])
+        assistant, assistant_clipped = bounded(exchange['reply'])
+        pair_size = len(user.encode('utf-8')) + len(assistant.encode('utf-8'))
+        if len(selected) >= MAX_AGENT_DIALOGUE_PAIRS or used + pair_size > MAX_AGENT_DIALOGUE_BYTES:
+            truncated = True
+            break
+        selected.append({'user': user, 'assistant': assistant})
+        used += pair_size
+        truncated = truncated or user_clipped or assistant_clipped
+    selected.reverse()
+    return {'version': 1, 'turns': selected, 'truncated': truncated}
 
 
 def _create_owned_thread(store, account, library, selected):
@@ -1138,6 +1172,21 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
             journal_started = True
             await operation.call(journal.stage, ident.request_id, 'action_started')
         preferences = await operation.call(store.get_preferences, ident.account_id)
+        # Dialogue is read from the exact protected thread after reservation.
+        # Live checks on both sides bind it to the same account, library, lease,
+        # and revision; no cards, identifiers, or receipts enter the model.
+        await operation.call(live)
+        history = await operation.call(store.get_thread, ident.account_id,
+                                       ident.library_id, ident.thread_id)
+        thread_snapshot = history.get('thread') if type(history) is dict else None
+        if (type(thread_snapshot) is not dict or
+                thread_snapshot.get('thread_id') != ident.thread_id or
+                thread_snapshot.get('library_id') != ident.library_id or
+                thread_snapshot.get('revision') != ident.expected_revision or
+                type(history.get('exchanges')) is not list):
+            raise WorkspaceStoreConflict()
+        await operation.call(live)
+        dialogue = _agent_dialogue(history['exchanges'])
         tools = AgentTools(engine=engine, token=token, library=ident.library_id,
             words=ident.text, context=row['context'], pending_intent=row.get('pending_intent'),
             clock=access.clock, language=preferences['locale'], check=live,
@@ -1151,7 +1200,8 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
         if bind_scope is not None:
             bind_scope(operation.scope)
         runtime_task = operation.spawn(operation.owner.runtime.run(
-            {'version': 1, 'text': ident.text, 'locale': preferences['locale']},
+            {'version': 1, 'text': ident.text, 'locale': preferences['locale'],
+             'dialogue': dialogue},
             dispatch, operation.invalidation))
         selector = await operation.wait(runtime_task)
         outcome = await operation.call(tools.resolve, selector)

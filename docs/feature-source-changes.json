@@ -32223,6 +32223,89 @@
         "Link private Search turns to the succeeded ASR receipt through a validated optional parent request header; ordinary typed turns and JSON bodies remain unchanged.",
         "No backend/provider/model/schema/permissions or production activation change in this source entry; GitHub Actions remains disabled."
       ]
+    },
+    {
+      "feature": "jude-modern-conversation-month-refinement-20261030",
+      "source_base": "e808e3083af61bdbc4beae366d24da35340c5ad6",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "2611abc6444d5e83e51c56c15cbd31adca164be932e77d81c76fbad6a04bf4a2",
+          "sha256": "891b93b085f6299a185af9b64fab3ddbdb3b40837e23f167687d22ee0eda476e"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "8872755eb2a8d606b8489e1e8cd24ed555a8d8c69197966995210d0718546761",
+          "sha256": "bbc51a799de09db3c6a56dd13df0313b9f8a5e5c2e37abd5a5116c7bffbf0ce4"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "fa6f4f04aac4d618333e1151fb38ad7ad014500dc05ef6d052679f19fa70f8a4",
+          "sha256": "35daf9ca0d419fe980eddf1eac1581bb7ad3b9e6de4bd55abba54a3d557c4849"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "a939b92123b02ee649167cf09931617eeb6e898115ef684c502d4bfaba6875b6",
+          "sha256": "f7a811127cb284f67b1abc2809f491503cbdbb2b0683aa1bfb067a9e98c0ac1a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_conversational_search.py",
+          "before_sha256": "49ee4f48817174539347b9b15a0b35416d6e4d2d6155ca6c564430484c06e70c",
+          "sha256": "0d53d6eb1a563a237aa863851dde642d60c3061a4661acc386340edcd9dde6e2"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "fc61e79d4c12400963394dbd9f6249ce121d2be83728d1198d648c730a898d70",
+          "sha256": "ab66a18eae1ee5b25842edc48cab0357d9ab403b83c352fe5d165080ae68b08f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "29f2c9277938d4d85ec5c6760318647b2e7139cca7380567a1b7e479c6d6b9d6",
+          "sha256": "3b42c0fd5b2291b173be100a06a28a1313f62f38e8bcd2fc139b02502056b149"
+        }
+      ],
+      "notes": [
+        "Recognize the complete Chinese month suffix in explicit and relative dates; invalid date text remains rejected and quoted phrases remain opaque.",
+        "Preserve existing Search filters on date and media follow-ups; expose explicit draft-only refinement controls.",
+        "Use compact neutral conversation layout, visible voice controls and a sticky composer across desktop and narrow large-text layouts.",
+        "No model, provider, schema, membership or background action changes; local checks and deployment are separate evidence."
+      ]
+    },
+    {
+      "feature": "jude-bounded-local-dialogue-context-20261030",
+      "source_base": "e808e3083af61bdbc4beae366d24da35340c5ad6",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_decision.py",
+          "before_sha256": "74c5c6ce48ccdf5a781c06b302508340c6d97cf5f915f3e5f39dae678ec5ca8b",
+          "sha256": "951053885b37aab611f09aa215459355b4d9842b4b7c1664e3308448cdd4513f"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "0d260c3219ffa832b5159a4a1356d706e3ebcbd1a188691dce7ac012f102deb2",
+          "sha256": "ec6bf6f024960604d98cd330e38ac3502ed9a902fbf23d0815869405d7c02e1c"
+        },
+        {
+          "path": "server/tests/security/test_agent_decision.py",
+          "before_sha256": "89674e22bff6ec9057e77ae7d39bb583b074bd6fb0b960714052853afdb5c2cb",
+          "sha256": "b71c08b79be9492abf13ba3a8278e2344f110e896cb4f598fe3a83b580a3940a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_agent_workspace.py",
+          "before_sha256": "47330e0149b56224173e785de11dbe8e5abec6046b34873e49477418b328bb69",
+          "sha256": "7aa2fa2a1380501ed8f2197479a8b5ebeeaa6efce0e9371249d24a2b3e6c3b7d"
+        }
+      ],
+      "notes": [
+        "Provide the local decision model with at most four recent protected persisted user/reply pairs, 1024 UTF-8 bytes per text and 4096 bytes in total.",
+        "Read exact account/library/thread/revision under the owned turn with reauthorization before and after; discard media cards, receipt identifiers and all other metadata.",
+        "History remains untrusted conversational data. Current host filters, authorization, issued outcomes and tools remain authoritative.",
+        "The client cannot inject a dialogue field; omitted dialogue remains compatible for older callers. No model/provider/settings/schema changes or extra inference call."
+      ]
     }
   ]
 }

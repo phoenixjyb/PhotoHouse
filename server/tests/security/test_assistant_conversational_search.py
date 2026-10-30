@@ -53,10 +53,11 @@ class AssistantConversationalSearchTests(unittest.TestCase):
         finally:
             connection.close()
 
-    def turn(self, words):
+    def turn(self, words, *, context=None):
+        headers = dict(self.auth)
         return self.client.post('/assistant/v1/turns',
-            json={'library_id': 'family-a', 'text': words, 'context': None},
-            headers=self.auth)
+            json={'library_id': 'family-a', 'text': words, 'context': context},
+            headers=headers)
 
     def test_conversational_search_forms_match_canonical_filters_and_results(self):
         cases = (
@@ -66,6 +67,12 @@ class AssistantConversationalSearchTests(unittest.TestCase):
             ('帮我找一下去年九月的照片', '找去年九月照片',
              {'date': {'from': '2032-09-01', 'to': '2032-09-30'}, 'media': ['image']},
              ['103']),
+            ('帮我找一下去年九月份的照片', '找去年九月照片',
+             {'date': {'from': '2032-09-01', 'to': '2032-09-30'}, 'media': ['image']},
+             ['103']),
+            ('帮我找一下2025年9月份的照片', '找2025年9月照片',
+             {'date': {'from': '2025-09-01', 'to': '2025-09-30'}, 'media': ['image']},
+             []),
             ('帮我查一下示例儿童的照片', '找示例儿童照片',
              {'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'}},
              ['103', '101']),
@@ -96,6 +103,45 @@ class AssistantConversationalSearchTests(unittest.TestCase):
                 self.assertEqual([item['id'] for item in body['items']],
                                  [item['id'] for item in baseline['items']])
                 self.assertIsNone(body['effect'])
+
+    def test_multiround_month_person_and_media_refinements_keep_other_filters(self):
+        cases = (
+            ('找示例儿童的照片', '去年九月份',
+             {'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+              'date': {'from': '2032-09-01', 'to': '2032-09-30'}}, ['103']),
+            ('找去年九月份的照片', '再找示例儿童',
+             {'media': ['image'], 'people': {'ids': ['301'], 'match': 'any'},
+              'date': {'from': '2032-09-01', 'to': '2032-09-30'}}, ['103']),
+            ('找去年的视频', '只看照片',
+             {'media': ['image'], 'date': {'from': '2032-01-01', 'to': '2032-12-31'}}, ['103']),
+        )
+        for initial, refinement, expected_filters, expected_ids in cases:
+            with self.subTest(initial=initial, refinement=refinement):
+                first_response = self.turn(initial)
+                self.assertEqual(first_response.status_code, 200, first_response.text)
+                first = first_response.json()
+                self.assertEqual(first['kind'], 'results', first)
+                result = self.turn(refinement, context=first['context'])
+                self.assertEqual(result.status_code, 200, result.text)
+                body = result.json()
+                self.assertEqual(body['kind'], 'results', body)
+                self.assertEqual(body['filters'], expected_filters)
+                self.assertEqual([item['id'] for item in body['items']], expected_ids)
+                self.assertEqual(body['context']['filters'], expected_filters)
+                self.assertEqual(body['context']['visible_ids'], expected_ids)
+                self.assertIsNone(body['effect'])
+
+        # A rejected refinement keeps the prior snapshot usable for recovery.
+        initial_response = self.turn('找示例儿童的照片')
+        self.assertEqual(initial_response.status_code, 200, initial_response.text)
+        initial = initial_response.json()
+        rejected = self.turn('不要', context=initial['context']).json()
+        self.assertIn(rejected['kind'], ('clarification', 'unsupported'), rejected)
+        self.assertEqual(rejected['context'], initial['context'])
+        recovered = self.turn('去年九月份', context=initial['context']).json()
+        self.assertEqual(recovered['kind'], 'results', recovered)
+        self.assertEqual(recovered['filters']['date'],
+                         {'from': '2032-09-01', 'to': '2032-09-30'})
 
     def test_negation_unknown_constraints_and_unknown_names_never_broaden(self):
         phrases = (

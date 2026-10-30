@@ -48,7 +48,7 @@ SEARCH_PREFIX = (
 REFINE_PREFIX = r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|refine|only|filter|just|what about|how about|same but)'
 BARE_FOLLOWUP = re.compile(
     r'(?:视频|影片|照片|图片|相片|videos?|movies?|photos?|pictures?|images?|'
-    r'(?:去年|今年|20\d{2}年)(?:(?:1[0-2]|0?[1-9]|十一|十二|十|[一二三四五六七八九])月)?(?:的)?|'
+    r'(?:去年|今年|20\d{2}年)(?:(?:1[0-2]|0?[1-9]|十一|十二|十|[一二三四五六七八九])月(?:份)?)?(?:的)?|'
     r'(?:last year|this year))(?:呢)?[。！？.!?]*', re.IGNORECASE)
 
 
@@ -484,10 +484,10 @@ def _date_filter(words, now):
     else:
         absolute_year = re.search(r'(?<!\d)(20\d{2})年(?!\d)', normalized)
         year = int(absolute_year.group(1)) if absolute_year else now.year - (1 if '去年' in normalized or 'last year' in normalized else 0)
-        month_match = re.search(r'(?<!\d)(1[0-2]|0?[1-9])月', normalized)
+        month_match = re.search(r'(?<!\d)(1[0-2]|0?[1-9])月(?:份)?', normalized)
         month = int(month_match.group(1)) if month_match else None
         if month is None:
-            chinese = re.search(r'(十一|十二|十|[一二三四五六七八九])月', normalized)
+            chinese = re.search(r'(十一|十二|十|[一二三四五六七八九])月(?:份)?', normalized)
             month = CHINESE_MONTHS[chinese.group(1)] if chinese else None
         if absolute_year is None and year == now.year and month is None and not ('今年' in normalized or 'this year' in normalized):
             return None
@@ -517,8 +517,8 @@ def _unmatched(words, labels):
     remaining = d.fold(words)
     for label in sorted(labels, key=len, reverse=True):
         remaining = remaining.replace(d.fold(label), ' ')
-    remaining = re.sub(r'(?<!\d)20\d{2}(?:年(?:(?:1[0-2]|0?[1-9])月?(?!\d))?|[/.\-](?:1[0-2]|0?[1-9])月?(?!\d))', ' ', remaining)
-    remaining = re.sub(r'\b(?:last year|this year)\b|去年|今年|(?<!\d)(?:1[0-2]|0?[1-9])月|(?:十一|十二|十|[一二三四五六七八九])月', ' ', remaining)
+    remaining = re.sub(r'(?<!\d)20\d{2}(?:年(?:(?:1[0-2]|0?[1-9])(?:月(?:份)?)?(?!\d))?|[/.\-](?:1[0-2]|0?[1-9])月?(?!\d))', ' ', remaining)
+    remaining = re.sub(r'\b(?:last year|this year)\b|去年|今年|(?<!\d)(?:1[0-2]|0?[1-9])月(?:份)?|(?:十一|十二|十|[一二三四五六七八九])月(?:份)?', ' ', remaining)
     remaining = re.sub(SEARCH_PREFIX + '|' + REFINE_PREFIX, ' ', remaining)
     remaining = re.sub(r'视频|影片|照片|图片|相片|\b(?:videos?|movies?|photos?|pictures?|images?)\b', ' ', remaining)
     remaining = re.sub(r'\b(?:the|from|by|in|of|at|and|me|some)\b|[的、，。！？:：,.!?\s]+', '', remaining)
