@@ -4,6 +4,7 @@ The application starts closed. Deployment must explicitly supply reviewed access
 and media runtimes; no environment/database discovery or legacy fallback exists.
 """
 import asyncio
+import ntpath
 from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
@@ -44,6 +45,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                annotation_intake_enabled=False, assistant_enabled=False,
                memory_collaboration_enabled=False, memory_originals_enabled=False,
                memory_generation_enabled=False, memory_editorial_enabled=False,
+               memory_auto_refinement_enabled=False,
                memory_editions_enabled=False, family_note_erasure_enabled=False,
                assistant_asr=None, assistant_tts=None, assistant_journal=None,
                assistant_workspace_store=None, assistant_kinship_provider=None, assistant_intent_planner=None, update_root=None,
@@ -123,6 +125,36 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     if (type(selected_story_ui_enabled) is not bool or
             (selected_story_ui_enabled and not selected_story_drafts_enabled)):
         raise ValueError('Explicit selected-story UI and API opt-in required')
+    if (type(memory_auto_refinement_enabled) is not bool or
+            (memory_auto_refinement_enabled and
+             (not memory_collaboration_enabled or access_runtime is None))):
+        raise ValueError('Automatic story refinement requires an explicit protected runtime')
+    refinement_narrator = None
+    if memory_auto_refinement_enabled:
+        from .access.selected_story_process import ProcessSelectedStoryProvider, ProcessSavedStoryProvider
+        from .access.memory_processing import OwnedSavedStoryNarrator
+        if (type(selected_story_provider) is not ProcessSelectedStoryProvider or
+                selected_story_provider.host_admission is None):
+            raise ValueError('Automatic refinement requires the shared owned model admission')
+        if (selected_story_provider.enabled is not True or
+                selected_story_provider.host_admission.enabled is not True):
+            raise ValueError('Automatic refinement requires an enabled owned model provider')
+        scripts = [argument for argument in selected_story_provider.launch.argv
+                   if argument.lower().endswith('.py')]
+        worker_name = (ntpath.basename(scripts[0].replace('/', '\\')).lower()
+                       if len(scripts) == 1 else '')
+        # This selects the closed dispatcher contract; the deployed source and
+        # package hash must still be verified by the Windows rollout.
+        if worker_name != 'household_gguf_worker.py':
+            raise ValueError('Automatic refinement requires the household GGUF worker launch')
+        def refinement_provider():
+            original = selected_story_provider
+            return ProcessSavedStoryProvider(original.launch, original.model,
+                kernel_factory=original.kernel_factory, enabled=original.enabled,
+                timeout=original.timeout, cleanup_seconds=original.cleanup_seconds,
+                host_admission=original.host_admission, exchange_root=original.exchange_root)
+        refinement_narrator = OwnedSavedStoryNarrator(refinement_provider,
+            timeout=min(60, selected_story_provider.timeout))
     selected_story_lifecycle = None
     if selected_story_provider is not None:
         if not memory_collaboration_enabled:
@@ -135,6 +167,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
         maintenance = None
         memory_maintenance = None
         workspace_maintenance = None
+        refinement_worker = None
         journal = app.state.assistant_journal
         workspace = app.state.assistant_workspace_store
         try:
@@ -182,11 +215,46 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                         except Exception:
                             app.state.memory_retention_healthy = False
                 memory_maintenance = asyncio.create_task(prune_memory_history())
+            if refinement_narrator is not None:
+                from .access.memory_processing import process_job
+                def refine_one():
+                    with access_runtime.connection_factory() as db:
+                        return process_job(db, narrator=refinement_narrator,
+                            clock=access_runtime.clock,
+                            memory_groups_enabled=memory_groups_enabled,
+                            saved_story_only=True)
+                async def refine_stories():
+                    work = None
+                    try:
+                        while True:
+                            if app.state.memory_retention_healthy:
+                                work = asyncio.create_task(asyncio.to_thread(refine_one))
+                                try:
+                                    await asyncio.shield(work)
+                                    app.state.memory_refinement_healthy = True
+                                except Exception:
+                                    app.state.memory_refinement_healthy = False
+                                finally:
+                                    if work.done():
+                                        work = None
+                            await asyncio.sleep(5)
+                    finally:
+                        refinement_narrator.cancel()
+                        if work is not None:
+                            await asyncio.shield(work)
+                refinement_worker = asyncio.create_task(refine_stories())
             yield
         finally:
             try:
-                if app.state.selected_story_lifecycle is not None:
-                    await app.state.selected_story_lifecycle.close()
+                try:
+                    if refinement_worker is not None:
+                        refinement_narrator.cancel()
+                        refinement_worker.cancel()
+                        with suppress(asyncio.CancelledError):
+                            await refinement_worker
+                finally:
+                    if app.state.selected_story_lifecycle is not None:
+                        await app.state.selected_story_lifecycle.close()
             finally:
                 if app.state.assistant_agent_supervisor is not None:
                     await app.state.assistant_agent_supervisor.close()
@@ -226,6 +294,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.memory_collaboration_enabled = memory_collaboration_enabled
     app.state.memory_originals_enabled = memory_originals_enabled
     app.state.memory_generation_enabled = memory_generation_enabled
+    app.state.memory_auto_refinement_enabled = memory_auto_refinement_enabled
+    app.state.memory_refinement_healthy = True
     app.state.memory_editorial_enabled = memory_editorial_enabled
     app.state.memory_editions_enabled = memory_editions_enabled
     app.state.family_note_erasure_enabled = family_note_erasure_enabled

@@ -272,6 +272,7 @@ class RuntimeConfiguration:
     memory_collaboration_enabled: bool = False
     memory_originals_enabled: bool = False
     memory_generation_enabled: bool = False
+    memory_auto_refinement_enabled: bool = False
     memory_editorial_enabled: bool = False
     memory_editions_enabled: bool = False
     family_note_erasure_enabled: bool = False
@@ -354,6 +355,10 @@ class RuntimeConfiguration:
         if (type(self.selected_story_ui_enabled) is not bool or
                 (self.selected_story_ui_enabled and not self.selected_story_drafts_enabled)):
             raise ValueError('Explicit selected-story UI and API opt-in required')
+        if (type(self.memory_auto_refinement_enabled) is not bool or
+                (self.memory_auto_refinement_enabled and
+                 (not self.memory_collaboration_enabled or self.selected_story_provider is None))):
+            raise ValueError('Automatic refinement requires the explicit owned story provider')
         if type(self.memory_collaboration_enabled) is not bool:
             raise ValueError('Explicit memory opt-in required')
         if self.selected_story_provider is not None and not self.memory_collaboration_enabled:
@@ -383,7 +388,7 @@ class RuntimeConfiguration:
             raise ValueError('Explicit family note erasure opt-in required')
         if (self.original_deletion_journal_path is None) != (self.original_deletion_namespace is None):
             raise ValueError('Deletion journal and namespace must be selected together')
-        if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled or self.family_note_erasure_enabled) and self.original_deletion_journal_path is None:
+        if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_auto_refinement_enabled or self.memory_editorial_enabled or self.memory_editions_enabled or self.family_note_erasure_enabled) and self.original_deletion_journal_path is None:
             raise ValueError('Original intake and generation require a deletion journal')
         original_deletions = None
         if self.original_deletion_journal_path is not None:
@@ -544,6 +549,7 @@ class RuntimeConfiguration:
                           memory_collaboration_enabled=self.memory_collaboration_enabled,
                           memory_originals_enabled=self.memory_originals_enabled,
                           memory_generation_enabled=self.memory_generation_enabled,
+                          memory_auto_refinement_enabled=self.memory_auto_refinement_enabled,
                           memory_editorial_enabled=self.memory_editorial_enabled,
                           memory_editions_enabled=self.memory_editions_enabled,
                           family_note_erasure_enabled=self.family_note_erasure_enabled,

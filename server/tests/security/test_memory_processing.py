@@ -1,8 +1,10 @@
 """Synthetic one-item workers: no provider or live library I/O."""
 
+import asyncio
 import json
 import io
 import sqlite3
+import threading
 import unittest
 import uuid
 import wave
@@ -11,7 +13,9 @@ from contextlib import contextmanager
 import test_memory_books as book_fixture
 from app.access.memory_contributions import MemoryContributions
 from app.access.memory_jobs import MemoryJobs
-from app.access.memory_processing import process_contribution, process_job, recover_contribution
+from app.access.memory_processing import (OwnedSavedStoryNarrator, process_contribution,
+                                          process_job, recover_contribution)
+from app.access.host_inference_admission import HostAdmissionError
 from app.access.service import AccessService
 from app.access.stories import Stories
 
@@ -44,6 +48,18 @@ class MemoryProcessingTests(unittest.TestCase):
             return MemoryJobs(access).narrative(
                 self.f.owner, 'family-a', 'story', self.story_id, '1',
                 str(uuid.uuid4()), 'Use cautious wording.')
+
+    def queue_auto_story(self, story_id=None):
+        story_id = story_id or self.story_id
+        with self.connection() as db:
+            access = AccessService(db, clock=lambda: self.library.now)
+            with access._transaction(write=True):
+                member = access._require(self.f.owner, 'family-a', 'story.write')
+                jobs = MemoryJobs(access)
+                mutation = jobs.auto_refinement_mutation(story_id, 1,
+                                                          member['account_id'])
+                return jobs._queue(member, 'family-a', 'story', story_id, 1,
+                    mutation, {'instructions': 'Conservatively refine for review.'})
 
     def queue_chat(self, message='First thought'):
         with self.connection() as db:
@@ -123,6 +139,129 @@ class MemoryProcessingTests(unittest.TestCase):
                                (queued['id'],)).fetchone()
         self.assertEqual(result['state'], 'stale')
         self.assertEqual(tuple(saved), ('stale', None, 'source_changed'))
+
+    def test_saved_story_narrator_uses_fresh_async_owned_provider_and_auto_only_selection(self):
+        automatic = self.queue_auto_story()
+        second_story = self.f.story('A second worker target')
+        second_automatic = self.queue_auto_story(second_story)
+        created, scopes, seen = [], [], []
+
+        class Provider:
+            async def prepare(inner, bundle, scope):
+                self.assertFalse(db.in_transaction)
+                self.assertEqual(bundle['version'], 1)
+                self.assertEqual(bundle['target']['type'], 'story')
+                self.assertNotEqual(bundle['target']['id'], scope.operation_id)
+                scopes.append(scope)
+                seen.append(bundle)
+                return {'version': 1, 'title': 'Proposed for review',
+                    'chapters': [{'id': chapter['id'], 'narration': 'Proposed wording.',
+                                  'source_ids': chapter['evidence_ids'][:1]}
+                                 for chapter in bundle['chapters']],
+                    'questions': [], 'needs_review': True}
+
+            async def stop_and_reconcile(inner, _scope):
+                return True
+
+            async def close(inner):
+                return True
+
+        narrator = OwnedSavedStoryNarrator(lambda: (created.append(1) or Provider()))
+        with self.connection() as db:
+            # Ordinary processing cannot claim this UUID5-tagged auto job.
+            self.assertIsNone(process_job(db, narrator=object(),
+                                          clock=lambda: self.library.now))
+            self.assertEqual(db.execute('SELECT state FROM access_memory_jobs WHERE id=?',
+                                        (automatic['id'],)).fetchone()[0], 'queued')
+            result = process_job(db, narrator=narrator, saved_story_only=True,
+                                 clock=lambda: self.library.now)
+            second_result = process_job(db, narrator=narrator, saved_story_only=True,
+                                        clock=lambda: self.library.now)
+            self.assertEqual({result['id'], second_result['id']},
+                             {automatic['id'], second_automatic['id']})
+            self.assertEqual({result['state'], second_result['state']}, {'ready'})
+            saved = db.execute('SELECT state,output_json FROM access_memory_jobs WHERE id=?',
+                               (automatic['id'],)).fetchone()
+        self.assertEqual((saved['state'], len(created), len(scopes)), ('ready', 2, 2))
+        self.assertEqual(len({scope.operation_id for scope in scopes}), 2)
+        self.assertNotEqual(scopes[0].operation_id, self.story_id)
+        self.assertTrue(json.loads(saved['output_json'])['needs_review'])
+
+    def test_auto_worker_accepts_production_tuple_rows(self):
+        queued = self.queue_auto_story()
+        class Narrator:
+            def narrative(inner, bundle):
+                return {'version': 1, 'title': 'Proposed wording',
+                    'chapters': [{'id': chapter['id'], 'narration': 'For review.',
+                        'source_ids': chapter['evidence_ids'][:1]}
+                        for chapter in bundle['chapters']],
+                    'questions': [], 'needs_review': True}
+        with self.library.connection() as db:
+            db.row_factory = None
+            outcome = process_job(db, narrator=Narrator(), saved_story_only=True,
+                                  clock=lambda: self.library.now)
+        self.assertEqual(outcome, {'id': queued['id'], 'state': 'ready'})
+
+    def test_saved_story_host_busy_or_maintenance_requeues_without_failure(self):
+        for reason in ('busy', 'maintenance'):
+            with self.subTest(reason=reason):
+                queued = self.queue_auto_story()
+
+                class BusyProvider:
+                    async def prepare(inner, _bundle, _scope):
+                        raise HostAdmissionError(reason)
+                    async def stop_and_reconcile(inner, _scope):
+                        return True
+                    async def close(inner):
+                        return True
+
+                narrator = OwnedSavedStoryNarrator(lambda: BusyProvider())
+                with self.connection() as db:
+                    outcome = process_job(db, narrator=narrator, saved_story_only=True,
+                                          clock=lambda: self.library.now)
+                    row = db.execute('SELECT state,lease_id,lease_until,error_code FROM access_memory_jobs WHERE id=?',
+                                     (queued['id'],)).fetchone()
+                self.assertEqual(outcome, {'id': queued['id'], 'state': 'deferred'})
+                self.assertEqual(tuple(row), ('queued', None, None, None))
+
+    def test_owned_narrator_cancellation_reconciles_and_closes_provider(self):
+        entered, finished = threading.Event(), threading.Event()
+        details = []
+
+        class Provider:
+            async def prepare(inner, bundle, scope):
+                entered.set()
+                while not scope.cancelled():
+                    await asyncio.sleep(0.005)
+                return {'version': 1, 'title': 'Must not be adopted',
+                    'chapters': [{'id': chapter['id'], 'narration': 'Blocked.',
+                                  'source_ids': []} for chapter in bundle['chapters']],
+                    'questions': [], 'needs_review': True}
+            async def stop_and_reconcile(inner, scope):
+                details.append(scope.operation_id)
+                return True
+            async def close(inner):
+                finished.set()
+                return True
+
+        narrator = OwnedSavedStoryNarrator(lambda: Provider())
+        result = []
+        failure = []
+        def run():
+            try:
+                result.append(narrator.narrative({'ignored': True}))
+            except Exception as error:
+                failure.append(error)
+        thread = threading.Thread(target=run)
+        thread.start()
+        self.assertTrue(entered.wait(2))
+        narrator.cancel()
+        thread.join(2)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(result, [])
+        self.assertEqual(len(failure), 1)
+        self.assertTrue(finished.is_set())
+        self.assertEqual(len(details), 1)
 
     def test_worker_preserves_each_note_voice_and_discards_changed_attribution(self):
         with self.connection() as db:

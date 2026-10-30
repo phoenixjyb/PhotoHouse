@@ -16,6 +16,63 @@ sys.path[:0] = [str(SERVER / 'backend'), str(SERVER / 'scripts')]
 import selected_story_gguf_worker as story
 _STORY_RUN = story.run
 from app.access.agent_decision import generation, validate_state, validate_decision
+from app.access.memory_narrative import _generation_payload, _validate_bundle, validate_narrative
+
+
+def _saved_story_narrative(settings, environment, request, response, operation,
+                           raw, value, backend_factory):
+    phase = 'request'
+    try:
+        if (type(value) is not dict or
+                set(value) != {'version', 'kind', 'operation_id', 'bundle'} or
+                type(value.get('version')) is not int or value['version'] != 1 or
+                value.get('kind') != 'saved_story_narrative_v1' or
+                value.get('operation_id') != operation):
+            story._refuse(phase)
+        bundle = _validate_bundle(value['bundle'])
+        if (bundle['version'] != 1 or bundle['target']['type'] != 'story' or
+                bundle['target']['id'] == operation):
+            story._refuse(phase)
+        expected = _generation_payload(bundle, 'narrative', settings.model)
+        phase = 'model_pin'
+        model_path, model_identity = story._model_pin(settings)
+        phase = 'backend_load'
+        engine = (backend_factory or story._LlamaEngine)(settings)
+        try:
+            phase = 'generation'
+            output = engine.complete(expected, settings)
+            if type(output) is not str or len(output.encode('utf-8')) > story.MAX_OUTPUT_BYTES:
+                story._refuse(phase)
+            result = validate_narrative(story._strict_loads(output.encode('utf-8')), bundle)
+            payload = story._json_bytes({'version': 1, 'operation_id': operation,
+                'model': settings.model, 'result': result}, 'response', story.MAX_PROVIDER_BYTES)
+        except story.WorkerUnavailable:
+            raise
+        except Exception:
+            raise story.WorkerUnavailable(phase) from None
+        finally:
+            try:
+                engine.close()
+            except Exception:
+                raise story.WorkerUnavailable('model_close') from None
+        phase = 'source_recheck'
+        if (story._local_file(settings.model_file) != model_path
+                or story.stable_stat_identity(story._direct(model_path, False)) != model_identity
+                or story._exchange(environment) != (request, response, operation)
+                or story._private_read(request) != raw):
+            story._refuse(phase)
+        phase = 'response_write'
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+        with os.fdopen(os.open(response, flags, 0o600), 'wb') as stream:
+            story.require_private_file(response)
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        return 0
+    except story.WorkerUnavailable:
+        raise
+    except Exception:
+        raise story.WorkerUnavailable(phase) from None
 
 
 def run(settings, *, enabled=False, environment=None, backend_factory=None):
@@ -29,6 +86,9 @@ def run(settings, *, enabled=False, environment=None, backend_factory=None):
         # Existing story request/response and validators remain byte-compatible.
         return _STORY_RUN(settings, enabled=True, environment=environment,
                          backend_factory=backend_factory)
+    if type(value) is dict and value.get('kind') == 'saved_story_narrative_v1':
+        return _saved_story_narrative(settings, environment, request, response,
+                                      operation, raw, value, backend_factory)
     phase = 'request'
     try:
         if (type(value) is not dict or set(value) != {'version', 'kind', 'operation_id', 'state'}

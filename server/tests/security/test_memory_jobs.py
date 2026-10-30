@@ -74,6 +74,15 @@ class MemoryJobTests(unittest.TestCase):
                      'a' * 64, f'Synthetic prior turn {sequence}', self.library.now))
             db.commit()
 
+    def test_auto_refinement_mutation_key_is_stable_per_story_revision_and_author(self):
+        first = MemoryJobs.auto_refinement_mutation(self.story_id, 4, 'author-a')
+        self.assertEqual(first, MemoryJobs.auto_refinement_mutation(
+            self.story_id, 4, 'author-a'))
+        self.assertNotEqual(first, MemoryJobs.auto_refinement_mutation(
+            self.story_id, 5, 'author-a'))
+        self.assertNotEqual(first, MemoryJobs.auto_refinement_mutation(
+            self.story_id, 4, 'author-b'))
+
     def test_conversation_is_private_actor_scoped_and_viewer_chat_is_allowed(self):
         conversation = self.start()
         self.assertEqual(conversation['target_type'], 'story')

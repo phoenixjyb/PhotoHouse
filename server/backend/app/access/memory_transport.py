@@ -71,7 +71,9 @@ async def capabilities(request: Request):
     state = request.app.state
     return JSONResponse({'version':1, 'enabled':state.memory_collaboration_enabled,
         'contributions_enabled':state.memory_originals_enabled,
-        'generation_enabled':state.memory_generation_enabled, 'conversation_retention_days':30,
+        'generation_enabled':state.memory_generation_enabled,
+        'auto_refinement_enabled':state.memory_auto_refinement_enabled and state.memory_refinement_healthy,
+        'conversation_retention_days':30,
         'audio_format':'wav_pcm16_mono_16000', 'max_audio_seconds':30,
         'max_text_bytes':8192, 'original_retention':'until_owner_deletes'})
 

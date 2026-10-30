@@ -26,6 +26,15 @@ FIELDS = {'title', 'theme', 'language', 'asset_ids', 'chapters',
           'selection_revision', 'revision', 'mutation_id'}
 PAGE_SIZE = 8
 SOURCE_POLICY = 'chapter_sources_v1'
+AUTO_REFINE_INSTRUCTIONS = (
+    'Create a conservative proposed refinement of the existing chapter narration. '
+    'Preserve its meaning, facts, names, dates, sequence, language, and family voice. '
+    'Correct clear transcription and punctuation mistakes only when supported by the supplied context. '
+    'If a name or fact is uncertain, keep the original wording and add a review question. '
+    'Do not invent events, quotations, dialogue, emotions, or source details. '
+    'Use only the currently authorized selected story and its existing narration. '
+    'Return a proposal for family review. Never save or adopt it into the original story.'
+)
 
 
 def source_policy(stored):
@@ -188,13 +197,19 @@ class MemoryStories:
                 'has_more': len(rows) > PAGE_SIZE, 'can_create': member['role'] in {'owner', 'contributor'},
                 'items': summaries}
 
-    def get(self, token, library, ident, source_review=False):
-        if type(source_review) is not bool:
+    def get(self, token, library, ident, source_review=False, auto_refine=False):
+        if type(source_review) is not bool or type(auto_refine) is not bool:
             raise TransportError(400, 'Invalid story source choice')
         with self.access._transaction():
             member = self.access._require(token, library, 'library.read')
             self._ready()
-            return self._present(self._row(ident, library), library, member, source_review)
+            row = self._row(ident, library)
+            result = self._present(row, library, member, source_review)
+            if auto_refine and self._can_edit(member, row):
+                from .memory_jobs import MemoryJobs
+                result['auto_refinement'] = MemoryJobs(self.access).auto_refinement(
+                    member, library, ident, row['revision'])
+            return result
 
     def contribution_refs(self, token, library, ident, revision):
         with self.access._transaction():
@@ -216,8 +231,32 @@ class MemoryStories:
                     {'id': chapter, 'contribution_ids': groups.get(chapter, [])}
                     for chapter in chapter_ids]}
 
-    def save(self, token, library, body, ident=None, refs_enabled=False, source_review=False):
-        if type(source_review) is not bool or ('source_policy' in body) != source_review:
+    def refine(self, token, library, ident, revision):
+        """Queue one review proposal for an existing story, without a story edit."""
+        from .memory_jobs import MemoryJobs
+        ident, revision = _uuid(ident), _integer(revision, 2**63-2)
+        with self.access._transaction(write=True):
+            member = self.access._require(token, library, 'story.write')
+            self._ready()
+            row = self._row(ident, library)
+            current = self._read(row, library, member)
+            if not self._can_edit(member, row):
+                raise AccessDenied('Access denied')
+            if row['revision'] != revision:
+                raise TransportError(409, 'Story changed; reload before refinement')
+            if not any(chapter['narration'].strip() for chapter in current['chapters']):
+                raise TransportError(422, 'Add your story before refinement')
+            jobs = MemoryJobs(self.access)
+            jobs._ready()
+            job = jobs._queue(member, library, 'story', ident, revision,
+                jobs.auto_refinement_mutation(ident, revision, member['account_id']),
+                jobs._controls({'instructions': AUTO_REFINE_INSTRUCTIONS}, False))
+            return MemoryJobs._present(job)
+
+    def save(self, token, library, body, ident=None, refs_enabled=False,
+             source_review=False, auto_refine=False):
+        if (type(source_review) is not bool or type(auto_refine) is not bool or
+                ('source_policy' in body) != source_review):
             raise TransportError(400, 'Invalid story source choice')
         stored = content(body)
         supplied_groups = None
@@ -230,7 +269,9 @@ class MemoryStories:
         revision = _integer(body['revision'], 2**63-2) if ident else 0
         if ident is None and body['revision'] != '0':
             raise TransportError(400, 'Invalid revision')
-        digest = hashlib.sha256(json.dumps([library, ident, body], sort_keys=True, ensure_ascii=True).encode()).hexdigest()
+        request_value = ([library, ident, body, True] if auto_refine
+                         else [library, ident, body])
+        digest = hashlib.sha256(json.dumps(request_value, sort_keys=True, ensure_ascii=True).encode()).hexdigest()
         with self.access._transaction(write=True):
             member = self.access._require(token, library, 'story.write')
             self._ready()
@@ -253,7 +294,19 @@ class MemoryStories:
             if prior:
                 if prior['request_digest'] != digest:
                     raise TransportError(409, 'Save identifier already used; keep your draft')
-                return self._present(self._row(prior['story_id'], library), library, member, source_review)
+                prior_story = self._row(prior['story_id'], library)
+                if auto_refine:
+                    # A retry recovers the exact saved revision even if a later
+                    # edit has since become current.
+                    prior_story = dict(prior_story)
+                    prior_story.update(revision=prior['revision'], content=prior['content'],
+                                       updated_at=prior['occurred_at'])
+                result = self._present(prior_story, library, member, source_review)
+                if auto_refine:
+                    from .memory_jobs import MemoryJobs
+                    result['auto_refinement'] = MemoryJobs(self.access).auto_refinement(
+                        member, library, prior['story_id'], prior['revision'])
+                return result
             groups = [] if self.access.memory_groups_enabled else None
             items = collect_items(self.db, library, [int(value) for value in stored['asset_ids']],
                                   memory_groups_enabled=self.access.memory_groups_enabled,
@@ -309,8 +362,24 @@ class MemoryStories:
                 (ident, revision_new, actor, mutation, digest, raw, now))
             if refs_ready and groups_to_save:
                 replace_groups(self.db, ident, revision_new, groups_to_save)
+            auto_job = None
+            if auto_refine:
+                from .memory_jobs import MemoryJobs
+                jobs = MemoryJobs(self.access)
+                jobs._ready()
+                if any(chapter['narration'].strip() for chapter in stored['chapters']):
+                    controls = jobs._controls({'instructions': AUTO_REFINE_INSTRUCTIONS}, False)
+                    mutation_key = jobs.auto_refinement_mutation(
+                        ident, revision_new, actor)
+                    auto_job = jobs._queue(member, library, 'story', ident,
+                        revision_new, mutation_key, controls)
             self.access._audit(actor, 'memory.create' if row is None else 'memory.edit', library)
-            return self._present(self._row(ident, library), library, member, source_review)
+            result = self._present(self._row(ident, library), library, member, source_review)
+            if auto_refine:
+                from .memory_jobs import MemoryJobs
+                result['auto_refinement'] = (MemoryJobs._present(auto_job)
+                                             if auto_job is not None else None)
+            return result
 
 
 def call(runtime, action, *args):
@@ -333,7 +402,8 @@ async def get_memory(story_id: str, request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library', 'source_review'})
     review = _source_review(query)
-    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'get', token, query['library'], _uuid(story_id), review)
+    auto = bool(getattr(request.app.state, 'memory_auto_refinement_enabled', False))
+    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'get', token, query['library'], _uuid(story_id), review, auto)
     return JSONResponse(result)
 
 
@@ -344,6 +414,20 @@ async def get_contribution_refs(story_id: str, request: Request):
     revision = _integer(query.get('revision', ''), 2**63-1)
     result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True),
         'contribution_refs', token, query['library'], _uuid(story_id), revision)
+    return JSONResponse(result)
+
+
+@router.post('/memory-stories/{story_id}/refinement')
+async def refine_memory(story_id: str, request: Request):
+    token, _ = credentials_from_request(request, allow_query=True)
+    query = _query(request, {'library'})
+    runtime = _memory_runtime(request, allow_query=True)
+    if (not getattr(request.app.state, 'memory_auto_refinement_enabled', False) or
+            not getattr(request.app.state, 'memory_refinement_healthy', False)):
+        raise TransportError(503, 'Story refinement unavailable')
+    body = await _body(request, {'revision'}, max_body=1024)
+    result = await run_in_threadpool(call, runtime, 'refine', token,
+        query['library'], _uuid(story_id), body['revision'])
     return JSONResponse(result)
 
 
@@ -359,7 +443,12 @@ async def edit_memory(story_id: str, request: Request):
 
 async def save_memory(request, ident=None):
     token, _ = credentials_from_request(request, allow_query=True)
-    query = _query(request, {'library', 'contribution_refs', 'source_review'})
+    query = _query(request, {'library', 'contribution_refs', 'source_review', 'auto_refine'})
+    if 'auto_refine' in query and query['auto_refine'] != '0':
+        raise TransportError(400, 'Invalid automatic refinement choice')
+    auto = bool(getattr(request.app.state, 'memory_auto_refinement_enabled', False)) and query.get('auto_refine') != '0'
+    if auto and not getattr(request.app.state, 'memory_refinement_healthy', False):
+        raise TransportError(503, 'Automatic story refinement unavailable; keep your draft')
     review = _source_review(query)
     refs_enabled = query.get('contribution_refs') == '1'
     if 'contribution_refs' in query and not refs_enabled:
@@ -367,7 +456,7 @@ async def save_memory(request, ident=None):
     fields = FIELDS | ({'contribution_refs'} if refs_enabled else set()) | ({'source_policy'} if review else set())
     body = await _body(request, fields, max_body=384*1024)
     result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'save', token,
-        query['library'], body, ident, refs_enabled, review)
+        query['library'], body, ident, refs_enabled, review, auto)
     return JSONResponse(result)
 
 

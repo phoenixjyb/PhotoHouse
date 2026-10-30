@@ -3,22 +3,100 @@
 Claims and commits use short write transactions. Provider I/O is outside SQLite
 transactions. Expired leases are not automatically reclaimed or retried.
 """
+import asyncio
 import hashlib
 import hmac
 import json
+import math
 import sqlite3
+import threading
 import time
 import uuid
 
-from .memory_jobs import context, parent, prune, text, digest, editorial_choice
+from .host_inference_admission import HostAdmissionError
+from .memory_jobs import MemoryJobs, context, parent, prune, text, digest, editorial_choice
 from .memory_stories import _json
 from .memory_narrative import validate_narrative, validate_companion
 from .service import AccessDenied, AccessService
 from .transport import TransportError
+from .selected_story_operations import PreparationScope
 
 LEASE_SECONDS = 300
 MAX_CONTRIBUTION_TEXT_BYTES = 8192
 MAX_CONTRIBUTION_AUDIO_BYTES = 2 * 1024 * 1024
+
+
+class _JobCancellation:
+    """Per-job invalidation combined with a worker-wide shutdown signal."""
+    def __init__(self, local, stop_event):
+        self.local, self.stop_event = local, stop_event
+
+    def set(self):
+        self.local.set()
+
+    def is_set(self):
+        return self.local.is_set() or self.stop_event.is_set()
+
+
+class OwnedSavedStoryNarrator:
+    """Synchronous per-job bridge to a fresh privately owned model provider."""
+    def __init__(self, provider_factory, *, timeout=60, stop_event=None,
+                 monotonic=time.monotonic):
+        if (not callable(provider_factory) or type(timeout) not in (int, float)
+                or not math.isfinite(timeout) or not 0 < timeout <= 60
+                or (stop_event is not None and
+                    not isinstance(stop_event, type(threading.Event())))
+                or not callable(monotonic)):
+            raise ValueError('invalid_saved_story_narrator_configuration')
+        self.provider_factory = provider_factory
+        self.timeout = float(timeout)
+        self.stop_event = stop_event if stop_event is not None else threading.Event()
+        self.monotonic = monotonic
+
+    def cancel(self):
+        self.stop_event.set()
+
+    def narrative(self, bundle):
+        if self.stop_event.is_set():
+            raise RuntimeError('saved_story_worker_stopping')
+        provider = self.provider_factory()
+        if (not callable(getattr(provider, 'prepare', None)) or
+                not callable(getattr(provider, 'stop_and_reconcile', None)) or
+                not callable(getattr(provider, 'close', None))):
+            raise RuntimeError('saved_story_provider_unavailable')
+        local = threading.Event()
+        scope = PreparationScope(str(uuid.uuid4()), self.monotonic() + self.timeout,
+            _JobCancellation(local, self.stop_event), self.monotonic)
+        return asyncio.run(self._prepare(provider, bundle, scope, local))
+
+    async def _prepare(self, provider, bundle, scope, local):
+        task = None
+        result = error = None
+        try:
+            task = asyncio.create_task(provider.prepare(bundle, scope))
+            async with asyncio.timeout(self.timeout):
+                result = await asyncio.shield(task)
+            if scope.cancelled():
+                raise RuntimeError('saved_story_preparation_cancelled')
+        except BaseException as caught:
+            error = caught
+        finally:
+            local.set()
+            if task is not None:
+                if not task.done():
+                    task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+            try:
+                stopped = await provider.stop_and_reconcile(scope)
+                closed = await provider.close()
+            except BaseException as caught:
+                stopped, closed = False, False
+                error = error or caught
+            if stopped is not True or closed is not True:
+                raise RuntimeError('saved_story_provider_cleanup_unproven') from None
+        if error is not None:
+            raise error
+        return result
 
 
 def verify_contribution_original(row):
@@ -93,7 +171,7 @@ def job_context(access, row, *, editorial_enabled=False):
     target_type = 'story' if row['story_id'] else 'book'
     bundle, fingerprint, can_edit = context(access, row['library_id'], principal, target_type,
         row['story_id'] or row['book_id'], controls.get('instructions', ''), recent,
-        editorial_context=selected)
+        editorial_context=selected, full_narration=_is_auto_saved_story(row))
     if row['kind']=='narrative' and not can_edit:
         raise AccessDenied('Access denied')
     if bundle['target']['revision'] != row['base_revision'] or fingerprint != row['source_fingerprint']:
@@ -101,18 +179,30 @@ def job_context(access, row, *, editorial_enabled=False):
     return bundle
 
 
+def _is_auto_saved_story(row):
+    return (row['kind'] == 'narrative' and row['story_id'] is not None and
+            row['mutation_id'] == MemoryJobs.auto_refinement_mutation(
+                row['story_id'], row['base_revision'], row['actor_id']))
+
+
 def process_job(db, *, narrator, clock=time.time, editorial_enabled=False,
-                memory_groups_enabled=False):
+                memory_groups_enabled=False, saved_story_only=False):
     """Process one queued narrative or chat. Returns only job ID/state metadata."""
     if type(editorial_enabled) is not bool:
         raise ValueError('editorial_feature_flag_must_be_boolean')
     if type(memory_groups_enabled) is not bool:
         raise ValueError('memory_groups_feature_flag_must_be_boolean')
+    if type(saved_story_only) is not bool:
+        raise ValueError('saved_story_only_flag_must_be_boolean')
     access = AccessService(db, clock=clock, memory_groups_enabled=memory_groups_enabled)
     with access._transaction(write=True):
         now = access._now()
         prune(db, now)
-        row = access._one("SELECT * FROM access_memory_jobs WHERE state='queued' ORDER BY created_at,id LIMIT 1")
+        cursor = db.execute("SELECT * FROM access_memory_jobs WHERE state='queued' ORDER BY created_at,id LIMIT 512")
+        fields = [column[0] for column in cursor.description]
+        candidates = [dict(zip(fields, values)) for values in cursor.fetchall()]
+        row = next((candidate for candidate in candidates
+                    if _is_auto_saved_story(candidate) is saved_story_only), None)
         if row is None:
             return None
         try:
@@ -130,6 +220,20 @@ def process_job(db, *, narrator, clock=time.time, editorial_enabled=False,
         result = validate_companion(result, bundle) if row['kind']=='chat' else validate_narrative(result, bundle)
         raw = json.dumps(result, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
         failure = None
+    except HostAdmissionError as error:
+        if saved_story_only and error.reason in {'busy', 'maintenance'}:
+            with access._transaction(write=True):
+                now = access._now()
+                current = access._one('SELECT * FROM access_memory_jobs WHERE id=?', (row['id'],))
+                if current is None:
+                    return {'id': row['id'], 'state': 'cancelled'}
+                if current['state'] != 'running' or current['lease_id'] != lease:
+                    return {'id': row['id'], 'state': current['state']}
+                db.execute("""UPDATE access_memory_jobs SET state='queued',lease_id=NULL,
+                    lease_until=NULL,error_code=NULL,updated_at=? WHERE id=? AND lease_id=?""",
+                    (now, row['id'], lease))
+            return {'id': row['id'], 'state': 'deferred'}
+        raw, failure = None, 'local_processing_failed'
     except Exception:
         # Never retain provider errors, prompts, audio or raw generated responses.
         raw, failure = None, 'local_processing_failed'

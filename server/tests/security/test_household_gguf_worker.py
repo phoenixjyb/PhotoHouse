@@ -6,7 +6,17 @@ from unittest.mock import Mock
 SCRIPTS=Path(__file__).resolve().parents[2]/'scripts';sys.path.insert(0,str(SCRIPTS))
 import household_gguf_worker as worker
 import test_selected_story_gguf_worker as _worker_fixture
-from test_selected_story_local import OPERATION_ID
+from test_selected_story_local import OPERATION_ID, bundle, narrative
+from backend.app.access.memory_narrative import _generation_payload
+
+STORY_ID='12345678-1234-4234-8234-123456789abc'
+
+def saved_bundle():
+    value=bundle();value['version']=1
+    value['target']={'type':'story','id':STORY_ID,'revision':7}
+    value.pop('selection_revision')
+    for source in value['sources']:source.pop('source_kind')
+    return value
 
 class HouseholdWorkerTests(unittest.TestCase):
     setUp= _worker_fixture.GGUFWorkerTests.setUp
@@ -19,6 +29,28 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.assertEqual(worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory),0)
         self.assertEqual(json.loads(self.response.read_bytes())['result'],{'tool':'search_media'});self.assertTrue(self.engine.closed)
         self.assertEqual(self.engine.calls[0][0]['options'],{'temperature':0,'num_predict':128})
+    def test_saved_story_narrative_requires_closed_packet_and_reconstructs_canonical_generation(self):
+        self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':saved_bundle()}
+        self.write_request()
+        self.engine.text=json.dumps(narrative(),ensure_ascii=False)
+        self.assertEqual(worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory),0)
+        response=json.loads(self.response.read_bytes())
+        self.assertEqual(response['operation_id'],OPERATION_ID)
+        self.assertEqual(response['result'],narrative())
+        self.assertEqual(self.engine.calls[0][0],_generation_payload(saved_bundle(),'narrative',_worker_fixture.MODEL))
+        self.assertTrue(self.engine.closed)
+    def test_saved_story_packet_rejects_draft_wrong_target_or_extra_fields(self):
+        for mutate in (
+                lambda value:value.update(bundle=bundle()),
+                lambda value:value['bundle']['target'].update(type='book'),
+                lambda value:value.update(extra=True),
+                lambda value:value['bundle']['target'].update(id=OPERATION_ID)):
+            with self.subTest(mutate=mutate):
+                self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':saved_bundle()}
+                mutate(self.body);self.write_request()
+                with self.assertRaises(worker.story.WorkerUnavailable):
+                    worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory)
+                self.assertFalse(self.response.exists())
     def test_foreign_operation_or_unknown_tool_never_publishes(self):
         self.body={'version':1,'kind':'agent_decision_v1','operation_id':OPERATION_ID,'state':{'turn':{'version':1,'text':'Find photos','locale':'en'},'observations':[]}};self.write_request();self.engine.text=json.dumps({'tool':'shell','command':'private data'})
         with self.assertRaises(worker.story.WorkerUnavailable):worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory)

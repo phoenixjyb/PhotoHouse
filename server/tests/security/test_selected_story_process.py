@@ -17,13 +17,23 @@ from backend.app.access.selected_story_native import NativeStoryLaunch
 from backend.app.access.selected_story_operations import PreparationScope
 from backend.app.access.selected_story_process import (
     MAX_REQUEST_BYTES, REQUEST_ENV, RESPONSE_ENV, ProcessSelectedStoryError,
-    ProcessSelectedStoryProvider,
+    ProcessSelectedStoryProvider, ProcessSavedStoryProvider,
 )
 from test_selected_story_local import MODEL, bundle, make_scope, narrative
 from test_selected_story_native import EXE, EXE_HASH, launch_spec
 
 
 OTHER_ID = '12345678-1234-4234-8234-123456789abc'
+
+
+def saved_bundle(*, story_id=OTHER_ID, version=1, target_type='story'):
+    value = bundle()
+    value['version'] = version
+    value['target'] = {'type': target_type, 'id': story_id, 'revision': 7}
+    value.pop('selection_revision', None)
+    for source in value['sources']:
+        source.pop('source_kind', None)
+    return value
 
 
 def encoded_response(*, operation_id='abcdefab-cdef-4abc-8def-abcdefabcdef',
@@ -103,6 +113,21 @@ class ProcessSelectedStoryTests(unittest.IsolatedAsyncioTestCase):
         self.addAsyncCleanup(provider.close)
         return provider, kernel, factories
 
+    def saved_provider(self, writer=None, *, enabled=True, environment=None, kernel=None,
+                       model=MODEL, **kwargs):
+        kernel = kernel or FileKernel(writer)
+        factories = []
+
+        def factory():
+            factories.append(True)
+            return kernel
+
+        base = launch_spec(environment=environment or {'PATH': '/synthetic/bin'})
+        provider = ProcessSavedStoryProvider(base, model, kernel_factory=factory,
+            enabled=enabled, cleanup_seconds=0.05, **kwargs)
+        self.addAsyncCleanup(provider.close)
+        return provider, kernel, factories
+
     async def cleanup_call(self, provider, scope):
         self.assertTrue(await asyncio.wait_for(provider.stop_and_reconcile(scope), 2))
 
@@ -159,6 +184,42 @@ class ProcessSelectedStoryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual('resume', kernel.events[0])
         await self.cleanup_call(provider, scope)
         self.assertFalse(observed['response_path'].parent.exists())
+
+    async def test_saved_story_packet_is_closed_separate_and_uses_same_owned_exchange(self):
+        observed = {}
+
+        def writer(environment):
+            request = Path(environment[REQUEST_ENV]).read_bytes()
+            observed['request'] = json.loads(request)
+            Path(environment[RESPONSE_ENV]).write_bytes(
+                encoded_response(operation_id=observed['request']['operation_id']))
+
+        provider, kernel, _factories = self.saved_provider(writer)
+        scope = make_scope()
+        result = await provider.prepare(saved_bundle(), scope)
+        self.assertEqual(narrative(), result)
+        request = observed['request']
+        self.assertEqual(set(request), {'version', 'kind', 'operation_id', 'bundle'})
+        self.assertEqual(request['kind'], 'saved_story_narrative_v1')
+        self.assertEqual(request['operation_id'], scope.operation_id)
+        self.assertNotEqual(request['bundle']['target']['id'], scope.operation_id)
+        self.assertEqual(request['bundle'], saved_bundle())
+        await self.cleanup_call(provider, scope)
+        self.assertEqual('resume', kernel.events[0])
+
+    async def test_saved_provider_rejects_draft_book_reused_and_oversized_bundles(self):
+        provider, _kernel, factories = self.saved_provider()
+        scope = make_scope()
+        cases = (bundle(), saved_bundle(target_type='book'),
+                 saved_bundle(story_id=scope.operation_id),
+                 saved_bundle() | {'extra': 'closed schema'})
+        with patch('backend.app.access.selected_story_process.tempfile.mkdtemp') as created:
+            for value in cases:
+                with self.subTest(target=value['target']), self.assertRaises(ProcessSelectedStoryError) as caught:
+                    await provider.prepare(value, scope)
+                self.assertEqual('invalid_input', caught.exception.category)
+            created.assert_not_called()
+        self.assertEqual([], factories)
 
     async def test_closed_response_envelope_rejects_binding_and_json_faults(self):
         invalid = {

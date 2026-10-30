@@ -170,6 +170,7 @@ class ClosedBoundary:
         if method in {'GET', 'POST'} and path == '/memory-stories': return True
         if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}', path): return True
         if method == 'GET' and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}/contribution-refs', path): return True
+        if method == 'POST' and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}/refinement', path): return True
         if method == 'POST' and path == '/library/search':
             return True
         if (method, path) in cls.ACCOUNT or (method == 'GET' and path in cls.UI):

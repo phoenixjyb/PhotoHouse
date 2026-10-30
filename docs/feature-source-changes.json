@@ -32355,6 +32355,104 @@
         "Quoted content and unsupported residual/exclusion requests retain their original policy. No shared search_policy, model/provider, runtime budget or permission change.",
         "Exact two-turn and date/media follow-ups have focused synthetic application evidence; current native/live outcome remains separate."
       ]
+    },
+    {
+      "feature": "saved-story-owned-auto-refinement-20261030",
+      "source_base": "19927225de3abc07a63efb74a2892942468f0964",
+      "files": [
+        {
+          "path": "docs/STORY_REFINEMENT.md",
+          "sha256": "b4411b8da980364c7a33fec7732ce971a8aaad8be2f0cd52ab9aa7a2ff06e0f2"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "sha256": "6d0244ca4a585272866de8c5b62239393b6f279f3fe8b36359e2d916bbdf9669",
+          "before_sha256": "d56551b2d1dcb2134b046732d12b61bab326cd78c4be4d0c4f20c31aa71f49dc"
+        },
+        {
+          "path": "server/backend/app/access/memory_jobs.py",
+          "sha256": "eacae3a232b283eb704da1c86a6a17037523fdeb98f5faa547fa7ff47112272e",
+          "before_sha256": "8c7a48fa36a8c1d74c26ec454d3a44d3dd9e93cc29c7e02cfdfe65f8430c86f5"
+        },
+        {
+          "path": "server/backend/app/access/memory_processing.py",
+          "sha256": "47e2f09f6848e30bf181424d960a429b1ecb22dbd1088aa7ad1a40689333bd98",
+          "before_sha256": "f9a440e69041a142f4a32abb62df84469ebb5d76e58b12396e2e34564167b02e"
+        },
+        {
+          "path": "server/backend/app/access/memory_stories.py",
+          "sha256": "8b26d2f1897acfbafa39275438248c3e149da0c0a6dc7afda74bddf52fdace30",
+          "before_sha256": "b95f602299a67a138268a649baab188263e6d3d7a3569e5b5a53c68c0aadc1d2"
+        },
+        {
+          "path": "server/backend/app/access/memory_transport.py",
+          "sha256": "a2b0ecdbc26b8bd5734e8252a35c42b3dbc92f5007140d8eca3ebb05813b0602",
+          "before_sha256": "a7d9d06aa47d8222d36e7bf8a8456f5c6f11dee48a523ec494c0c2c1a39cee40"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "sha256": "6a97539b2983ee8b4cd459874e653ce883ea1f8eafaa73a40ed734ed6b639d7f",
+          "before_sha256": "fb09316f1e285b8f31366c9db242b5eaca9fc8a117a84df8384619a131aa7ee0"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "sha256": "f36f6833adaae40a45a08f5abe6c3bf42140c867f2c268377057322055ae2382",
+          "before_sha256": "b192cc9511f0362b02b7f8fb91adbb514ab3a9a19dd6f21f57d5f5e9350362f5"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "sha256": "47846aaa785914eb7d1e9e1db3a332b335d40c50f9b8133d4983c101ed7475e5",
+          "before_sha256": "57803cd76b9c2f449e5f2dc2e43eba3861d40a648e3aa152b22c01d8d1324429"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "sha256": "7cad5965692b662726bf38ae0b8dcf910811ee6bbc464bd167172385498da225",
+          "before_sha256": "8e3b3663c5df2a37c79c27c192c9519a6b2786824a035236a54b265a6ed53180"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "sha256": "6f732d963337cc9b2eeb857929e0157a3c6e648fcc8c78f4b3650669592a1dc2",
+          "before_sha256": "4b28798d7304e6c4fbe2800b697fcadfc1fd1bf8e81a075e94332d6cd0342476"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "sha256": "67c135c6282f88b738a6e1de444e6b6c05f184cfa14ee84af1bd7247a28c87ab",
+          "before_sha256": "15994dbe81b0a567f6dd171f5fbf2b259760d3d014137a641567f7a7ddfebc76"
+        },
+        {
+          "path": "server/tests/security/test_memory_auto_refinement_app.py",
+          "sha256": "68960aad901dce0e85c6dabdb3ee8229a4c037f81dcc3a11632f4b0628bbe652"
+        },
+        {
+          "path": "server/tests/security/test_memory_jobs.py",
+          "sha256": "d2ee799e221d32fba9549f0fbdcb3fd88df5223ac32670c52b11e8d5da069a5f",
+          "before_sha256": "6a3a485e546c5beec1d8a1c666f85d314087366d82e29fcdd800ef778ece384f"
+        },
+        {
+          "path": "server/tests/security/test_memory_processing.py",
+          "sha256": "62d22e9a7a5a174a7b226b6f7a6fb8d5f73ddd5f9fa8d4788a1230db826825a1",
+          "before_sha256": "fcb9779c8a986cde05f234de9ee7a55343d4c76200b6de7475d0952fdf67e818"
+        },
+        {
+          "path": "server/tests/security/test_memory_story_auto_refinement.py",
+          "sha256": "d7baf0709904a575ef996fd621f5f7c11ad8f104976f211c540847f9f0866b0f"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "sha256": "c83a71010f87c3b7fb249a5040ab283cf2df6d8ac72bb6b277befe9122039383",
+          "before_sha256": "992a1cd0e7b784f5b835277f599fa64acbd31a73365ca647a20f72734a380d19"
+        },
+        {
+          "path": "server/tests/security/test_story_auto_refinement_browser.cjs",
+          "sha256": "c83ec674a5fc9184b6c8c98aaed3f109eb958d7f800603aea6b6c1bf37dd05bb"
+        }
+      ],
+      "notes": [
+        "Queue a separate original-preserving review proposal atomically with a story save or by explicit existing-story request.",
+        "Use the same owned local model with a closed saved-story packet; require an enabled household worker and shared admission.",
+        "Retain complete bounded chapter narration and evidence labels, revision authorization and cancellation/cleanup; no automatic adoption or original audio modification.",
+        "Source and local tests only at this commit; Windows deployment and a real family story result must be established separately."
+      ]
     }
   ]
 }

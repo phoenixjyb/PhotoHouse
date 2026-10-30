@@ -178,6 +178,19 @@ class ProcessSelectedStoryProvider:
         if scope.cancelled():
             raise ProcessSelectedStoryError('cancelled')
 
+    def _validate_input_bundle(self, bundle, scope):
+        clean = _validate_bundle(bundle, allow_draft=True)
+        if (clean['version'] != 3 or clean['target']['id'] != scope.operation_id
+                or self._last_settled_scope is not None and
+                self._last_settled_scope.operation_id == scope.operation_id):
+            raise ValueError('Invalid scope')
+        return clean
+
+    def _build_request_payload(self, clean, scope):
+        return _json_bytes({'version': 1, 'operation_id': scope.operation_id,
+            'generation': _generation_payload(clean, 'narrative', self.model)},
+            'process generation request', MAX_REQUEST_BYTES)
+
     def _setup(self, call, payload):
         self._check(call.scope)
         if self.host_admission is not None:
@@ -238,14 +251,8 @@ class ProcessSelectedStoryProvider:
             raise ProcessSelectedStoryError('busy')
         try:
             self._check(scope)
-            clean = _validate_bundle(bundle, allow_draft=True)
-            if (clean['version'] != 3 or clean['target']['id'] != scope.operation_id
-                    or self._last_settled_scope is not None and
-                    self._last_settled_scope.operation_id == scope.operation_id):
-                raise ValueError('Invalid scope')
-            payload = _json_bytes({'version': 1, 'operation_id': scope.operation_id,
-                'generation': _generation_payload(clean, 'narrative', self.model)},
-                'process generation request', MAX_REQUEST_BYTES)
+            clean = self._validate_input_bundle(bundle, scope)
+            payload = self._build_request_payload(clean, scope)
             remaining = min(self.timeout, scope.deadline_monotonic - scope._clock())
             if not math.isfinite(remaining) or remaining <= 0:
                 raise ProcessSelectedStoryError('cancelled')
@@ -360,3 +367,21 @@ class ProcessSelectedStoryProvider:
             return True
         # Caller must first fence/cancel active prepare through operation lifecycle.
         return await self.stop_and_reconcile(call.scope)
+
+
+class ProcessSavedStoryProvider(ProcessSelectedStoryProvider):
+    """Owned process transport for a saved story narrative proposal."""
+
+    def _validate_input_bundle(self, bundle, scope):
+        clean = _validate_bundle(bundle)
+        if (clean['version'] != 1 or clean['target']['type'] != 'story'
+                or clean['target']['id'] == scope.operation_id
+                or self._last_settled_scope is not None and
+                self._last_settled_scope.operation_id == scope.operation_id):
+            raise ValueError('Invalid saved story scope')
+        return clean
+
+    def _build_request_payload(self, clean, scope):
+        return _json_bytes({'version': 1, 'kind': 'saved_story_narrative_v1',
+            'operation_id': scope.operation_id, 'bundle': clean},
+            'saved story narrative request', MAX_REQUEST_BYTES)
