@@ -42,6 +42,7 @@ Web sources live here, with optional Node/Playwright checks described in
 owner/member or device review. Phone/TV share the protected/domain contracts
 through the [Android subtree](../clients/android/README.md).
 
-[Project Status](../docs/PROJECT_STATUS.md) records the deployed v58 revision and
-feature gates. The repository checkout, deployed API source and installed client
+[Project Status](../docs/PROJECT_STATUS.md) records the October 29 main/API/Web delivery and
+feature gates; [its release record](../docs/RELEASE_2026-10-29.md) separates
+actual Windows Search/grouping/voice checks from pending physical-device use. The repository checkout, deployed API source and installed client
 versions are different identities; preserve compatibility with older clients.

@@ -1,5 +1,97 @@
 # Product roadmap
 
+Reviewed **2026-10-30**. The October 29 API/Web rollout is recorded in
+[Project Status](PROJECT_STATUS.md) and the
+[release record](RELEASE_2026-10-29.md). This roadmap tracks product work after
+that bounded rollout. Android and TV were not updated by it; no broad
+family/device acceptance is claimed.
+
+## Active priorities
+
+### 1. Finish conversational follow-up in the current search session
+
+Carry the current search result into a useful follow-up flow: answer questions
+from the visible, authorized cards, clarify when evidence is insufficient, and
+keep the result and source context current through paging and recovery. Preserve
+explicit user actions and review boundaries. The current assistant profile is
+read-only with bounded result projections; it is not a general-purpose agent.
+
+**Exit:** grounded answers identify their available sources, stale or recovered
+results cannot trigger actions, and browser/API journeys cover English and
+Chinese, paging, clarification, cancellation and recovery. Measure relevance
+against reviewed cases; passing fixtures alone does not establish real-library
+coverage.
+
+### 2. Make grouped browsing useful for imports and devices
+
+Clarify how grouped search results relate to page-local similar-photo stacks,
+library-wide photo stacks and activity/shared-memory groups. Keep these as
+separate capabilities with separate readiness evidence. Help users browse groups
+and newly imported media without implying that two grouped result pages represent
+the whole library.
+
+**Exit:** current source and coverage are visible, membership changes are handled
+safely, and each grouping surface has its own rollout and family review. The existing library-wide index is already active in the dated Windows release;
+activity/shared-memory grouping retains its separate activation requirements.
+
+### 3. Connect selected results to existing reviewed stories and playback
+
+Let a user move selected, currently authorized results into the existing story
+editor or a supported reader/playback action. Preserve source attribution, current
+revisions and explicit review/save. AI-prepared wording stays unsaved until the
+family reviews and chooses to adopt it; story quality remains a human review
+question.
+
+**Exit:** selection and source bindings survive ordinary navigation and paging,
+stale scope is rejected, and no model output or playback starts a save or access
+change implicitly.
+
+### 4. Address caption failures only when observed
+
+Investigate a specific current caption failure with its receipt and source state.
+Repair only the affected work under the existing scoped-worker and recovery
+contracts. Do not treat a historical failure, task state or batch count as a
+current failure inventory.
+
+**Exit:** each targeted item has a current, attributable outcome and original
+media remains unchanged. Broader caption or host polling is not a roadmap action.
+
+### 5. Run the deferred physical voice trial when the user is ready
+
+The real local voice path completed a synthesized-audio-to-reply run; that does not
+substitute for the physical microphone/speaker trial. The user explicitly deferred
+that trial. When resumed, use the existing visible Start/Pause/End consent and
+record scenario-specific ASR, TTS, playback, echo and interruption observations.
+
+**Exit:** real-device observations and family feedback are recorded separately
+from local tests and service state. No automatic recording or background voice
+session is introduced.
+
+## Delivery and evidence boundaries
+
+- Local source/tests, rollout, installed clients, physical-device use and family
+  acceptance are separate claims.
+- Broad semantic relevance and full-library coverage remain unproven. Do not
+  broaden or describe any unqualified provider or grouping path as accepted.
+- Android phone and TV require their own source, release and acceptance evidence;
+  the October 29 API/Web rollout did not update them.
+- GitHub Actions is cost-paused. Continue with local checks only unless the owner
+  explicitly resumes it.
+- Do not start new Windows host polling or shared-host work as part of these
+  priorities. A future operation needs its own current evidence and coordination.
+
+## Historical implementation and delivery notes
+
+The earlier chronological notes below retain their revision and acceptance
+context. Their old “next”, “pending” and “live” claims do not override the
+active priorities above or current Project Status.
+
+<details>
+<summary>Expand earlier roadmap and release notes</summary>
+
+### Superseded maintained priorities through October 25
+
+
 **October 25 delivery priority:** complete the existing photo-grouping path and
 its paired client experience. The [delivery checklist](PHOTO_STACK_DELIVERY.md)
 separates implemented source from private-copy qualification, live schema/index
@@ -408,14 +500,7 @@ separate gates. Do not republish or activate an optional feature as a side effec
 of editing documentation. Historical video errors need independent sources or a
 separately reviewed salvage plan; resume only unfinished conversion work.
 
-## Historical implementation and delivery notes
 
-The earlier chronological notes below retain their revision and acceptance
-context. Their old “next”, “pending” and “live” claims do not override the
-active priorities above or current Project Status.
-
-<details>
-<summary>Expand earlier roadmap and release notes</summary>
 
 ## October 14 delivered: conversational story actions
 

@@ -1,5 +1,7 @@
 # Documentation map
 
+Reviewed 2026-10-30 against merged main `e808e30` and dated October 29 delivery.
+
 Start with the maintained summaries. Follow task contracts for implementation;
 use dated release/qualification records as evidence for their exact revision.
 
@@ -8,6 +10,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Product and source setup | [Repository README](../README.md) |
 | What is delivered, enabled or still unaccepted | [Current project status](PROJECT_STATUS.md) |
 | Components, trust/data boundaries and stores | [Architecture](ARCHITECTURE.md) |
+| Jude conversation, voice controls and receipt recovery | [Assistant guide](JUDE_ASSISTANT.md) |
 | Capabilities and acceptance | [Features](FEATURES.md) |
 | Active priorities and exit criteria | [Roadmap](ROADMAP.md) |
 | Architecture findings and maintenance decisions | [October 14 review](ARCHITECTURE_REVIEW_2026-10-14.md) |
@@ -48,22 +51,23 @@ use dated release/qualification records as evidence for their exact revision.
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |
 
-Latest phone release package/feed: **v75 / `0.75-gallery-search`**, independently published under
-[PR #104](https://github.com/phoenixjyb/PhotoHouse/pull/104). See the
-[v75 package and qualification record](../clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md);
-[v74 release details](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md) are historical.
-Physical installation and family-device experience remain unaccepted. The
-[offline exclusion scorecard](SEMANTIC_EXCLUSION_QUALIFICATION.md) has generated-vector
-validation only; semantic search remains disabled.
-The [October 22 combined-source record](SEARCH_RELEASE_2026-10-22.md) covers PR #108 source and the
-verified R3 Windows API deployment. Phone v75 was independently published as a release package/feed
-through PR #104; physical installation and family-device experience remain unaccepted. PR #108 published
-no Android package. Semantic search and selected-story AI generation/providers remain OFF. API/Web deployment and client publication
-remain separate in [Project Status](PROJECT_STATUS.md).
+## Current delivery
 
-Earlier continuation: [October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and
-[v60 local candidate](../clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md).
-These are source/package records, not publication notices.
+The [October 29 main/UI/voice release](RELEASE_2026-10-29.md) supersedes earlier
+runtime snapshots: Windows Search, library photo stacks, the new Jude Web UI,
+read-only model agent and selected-source story draft passed scoped checks.
+Actual local speech → Search → reply audio passed; physical microphone/speaker
+and family acceptance remain pending. Android/TV artifacts were not republished.
+
+Phone v75 / `0.75-gallery-search` is the last publication recorded here, under
+[PR #104](https://github.com/phoenixjyb/PhotoHouse/pull/104); see its
+[package record](../clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md).
+This is a dated artifact claim, not a fresh installed-version check.
+
+GitHub Actions is cost-paused; use [local development](DEVELOPMENT.md) and
+[CI policy](CI.md). [October 22](SEARCH_RELEASE_2026-10-22.md),
+[October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and older qualification
+records retain their historical scope and do not define the active backlog.
 
 ## Document roles
 

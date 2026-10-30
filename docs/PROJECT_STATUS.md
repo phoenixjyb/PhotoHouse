@@ -1,5 +1,73 @@
 # Current project status
 
+Maintained **2026-10-30** against merged source `e808e30` and the accepted
+**October 29** Windows delivery records. No fresh server probe was performed for
+this documentation update. Earlier snapshots below retain their original scope.
+
+| Area | Last verified delivery | Still open |
+| --- | --- | --- |
+| Main/API/Web | PR #111 merged; new Jude UI served on Windows; four served UI hashes matched the release | Portable repeatable installation remains separate from this household rollout |
+| Search | English/Chinese protected HTTPS samples returned 20 authorized cards each; clarification, privacy and recovery contracts retained | Broader family relevance and semantic/vector coverage; physical client use |
+| Library photo stacks | F2 `f2a8c5d1e640`, two group pages, first SYSTEM refresh and two subsequent successful refreshes on the 15-minute cadence | Family grouping quality and installed phone/TV integration; not activity/shared-memory grouping |
+| Jude agent | `agent_media_search_v1` real model/tool search returned 20 cards; owned request GET recovery and anonymous denial passed | Broader task profiles and full conversational/device journeys |
+| Voice and UI | New Web conversation layout; actual local TTS → ASR → receipt → Search → reply WAV passed in 28.688 s (ASR 10.297 s) | Physical browser microphone/speaker confirmation explicitly deferred by user |
+| Selected-source story | Valid authorized-source, nonempty, unsaved `needs_review` draft passed on Windows | Subjective prose quality deferred; family review and explicit adoption/save remain required |
+| Android/TV | Existing published artifacts retained; PR #111/this UI rollout did not publish a replacement | Installed versions, microphones, playback and family acceptance require their own evidence |
+| Caption/media processing | Existing caption tasks/configuration were preserved during the rollout | No claim that the entire caption backlog or historical media failures are resolved |
+| CI | GitHub Actions cost-paused; source tests run locally | Resume GitHub CI only on explicit instruction; do not assume GitLab routing exists |
+
+See [October 29 delivery](RELEASE_2026-10-29.md) for exact source and acceptance
+scope, [Features](FEATURES.md) for contracts and [Roadmap](ROADMAP.md) for next work.
+Public examples remain opt-in/default-off; one enabled installation does not
+change repository defaults or grant activation to another host.
+
+The final work window closed at 22:00 Asia/Shanghai on October 29. All admitted
+experimental scopes were explicitly released, cleanup was clear, production
+services were intentionally retained, and the follow-up heartbeat was deleted.
+Physical microphone/speaker acceptance is **pending**, not failed. No routine
+Windows rechecks or new model calls are needed merely to reread these docs.
+
+## October 30 source increment (not deployed)
+
+The user has now requested natural bilingual voice, conversational refinement,
+a compact chat UI and automatic story-polishing proposals. The earlier decision
+to defer subjective prose grading does not cancel that product request.
+
+| Increment | Local source | Windows / user outcome |
+| --- | --- | --- |
+| Chinese dates and follow-ups | Candidate `19927225` handles “去年九月份”, preserves the selected date when changing media type, and supports changing the month in a continued search | Not deployed; the requested real three-turn voice demonstration is still outstanding |
+| Compact chat and context | Candidate `19927225` includes the revised chat layout and bounded server-owned dialogue context | Local browser/source checks passed; no claim of a new live browser or microphone result |
+| Saved-story refinement | Candidate `111b8b2` adds optional background refinement and explicit refinement of an existing saved revision; original text/audio are preserved | Not deployed; The requested household story has not yet been refined by this new path |
+| Natural bilingual speech | A separate local TTS candidate is prepared, retaining the existing voice during qualification | Not qualified or activated; no natural-voice quality claim |
+
+A startup diagnostic exposed an obsolete embedded script hash and refused before
+creating its temporary SYSTEM task or constructing the application. The corrected
+successor then encountered an SSH connection timeout before login. Server retries
+are paused pending restored access. This is a deployment blocker, not an observed
+application, model, database or permission failure. The incumbent release was
+retained; no new feature is claimed live. GitHub Actions remains off.
+
+See [Jude](JUDE_ASSISTANT.md#october-30-candidate-behavior) for the candidate user
+flow and [Architecture](ARCHITECTURE.md#candidate-conversation-and-refinement)
+for context and original/proposal separation.
+
+## Validation scope
+
+The tested source tree later merged unchanged into `e808e30` passed **3,590 API
+tests and 4,321 subtests**, with one local skip because the `llama_cpp` grammar
+backend was unavailable. The generated no-listener demo, voice/workspace browser
+fixtures, mobile 390px/150% layouts and source-provenance checks passed.
+These checks do not replace the separate Windows or physical-device results.
+
+## Historical source and delivery records
+
+The following entries are historical. Their “current”, “OFF” and “pending” labels
+apply to the dated revisions they describe, not the latest deployment above.
+
+<details>
+<summary>Earlier source qualifications and deployment snapshots</summary>
+
+
 **October 25 functional-completion priority (local source / semantic OFF):**
 current work follows the [functional acceptance matrix](SEARCH_FUNCTIONAL_ACCEPTANCE.md):
 correct retrieval, privacy, clarification, recovery, API/Web integration and
@@ -1040,5 +1108,7 @@ changes, same-thread revision refresh and zero turn/transcription/capture side
 effects. The transient holder clears with account/library/protection scope or
 assistant-host closure. This does not add persistence or silently choose a
 conversation for an unsent request.
+
+</details>
 
 </details>

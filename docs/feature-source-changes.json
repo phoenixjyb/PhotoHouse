@@ -32223,6 +32223,88 @@
         "Link private Search turns to the succeeded ASR receipt through a validated optional parent request header; ordinary typed turns and JSON bodies remain unchanged.",
         "No backend/provider/model/schema/permissions or production activation change in this source entry; GitHub Actions remains disabled."
       ]
+    },
+    {
+      "feature": "current-product-documentation-20261030",
+      "source_base": "e808e3083af61bdbc4beae366d24da35340c5ad6",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "e605da18c65590dffaf2609ac437ca25883e5614d5d238e1ffe9322855ccb457",
+          "before_sha256": "9c2b51c038f0ae0184f69d49e6aeb0bd0897f8a43a90ff745591e0bc87eb6d0d"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "sha256": "a7009ccc7798ba12b528527440cd1b0631c8be4f3b5b06c6d8fe73c3a2dee141",
+          "before_sha256": "eab668ff9630941df556c8bfa06cb57a96ffcc9f176505d3fc55d057e08a4f59"
+        },
+        {
+          "path": "docs/CI.md",
+          "sha256": "15f1add17c4a802efebf2ebd8fdda683ce317661cae20a9877142937c51cefb6",
+          "before_sha256": "077b3f5188b2d1169460f1c9a138b7b18502dbe109d61ce9a78cb81bb4525761"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "824efa120cd71f938b19563685664a85b72c0e6a65cc4d5dcbe22dacaadd278e",
+          "before_sha256": "00c84dfd11aa2ead674f72a79034e583946fadc715c010f6cf0442dd375d6c53"
+        },
+        {
+          "path": "docs/JUDE_ASSISTANT.md",
+          "sha256": "9651076a67d42a844dba0f09557f4e1f29448839cc2d82c7e8297d40b797cf6d",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/LIBRARY_PHOTO_STACKS.md",
+          "sha256": "ed1aef7a260321e591f1ae3d7c11d76b5e36952ff65572c09e4e4fc8382dee3b",
+          "before_sha256": "b8ba0faedae26a957b967f5ec8eb6fc690e6f28585dab0e708761552995d9903"
+        },
+        {
+          "path": "docs/LOCAL_AGENT_RUNTIME.md",
+          "sha256": "1f717fa3e91c54b339da4d1b8037646e8d6b6cda7c9fbe8ce8bcb48470f63dfc",
+          "before_sha256": "a56fdc2187f946e5f2ddc428206deb453a67c579ede444e9ff5d03d651d0a1ce"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "sha256": "d88e1ee9f7f4ebae9560a80b0fb8151d29f2d054ac073db4a6de29c7b64d776f",
+          "before_sha256": "03873178f4de91321e120e7e1a6456227c105d29574fa0782f00665473449361"
+        },
+        {
+          "path": "docs/OPERATIONS.md",
+          "sha256": "8441c1de3970b65abc22ba46cd4420c151fb98bba2ab5ffd14c124b08fb09f03",
+          "before_sha256": "8928184d3ae7ea6965a0dc2c6a5e70cde55ec75f79ba65a54e8bca7b36e98dd9"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "sha256": "7698c45ebec237832db7523b0184ae1d043686d00fbf1a3bd7c2404ef943192e",
+          "before_sha256": "5c34be10cd0635656fcb26b5c2142564ba160db4f43f041f525c1cceb0539fa5"
+        },
+        {
+          "path": "docs/README.md",
+          "sha256": "24414b2ad4bf0a19c83f86c0753d225e179f3184ef6c1814d994f99039c8a219",
+          "before_sha256": "3cc2e974b13ef0ec7802d43bf313e5f56824aaf2935c75e614594d939cdde1ec"
+        },
+        {
+          "path": "docs/RELEASE_2026-10-29.md",
+          "sha256": "1e299fd57ffc1dea81a44b2c06bb6f707a2e09cb43ac7535dcd1e9c5db245d5a",
+          "before_sha256": null
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "sha256": "460a0a014290f73499e6dfa930e38f4ad893a1f442b4aab043a8213195cc4262",
+          "before_sha256": "aaacb257e2ea998966db27ded86b3d5a50dda95dd539eb21aab2cc945105fa06"
+        },
+        {
+          "path": "server/README.md",
+          "sha256": "556977246e081582028b265da66580b773f39a065e5ccd100948501de47078b9",
+          "before_sha256": "64b86f428ee01085adae3d0c7187639d3d2b54af34e661898a9938575a8dd51b"
+        }
+      ],
+      "notes": [
+        "Refresh README, architecture, feature/status/roadmap and CI policy against merged source and sanitized October29 delivery. Preserve historical evidence and separate physical audio/device acceptance. Documentation only; no runtime/model/CI activation.",
+        "Separate October30 locally implemented conversation/refinement candidates and the SSH deployment blocker from October29 delivery; preserve originals and review-required adoption. No new live-feature claim or CI activation."
+      ]
     }
   ]
 }
