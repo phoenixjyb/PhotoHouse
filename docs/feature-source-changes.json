@@ -32088,7 +32088,7 @@
           "sha256": "7584b50ffb7a3dbe3cdf997506a6702dbd0574bef4a437700834be8764314eb0"
         }
       ],
-      "description": "Name the assistant Jude in English and 小贾 in Chinese, including its explicit agent action. Behavior unchanged.",
+      "description": "Name the assistant Jude in English and \u5c0f\u8d3e in Chinese, including its explicit agent action. Behavior unchanged.",
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
@@ -32452,6 +32452,41 @@
         "Use the same owned local model with a closed saved-story packet; require an enabled household worker and shared admission.",
         "Retain complete bounded chapter narration and evidence labels, revision authorization and cancellation/cleanup; no automatic adoption or original audio modification.",
         "Source and local tests only at this commit; Windows deployment and a real family story result must be established separately."
+      ]
+    },
+    {
+      "feature": "saved-story-route-and-local-check-contract-20261030",
+      "source_base": "158124b62afdece87eadb64b7c90921552f2844d",
+      "files": [
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "sha256": "0dfac8f42cdb185ac17843690b4b26ee0266da5d75f04ed30022683d1ca3cccd",
+          "before_sha256": "27d51776cef1811b9ab53a388874aec070c3fb2a7070d6ec8f0f4f6dba7d8398"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "sha256": "3f31187f3c7361107e003d4187b0ad0893cf9f7e848adb7a586a2fb6b0419a11",
+          "before_sha256": "5a1e58b8e0d4c76641e76379f1a522b6de7f01888a23ca11cf282588d0a0a3a9"
+        },
+        {
+          "path": "server/tests/security/test_memory_book_editorial_http.py",
+          "sha256": "93b558b93335d20e86839b5b19a038609a29ec6366b55ea7471b94544c00a46b",
+          "before_sha256": "9e35a50f2072037c2f8770a8582256e5f0b9325129c96e0e747e0b9f594ce134"
+        },
+        {
+          "path": "server/tests/security/test_memory_worker_launcher.py",
+          "sha256": "bd22e366518ae291635db79d41c9aaeae51be3c08e05bf97f582af52ad8ce18d",
+          "before_sha256": "80c388ce64b040dbe98b54009366aa8dd1e9d6c6fb95967f3123197200658b71"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "efafdee99546a36ed7da4c7e77732015673c076dc047a4ac1bb25bb647dfc110",
+          "before_sha256": "a789709e64d739b02a63f954dda6d412036d9f2a43f306a346a09f6f4a72a756"
+        }
+      ],
+      "notes": [
+        "Update the closed route and capability inventories for the explicit refinement endpoint; include the new story tests in local checks.",
+        "Keep default-off behavior, original-preserving review and no GitHub Actions unchanged."
       ]
     }
   ]

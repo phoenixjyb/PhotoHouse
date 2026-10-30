@@ -56,10 +56,12 @@ class MemoryBookEditorialHttpTests(unittest.TestCase):
             headers=self.owner_headers)
         self.assertEqual(capabilities.status_code, 200, capabilities.text)
         self.assertEqual(set(capabilities.json()), {
-            'version', 'enabled', 'contributions_enabled', 'generation_enabled',
+            'version', 'enabled', 'contributions_enabled', 'generation_enabled', 'auto_refinement_enabled',
             'conversation_retention_days', 'audio_format', 'max_audio_seconds',
             'max_text_bytes', 'original_retention',
         })
+
+        self.assertFalse(capabilities.json()['auto_refinement_enabled'])
 
         legacy_before = self.enabled.get(self.path + '?library=family-a',
                                          headers=self.owner_headers)

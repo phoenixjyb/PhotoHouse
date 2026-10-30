@@ -289,9 +289,12 @@ class MemoryWorkerLauncherTests(unittest.TestCase):
             @staticmethod
             def _one(_sql, _args=()): return None
 
+        class EmptyCursor:
+            description = [('id',)]
+            def fetchall(self): return []
         class FakeDb:
             @staticmethod
-            def execute(_sql, _args=()): return None
+            def execute(_sql, _args=()): return EmptyCursor()
 
         with patch('app.access.memory_processing.AccessService', FakeAccess):
             self.assertIsNone(worker.process_job(FakeDb(), narrator=object(),
