@@ -1,7 +1,10 @@
 """Fail-closed auto-refinement app binding and shutdown behavior."""
 from pathlib import Path
+from dataclasses import replace
+import tempfile
 import sys
 import unittest
+import uuid
 from unittest.mock import AsyncMock, Mock, patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -10,6 +13,7 @@ sys.path.insert(0, str(ROOT / 'backend'))
 from app.access.host_inference_admission import HostInferenceAdmission, HostResourceProfile
 from app.access.selected_story_native import NativeStoryLaunch
 from app.access.selected_story_process import ProcessSelectedStoryProvider, process_launch_digest
+from app.access.runtime import RuntimeConfiguration
 from app.main import create_app
 
 
@@ -36,6 +40,24 @@ class MemoryAutoRefinementAppTests(unittest.IsolatedAsyncioTestCase):
     async def test_auto_refinement_remains_default_off(self):
         app = create_app()
         self.assertFalse(app.state.memory_auto_refinement_enabled)
+
+    async def test_runtime_configuration_forwards_explicit_enabled_flag(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            config = RuntimeConfiguration(
+                database=root / 'library.sqlite', web_origin='https://example.invalid',
+                original_roots=(root / 'originals',), derived_root=root / 'derived',
+                memory_collaboration_enabled=True,
+                original_deletion_journal_path=root / 'deletions.jsonl',
+                original_deletion_namespace=str(uuid.uuid4()),
+                selected_story_provider=provider(enabled=True))
+            enabled = replace(config, memory_auto_refinement_enabled=True)
+            # The journal's filesystem policy is covered separately; this test
+            # exercises only the RuntimeConfiguration -> create_app flag binding.
+            with patch('app.access.original_deletions.OriginalDeletionJournal',
+                       return_value=object()):
+                app = enabled.build_app()
+            self.assertTrue(app.state.memory_auto_refinement_enabled)
 
     async def test_disabled_provider_is_refused_before_worker_setup(self):
         with self.assertRaisesRegex(ValueError, 'enabled owned model provider'):

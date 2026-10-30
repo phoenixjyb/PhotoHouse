@@ -32488,6 +32488,20 @@
         "Update the closed route and capability inventories for the explicit refinement endpoint; include the new story tests in local checks.",
         "Keep default-off behavior, original-preserving review and no GitHub Actions unchanged."
       ]
+    },
+    {
+      "feature": "saved-story-runtime-composition-regression-20261030",
+      "source_base": "cbc133c5e63f32ada84e27f4e6f63fcf9a6e2ab5",
+      "files": [
+        {
+          "path": "server/tests/security/test_memory_auto_refinement_app.py",
+          "sha256": "114e8ad37d123279eaf4d101fc20fa61609642efe37b63623d210c69d926d478",
+          "before_sha256": "68960aad901dce0e85c6dabdb3ee8229a4c037f81dcc3a11632f4b0628bbe652"
+        }
+      ],
+      "notes": [
+        "Exercise actual RuntimeConfiguration replacement and app construction so story refinement enablement reaches the application. No production implementation change."
+      ]
     }
   ]
 }
