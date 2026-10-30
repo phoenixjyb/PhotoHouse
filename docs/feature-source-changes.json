@@ -32306,6 +32306,27 @@
         "History remains untrusted conversational data. Current host filters, authorization, issued outcomes and tools remain authoritative.",
         "The client cannot inject a dialogue field; omitted dialogue remains compatible for older callers. No model/provider/settings/schema changes or extra inference call."
       ]
+    },
+    {
+      "feature": "jude-qualified-native-dialogue-wire-20261030",
+      "source_base": "a2db51b1adc8194dcf11064f8039b3c84bf50e27",
+      "files": [
+        {
+          "path": "server/backend/app/access/agent_process.py",
+          "before_sha256": "13f092640c166b848ce5c56db30a7089803d374758ad28c66e055f919d62747d",
+          "sha256": "4a09c2c9c53e6904260a7767ba8c8b45dc4d6118c43ef7bc5883fe5e1dac1c66"
+        },
+        {
+          "path": "server/tests/security/test_local_tool_agent.py",
+          "before_sha256": "2b408348f13378a95cb4b505c69805d39ed78c1504110d4d6a5b77c5efd52dc5",
+          "sha256": "01ef3d474652eee1375bdf4c6e7ff3eb4e6e361d188f2365c2637841c6422132"
+        }
+      ],
+      "notes": [
+        "Encode recent protected conversation text as explicitly labeled data inside the existing qualified v1 native worker turn.",
+        "The worker wire budget stays 1024 UTF-8 bytes; retain the latest request in full and discard or clip older history first. The server-side history budget remains separate.",
+        "Keep the native executable, packet schema, worker, model, settings, host-owned filters and outcome authority unchanged; no fallback provider or extra inference."
+      ]
     }
   ]
 }

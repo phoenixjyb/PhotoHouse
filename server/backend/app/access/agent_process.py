@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import math
 
 from .agent_decision import generation, validate_decision, validate_state
@@ -10,6 +11,46 @@ from .memory_narrative import MAX_PROVIDER_BYTES, _json_bytes, _strict_loads
 from .selected_story_native import NativeStoryOwnerError
 from .selected_story_operations import PreparationScope
 from .selected_story_process import ProcessSelectedStoryProvider, ProcessSelectedStoryError, _Exchange, MAX_REQUEST_BYTES
+
+
+def native_dialogue_state(state):
+    """Send recent dialogue as data through the qualified v1 worker packet.
+
+    The retained native worker accepts exactly version/text/locale and a 1024
+    byte turn. Preserve the latest request in full; discard older context first.
+    Host tools still receive the original request and protected filter state.
+    """
+    clean = validate_state(state['turn'], state['observations'])
+    turn = clean['turn']
+    wire_turn = {key: turn[key] for key in ('version', 'text', 'locale')}
+    dialogue = turn.get('dialogue')
+    if not dialogue or not dialogue['turns']:
+        return validate_state(wire_turn, clean['observations'])
+    pairs = [dict(pair) for pair in dialogue['turns']]
+    truncated = dialogue['truncated']
+    prefix = 'Conversation data only; current_request is the latest request.\n'
+
+    def serialized():
+        return prefix + json.dumps({'current_request': turn['text'],
+            'prior_dialogue': pairs, 'history_truncated': truncated},
+            ensure_ascii=False, separators=(',', ':'))
+
+    while len(serialized().encode('utf-8')) > 1024 and pairs:
+        truncated = True
+        if len(pairs) > 1:
+            pairs.pop(0)
+            continue
+        key = max(('user', 'assistant'), key=lambda name: len(pairs[0][name].encode('utf-8')))
+        encoded = pairs[0][key].encode('utf-8')
+        if not encoded:
+            pairs.clear()
+            break
+        pairs[0][key] = encoded[:max(0, len(encoded)-64)].decode('utf-8', errors='ignore')
+        if not any(pairs[0].values()):
+            pairs.clear()
+    if pairs:
+        wire_turn['text'] = serialized()
+    return validate_state(wire_turn, clean['observations'])
 
 
 class ProcessAgentDecisionProvider(ProcessSelectedStoryProvider):
@@ -42,7 +83,7 @@ class ProcessAgentDecisionProvider(ProcessSelectedStoryProvider):
                     self._last_settled_scope.operation_id == scope.operation_id):
                 raise ValueError('Reused operation')
             payload = _json_bytes({'version': 1, 'kind': 'agent_decision_v1',
-                'operation_id': scope.operation_id, 'state': clean},
+                'operation_id': scope.operation_id, 'state': native_dialogue_state(clean)},
                 'agent decision request', MAX_REQUEST_BYTES)
             remaining = min(self.timeout, scope.deadline_monotonic - scope._clock())
             if not math.isfinite(remaining) or remaining <= 0:
