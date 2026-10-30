@@ -32371,6 +32371,26 @@
         "Record recovered actual Windows UI/Search delivery separately from the original SSH timeout.",
         "Keep the failed three-turn voice test, local year refinement fix, natural voice dependency failure and pending saved-story rollout explicit. No private configuration, paths or household story content included."
       ]
+    },
+    {
+      "feature": "github-actions-automatic-cost-pause-20261030",
+      "source_base": "e808e3083af61bdbc4beae366d24da35340c5ad6",
+      "files": [
+        {
+          "path": ".github/workflows/source-checks.yml",
+          "before_sha256": "2afaff9c30dde6e449666808099f13efb72c5c5fe70a1bddc00b51dadf3e25ea",
+          "sha256": "4a9f26fa387f3aaa14088de0d75addf13cb057c18dc1cd47c30e9276293cf172"
+        },
+        {
+          "path": ".github/workflows/android-ui-qualification.yml",
+          "before_sha256": "d3295ef7469adf77228cae1bb165c539f0355fd565af32afbf8a45691e08eb09",
+          "sha256": "3030b287b2750557c511dc111f247b3b7960ab8b11dc7ff869926c8d24bba730"
+        }
+      ],
+      "notes": [
+        "Remove push and pull-request triggers from both existing GitHub workflows under the owner cost pause.",
+        "Workflow jobs and pinned dependencies are retained for a future explicit resumption; manual dispatch is not authorized during the pause. Local testing and GitLab CI are independent."
+      ]
     }
   ]
 }
