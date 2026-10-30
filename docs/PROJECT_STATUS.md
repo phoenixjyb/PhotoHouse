@@ -1,8 +1,9 @@
 # Current project status
 
 Maintained **2026-10-30** against merged source `e808e30` and the accepted
-**October 29** Windows delivery records. No fresh server probe was performed for
-this documentation update. Earlier snapshots below retain their original scope.
+October 29 and October 30 Windows delivery records. The later deployed `daa7e14`
+increment is not yet merged into main. This update reads retained operation
+results; it performs no additional server probe. Earlier snapshots retain their original scope.
 
 | Area | Last verified delivery | Still open |
 | --- | --- | --- |
@@ -26,21 +27,29 @@ experimental scopes were explicitly released, cleanup was clear, production
 services were intentionally retained, and the follow-up heartbeat was deleted.
 Physical microphone/speaker acceptance is **pending**, not failed.
 
-## October 30 source increment (not deployed)
+## October 30 delivery and remaining increments
 
-The user has now requested natural bilingual voice, conversational refinement,
-a compact chat UI and automatic story-polishing proposals. The earlier decision
-to defer subjective prose grading does not cancel that product request.
+The compact UI and bounded conversational context are deployed on Windows from
+`daa7e14`. The root transport timed out after launch; one bounded metadata
+recovery read verified the saved successful native result. The original timeout
+is retained, and both operation scopes were explicitly released.
 
-| Increment | Local source | Windows / user outcome |
+| Increment | Observed outcome | Remaining work |
 | --- | --- | --- |
-| Chinese dates and follow-ups | Candidate `19927225` handles “去年九月份”, preserves the selected date when changing media type, and supports changing the month in a continued search | Not deployed; the requested real three-turn voice demonstration is still outstanding |
-| Compact chat and context | Candidate `19927225` includes the revised chat layout and bounded server-owned dialogue context | Local browser/source checks passed; no claim of a new live browser or microphone result |
-| Saved-story refinement | Candidate `111b8b2` adds optional background refinement and explicit refinement of an existing saved revision; original text/audio are preserved | Not deployed; The requested household story has not yet been refined by this new path |
-| Natural bilingual speech | A separate local TTS candidate is prepared, retaining the existing voice during qualification | Not qualified or activated; no natural-voice quality claim |
+| Compact chat and context | Served UI hashes match; two protected model/tool turns, history, same-request recovery and anonymous denial passed | Physical microphone/speaker and family interaction remain pending |
+| Chinese dates and follow-ups | HTTPS “找去年九月份的照片 → 只看视频” preserved September 2025 and changed only media type; returned authorized cards | Three-turn voice acceptance failed. A local fix makes a bare month refinement retain an unambiguous prior year; it is not deployed yet |
+| Grouping continuity | New source-bound 15-minute SYSTEM refresh completed its first `REFRESH_READY` sweep | This does not establish every subsequent refresh or family grouping quality |
+| Existing AI draft | Actual authorized-source, nonempty, unsaved `needs_review` draft passed in 57.172 seconds | This is the existing selected-source flow, not saved-story automatic refinement |
+| Saved-story refinement | Local source adds optional revision-bound background proposals, preserving original text/audio | Not deployed; the requested household story has not been refined by this path |
+| Natural bilingual speech | Candidate failed during dependency acquisition before activation | Underlying dependency error is unknown; existing speech service remains selected |
 
-See [Jude](JUDE_ASSISTANT.md#october-30-candidate-behavior) for the candidate user
-flow and [Architecture](ARCHITECTURE.md#candidate-conversation-and-refinement)
+The actual voice failure returned HTTP 200 before a strict search-filter
+predicate refused acceptance. Its failing turn/transcript was not retained;
+the local year-inheritance reproduction is a concrete bug, not definitive
+attribution of the live failure. No physical voice outcome is claimed.
+
+See [Jude](JUDE_ASSISTANT.md#october-30-conversation-and-refinement) for the
+user flow and [Architecture](ARCHITECTURE.md#conversation-and-refinement)
 for context and original/proposal separation.
 
 ## Validation scope

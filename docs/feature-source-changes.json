@@ -32336,6 +32336,41 @@
       "notes": [
         "Remove transient connection troubleshooting from product documentation. Retain the latest completed release and explicitly separate later source candidates from deployment and physical-device acceptance. Documentation only; no service or CI activation."
       ]
+    },
+    {
+      "feature": "oct30-observed-ui-search-delivery-documentation",
+      "source_base": "683de66bbc2930c05b6ceb61b81b4ac76c650813",
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "76188ee65f99870c5f9d6101cbbd8d54e8fff08112169105f311d7f83d089979",
+          "sha256": "d613823976d7a41fdb4283199ebd0f4abe7a2e0093b16d00df0104172fab21a1"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "50b53afa2d1d331206d0d622c32860b11364e66f9448940c8a672724f22a8c8a",
+          "sha256": "a9b2a841084383056a0b46b269a5c5cffc115298832c1d0b71f3d0b334868631"
+        },
+        {
+          "path": "docs/JUDE_ASSISTANT.md",
+          "before_sha256": "9651076a67d42a844dba0f09557f4e1f29448839cc2d82c7e8297d40b797cf6d",
+          "sha256": "4a61473f2a8f4bc54151622d288c0c3a47644bbe3c9eaa0e90b46efc01aaa589"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "a7009ccc7798ba12b528527440cd1b0631c8be4f3b5b06c6d8fe73c3a2dee141",
+          "sha256": "d4c60620deb3fa4f2236c4c5941bc952f0049c26e55303b5b541959dd54fb9a5"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "8ae26dd78dd00afa3a03368cdb06796dd6d964a3c711ad1bb456d04c3bdd9cd2",
+          "sha256": "91e2a46ea04821dd6789e24ac15a3596e95751e1606e1824cc9e812eb8ff2c53"
+        }
+      ],
+      "notes": [
+        "Record recovered actual Windows UI/Search delivery separately from the original SSH timeout.",
+        "Keep the failed three-turn voice test, local year refinement fix, natural voice dependency failure and pending saved-story rollout explicit. No private configuration, paths or household story content included."
+      ]
     }
   ]
 }

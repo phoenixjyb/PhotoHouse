@@ -53,18 +53,21 @@ of starting another model action. A stale account/library/conversation receipt
 cannot restore an active microphone or execute an action. Stored history and
 returned cards do not bypass fresh authorization.
 
-## October 30 candidate behavior
+## October 30 conversation and refinement
 
-These improvements are implemented locally and await Windows deployment. They
-are not instructions to assume that the currently served page already has them.
+The compact chat layout and bounded conversation context are deployed on
+Windows from `daa7e14`. Typed/HTTPS date-to-media follow-up, history and request
+recovery passed. The new three-turn voice demonstration remains unaccepted.
 
 A conversational search should retain the understood conditions between turns:
 “找去年九月份的照片” selects the previous calendar year's September and images;
-“只看视频” changes only media type; “改成十月份” changes only the month. Unsupported
+“只看视频” changes only media type. A local, not-yet-deployed fix makes
+“改成十月份” retain the prior year when it is unambiguous; an ambiguous year
+requires clarification. Explicit dates override that context. Unsupported
 conditions still need clarification. Empty results are a valid answer and must
 not cause the service to silently discard a requested condition.
 
-The candidate agent carries recent exchanges in the signed-in library's server
+The deployed agent carries recent exchanges in the signed-in library's server
 conversation. It rechecks ownership and revision for every new request. This
 provides continuity with the same local model; it does not make the model an
 unrestricted autonomous assistant or a source of access permissions.
@@ -78,8 +81,8 @@ available. A changed story revision or access scope invalidates a stale proposal
 request retries do not create duplicate jobs.
 
 The requested household story is the intended live demonstration, not an already
-completed example. The current voice has also not yet been replaced by the
-prepared natural bilingual TTS candidate.
+completed example. The current voice has not been replaced: the
+natural bilingual candidate failed dependency acquisition before activation.
 
 ## Privacy and review
 

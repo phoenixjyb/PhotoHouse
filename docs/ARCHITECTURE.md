@@ -10,10 +10,11 @@ and isolated inference runtimes. The offline catalog is descriptive; it does not
 load weights or select a live deployment. New embedding spaces require versioned
 artifacts and explicit comparison/reindex qualification.
 
-## Candidate conversation and refinement
+## Conversation and refinement
 
-The October 30 candidates described here are local source, not the October 29
-Windows delivery above. The conversation store remains the authority for
+The October 30 compact UI and bounded conversation projection are deployed
+from `daa7e14`; saved-story refinement remains local source awaiting its matching
+Windows worker and rollout. The conversation store remains the authority for
 account/library ownership, thread revision, retention and current result scope.
 Each model invocation receives a bounded projection rather than an unbounded
 transcript: at most four prior user/assistant pairs, 1,024 UTF-8 bytes per message
@@ -39,8 +40,9 @@ source tests alone do not establish a refined household story.
 
 ## Current integration reference
 
-Reviewed **2026-10-30**, source `e808e30`. [October 29 delivery](RELEASE_2026-10-29.md)
-records the enabled Windows API/Web installation; the portable application still
+Reviewed **2026-10-30**: main `e808e30`, with deployed increment `daa7e14`
+not yet merged. [Current status](PROJECT_STATUS.md) and the historical
+[October 29 delivery](RELEASE_2026-10-29.md) distinguish these installations. The portable application still
 requires explicit configuration. Historical default-off qualification documents
 are not a live inventory. The current system combines protected Search, library
 photo stacks, the Jude/小贾 workspace, local speech and a bounded model/tool agent.

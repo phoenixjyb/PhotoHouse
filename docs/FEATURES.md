@@ -23,17 +23,20 @@ requires the relevant real-world use.
 See [Project Status](PROJECT_STATUS.md) and the [October 29 release record](RELEASE_2026-10-29.md) for the dated source and
 rollout evidence.
 
-## October 30 candidates
+## October 30 delivery and candidates
 
-Local candidates add Chinese calendar-month follow-ups, a compact chat layout,
-bounded conversation projection and optional revision-bound saved-story
-refinement. They are **not delivered**. Natural bilingual TTS is also an
-undelivered candidate. Keep all of these separate from the October 29 release
-until the current rollout succeeds and that result is recorded. The
-[current status](PROJECT_STATUS.md#october-30-source-increment-not-deployed)
-separates these increments from the October 29 live matrix; the [Jude guide](JUDE_ASSISTANT.md#october-30-candidate-behavior)
-explains the intended search/refinement flow. No refined household story or new
-physical voice outcome has yet been observed from these candidates.
+Compact chat, bounded conversation context and date-to-media follow-ups are
+actually deployed from `daa7e14`, not yet merged into main. Two model/tool turns,
+history, request recovery, an existing unsaved AI draft and the first new SYSTEM
+grouping refresh passed on Windows. A three-turn voice test refused acceptance;
+a follow-up-year bug is fixed locally but not deployed.
+
+Saved-story refinement remains local source. Natural bilingual TTS failed
+before activation; the existing voice is unchanged. No refined household story
+or physical microphone/speaker outcome has been observed from these increments.
+[Current status](PROJECT_STATUS.md#october-30-delivery-and-remaining-increments)
+and the [Jude guide](JUDE_ASSISTANT.md#october-30-conversation-and-refinement)
+separate the delivered behavior from these remaining tasks.
 
 ## Acceptance rules
 
