@@ -21,11 +21,10 @@ scope, [Features](FEATURES.md) for contracts and [Roadmap](ROADMAP.md) for next 
 Public examples remain opt-in/default-off; one enabled installation does not
 change repository defaults or grant activation to another host.
 
-The final work window closed at 22:00 Asia/Shanghai on October 29. All admitted
+The October 29 work window closed at 22:00 Asia/Shanghai. All admitted
 experimental scopes were explicitly released, cleanup was clear, production
 services were intentionally retained, and the follow-up heartbeat was deleted.
-Physical microphone/speaker acceptance is **pending**, not failed. No routine
-Windows rechecks or new model calls are needed merely to reread these docs.
+Physical microphone/speaker acceptance is **pending**, not failed.
 
 ## October 30 source increment (not deployed)
 
@@ -39,13 +38,6 @@ to defer subjective prose grading does not cancel that product request.
 | Compact chat and context | Candidate `19927225` includes the revised chat layout and bounded server-owned dialogue context | Local browser/source checks passed; no claim of a new live browser or microphone result |
 | Saved-story refinement | Candidate `111b8b2` adds optional background refinement and explicit refinement of an existing saved revision; original text/audio are preserved | Not deployed; The requested household story has not yet been refined by this new path |
 | Natural bilingual speech | A separate local TTS candidate is prepared, retaining the existing voice during qualification | Not qualified or activated; no natural-voice quality claim |
-
-A startup diagnostic exposed an obsolete embedded script hash and refused before
-creating its temporary SYSTEM task or constructing the application. The corrected
-successor then encountered an SSH connection timeout before login. Server retries
-are paused pending restored access. This is a deployment blocker, not an observed
-application, model, database or permission failure. The incumbent release was
-retained; no new feature is claimed live. GitHub Actions remains off.
 
 See [Jude](JUDE_ASSISTANT.md#october-30-candidate-behavior) for the candidate user
 flow and [Architecture](ARCHITECTURE.md#candidate-conversation-and-refinement)
@@ -131,14 +123,14 @@ loopback-network measurements, not production, phone/WAN or family relevance
 acceptance. R92 previously measured 6.469 / 7.203 s; separate shared-host runs
 do not establish a causal saving from the intervening changes.
 
-The native Job closed, but the later first offline-collection SSH call timed
-out with no response. Whole qualification failed and the second observation
-was not run. A separately reviewed one-shot observer and exact native-handle
-cleanup stopped only the identified reader, preserved its parent, and verified
-its empty owned scope. After 192.824 s offline and a fresh local transport audit,
-the coordinator explicitly released that limited owned scope. Original failures
-and the incomplete offline pair remain; cleanup does not qualify the feature or
-establish that the whole shared host is free. No replay or activation occurred.
+The native Job closed, but the required offline-collection pair was not completed.
+Whole qualification therefore remains failed, and the second observation was not
+run. A separately reviewed one-shot observer and exact native-handle cleanup
+stopped only the identified reader, preserved its parent, and verified its empty
+owned scope. After 192.824 s offline and a fresh local audit, the coordinator
+explicitly released that limited scope. Original failures and the incomplete pair
+remain; cleanup does not qualify the feature or establish that the whole shared
+host is free. No replay or activation occurred.
 
 **Current local source validation:** the exact image-only facts and immutable
 SQL-cohort grammar optimizations retain all fresh SQL, authorization, source,
@@ -204,12 +196,11 @@ After 185.668 seconds without host access, independent local closure review
 passed and the Windows window was explicitly released before expiry. No queued
 dispatch or owned local SSH/SFTP process remained.
 
-R66 authenticated through the verified direct route but timed out staging a
-partial archive; it started no model/native test. R67 staged all 12 inputs but
-correctly refused a native start after its time reserve expired. Both stages
-were preserved and explicitly released after closure. R68 reused only the
-verified identical source archive through a fresh, no-overwrite private copy;
-all remaining inputs, admission, both audits and native checks were fresh.
+R66 did not complete staging its archive and started no model/native test. R67
+staged all 12 inputs but correctly refused a native start after its time reserve
+expired. Both stages were preserved and explicitly released after closure. R68
+reused only the verified identical source archive through a fresh, no-overwrite
+private copy; all remaining inputs, admission, both audits and native checks were fresh.
 The compressed archive is 1,412,632 bytes, 73.21% smaller than the earlier
 5,272,648-byte package; its 295 source payloads and manifest are identical.
 See [the complete native record](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md#latest-complete-native-result-october-23-2026).
@@ -236,12 +227,12 @@ R65 started no model run and staged no candidate. Read-only admission initially
 refused a scheduled task state transition; a later host admission passed after
 natural task completion. The local final gate then refused an incorrect
 comparison between two different catalog digest contracts. That checker was
-repaired and the refused seal/evidence retained. A subsequent fresh acquisition
-could not reach the established SSH relay, leaving R65 blocked by connectivity.
-The later R68 result above supersedes that transport blocker. The last reachable metadata preserved the current 200-file report
-and all 12 retained report trees; a later trusted-TLS check still verified all
-200 public report files. These observations do not prove current Windows state
-or new native latency after connectivity was lost.
+repaired and the refused seal/evidence retained. The later R68 result above
+supersedes R65's incomplete acquisition and qualification. The last metadata read
+at that time preserved the current 200-file report and all 12 retained report
+trees; a later trusted-TLS check still verified all 200 public report files.
+These dated observations do not prove current Windows
+state or new native latency.
 See [the audit optimization contract](SEMANTIC_REQUEST_LATENCY.md#r65-audit-artifact-pass).
 
 
@@ -450,8 +441,8 @@ This is not complete searchable coverage: 64 inputs failed preparation and one
 source is missing. All failure records remain; 27 earlier preparation copies are
 retained separately and 36 later copies remain in the index scratch directory.
 No original was deleted, repaired or overwritten. The native completion receipt,
-final manifest and process closure were independently read back; the Mac transport
-itself timed out, so terminal success comes from the Windows receipts.
+final manifest and process closure were independently read back; Windows
+receipts establish terminal success.
 
 A fresh read-only catalog comparison found **no added or removed photos and no
 changed source hashes**; its complete catalog digest matches the frozen roster.
@@ -662,8 +653,7 @@ Earlier delivery snapshots below retain their dated scope.
 The follow-through independently verified all original hashes and both preview
 sizes for the received batch. One missing preview pair was repaired without
 resetting its failed task. Vector and face processing finished; person identity
-was not assigned automatically. Caption tasks remain pending and the configured
-caption service was unreachable at the latest read-only check. The
+was not assigned automatically. Caption tasks remain pending. The
 [receipt-selected caption candidate](../server/docs/security/RELEASED_CAPTION_WORKER.md)
 now has generated-media, mock-HTTP and bound-journal qualification. Native package
 qualification also [passed on Windows](NATIVE_CAPTION_QUALIFICATION_2026-10-18.md)

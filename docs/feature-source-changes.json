@@ -32305,6 +32305,37 @@
         "Refresh README, architecture, feature/status/roadmap and CI policy against merged source and sanitized October29 delivery. Preserve historical evidence and separate physical audio/device acceptance. Documentation only; no runtime/model/CI activation.",
         "Separate October30 locally implemented conversation/refinement candidates and the SSH deployment blocker from October29 delivery; preserve originals and review-required adoption. No new live-feature claim or CI activation."
       ]
+    },
+    {
+      "feature": "documentation-status-not-transport-log-20261030",
+      "source_base": "0d3de3a90e8a9f7b6c7f44ec8d360bdd6f010857",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "e605da18c65590dffaf2609ac437ca25883e5614d5d238e1ffe9322855ccb457",
+          "sha256": "76188ee65f99870c5f9d6101cbbd8d54e8fff08112169105f311d7f83d089979"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "7698c45ebec237832db7523b0184ae1d043686d00fbf1a3bd7c2404ef943192e",
+          "sha256": "50b53afa2d1d331206d0d622c32860b11364e66f9448940c8a672724f22a8c8a"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "824efa120cd71f938b19563685664a85b72c0e6a65cc4d5dcbe22dacaadd278e",
+          "sha256": "8ae26dd78dd00afa3a03368cdb06796dd6d964a3c711ad1bb456d04c3bdd9cd2"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "460a0a014290f73499e6dfa930e38f4ad893a1f442b4aab043a8213195cc4262",
+          "sha256": "6176d58133154602568361a9d099aff0ee32d6c62b82ca757ed7af49f5e3d967"
+        }
+      ],
+      "notes": [
+        "Remove transient connection troubleshooting from product documentation. Retain the latest completed release and explicitly separate later source candidates from deployment and physical-device acceptance. Documentation only; no service or CI activation."
+      ]
     }
   ]
 }

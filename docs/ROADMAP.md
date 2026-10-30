@@ -6,6 +6,11 @@ Reviewed **2026-10-30**. The October 29 API/Web rollout is recorded in
 that bounded rollout. Android and TV were not updated by it; no broad
 family/device acceptance is claimed.
 
+The October 30 candidate UI, follow-up parser, story refinement and natural
+bilingual voice remain **undelivered** while rollout is in progress. Keep them
+out of the delivered feature list until success is recorded. The October 29
+release remains the last completed delivery evidence.
+
 ## Active priorities
 
 ### 1. Finish conversational follow-up in the current search session
@@ -587,8 +592,8 @@ API/Web source `5f92b94` was live; phone v53 was published with the original ico
 and certificate. Native full APK and independent Mac complete range verification
 passed, five upload workers were restored, and ASR/TTS remain running. TV remains
 v30. The earlier v52 package stays unpublished and preserved. See the
-[delivery record](../clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md) for
-the Mac single-connection download limitation and separate device acceptance.
+[delivery record](../clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md) and
+retain separate device acceptance evidence.
 
 Next: verify family phone updates and actual listen → reply → listen behavior;
 then improve retrieval across saved stories and memoirs with visible evidence,

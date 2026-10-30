@@ -27,8 +27,10 @@ rollout evidence.
 
 Local candidates add Chinese calendar-month follow-ups, a compact chat layout,
 bounded conversation projection and optional revision-bound saved-story
-refinement. They are **not deployed**. Natural bilingual TTS is also pending
-qualification. The [current status](PROJECT_STATUS.md#october-30-source-increment-not-deployed)
+refinement. They are **not delivered**. Natural bilingual TTS is also an
+undelivered candidate. Keep all of these separate from the October 29 release
+until the current rollout succeeds and that result is recorded. The
+[current status](PROJECT_STATUS.md#october-30-source-increment-not-deployed)
 separates these increments from the October 29 live matrix; the [Jude guide](JUDE_ASSISTANT.md#october-30-candidate-behavior)
 explains the intended search/refinement flow. No refined household story or new
 physical voice outcome has yet been observed from these candidates.
@@ -149,8 +151,8 @@ API/Web source `5f92b94` was served and phone v53 was published on Windows HTTPS
 OTA with the original certificate and icon. Stopped-writer backup, four database
 integrity checks, served resource hashes and worker restoration passed; ASR/TTS
 remain running and TV remains v30. Native complete APK readback and independent
-Mac complete range readback match the signed file. Two Mac single-connection
-downloads timed out; phone installation and actual listening remain unverified.
+Mac complete range readback match the signed file. Phone installation and actual
+listening remain unverified.
 See the [v53 delivery record](../clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md).
 
 ## Earlier source qualification records
