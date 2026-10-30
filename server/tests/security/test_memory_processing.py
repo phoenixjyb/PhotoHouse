@@ -16,6 +16,7 @@ from app.access.memory_jobs import MemoryJobs
 from app.access.memory_processing import (OwnedSavedStoryNarrator, process_contribution,
                                           process_job, recover_contribution)
 from app.access.host_inference_admission import HostAdmissionError
+from app.access.selected_story_process import ProcessSelectedStoryError
 from app.access.service import AccessService
 from app.access.stories import Stories
 
@@ -186,6 +187,19 @@ class MemoryProcessingTests(unittest.TestCase):
         self.assertEqual(len({scope.operation_id for scope in scopes}), 2)
         self.assertNotEqual(scopes[0].operation_id, self.story_id)
         self.assertTrue(json.loads(saved['output_json'])['needs_review'])
+
+    def test_saved_story_failure_retains_closed_provider_category_without_error_text(self):
+        queued = self.queue_auto_story()
+        class Narrator:
+            def narrative(inner, _bundle):
+                raise ProcessSelectedStoryError('cancelled')
+        with self.connection() as db:
+            result = process_job(db, narrator=Narrator(), saved_story_only=True,
+                                 clock=lambda: self.library.now)
+            row = db.execute('SELECT state,error_code,output_json FROM access_memory_jobs WHERE id=?',
+                             (queued['id'],)).fetchone()
+        self.assertEqual(result['state'], 'failed')
+        self.assertEqual(tuple(row), ('failed', 'model_timeout', None))
 
     def test_auto_worker_accepts_production_tuple_rows(self):
         queued = self.queue_auto_story()

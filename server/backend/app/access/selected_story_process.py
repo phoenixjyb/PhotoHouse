@@ -144,10 +144,11 @@ class ProcessSelectedStoryProvider:
 
     def __init__(self, launch, model, *, kernel_factory, enabled=False, timeout=45,
                  cleanup_seconds=5, host_admission=None, exchange_root=None):
+        max_timeout = 180 if type(self) is ProcessSavedStoryProvider else 60
         if (type(launch) is not NativeStoryLaunch or not callable(kernel_factory)
                 or type(model) is not str or not _MODEL.fullmatch(model) or '://' in model
                 or type(enabled) is not bool or type(timeout) not in (int, float)
-                or not math.isfinite(timeout) or not 0 < timeout <= 60
+                or not math.isfinite(timeout) or not 0 < timeout <= max_timeout
                 or len(launch.environment) > 62
                 or {REQUEST_ENV, RESPONSE_ENV} & {k.upper() for k in launch.environment}):
             raise ValueError('Invalid process selected-story configuration')

@@ -20,6 +20,7 @@ from .memory_narrative import validate_narrative, validate_companion
 from .service import AccessDenied, AccessService
 from .transport import TransportError
 from .selected_story_operations import PreparationScope
+from .selected_story_process import ProcessSelectedStoryError
 
 LEASE_SECONDS = 300
 MAX_CONTRIBUTION_TEXT_BYTES = 8192
@@ -43,7 +44,7 @@ class OwnedSavedStoryNarrator:
     def __init__(self, provider_factory, *, timeout=60, stop_event=None,
                  monotonic=time.monotonic):
         if (not callable(provider_factory) or type(timeout) not in (int, float)
-                or not math.isfinite(timeout) or not 0 < timeout <= 60
+                or not math.isfinite(timeout) or not 0 < timeout <= 180
                 or (stop_event is not None and
                     not isinstance(stop_event, type(threading.Event())))
                 or not callable(monotonic)):
@@ -234,6 +235,16 @@ def process_job(db, *, narrator, clock=time.time, editorial_enabled=False,
                     (now, row['id'], lease))
             return {'id': row['id'], 'state': 'deferred'}
         raw, failure = None, 'local_processing_failed'
+    except ProcessSelectedStoryError as error:
+        # Store only a closed category; never provider messages or model text.
+        codes = {'cancelled': 'model_timeout', 'invalid_input': 'model_input_refused',
+                 'invalid_response': 'model_output_refused', 'worker': 'model_worker_failed',
+                 'cleanup': 'model_cleanup_unconfirmed'}
+        raw = None
+        failure = codes.get(error.category, 'local_processing_failed') if saved_story_only else 'local_processing_failed'
+        if (saved_story_only and error.category == 'cancelled'
+                and getattr(getattr(narrator, 'stop_event', None), 'is_set', lambda: False)()):
+            failure = 'model_interrupted'
     except Exception:
         # Never retain provider errors, prompts, audio or raw generated responses.
         raw, failure = None, 'local_processing_failed'

@@ -251,6 +251,27 @@ class MemoryStories:
             job = jobs._queue(member, library, 'story', ident, revision,
                 jobs.auto_refinement_mutation(ident, revision, member['account_id']),
                 jobs._controls({'instructions': AUTO_REFINE_INSTRUCTIONS}, False))
+            retryable = {'local_processing_failed', 'model_timeout', 'model_input_refused',
+                         'model_output_refused', 'model_worker_failed', 'model_interrupted'}
+            if (job['state'] == 'failed' and job['error_code'] in retryable
+                    and job['expires_at'] > self.access._now()
+                    and job['lease_id'] is None and job['lease_until'] is None):
+                # Only this explicit, authorized POST retries. Reads and save
+                # replays keep returning the original terminal outcome.
+                prior_error = job['error_code']
+                changed = self.db.execute("""UPDATE access_memory_jobs
+                    SET state='queued',error_code=NULL,output_json=NULL,lease_id=NULL,
+                        lease_until=NULL,updated_at=?
+                    WHERE id=? AND actor_id=? AND library_id=? AND story_id=?
+                      AND base_revision=? AND state='failed' AND error_code=?
+                      AND source_fingerprint=? AND lease_id IS NULL AND lease_until IS NULL""",
+                    (self.access._now(), job['id'], member['account_id'], library,
+                     ident, revision, prior_error, job['source_fingerprint'])).rowcount
+                if changed != 1:
+                    raise TransportError(409, 'Refinement changed; reload before retrying')
+                self.access._audit(member['account_id'],
+                    'memory.refinement.retry:' + job['id'] + ':' + prior_error, library)
+                job = self.access._one('SELECT * FROM access_memory_jobs WHERE id=?', (job['id'],))
             return MemoryJobs._present(job)
 
     def save(self, token, library, body, ident=None, refs_enabled=False,

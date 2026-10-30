@@ -12,8 +12,9 @@ sys.path.insert(0, str(ROOT / 'backend'))
 
 from app.access.host_inference_admission import HostInferenceAdmission, HostResourceProfile
 from app.access.selected_story_native import NativeStoryLaunch
-from app.access.selected_story_process import ProcessSelectedStoryProvider, process_launch_digest
+from app.access.selected_story_process import ProcessSelectedStoryProvider, ProcessSavedStoryProvider, process_launch_digest
 from app.access.runtime import RuntimeConfiguration
+from app.access.transport import AccessRuntime
 from app.main import create_app
 
 
@@ -40,6 +41,25 @@ class MemoryAutoRefinementAppTests(unittest.IsolatedAsyncioTestCase):
     async def test_auto_refinement_remains_default_off(self):
         app = create_app()
         self.assertFalse(app.state.memory_auto_refinement_enabled)
+
+    async def test_saved_story_budget_does_not_increase_interactive_provider_budget(self):
+        selected = provider(enabled=True)
+        captured = {}
+        def narrator(factory, *, timeout):
+            captured.update(provider=factory(), timeout=timeout)
+            return object()
+        with patch('app.access.memory_processing.OwnedSavedStoryNarrator', side_effect=narrator):
+            create_app(access_runtime=AccessRuntime(lambda: None, 'https://example.invalid'),
+                       selected_story_provider=selected, memory_collaboration_enabled=True,
+                       memory_auto_refinement_enabled=True)
+        self.assertIs(type(captured['provider']), ProcessSavedStoryProvider)
+        self.assertEqual((captured['provider'].timeout, captured['timeout'], selected.timeout), (180, 180, 60))
+        kwargs = dict(kernel_factory=selected.kernel_factory, enabled=True,
+                      host_admission=selected.host_admission, exchange_root=selected.exchange_root)
+        with self.assertRaises(ValueError):
+            ProcessSelectedStoryProvider(selected.launch, selected.model, timeout=61, **kwargs)
+        with self.assertRaises(ValueError):
+            ProcessSavedStoryProvider(selected.launch, selected.model, timeout=181, **kwargs)
 
     async def test_runtime_configuration_forwards_explicit_enabled_flag(self):
         with tempfile.TemporaryDirectory() as temporary:

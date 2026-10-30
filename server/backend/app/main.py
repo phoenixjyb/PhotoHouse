@@ -151,10 +151,9 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
             original = selected_story_provider
             return ProcessSavedStoryProvider(original.launch, original.model,
                 kernel_factory=original.kernel_factory, enabled=original.enabled,
-                timeout=original.timeout, cleanup_seconds=original.cleanup_seconds,
+                timeout=180, cleanup_seconds=original.cleanup_seconds,
                 host_admission=original.host_admission, exchange_root=original.exchange_root)
-        refinement_narrator = OwnedSavedStoryNarrator(refinement_provider,
-            timeout=min(60, selected_story_provider.timeout))
+        refinement_narrator = OwnedSavedStoryNarrator(refinement_provider, timeout=180)
     selected_story_lifecycle = None
     if selected_story_provider is not None:
         if not memory_collaboration_enabled:

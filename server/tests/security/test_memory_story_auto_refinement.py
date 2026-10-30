@@ -160,6 +160,57 @@ class MemoryStoryAutoRefinementTests(unittest.TestCase):
         self.assertEqual(self.f.client.post(url, headers=headers,
                                            json={'revision': '1'}).status_code, 503)
 
+    def test_only_explicit_refine_retries_failed_job_and_preserves_story_and_failure_audit(self):
+        saved = self.save(auto_refine=True)
+        job_id = saved['auto_refinement']['id']
+        with self.library.connection() as db:
+            original = db.execute('SELECT content,revision FROM access_memory_stories WHERE id=?',
+                                  (saved['id'],)).fetchone()
+            db.execute("UPDATE access_memory_jobs SET state='failed',error_code='local_processing_failed' WHERE id=?",
+                       (job_id,))
+            db.commit()
+        view = self.call('get', self.library.owner_token, saved['id'], False, True)
+        self.assertEqual(view['auto_refinement']['state'], 'failed')
+        retry = self.call('refine', self.library.owner_token, saved['id'], '1')
+        repeated = self.call('refine', self.library.owner_token, saved['id'], '1')
+        self.assertEqual((retry['id'], repeated['id'], retry['state']), (job_id, job_id, 'queued'))
+        with self.library.connection() as db:
+            current = db.execute('SELECT content,revision FROM access_memory_stories WHERE id=?',
+                                 (saved['id'],)).fetchone()
+            audits = db.execute("SELECT action FROM access_audit WHERE action LIKE 'memory.refinement.retry:%'").fetchall()
+        self.assertEqual(current, original)
+        self.assertEqual([row[0] for row in audits],
+                         ['memory.refinement.retry:' + job_id + ':local_processing_failed'])
+        self.assertEqual(len(self.job_rows(saved['id'])), 1)
+
+    def test_retry_keeps_authorization_revision_source_and_lease_guards(self):
+        saved = self.save(auto_refine=True)
+        job_id = saved['auto_refinement']['id']
+        with self.library.connection() as db:
+            db.execute("UPDATE access_memory_jobs SET state='failed',error_code='model_timeout' WHERE id=?", (job_id,))
+            db.commit()
+        with self.assertRaises(AccessDenied):
+            self.call('refine', self.library.member_token, saved['id'], '1')
+        from app.access.transport import TransportError
+        with self.assertRaises(TransportError):
+            self.call('refine', self.library.owner_token, saved['id'], '2')
+        lease = str(uuid.uuid4())
+        with self.library.connection() as db:
+            db.execute('UPDATE access_memory_jobs SET lease_id=?,lease_until=? WHERE id=?',
+                       (lease, self.library.now + 30, job_id))
+            db.commit()
+        self.assertEqual(self.call('refine', self.library.owner_token, saved['id'], '1')['state'], 'failed')
+        with self.library.connection() as db:
+            self.assertEqual(db.execute('SELECT lease_id FROM access_memory_jobs WHERE id=?', (job_id,)).fetchone()[0], lease)
+            db.execute('UPDATE access_memory_jobs SET lease_id=NULL,lease_until=NULL WHERE id=?', (job_id,))
+            db.commit()
+        with self.library.connection() as db:
+            db.execute("UPDATE access_memory_jobs SET source_fingerprint=? WHERE id=?", ('0' * 64, job_id))
+            db.commit()
+        self.assertEqual(self.call('refine', self.library.owner_token, saved['id'], '1')['state'], 'stale')
+        with self.library.connection() as db:
+            self.assertEqual(db.execute('SELECT state FROM access_memory_jobs WHERE id=?', (job_id,)).fetchone()[0], 'failed')
+
     def test_existing_story_refinement_preserves_revision_and_complete_narration(self):
         body = self.f.body()
         chapters = json.loads(body['chapters'])

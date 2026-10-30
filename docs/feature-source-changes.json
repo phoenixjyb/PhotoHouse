@@ -32530,6 +32530,55 @@
         "Fresh searches and explicit absolute or relative dates keep their existing calendar meaning. Authorization, entities, exclusions, providers and resource limits are unchanged.",
         "Synthetic three-turn HTTP recovery and bilingual planner checks are separate from native voice and live deployment evidence."
       ]
+    },
+    {
+      "feature": "saved-story-bounded-budget-and-explicit-retry-20261031",
+      "source_base": "1349e2ab81a7fddc4d5ff55fd1ebd80647b8948c",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_processing.py",
+          "before_sha256": "47e2f09f6848e30bf181424d960a429b1ecb22dbd1088aa7ad1a40689333bd98",
+          "sha256": "6120a4199175e0c4007c804e521917ea5d11cf4ae9e86ddef2005fb99fde5d8b"
+        },
+        {
+          "path": "server/backend/app/access/memory_stories.py",
+          "before_sha256": "8b26d2f1897acfbafa39275438248c3e149da0c0a6dc7afda74bddf52fdace30",
+          "sha256": "e59cad485761ed7ebe523c6260ff05d5e73bb9dde53553ef3f63321e8ac34995"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": "f36f6833adaae40a45a08f5abe6c3bf42140c867f2c268377057322055ae2382",
+          "sha256": "adb19179990f019c0d0490ed5145d36c2839d6843928ae1a28ce4d0131ef5b4d"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "47846aaa785914eb7d1e9e1db3a332b335d40c50f9b8133d4983c101ed7475e5",
+          "sha256": "515aa1012a2153606ea0759b2317e6b1f5b72e5d8e6601f6651915750d7070d9"
+        },
+        {
+          "path": "server/tests/security/test_memory_auto_refinement_app.py",
+          "before_sha256": "114e8ad37d123279eaf4d101fc20fa61609642efe37b63623d210c69d926d478",
+          "sha256": "e2296697ade3b946b66ab4a91ca58df14f4586519c1dc526dc66ed6d49966e3c"
+        },
+        {
+          "path": "server/tests/security/test_memory_processing.py",
+          "before_sha256": "62d22e9a7a5a174a7b226b6f7a6fb8d5f73ddd5f9fa8d4788a1230db826825a1",
+          "sha256": "10380d8b9af467c0aee93efe2809933d0ec2f456f71a958a3b2572d020c46fdd"
+        },
+        {
+          "path": "server/tests/security/test_memory_story_auto_refinement.py",
+          "before_sha256": "d7baf0709904a575ef996fd621f5f7c11ad8f104976f211c540847f9f0866b0f",
+          "sha256": "be6b18c6200bd1e0f1efd12c4a129ab224e5105c9ad16e9b1d76867c435d32df"
+        }
+      ],
+      "notes": [
+        "Saved-story refinement gets a separate 180-second owned preparation budget. Interactive selected-story and agent limits remain 60 seconds; caller cancellation/deadline and native resource/cleanup guards remain mandatory.",
+        "Only an explicit authorized refinement POST can requeue an eligible failed, unleased, current-source job. Existing story/revision, other jobs and ready proposals are preserved; retry and prior closed failure category are audited. GET and save replay never retry.",
+        "Store closed provider failure categories without prompts, provider exception text or raw generated responses. No schema, weights, model/provider, resource capacities, sharing or GitHub Actions changes.",
+        "Focused local runtime, worker, authorization, source/revision, retry/idempotency and process-lifecycle checks are distinct from Windows and family-device acceptance."
+      ]
     }
   ]
 }
