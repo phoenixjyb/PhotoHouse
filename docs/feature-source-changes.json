@@ -33114,6 +33114,44 @@
         "Use reviewed household aliases and context-supported ASR/proper-name corrections, separate editorial title labels from narration, synthesize concise coherent prose, and ask only about fact-blocking ambiguities. Originals, provider/model/settings, one model call and resource/ownership controls remain unchanged.",
         "Focused worker/context/decoder regressions cover source-bound repairs, caps, malformed/duplicate/unchanged repairs, legacy v1-v3 shape, review-required output and cache recipe separation. Local checks do not establish native editing quality or Windows deployment."
       ]
+    },
+    {
+      "feature": "bounded-story-repair-plan-v6-20261101",
+      "source_base": "15c2fca79bcd1950e9075e549e41076a57d1cf99",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "64dacce3ae765f05fde3d63fd278ed02fca1c7baa6ddb60f4d139a32ab4a544d",
+          "sha256": "111581b6fca764478b5d60f43f84fb7f7dc9a880e5e9173548aec0f4f1134427"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "6d1dee23e0abc4ee57e428b6d3f5f33090695f38b5f60a6371708392bdbbaa8e",
+          "sha256": "d9f64c8f35cd9f3a4f4e189f46c38e1b709fe77a2f55a25657ecce5c0730aa66"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "f15b6e38ce4c0858efa738e197c7beefab7ce665328a1647dd7baf26c31f7759",
+          "sha256": "a1ca511d522c1720ddae5223e7f26eb3412d9ad1b9e94d4c046757d23a403ec9"
+        },
+        {
+          "path": "server/tests/security/test_memory_refinement_editorial.py",
+          "before_sha256": "1ead2c536ebdf655964e07d0a31f9f59758ba8e95a7f6852194469a2d40c7bdb",
+          "sha256": "49670331bd2a4979ae466f734c577267f644a984719974a18806fa751d5ee308"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": "61b97a3f8d63f9f43931922f69b0212be766428f19cccb865625e25898a5675c",
+          "sha256": "4cedc3f27fe201d93c508b88d7e91c97742fafa6cb8f930dfde936bc27c69854"
+        }
+      ],
+      "notes": [
+        "Bound the editor repair list to eight short fragments, 64 characters and 192 UTF-8 bytes per value, and shorten the Chinese instruction block. Version the cache profile as asr_editorial_v6 while retaining the unchanged public review-required narrative schema.",
+        "Keep the same model, provider, one-call flow, inference settings, original preservation, CPU/RAM limits and request deadline. An actual request deadline in the prior candidate motivated reducing work; local tests do not identify the native timing cause or prove editing quality.",
+        "Focused tests retain source-bound repair validation, malformed/duplicate/unchanged/oversized repair refusals, host-owned IDs/citations, legacy v1-v3 payload behavior and review-required proposals. No Windows deployment follows from this source entry."
+      ]
     }
   ]
 }
