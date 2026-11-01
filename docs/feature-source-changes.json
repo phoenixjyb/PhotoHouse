@@ -32874,6 +32874,44 @@
       "notes": [
         "Validate the current reviewed index and authorized graph as before, but fingerprint only selected canonical names, aliases and catalog identities. Unrelated library or unmentioned-person updates cannot discard a valid story draft. Selected name changes still stale the result."
       ]
+    },
+    {
+      "feature": "selected-reviewed-visual-story-name-context-20261101",
+      "source_base": "62f2a4850e365e50cc5198a0bd6676ae64b82e51",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/JUDE_ASSISTANT.md",
+          "before_sha256": "fe607e7cd73e8fe8b319338633bb69cbd251e492c2fec53392d5fa8df9699220",
+          "sha256": "c501cb07f3de1226b257c4f0059e09dea95bbf2e7dbb03260de8ac486db50f6d"
+        },
+        {
+          "path": "server/backend/app/access/memory_jobs.py",
+          "before_sha256": "22390ad416f6a822089827f6fc0347f99a3f0ee53c61ebfabf5030e797afeccf",
+          "sha256": "0b8e9f545bb45beb2d0ee7fe296d0a0f8e3f85c21a49518644029134bbb99aef"
+        },
+        {
+          "path": "server/backend/app/access/story_refinement_context.py",
+          "before_sha256": "59d5f849c07e95d4adec8702cd600948abaa49d87feafd4e1a7c1a1bc573011c",
+          "sha256": "476ab3cf12339e22dcd21b401b353184c2c185ee8539c6b9358b92d79f38598b"
+        },
+        {
+          "path": "server/tests/security/test_memory_processing.py",
+          "before_sha256": "c8211925e64839e80149d9018aab85b1bf4cfeaa344767b55b50ff7b41dfc9d0",
+          "sha256": "75dbc5ab2f3bd88fe736a1977b342e32921c9a6a0a212d3fedad7192d11de374"
+        },
+        {
+          "path": "server/tests/security/test_story_refinement_context.py",
+          "before_sha256": "b5e30853de3485ae7054326681f46eb96d4c0a592b4d5d0728e172c0f813306d",
+          "sha256": "16fd22e08d7ad3ddd56ddde78c449fc17640d75ebe995f962562b51fe1222f3a"
+        }
+      ],
+      "notes": [
+        "Automatic saved-story refinement receives only its authorized selected asset IDs. Existing manual ReviewedFace assignments can supply reviewed names even when speech spelling does not exactly match; no new recognition/VLM job or unreviewed identity inference occurs.",
+        "Foreign, hidden, stale, ambiguous and unreviewed assignments are excluded or refused. Selected visual identity bindings are revalidated and fingerprinted; unrelated catalog changes cannot discard a proposal.",
+        "No library schema, originals, model/provider, resource caps, GitHub Actions or Windows service changes. Focused local checks do not establish Windows model quality or deployment."
+      ]
     }
   ]
 }

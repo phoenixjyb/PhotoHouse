@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / 'backend'), str(ROOT / 'tests' / 'security')]
 
 from app.access import discovery as d
-from app.access.discovery_provider import MemoryIndexProvider, ReviewedPerson
+from app.access.discovery_provider import MemoryIndexProvider, ReviewedFace, ReviewedPerson
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.kinship import KinshipGraph
 from app.access.runtime import AccessRuntime
@@ -19,7 +19,7 @@ from app.access.service import AccessService
 from app.access.story_refinement_context import (
     MAX_RELATED_PEOPLE, StoryRefinementContextError, resolve,
 )
-from phone_discovery_fixture import create, reviewed, TOKEN, NOW
+from phone_discovery_fixture import create, reviewed, TOKEN, NOW, MAXIMUM
 
 _DEFAULT = object()
 
@@ -51,7 +51,8 @@ class StoryRefinementContextTests(unittest.TestCase):
             self.access_runtime, MemoryIndexProvider((index,)), d.ReadBudget())
 
     def call(self, narration, *, token=TOKEN, library='family-a',
-             discovery_runtime=_DEFAULT, kinship_provider=None):
+             discovery_runtime=_DEFAULT, kinship_provider=None,
+             selected_asset_ids=()):
         with self.connection() as db:
             access = AccessService(db, clock=lambda: NOW)
             with access._transaction():
@@ -59,7 +60,8 @@ class StoryRefinementContextTests(unittest.TestCase):
                 return resolve(access, library, principal, narration,
                     discovery_runtime=(self.discovery_runtime if discovery_runtime is _DEFAULT
                                        else discovery_runtime),
-                    kinship_provider=kinship_provider)
+                    kinship_provider=kinship_provider,
+                    selected_asset_ids=selected_asset_ids)
 
     def graph(self, *, account='one', library='family-a', person_id='301',
               binding_label='Sample Child / 示例儿童', graph_id='fixture-graph', revision=1,
@@ -85,6 +87,60 @@ class StoryRefinementContextTests(unittest.TestCase):
         self.assertEqual(set(people[0]), {'name', 'aliases'})
         self.assertNotIn('id', people[0])
         self.assertNotIn('library_id', people[0])
+
+    def test_selected_asset_reviewed_face_supplies_name_without_text_mention(self):
+        people, _identity = self.call('那天大家在公园里玩得很开心。',
+                                      selected_asset_ids=('101',))
+        self.assertEqual(people, [{'name': 'Sample Child / 示例儿童',
+                                  'aliases': ['Sample Child', '示例儿童']}])
+
+    def test_only_assignments_on_selected_assets_supply_face_context(self):
+        people, _identity = self.call('回忆里没有提到姓名。',
+                                      selected_asset_ids=('101',))
+        self.assertEqual([person['name'] for person in people],
+                         ['Sample Child / 示例儿童'])
+
+    def test_selected_face_with_ambiguous_canonical_name_is_not_supplied(self):
+        duplicate = replace(self.index.people[0],
+                            label=self.index.people[1].label, aliases=())
+        self.install(replace(self.index,
+                             people=(duplicate, self.index.people[1])))
+        people, _identity = self.call('没有说出姓名。',
+                                      selected_asset_ids=('101',))
+        self.assertEqual(people, [])
+
+    def test_foreign_or_unselected_asset_ids_do_not_supply_names(self):
+        with self.assertRaises(StoryRefinementContextError):
+            self.call('没有提到姓名。', selected_asset_ids=('201',))
+        people, _identity = self.call('没有提到姓名。', selected_asset_ids=('102',))
+        self.assertEqual(people, [])
+
+    def test_unreviewed_detection_and_unreviewed_person_are_not_admitted(self):
+        # The fixture contains a DNN detection on this currently authorized
+        # asset, but no ReviewedFace assignment for it and no reviewed person
+        # DTO for its detector identity.
+        people, _identity = self.call('一张没有文字标注的照片。',
+                                      selected_asset_ids=(str(MAXIMUM),))
+        self.assertEqual(people, [])
+
+    def test_tampered_unreviewed_face_assignment_fails_closed(self):
+        tampered = replace(self.index, assignments=(
+            ReviewedFace('9', '101', '301', source='dnn'),))
+        self.install(tampered)
+        with self.assertRaises(StoryRefinementContextError):
+            self.call('没有提到姓名。', selected_asset_ids=('101',))
+
+    def test_selected_face_identity_changes_are_fingerprinted(self):
+        people1, identity1 = self.call('回忆没有提到名字。',
+                                       selected_asset_ids=('101',))
+        withdrawn = replace(self.index, assignments=tuple(
+            face for face in self.index.assignments if face.asset_id != '101'))
+        self.install(withdrawn)
+        people2, identity2 = self.call('回忆没有提到名字。',
+                                       selected_asset_ids=('101',))
+        self.assertTrue(people1)
+        self.assertEqual(people2, [])
+        self.assertNotEqual(identity1, identity2)
 
     def test_graph_adds_chinese_canonical_name_only_after_unique_reviewed_join(self):
         first = replace(self.index.people[0], label='Avery Chen', aliases=('Avery',))
@@ -199,6 +255,19 @@ class StoryRefinementContextTests(unittest.TestCase):
                                      kinship_provider=None)
         self.assertEqual(people, [])
         self.assertRegex(identity, r'^[0-9a-f]{64}$')
+
+    def test_absent_optional_index_with_selected_assets_yields_empty_context(self):
+        people, identity = self.call('没有人名。', discovery_runtime=None,
+                                     selected_asset_ids=('101',))
+        self.assertEqual(people, [])
+        self.assertRegex(identity, r'^[0-9a-f]{64}$')
+
+    def test_selected_asset_ids_are_bounded_unique_current_numeric_ids(self):
+        for invalid in ('101', ('101', '101'), ('0',), ('001',),
+                        tuple(str(1000 + n) for n in range(97))):
+            with self.subTest(invalid_type=type(invalid).__name__, count=len(invalid)):
+                with self.assertRaises(StoryRefinementContextError):
+                    self.call('没有人名。', selected_asset_ids=invalid)
 
 
 if __name__ == '__main__':

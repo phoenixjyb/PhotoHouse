@@ -90,7 +90,11 @@ stories. It asks the same local model to correct context-supported ASR spelling,
 remove fillers and repeated clauses, repair grammar and organize cohesive prose.
 Chinese output should read as restrained personal 散文, without invented scenery,
 dialogue or events. Relevant reviewed names and aliases come from the authorized
-library catalog and account-scoped kinship graph. An identity mapping helps spell
+library catalog and account-scoped kinship graph. The story context also uses
+manual, reviewed face-to-person assignments from its currently authorized selected
+photos. This can supply a known name when the transcript has no exact spelling
+match, without running another vision job. Raw detections and unreviewed or
+ambiguous assignments add no private identity. An identity mapping helps spell
 a mentioned name; it does not establish who attended an event. Existing selected
 captions and family notes keep their original provenance and access boundaries.
 No new vision model or unselected media scan is started by this recipe.

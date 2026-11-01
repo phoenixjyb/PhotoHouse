@@ -144,9 +144,11 @@ class MemoryProcessingTests(unittest.TestCase):
 
     def test_auto_refinement_uses_current_name_context_and_stales_if_aliases_change_during_generation(self):
         people = [{'name':'林澄','aliases':['Lina']}]
-        def resolver(access, library, principal, narration):
+        def resolver(access, library, principal, narration, *, selected_asset_ids=()):
             self.assertTrue(access.db.in_transaction)
             self.assertEqual(library, 'family-a')
+            self.assertTrue(selected_asset_ids)
+            self.assertEqual(len(selected_asset_ids),len(set(selected_asset_ids)))
             return list(people), json.dumps(people,ensure_ascii=False)
         queued = self.queue_auto_story(resolver=resolver)
         class Narrator:
@@ -170,7 +172,7 @@ class MemoryProcessingTests(unittest.TestCase):
     def test_busy_name_context_defers_validation_and_reuses_the_completed_model_proposal(self):
         from app.access.story_refinement_context import StoryRefinementContextBusy
         calls = {'resolve':0,'model':0}
-        def resolver(access, library, principal, narration):
+        def resolver(access, library, principal, narration, *, selected_asset_ids=()):
             calls['resolve'] += 1
             if calls['resolve'] == 3:  # enqueue, prepare, then post-model validation
                 raise StoryRefinementContextBusy()
@@ -202,7 +204,7 @@ class MemoryProcessingTests(unittest.TestCase):
     def test_busy_name_context_before_generation_keeps_the_queued_job(self):
         from app.access.story_refinement_context import StoryRefinementContextBusy
         queued=self.queue_auto_story()
-        def busy(*args):
+        def busy(*args, **kwargs):
             raise StoryRefinementContextBusy()
         with self.connection() as db:
             result=process_job(db,narrator=object(),saved_story_only=True,

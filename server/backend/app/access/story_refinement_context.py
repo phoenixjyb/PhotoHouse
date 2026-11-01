@@ -1,8 +1,9 @@
 """Resolve bounded reviewed names for automatic saved-story refinement.
 
 This is an internal prompt-context adapter. Callers must first reauthorize the
-job actor and library with ``member``. It never resolves faces, performs fuzzy
-matching, or returns account, catalog, graph, or configuration identifiers.
+job actor and library with ``member``. It never runs face recognition or fuzzy
+matching: only existing manual reviewed assignments supply visual name context.
+It returns no account, catalog, graph, or configuration identifiers.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ from .transport import TransportError
 
 MAX_RELATED_PEOPLE = 32
 MAX_NARRATION_BYTES = 1024 * 1024
+MAX_SELECTED_ASSET_IDS = 96
 
 
 class StoryRefinementContextError(ValueError):
@@ -80,7 +82,7 @@ def _authorized_member(library, member):
 
 def _reviewed_index(access, library, discovery_runtime):
     if discovery_runtime is None:
-        return None, {'kind': 'unconfigured'}
+        return None, {'kind': 'unconfigured'}, None
     try:
         provider = discovery_runtime.provider
         budget = discovery_runtime.budget
@@ -92,7 +94,7 @@ def _reviewed_index(access, library, discovery_runtime):
             check()
             index = provider.get(library)
             if index is None:
-                return None, {'kind': 'no-index', 'library_id': library}
+                return None, {'kind': 'no-index', 'library_id': library}, None
             people, _places = d.validate(index, library, budget.rows)
             if len(d.packed(asdict(index))) > budget.index_bytes:
                 raise StoryRefinementContextError()
@@ -109,6 +111,11 @@ def _reviewed_index(access, library, discovery_runtime):
             if (tuple(str(row[0]) for row in source['assets']) != current.scope_ids or
                     d.digest(source) != current.source_digest):
                 raise StoryRefinementContextError()
+            asset_ids = tuple(str(row[0]) for row in source['assets'])
+            for asset_id in asset_ids:
+                d.identifier(asset_id)
+            if asset_ids != tuple(sorted(set(asset_ids), key=int)):
+                raise StoryRefinementContextError()
             return current, {
                 'kind': 'reviewed-index',
                 'library_id': library,
@@ -116,7 +123,7 @@ def _reviewed_index(access, library, discovery_runtime):
                 'source_digest': current.source_digest,
                 'index_digest': d.digest(asdict(current)),
                 'people_ids': sorted(people, key=int),
-            }
+            }, frozenset(asset_ids)
     except d.DiscoveryBusy:
         raise StoryRefinementContextBusy() from None
     except StoryRefinementContextError:
@@ -148,26 +155,57 @@ def _graph_for_member(kinship_provider, member, library):
         raise StoryRefinementContextError() from None
 
 
+def _selected_asset_ids(values):
+    if type(values) not in (tuple, list) or len(values) > MAX_SELECTED_ASSET_IDS:
+        raise StoryRefinementContextError()
+    result = []
+    try:
+        for value in values:
+            d.identifier(value)
+            result.append(value)
+    except Exception:
+        raise StoryRefinementContextError() from None
+    if len(result) != len(set(result)):
+        raise StoryRefinementContextError()
+    return tuple(sorted(result, key=int))
+
+
 def resolve(access, library, member, narration, *, discovery_runtime=None,
-            kinship_provider=None):
+            kinship_provider=None, selected_asset_ids=()):
     """Return ``(closed_people_dto, identity_digest)`` for one current story.
 
     ``narration`` may combine the selected story narration and selected source
     excerpts. Matching is exact after Unicode normalization; English names use
-    token boundaries. Unmentioned roster entries are never returned.
+    token boundaries. Only mentioned identities or manual reviewed assignments
+    on the caller's authorized selected assets can supply name context.
     """
     _authorized_member(library, member)
     if (access is None or not hasattr(access, 'db') or
             not getattr(access.db, 'in_transaction', False)):
         raise StoryRefinementContextError()
+    selected_asset_ids = _selected_asset_ids(selected_asset_ids)
     narration = _text(narration, MAX_NARRATION_BYTES, multiline=True)
     haystack = d.fold(narration)
 
-    index, index_identity = _reviewed_index(access, library, discovery_runtime)
+    index, index_identity, current_asset_ids = _reviewed_index(
+        access, library, discovery_runtime)
     graph, graph_identity = _graph_for_member(kinship_provider, member, library)
     if index is None:
-        return [], _digest({'version': 1, 'index': index_identity,
-                            'graph': graph_identity, 'people': []})
+        # No names are supplied, so unrelated optional graph changes cannot
+        # invalidate prose. Configured sources were still scope-checked above.
+        identity = {'version': 2, 'library': library, 'account': member['account_id'],
+                    'catalog_ids': [], 'people': []}
+        if selected_asset_ids:
+            identity['selected_face_bindings'] = []
+        return [], _digest(identity)
+    if selected_asset_ids:
+        if type(current_asset_ids) is not frozenset:
+            raise StoryRefinementContextError()
+        # IDs were authorized with the job's active member/library context.
+        # Require them to remain current active assets in this same validated
+        # index before they can select a reviewed face assignment.
+        if not set(selected_asset_ids) <= current_asset_ids:
+            raise StoryRefinementContextError()
 
     # A graph name is admitted only through its unique catalog binding. If two
     # graph identities point at one reviewed person, both links are ambiguous.
@@ -225,14 +263,33 @@ def resolve(access, library, member, narration, *, discovery_runtime=None,
         owners.setdefault(d.fold(canonical), set()).add(reviewed.id)
         candidates[reviewed.id] = {'name': canonical, 'aliases': aliases}
 
-    selected, ambiguous = set(), set()
+    mentioned_selected, ambiguous = set(), set()
     for name, identities in owners.items():
         if _mentioned(haystack, name):
             if len(identities) == 1:
-                selected.update(identities)
+                mentioned_selected.update(identities)
             else:
                 ambiguous.update(identities)
-    selected -= ambiguous
+    selected_face_bindings = sorted({
+        (face.asset_id, face.person_id)
+        for face in index.assignments
+        if face.asset_id in selected_asset_ids
+    }, key=lambda pair: (int(pair[0]), int(pair[1])))
+    face_selected = {person_id for _asset_id, person_id in selected_face_bindings}
+    selected = (mentioned_selected | face_selected) - ambiguous
+    # A reviewed face can select a catalog identity without text spelling it.
+    # Keep that contextual use unambiguous: omit a colliding canonical label,
+    # and drop colliding aliases while preserving the established exact-mention
+    # behavior for identities already selected by narration.
+    for person_id in face_selected - mentioned_selected:
+        candidate = candidates[person_id]
+        if len(owners.get(d.fold(candidate['name']), ())) > 1:
+            selected.discard(person_id)
+            continue
+        candidate['aliases'] = [alias for alias in candidate['aliases']
+                                if len(owners.get(d.fold(alias), ())) == 1]
+    selected_face_bindings = [binding for binding in selected_face_bindings
+                              if binding[1] in selected]
     if len(selected) > MAX_RELATED_PEOPLE:
         raise StoryRefinementContextError()
     result = [candidates[ident] for ident in sorted(selected, key=int)]
@@ -244,4 +301,6 @@ def resolve(access, library, member, narration, *, discovery_runtime=None,
     # unrelated caption or unmentioned person's edit must not discard prose.
     identity = {'version': 2, 'library': library, 'account': member['account_id'],
                 'catalog_ids': sorted(selected, key=int), 'people': result}
+    if selected_asset_ids:
+        identity['selected_face_bindings'] = selected_face_bindings
     return result, _digest(identity)

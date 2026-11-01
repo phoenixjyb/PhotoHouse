@@ -217,7 +217,9 @@ def context(access, library, member, target_type, ident, instructions='', recent
         people, identity_digest = resolver(
             access, library, member, '\n'.join(
                 [bundle['title'], *(c['narration'] for c in chapters),
-                 *(s['text'] for s in sources)]))
+                 *(s['text'] for s in sources)]),
+            selected_asset_ids=tuple(dict.fromkeys(
+                asset for chapter in chapters for asset in chapter['asset_ids'])))
         bundle.update(version=4, story_refinement={
             'profile': STORY_REFINEMENT_PROFILE, 'people': people})
         dependencies.append([STORY_REFINEMENT_PROFILE, people, identity_digest])
