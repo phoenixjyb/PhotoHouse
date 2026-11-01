@@ -128,7 +128,7 @@ def strict_recipe(raw: bytes) -> dict:
         launch_digest = process_launch_digest(launch, exchange_root=recipe['exchange_root'])
         if (type(model) is not str or not _MODEL.fullmatch(model) or '://' in model
                 or profile.launch_sha256 != launch_digest
-                or launch.memory_limit > 2 * 1024**3 or launch.process_limit > 8
+                or launch.memory_limit > 4 * 1024**3 or launch.process_limit > 8
                 or launch.minimum_free_ram < 8 * 1024**3
                 or profile.minimum_free_ram < launch.minimum_free_ram):
             raise ValueError()

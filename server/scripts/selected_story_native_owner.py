@@ -46,7 +46,7 @@ def windows_story_service_provider(launch, model, *, host_directory, capacity_di
     gib = 1024 ** 3
     if (type(launch) is not NativeStoryLaunch or type(profile) is not HostResourceProfile
             or not Path(host_directory).is_absolute() or exchange_root is None
-            or launch.memory_limit > 2 * gib or launch.process_limit > 8
+            or launch.memory_limit > 4 * gib or launch.process_limit > 8
             or launch.minimum_free_ram < 8 * gib
             or profile.minimum_free_ram < launch.minimum_free_ram
             or type(timeout) not in (int, float) or not 0 < timeout <= 60):

@@ -153,13 +153,31 @@ class SelectedStoryServiceRecipeTests(RecipeFixture):
         self.invalid(self.encode(self.recipe | {'resource_profile': profile}))
 
     def test_parser_enforces_launch_limits_and_exact_exchange_profile_binding(self):
-        self.invalid(self.rebind_launch(memory_limit=2 * GiB + 1))
+        self.invalid(self.rebind_launch(memory_limit=4 * GiB + 1))
         self.invalid(self.rebind_launch(process_limit=9))
         self.invalid(self.rebind_launch(minimum_free_ram=8 * GiB - 1))
         profile = self.profile | {'minimum_free_ram': 4 * GiB}
         self.invalid(self.encode(self.recipe | {'resource_profile': profile}))
         profile = self.profile | {'launch_sha256': 'b' * 64}
         self.invalid(self.encode(self.recipe | {'resource_profile': profile}))
+
+    def test_four_gib_worker_recipe_remains_inert_and_operator_bound(self):
+        raw = self.rebind_launch(memory_limit=4 * GiB)
+        parsed = strict_recipe(raw)
+        self.assertEqual(4 * GiB, parsed['launch'].memory_limit)
+        digest = process_launch_digest(parsed['launch'], exchange_root=parsed['exchange_root'])
+        profile = resource_profile_digest(parsed['resource_profile'])
+        with patch('app.access.selected_story_native.NativeStoryProcessOwner._launch',
+                   side_effect=AssertionError('No native work during recipe construction')):
+            provider = build_recipe_provider(raw, expected_model=MODEL,
+                expected_launch_sha256=digest, expected_profile_sha256=profile)
+        self.assertFalse(provider.enabled)
+        self.assertEqual([], list(self.root.iterdir()))
+        # The expanded resource cap still requires a digest matching the exact launch.
+        with self.assertRaises(ValueError):
+            build_recipe_provider(raw, expected_model=MODEL,
+                expected_launch_sha256=self.expected_launch_sha256,
+                expected_profile_sha256=self.expected_profile_sha256)
 
     def test_build_requires_all_operator_pins_and_runtime_joins(self):
         kwargs = dict(expected_model=MODEL,

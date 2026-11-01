@@ -131,11 +131,26 @@ class PersistentWindowsStoryFactoryTests(unittest.TestCase):
             self.assertIsNone(provider.host_admission.probe._conflicts)
             self.assertEqual(list(base.iterdir()),[]);kernel.assert_not_called();activate.assert_not_called()
 
+    def test_service_accepts_four_gib_without_native_work_or_storage(self):
+        from dataclasses import replace
+        with tempfile.TemporaryDirectory() as directory:
+            base=Path(directory).resolve();spec,kwargs=self.inputs(base)
+            spec=NativeStoryLaunch(spec.executable,spec.executable_sha256,spec.argv,
+                spec.cwd,dict(spec.environment),memory_limit=4*1024**3,
+                minimum_free_ram=spec.minimum_free_ram)
+            kwargs['profile']=replace(kwargs['profile'],launch_sha256=
+                process_launch_digest(spec,exchange_root=kwargs['exchange_root']))
+            with patch.object(factory,'WindowsAPI') as kernel, patch.object(HostInferenceAdmission,'set_maintenance') as activate:
+                provider=factory.windows_story_service_provider(spec,MODEL,**kwargs)
+            self.assertFalse(provider.enabled)
+            kernel.assert_not_called();activate.assert_not_called()
+            self.assertEqual([],list(base.iterdir()))
+
     def test_service_refuses_relaxed_worker_limits_missing_conflicts_or_long_timeout(self):
         from dataclasses import replace
         with tempfile.TemporaryDirectory() as directory:
             spec,kwargs=self.inputs(Path(directory).resolve())
-            for changes in [dict(memory_limit=4*1024**3),dict(process_limit=9),dict(minimum_free_ram=0)]:
+            for changes in [dict(memory_limit=4*1024**3+1),dict(process_limit=9),dict(minimum_free_ram=0)]:
                 invalid=NativeStoryLaunch(spec.executable,spec.executable_sha256,spec.argv,spec.cwd,
                     dict(spec.environment),memory_limit=changes.get('memory_limit',spec.memory_limit),
                     process_limit=changes.get('process_limit',spec.process_limit),minimum_free_ram=changes.get('minimum_free_ram',spec.minimum_free_ram))

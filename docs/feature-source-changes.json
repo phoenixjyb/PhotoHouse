@@ -33152,6 +33152,59 @@
         "Keep the same model, provider, one-call flow, inference settings, original preservation, CPU/RAM limits and request deadline. An actual request deadline in the prior candidate motivated reducing work; local tests do not identify the native timing cause or prove editing quality.",
         "Focused tests retain source-bound repair validation, malformed/duplicate/unchanged/oversized repair refusals, host-owned IDs/citations, legacy v1-v3 payload behavior and review-required proposals. No Windows deployment follows from this source entry."
       ]
+    },
+    {
+      "feature": "approved-four-gib-story-editor-recipe-v7-20261101",
+      "source_base": "a3ce5458a20896d88d19e47bc37f2c18e10069e1",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "111581b6fca764478b5d60f43f84fb7f7dc9a880e5e9173548aec0f4f1134427",
+          "sha256": "76dfae823eec0f8974dca9519aae0cd3af6d9d38d999f1586f89882f77bedeb9"
+        },
+        {
+          "path": "server/scripts/selected_story_service_recipe.py",
+          "before_sha256": "a0725f1b42d8944cb6b3f10d4d8ddd14f8dee25af484248a70953c4ad9d19d3e",
+          "sha256": "57f9fa43c0695d03cfecbab2f036b91e8a67b180336e4f259d95e9046c39509b"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "d9f64c8f35cd9f3a4f4e189f46c38e1b709fe77a2f55a25657ecce5c0730aa66",
+          "sha256": "db5ac75f6f2fa7625d020a0dc7cd1241e722ddd6a79bd8228a295c493f8222c3"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "a1ca511d522c1720ddae5223e7f26eb3412d9ad1b9e94d4c046757d23a403ec9",
+          "sha256": "dafc68461aeeb44b9f097fa41e67b373ea0a5b2dfbac2ac9ff8557f29aa58a7b"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": "4cedc3f27fe201d93c508b88d7e91c97742fafa6cb8f930dfde936bc27c69854",
+          "sha256": "055941fd174f9b095f6df035643e82b538f9174d2810af6bd41e9190d2a0d361"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_service_recipe.py",
+          "before_sha256": "a4629238ca49f254f1f7e271dced479bac1013fdc21b9dc85f10a79f4e47400f",
+          "sha256": "a5ad65b97ff7fa55cdcd7889d92345579d04925cf6429d0b35d81317c0096557"
+        },
+        {
+          "path": "server/scripts/selected_story_native_owner.py",
+          "before_sha256": "08f7e2ba0c28b60244e47d4fe83472953869fa8ddd953e476167cc0362d9c63f",
+          "sha256": "d3a6c5cb343411568f066ff5997f401d55f66e7d62e0594d7880873f95657d6f"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_windows_factory.py",
+          "before_sha256": "13cd7aba27a830d0a0eb4652c4e68b77e7a0071a08f231d216d2b79a43b21474",
+          "sha256": "b2ee29741d7821167b4d9d5320d67238e46cec848fb3be46e76248b2661988d9"
+        }
+      ],
+      "notes": [
+        "Permit an explicitly operator-bound CPU worker recipe up to 4 GiB for the separately approved larger local editor model; retain exact launch/profile digests, process limit, free-memory checks, inert construction and default-off behavior. No model selection or activation occurs in source.",
+        "Version the editorial cache profile as asr_editorial_v7 so the approved candidate is not served a cached draft from earlier model trials. The prompt, public narrative schema, original preservation and review-required output are unchanged.",
+        "Focused checks cover the exact 4 GiB boundary, refusal above it, unchanged old recipe validity and operator binding. Actual model resource fit, birthday quality and live rollout remain separate qualification gates."
+      ]
     }
   ]
 }
