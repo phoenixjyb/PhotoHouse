@@ -88,6 +88,9 @@ class FakeKernel:
         self.events.append(('wait_process', process, milliseconds))
         return 'exited' if self.process_exited else 'timeout'
 
+    def exit_code(self, _process):
+        return getattr(self, 'exit_status', 0)
+
     def active_processes(self, job):
         self.events.append(('active_processes', job, self.active))
         if self.inventory_error is not None:
@@ -150,6 +153,29 @@ class NativeStoryProcessOwnerTests(unittest.IsolatedAsyncioTestCase):
                         kernel.events.index(('close', 'thread')))
         self.assertLess(kernel.events.index(('active_processes', 'job', 0)),
                         kernel.events.index(('close', 'job')))
+
+    async def test_known_saved_story_exit_code_has_only_closed_worker_phase(self):
+        kernel = FakeKernel(exit_status=83)
+        owner, _, _ = self.make_owner(kernel)
+        scope = make_scope()
+        self.assertTrue(await owner.begin(scope))
+        with self.assertRaises(NativeStoryOwnerError) as caught:
+            await owner.wait_for_exit(scope)
+        self.assertEqual('launch_failed', caught.exception.category)
+        self.assertEqual('generation', caught.exception.worker_phase)
+        self.assertEqual('Native story process unavailable', str(caught.exception))
+        self.assertTrue(await owner.stop_and_reconcile(scope))
+
+    async def test_unrecognized_worker_exit_keeps_legacy_category_without_phase(self):
+        kernel = FakeKernel(exit_status=7)
+        owner, _, _ = self.make_owner(kernel)
+        scope = make_scope()
+        self.assertTrue(await owner.begin(scope))
+        with self.assertRaises(NativeStoryOwnerError) as caught:
+            await owner.wait_for_exit(scope)
+        self.assertEqual('launch_failed', caught.exception.category)
+        self.assertIsNone(caught.exception.worker_phase)
+        self.assertTrue(await owner.stop_and_reconcile(scope))
 
     async def test_cancellation_during_slow_create_retains_launch_and_cleans_returned_child(self):
         kernel = FakeKernel(block_create=True)

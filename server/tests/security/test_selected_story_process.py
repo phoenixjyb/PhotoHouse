@@ -46,9 +46,10 @@ def encoded_response(*, operation_id='abcdefab-cdef-4abc-8def-abcdefabcdef',
 class FileKernel:
     """Native owner test double; writes only synthetic files at resume."""
 
-    def __init__(self, writer=None, *, exited=True):
+    def __init__(self, writer=None, *, exited=True, exit_status=0):
         self.writer = writer
         self.exited = exited
+        self.exit_status = exit_status
         self.events = []
         self.environment = None
         self.active = 0
@@ -79,7 +80,7 @@ class FileKernel:
         return 'exited' if self.exited else 'timeout'
 
     def exit_code(self, _process):
-        return 0
+        return self.exit_status
 
     def active_processes(self, _job):
         return self.active
@@ -127,6 +128,19 @@ class ProcessSelectedStoryTests(unittest.IsolatedAsyncioTestCase):
             enabled=enabled, cleanup_seconds=0.05, **kwargs)
         self.addAsyncCleanup(provider.close)
         return provider, kernel, factories
+
+    async def test_saved_story_provider_preserves_only_allowlisted_worker_phase(self):
+        for exit_status, expected_phase in ((83, 'generation'), (7, None)):
+            with self.subTest(exit_status=exit_status):
+                provider, kernel, _ = self.saved_provider(kernel=FileKernel(
+                    exited=True, exit_status=exit_status))
+                scope = make_scope()
+                with self.assertRaises(ProcessSelectedStoryError) as caught:
+                    await provider.prepare(saved_bundle(), scope)
+                self.assertEqual('worker', caught.exception.category)
+                self.assertEqual(expected_phase, caught.exception.worker_phase)
+                self.assertEqual('Process selected-story provider unavailable', str(caught.exception))
+                self.assertTrue(await provider.stop_and_reconcile(scope))
 
     async def cleanup_call(self, provider, scope):
         self.assertTrue(await asyncio.wait_for(provider.stop_and_reconcile(scope), 2))

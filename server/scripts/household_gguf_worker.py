@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import sys
+import json
 
 sys.dont_write_bytecode = True
 SERVER = Path(__file__).resolve().parents[1]
@@ -15,8 +16,42 @@ sys.path[:0] = [str(SERVER / 'backend'), str(SERVER / 'scripts')]
 
 import selected_story_gguf_worker as story
 _STORY_RUN = story.run
+_STORY_FAILURE_RECORD = story._failure_record
 from app.access.agent_decision import generation, validate_state, validate_decision
 from app.access.memory_narrative import _generation_payload, _validate_bundle, validate_narrative
+
+
+SAVED_STORY_FAILURE_EXIT_CODES = {
+    'request': 80,
+    'model_pin': 81,
+    'backend_load': 82,
+    'generation': 83,
+    'output_validation': 84,
+    'unchanged_narration': 85,
+    'model_close': 86,
+    'tokenize': 87,
+    'context': 88,
+    'grammar': 89,
+    'completion': 90,
+    'narrative': 91,
+    'source_recheck': 92,
+    'response_write': 93,
+}
+
+
+class SavedStoryWorkerFailure(story.WorkerUnavailable):
+    """Closed, content-free saved-story failure passed through the worker CLI."""
+
+    def __init__(self, phase):
+        self.phase = phase if type(phase) is str and phase in SAVED_STORY_FAILURE_EXIT_CODES else 'request'
+        RuntimeError.__init__(self, 'Saved-story worker unavailable')
+
+
+def _failure_record(error):
+    if type(error) is not SavedStoryWorkerFailure:
+        return _STORY_FAILURE_RECORD(error)
+    record = {'status': 'failed', 'category': 'worker_unavailable', 'phase': error.phase}
+    return SAVED_STORY_FAILURE_EXIT_CODES[error.phase], json.dumps(record, separators=(',', ':'))
 
 
 def _saved_story_narrative(settings, environment, request, response, operation,
@@ -41,20 +76,35 @@ def _saved_story_narrative(settings, environment, request, response, operation,
         try:
             phase = 'generation'
             output = engine.complete(expected, settings)
+            phase = 'output_validation'
             if type(output) is not str or len(output.encode('utf-8')) > story.MAX_OUTPUT_BYTES:
                 story._refuse(phase)
-            result = validate_narrative(story._strict_loads(output.encode('utf-8')), bundle)
+            decoded = story._strict_loads(output.encode('utf-8'))
+            phase = 'narrative'
+            try:
+                result = validate_narrative(decoded, bundle)
+            except ValueError as error:
+                if str(error) == 'story refinement returned unchanged narration':
+                    raise SavedStoryWorkerFailure('unchanged_narration') from None
+                raise
+            phase = 'output_validation'
             payload = story._json_bytes({'version': 1, 'operation_id': operation,
                 'model': settings.model, 'result': result}, 'response', story.MAX_PROVIDER_BYTES)
-        except story.WorkerUnavailable:
+        except SavedStoryWorkerFailure:
             raise
+        except story.WorkerUnavailable as error:
+            failed_phase = getattr(error, 'phase', None)
+            if type(failed_phase) is not str or failed_phase not in SAVED_STORY_FAILURE_EXIT_CODES:
+                failed_phase = phase
+            raise SavedStoryWorkerFailure(failed_phase) from None
         except Exception:
-            raise story.WorkerUnavailable(phase) from None
+            raise SavedStoryWorkerFailure(phase) from None
         finally:
+            phase = 'model_close'
             try:
                 engine.close()
             except Exception:
-                raise story.WorkerUnavailable('model_close') from None
+                raise SavedStoryWorkerFailure('model_close') from None
         phase = 'source_recheck'
         if (story._local_file(settings.model_file) != model_path
                 or story.stable_stat_identity(story._direct(model_path, False)) != model_identity
@@ -69,10 +119,15 @@ def _saved_story_narrative(settings, environment, request, response, operation,
             stream.flush()
             os.fsync(stream.fileno())
         return 0
-    except story.WorkerUnavailable:
+    except SavedStoryWorkerFailure:
         raise
+    except story.WorkerUnavailable as error:
+        failed_phase = getattr(error, 'phase', None)
+        if type(failed_phase) is not str or failed_phase not in SAVED_STORY_FAILURE_EXIT_CODES:
+            failed_phase = phase
+        raise SavedStoryWorkerFailure(failed_phase) from None
     except Exception:
-        raise story.WorkerUnavailable(phase) from None
+        raise SavedStoryWorkerFailure(phase) from None
 
 
 def run(settings, *, enabled=False, environment=None, backend_factory=None):
@@ -148,6 +203,6 @@ if __name__ == '__main__':
     try:
         raise SystemExit(main())
     except Exception as error:
-        code, record = story._failure_record(error)
+        code, record = _failure_record(error)
         print(record, file=sys.stderr)
         raise SystemExit(code) from None

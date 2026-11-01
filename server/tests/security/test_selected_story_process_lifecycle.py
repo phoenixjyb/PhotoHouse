@@ -16,10 +16,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from access.inference_admission import InferenceAdmission
 from access.selected_story_native import NativeStoryLaunch
-from access.selected_story_operations import DraftOperationError, DraftOperations
-from access.selected_story_process import ProcessSelectedStoryProvider
+from access.selected_story_operations import DraftOperationError, DraftOperations, PreparationScope
+from access.selected_story_process import (
+    ProcessSavedStoryProvider, ProcessSelectedStoryError, ProcessSelectedStoryProvider,
+)
 from test_selected_story_native_processes import ProcessKernel
 from test_selected_story_operations import LIBRARY, REQUEST_ID, TOKEN_A, SyntheticSources, request
+from test_selected_story_local import OPERATION_ID
+from test_selected_story_process import MODEL, saved_bundle
 
 
 WORKER = '''import json,os,sys,time
@@ -114,6 +118,38 @@ class ProcessStoryLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(0, gate.state().active)
         self.assertFalse(gate.state().quarantined)
         self.assertTrue(all(not p.exists() for p in kernel.exchanges))
+
+    async def test_household_worker_failure_phase_survives_native_owner_and_saved_provider(self):
+        kernel = WorkerKernel(helpers=0)
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        self.addCleanup(kernel.finish)
+        child = (
+            'import sys;sys.stdin.buffer.read(1);'
+            f'sys.path[:0]=[{str(ROOT / "backend")!r},{str(ROOT / "scripts")!r}];'
+            'import household_gguf_worker as worker;'
+            'error=worker.SavedStoryWorkerFailure("generation");'
+            'code,record=worker._failure_record(error);'
+            'assert code==83 and record=="{\\"status\\":\\"failed\\",\\"category\\":\\"worker_unavailable\\",\\"phase\\":\\"generation\\"}";'
+            'raise SystemExit(code)'
+        )
+        spec = NativeStoryLaunch(sys.executable,
+            hashlib.sha256(Path(sys.executable).read_bytes()).hexdigest(),
+            (sys.executable, '-I', '-B', '-c', child), folder.name,
+            worker_environment(), minimum_free_ram=0)
+        provider = ProcessSavedStoryProvider(spec, MODEL, kernel_factory=lambda: kernel,
+            enabled=True, cleanup_seconds=2)
+        self.addAsyncCleanup(provider.close)
+        scope = PreparationScope(OPERATION_ID, time.monotonic() + 30,
+                                threading.Event(), time.monotonic)
+        with self.assertRaises(ProcessSelectedStoryError) as caught:
+            await provider.prepare(saved_bundle(), scope)
+        self.assertEqual('worker', caught.exception.category)
+        self.assertEqual('generation', caught.exception.worker_phase)
+        self.assertEqual('Process selected-story provider unavailable', str(caught.exception))
+        self.assertTrue(await provider.stop_and_reconcile(scope))
+        self.assertTrue(all(child.poll() is not None for child in kernel.children))
+        self.assertTrue(all(not exchange.exists() for exchange in kernel.exchanges))
 
     async def test_cancelled_operation_removes_exchange_and_fences_words(self):
         service, provider, kernel, gate, _ = self.service(delay=120)

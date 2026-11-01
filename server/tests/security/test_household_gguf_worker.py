@@ -1,7 +1,7 @@
 """Household dispatcher fixtures only; actual pinned model runs on Windows."""
-import hashlib,json,os,subprocess,sys,unittest
+import contextlib,hashlib,io,json,os,runpy,subprocess,sys,unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock,patch
 
 SCRIPTS=Path(__file__).resolve().parents[2]/'scripts';sys.path.insert(0,str(SCRIPTS))
 import household_gguf_worker as worker
@@ -39,6 +39,37 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.assertEqual(response['result'],narrative())
         self.assertEqual(self.engine.calls[0][0],_generation_payload(saved_bundle(),'narrative',_worker_fixture.MODEL))
         self.assertTrue(self.engine.closed)
+
+    def test_saved_story_echo_and_backend_phases_remain_distinguishable(self):
+        value=saved_bundle()
+        value['version']=4
+        value['story_refinement']={'profile':'asr_editorial_v3','people':[]}
+        narration='A family spent a long afternoon planting beans together, watering each row, and sharing what they hoped would grow. '
+        narration *= 2
+        value['chapters'][0]['narration']=narration
+        self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':value}
+        self.write_request()
+        self.engine.text=json.dumps({'version':1,'title':'A small garden story',
+            'chapters':[{'id':'chapter-1','narration':narration,'source_ids':['family-note-1']}],
+            'questions':[],'needs_review':True},ensure_ascii=False)
+        with self.assertRaises(worker.SavedStoryWorkerFailure) as caught:
+            worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory)
+        self.assertEqual('unchanged_narration',caught.exception.phase)
+
+        self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':saved_bundle()}
+        self.write_request()
+        self.engine.close()
+        class TokenizerFailure:
+            def __init__(self, _settings): pass
+            def complete(self, _generation, _settings): raise worker.story.WorkerUnavailable('tokenize')
+            def close(self): pass
+        with patch.object(worker.story,'_LlamaEngine',TokenizerFailure):
+            with self.assertRaises(worker.SavedStoryWorkerFailure) as backend_caught:
+                worker.run(self.settings,enabled=True,environment=self.env)
+        self.assertEqual('tokenize',backend_caught.exception.phase)
+        code,record=worker._failure_record(backend_caught.exception)
+        self.assertEqual(worker.SAVED_STORY_FAILURE_EXIT_CODES['tokenize'],code)
+        self.assertEqual('tokenize',json.loads(record)['phase'])
     def test_editorial_profile_reaches_the_actual_saved_story_worker_prompt(self):
         value = saved_bundle()
         value.update(version=4, story_refinement={'profile':'asr_editorial_v3',
@@ -55,6 +86,44 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.assertIn('林澄',prompt)
         self.assertTrue(json.loads(self.response.read_bytes())['result']['needs_review'])
         self.assertTrue(self.engine.closed)
+
+    def test_saved_story_failure_exit_codes_are_closed_and_content_free(self):
+        expected = worker.SAVED_STORY_FAILURE_EXIT_CODES
+        self.assertEqual(set(expected.values()), set(range(80, 94)))
+        for phase, code in expected.items():
+            with self.subTest(phase=phase):
+                actual, record = worker._failure_record(worker.SavedStoryWorkerFailure(phase))
+                self.assertEqual(code, actual)
+                self.assertEqual({'status': 'failed', 'category': 'worker_unavailable',
+                                  'phase': phase}, json.loads(record))
+                self.assertNotIn('Traceback', record)
+                self.assertNotIn('synthetic', record)
+        original_code, original_record = worker._failure_record(worker.story.WorkerUnavailable('generation'))
+        self.assertEqual(17, original_code)
+        self.assertEqual('generation', json.loads(original_record)['phase'])
+
+    def test_household_main_emits_saved_phase_from_real_cli_exception_path(self):
+        self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':saved_bundle()}
+        self.write_request()
+        class FailedEngine:
+            def __init__(self, _settings): pass
+            def complete(self, _generation, _settings): raise RuntimeError('private engine detail')
+            def close(self): pass
+        argv=[str(SCRIPTS/'household_gguf_worker.py'),'--execute',
+              '--model-file',self.settings.model_file,'--model-sha256',self.settings.model_sha256,
+              '--model-label',self.settings.model]
+        stderr=io.StringIO()
+        with patch.object(worker.story,'_model_pin',return_value=(Path(self.settings.model_file),('fixture',))), \
+             patch.object(worker.story,'_LlamaEngine',FailedEngine), \
+             patch.dict(os.environ,self.env,clear=True), patch.object(sys,'argv',argv), \
+             contextlib.redirect_stderr(stderr):
+            with self.assertRaises(SystemExit) as caught:
+                runpy.run_path(str(SCRIPTS/'household_gguf_worker.py'),run_name='__main__')
+        self.assertEqual(83,caught.exception.code)
+        self.assertEqual({'status':'failed','category':'worker_unavailable','phase':'generation'},
+                         json.loads(stderr.getvalue()))
+        self.assertNotIn('private engine detail',stderr.getvalue())
+        self.assertFalse(self.response.exists())
 
     def test_saved_story_packet_rejects_draft_wrong_target_or_extra_fields(self):
         for mutate in (

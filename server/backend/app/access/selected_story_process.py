@@ -29,14 +29,21 @@ from .selected_story_operations import PreparationScope
 REQUEST_ENV = 'PHOTOHOUSE_NATIVE_STORY_REQUEST'
 RESPONSE_ENV = 'PHOTOHOUSE_NATIVE_STORY_RESPONSE'
 MAX_REQUEST_BYTES = 128 * 1024
+_WORKER_PHASES = frozenset({
+    'request', 'model_pin', 'backend_load', 'generation', 'output_validation',
+    'unchanged_narration', 'model_close', 'tokenize', 'context', 'grammar',
+    'completion', 'narrative', 'source_recheck', 'response_write',
+})
 
 
 class ProcessSelectedStoryError(RuntimeError):
-    def __init__(self, category):
+    def __init__(self, category, *, worker_phase=None):
         self.category = category if category in {
             'disabled', 'closed', 'busy', 'invalid_input', 'cancelled',
             'worker', 'invalid_response', 'cleanup',
         } else 'worker'
+        self.worker_phase = (worker_phase if type(worker_phase) is str and
+                             worker_phase in _WORKER_PHASES else None)
         super().__init__('Process selected-story provider unavailable')
 
 
@@ -291,7 +298,9 @@ class ProcessSelectedStoryProvider:
         except (ValueError, TypeError, UnicodeError, RecursionError, OverflowError):
             raise ProcessSelectedStoryError('invalid_response') from None
         except NativeStoryOwnerError as error:
-            raise ProcessSelectedStoryError('cancelled' if error.category == 'cancelled' else 'worker') from None
+            raise ProcessSelectedStoryError(
+                'cancelled' if error.category == 'cancelled' else 'worker',
+                worker_phase=error.worker_phase) from None
         except Exception:
             raise ProcessSelectedStoryError('worker') from None
         finally:

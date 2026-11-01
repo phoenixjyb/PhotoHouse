@@ -32981,6 +32981,53 @@
         "Version the automatic refinement profile as asr_editorial_v3 when its editor prompt, language selection, and no-op acceptance change. The stable per-author/story/revision mutation now creates a new job for the new recipe while retaining the previous review proposal.",
         "A regression test seeds a ready proposal under the prior recipe and confirms the new recipe queues a distinct job without overwriting it. No Windows deployment or GitHub CI was performed by this source change."
       ]
+    },
+    {
+      "feature": "closed-saved-story-worker-failure-phases-20261101",
+      "source_base": "ad9cb2baca396eca744bbc8d2592c6d2f96a755b",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/selected_story_native.py",
+          "before_sha256": "4d236a2ccdafe230291c262c0e2df858d5ee349f1e40e9d5d9bcf83d60309c20",
+          "sha256": "b80c9d400d4c835f8127a434e1d8de109a9161affe91fb298e6bc271f7fe2028"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": "2993cac1ecd6decaa9500baaced678a65846f94711db4bc3301fa4b535bfea9e",
+          "sha256": "f8e836a1ae555b7e8aff0f4b524d5442bcc50207aed5bfee7afcf1aa3081f45c"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "before_sha256": "dc051b3725d902db7a30d64bb6d513298c375dd1d0210b555e0e65843cea3511",
+          "sha256": "1291c0270384399d09b838b9c6da25654ee713520c42ae3d1ee9d812c1474293"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "4171a7a8d4dec815f73710f0e51f7deb2245c8d3d95abe9f04738f0fa17effc6",
+          "sha256": "197c7e029ff6d64b60fbe4b705cabe9668494a540d9c30c35d77ca086dc71d7f"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_native.py",
+          "before_sha256": "de69471b15cd266b91f416c8532cae2818659372b91b060a3e4163527b9de9be",
+          "sha256": "6f67ef05b98a1c8f709ce95af35eb45303f7378971b8ce81ea4e7a8fabdd8aa3"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": "4ffb94ad88fd83b84ac1c4696e688d1a273fb5aa5a9d9484f138c55e6dd07f43",
+          "sha256": "4287b4a45c4f4f433059dbdd8dcf19380e91ca16dd737de5d9fecbb1c86657e7"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process_lifecycle.py",
+          "before_sha256": "e6e40522040932c8417949de6d027e2e7d81236a20aaf9d2553910c7443029fe",
+          "sha256": "ffeefbbf5f79c99679e095f8007a117cb7027229af4978cd3070ad9efa4dd6dd"
+        }
+      ],
+      "notes": [
+        "Retain only fixed saved-story worker phase enums through actual nonzero process exit, native owner error, and process provider error. Unknown exits remain generic. No private text, paths, configuration, files, or observer process are added.",
+        "Ownership, cancellation, deadlines, job drain, private exchange disposal, model/provider/settings, and resource guards are unchanged. Actual worker CLI and fake-kernel lifecycle tests cover phase propagation and cleanup; this source change is not a Windows deployment."
+      ]
     }
   ]
 }
