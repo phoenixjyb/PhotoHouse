@@ -32747,6 +32747,112 @@
         "Remove push and pull-request triggers from both existing GitHub workflows under the owner cost pause.",
         "Workflow jobs and pinned dependencies are retained for a future explicit resumption; manual dispatch is not authorized during the pause. Local testing and GitLab CI are independent."
       ]
+    },
+    {
+      "feature": "automatic-story-editorial-context-v2-20261101",
+      "source_base": "a0a8b7b5faa7705fe43d517fcc1a4e3a0d3c3e9f",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "sha256": "b2bd473c48b16caf410ddecd1fa32d02aaf1f6019dac34cdb889cf0df83fdeeb",
+          "before_sha256": "91e2a46ea04821dd6789e24ac15a3596e95751e1606e1824cc9e812eb8ff2c53"
+        },
+        {
+          "path": "docs/JUDE_ASSISTANT.md",
+          "sha256": "fe607e7cd73e8fe8b319338633bb69cbd251e492c2fec53392d5fa8df9699220",
+          "before_sha256": "4a61473f2a8f4bc54151622d288c0c3a47644bbe3c9eaa0e90b46efc01aaa589"
+        },
+        {
+          "path": "server/backend/app/access/memory_jobs.py",
+          "sha256": "22390ad416f6a822089827f6fc0347f99a3f0ee53c61ebfabf5030e797afeccf",
+          "before_sha256": "eacae3a232b283eb704da1c86a6a17037523fdeb98f5faa547fa7ff47112272e"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "sha256": "54f402095c3e6d908581c994e7d2a3c2fc88c95fb4c149b744cfaef7568c0a06",
+          "before_sha256": "56b7936ba282f3d7055df33a789c63c587454bfb9c6ea126d3af8197bb6b28aa"
+        },
+        {
+          "path": "server/backend/app/access/memory_processing.py",
+          "sha256": "493f57e8b78f82e8fbcf36481f21f4cdf8a64b14b49479a253e207b578e3eda5",
+          "before_sha256": "6120a4199175e0c4007c804e521917ea5d11cf4ae9e86ddef2005fb99fde5d8b"
+        },
+        {
+          "path": "server/backend/app/access/memory_stories.py",
+          "sha256": "0aa86fa648da0a7e1a54a67cab5ac4eeb922891bd1696109b21e251d1c7c5d10",
+          "before_sha256": "e59cad485761ed7ebe523c6260ff05d5e73bb9dde53553ef3f63321e8ac34995"
+        },
+        {
+          "path": "server/backend/app/access/memory_transport.py",
+          "sha256": "35fadbaf08a7ddcaa9d9f518710afe1f0176d59e029da61a98482c5dec513aea",
+          "before_sha256": "a2b0ecdbc26b8bd5734e8252a35c42b3dbc92f5007140d8eca3ebb05813b0602"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "sha256": "2993cac1ecd6decaa9500baaced678a65846f94711db4bc3301fa4b535bfea9e",
+          "before_sha256": "adb19179990f019c0d0490ed5145d36c2839d6843928ae1a28ce4d0131ef5b4d"
+        },
+        {
+          "path": "server/backend/app/access/service.py",
+          "sha256": "6c9df1abd85d9f9e82c02c46450b912e19f066ac060da250201bd3866d5c267b",
+          "before_sha256": "b547d4ee675ae203362291e79b3dfebb0555f28858975b460441334cfbe5d2b4"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "sha256": "953176aae785f9ad8e333bccdfb8eee2921e006ca183f8e30e90cb4d50eb7007",
+          "before_sha256": "515aa1012a2153606ea0759b2317e6b1f5b72e5d8e6601f6651915750d7070d9"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "sha256": "dc051b3725d902db7a30d64bb6d513298c375dd1d0210b555e0e65843cea3511",
+          "before_sha256": "6f732d963337cc9b2eeb857929e0157a3c6e648fcc8c78f4b3650669592a1dc2"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "sha256": "daba4091193934f094cf4f92fc62878bcb577bfa2c67c82a7414ae5a02f7f872",
+          "before_sha256": "67c135c6282f88b738a6e1de444e6b6c05f184cfa14ee84af1bd7247a28c87ab"
+        },
+        {
+          "path": "server/tests/security/test_memory_processing.py",
+          "sha256": "c8211925e64839e80149d9018aab85b1bf4cfeaa344767b55b50ff7b41dfc9d0",
+          "before_sha256": "10380d8b9af467c0aee93efe2809933d0ec2f456f71a958a3b2572d020c46fdd"
+        },
+        {
+          "path": "server/tests/security/test_memory_story_auto_refinement.py",
+          "sha256": "6707fc0d463468d9a4a0cabf23fdbb55ecdea11f6ba24dc91965f3d7864fcd08",
+          "before_sha256": "be6b18c6200bd1e0f1efd12c4a129ab224e5105c9ad16e9b1d76867c435d32df"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "sha256": "aa1244e9446104050460fe5b3e5f7a1f33cddc603da17cdbf3f7b0650640aa83",
+          "before_sha256": "c83a71010f87c3b7fb249a5040ab283cf2df6d8ac72bb6b277befe9122039383"
+        },
+        {
+          "path": "tools/check.py",
+          "sha256": "fa7c592c0c456f182f986691afa52a2d6a196f0b01898ec6245e5477f802a8db",
+          "before_sha256": "efafdee99546a36ed7da4c7e77732015673c076dc047a4ac1bb25bb647dfc110"
+        },
+        {
+          "path": "server/backend/app/access/story_refinement_context.py",
+          "sha256": "3c87167c5855e6bd433faf6858257166f1406a43d1a29fa5c7af81c7d9b4caba"
+        },
+        {
+          "path": "server/tests/security/test_memory_refinement_editorial.py",
+          "sha256": "77e4ac27a4699fa308a8c5378bd2e2847c2d1da4a94afb0dd03e0348f390ddcd"
+        },
+        {
+          "path": "server/tests/security/test_story_refinement_context.py",
+          "sha256": "f99ad468bd4a0019f6cabaf4a123a36b21b29b121b0de9235852849700e04de1"
+        }
+      ],
+      "notes": [
+        "New opt-in saved-story input bundle v4 binds asr_editorial_v2 with bounded relevant reviewed names and aliases; original input/output v1-v3 contracts remain unchanged.",
+        "Automatic grammar, transcription and prose editing uses the existing local model and reviewed library/account context. Identity context cannot establish events or be cited as source evidence. No case-specific household corrections are in public source.",
+        "Recipe-specific queue identity preserves older proposals. Source/name changes fence stale output; transient context contention defers validation and reuses completed generation without a model retry.",
+        "Original stories, contributions and audio remain unchanged; proposed prose needs review. No database schema, model/provider, resource-capacity, sharing, GitHub Actions or Windows runtime change is claimed by this source commit."
+      ]
     }
   ]
 }

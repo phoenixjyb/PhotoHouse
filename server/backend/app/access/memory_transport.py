@@ -13,7 +13,7 @@ from .memory_book_editorial import MemoryBookEditorial
 from .memory_book_planning import MemoryBookPlanning
 from .memory_contributions import MemoryContributions, FIELDS as CONTRIBUTION_FIELDS
 from .memory_jobs import MemoryJobs
-from .memory_stories import _json
+from .memory_stories import _json, refinement_resolver
 from .service import AccessService
 from .stories import _uuid
 from .transport import TransportError, _body, _memory_runtime, _single, credentials_from_request
@@ -21,10 +21,11 @@ from .transport import TransportError, _body, _memory_runtime, _single, credenti
 router = APIRouter(route_class=LibraryRoute)
 
 
-def call(runtime, store, action, *args, editorial_enabled=False):
+def call(runtime, store, action, *args, editorial_enabled=False, story_refinement_context=None):
     with runtime.connection_factory() as db:
         access = AccessService(db, clock=runtime.clock,
-                                memory_groups_enabled=runtime.memory_groups_enabled)
+                                memory_groups_enabled=runtime.memory_groups_enabled,
+                                story_refinement_context=story_refinement_context)
         instance = (store(access, editorial_enabled=editorial_enabled)
                     if store in (MemoryJobs, MemoryBookPlanning) else store(access))
         if action == 'authorize_contribution':
@@ -343,7 +344,8 @@ async def queue_narrative(request: Request):
 async def job(job_id: str, request: Request):
     runtime, token, query = await scope(request)
     return json_response(await run_in_threadpool(call, runtime, MemoryJobs, 'get', token,
-        query['library'], _uuid(job_id), editorial_enabled=request.app.state.memory_editorial_enabled))
+        query['library'], _uuid(job_id), editorial_enabled=request.app.state.memory_editorial_enabled,
+        story_refinement_context=refinement_resolver(request)))
 
 
 @router.delete('/memory-community/v1/jobs/{job_id}')

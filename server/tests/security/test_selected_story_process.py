@@ -207,6 +207,22 @@ class ProcessSelectedStoryTests(unittest.IsolatedAsyncioTestCase):
         await self.cleanup_call(provider, scope)
         self.assertEqual('resume', kernel.events[0])
 
+    async def test_saved_editorial_context_survives_the_owned_process_exchange(self):
+        observed = {}
+        def writer(environment):
+            observed.update(json.loads(Path(environment[REQUEST_ENV]).read_bytes()))
+            Path(environment[RESPONSE_ENV]).write_bytes(
+                encoded_response(operation_id=observed['operation_id']))
+        provider, kernel, _factories = self.saved_provider(writer)
+        scope = make_scope()
+        value = saved_bundle()
+        value.update(version=4, story_refinement={'profile':'asr_editorial_v2',
+            'people':[{'name':'林澄','aliases':['Lina']}]})
+        self.assertEqual(await provider.prepare(value,scope),narrative())
+        self.assertEqual(observed['bundle'],value)
+        await self.cleanup_call(provider,scope)
+        self.assertEqual('resume',kernel.events[0])
+
     async def test_saved_provider_rejects_draft_book_reused_and_oversized_bundles(self):
         provider, _kernel, factories = self.saved_provider()
         scope = make_scope()

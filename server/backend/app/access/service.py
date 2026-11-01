@@ -30,7 +30,7 @@ class AccessService:
     SESSION_SECONDS = 86400
 
     def __init__(self, connection: sqlite3.Connection, *, clock=time.time,
-                 memory_groups_enabled=False):
+                 memory_groups_enabled=False, story_refinement_context=None):
         if type(memory_groups_enabled) is not bool:
             raise ValueError('Explicit memory group opt-in required')
         if connection.in_transaction:
@@ -40,6 +40,9 @@ class AccessService:
         self.db = connection
         self.clock = clock
         self.memory_groups_enabled = memory_groups_enabled
+        if story_refinement_context is not None and not callable(story_refinement_context):
+            raise ValueError('Invalid story refinement context resolver')
+        self.story_refinement_context = story_refinement_context
         self.original_deletions = getattr(connection, 'original_deletions', None)
 
     def _now(self):

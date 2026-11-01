@@ -31,9 +31,12 @@ history, request recovery, an existing unsaved AI draft and the first new SYSTEM
 grouping refresh passed on Windows. A three-turn voice test refused acceptance;
 a follow-up-year bug is fixed locally but not deployed.
 
-Saved-story refinement remains local source. Natural bilingual TTS failed
-before activation; the existing voice is unchanged. No refined household story
-or physical microphone/speaker outcome has been observed from these increments.
+Saved-story automatic refinement was subsequently activated in the separately
+qualified Windows runtime. The family can review its draft beside the unchanged
+original, but review exposed transcription and prose weaknesses. The new
+`asr_editorial_v2` source recipe supplies relevant reviewed names and explicit
+ASR, grammar and paragraph editing; its Windows quality and rollout are pending.
+Natural bilingual TTS remains separate; this change does not replace the voice.
 [Current status](PROJECT_STATUS.md#october-30-delivery-and-remaining-increments)
 and the [Jude guide](JUDE_ASSISTANT.md#october-30-conversation-and-refinement)
 separate the delivered behavior from these remaining tasks.

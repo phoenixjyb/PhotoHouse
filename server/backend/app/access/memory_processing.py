@@ -21,6 +21,7 @@ from .service import AccessDenied, AccessService
 from .transport import TransportError
 from .selected_story_operations import PreparationScope
 from .selected_story_process import ProcessSelectedStoryError
+from .story_refinement_context import StoryRefinementContextBusy
 
 LEASE_SECONDS = 300
 MAX_CONTRIBUTION_TEXT_BYTES = 8192
@@ -187,7 +188,7 @@ def _is_auto_saved_story(row):
 
 
 def process_job(db, *, narrator, clock=time.time, editorial_enabled=False,
-                memory_groups_enabled=False, saved_story_only=False):
+                memory_groups_enabled=False, saved_story_only=False, story_refinement_context=None):
     """Process one queued narrative or chat. Returns only job ID/state metadata."""
     if type(editorial_enabled) is not bool:
         raise ValueError('editorial_feature_flag_must_be_boolean')
@@ -195,7 +196,8 @@ def process_job(db, *, narrator, clock=time.time, editorial_enabled=False,
         raise ValueError('memory_groups_feature_flag_must_be_boolean')
     if type(saved_story_only) is not bool:
         raise ValueError('saved_story_only_flag_must_be_boolean')
-    access = AccessService(db, clock=clock, memory_groups_enabled=memory_groups_enabled)
+    access = AccessService(db, clock=clock, memory_groups_enabled=memory_groups_enabled,
+                          story_refinement_context=story_refinement_context)
     with access._transaction(write=True):
         now = access._now()
         prune(db, now)
@@ -209,10 +211,25 @@ def process_job(db, *, narrator, clock=time.time, editorial_enabled=False,
         try:
             bundle = job_context(access, row, editorial_enabled=editorial_enabled)
             turn_fingerprint = digest(bundle['recent_turns'])
+        except StoryRefinementContextBusy:
+            return {'id': row['id'], 'state': 'deferred'}
         except (AccessDenied, TransportError, ValueError, TypeError):
-            db.execute("UPDATE access_memory_jobs SET state='stale',error_code='source_changed',updated_at=? WHERE id=?",
+            db.execute("UPDATE access_memory_jobs SET state='stale',output_json=NULL,error_code='source_changed',updated_at=? WHERE id=?",
                        (now, row['id']))
             return {'id': row['id'], 'state':'stale'}
+        if saved_story_only and row['output_json'] is not None:
+            # A completed model proposal may be waiting only for a busy reviewed
+            # context budget. Revalidate it in this fresh authorized transaction;
+            # never run the model again merely to finish source validation.
+            try:
+                validate_narrative(_json(row['output_json']), bundle)
+            except (ValueError, TypeError):
+                db.execute("UPDATE access_memory_jobs SET state='failed',output_json=NULL,error_code='model_output_refused',updated_at=? WHERE id=?",
+                           (now, row['id']))
+                return {'id': row['id'], 'state': 'failed'}
+            db.execute("UPDATE access_memory_jobs SET state='ready',updated_at=? WHERE id=?",
+                       (now, row['id']))
+            return {'id': row['id'], 'state': 'ready'}
         lease = str(uuid.uuid4())
         db.execute("UPDATE access_memory_jobs SET state='running',lease_id=?,lease_until=?,updated_at=? WHERE id=?",
                    (lease, now+LEASE_SECONDS, now, row['id']))
@@ -259,22 +276,28 @@ def process_job(db, *, narrator, clock=time.time, editorial_enabled=False,
         if current['expires_at'] <= now:
             db.execute('DELETE FROM access_memory_jobs WHERE id=?', (row['id'],))
             return {'id': row['id'], 'state':'expired'}
+        context_pending = False
         try:
             if current['lease_until'] <= now:
                 raise AccessDenied('Access denied')
             refreshed = job_context(access, current, editorial_enabled=editorial_enabled)
             if digest(refreshed['recent_turns']) != turn_fingerprint:
                 raise AccessDenied('Access denied')
+        except StoryRefinementContextBusy:
+            if saved_story_only and not failure:
+                state, context_pending = 'queued', True
+            else:
+                state, raw, failure = 'stale', None, 'source_changed'
         except (AccessDenied, TransportError, ValueError, TypeError):
             state, raw, failure = 'stale', None, 'source_changed'
         db.execute('''UPDATE access_memory_jobs SET state=?,output_json=?,error_code=?,
             lease_id=NULL,lease_until=NULL,updated_at=? WHERE id=? AND lease_id=?''',
-            (state, raw if state=='ready' else None, failure, now, row['id'], lease))
+            (state, raw if state=='ready' or context_pending else None, failure, now, row['id'], lease))
         if row['kind']=='chat' and state=='ready':
             db.execute('''UPDATE access_memory_turns SET reply_text=?,reply_kind=?
                 WHERE job_id=? AND conversation_id=?''',
                 (result['reply'], result['kind'], row['id'], row['conversation_id']))
-        return {'id':row['id'], 'state':state}
+        return {'id':row['id'], 'state':'deferred' if context_pending else state}
 
 
 def contribution_context(access, row):

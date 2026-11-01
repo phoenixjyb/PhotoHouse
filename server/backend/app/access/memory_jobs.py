@@ -10,7 +10,7 @@ import uuid
 from .library import _integer
 from .memory_books import MemoryBooks, _stored as book_content
 from .memory_stories import MemoryStories, _json, source_policy
-from .memory_narrative import MAX_OUTPUT_BYTES, validate_companion
+from .memory_narrative import MAX_OUTPUT_BYTES, STORY_REFINEMENT_PROFILE, validate_companion
 from .memory_source_refs import available as source_refs_available, current_groups
 from .service import AccessDenied, AccessService
 from .stories import _uuid
@@ -207,6 +207,20 @@ def context(access, library, member, target_type, ident, instructions='', recent
         'language': stored['language'], 'title': clipped(stored['title'], 512),
         'theme': stored.get('theme', 'memoir'), 'chapters': chapters, 'sources': sources,
         'recent_turns': recent or [], 'instructions': instructions}
+    if full_narration:
+        if target_type != 'story':
+            raise TransportError(400, 'Story refinement requires a story')
+        resolver = getattr(access, 'story_refinement_context', None)
+        if resolver is None:
+            from .story_refinement_context import resolve
+            resolver = resolve
+        people, identity_digest = resolver(
+            access, library, member, '\n'.join(
+                [bundle['title'], *(c['narration'] for c in chapters),
+                 *(s['text'] for s in sources)]))
+        bundle.update(version=4, story_refinement={
+            'profile': STORY_REFINEMENT_PROFILE, 'people': people})
+        dependencies.append([STORY_REFINEMENT_PROFILE, people, identity_digest])
     from .memory_narrative import _validate_bundle
     try:
         bundle = _validate_bundle(bundle)
@@ -272,7 +286,7 @@ class MemoryJobs:
     def auto_refinement_mutation(story_id, revision, author_id):
         """Stable private queue key for one author's proposal on one revision."""
         return str(uuid.uuid5(uuid.NAMESPACE_URL,
-            f'photohouse:auto-story-refine:v1:{story_id}:{revision}:{author_id}'))
+            f'photohouse:auto-story-refine:{STORY_REFINEMENT_PROFILE}:{story_id}:{revision}:{author_id}'))
 
     def auto_refinement(self, member, library, story_id, revision):
         """Read only this member's current, exact-revision automatic proposal."""
@@ -287,8 +301,12 @@ class MemoryJobs:
         if row is None:
             return None
         result = self._present(row)
+        from .story_refinement_context import StoryRefinementContextBusy
         try:
             _, current, _ = self._job_context(library, member, row)
+        except StoryRefinementContextBusy:
+            result.update(state='deferred', result=None, error_code=None)
+            return result
         except (TransportError, ValueError, TypeError, UnicodeError, RecursionError):
             current = None
         if current != row['source_fingerprint']:
@@ -468,7 +486,7 @@ class MemoryJobs:
     def _present(row):
         return {'version': 1, **{k: row[k] for k in ('id','kind','state',
                 'created_at','updated_at','expires_at','error_code')},
-                'result': _json(row['output_json']) if row['output_json'] else None,
+                'result': _json(row['output_json']) if row['state'] == 'ready' and row['output_json'] else None,
                 'needs_review': True, 'base_revision': str(row['base_revision'])}
 
     def narrative(self, token, library, target_type, target_id, revision, mutation, instructions,
@@ -546,8 +564,11 @@ class MemoryJobs:
                 self.db.execute('UPDATE access_memory_turns SET reply_text=NULL,reply_kind=NULL WHERE job_id=?', (ident,))
                 row = self.access._one('SELECT * FROM access_memory_jobs WHERE id=?', (ident,))
             elif row['state']=='ready':
+                from .story_refinement_context import StoryRefinementContextBusy
                 try:
                     _, current, _ = self._job_context(library, member, row)
+                except StoryRefinementContextBusy:
+                    return self._present({**row, 'state':'deferred', 'output_json':None, 'error_code':None})
                 except (TransportError, ValueError, TypeError, UnicodeError, RecursionError):
                     current = None
                 if current != row['source_fingerprint']:

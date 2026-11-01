@@ -30,7 +30,7 @@ def _saved_story_narrative(settings, environment, request, response, operation,
                 value.get('operation_id') != operation):
             story._refuse(phase)
         bundle = _validate_bundle(value['bundle'])
-        if (bundle['version'] != 1 or bundle['target']['type'] != 'story' or
+        if (bundle['version'] not in {1, 4} or bundle['target']['type'] != 'story' or
                 bundle['target']['id'] == operation):
             story._refuse(phase)
         expected = _generation_payload(bundle, 'narrative', settings.model)

@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import uuid
+from functools import partial
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -27,13 +28,15 @@ FIELDS = {'title', 'theme', 'language', 'asset_ids', 'chapters',
 PAGE_SIZE = 8
 SOURCE_POLICY = 'chapter_sources_v1'
 AUTO_REFINE_INSTRUCTIONS = (
-    'Create a conservative proposed refinement of the existing chapter narration. '
-    'Preserve its meaning, facts, names, dates, sequence, language, and family voice. '
-    'Correct clear transcription and punctuation mistakes only when supported by the supplied context. '
-    'If a name or fact is uncertain, keep the original wording and add a review question. '
-    'Do not invent events, quotations, dialogue, emotions, or source details. '
-    'Use only the currently authorized selected story and its existing narration. '
-    'Return a proposal for family review. Never save or adopt it into the original story.'
+    'Automatically edit this spoken memory into fluent, cohesive personal prose. '
+    'Correct context-supported transcription errors and proper-name spellings; use reviewed '
+    'people and aliases to keep private identities consistent. Remove verbal fillers and '
+    'repetition, repair grammar and referents, and reorganize sentences into natural paragraphs. '
+    'For Chinese, use warm, restrained 散文 rather than transcript-like paraphrase. '
+    'Preserve viewpoint, meaning, facts, dates and the family voice. Do not invent events, '
+    'dialogue, scenery, emotions or relationships. Use authorized chapter sources and reviewed '
+    'name context only. Ask a review question only for an unresolved material factual ambiguity. '
+    'Return a separate proposal for family review; never overwrite or adopt the original story.'
 )
 
 
@@ -403,10 +406,19 @@ class MemoryStories:
             return result
 
 
-def call(runtime, action, *args):
+def refinement_resolver(request):
+    """Same library-scoped identity resolver for queue, reads and the worker."""
+    from .story_refinement_context import resolve
+    return partial(resolve,
+        discovery_runtime=getattr(request.app.state, 'discovery_runtime', None),
+        kinship_provider=getattr(request.app.state, 'assistant_kinship_provider', None))
+
+
+def call(runtime, action, *args, story_refinement_context=None):
     with runtime.connection_factory() as db:
         return getattr(MemoryStories(AccessService(db, clock=runtime.clock,
-            memory_groups_enabled=runtime.memory_groups_enabled)), action)(*args)
+            memory_groups_enabled=runtime.memory_groups_enabled,
+            story_refinement_context=story_refinement_context)), action)(*args)
 
 
 @router.get('/memory-stories')
@@ -424,7 +436,8 @@ async def get_memory(story_id: str, request: Request):
     query = _query(request, {'library', 'source_review'})
     review = _source_review(query)
     auto = bool(getattr(request.app.state, 'memory_auto_refinement_enabled', False))
-    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'get', token, query['library'], _uuid(story_id), review, auto)
+    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'get', token,
+        query['library'], _uuid(story_id), review, auto, story_refinement_context=refinement_resolver(request))
     return JSONResponse(result)
 
 
@@ -448,7 +461,8 @@ async def refine_memory(story_id: str, request: Request):
         raise TransportError(503, 'Story refinement unavailable')
     body = await _body(request, {'revision'}, max_body=1024)
     result = await run_in_threadpool(call, runtime, 'refine', token,
-        query['library'], _uuid(story_id), body['revision'])
+        query['library'], _uuid(story_id), body['revision'],
+        story_refinement_context=refinement_resolver(request))
     return JSONResponse(result)
 
 
@@ -477,7 +491,8 @@ async def save_memory(request, ident=None):
     fields = FIELDS | ({'contribution_refs'} if refs_enabled else set()) | ({'source_policy'} if review else set())
     body = await _body(request, fields, max_body=384*1024)
     result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'save', token,
-        query['library'], body, ident, refs_enabled, review, auto)
+        query['library'], body, ident, refs_enabled, review, auto,
+        story_refinement_context=refinement_resolver(request))
     return JSONResponse(result)
 
 

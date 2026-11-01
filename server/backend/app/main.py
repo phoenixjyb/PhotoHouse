@@ -215,13 +215,17 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                             app.state.memory_retention_healthy = False
                 memory_maintenance = asyncio.create_task(prune_memory_history())
             if refinement_narrator is not None:
+                from functools import partial
                 from .access.memory_processing import process_job
+                from .access.story_refinement_context import resolve
+                story_context = partial(resolve, discovery_runtime=discovery_runtime,
+                    kinship_provider=assistant_kinship_provider)
                 def refine_one():
                     with access_runtime.connection_factory() as db:
                         return process_job(db, narrator=refinement_narrator,
                             clock=access_runtime.clock,
                             memory_groups_enabled=memory_groups_enabled,
-                            saved_story_only=True)
+                            saved_story_only=True, story_refinement_context=story_context)
                 async def refine_stories():
                     work = None
                     try:

@@ -375,7 +375,7 @@ class ProcessSavedStoryProvider(ProcessSelectedStoryProvider):
 
     def _validate_input_bundle(self, bundle, scope):
         clean = _validate_bundle(bundle)
-        if (clean['version'] != 1 or clean['target']['type'] != 'story'
+        if (clean['version'] not in {1, 4} or clean['target']['type'] != 'story'
                 or clean['target']['id'] == scope.operation_id
                 or self._last_settled_scope is not None and
                 self._last_settled_scope.operation_id == scope.operation_id):

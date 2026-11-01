@@ -50,10 +50,11 @@ class MemoryProcessingTests(unittest.TestCase):
                 self.f.owner, 'family-a', 'story', self.story_id, '1',
                 str(uuid.uuid4()), 'Use cautious wording.')
 
-    def queue_auto_story(self, story_id=None):
+    def queue_auto_story(self, story_id=None, *, resolver=None):
         story_id = story_id or self.story_id
         with self.connection() as db:
-            access = AccessService(db, clock=lambda: self.library.now)
+            access = AccessService(db, clock=lambda: self.library.now,
+                                   story_refinement_context=resolver)
             with access._transaction(write=True):
                 member = access._require(self.f.owner, 'family-a', 'story.write')
                 jobs = MemoryJobs(access)
@@ -141,6 +142,76 @@ class MemoryProcessingTests(unittest.TestCase):
         self.assertEqual(result['state'], 'stale')
         self.assertEqual(tuple(saved), ('stale', None, 'source_changed'))
 
+    def test_auto_refinement_uses_current_name_context_and_stales_if_aliases_change_during_generation(self):
+        people = [{'name':'林澄','aliases':['Lina']}]
+        def resolver(access, library, principal, narration):
+            self.assertTrue(access.db.in_transaction)
+            self.assertEqual(library, 'family-a')
+            return list(people), json.dumps(people,ensure_ascii=False)
+        queued = self.queue_auto_story(resolver=resolver)
+        class Narrator:
+            def narrative(inner, bundle):
+                self.assertFalse(db.in_transaction)
+                self.assertEqual(bundle['version'],4)
+                self.assertEqual(bundle['story_refinement']['people'], people)
+                people[0] = {'name':'林澄','aliases':['Lina','小澄']}
+                return {'version':1,'title':'Proposal', 'chapters':[
+                    {'id':c['id'],'narration':'A proposed memory.',
+                     'source_ids':c['evidence_ids'][:1]} for c in bundle['chapters']],
+                     'questions':[],'needs_review':True}
+        with self.connection() as db:
+            result=process_job(db,narrator=Narrator(),saved_story_only=True,
+                clock=lambda:self.library.now,story_refinement_context=resolver)
+            self.assertEqual(result,{'id':queued['id'],'state':'stale'})
+            saved=db.execute('SELECT output_json,error_code FROM access_memory_jobs WHERE id=?',
+                             (queued['id'],)).fetchone()
+            self.assertEqual(tuple(saved),(None,'source_changed'))
+
+    def test_busy_name_context_defers_validation_and_reuses_the_completed_model_proposal(self):
+        from app.access.story_refinement_context import StoryRefinementContextBusy
+        calls = {'resolve':0,'model':0}
+        def resolver(access, library, principal, narration):
+            calls['resolve'] += 1
+            if calls['resolve'] == 3:  # enqueue, prepare, then post-model validation
+                raise StoryRefinementContextBusy()
+            return [], 'same-reviewed-context'
+        queued = self.queue_auto_story(resolver=resolver)
+        class Narrator:
+            def narrative(inner,bundle):
+                calls['model'] += 1
+                return {'version':1,'title':'Review proposal','chapters':[
+                    {'id':c['id'],'narration':'A supported draft.',
+                     'source_ids':c['evidence_ids'][:1]} for c in bundle['chapters']],
+                    'questions':[],'needs_review':True}
+        with self.connection() as db:
+            result=process_job(db,narrator=Narrator(),saved_story_only=True,
+                clock=lambda:self.library.now,story_refinement_context=resolver)
+            self.assertEqual(result['state'],'deferred')
+            access=AccessService(db,clock=lambda:self.library.now,story_refinement_context=resolver)
+            row=access._one('SELECT * FROM access_memory_jobs WHERE id=?',(queued['id'],))
+            self.assertEqual(row['state'],'queued')
+            self.assertIsNotNone(row['output_json'])
+            self.assertIsNone(MemoryJobs._present(row)['result'])
+            result=process_job(db,narrator=Narrator(),saved_story_only=True,
+                clock=lambda:self.library.now,story_refinement_context=resolver)
+            self.assertEqual(result['state'],'ready')
+            current=MemoryJobs(access).get(self.f.owner,'family-a',queued['id'])
+            self.assertTrue(current['result']['needs_review'])
+        self.assertEqual(calls['model'],1)
+
+    def test_busy_name_context_before_generation_keeps_the_queued_job(self):
+        from app.access.story_refinement_context import StoryRefinementContextBusy
+        queued=self.queue_auto_story()
+        def busy(*args):
+            raise StoryRefinementContextBusy()
+        with self.connection() as db:
+            result=process_job(db,narrator=object(),saved_story_only=True,
+                clock=lambda:self.library.now,story_refinement_context=busy)
+            self.assertEqual(result,{'id':queued['id'],'state':'deferred'})
+            row=db.execute('SELECT state,lease_id,output_json FROM access_memory_jobs WHERE id=?',
+                           (queued['id'],)).fetchone()
+            self.assertEqual(tuple(row),('queued',None,None))
+
     def test_saved_story_narrator_uses_fresh_async_owned_provider_and_auto_only_selection(self):
         automatic = self.queue_auto_story()
         second_story = self.f.story('A second worker target')
@@ -150,7 +221,7 @@ class MemoryProcessingTests(unittest.TestCase):
         class Provider:
             async def prepare(inner, bundle, scope):
                 self.assertFalse(db.in_transaction)
-                self.assertEqual(bundle['version'], 1)
+                self.assertEqual(bundle['version'], 4)
                 self.assertEqual(bundle['target']['type'], 'story')
                 self.assertNotEqual(bundle['target']['id'], scope.operation_id)
                 scopes.append(scope)

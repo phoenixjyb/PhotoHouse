@@ -80,9 +80,30 @@ the owner decides whether to adopt it. Original contributions/audio remain
 available. A changed story revision or access scope invalidates a stale proposal;
 request retries do not create duplicate jobs.
 
-The requested household story is the intended live demonstration, not an already
-completed example. The current voice has not been replaced: the
-natural bilingual candidate failed dependency acquisition before activation.
+Automatic refinement is available in the separately qualified Windows story
+runtime. It produces a review proposal beside the unchanged original; successful
+generation does not establish editorial quality. Household review found that the
+first recipe retained transcription errors and spoken repetition.
+
+The next source recipe, `asr_editorial_v2`, addresses that feedback for all saved
+stories. It asks the same local model to correct context-supported ASR spelling,
+remove fillers and repeated clauses, repair grammar and organize cohesive prose.
+Chinese output should read as restrained personal 散文, without invented scenery,
+dialogue or events. Relevant reviewed names and aliases come from the authorized
+library catalog and account-scoped kinship graph. An identity mapping helps spell
+a mentioned name; it does not establish who attended an event. Existing selected
+captions and family notes keep their original provenance and access boundaries.
+No new vision model or unselected media scan is started by this recipe.
+
+This recipe has its own input profile and queue identity, preserving older
+proposals. Name-context changes invalidate a stale result. A busy context read
+defers validation; a completed model proposal is retained privately and validated
+again without another generation. Originals remain unchanged and every proposal
+still requires family review. The new recipe is locally tested; its Windows
+output quality and rollout remain pending.
+
+The current voice has not been replaced by this story change. Natural bilingual
+voice deployment remains a separate feature.
 
 ## Privacy and review
 

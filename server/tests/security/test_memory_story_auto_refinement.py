@@ -61,7 +61,7 @@ class MemoryStoryAutoRefinementTests(unittest.TestCase):
                 self.save(other, auto_refine=True)
         self.assertEqual(self.counts(), before)
 
-    def test_confirmed_save_queues_conservative_review_only_job_once(self):
+    def test_confirmed_save_queues_editorial_review_only_job_once(self):
         body = self.f.body()
         saved = self.save(body, auto_refine=True)
         proposal = saved['auto_refinement']
@@ -71,14 +71,12 @@ class MemoryStoryAutoRefinementTests(unittest.TestCase):
         self.assertIsNone(proposal['result'])
         row, = self.job_rows(saved['id'])
         controls = json.loads(row[8])
-        self.assertEqual(controls, {'instructions':
-            'Create a conservative proposed refinement of the existing chapter narration. '
-            'Preserve its meaning, facts, names, dates, sequence, language, and family voice. '
-            'Correct clear transcription and punctuation mistakes only when supported by the supplied context. '
-            'If a name or fact is uncertain, keep the original wording and add a review question. '
-            'Do not invent events, quotations, dialogue, emotions, or source details. '
-            'Use only the currently authorized selected story and its existing narration. '
-            'Return a proposal for family review. Never save or adopt it into the original story.'})
+        self.assertEqual(set(controls), {'instructions'})
+        brief = controls['instructions']
+        for requirement in ('transcription errors', 'proper-name spellings', 'reviewed',
+                            'repetition', 'grammar', 'natural paragraphs', '散文',
+                            'Do not invent', 'never overwrite'):
+            self.assertIn(requirement, brief)
         self.assertEqual(row[3:5], (saved['id'], 'narrative'))
         self.assertEqual(row[7], 1)
 
@@ -227,7 +225,8 @@ class MemoryStoryAutoRefinementTests(unittest.TestCase):
             from app.access.memory_processing import job_context
             access = AccessService(db, clock=lambda: self.library.now)
             row = access._one('SELECT * FROM access_memory_jobs WHERE id=?', (job['id'],))
-            bundle = job_context(access, row)
+            with access._transaction():
+                bundle = job_context(access, row)
         self.assertEqual(bundle['chapters'][0]['narration'], original)
         with self.assertRaises(AccessDenied):
             self.call('refine', self.library.member_token, saved['id'], '1')

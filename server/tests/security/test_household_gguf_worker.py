@@ -39,6 +39,22 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.assertEqual(response['result'],narrative())
         self.assertEqual(self.engine.calls[0][0],_generation_payload(saved_bundle(),'narrative',_worker_fixture.MODEL))
         self.assertTrue(self.engine.closed)
+    def test_editorial_profile_reaches_the_actual_saved_story_worker_prompt(self):
+        value = saved_bundle()
+        value.update(version=4, story_refinement={'profile':'asr_editorial_v2',
+            'people':[{'name':'林澄','aliases':['Lina']}]})
+        self.body={'version':1,'kind':'saved_story_narrative_v1',
+                   'operation_id':OPERATION_ID,'bundle':value}
+        self.write_request()
+        self.engine.text=json.dumps(narrative(),ensure_ascii=False)
+        self.assertEqual(worker.run(self.settings,enabled=True,environment=self.env,
+                                    backend_factory=self.factory),0)
+        prompt=self.engine.calls[0][0]['prompt']
+        self.assertIn('Saved-story editing task',prompt)
+        self.assertIn('林澄',prompt)
+        self.assertTrue(json.loads(self.response.read_bytes())['result']['needs_review'])
+        self.assertTrue(self.engine.closed)
+
     def test_saved_story_packet_rejects_draft_wrong_target_or_extra_fields(self):
         for mutate in (
                 lambda value:value.update(bundle=bundle()),
