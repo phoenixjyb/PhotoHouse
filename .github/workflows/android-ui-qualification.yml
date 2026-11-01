@@ -1,8 +1,7 @@
 name: Android UI qualification
+# Cost pause: no push, PR, or scheduled runs. Do not dispatch until explicitly resumed.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:

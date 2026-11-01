@@ -1,6 +1,11 @@
-# CI template
+# CI policy and retained workflow definitions
 
-The candidate workflow runs the same CPU API/generated-demo and unconfigured
+**Current policy (2026-10-30): GitHub Actions is cost-paused across the owner’s
+GitHub projects.** Do not enable, trigger or rerun workflows, or push changes
+that start them, until explicitly resumed. Continue focused local checks. GitLab
+CI is separate and requires its own configured routing; it is not an automatic fallback.
+
+The retained workflow runs the same CPU API/generated-demo and unconfigured
 Android commands as local development. It does not sign, install, publish, start
 models or connect to a household service. It uses read-only repository permission
 and does not persist checkout credentials.
@@ -10,8 +15,9 @@ repository tags. See the upstream [checkout](https://github.com/actions/checkout
 [Python](https://github.com/actions/setup-python) and
 [Java](https://github.com/actions/setup-java) documentation.
 
-This is a prepared template. No hosted run has occurred yet. Local acceptance
-and hosted CI are reported separately.
+Workflow definitions have historical hosted runs tied to exact revisions.
+They are retained configuration, not permission to schedule more runs. Local
+acceptance and hosted CI are reported separately.
 
 The Android job always runs the read-only unit-report inventory after its build
 step. It prints only module/count summaries, including missing reports and

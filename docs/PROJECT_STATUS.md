@@ -1,5 +1,74 @@
 # Current project status
 
+Maintained **2026-10-30** against merged source `e808e30` and the accepted
+October 29 and October 30 Windows delivery records. The later deployed `daa7e14`
+increment is not yet merged into main. This update reads retained operation
+results; it performs no additional server probe. Earlier snapshots retain their original scope.
+
+| Area | Last verified delivery | Still open |
+| --- | --- | --- |
+| Main/API/Web | PR #111 merged; new Jude UI served on Windows; four served UI hashes matched the release | Portable repeatable installation remains separate from this household rollout |
+| Search | English/Chinese protected HTTPS samples returned 20 authorized cards each; clarification, privacy and recovery contracts retained | Broader family relevance and semantic/vector coverage; physical client use |
+| Library photo stacks | F2 `f2a8c5d1e640`, two group pages, first SYSTEM refresh and two subsequent successful refreshes on the 15-minute cadence | Family grouping quality and installed phone/TV integration; not activity/shared-memory grouping |
+| Jude agent | `agent_media_search_v1` real model/tool search returned 20 cards; owned request GET recovery and anonymous denial passed | Broader task profiles and full conversational/device journeys |
+| Voice and UI | New Web conversation layout; actual local TTS → ASR → receipt → Search → reply WAV passed in 28.688 s (ASR 10.297 s) | Physical browser microphone/speaker confirmation explicitly deferred by user |
+| Selected-source story | Valid authorized-source, nonempty, unsaved `needs_review` draft passed on Windows | Subjective prose quality deferred; family review and explicit adoption/save remain required |
+| Android/TV | Existing published artifacts retained; PR #111/this UI rollout did not publish a replacement | Installed versions, microphones, playback and family acceptance require their own evidence |
+| Caption/media processing | Existing caption tasks/configuration were preserved during the rollout | No claim that the entire caption backlog or historical media failures are resolved |
+| CI | GitHub Actions cost-paused; source tests run locally | Resume GitHub CI only on explicit instruction; do not assume GitLab routing exists |
+
+See [October 29 delivery](RELEASE_2026-10-29.md) for exact source and acceptance
+scope, [Features](FEATURES.md) for contracts and [Roadmap](ROADMAP.md) for next work.
+Public examples remain opt-in/default-off; one enabled installation does not
+change repository defaults or grant activation to another host.
+
+The October 29 work window closed at 22:00 Asia/Shanghai. All admitted
+experimental scopes were explicitly released, cleanup was clear, production
+services were intentionally retained, and the follow-up heartbeat was deleted.
+Physical microphone/speaker acceptance is **pending**, not failed.
+
+## October 30 delivery and remaining increments
+
+The compact UI and bounded conversational context are deployed on Windows from
+`daa7e14`. The root transport timed out after launch; one bounded metadata
+recovery read verified the saved successful native result. The original timeout
+is retained, and both operation scopes were explicitly released.
+
+| Increment | Observed outcome | Remaining work |
+| --- | --- | --- |
+| Compact chat and context | Served UI hashes match; two protected model/tool turns, history, same-request recovery and anonymous denial passed | Physical microphone/speaker and family interaction remain pending |
+| Chinese dates and follow-ups | HTTPS “找去年九月份的照片 → 只看视频” preserved September 2025 and changed only media type; returned authorized cards | Three-turn voice acceptance failed. A local fix makes a bare month refinement retain an unambiguous prior year; it is not deployed yet |
+| Grouping continuity | New source-bound 15-minute SYSTEM refresh completed its first `REFRESH_READY` sweep | This does not establish every subsequent refresh or family grouping quality |
+| Existing AI draft | Actual authorized-source, nonempty, unsaved `needs_review` draft passed in 57.172 seconds | This is the existing selected-source flow, not saved-story automatic refinement |
+| Saved-story refinement | Local source adds optional revision-bound background proposals, preserving original text/audio | Not deployed; the requested household story has not been refined by this path |
+| Natural bilingual speech | Candidate failed during dependency acquisition before activation | Underlying dependency error is unknown; existing speech service remains selected |
+
+The actual voice failure returned HTTP 200 before a strict search-filter
+predicate refused acceptance. Its failing turn/transcript was not retained;
+the local year-inheritance reproduction is a concrete bug, not definitive
+attribution of the live failure. No physical voice outcome is claimed.
+
+See [Jude](JUDE_ASSISTANT.md#october-30-conversation-and-refinement) for the
+user flow and [Architecture](ARCHITECTURE.md#conversation-and-refinement)
+for context and original/proposal separation.
+
+## Validation scope
+
+The tested source tree later merged unchanged into `e808e30` passed **3,590 API
+tests and 4,321 subtests**, with one local skip because the `llama_cpp` grammar
+backend was unavailable. The generated no-listener demo, voice/workspace browser
+fixtures, mobile 390px/150% layouts and source-provenance checks passed.
+These checks do not replace the separate Windows or physical-device results.
+
+## Historical source and delivery records
+
+The following entries are historical. Their “current”, “OFF” and “pending” labels
+apply to the dated revisions they describe, not the latest deployment above.
+
+<details>
+<summary>Earlier source qualifications and deployment snapshots</summary>
+
+
 **October 25 functional-completion priority (local source / semantic OFF):**
 current work follows the [functional acceptance matrix](SEARCH_FUNCTIONAL_ACCEPTANCE.md):
 correct retrieval, privacy, clarification, recovery, API/Web integration and
@@ -63,14 +132,14 @@ loopback-network measurements, not production, phone/WAN or family relevance
 acceptance. R92 previously measured 6.469 / 7.203 s; separate shared-host runs
 do not establish a causal saving from the intervening changes.
 
-The native Job closed, but the later first offline-collection SSH call timed
-out with no response. Whole qualification failed and the second observation
-was not run. A separately reviewed one-shot observer and exact native-handle
-cleanup stopped only the identified reader, preserved its parent, and verified
-its empty owned scope. After 192.824 s offline and a fresh local transport audit,
-the coordinator explicitly released that limited owned scope. Original failures
-and the incomplete offline pair remain; cleanup does not qualify the feature or
-establish that the whole shared host is free. No replay or activation occurred.
+The native Job closed, but the required offline-collection pair was not completed.
+Whole qualification therefore remains failed, and the second observation was not
+run. A separately reviewed one-shot observer and exact native-handle cleanup
+stopped only the identified reader, preserved its parent, and verified its empty
+owned scope. After 192.824 s offline and a fresh local audit, the coordinator
+explicitly released that limited scope. Original failures and the incomplete pair
+remain; cleanup does not qualify the feature or establish that the whole shared
+host is free. No replay or activation occurred.
 
 **Current local source validation:** the exact image-only facts and immutable
 SQL-cohort grammar optimizations retain all fresh SQL, authorization, source,
@@ -136,12 +205,11 @@ After 185.668 seconds without host access, independent local closure review
 passed and the Windows window was explicitly released before expiry. No queued
 dispatch or owned local SSH/SFTP process remained.
 
-R66 authenticated through the verified direct route but timed out staging a
-partial archive; it started no model/native test. R67 staged all 12 inputs but
-correctly refused a native start after its time reserve expired. Both stages
-were preserved and explicitly released after closure. R68 reused only the
-verified identical source archive through a fresh, no-overwrite private copy;
-all remaining inputs, admission, both audits and native checks were fresh.
+R66 did not complete staging its archive and started no model/native test. R67
+staged all 12 inputs but correctly refused a native start after its time reserve
+expired. Both stages were preserved and explicitly released after closure. R68
+reused only the verified identical source archive through a fresh, no-overwrite
+private copy; all remaining inputs, admission, both audits and native checks were fresh.
 The compressed archive is 1,412,632 bytes, 73.21% smaller than the earlier
 5,272,648-byte package; its 295 source payloads and manifest are identical.
 See [the complete native record](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md#latest-complete-native-result-october-23-2026).
@@ -168,12 +236,12 @@ R65 started no model run and staged no candidate. Read-only admission initially
 refused a scheduled task state transition; a later host admission passed after
 natural task completion. The local final gate then refused an incorrect
 comparison between two different catalog digest contracts. That checker was
-repaired and the refused seal/evidence retained. A subsequent fresh acquisition
-could not reach the established SSH relay, leaving R65 blocked by connectivity.
-The later R68 result above supersedes that transport blocker. The last reachable metadata preserved the current 200-file report
-and all 12 retained report trees; a later trusted-TLS check still verified all
-200 public report files. These observations do not prove current Windows state
-or new native latency after connectivity was lost.
+repaired and the refused seal/evidence retained. The later R68 result above
+supersedes R65's incomplete acquisition and qualification. The last metadata read
+at that time preserved the current 200-file report and all 12 retained report
+trees; a later trusted-TLS check still verified all 200 public report files.
+These dated observations do not prove current Windows
+state or new native latency.
 See [the audit optimization contract](SEMANTIC_REQUEST_LATENCY.md#r65-audit-artifact-pass).
 
 
@@ -382,8 +450,8 @@ This is not complete searchable coverage: 64 inputs failed preparation and one
 source is missing. All failure records remain; 27 earlier preparation copies are
 retained separately and 36 later copies remain in the index scratch directory.
 No original was deleted, repaired or overwritten. The native completion receipt,
-final manifest and process closure were independently read back; the Mac transport
-itself timed out, so terminal success comes from the Windows receipts.
+final manifest and process closure were independently read back; Windows
+receipts establish terminal success.
 
 A fresh read-only catalog comparison found **no added or removed photos and no
 changed source hashes**; its complete catalog digest matches the frozen roster.
@@ -594,8 +662,7 @@ Earlier delivery snapshots below retain their dated scope.
 The follow-through independently verified all original hashes and both preview
 sizes for the received batch. One missing preview pair was repaired without
 resetting its failed task. Vector and face processing finished; person identity
-was not assigned automatically. Caption tasks remain pending and the configured
-caption service was unreachable at the latest read-only check. The
+was not assigned automatically. Caption tasks remain pending. The
 [receipt-selected caption candidate](../server/docs/security/RELEASED_CAPTION_WORKER.md)
 now has generated-media, mock-HTTP and bound-journal qualification. Native package
 qualification also [passed on Windows](NATIVE_CAPTION_QUALIFICATION_2026-10-18.md)
@@ -1040,5 +1107,7 @@ changes, same-thread revision refresh and zero turn/transcription/capture side
 effects. The transient holder clears with account/library/protection scope or
 assistant-host closure. This does not add persistence or silently choose a
 conversation for an unsent request.
+
+</details>
 
 </details>

@@ -1,5 +1,10 @@
 # Bounded local assistant application boundary
 
+> Current delivery update (2026-10-30): [October 29 release](RELEASE_2026-10-29.md)
+> records the scoped Windows activation. Earlier default-off/source-only statements
+> below describe the original increment; public defaults and physical-device
+> acceptance remain separate.
+
 PH-A1 adds an injected, default-off read-only orchestration path to the existing
 assistant workspace. The application remains authoritative for authentication,
 library membership, source selection, language interpretation, request ownership
