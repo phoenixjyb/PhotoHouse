@@ -32944,6 +32944,43 @@
         "Version 4 saved-story refinement uses a concise editorial prompt, chooses zh or en from dominant narration script when saved-language metadata conflicts, and refuses full normalized narration echoes for substantial text while preserving short unchanged text.",
         "Version 1 through version 3 generation payloads remain byte-identical to the source base. Original stories remain unchanged and proposals require review. This source update changes v4 candidate behavior; no live Windows deployment was performed. No model/provider, database schema, or resource-capacity change is claimed."
       ]
+    },
+    {
+      "feature": "automatic-story-editor-recipe-cache-upgrade-20261101",
+      "source_base": "5c9acfe919ab8bb4e78b24c9cabd1078a7dfaea9",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "deefcf2ed6d7b79bfc15562080aa4a7e655b2a414d70de1e65a3b0a1b4e2f8f7",
+          "sha256": "6ba2255603540f68e9051cd3f6f3ac80db1651b9902f449fbaf75d44e1cb7e30"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "daba4091193934f094cf4f92fc62878bcb577bfa2c67c82a7414ae5a02f7f872",
+          "sha256": "4171a7a8d4dec815f73710f0e51f7deb2245c8d3d95abe9f04738f0fa17effc6"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "51c7459c37a84d57c02f3c8ac887d3fca19720ba4568750d85a63eb9bf919c95",
+          "sha256": "f6886eb9a036d38a241ff6eb6511c110e3e37e8e39209219a5684656fdd286e5"
+        },
+        {
+          "path": "server/tests/security/test_memory_processing.py",
+          "before_sha256": "f972e49019c4611e318de6ddf42bdcdd574a4b570cd40787f339d5111f83b468",
+          "sha256": "76c6280f80068b8ab0dd36fc5520370eae441bf19494d007e7856cf3d25e47ae"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": "aa1244e9446104050460fe5b3e5f7a1f33cddc603da17cdbf3f7b0650640aa83",
+          "sha256": "4ffb94ad88fd83b84ac1c4696e688d1a273fb5aa5a9d9484f138c55e6dd07f43"
+        }
+      ],
+      "notes": [
+        "Version the automatic refinement profile as asr_editorial_v3 when its editor prompt, language selection, and no-op acceptance change. The stable per-author/story/revision mutation now creates a new job for the new recipe while retaining the previous review proposal.",
+        "A regression test seeds a ready proposal under the prior recipe and confirms the new recipe queues a distinct job without overwriting it. No Windows deployment or GitHub CI was performed by this source change."
+      ]
     }
   ]
 }

@@ -9,6 +9,7 @@ import unittest
 import uuid
 import wave
 from contextlib import contextmanager
+from unittest.mock import patch
 
 import test_memory_books as book_fixture
 from app.access.memory_contributions import MemoryContributions
@@ -197,6 +198,24 @@ class MemoryProcessingTests(unittest.TestCase):
                 self.assertEqual(db.execute(
                     'SELECT content FROM access_memory_stories WHERE id=?',
                     (self.story_id,)).fetchone()[0], raw)
+
+    def test_editor_recipe_upgrade_queues_new_draft_and_preserves_previous_result(self):
+        from app.access import memory_jobs, memory_narrative
+        with patch.object(memory_jobs, 'STORY_REFINEMENT_PROFILE', 'asr_editorial_v2'), \
+                patch.object(memory_narrative, 'STORY_REFINEMENT_PROFILE', 'asr_editorial_v2'):
+            previous = self.queue_auto_story()
+        retained = '{"retained":"previous proposal"}'
+        with self.connection() as db:
+            db.execute("UPDATE access_memory_jobs SET state='ready',output_json=? WHERE id=?",
+                       (retained, previous['id']))
+            db.commit()
+        current = self.queue_auto_story()
+        self.assertNotEqual(previous['id'], current['id'])
+        self.assertEqual(current['state'], 'queued')
+        with self.connection() as db:
+            row = db.execute('SELECT state,output_json FROM access_memory_jobs WHERE id=?',
+                             (previous['id'],)).fetchone()
+        self.assertEqual(tuple(row), ('ready', retained))
 
     def test_busy_name_context_defers_validation_and_reuses_the_completed_model_proposal(self):
         from app.access.story_refinement_context import StoryRefinementContextBusy
