@@ -32853,6 +32853,27 @@
         "Recipe-specific queue identity preserves older proposals. Source/name changes fence stale output; transient context contention defers validation and reuses completed generation without a model retry.",
         "Original stories, contributions and audio remain unchanged; proposed prose needs review. No database schema, model/provider, resource-capacity, sharing, GitHub Actions or Windows runtime change is claimed by this source commit."
       ]
+    },
+    {
+      "feature": "story-name-context-selected-dependency-20261101",
+      "source_base": "cf8bfc790e0ec5a478ff75a8fcfe5851f71bd8e9",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/story_refinement_context.py",
+          "before_sha256": "3c87167c5855e6bd433faf6858257166f1406a43d1a29fa5c7af81c7d9b4caba",
+          "sha256": "59d5f849c07e95d4adec8702cd600948abaa49d87feafd4e1a7c1a1bc573011c"
+        },
+        {
+          "path": "server/tests/security/test_story_refinement_context.py",
+          "before_sha256": "f99ad468bd4a0019f6cabaf4a123a36b21b29b121b0de9235852849700e04de1",
+          "sha256": "b5e30853de3485ae7054326681f46eb96d4c0a592b4d5d0728e172c0f813306d"
+        }
+      ],
+      "notes": [
+        "Validate the current reviewed index and authorized graph as before, but fingerprint only selected canonical names, aliases and catalog identities. Unrelated library or unmentioned-person updates cannot discard a valid story draft. Selected name changes still stale the result."
+      ]
     }
   ]
 }

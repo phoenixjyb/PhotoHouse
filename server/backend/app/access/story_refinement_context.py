@@ -239,6 +239,9 @@ def resolve(access, library, member, narration, *, discovery_runtime=None,
     if any(len(person['aliases']) > 16 for person in result):
         raise StoryRefinementContextError()
     result.sort(key=lambda item: (d.fold(item['name']), tuple(d.fold(a) for a in item['aliases'])))
-    identity = {'version': 1, 'index': index_identity,
-                'graph': graph_identity, 'people': result}
+    # Currentness of the whole source was checked above. Only the identities
+    # actually supplied to this story belong in its cache dependency: an
+    # unrelated caption or unmentioned person's edit must not discard prose.
+    identity = {'version': 2, 'library': library, 'account': member['account_id'],
+                'catalog_ids': sorted(selected, key=int), 'people': result}
     return result, _digest(identity)

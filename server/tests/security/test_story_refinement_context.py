@@ -169,6 +169,15 @@ class StoryRefinementContextTests(unittest.TestCase):
         _people2, identity2 = self.call('Avery')
         self.assertNotEqual(identity1, identity2)
 
+    def test_unmentioned_person_update_does_not_invalidate_the_selected_name_context(self):
+        people1, identity1 = self.call('Sample Child joined the picnic.')
+        other = replace(self.index.people[1], label='An Unmentioned Adult', aliases=('Other',))
+        self.install(replace(self.index,revision='2',
+                             people=(self.index.people[0],other)))
+        people2, identity2 = self.call('Sample Child joined the picnic.')
+        self.assertEqual(people1,people2)
+        self.assertEqual(identity1,identity2)
+
     def test_graph_account_scope_mismatch_fails_closed(self):
         graph = self.graph(account='another-account')
         class Provider:
