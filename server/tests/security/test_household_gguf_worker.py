@@ -43,13 +43,13 @@ class HouseholdWorkerTests(unittest.TestCase):
     def test_saved_story_echo_and_backend_phases_remain_distinguishable(self):
         value=saved_bundle()
         value['version']=4
-        value['story_refinement']={'profile':'asr_editorial_v4','people':[]}
+        value['story_refinement']={'profile':'asr_editorial_v5','people':[]}
         narration='A family spent a long afternoon planting beans together, watering each row, and sharing what they hoped would grow. '
         narration *= 2
         value['chapters'][0]['narration']=narration
         self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':value}
         self.write_request()
-        self.engine.text=json.dumps({'title':'A small garden story',
+        self.engine.text=json.dumps({'repairs':[],'title':'A small garden story',
             'paragraphs':[narration], 'questions':[]},ensure_ascii=False)
         with self.assertRaises(worker.SavedStoryWorkerFailure) as caught:
             worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory)
@@ -71,21 +71,21 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.assertEqual('tokenize',json.loads(record)['phase'])
     def test_editorial_profile_reaches_the_actual_saved_story_worker_prompt(self):
         value = saved_bundle()
-        value.update(version=4, story_refinement={'profile':'asr_editorial_v4',
+        value.update(version=4, story_refinement={'profile':'asr_editorial_v5',
             'people':[{'name':'林澄','aliases':['Lina']}]})
         value['chapters'][0]['narration'] = (
             'A family gathered in the garden and talked beside the old tree. ' * 2)
         self.body={'version':1,'kind':'saved_story_narrative_v1',
                    'operation_id':OPERATION_ID,'bundle':value}
         self.write_request()
-        self.engine.text=json.dumps({'title':'A family memory',
+        self.engine.text=json.dumps({'repairs':[],'title':'A family memory',
             'paragraphs':['The family met by the garden tree and shared memories.'],
             'questions':[]},ensure_ascii=False)
         self.assertEqual(worker.run(self.settings,enabled=True,environment=self.env,
                                     backend_factory=self.factory),0)
         prompt=self.engine.calls[0][0]['prompt']
-        self.assertIn('ASR errors, homophones and proper names',prompt)
-        self.assertIn('repeated phrases',prompt)
+        self.assertIn('ASR, homophone and proper-name repairs',prompt)
+        self.assertIn('repeated wording',prompt)
         self.assertIn('林澄',prompt)
         self.assertNotIn('family-note-1',prompt)
         self.assertNotIn('source_ids',prompt)

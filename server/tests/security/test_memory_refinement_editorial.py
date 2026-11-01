@@ -18,28 +18,28 @@ def editorial_bundle():
 
 
 class EditorialProfileTests(unittest.TestCase):
-    def test_v4_compact_editor_prompt_carries_only_text_and_reviewed_name_context(self):
+    def test_v5_repair_first_editor_prompt_carries_only_text_and_reviewed_name_context(self):
         value = editorial_bundle()
         before = deepcopy(value)
         payload = _generation_payload(_validate_bundle(value), 'narrative', 'synthetic-local')
         self.assertEqual(value, before)
-        for requirement in ('常见ASR错字、同音词', '已审核称呼', '重复句',
-                            '连贯自然的中文散文', '人审核'):
+        for requirement in ('常见ASR错字、同音词', '规范称呼', '重复表达',
+                            '连贯、简洁', '人审核', '精确修正', '可选的原因、方式或感受'):
             self.assertIn(requirement, payload['prompt'])
         self.assertIn('林澄', payload['prompt'])
         self.assertIn('\nTask: ', payload['prompt'])
-        self.assertIn('saved_story_editorial_v4', payload['prompt'])
+        self.assertIn('saved_story_editorial_v5', payload['prompt'])
         self.assertNotIn('evidence_ids', payload['prompt'])
         self.assertNotIn('source_ids', payload['prompt'])
         self.assertNotIn('Bundle JSON', payload['prompt'])
-        self.assertEqual({'title', 'paragraphs', 'questions'},
-                         set(payload['format']['properties']))
+        self.assertEqual(['repairs', 'title', 'paragraphs', 'questions'],
+                         list(payload['format']['properties']))
         old = _generation_payload(bundle(), 'narrative', 'synthetic-local')
         self.assertIn('preserve names and verbatim', old['prompt'])
         self.assertNotIn('Saved-story editing task', old['prompt'])
         self.assertEqual(payload['options'], old['options'])
 
-    def test_v4_host_rebuilds_citations_and_rejects_model_controlled_ids_or_noop(self):
+    def test_v5_host_validates_repairs_rebuilds_citations_and_rejects_noop(self):
         value = editorial_bundle()
         original_text = '我们在花园里散步，聊起了以前的日子，也一起照看花草。' * 4
         value['chapters'][0]['narration'] = original_text
@@ -51,7 +51,7 @@ class EditorialProfileTests(unittest.TestCase):
                                  'asset_id': None, 'author': None})
         value['chapters'][0]['evidence_ids'].append(editorial_id)
         clean = _validate_bundle(value)
-        compact = {'title': 'A revised memory',
+        compact = {'repairs': [], 'title': 'A revised memory',
                    'paragraphs': ['我们在花园里相聚，聊着当时的心情。'],
                    'questions': []}
         result = validate_generated_narrative(compact, clean)
@@ -59,14 +59,14 @@ class EditorialProfileTests(unittest.TestCase):
         self.assertTrue(result['needs_review'])
 
         bad_responses = (
-            {'title': 'A story', 'paragraphs': [], 'questions': []},
+            {'repairs': [], 'title': 'A story', 'paragraphs': [], 'questions': []},
             {**compact, 'chapter_ids': [chapter_id]},
             {**compact, 'source_ids': ['injected-source']},
             {'version': 1, 'title': 'A story',
              'chapters': [{'id': chapter_id, 'narration': 'new text',
                            'source_ids': [editorial_id]}],
              'questions': [], 'needs_review': True},
-            {'title': 'A story', 'paragraphs': [original_text],
+            {'repairs': [], 'title': 'A story', 'paragraphs': [original_text],
              'questions': []},
         )
         for response in bad_responses:
@@ -75,12 +75,89 @@ class EditorialProfileTests(unittest.TestCase):
 
         empty_input = deepcopy(clean)
         empty_input['chapters'][0]['narration'] = ''
-        empty_response = {'title': 'A story', 'paragraphs': [''], 'questions': []}
+        empty_response = {'repairs': [], 'title': 'A story', 'paragraphs': [''], 'questions': []}
         self.assertEqual('', validate_generated_narrative(
             empty_response, empty_input)['chapters'][0]['narration'])
         invented_response = {**empty_response, 'paragraphs': ['New unsupported text.']}
         with self.assertRaisesRegex(ValueError, 'empty chapter'):
             validate_generated_narrative(invented_response, empty_input)
+
+    def test_v5_valid_repairs_are_exact_bounded_and_removed_from_public_proposal(self):
+        value = editorial_bundle()
+        value['chapters'][0]['narration'] = 'River或者青河在公园里，在公园里散步。'
+        clean = _validate_bundle(value)
+        response = {
+            'repairs': [
+                {'before': 'River或者青河', 'after': '林澄'},
+                {'before': '在公园里，在公园里', 'after': '在公园里'},
+            ],
+            'title': '公园散步',
+            'paragraphs': ['林澄在公园里散步。'],
+            'questions': [],
+        }
+        output = validate_generated_narrative(response, clean)
+        self.assertEqual({'version', 'title', 'chapters', 'questions', 'needs_review'}, set(output))
+        self.assertNotIn('repairs', output)
+        self.assertEqual('chapter-1', output['chapters'][0]['id'])
+        self.assertEqual(['ev-1'], output['chapters'][0]['source_ids'])
+        self.assertTrue(output['needs_review'])
+
+        # Empty after is the supported representation for deleting filler.
+        deletion = {**response, 'repairs': [{'before': 'River', 'after': ''}]}
+        self.assertTrue(validate_generated_narrative(deletion, clean)['needs_review'])
+
+    def test_v5_rejects_invalid_repair_entries_and_unknown_response_fields(self):
+        value = editorial_bundle()
+        value['chapters'][0]['narration'] = 'River在公园里散步。'
+        clean = _validate_bundle(value)
+        valid = {'repairs': [], 'title': '公园散步',
+                 'paragraphs': ['我们在公园里散步。'], 'questions': []}
+        invalid_repairs = (
+            [{'before': '不存在的片段', 'after': '修正'}],
+            [{'before': 'River', 'after': '林澄'}, {'before': 'River', 'after': '小林'}],
+            [{'before': 'River', 'after': 'River'}],
+            [{'before': '', 'after': '林澄'}],
+            [{'before': 'River', 'after': 3}],
+            [{'before': 'River', 'after': '林澄', 'reason': 'extra'}],
+            [{'before': 'R' * 257, 'after': 'x'}],
+            [{'before': 'River', 'after': 'x' * 257}],
+            [{'before': 'River', 'after': '😀' * 193}],
+            [{'before': 'River', 'after': '林澄'}] * 25,
+            None,
+        )
+        for repairs in invalid_repairs:
+            with self.subTest(repairs=repairs), self.assertRaises(ValueError):
+                validate_generated_narrative({**valid, 'repairs': repairs}, clean)
+        with self.assertRaises(ValueError):
+            validate_generated_narrative({**valid, 'unexpected': True}, clean)
+
+    def test_v1_v2_v3_request_shapes_remain_legacy_without_repairs(self):
+        legacy = _generation_payload(_validate_bundle(bundle()), 'narrative', 'synthetic-local')
+        self.assertNotIn('repairs', legacy['format']['properties'])
+
+        book_id = '11111111-1111-4111-8111-111111111111'
+        book = bundle()
+        book.update(version=2, target={'type': 'book', 'id': 'book-1', 'revision': 1},
+                    chapters=[{'id': book_id + '-chapter-1', 'title': 'Planting day',
+                               'narration': '', 'asset_ids': ['asset-1'],
+                               'evidence_ids': ['ev-1']}],
+                    book_editorial={'children': [{'story_id': book_id, 'revision': '1'}],
+                                    'introduction_source_ids': [], 'transitions': []})
+        book_payload = _generation_payload(_validate_bundle(book), 'narrative', 'synthetic-local')
+        self.assertNotIn('repairs', book_payload['format']['properties'])
+        self.assertIn('Task: narrative', book_payload['prompt'])
+
+        draft = bundle()
+        draft.update(version=3, target={'type': 'draft',
+                                        'id': '11111111-1111-4111-8111-111111111111',
+                                        'revision': 0},
+                     selection_revision='a' * 64)
+        draft['chapters'][0]['title'] = 'Planting day'
+        draft['sources'][0]['source_kind'] = 'family_note'
+        draft_payload = _generation_payload(
+            _validate_bundle(draft, allow_draft=True), 'narrative', 'synthetic-local')
+        self.assertNotIn('repairs', draft_payload['format']['properties'])
+        self.assertNotIn('saved_story_editorial_v5', draft_payload['prompt'])
 
     def test_refinement_context_is_closed_bounded_and_story_only(self):
         edits = [lambda v: v['story_refinement'].update(profile='unreviewed'),

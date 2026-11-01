@@ -33076,6 +33076,44 @@
         "The host validates the closed internal response, preserves chapter identity/order, binds only authorized source references, sets needs_review, and runs the existing public narrative validator and unchanged-draft refusal. Public API narrative shape, original stories, one model call, model/provider/settings, resources and ownership remain unchanged.",
         "Focused tests cover compact prompt/worker decoding, incorrect chapter counts and injected IDs, blank or unchanged narration, reviewed aliases, recipe-version queue separation, and legacy v1-v3 payload parity. No Windows deployment follows from these local checks."
       ]
+    },
+    {
+      "feature": "automatic-story-repair-plan-v5-20261101",
+      "source_base": "5783b169b823f612c368a04724ea93fddf694d3d",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "2e6673b8e09a99ac30d0cfe6e068cb66b6c80a2ca63d37e27d58587270b8a332",
+          "sha256": "64dacce3ae765f05fde3d63fd278ed02fca1c7baa6ddb60f4d139a32ab4a544d"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "a5f6776dc4c341ccfe583a11f54440028cf69422d34b78d2298830e9078489e6",
+          "sha256": "6d1dee23e0abc4ee57e428b6d3f5f33090695f38b5f60a6371708392bdbbaa8e"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "40e037d9ba29223b751a5f9a05db06cecdd0fcb621711fafa7c2f5127c3124f9",
+          "sha256": "f15b6e38ce4c0858efa738e197c7beefab7ce665328a1647dd7baf26c31f7759"
+        },
+        {
+          "path": "server/tests/security/test_memory_refinement_editorial.py",
+          "before_sha256": "a8bdd632fbe262fd238b4d2c6fec9a60c19b35abfb873e47b3e55e50eddd07e4",
+          "sha256": "1ead2c536ebdf655964e07d0a31f9f59758ba8e95a7f6852194469a2d40c7bdb"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": "97a065a6db53f3874b076e1ed3acdec4ac51468639d8526ba656ab224fbe9140",
+          "sha256": "61b97a3f8d63f9f43931922f69b0212be766428f19cccb865625e25898a5675c"
+        }
+      ],
+      "notes": [
+        "The internal v5 editor response lists bounded exact-source repairs before writing prose. The host validates and discards these records, then restores authorized chapter and source IDs and needs_review in the unchanged public proposal schema.",
+        "Use reviewed household aliases and context-supported ASR/proper-name corrections, separate editorial title labels from narration, synthesize concise coherent prose, and ask only about fact-blocking ambiguities. Originals, provider/model/settings, one model call and resource/ownership controls remain unchanged.",
+        "Focused worker/context/decoder regressions cover source-bound repairs, caps, malformed/duplicate/unchanged repairs, legacy v1-v3 shape, review-required output and cache recipe separation. Local checks do not establish native editing quality or Windows deployment."
+      ]
     }
   ]
 }
