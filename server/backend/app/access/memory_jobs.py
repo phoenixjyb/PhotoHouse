@@ -210,6 +210,9 @@ def context(access, library, member, target_type, ident, instructions='', recent
     if full_narration:
         if target_type != 'story':
             raise TransportError(400, 'Story refinement requires a story')
+        from .memory_narrative import refinement_language
+        bundle['language'] = refinement_language(
+            bundle['language'], [chapter['narration'] for chapter in chapters])
         resolver = getattr(access, 'story_refinement_context', None)
         if resolver is None:
             from .story_refinement_context import resolve

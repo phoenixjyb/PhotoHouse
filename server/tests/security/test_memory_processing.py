@@ -169,6 +169,35 @@ class MemoryProcessingTests(unittest.TestCase):
                              (queued['id'],)).fetchone()
             self.assertEqual(tuple(saved),(None,'source_changed'))
 
+    def test_auto_refinement_uses_narration_language_without_changing_saved_story(self):
+        from app.access.memory_jobs import context
+        with self.connection() as db:
+            stored_raw = db.execute(
+                'SELECT content FROM access_memory_stories WHERE id=?',
+                (self.story_id,)).fetchone()[0]
+            stored = json.loads(stored_raw)
+            stored['chapters'][0]['narration'] = (
+                '那天我们一起去公园散步，然后在湖边坐了一会儿。')
+            raw = json.dumps(stored, ensure_ascii=False)
+            db.execute('UPDATE access_memory_stories SET content=? WHERE id=?',
+                       (raw, self.story_id))
+            db.commit()
+            access = AccessService(db, clock=lambda: self.library.now,
+                story_refinement_context=lambda *a, **k: ([], 'empty'))
+            with access._transaction(write=False):
+                member = access._require(self.f.owner, 'family-a', 'story.write')
+                ordinary, _, _ = context(
+                    access, 'family-a', member, 'story', self.story_id)
+                automatic, _, _ = context(
+                    access, 'family-a', member, 'story', self.story_id,
+                    full_narration=True)
+                self.assertEqual(ordinary['language'], 'en')
+                self.assertEqual(automatic['language'], 'zh')
+                self.assertEqual(automatic['version'], 4)
+                self.assertEqual(db.execute(
+                    'SELECT content FROM access_memory_stories WHERE id=?',
+                    (self.story_id,)).fetchone()[0], raw)
+
     def test_busy_name_context_defers_validation_and_reuses_the_completed_model_proposal(self):
         from app.access.story_refinement_context import StoryRefinementContextBusy
         calls = {'resolve':0,'model':0}

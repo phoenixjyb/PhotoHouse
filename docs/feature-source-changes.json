@@ -32912,6 +32912,38 @@
         "Foreign, hidden, stale, ambiguous and unreviewed assignments are excluded or refused. Selected visual identity bindings are revalidated and fingerprinted; unrelated catalog changes cannot discard a proposal.",
         "No library schema, originals, model/provider, resource caps, GitHub Actions or Windows service changes. Focused local checks do not establish Windows model quality or deployment."
       ]
+    },
+    {
+      "feature": "saved-story-editorial-quality-v4-20261101",
+      "source_base": "f6fe6526e98b45959a2d4b4b11494c1aabba3611",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_jobs.py",
+          "before_sha256": "0b8e9f545bb45beb2d0ee7fe296d0a0f8e3f85c21a49518644029134bbb99aef",
+          "sha256": "713de7a45c7d6e0cf01c74c1937b8c43b055d3fdae79a5f45281313661a058ab"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "54f402095c3e6d908581c994e7d2a3c2fc88c95fb4c149b744cfaef7568c0a06",
+          "sha256": "deefcf2ed6d7b79bfc15562080aa4a7e655b2a414d70de1e65a3b0a1b4e2f8f7"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "82fbd9e68023d43fbb5181b22e6cc90232256be0e049d50ba7098701fd3c5630",
+          "sha256": "51c7459c37a84d57c02f3c8ac887d3fca19720ba4568750d85a63eb9bf919c95"
+        },
+        {
+          "path": "server/tests/security/test_memory_processing.py",
+          "before_sha256": "75dbc5ab2f3bd88fe736a1977b342e32921c9a6a0a212d3fedad7192d11de374",
+          "sha256": "f972e49019c4611e318de6ddf42bdcdd574a4b570cd40787f339d5111f83b468"
+        }
+      ],
+      "notes": [
+        "Version 4 saved-story refinement uses a concise editorial prompt, chooses zh or en from dominant narration script when saved-language metadata conflicts, and refuses full normalized narration echoes for substantial text while preserving short unchanged text.",
+        "Version 1 through version 3 generation payloads remain byte-identical to the source base. Original stories remain unchanged and proposals require review. This source update changes v4 candidate behavior; no live Windows deployment was performed. No model/provider, database schema, or resource-capacity change is claimed."
+      ]
     }
   ]
 }
