@@ -3,7 +3,8 @@ from copy import deepcopy
 import unittest
 
 from app.access.memory_narrative import (
-    STORY_REFINEMENT_PROFILE, _validate_bundle, _generation_payload, validate_narrative)
+    STORY_REFINEMENT_PROFILE, _validate_bundle, _generation_payload,
+    validate_generated_narrative, validate_narrative)
 from test_memory_narrative import bundle, narrative
 
 
@@ -17,21 +18,69 @@ def editorial_bundle():
 
 
 class EditorialProfileTests(unittest.TestCase):
-    def test_versioned_prompt_edits_transcription_and_prose_without_weakening_original_profile(self):
+    def test_v4_compact_editor_prompt_carries_only_text_and_reviewed_name_context(self):
         value = editorial_bundle()
         before = deepcopy(value)
         payload = _generation_payload(_validate_bundle(value), 'narrative', 'synthetic-local')
         self.assertEqual(value, before)
-        for requirement in ('ASR homophones', 'reviewed name/alias', 'Merge repeated mentions',
-                            '散文', '不能只照抄转录', 'separate paraphrased proposal',
-                            'needs_review=true', 'do not guess a person'):
+        for requirement in ('常见ASR错字、同音词', '已审核称呼', '重复句',
+                            '连贯自然的中文散文', '人审核'):
             self.assertIn(requirement, payload['prompt'])
         self.assertIn('林澄', payload['prompt'])
-        self.assertNotIn('preserve names and verbatim', payload['prompt'])
+        self.assertIn('\nTask: ', payload['prompt'])
+        self.assertIn('saved_story_editorial_v4', payload['prompt'])
+        self.assertNotIn('evidence_ids', payload['prompt'])
+        self.assertNotIn('source_ids', payload['prompt'])
+        self.assertNotIn('Bundle JSON', payload['prompt'])
+        self.assertEqual({'title', 'paragraphs', 'questions'},
+                         set(payload['format']['properties']))
         old = _generation_payload(bundle(), 'narrative', 'synthetic-local')
         self.assertIn('preserve names and verbatim', old['prompt'])
         self.assertNotIn('Saved-story editing task', old['prompt'])
         self.assertEqual(payload['options'], old['options'])
+
+    def test_v4_host_rebuilds_citations_and_rejects_model_controlled_ids_or_noop(self):
+        value = editorial_bundle()
+        original_text = '我们在花园里散步，聊起了以前的日子，也一起照看花草。' * 4
+        value['chapters'][0]['narration'] = original_text
+        story_id = value['target']['id']
+        chapter_id = value['chapters'][0]['id']
+        editorial_id = f'editorial-{story_id}-{chapter_id}'
+        value['sources'].append({'id': editorial_id, 'kind': 'editorial',
+                                 'text': value['chapters'][0]['narration'],
+                                 'asset_id': None, 'author': None})
+        value['chapters'][0]['evidence_ids'].append(editorial_id)
+        clean = _validate_bundle(value)
+        compact = {'title': 'A revised memory',
+                   'paragraphs': ['我们在花园里相聚，聊着当时的心情。'],
+                   'questions': []}
+        result = validate_generated_narrative(compact, clean)
+        self.assertEqual([editorial_id], result['chapters'][0]['source_ids'])
+        self.assertTrue(result['needs_review'])
+
+        bad_responses = (
+            {'title': 'A story', 'paragraphs': [], 'questions': []},
+            {**compact, 'chapter_ids': [chapter_id]},
+            {**compact, 'source_ids': ['injected-source']},
+            {'version': 1, 'title': 'A story',
+             'chapters': [{'id': chapter_id, 'narration': 'new text',
+                           'source_ids': [editorial_id]}],
+             'questions': [], 'needs_review': True},
+            {'title': 'A story', 'paragraphs': [original_text],
+             'questions': []},
+        )
+        for response in bad_responses:
+            with self.subTest(keys=sorted(response)), self.assertRaises(ValueError):
+                validate_generated_narrative(response, clean)
+
+        empty_input = deepcopy(clean)
+        empty_input['chapters'][0]['narration'] = ''
+        empty_response = {'title': 'A story', 'paragraphs': [''], 'questions': []}
+        self.assertEqual('', validate_generated_narrative(
+            empty_response, empty_input)['chapters'][0]['narration'])
+        invented_response = {**empty_response, 'paragraphs': ['New unsupported text.']}
+        with self.assertRaisesRegex(ValueError, 'empty chapter'):
+            validate_generated_narrative(invented_response, empty_input)
 
     def test_refinement_context_is_closed_bounded_and_story_only(self):
         edits = [lambda v: v['story_refinement'].update(profile='unreviewed'),

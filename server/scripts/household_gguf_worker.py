@@ -18,7 +18,9 @@ import selected_story_gguf_worker as story
 _STORY_RUN = story.run
 _STORY_FAILURE_RECORD = story._failure_record
 from app.access.agent_decision import generation, validate_state, validate_decision
-from app.access.memory_narrative import _generation_payload, _validate_bundle, validate_narrative
+from app.access.memory_narrative import (
+    _generation_payload, _validate_bundle, validate_generated_narrative,
+)
 
 
 SAVED_STORY_FAILURE_EXIT_CODES = {
@@ -82,7 +84,7 @@ def _saved_story_narrative(settings, environment, request, response, operation,
             decoded = story._strict_loads(output.encode('utf-8'))
             phase = 'narrative'
             try:
-                result = validate_narrative(decoded, bundle)
+                result = validate_generated_narrative(decoded, bundle)
             except ValueError as error:
                 if str(error) == 'story refinement returned unchanged narration':
                     raise SavedStoryWorkerFailure('unchanged_narration') from None

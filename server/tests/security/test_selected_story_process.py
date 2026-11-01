@@ -230,7 +230,7 @@ class ProcessSelectedStoryTests(unittest.IsolatedAsyncioTestCase):
         provider, kernel, _factories = self.saved_provider(writer)
         scope = make_scope()
         value = saved_bundle()
-        value.update(version=4, story_refinement={'profile':'asr_editorial_v3',
+        value.update(version=4, story_refinement={'profile':'asr_editorial_v4',
             'people':[{'name':'林澄','aliases':['Lina']}]})
         self.assertEqual(await provider.prepare(value,scope),narrative())
         self.assertEqual(observed['bundle'],value)

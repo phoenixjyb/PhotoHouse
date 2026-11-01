@@ -82,6 +82,10 @@ class MemoryJobTests(unittest.TestCase):
             self.story_id, 5, 'author-a'))
         self.assertNotEqual(first, MemoryJobs.auto_refinement_mutation(
             self.story_id, 4, 'author-b'))
+        legacy_v3 = str(uuid.uuid5(uuid.NAMESPACE_URL,
+            f'photohouse:auto-story-refine:asr_editorial_v3:{self.story_id}:4:author-a'))
+        self.assertNotEqual(first, legacy_v3,
+            'v4 editorial semantics must not reuse or overwrite a v3 ready/failed result')
 
     def test_conversation_is_private_actor_scoped_and_viewer_chat_is_allowed(self):
         conversation = self.start()

@@ -33028,6 +33028,54 @@
         "Retain only fixed saved-story worker phase enums through actual nonzero process exit, native owner error, and process provider error. Unknown exits remain generic. No private text, paths, configuration, files, or observer process are added.",
         "Ownership, cancellation, deadlines, job drain, private exchange disposal, model/provider/settings, and resource guards are unchanged. Actual worker CLI and fake-kernel lifecycle tests cover phase propagation and cleanup; this source change is not a Windows deployment."
       ]
+    },
+    {
+      "feature": "compact-automatic-story-editor-v4-20261101",
+      "source_base": "7a2913242c0edd4fc177f3b6ba010b183c742ce1",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "6ba2255603540f68e9051cd3f6f3ac80db1651b9902f449fbaf75d44e1cb7e30",
+          "sha256": "2e6673b8e09a99ac30d0cfe6e068cb66b6c80a2ca63d37e27d58587270b8a332"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "before_sha256": "1291c0270384399d09b838b9c6da25654ee713520c42ae3d1ee9d812c1474293",
+          "sha256": "c30948f68b900c37760bcb734ed22cb78a048d46eac7aff8b8c845ed8a00b8f2"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "197c7e029ff6d64b60fbe4b705cabe9668494a540d9c30c35d77ca086dc71d7f",
+          "sha256": "a5f6776dc4c341ccfe583a11f54440028cf69422d34b78d2298830e9078489e6"
+        },
+        {
+          "path": "server/tests/security/test_memory_jobs.py",
+          "before_sha256": "d2ee799e221d32fba9549f0fbdcb3fd88df5223ac32670c52b11e8d5da069a5f",
+          "sha256": "7d8ff404ecb181d7287c7061dcaaab934ade0dcce6bb67e922966e31f37a207a"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "f6886eb9a036d38a241ff6eb6511c110e3e37e8e39209219a5684656fdd286e5",
+          "sha256": "40e037d9ba29223b751a5f9a05db06cecdd0fcb621711fafa7c2f5127c3124f9"
+        },
+        {
+          "path": "server/tests/security/test_memory_refinement_editorial.py",
+          "before_sha256": "77e4ac27a4699fa308a8c5378bd2e2847c2d1da4a94afb0dd03e0348f390ddcd",
+          "sha256": "a8bdd632fbe262fd238b4d2c6fec9a60c19b35abfb873e47b3e55e50eddd07e4"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": "4287b4a45c4f4f433059dbdd8dcf19380e91ca16dd737de5d9fecbb1c86657e7",
+          "sha256": "97a065a6db53f3874b076e1ed3acdec4ac51468639d8526ba656ab224fbe9140"
+        }
+      ],
+      "notes": [
+        "Version the automatic editor as asr_editorial_v4. Use concise language-specific editing instructions and only original chapter prose plus reviewed household name context in the model request. The internal model response is title, ordered paragraphs, and review questions.",
+        "The host validates the closed internal response, preserves chapter identity/order, binds only authorized source references, sets needs_review, and runs the existing public narrative validator and unchanged-draft refusal. Public API narrative shape, original stories, one model call, model/provider/settings, resources and ownership remain unchanged.",
+        "Focused tests cover compact prompt/worker decoding, incorrect chapter counts and injected IDs, blank or unchanged narration, reviewed aliases, recipe-version queue separation, and legacy v1-v3 payload parity. No Windows deployment follows from these local checks."
+      ]
     }
   ]
 }
