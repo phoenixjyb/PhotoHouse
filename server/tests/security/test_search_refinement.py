@@ -290,6 +290,10 @@ class SearchRefinementTests(unittest.TestCase):
         cases = {
             'videos only': {**PREVIOUS, 'media': ['video']},
             'only videos': {**PREVIOUS, 'media': ['video']},
+            'Refine the last search to videos only': {**PREVIOUS, 'media': ['video']},
+            'Refine my last search to videos only': {**PREVIOUS, 'media': ['video']},
+            'Refine last search to videos only': {**PREVIOUS, 'media': ['video']},
+            'Refine the last search to show videos only': {**PREVIOUS, 'media': ['video']},
             'Refine my last search to show videos only': {**PREVIOUS, 'media': ['video']},
             'only photos': PREVIOUS,
             'photos only': PREVIOUS,
@@ -307,7 +311,7 @@ class SearchRefinementTests(unittest.TestCase):
 
         dated = {**PREVIOUS, 'media': ['image'],
                  'date': {'from': '2025-09-01', 'to': '2025-09-30'}}
-        video_only = plan('Refine my last search to show videos only', previous=dated)
+        video_only = plan('Refine the last search to videos only', previous=dated)
         self.assertEqual(video_only.status, 'ready', video_only)
         self.assertEqual(video_only.filters, {**dated, 'media': ['video']})
         october = plan('October 2025', previous=video_only.filters)
@@ -317,7 +321,10 @@ class SearchRefinementTests(unittest.TestCase):
 
     def test_media_only_refinement_stays_closed_around_negation_quotes_and_residue(self):
         for words in ('videos only without a hat', 'only videos with an unknown scene',
-                      'videos only at Mars'):
+                      'videos only at Mars',
+                      'Refine the last search to videos only without a hat',
+                      'Refine the last search to videos only at Mars',
+                      'Refine my last search to videos only and no people'):
             with self.subTest(words=words):
                 result = plan(words)
                 self.assertEqual(result.status, 'clarification', result)

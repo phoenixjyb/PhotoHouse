@@ -150,22 +150,28 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('item_handle', response.text)
 
     async def test_media_only_followup_changes_media_and_keeps_results(self):
-        first = await self.post_turn('Find photos', agent=True)
+        first = await self.post_turn(
+            'Find photos of Sample Child in September 2032 containing "海边"', agent=True)
         self.assertEqual(first.status_code, 200, first.text)
         self.assertEqual(first.json()['status'], 'completed')
         self.assertEqual(first.json()['result']['kind'], 'results')
-        self.assertEqual(first.json()['result']['filters']['media'], ['image'])
+        first_filters = first.json()['result']['filters']
+        self.assertEqual(first_filters['media'], ['image'])
+        self.assertEqual(first_filters['people'], {'ids': ['301'], 'match': 'any'})
+        self.assertEqual(first_filters['date'], {
+            'from': '2032-09-01', 'to': '2032-09-30'})
+        self.assertEqual(first_filters['text'], '海边')
 
         self.runtime = SyntheticRuntime()
         self.app.state.assistant_agent_supervisor.runtime = self.runtime
         followup = await self.post_turn(
-            'Refine my last search to show videos only', revision=1, agent=True)
+            'Refine the last search to videos only', revision=1, agent=True)
         self.assertEqual(followup.status_code, 200, followup.text)
         body = followup.json()
         self.assertEqual(body['status'], 'completed')
         self.assertEqual(body['revision'], 2)
         self.assertEqual(body['result']['kind'], 'results')
-        self.assertEqual(body['result']['filters']['media'], ['video'])
+        self.assertEqual(body['result']['filters'], {**first_filters, 'media': ['video']})
         self.assertTrue(all(item['kind'] == 'video' for item in body['result']['items']))
         self.assertEqual(len(self.runtime.calls), 1)
 

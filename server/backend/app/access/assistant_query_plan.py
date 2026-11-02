@@ -45,8 +45,8 @@ _MEDIA = (
 _MEDIA_ONLY_EN = r'(?:videos?|movies?|photos?|photographs?|pictures?|images?)'
 _MEDIA_ONLY_REFINEMENT = re.compile(
     rf'^(?:'
-    rf'refine(?a:\b)\s+my(?a:\b)\s+last(?a:\b)\s+search(?a:\b)\s+'
-    rf'to(?a:\b)\s+show(?a:\b)\s+(?P<full>{_MEDIA_ONLY_EN})\s+only(?a:\b)|'
+    rf'refine(?a:\b)\s+(?:(?:my|the)(?a:\b)\s+)?last(?a:\b)\s+search(?a:\b)\s+'
+    rf'to(?a:\b)\s+(?:show(?a:\b)\s+)?(?P<full>{_MEDIA_ONLY_EN})\s+only(?a:\b)|'
     rf'only(?a:\b)\s+(?P<prefix>{_MEDIA_ONLY_EN})|'
     rf'(?P<suffix>{_MEDIA_ONLY_EN})\s+only(?a:\b)|'
     rf'只看(?P<chinese>视频|影片|照片|图片|相片)'
