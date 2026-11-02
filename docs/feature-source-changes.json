@@ -33205,6 +33205,49 @@
         "Version the editorial cache profile as asr_editorial_v7 so the approved candidate is not served a cached draft from earlier model trials. The prompt, public narrative schema, original preservation and review-required output are unchanged.",
         "Focused checks cover the exact 4 GiB boundary, refusal above it, unchanged old recipe validity and operator binding. Actual model resource fit, birthday quality and live rollout remain separate qualification gates."
       ]
+    },
+    {
+      "feature": "closed-local-backend-load-failures-20261102",
+      "source_base": "d6d183f59d65f0b9a32d3ceeaf1851f753e6a968",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "before_sha256": "c30948f68b900c37760bcb734ed22cb78a048d46eac7aff8b8c845ed8a00b8f2",
+          "sha256": "032e43c9d9443639ec3a4cff6e2fd488be5ea5a18b816de821cd10e21fe7667f"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_native.py",
+          "before_sha256": "b80c9d400d4c835f8127a434e1d8de109a9161affe91fb298e6bc271f7fe2028",
+          "sha256": "121e5ada80ee1ba2e778050e5e9c7be781175536a73626b7b1081db2f23cc6a6"
+        },
+        {
+          "path": "server/backend/app/access/selected_story_process.py",
+          "before_sha256": "f8e836a1ae555b7e8aff0f4b524d5442bcc50207aed5bfee7afcf1aa3081f45c",
+          "sha256": "ba8987e4519b1b7ffb89737b70cb01d8813631541a40e50feae6b072dee7afc9"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "db5ac75f6f2fa7625d020a0dc7cd1241e722ddd6a79bd8228a295c493f8222c3",
+          "sha256": "b1b8a79581b4a2054fb8ced4478fa7ff3e8cb11a9aa18daf4517919fa1269f1b"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_native.py",
+          "before_sha256": "6f67ef05b98a1c8f709ce95af35eb45303f7378971b8ce81ea4e7a8fabdd8aa3",
+          "sha256": "ed9c1f9a570cbcc019dcd0daeb80feb85ed3ecdf24f1299ed41ad0443b91115f"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": "055941fd174f9b095f6df035643e82b538f9174d2810af6bd41e9190d2a0d361",
+          "sha256": "28db6c3db58936da7187748e67efba0862b4724890046c4de8b28723eab95068"
+        }
+      ],
+      "notes": [
+        "Preserve the exact local engine constructor/settings and default-only dispatch while classifying bounded native ERROR-level allocation or unsupported-architecture signals and direct memory/dependency failures into closed backend phases. Restore the prior C logger callback and userdata, never retain or print raw messages, and keep optional backend imports inside actual model work.",
+        "Propagate legacy worker phases and the new backend-memory, architecture and dependency exit codes through native/process errors without changing failure categories, success conditions, ownership, deadlines, resource limits or cleanup. Unknown codes remain unknown.",
+        "Focused fake-native tests cover constructor success/failure, exact callback restoration, injected backends, cold import and private text redaction. Real model loading, story quality and Windows deployment are separate and unproved by this source change."
+      ]
     }
   ]
 }

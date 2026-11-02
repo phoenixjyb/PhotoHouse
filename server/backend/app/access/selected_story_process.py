@@ -30,6 +30,7 @@ REQUEST_ENV = 'PHOTOHOUSE_NATIVE_STORY_REQUEST'
 RESPONSE_ENV = 'PHOTOHOUSE_NATIVE_STORY_RESPONSE'
 MAX_REQUEST_BYTES = 128 * 1024
 _WORKER_PHASES = frozenset({
+    'exchange', 'backend_memory', 'backend_architecture', 'backend_dependency',
     'request', 'model_pin', 'backend_load', 'generation', 'output_validation',
     'unchanged_narration', 'model_close', 'tokenize', 'context', 'grammar',
     'completion', 'narrative', 'source_recheck', 'response_write',

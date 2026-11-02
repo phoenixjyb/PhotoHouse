@@ -24,10 +24,15 @@ from .selected_story_operations import PreparationScope
 OPERATION_ENV = 'PHOTOHOUSE_NATIVE_STORY_OPERATION'
 _SHA = re.compile(r'\A[0-9a-f]{64}\Z', re.ASCII)
 _WORKER_PHASE_BY_EXIT_CODE = {
+    10: 'exchange', 11: 'request', 12: 'model_pin', 13: 'backend_load',
+    14: 'tokenize', 15: 'context', 16: 'grammar', 17: 'generation',
+    18: 'completion', 19: 'narrative', 20: 'model_close',
+    21: 'source_recheck', 22: 'response_write',
     80: 'request', 81: 'model_pin', 82: 'backend_load', 83: 'generation',
     84: 'output_validation', 85: 'unchanged_narration', 86: 'model_close',
     87: 'tokenize', 88: 'context', 89: 'grammar', 90: 'completion',
     91: 'narrative', 92: 'source_recheck', 93: 'response_write',
+    94: 'backend_memory', 95: 'backend_architecture', 96: 'backend_dependency',
 }
 
 

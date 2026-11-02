@@ -130,7 +130,8 @@ class ProcessSelectedStoryTests(unittest.IsolatedAsyncioTestCase):
         return provider, kernel, factories
 
     async def test_saved_story_provider_preserves_only_allowlisted_worker_phase(self):
-        for exit_status, expected_phase in ((83, 'generation'), (7, None)):
+        for exit_status, expected_phase in ((83, 'generation'), (13, 'backend_load'), (94, 'backend_memory'),
+                                             (95, 'backend_architecture'), (96, 'backend_dependency'), (7, None)):
             with self.subTest(exit_status=exit_status):
                 provider, kernel, _ = self.saved_provider(kernel=FileKernel(
                     exited=True, exit_status=exit_status))

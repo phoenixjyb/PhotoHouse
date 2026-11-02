@@ -154,17 +154,21 @@ class NativeStoryProcessOwnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertLess(kernel.events.index(('active_processes', 'job', 0)),
                         kernel.events.index(('close', 'job')))
 
-    async def test_known_saved_story_exit_code_has_only_closed_worker_phase(self):
-        kernel = FakeKernel(exit_status=83)
-        owner, _, _ = self.make_owner(kernel)
-        scope = make_scope()
-        self.assertTrue(await owner.begin(scope))
-        with self.assertRaises(NativeStoryOwnerError) as caught:
-            await owner.wait_for_exit(scope)
-        self.assertEqual('launch_failed', caught.exception.category)
-        self.assertEqual('generation', caught.exception.worker_phase)
-        self.assertEqual('Native story process unavailable', str(caught.exception))
-        self.assertTrue(await owner.stop_and_reconcile(scope))
+    async def test_known_worker_exit_codes_have_only_closed_failure_phases(self):
+        for code, phase in ((83, 'generation'), (13, 'backend_load'),
+                            (94, 'backend_memory'), (95, 'backend_architecture'),
+                            (96, 'backend_dependency')):
+            with self.subTest(exit_code=code):
+                kernel = FakeKernel(exit_status=code)
+                owner, _, _ = self.make_owner(kernel)
+                scope = make_scope()
+                self.assertTrue(await owner.begin(scope))
+                with self.assertRaises(NativeStoryOwnerError) as caught:
+                    await owner.wait_for_exit(scope)
+                self.assertEqual('launch_failed', caught.exception.category)
+                self.assertEqual(phase, caught.exception.worker_phase)
+                self.assertEqual('Native story process unavailable', str(caught.exception))
+                self.assertTrue(await owner.stop_and_reconcile(scope))
 
     async def test_unrecognized_worker_exit_keeps_legacy_category_without_phase(self):
         kernel = FakeKernel(exit_status=7)

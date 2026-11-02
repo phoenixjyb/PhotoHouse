@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import sys
 import json
+import ctypes
 
 sys.dont_write_bytecode = True
 SERVER = Path(__file__).resolve().parents[1]
@@ -38,6 +39,9 @@ SAVED_STORY_FAILURE_EXIT_CODES = {
     'narrative': 91,
     'source_recheck': 92,
     'response_write': 93,
+    'backend_memory': 94,
+    'backend_architecture': 95,
+    'backend_dependency': 96,
 }
 
 
@@ -54,6 +58,115 @@ def _failure_record(error):
         return _STORY_FAILURE_RECORD(error)
     record = {'status': 'failed', 'category': 'worker_unavailable', 'phase': error.phase}
     return SAVED_STORY_FAILURE_EXIT_CODES[error.phase], json.dumps(record, separators=(',', ':'))
+
+
+_MEMORY_LOG_PATTERNS = (
+    b'failed to allocate', b'out of memory', b'not enough memory',
+    b'cannot allocate memory', b'bad_alloc', b'bad allocation',
+)
+_ARCHITECTURE_LOG_PATTERNS = (
+    b'unknown model architecture', b'unsupported model architecture',
+    b'unknown model arch', b'unsupported model arch',
+    b'unknown architecture', b'unsupported architecture',
+)
+_ORPHANED_LOG_CALLBACK = None
+
+
+class _NativeLogCapture:
+    """Temporarily classify bounded llama.cpp ERROR messages without retaining text."""
+
+    def __init__(self, native, callback, previous_callback, previous_userdata, flags):
+        self.native = native
+        self.callback = callback
+        self.previous_callback = previous_callback
+        self.previous_userdata = previous_userdata
+        self.flags = flags
+        self.restored = False
+
+    def restore(self):
+        if self.restored:
+            return
+        self.restored = True
+        try:
+            self.native.llama_log_set(self.previous_callback, self.previous_userdata)
+        except Exception:
+            # A logging API failure must not replace the model constructor result.
+            global _ORPHANED_LOG_CALLBACK
+            _ORPHANED_LOG_CALLBACK = (self.native, self.callback)
+
+
+def _install_native_log_capture():
+    """Return a temporary callback capture, or None if optional logging setup fails."""
+    flags = {'memory': False, 'architecture': False}
+    native = None
+    previous_callback = None
+    previous_userdata = None
+    callback = None
+    previous_read = False
+
+    def on_log(level, message, _userdata):
+        try:
+            if level != 3:
+                return
+            if type(message) is bytes:
+                bounded = message[:8192]
+            elif type(message) is str:
+                bounded = message.encode('utf-8', errors='ignore')[:8192]
+            else:
+                return
+            lowered = bounded.lower()
+            if any(pattern in lowered for pattern in _MEMORY_LOG_PATTERNS):
+                flags['memory'] = True
+            if any(pattern in lowered for pattern in _ARCHITECTURE_LOG_PATTERNS):
+                flags['architecture'] = True
+        except BaseException:
+            # Never let Python callback failures escape into llama.cpp.
+            return
+
+    try:
+        import llama_cpp.llama_cpp as native
+        callback_type = native.llama_log_callback
+        previous_callback = callback_type()
+        previous_userdata = ctypes.c_void_p()
+        native.llama_log_get(ctypes.byref(previous_callback), ctypes.byref(previous_userdata))
+        previous_read = True
+        callback = callback_type(on_log)
+        native.llama_log_set(callback, ctypes.c_void_p())
+        return _NativeLogCapture(native, callback, previous_callback, previous_userdata, flags)
+    except Exception:
+        if previous_read and native is not None:
+            try:
+                native.llama_log_set(previous_callback, previous_userdata)
+            except Exception:
+                if callback is not None:
+                    global _ORPHANED_LOG_CALLBACK
+                    _ORPHANED_LOG_CALLBACK = (native, callback)
+        return None
+
+
+def _default_backend_factory(settings):
+    """Call the unchanged engine constructor, with temporary closed log classification."""
+    capture = _install_native_log_capture()
+    flags = capture.flags if capture is not None else {'memory': False, 'architecture': False}
+    try:
+        return story._LlamaEngine(settings)
+    except MemoryError:
+        raise SavedStoryWorkerFailure('backend_memory') from None
+    except ImportError:
+        raise SavedStoryWorkerFailure('backend_dependency') from None
+    except Exception:
+        if flags['memory']:
+            raise SavedStoryWorkerFailure('backend_memory') from None
+        if flags['architecture']:
+            raise SavedStoryWorkerFailure('backend_architecture') from None
+        raise
+    finally:
+        if capture is not None:
+            capture.restore()
+
+
+def _backend_factory(backend_factory):
+    return backend_factory if backend_factory is not None else _default_backend_factory
 
 
 def _saved_story_narrative(settings, environment, request, response, operation,
@@ -74,7 +187,7 @@ def _saved_story_narrative(settings, environment, request, response, operation,
         phase = 'model_pin'
         model_path, model_identity = story._model_pin(settings)
         phase = 'backend_load'
-        engine = (backend_factory or story._LlamaEngine)(settings)
+        engine = backend_factory(settings)
         try:
             phase = 'generation'
             output = engine.complete(expected, settings)
@@ -135,6 +248,7 @@ def _saved_story_narrative(settings, environment, request, response, operation,
 def run(settings, *, enabled=False, environment=None, backend_factory=None):
     if enabled is not True or type(settings) is not story.WorkerSettings:
         story._refuse()
+    factory = _backend_factory(backend_factory)
     environment = dict(os.environ if environment is None else environment)
     request, response, operation = story._exchange(environment)
     raw = story._private_read(request)
@@ -142,10 +256,10 @@ def run(settings, *, enabled=False, environment=None, backend_factory=None):
     if type(value) is dict and 'kind' not in value:
         # Existing story request/response and validators remain byte-compatible.
         return _STORY_RUN(settings, enabled=True, environment=environment,
-                         backend_factory=backend_factory)
+                         backend_factory=factory)
     if type(value) is dict and value.get('kind') == 'saved_story_narrative_v1':
         return _saved_story_narrative(settings, environment, request, response,
-                                      operation, raw, value, backend_factory)
+                                      operation, raw, value, factory)
     phase = 'request'
     try:
         if (type(value) is not dict or set(value) != {'version', 'kind', 'operation_id', 'state'}
@@ -158,7 +272,7 @@ def run(settings, *, enabled=False, environment=None, backend_factory=None):
         phase = 'model_pin'
         model_path, model_identity = story._model_pin(settings)
         phase = 'backend_load'
-        engine = (backend_factory or story._LlamaEngine)(settings)
+        engine = factory(settings)
         try:
             phase = 'generation'
             output = engine.complete(expected, settings)
