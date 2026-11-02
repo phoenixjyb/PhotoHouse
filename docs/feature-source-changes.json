@@ -33825,6 +33825,23 @@
         "Document that Search result context and related protected continuation/recovery receipts are bound to the authenticated login-token/session identity; token rotation intentionally invalidates prior context with HTTP 409, and there is no cross-session result-context carryover.",
         "Normal same-session Search follow-up remains pending the running R10 native qualification; do not report a pass or live acceptance before the actual result."
       ]
+    },
+    {
+      "feature": "correct-live-rollout-cutoff-and-english-search-reproduction-20261103",
+      "source_commit": "9b2ee8ef832a0f948052432034417ec035948852",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/JUDE_ASSISTANT.md",
+          "before_sha256": "03c2eeb605889c1a0cefbb10a4a613755504fa6272a30717574625a59d9f3761",
+          "sha256": "1fd3c50981650927b181895d5552f57e369557c32db2d3d03c002fe6932b9f9a"
+        }
+      ],
+      "notes": [
+        "Correct the 2,700-second live-rollout status: the 22:45 UTC latest-admission cutoff expired before qualification, so no live rollout, full live check or operation was admitted or run.",
+        "Record only the confirmed local English-prefix reproduction and accepted phrase controls; the isolated source fix is in progress, not deployed, and no broader cause is claimed."
+      ]
     }
   ]
 }

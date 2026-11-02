@@ -65,9 +65,10 @@ clarification instead of fulfilling the requested refinement. The attempt was
 refused, so it is not a two-turn native pass or a new live acceptance. The
 profile, configuration and provider checks passed, as did native cleanup. This
 result is limited to that follow-up path; it does not mean all incumbent Search
-behavior failed, and existing basic Search evidence remains separate. A separate
-full live 2,700 check passed at 22:45, but it does not change the R10 result; no
-new deployment is claimed.
+behavior failed, and existing basic Search evidence remains separate. The
+latest permitted start for a 2,700-second live rollout was 22:45 UTC. That time
+expired before qualification, so no live rollout was admitted; no full live
+check or operation ran.
 
 The intended follow-up behavior retains supported conditions. For example,
 “找去年九月份的照片” selects the previous calendar year's September and images;
@@ -86,8 +87,11 @@ The source fix has 20 focused source tests; this does not establish live token-
 rotation behavior. See [Search v2](ASSISTANT_JOINT_SEARCH_V2.md#contract-and-compatibility)
 for the context binding and source checks.
 
-A separate exact-English-prefix parser diagnosis remains open; its cause has not
-been established. Keep that investigation distinct from the R10 native result.
+A local reproduction confirmed that `Refine the last search to videos only`
+returns clarification marked `unsupported_negation`, while `only videos` and
+`只看视频` are accepted. An isolated source fix is in progress and not deployed.
+This reproduces the discrepancy; it does not establish a broader cause. Keep the
+parser investigation distinct from the R10 native result.
 The deployed assistant carries recent exchanges in the signed-in library's
 server conversation and rechecks ownership and revision for each request.
 Continuity comes from app-managed, authorized retained history; the model does
