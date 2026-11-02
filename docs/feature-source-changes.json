@@ -33681,6 +33681,34 @@
         "Focused generated browser fixtures cover ready original comparison, no load-time model queue, stale revision refusal, explicit prose adoption, unchanged-title save, and the existing non-auto contribution proposal path. Desktop and 390-pixel phone panel renders were inspected.",
         "No model/provider/prompt, source authorization, schema, original narration, cloud-default, Windows service or GitHub Actions change. Source/local browser evidence is not a deployment claim."
       ]
+    },
+    {
+      "feature": "bounded-last-search-media-only-refinement-20261103",
+      "source_base": "eb9342fbc1710a108b99c309364aa09eca3f6318",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "d13832573daf00bc9be2f5752c4d309302d84faa654e3a36e7d40b60c9071d11",
+          "sha256": "7e04d4fea25a327170fb6fbbb3e2722c5c46030c535208bc54afe40adfb3dad3"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": "9c25a3c3cfb135baf326204a96d428af6ce9364adb471917b1f2d7e9396f7c27",
+          "sha256": "784cda0d76702e54b1c4efe24cfc8a03cc9f8c03ace7d5c7149c34a32b9b90e4"
+        },
+        {
+          "path": "server/tests/security/test_assistant_agent_workspace.py",
+          "before_sha256": "be3b04ad051bc981eb9b3e23d6cec7f0403f65c0b7370ff82cce8fddc151f267",
+          "sha256": "09c64c59833e9c29bc33aea34345d236a2139bed371d01d1caf13057d3ca9b59"
+        }
+      ],
+      "notes": [
+        "The deterministic planner accepts an anchored media-only “Refine [my/the] last search to [show] videos only” form. Existing accepted media-only English and Chinese forms remain unchanged; unknown clauses, exclusions, and added conditions still clarify.",
+        "Focused planner tests cover the requested wording, bounded scaffold variants, fail-closed residue, and preservation of the full prior filter set. The in-process assistant API regression changes only media while preserving person, date, and literal-text constraints.",
+        "No routes, schema, provider, model, runtime configuration, or deployment state changed. Local source and tests only."
+      ]
     }
   ]
 }
