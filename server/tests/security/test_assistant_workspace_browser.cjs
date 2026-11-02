@@ -181,6 +181,13 @@ async function installSyntheticTransport(targetContext){
   assert.equal(await page.locator('#assistant-private-abandon').isVisible(),true,'the user can explicitly abandon the uncertain request');
   assert.equal(turns().length,beforeConflictTurns+1,'the conflict never causes a second turn POST');
   const conflictedTurn=turns().at(-1);assert.equal(conflictedTurn.status,409);assert.equal(conflictedTurn.serverReached,true,'the stale-revision POST reaches the server and is rejected');
+  if(process.env.PH_BROWSER_FOCUS==='context_conflict'){
+    const screenshot=path.join(artifacts,'assistant-context-conflict-desktop-1280.png');
+    await page.screenshot({path:screenshot,fullPage:false});
+    checkpoint('Focused context-conflict state hides stale cards and shows localized recovery controls');
+    console.log('CONTEXT_CONFLICT_SCREENSHOT '+screenshot);
+    return;
+  }
   await page.locator('#assistant-private-abandon').click();
   await page.locator('#assistant-private-abandon-confirm').waitFor({state:'visible'});
   await page.locator('#assistant-private-abandon-yes').click();
