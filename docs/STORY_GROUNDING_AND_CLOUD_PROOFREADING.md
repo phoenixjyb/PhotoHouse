@@ -14,6 +14,27 @@ proposal. The current story worker v4 profile is
 before one local generation call. Public name repair is not delegated to a
 separate model knowledge pass.
 
+## Separate local model roles
+
+The optional `photohouse.household_service_recipe.v2` recipe pins a story model
+and an `agent_model` separately. This lets an operator qualify a stronger story
+editor while retaining the interactive agent's existing model and deadline.
+This source capability does not establish that either role has been deployed.
+
+Both providers share the same native launch, private exchange and
+`HostInferenceAdmission` instance. The worker selects the pinned agent model
+only after validating an `agent_decision_v1` request. Saved-story and legacy
+story requests use the story model. Request text cannot supply a model path,
+provider or fallback. Only the selected model is loaded, within one shared job
+limit; models do not run concurrently.
+
+V2 requires all three unique `--agent-model-*` launch options, distinct model
+labels, paths and SHA-256 pins, two CPU threads, zero GPU layers and an 8,192
+token context. The launch and resource-profile digests cover both model roles.
+The original v1 recipe retains its single-model behavior and rejects agent-role
+fields or flags. Qualification and cutover must bind the chosen pair explicitly;
+an earlier single-model result cannot prove the two-role deployment.
+
 ## Deterministic name grounding
 
 The offline package contains a bounded roster of 2,328 public singer labels

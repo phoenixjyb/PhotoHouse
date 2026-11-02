@@ -16,7 +16,7 @@ from app.access.selected_story_process import process_launch_digest, ProcessSele
 from app.access.windows_story_capacity import WindowsProbeIdentity
 from app.access.windows_story_service_capacity import windows_service_probe_digest
 from selected_story_service_recipe import (
-    SCHEMA, build_recipe_provider, strict_recipe,
+    SCHEMA, SCHEMA_V2, build_recipe_provider, strict_recipe,
 )
 
 
@@ -97,6 +97,27 @@ class RecipeFixture(unittest.TestCase):
         profile = self.profile | {'launch_sha256': digest}
         return self.encode(self.recipe | {'launch': launch, 'resource_profile': profile})
 
+    def role_recipe(self, *, agent_changes=None, story_changes=None, runtime_changes=None,
+                    top_changes=None):
+        agent = {'file': r'C:\PhotoHouse\models\agent.gguf',
+                 'sha256': 'b' * 64, 'label': 'agent-local'} | (agent_changes or {})
+        story = {'file': r'C:\PhotoHouse\models\story.gguf',
+                 'sha256': 'a' * 64, 'label': MODEL} | (story_changes or {})
+        argv = [self.launch['executable'], '-I', '-B',
+                r'C:\PhotoHouse\scripts\household_gguf_worker.py', '--execute',
+                '--model-file', story['file'], '--model-sha256', story['sha256'],
+                '--model-label', story['label'],
+                '--agent-model-file', agent['file'], '--agent-model-sha256', agent['sha256'],
+                '--agent-model-label', agent['label'],
+                '--threads', '2', '--gpu-layers', '0', '--context-tokens', '8192']
+        launch = self.launch | {'argv': argv} | (runtime_changes or {})
+        launch_object = NativeStoryLaunch(**(launch | {'argv': tuple(launch['argv'])}))
+        launch_sha = process_launch_digest(launch_object, exchange_root=self.recipe['exchange_root'])
+        profile = self.profile | {'launch_sha256': launch_sha}
+        value = self.recipe | {'schema': SCHEMA_V2, 'model': story['label'],
+            'agent_model': agent['label'], 'launch': launch, 'resource_profile': profile}
+        return self.encode(value | (top_changes or {}))
+
 
 class SelectedStoryServiceRecipeTests(RecipeFixture):
     def test_parser_returns_validated_value_objects_and_normalized_sequences(self):
@@ -158,6 +179,80 @@ class SelectedStoryServiceRecipeTests(RecipeFixture):
         self.invalid(self.rebind_launch(minimum_free_ram=8 * GiB - 1))
         profile = self.profile | {'minimum_free_ram': 4 * GiB}
         self.invalid(self.encode(self.recipe | {'resource_profile': profile}))
+
+    def test_v1_recipe_rejects_any_agent_role_switch_flags(self):
+        launch = self.launch | {'argv': self.launch['argv'] + ['--agent-model-label', 'agent-local']}
+        self.invalid(self.encode(self.recipe | {'launch': launch}))
+        self.invalid(self.encode(self.recipe | {'agent_model': 'agent-local'}))
+
+    def test_v2_parser_binds_distinct_story_and_agent_pins_without_loading_models(self):
+        raw = self.role_recipe()
+        parsed = strict_recipe(raw)
+        self.assertEqual(SCHEMA_V2, parsed['schema'])
+        self.assertEqual(MODEL, parsed['model'])
+        self.assertEqual('agent-local', parsed['agent_model'])
+        self.assertEqual(tuple(json.loads(raw)['launch']['argv']), parsed['launch'].argv)
+        with patch('app.access.selected_story_native.NativeStoryProcessOwner._launch',
+                   side_effect=AssertionError('recipe parsing must not load or launch models')):
+            provider = build_recipe_provider(raw, expected_model=MODEL,
+                expected_launch_sha256=parsed['resource_profile'].launch_sha256,
+                expected_profile_sha256=resource_profile_digest(parsed['resource_profile']))
+        self.assertFalse(provider.enabled)
+        self.assertEqual([], list(self.root.iterdir()))
+        with self.assertRaises(ValueError):
+            build_recipe_provider(raw, expected_model=MODEL,
+                expected_launch_sha256='c' * 64,
+                expected_profile_sha256=resource_profile_digest(parsed['resource_profile']))
+
+    def test_v2_requires_each_canonical_model_and_runtime_flag_once(self):
+        cases = []
+        cases.append(self.role_recipe(agent_changes={'file': r'C:\PhotoHouse\models\story.gguf'}))
+        cases.append(self.role_recipe(agent_changes={'sha256': 'a' * 64}))
+        cases.append(self.role_recipe(agent_changes={'label': MODEL}))
+        cases.append(self.role_recipe(runtime_changes={'memory_limit': 4 * GiB + 1}))
+        cases.append(self.role_recipe(runtime_changes={'process_limit': 9}))
+        duplicate = json.loads(self.role_recipe())
+        duplicate['launch']['argv'] += ['--agent-model-label', 'agent-local']
+        cases.append(self.encode(duplicate))
+        missing_agent_flag = json.loads(self.role_recipe())
+        agent_sha_index = missing_agent_flag['launch']['argv'].index('--agent-model-sha256')
+        del missing_agent_flag['launch']['argv'][agent_sha_index:agent_sha_index + 2]
+        cases.append(self.encode(missing_agent_flag))
+        extra_agent_flag = json.loads(self.role_recipe())
+        extra_agent_flag['launch']['argv'] += ['--agent-unreviewed', 'value']
+        cases.append(self.encode(extra_agent_flag))
+        for raw in cases:
+            with self.subTest(raw=raw[:40]), self.assertRaises(ValueError):
+                strict_recipe(raw)
+
+    def test_v2_requires_cpu2_gpu0_context8192_and_canonical_paths_and_hashes(self):
+        for flag, value in (('--threads', '1'), ('--gpu-layers', '1'),
+                            ('--context-tokens', '4096')):
+            doc = json.loads(self.role_recipe())
+            index = doc['launch']['argv'].index(flag)
+            doc['launch']['argv'][index + 1] = value
+            with self.subTest(flag=flag), self.assertRaises(ValueError):
+                strict_recipe(self.encode(doc))
+        for changes in (
+            {'file': r'\\server\models\agent.gguf'},
+            {'sha256': 'G' * 64},
+        ):
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                strict_recipe(self.role_recipe(agent_changes=changes))
+        doc = json.loads(self.role_recipe())
+        doc['launch']['argv'][doc['launch']['argv'].index('--agent-model-file') + 1] = doc['launch']['argv'][doc['launch']['argv'].index('--model-file') + 1]
+        with self.assertRaises(ValueError):
+            strict_recipe(self.encode(doc))
+        doc = json.loads(self.role_recipe())
+        doc['launch']['argv'][doc['launch']['argv'].index('--agent-model-file') + 1] = r'c:\photohouse\models\story.gguf'
+        with self.assertRaises(ValueError):
+            strict_recipe(self.encode(doc))
+        doc = json.loads(self.role_recipe())
+        worker_index = next(i for i, arg in enumerate(doc['launch']['argv'])
+                            if arg.endswith('household_gguf_worker.py'))
+        doc['launch']['argv'][worker_index] = r'C:\PhotoHouse\scripts\HOUSEHOLD_GGUF_WORKER.PY'
+        with self.assertRaises(ValueError):
+            strict_recipe(self.encode(doc))
         profile = self.profile | {'launch_sha256': 'b' * 64}
         self.invalid(self.encode(self.recipe | {'resource_profile': profile}))
 
@@ -178,6 +273,31 @@ class SelectedStoryServiceRecipeTests(RecipeFixture):
             build_recipe_provider(raw, expected_model=MODEL,
                 expected_launch_sha256=self.expected_launch_sha256,
                 expected_profile_sha256=self.expected_profile_sha256)
+
+    def test_real_two_role_factory_binds_both_labels_to_one_inert_launch(self):
+        from household_agent_factory import bind_household_providers
+        from app.access.host_inference_admission import HostInferenceAdmission
+
+        raw = self.role_recipe()
+        parsed = strict_recipe(raw)
+        with patch('household_agent_factory.WindowsAPI') as kernel, \
+                patch.object(HostInferenceAdmission, 'acquire') as acquire, \
+                patch.object(HostInferenceAdmission, 'set_maintenance') as maintenance:
+            story, agent = bind_household_providers(raw,
+                expected_model=MODEL,
+                expected_launch_sha256=parsed['resource_profile'].launch_sha256,
+                expected_profile_sha256=resource_profile_digest(parsed['resource_profile']))
+        self.assertEqual(MODEL, story.model)
+        self.assertEqual('agent-local', agent.provider.model)
+        self.assertIs(story.launch, agent.provider.launch)
+        self.assertIs(story.host_admission, agent.provider.host_admission)
+        self.assertEqual(story.exchange_root, agent.provider.exchange_root)
+        self.assertFalse(story.enabled)
+        self.assertFalse(agent.enabled)
+        kernel.assert_not_called()
+        acquire.assert_not_called()
+        maintenance.assert_not_called()
+        self.assertEqual([], list(self.root.iterdir()))
 
     def test_build_requires_all_operator_pins_and_runtime_joins(self):
         kwargs = dict(expected_model=MODEL,

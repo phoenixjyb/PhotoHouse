@@ -14,17 +14,22 @@ import re
 
 
 SCHEMA = 'photohouse.selected_story_service_recipe.v1'
+SCHEMA_V2 = 'photohouse.household_service_recipe.v2'
 MAX_RECIPE_BYTES = 64 * 1024
 _SHA256 = re.compile(r'[0-9a-f]{64}\Z', re.ASCII)
 _DRIVE = re.compile(r'[A-Za-z]:\Z', re.ASCII)
 _TOP_KEYS = {'schema', 'launch', 'model', 'resource_profile', 'capacity',
              'admission_directory', 'exchange_root', 'timeout_seconds', 'cleanup_seconds'}
+_TOP_KEYS_V2 = _TOP_KEYS | {'agent_model'}
 _LAUNCH_KEYS = {'executable', 'executable_sha256', 'argv', 'cwd', 'environment',
                 'memory_limit', 'process_limit', 'minimum_free_ram'}
 _PROFILE_KEYS = {'resource_id', 'launch_sha256', 'minimum_free_ram',
                  'minimum_free_disk', 'minimum_free_vram', 'capacity_sha256'}
 _CAPACITY_KEYS = {'directory', 'policy_id', 'identity', 'conflict_images'}
 _IDENTITY_KEYS = {'host_id', 'principal_sid', 'volume_id'}
+_MODEL_FLAGS = {'--model-file', '--model-sha256', '--model-label'}
+_AGENT_MODEL_FLAGS = {'--agent-model-file', '--agent-model-sha256', '--agent-model-label'}
+_RUNTIME_FLAGS = {'--threads', '--gpu-layers', '--context-tokens'}
 
 
 def _pairs(pairs):
@@ -73,15 +78,70 @@ def _number(value, maximum):
     return value
 
 
+def _bound_flags(argv, flags):
+    """Return unique, valued argv options; reject missing or duplicate pins."""
+    values = {}
+    for flag in flags:
+        positions = [index for index, value in enumerate(argv) if value == flag]
+        if len(positions) != 1:
+            raise ValueError('Invalid selected-story service recipe')
+        index = positions[0]
+        if index + 1 >= len(argv) or argv[index + 1].startswith('--'):
+            raise ValueError('Invalid selected-story service recipe')
+        values[flag] = argv[index + 1]
+    return values
+
+
+def _model_label(value, model_pattern):
+    if (type(value) is not str or not model_pattern.fullmatch(value)
+            or '://' in value):
+        raise ValueError('Invalid selected-story service recipe')
+
+
+def _path_key(value):
+    drive, _tail = ntpath.splitdrive(value)
+    if drive or '\\' in value:
+        return ntpath.normcase(ntpath.normpath(value))
+    return os.path.normcase(os.path.normpath(value))
+
+
+def _validate_v2_argv(launch, story_model, agent_model):
+    argv = launch.argv
+    worker_scripts = [arg for arg in argv
+                      if ntpath.basename(arg) == 'household_gguf_worker.py']
+    if len(worker_scripts) != 1 or '--gpu-device' in argv:
+        raise ValueError('Invalid selected-story service recipe')
+    options = _bound_flags(argv, _MODEL_FLAGS | _AGENT_MODEL_FLAGS | _RUNTIME_FLAGS)
+    if (options['--model-label'] != story_model
+            or options['--agent-model-label'] != agent_model
+            or not _SHA256.fullmatch(options['--model-sha256'])
+            or not _SHA256.fullmatch(options['--agent-model-sha256'])
+            or _path(options['--model-file']) != options['--model-file']
+            or _path(options['--agent-model-file']) != options['--agent-model-file']
+            or _path_key(options['--model-file']) == _path_key(options['--agent-model-file'])
+            or options['--model-sha256'] == options['--agent-model-sha256']
+            or options['--threads'] != '2'
+            or options['--gpu-layers'] != '0'
+            or options['--context-tokens'] != '8192'
+            or any(arg.startswith('--agent-') and arg not in _AGENT_MODEL_FLAGS for arg in argv)):
+        raise ValueError('Invalid selected-story service recipe')
+
+
 def strict_recipe(raw: bytes) -> dict:
-    """Parse a closed v1 recipe into validated native/profile value objects."""
+    """Parse a closed v1 or explicit two-role v2 recipe without activating it."""
     try:
         if type(raw) is not bytes or not 0 < len(raw) <= MAX_RECIPE_BYTES:
             raise ValueError()
         value = json.loads(raw.decode('utf-8', errors='strict'),
             object_pairs_hook=_pairs, parse_constant=_constant)
-        recipe = _object(value, _TOP_KEYS)
-        if recipe['schema'] != SCHEMA or type(recipe['schema']) is not str:
+        if type(value) is not dict or type(value.get('schema')) is not str:
+            raise ValueError()
+        schema = value['schema']
+        if schema == SCHEMA:
+            recipe = _object(value, _TOP_KEYS)
+        elif schema == SCHEMA_V2:
+            recipe = _object(value, _TOP_KEYS_V2)
+        else:
             raise ValueError()
 
         launch_raw = _object(recipe['launch'], _LAUNCH_KEYS)
@@ -125,8 +185,19 @@ def strict_recipe(raw: bytes) -> dict:
             raise ValueError()
 
         model = recipe['model']
+        agent_model = recipe.get('agent_model')
         launch_digest = process_launch_digest(launch, exchange_root=recipe['exchange_root'])
-        if (type(model) is not str or not _MODEL.fullmatch(model) or '://' in model
+        _model_label(model, _MODEL)
+        if schema == SCHEMA_V2:
+            _model_label(agent_model, _MODEL)
+            if agent_model == model:
+                raise ValueError()
+            _validate_v2_argv(launch, model, agent_model)
+        elif any(arg in _AGENT_MODEL_FLAGS or arg.startswith('--agent-')
+                 for arg in launch.argv):
+            # Older recipes have one fixed story role; never infer agent routing.
+            raise ValueError()
+        if (type(model) is not str
                 or profile.launch_sha256 != launch_digest
                 or launch.memory_limit > 4 * 1024**3 or launch.process_limit > 8
                 or launch.minimum_free_ram < 8 * 1024**3
@@ -139,7 +210,7 @@ def strict_recipe(raw: bytes) -> dict:
         if type(recipe['timeout_seconds']) not in (int, float) or type(recipe['cleanup_seconds']) not in (int, float):
             raise ValueError()
         return {
-            'schema': SCHEMA,
+            'schema': schema,
             'launch': launch,
             'model': model,
             'resource_profile': profile,
@@ -153,6 +224,7 @@ def strict_recipe(raw: bytes) -> dict:
             'exchange_root': recipe['exchange_root'],
             'timeout_seconds': timeout,
             'cleanup_seconds': cleanup,
+            **({'agent_model': agent_model} if schema == SCHEMA_V2 else {}),
         }
     except Exception:
         # Raw recipes can contain private paths and should never reach diagnostics.

@@ -5,6 +5,7 @@ import. The unchanged native owner supplies the private file exchange and Job.
 """
 from __future__ import annotations
 
+import argparse
 import os
 from pathlib import Path
 import sys
@@ -72,6 +73,15 @@ _ARCHITECTURE_LOG_PATTERNS = (
     b'unknown architecture', b'unsupported architecture',
 )
 _ORPHANED_LOG_CALLBACK = None
+
+
+class _RejectDuplicateAgentOption(argparse.Action):
+    """Keep each household-only role binding single-valued on the CLI."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        if getattr(namespace, self.dest, None) is not None:
+            parser.error('duplicate agent model option')
+        setattr(namespace, self.dest, values)
 
 
 class _NativeLogCapture:
@@ -252,8 +262,19 @@ def _saved_story_narrative(settings, environment, request, response, operation,
         raise SavedStoryWorkerFailure(phase) from None
 
 
-def run(settings, *, enabled=False, environment=None, backend_factory=None):
-    if enabled is not True or type(settings) is not story.WorkerSettings:
+def run(settings, *, agent_settings=None, enabled=False, environment=None, backend_factory=None):
+    if (enabled is not True or type(settings) is not story.WorkerSettings
+            or (agent_settings is not None and type(agent_settings) is not story.WorkerSettings)):
+        story._refuse()
+    if agent_settings is not None and (
+            settings.context_tokens != 8192 or settings.threads != 2
+            or settings.gpu_layers != 0 or settings.gpu_device is not None
+            or agent_settings.context_tokens != settings.context_tokens
+            or agent_settings.threads != settings.threads
+            or agent_settings.gpu_layers != settings.gpu_layers
+            or agent_settings.gpu_device != settings.gpu_device
+            or agent_settings.model == settings.model
+            or agent_settings.model_sha256 == settings.model_sha256):
         story._refuse()
     factory = _backend_factory(backend_factory)
     environment = dict(os.environ if environment is None else environment)
@@ -275,6 +296,7 @@ def run(settings, *, enabled=False, environment=None, backend_factory=None):
                 or type(value['state']) is not dict or set(value['state']) != {'turn', 'observations'}):
             story._refuse(phase)
         state = validate_state(value['state']['turn'], value['state']['observations'])
+        settings = agent_settings if agent_settings is not None else settings
         expected = generation(state, settings.model)
         phase = 'model_pin'
         model_path, model_identity = story._model_pin(settings)
@@ -312,14 +334,33 @@ def run(settings, *, enabled=False, environment=None, backend_factory=None):
 
 
 def main(argv=None):
-    # Reuse the exact approved CLI settings parser; only its closed dispatcher
-    # is changed in this module's process. No model settings come from input.
-    original = story.run
-    story.run = run
-    try:
-        return story.main(argv)
-    finally:
-        story.run = original
+    # Reuse the exact approved parser/settings construction. The optional agent
+    # role is all-or-none and is never derived from packet contents.
+    parser = story.build_argument_parser()
+    parser.add_argument('--agent-model-file', default=None,
+                        action=_RejectDuplicateAgentOption)
+    parser.add_argument('--agent-model-sha256', default=None,
+                        action=_RejectDuplicateAgentOption)
+    parser.add_argument('--agent-model-label', default=None,
+                        action=_RejectDuplicateAgentOption)
+    args = parser.parse_args(argv)
+    if not args.execute:
+        story._refuse()
+    settings = story.worker_settings_from_args(args)
+    agent_values = (args.agent_model_file, args.agent_model_sha256, args.agent_model_label)
+    if all(value is None for value in agent_values):
+        agent_settings = None
+    elif any(value is None for value in agent_values):
+        story._refuse()
+    else:
+        try:
+            agent_settings = story.WorkerSettings(
+                args.agent_model_file, args.agent_model_sha256, args.agent_model_label,
+                settings.context_tokens, settings.threads, settings.gpu_layers,
+                settings.gpu_device)
+        except story.WorkerUnavailable:
+            raise
+    return run(settings, agent_settings=agent_settings, enabled=True)
 
 
 if __name__ == '__main__':

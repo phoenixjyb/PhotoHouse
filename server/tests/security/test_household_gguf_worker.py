@@ -1,6 +1,7 @@
 """Household dispatcher fixtures only; actual pinned model runs on Windows."""
 import contextlib,ctypes,hashlib,io,json,os,runpy,subprocess,sys,types,unittest
 from copy import deepcopy
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock,patch
 
@@ -49,6 +50,17 @@ def fake_native_log_api():
 class HouseholdWorkerTests(unittest.TestCase):
     setUp= _worker_fixture.GGUFWorkerTests.setUp
     write_request= _worker_fixture.GGUFWorkerTests.write_request
+
+    def make_agent_settings(self):
+        model_dir = self.root / 'agent-model'
+        model_dir.mkdir(mode=0o700)
+        model = model_dir / 'agent.gguf'
+        model.write_bytes(b'GGUFsynthetic distinct agent fixture')
+        return worker.story.WorkerSettings(str(model),
+            hashlib.sha256(model.read_bytes()).hexdigest(), 'Qwen3-4B-Q4_K_M',
+            self.settings.context_tokens, self.settings.threads,
+            self.settings.gpu_layers, self.settings.gpu_device)
+
     def test_existing_story_packet_delegates_to_unchanged_validator(self):
         self.assertEqual(worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory),0)
         self.assertTrue(self.engine.closed);self.assertTrue(self.response.exists())
@@ -57,6 +69,70 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.assertEqual(worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory),0)
         self.assertEqual(json.loads(self.response.read_bytes())['result'],{'tool':'search_media'});self.assertTrue(self.engine.closed)
         self.assertEqual(self.engine.calls[0][0]['options'],{'temperature':0,'num_predict':128})
+
+    def test_fixed_agent_kind_uses_only_the_distinct_agent_model_and_closes_one_engine(self):
+        agent = self.make_agent_settings()
+        self.body={'version':1,'kind':'agent_decision_v1','operation_id':OPERATION_ID,
+            'state':{'turn':{'version':1,'text':'Find photos','locale':'en'},'observations':[]}}
+        self.write_request()
+        engine = _worker_fixture.SyntheticEngine(agent)
+        engine.text=json.dumps({'tool':'search_media'})
+        factory=Mock(return_value=engine)
+        original_pin=worker.story._model_pin
+        with patch.object(worker.story,'_model_pin',wraps=original_pin) as model_pin:
+            self.assertEqual(0,worker.run(self.settings,agent_settings=agent,enabled=True,
+                environment=self.env,backend_factory=factory))
+        factory.assert_called_once_with(agent)
+        model_pin.assert_called_once_with(agent)
+        self.assertEqual(1,len(engine.calls))
+        self.assertIs(engine.calls[0][1],agent)
+        self.assertTrue(engine.closed)
+        response=json.loads(self.response.read_bytes())
+        self.assertEqual(agent.model,response['model'])
+        self.assertEqual(agent.model,engine.calls[0][0]['model'])
+
+    def test_malformed_agent_packet_with_extra_model_field_refuses_before_pin_or_engine(self):
+        agent=self.make_agent_settings()
+        self.body={'version':1,'kind':'agent_decision_v1','operation_id':OPERATION_ID,
+            'model':agent.model,
+            'state':{'turn':{'version':1,'text':'Find photos','locale':'en'},'observations':[]}}
+        self.write_request()
+        with patch.object(worker.story,'_model_pin') as model_pin:
+            with self.assertRaises(worker.story.WorkerUnavailable) as caught:
+                worker.run(self.settings,agent_settings=agent,enabled=True,
+                    environment=self.env,backend_factory=self.factory)
+        self.assertEqual('request',caught.exception.phase)
+        model_pin.assert_not_called()
+        self.factory.assert_not_called()
+        self.assertFalse(self.response.exists())
+
+    def test_dual_role_settings_refuse_any_nonqualified_resource_profile(self):
+        agent=self.make_agent_settings()
+        for story_settings, agent_role in (
+                (self.settings,replace(agent,context_tokens=4096)),
+                (self.settings,replace(agent,threads=1)),
+                (self.settings,replace(agent,gpu_layers=1,gpu_device=0)),
+                (replace(self.settings,context_tokens=4096),
+                 replace(agent,context_tokens=4096))):
+            with self.subTest(story=story_settings,agent=agent_role):
+                with patch.object(worker.story,'_exchange') as exchange:
+                    with self.assertRaises(worker.story.WorkerUnavailable):
+                        worker.run(story_settings,agent_settings=agent_role,enabled=True,
+                            environment=self.env,backend_factory=self.factory)
+                exchange.assert_not_called()
+                self.factory.assert_not_called()
+
+    def test_saved_story_keeps_story_model_when_agent_role_is_configured(self):
+        agent=self.make_agent_settings()
+        self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,
+                   'bundle':saved_bundle()}
+        self.write_request();self.engine.text=json.dumps(narrative(),ensure_ascii=False)
+        self.assertEqual(0,worker.run(self.settings,agent_settings=agent,enabled=True,
+            environment=self.env,backend_factory=self.factory))
+        self.factory.assert_called_once_with(self.settings)
+        self.assertIs(self.engine.calls[0][1],self.settings)
+        self.assertEqual(self.settings.model,json.loads(self.response.read_bytes())['model'])
+        self.assertTrue(self.engine.closed)
     def test_saved_story_narrative_requires_closed_packet_and_reconstructs_canonical_generation(self):
         self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':saved_bundle()}
         self.write_request()
@@ -387,12 +463,67 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.factory.assert_not_called();self.assertFalse(self.response.exists())
 
 class HouseholdIsolatedCLITests(unittest.TestCase):
+    def _base_cli(self):
+        return ['--execute','--model-file','C:/models/story.gguf',
+            '--model-sha256','a'*64,'--model-label','Qwen3-1.7B-Q4_K_M']
+
+    def test_main_cli_keeps_legacy_single_model_and_builds_matching_agent_settings(self):
+        with patch.object(worker,'run',return_value=7) as run:
+            self.assertEqual(7,worker.main(self._base_cli()))
+        settings=run.call_args.args[0]
+        self.assertEqual(('C:/models/story.gguf','a'*64,'Qwen3-1.7B-Q4_K_M',8192,2,0,None),
+            (settings.model_file,settings.model_sha256,settings.model,settings.context_tokens,
+             settings.threads,settings.gpu_layers,settings.gpu_device))
+        self.assertIsNone(run.call_args.kwargs['agent_settings'])
+
+        args=self._base_cli()+['--agent-model-file','C:/models/agent.gguf',
+            '--agent-model-sha256','b'*64,'--agent-model-label','Qwen3-4B-Q4_K_M']
+        with patch.object(worker,'run',return_value=8) as run:
+            self.assertEqual(8,worker.main(args))
+        story_settings=run.call_args.args[0]
+        agent_settings=run.call_args.kwargs['agent_settings']
+        self.assertEqual((8192,2,0,None),(agent_settings.context_tokens,agent_settings.threads,
+            agent_settings.gpu_layers,agent_settings.gpu_device))
+        self.assertEqual('Qwen3-1.7B-Q4_K_M',story_settings.model)
+        self.assertEqual('Qwen3-4B-Q4_K_M',agent_settings.model)
+
+    def test_main_cli_rejects_partial_or_malformed_agent_role_without_fallback(self):
+        full=['--agent-model-file','C:/models/agent.gguf',
+            '--agent-model-sha256','b'*64,'--agent-model-label','Qwen3-4B-Q4_K_M']
+        partials=(full[:2],full[:4],full[2:])
+        invalid=(['--agent-model-file','', '--agent-model-sha256','b'*64,
+                  '--agent-model-label','Qwen3-4B-Q4_K_M'],
+                 ['--agent-model-file','C:/models/agent.gguf','--agent-model-sha256','bad',
+                  '--agent-model-label','Qwen3-4B-Q4_K_M'],
+                 ['--agent-model-file','C:/models/agent.gguf','--agent-model-sha256','b'*64,
+                  '--agent-model-label','../private'])
+        for extra in (*partials,*invalid, ['--unrecognized-private-option']):
+            with self.subTest(extra=extra), patch.object(worker,'run') as run:
+                with self.assertRaises(worker.story.WorkerUnavailable):
+                    worker.main(self._base_cli()+list(extra))
+                run.assert_not_called()
+
+    def test_main_cli_rejects_duplicate_occurrences_of_each_agent_binding_flag(self):
+        values={'--agent-model-file':'C:/models/agent.gguf',
+                '--agent-model-sha256':'b'*64,
+                '--agent-model-label':'Qwen3-4B-Q4_K_M'}
+        complete=[]
+        for flag,value in values.items():
+            complete.extend((flag,value))
+        for flag,value in values.items():
+            with self.subTest(flag=flag), patch.object(worker,'run') as run:
+                with self.assertRaises(worker.story.WorkerUnavailable):
+                    worker.main(self._base_cli()+complete+[flag,value])
+                run.assert_not_called()
+
     def test_real_isolated_cli_help_imports_without_model_or_runtime(self):
         # Production launch uses -I, which removes the script directory from
         # sys.path. Execute that actual cold entry rather than an imported fixture.
         value=subprocess.run([sys.executable,'-I','-B',str(SCRIPTS/'household_gguf_worker.py'),'--help'],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=10)
         self.assertEqual(value.returncode,0,value.stderr.decode('utf-8','replace'))
         self.assertIn(b'--model-file',value.stdout)
+        for flag in (b'--agent-model-file',b'--agent-model-sha256',b'--agent-model-label'):
+            self.assertIn(flag,value.stdout)
         self.assertNotIn(b'Traceback',value.stderr)
         program = (f'import sys;sys.path.insert(0,{str(SCRIPTS)!r});'
                    'import household_gguf_worker;assert "llama_cpp" not in sys.modules')

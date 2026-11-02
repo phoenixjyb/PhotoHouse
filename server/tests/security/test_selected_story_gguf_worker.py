@@ -147,6 +147,15 @@ class GGUFWorkerTests(unittest.TestCase):
         self.assertEqual((2, '{"status":"failed","category":"worker_unavailable"}'),
                          worker._failure_record(corrupted))
 
+    def test_reusable_cli_parser_keeps_standalone_settings_and_unknown_flag_refusal(self):
+        args = worker.build_argument_parser().parse_args([
+            '--execute', '--model-file', self.settings.model_file,
+            '--model-sha256', self.settings.model_sha256,
+            '--model-label', self.settings.model])
+        self.assertEqual(self.settings, worker.worker_settings_from_args(args))
+        with self.assertRaises(worker.WorkerUnavailable):
+            worker.build_argument_parser().parse_args(['--unrecognized-private-option'])
+
     def test_success_closes_before_private_response_and_keeps_request_unchanged(self):
         before = self.request.read_bytes()
         check = worker.require_private_file

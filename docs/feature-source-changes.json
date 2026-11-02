@@ -33590,6 +33590,69 @@
         "Apply only the local grounder’s original-chapter-bound exact spelling repairs to copied generated prose before final grounding, so moving a name away from its concert cue cannot reintroduce its original ASR spelling. Title uses the same original-source-backed names. No model suggestion supplies repair authority; originals and canonical validation remain unchanged.",
         "The actual worker fixture covers a copied misspelling in both title and prose after the concert cue is removed, with one completion, reviewed alias preservation, unchanged originals and owned engine closure."
       ]
+    },
+    {
+      "feature": "explicit-local-story-and-agent-model-roles-20261103",
+      "source_base": "405c6f13b04063c3a391ffca803422278b2aebc0",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/STORY_GROUNDING_AND_CLOUD_PROOFREADING.md",
+          "before_sha256": "8ff9c5c16ee9066256dd3855f168f444bdbb3d69b079fffa49c88eba9ac2839d",
+          "sha256": "acbbc08fea4435e5066f81a4ff199101ec1e1e7a842e9fe179fe3a2b8d94fe87"
+        },
+        {
+          "path": "server/scripts/household_agent_factory.py",
+          "before_sha256": "8810128cb3c6f2f67b9c240ef6eb0c920912d0f0f4089ce03f1a9c63d13e818b",
+          "sha256": "3ea5a45e830f6fb85c55577bb44466083002a147b05c7dbbd8dceb7c958b3e28"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "before_sha256": "900df765f9af600174904963feb86fd7db3188729605e1a0e3496cb0b00882aa",
+          "sha256": "23f34dc6c5781253b2d06c773703a0308dfb5456bad767696a9b116c9956a1d4"
+        },
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": "dc6e362d3f4ac6ad942c63cdfc17e126b7eb1a5037cf172a8141d88fc709247c",
+          "sha256": "39786893128e1944656f1c91b548f21c94e62996ecc457704ebed71aad8ad89a"
+        },
+        {
+          "path": "server/scripts/selected_story_service_recipe.py",
+          "before_sha256": "57f9fa43c0695d03cfecbab2f036b91e8a67b180336e4f259d95e9046c39509b",
+          "sha256": "35a80a49fd602e6489a546b67fd58a60dfa8e5f669fca0315835d79408b1956b"
+        },
+        {
+          "path": "server/tests/security/test_household_agent_factory.py",
+          "before_sha256": "cf5d676f0f24127b6962a30f8f1182d4b5caabc6fbd84686e373d11f4654b177",
+          "sha256": "cd2ed6363edeab0dd8d5a7711de89f0b6f9af13c5b580832808a51ff68f7a9c0"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "3118a06ce7c29c507d205229fda23d788a30f847608e4dfbccf9594564e7336e",
+          "sha256": "1aa51d25f7fe15dea40e595c349c6a92c143834b5cea7e65e7b403b0d15ed140"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "f21f753189d9e351af044960f1338484f3d069f01ef21572feb80abf418c381b",
+          "sha256": "2ffbb91e8daec8b8981e32242b89ca50a4379a9f4c9fc1c92a6d7e668dee820f"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_process.py",
+          "before_sha256": "28db6c3db58936da7187748e67efba0862b4724890046c4de8b28723eab95068",
+          "sha256": "a4c37d4307473a40d1e8bf397a8682ceb77c0b8f07afc12e328ab8a04b446f57"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_service_recipe.py",
+          "before_sha256": "a5ad65b97ff7fa55cdcd7889d92345579d04925cf6429d0b35d81317c0096557",
+          "sha256": "8c9bca6cd08654ab238eab5eafd8719ad06c87d66e94774af24ca571d2bcfe2c"
+        }
+      ],
+      "notes": [
+        "Closed household service recipe v2 binds distinct story and agent model labels, SHA-256 pins and paths to one native launch, exchange and shared HostInferenceAdmission. V1 single-model behavior is preserved; unknown, duplicate and partial role bindings refuse. Only a validated agent packet selects the agent model; story packets retain the story model.",
+        "CPU2, GPU0 and context8192 remain mandatory for the two-role worker. One selected engine loads and closes; input cannot select arbitrary model paths or fallbacks. Real recipe/factory construction is inert; source, local tests and Windows qualification/deployment remain separate.",
+        "The process-exchange fixture now uses the current exported editorial profile rather than a retired literal. No Search/grouping path, database schema, original data, cloud-default or GitHub Actions change."
+      ]
     }
   ]
 }

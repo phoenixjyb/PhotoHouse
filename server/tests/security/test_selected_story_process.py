@@ -12,7 +12,9 @@ import time
 import unittest
 from unittest.mock import patch
 
-from backend.app.access.memory_narrative import MAX_PROVIDER_BYTES, _generation_payload
+from backend.app.access.memory_narrative import (
+    MAX_PROVIDER_BYTES, STORY_REFINEMENT_PROFILE, _generation_payload,
+)
 from backend.app.access.selected_story_native import NativeStoryLaunch
 from backend.app.access.selected_story_operations import PreparationScope
 from backend.app.access.selected_story_process import (
@@ -231,7 +233,7 @@ class ProcessSelectedStoryTests(unittest.IsolatedAsyncioTestCase):
         provider, kernel, _factories = self.saved_provider(writer)
         scope = make_scope()
         value = saved_bundle()
-        value.update(version=4, story_refinement={'profile':'asr_editorial_v7',
+        value.update(version=4, story_refinement={'profile':STORY_REFINEMENT_PROFILE,
             'people':[{'name':'林澄','aliases':['Lina']}]})
         self.assertEqual(await provider.prepare(value,scope),narrative())
         self.assertEqual(observed['bundle'],value)
