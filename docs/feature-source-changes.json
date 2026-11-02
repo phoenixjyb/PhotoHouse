@@ -33798,6 +33798,33 @@
         "Correct the native qualification count: the result covers three cases (active cancellation, real 30-second expiry, birthday-story generation), total 134.468 seconds on a private SQLite copy; the production original and retained draft were unchanged.",
         "Remove the private family name and private story sample from public documentation. Keep detailed story provenance, authorization, revision and context-fingerprint safeguards in the Jude guide; link the other summaries to the technical role contract."
       ]
+    },
+    {
+      "feature": "document-search-token-bound-context-and-pending-followup-qualification-20261103",
+      "source_commit": "331f18375d86a7f738b5b152a33546d04dd08b3a",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "aff07765fbf87f1d499416f6cfe24fc79beba9ea2490d2ef87e4ee81ce37c302",
+          "sha256": "71142d51394c494783cc64ec69d4ee032e7b093d557bb83b84db04d989c7a998"
+        },
+        {
+          "path": "docs/JUDE_ASSISTANT.md",
+          "before_sha256": "0843cc5ef4015a8a98db98b9b95b59dfabb77b6d6d8bb458f0eb9f9714ae8282",
+          "sha256": "03c2eeb605889c1a0cefbb10a4a613755504fa6272a30717574625a59d9f3761"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "cfccf291c4b2ca99d3e51e64878f71966f62f4b4477aa531694270f297d38abd",
+          "sha256": "3aec5af9ec02c2d1ead716457eea468fe71e6c812b75189c2d74f12577373719"
+        }
+      ],
+      "notes": [
+        "Document that Search result context and related protected continuation/recovery receipts are bound to the authenticated login-token/session identity; token rotation intentionally invalidates prior context with HTTP 409, and there is no cross-session result-context carryover.",
+        "Normal same-session Search follow-up remains pending the running R10 native qualification; do not report a pass or live acceptance before the actual result."
+      ]
     }
   ]
 }

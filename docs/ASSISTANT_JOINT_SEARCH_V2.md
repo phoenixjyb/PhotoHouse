@@ -32,8 +32,17 @@ The internal `SearchPlan(version=2)` accepts existing discovery hard filters
 literal `caption`) plus a separate literal `text` phrase. Date basis is still
 `capture`; neither filenames nor receipt times become capture dates. The current
 context shape is retained, with a separate source-bound opaque binding and
-fingerprint. Downgrading a v2 context or using it in another session/library
-requires refresh; context never grants access.
+fingerprint. That binding includes the authenticated login-token/session identity
+in digest form; the credential itself is not put in the context. A token rotation
+intentionally invalidates prior result context and associated receipt recovery:
+reusing it under the new token is refused with HTTP 409, and the user must start
+a fresh search. There is no cross-session result-context carryover. Downgrading
+a v2 context or using it in another session/library requires refresh; context
+never grants access.
+
+The source fix for login-token rotation invalidation passed 20 focused source
+tests. This is source-level evidence; it does not qualify normal native
+same-session follow-up or establish live behavior.
 
 Examples using fictional reviewed names:
 

@@ -53,20 +53,41 @@ of starting another model action. A stale account/library/conversation receipt
 cannot restore an active microphone or execute an action. Stored history and
 returned cards do not bypass fresh authorization.
 
-## October 30 conversation and refinement
+## Search conversation context and current qualification
 
-The compact chat layout and bounded conversation context are deployed on
-Windows from `daa7e14`. Typed/HTTPS date-to-media follow-up, history and request
-recovery passed. The new three-turn voice demonstration remains unaccepted.
+The October 30 compact chat layout and bounded conversation projection were
+deployed from `daa7e14`. That dated rollout does not establish acceptance for
+the current Search follow-up contract.
 
-A conversational search should retain the understood conditions between turns:
+The later R10 native attempt made two real model inferences. The first Search
+reached the model; the natural-language follow-up in turn two returned a
+clarification instead of fulfilling the requested refinement. The attempt was
+refused, so it is not a two-turn native pass or a new live acceptance. The
+profile, configuration and provider checks passed, as did native cleanup. This
+result is limited to that follow-up path; it does not mean all incumbent Search
+behavior failed, and existing basic Search evidence remains separate. A separate
+full live 2,700 check passed at 22:45, but it does not change the R10 result; no
+new deployment is claimed.
+
+The intended follow-up behavior retains supported conditions. For example,
 “找去年九月份的照片” selects the previous calendar year's September and images;
-“只看视频” changes only media type. A local, not-yet-deployed fix makes
-“改成十月份” retain the prior year when it is unambiguous; an ambiguous year
-requires clarification. Explicit dates override that context. Unsupported
-conditions still need clarification. Empty results are a valid answer and must
-not cause the service to silently discard a requested condition.
+“只看视频” changes only media type. For “改成十月份”, the intended behavior
+retains the prior year only when it is unambiguous; an ambiguous year requires
+clarification. Explicit dates override that context. Unsupported conditions
+still need clarification. Empty results must not cause the service to silently
+discard a requested condition. The ordinary same-session follow-up path remains
+unqualified after the R10 refusal.
 
+Search result context and its protected continuation/recovery receipts are bound
+to the authenticated login-token/session identity. Token rotation deliberately
+invalidates the prior context: reuse with the new token returns HTTP 409 and
+requires a fresh search. Result context is not carried between login sessions.
+The source fix has 20 focused source tests; this does not establish live token-
+rotation behavior. See [Search v2](ASSISTANT_JOINT_SEARCH_V2.md#contract-and-compatibility)
+for the context binding and source checks.
+
+A separate exact-English-prefix parser diagnosis remains open; its cause has not
+been established. Keep that investigation distinct from the R10 native result.
 The deployed assistant carries recent exchanges in the signed-in library's
 server conversation and rechecks ownership and revision for each request.
 Continuity comes from app-managed, authorized retained history; the model does

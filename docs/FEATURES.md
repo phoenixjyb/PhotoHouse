@@ -13,7 +13,7 @@ requires the relevant real-world use.
 | --- | --- | --- |
 | Accounts, libraries, imports and review | Protected account/library access, owner review, family contributions, upload receipts and recovery are implemented. The receipt journal remains separate from approval, processing and gallery visibility. | Continue real owner/member import and recovery trials; a receipt alone does not make media visible or ready. |
 | Photo/video browsing and playback | Protected Web and phone readers, named libraries/albums, story/memoir readers and the separate Home TV catalog exist. Page-local similar-photo stacks are delivered on API/Web and phone. | TV was not updated by the October 29 rollout. Physical projector, phone playback and family use remain separate checks. |
-| Search and read-only assistant | October 29 API/Web source and assistant UI are deployed. English and Chinese each returned 20 cards; the separate gallery grouping read covered two pages. Search and Jude retain the incumbent `qwen2.5-1.5b-instruct-q4-k-m-trial` role with the bounded `agent_media_search_v1` read-only tools. | This does not establish broad semantic relevance or full-library coverage. Search quality and user acceptance remain open; this is not a general shell or mutation agent. See [search readiness](SEARCH_READINESS_AND_RELEVANCE.md). |
+| Search and read-only assistant | October 29 API/Web source and assistant UI are deployed. English and Chinese each returned 20 cards; the separate gallery grouping read covered two pages. Search and Jude retain the incumbent `qwen2.5-1.5b-instruct-q4-k-m-trial` role with the bounded `agent_media_search_v1` read-only tools. | The current R10 same-session follow-up attempt was refused, not passed or newly deployed; basic Search evidence is separate. Token rotation invalidates prior context/receipts with 409. See [Jude status](JUDE_ASSISTANT.md#search-conversation-context-and-current-qualification), [search readiness](SEARCH_READINESS_AND_RELEVANCE.md) and [Search v2](ASSISTANT_JOINT_SEARCH_V2.md#contract-and-compatibility). |
 | Story preparation | Automatic refinement keeps the original and produces a separate `needs_review` draft. The explicitly approved story role is `Qwen3-4B-Instruct-2507`; its source and native qualification do not make the new role or UI live. | Human review of editorial quality remains open. Output is not saved into a family story automatically; this does not establish general factual quality or family acceptance. |
 | Voice path | Existing foreground voice and local speech components remain available. A real local synthesized-audio request completed through transcription, receipt, search and reply audio in 28.688 seconds (ASR: 10.297 seconds). | The user deferred the physical microphone/speaker trial. This single run is not broad device or family acceptance. |
 | Grouping | Page-local similar-photo stacks are distinct from library-wide photo-stack indexing and from activity/shared-memory grouping. Library-wide stacks and their 15-minute SYSTEM index refresh were activated on the October 29 Windows installation, with an initial sweep and two subsequent successful runs. Activity/shared-memory grouping remains separate and is not broadly activated. | Do not infer whole-library coverage or broad activity/shared-memory activation from two gallery group pages. See [library stacks](LIBRARY_PHOTO_STACKS.md) and [grouping design](ACTIVITY_GROUPING_DESIGN.md). |
@@ -25,11 +25,12 @@ rollout evidence.
 
 ## October 30 delivery and candidates
 
-Compact chat, bounded conversation context and date-to-media follow-ups are
-actually deployed from `daa7e14`, not yet merged into main. Two model/tool turns,
-history, request recovery, an existing unsaved AI draft and the first new SYSTEM
-grouping refresh passed on Windows. A three-turn voice test refused acceptance;
-a follow-up-year bug is fixed locally but not deployed.
+The October 30 Windows rollout from `daa7e14` delivered compact chat and bounded
+conversation projection; it is not yet merged into main. It does not establish
+current same-session Search follow-up. The R10 attempt was refused, not passed;
+see the [Jude guide](JUDE_ASSISTANT.md#search-conversation-context-and-current-qualification)
+for the observed outcome, existing basic Search boundary and separate live-check
+status.
 
 The separately qualified Windows story runtime remains distinct from the current
 source and native qualification. The story and assistant roles are described in
