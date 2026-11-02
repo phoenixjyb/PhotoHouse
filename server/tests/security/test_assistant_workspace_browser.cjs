@@ -164,6 +164,34 @@ async function installSyntheticTransport(targetContext){
   assert.equal(threadFromPath(enTurn),threadId);assert.equal(threadFromPath(zhTurn),threadId);
   checkpoint('Saved locale preferences produce English and Chinese grounded replies in the same thread');
 
+  // A context conflict on a submitted turn removes stale private cards, keeps
+  // the request owned for explicit recovery/abandonment, and never retries.
+  const beforeConflictTurns=turns().length,beforeConflictCreates=threadCreates().length;
+  assert(await page.locator('#assistant-results .assistant-result').count()>0,'a current private result is visible before the conflict');
+  const conflictAdvance=await rpc({command:'append-private-history',thread_id:threadId});assert.equal(conflictAdvance.ok,true);
+  const conflictQuestion='查找照片';
+  const conflictResponse=page.waitForResponse(response=>response.request().method()==='POST'&&
+    response.url().includes(`${workspace}/threads/${threadId}/turns`)&&response.status()===409);
+  await page.locator('#assistant-text').fill(conflictQuestion);await page.locator('#assistant-send').click();await conflictResponse;
+  await page.waitForFunction(()=>document.getElementById('assistant-status').textContent.includes('检索条件已变化'));
+  assert.equal(await page.locator('#assistant-results .assistant-result').count(),0,'the prior private result cards are hidden after 409');
+  assert.equal(await page.locator('#assistant-reply').textContent(),'','the prior reply is hidden after 409');
+  assert.equal(await page.locator('#assistant-text').inputValue(),conflictQuestion,'the submitted text remains available');
+  assert.equal(await page.locator('#assistant-private-recover').isVisible(),true,'the exact request remains available for explicit recovery');
+  assert.equal(await page.locator('#assistant-private-abandon').isVisible(),true,'the user can explicitly abandon the uncertain request');
+  assert.equal(turns().length,beforeConflictTurns+1,'the conflict never causes a second turn POST');
+  const conflictedTurn=turns().at(-1);assert.equal(conflictedTurn.status,409);assert.equal(conflictedTurn.serverReached,true,'the stale-revision POST reaches the server and is rejected');
+  await page.locator('#assistant-private-abandon').click();
+  await page.locator('#assistant-private-abandon-confirm').waitFor({state:'visible'});
+  await page.locator('#assistant-private-abandon-yes').click();
+  await page.waitForFunction(oldId=>{const value=document.getElementById('assistant-private-select')?.value;return value&&value!==oldId;},threadId);
+  threadId=await page.locator('#assistant-private-select').inputValue();
+  assert.equal(threadCreates().length,beforeConflictCreates+1,'a fresh conversation follows explicit abandonment');
+  assert.equal(turns().length,beforeConflictTurns+1,'the conflict request is not automatically replayed in the fresh conversation');
+  assert.equal(await page.locator('#assistant-text').inputValue(),conflictQuestion,'the request remains a draft for a deliberate new search');
+  assert.equal(await page.locator('#assistant-status').textContent(),'','the resolved conflict guidance clears after explicit abandonment');
+  checkpoint('A POST 409 hides stale results and gives context-specific recovery guidance; the request is not retried and abandonment preserves it as an unsent draft');
+
   // Let the server commit a turn, drop its POST response, then recover through the exact GET identity.
   loseNextTurn=true;const beforeLost=turns().length;
   await page.locator('#assistant-text').fill('找公园照片');await page.locator('#assistant-send').click();
