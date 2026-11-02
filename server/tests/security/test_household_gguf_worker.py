@@ -1,5 +1,6 @@
 """Household dispatcher fixtures only; actual pinned model runs on Windows."""
 import contextlib,ctypes,hashlib,io,json,os,runpy,subprocess,sys,types,unittest
+from copy import deepcopy
 from pathlib import Path
 from unittest.mock import Mock,patch
 
@@ -76,8 +77,9 @@ class HouseholdWorkerTests(unittest.TestCase):
         value['chapters'][0]['narration']=narration
         self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':value}
         self.write_request()
-        self.engine.text=json.dumps({'repairs':[],'title':'A small garden story',
-            'paragraphs':[narration], 'questions':[]},ensure_ascii=False)
+        self.engine.responses=[json.dumps({'repairs':[]}),
+            json.dumps({'repairs':[],'title':'A small garden story',
+                'paragraphs':[narration], 'questions':[]},ensure_ascii=False)]
         with self.assertRaises(worker.SavedStoryWorkerFailure) as caught:
             worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory)
         self.assertEqual('unchanged_narration',caught.exception.phase)
@@ -96,7 +98,7 @@ class HouseholdWorkerTests(unittest.TestCase):
         code,record=worker._failure_record(backend_caught.exception)
         self.assertEqual(worker.SAVED_STORY_FAILURE_EXIT_CODES['tokenize'],code)
         self.assertEqual('tokenize',json.loads(record)['phase'])
-    def test_v9_trust_filtered_editorial_profile_reaches_actual_worker_prompt(self):
+    def test_v10_trust_filtered_editorial_profile_reaches_actual_worker_prompt(self):
         value = saved_bundle()
         value.update(version=4, story_refinement={'profile':STORY_REFINEMENT_PROFILE,
             'people':[{'name':'Test Canonical','aliases':['Test Alias']}]})
@@ -116,22 +118,32 @@ class HouseholdWorkerTests(unittest.TestCase):
              'text':'Unverified decoration note: four jeweled lamps and an ornate blue clock.',
              'asset_id':None,'author':None},
         ])
+        original_value=deepcopy(value)
         self.body={'version':1,'kind':'saved_story_narrative_v1',
                    'operation_id':OPERATION_ID,'bundle':value}
         self.write_request()
-        self.engine.text=json.dumps({'repairs':[],'title':'花园里的回忆',
-            'paragraphs':['家人在花园里相聚，聊起往事，后来又一起走回家。'],
-            'questions':[]},ensure_ascii=False)
+        self.engine.responses=[json.dumps({'repairs':[{'before':'garden','after':'garden park'}]},ensure_ascii=False),
+            json.dumps({'repairs':[],'title':'花园里的回忆',
+                'paragraphs':['家人在花园里相聚，聊起往事，后来又一起走回家。'],
+                'questions':[]},ensure_ascii=False)]
         self.assertEqual(worker.run(self.settings,enabled=True,environment=self.env,
                                     backend_factory=self.factory),0)
-        prompt=self.engine.calls[0][0]['prompt']
+        first_prompt=self.engine.calls[0][0]['prompt']
+        prompt=self.engine.calls[1][0]['prompt']
+        self.assertIn('Task: saved_story_public_name_repairs_v10', first_prompt)
+        self.assertNotIn('Test Canonical', first_prompt)
+        self.assertNotIn('Test Alias', first_prompt)
+        self.assertEqual({'temperature':0.2,'num_predict':256},self.engine.calls[0][0]['options'])
+        self.assertEqual({'temperature':0.2,'num_predict':2048},self.engine.calls[1][0]['options'])
+        self.assertIs(self.engine.calls[0][1],self.settings)
+        self.assertIs(self.engine.calls[1][1],self.settings)
         self.assertIn('clear context and reliable common knowledge',prompt)
         self.assertIn('obvious ASR homophones in public people, places or proper names',prompt)
         self.assertIn('use only the canonical name',prompt)
         self.assertIn('never repeat aliases or “or”',prompt)
         self.assertIn('Preserve the full account',prompt)
         self.assertIn('do not summarize',prompt)
-        self.assertIn('saved_story_editorial_v9',prompt)
+        self.assertIn('saved_story_editorial_v10',prompt)
         self.assertNotIn('Synthetic English story title label',prompt)
         self.assertNotIn('Synthetic English chapter label',prompt)
         self.assertNotIn('four jeweled lamps',prompt)
@@ -150,8 +162,37 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.assertEqual(value['chapters'][0]['id'], public_result['chapters'][0]['id'])
         self.assertEqual(['family-note-1', 'transcript-note'],
                          public_result['chapters'][0]['source_ids'])
-        self.assertEqual(1,len(self.engine.calls))
+        self.assertIn('public_name_suggestions', prompt)
+        self.assertIn('garden park', prompt)
+        self.assertEqual(2,len(self.engine.calls))
+        self.factory.assert_called_once_with(self.settings)
+        self.assertEqual(original_value,value)
         self.assertTrue(self.engine.closed)
+
+    def test_v10_invalid_public_repair_plans_stop_before_prose_and_close_engine(self):
+        value=saved_bundle()
+        value.update(version=4,story_refinement={'profile':STORY_REFINEMENT_PROFILE,
+            'people':[{'name':'Private Canonical','aliases':['Private Alias']}]})
+        value['chapters'][0]['narration']='家人提到Private Alias，也在湖边散步。' * 2
+        self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':value}
+        invalid_plans=[
+            {'repairs':[{'before':'invented phrase','after':'public spelling'}]},
+            {'repairs':[{'before':'Private Alias','after':'public spelling'}]},
+            {'repairs':[{'before':'湖边散步','after':'Private Canonical'}]},
+        ]
+        for plan in invalid_plans:
+            with self.subTest(plan=plan):
+                self.response.unlink(missing_ok=True)
+                self.engine=_worker_fixture.SyntheticEngine(self.settings)
+                self.factory=Mock(return_value=self.engine)
+                self.engine.responses=[json.dumps(plan,ensure_ascii=False),json.dumps({})]
+                self.write_request()
+                with self.assertRaises(worker.SavedStoryWorkerFailure) as caught:
+                    worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory)
+                self.assertEqual('output_validation',caught.exception.phase)
+                self.assertEqual(1,len(self.engine.calls))
+                self.assertTrue(self.engine.closed)
+                self.assertFalse(self.response.exists())
 
     def test_saved_story_failure_exit_codes_are_closed_and_content_free(self):
         expected = worker.SAVED_STORY_FAILURE_EXIT_CODES

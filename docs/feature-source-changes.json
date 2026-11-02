@@ -33337,6 +33337,49 @@
         "Generate a localized title from narration without supplying saved title labels. Explicitly distinguish common-knowledge public proper-name ASR spelling repair from private family identity, which requires reviewed canonical names; aliases are context, not multiple people or prose to repeat.",
         "Keep original facts/text/media, exact narration-bound repair validation, review-required drafts, one native generation call and all source/model/resource/ownership controls. V9 separates this input/trust contract from retained prior drafts. Focused source and worker fixtures pass; actual Windows editorial quality and live acceptance remain separate."
       ]
+    },
+    {
+      "feature": "two-pass-public-name-story-editor-20261102",
+      "source_base": "1912bd8a38a4fd744ced7a56ab69dd2d3d1854f8",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "da374026abcbfc5e5b7bbbfd3d497c0ff80d0aa5a33d6002e0c2a44c714a69d7",
+          "sha256": "124a0aa5acd968b63b910007be2765bf8b65e186a024a411cea1f0eecbc6cfb2"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "before_sha256": "032e43c9d9443639ec3a4cff6e2fd488be5ea5a18b816de821cd10e21fe7667f",
+          "sha256": "379526f12e43aa81f77ae079f4ad217752a9f56ae6d21950fa8e983ed6d9fb57"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "a9c708d6038059b717bdcf6596894d4eed8826257dacb85edd30c7bddd32ac0e",
+          "sha256": "31bc7f6d617fcea4557f6385d4e94de806ddb09e018e3386aed133678752cc90"
+        },
+        {
+          "path": "server/tests/security/test_memory_refinement_editorial.py",
+          "before_sha256": "236fc7e4493cd511ec20fc4a7a1ea5d5854b7cc0f8eaa945dd2cc66f2648529a",
+          "sha256": "982b308a406d12abc11f3e27e224eeb3b5d83cd457d7edd1935c3b69c04d1504"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "2e2f6a4265b976354b985f95bdb07288736cbb5c4e6d0c422cd68049b728bf6c",
+          "sha256": "01ceb5be1982e6e4a8db8440edaa86191d24b76251ba98017193cbde040eec2f"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "d4238321e144e415c4a4b095bc497d1fce5ef8a4df0fca795521ad3233a85c87",
+          "sha256": "f21f753189d9e351af044960f1338484f3d069f01ef21572feb80abf418c381b"
+        }
+      ],
+      "notes": [
+        "Automatic v4 story editing performs a bounded public-name ASR suggestion pass (256 output tokens), validates exact source substrings and excludes overlapping reviewed private names/aliases, then prepares grounded prose (2048 output tokens) with those suggestions as untrusted data. Originals are not replaced.",
+        "Both completions use the same existing backend instance inside the same native job, context, RAM/CPU/GPU and saved-story deadline. Existing close/failure handling, native ownership, process/control/profile algorithms and old v1-v3/agent single-call paths remain unchanged. No additional model/provider/dependency, process, file or external request is added.",
+        "V10 separates the two-pass cache/input contract. Focused tests cover real chat-template framing of both prompts, same-engine dispatch, unchanged input, closed/bounded/no-op/unsupported plans, private-name overlap including ASCII case and normalized fragments, and refusal before prose with engine closure. Actual Windows quality and deployment require their own evidence."
+      ]
     }
   ]
 }

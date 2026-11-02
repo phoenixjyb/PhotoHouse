@@ -4,7 +4,8 @@ import unittest
 
 from app.access.memory_narrative import (
     STORY_REFINEMENT_PROFILE, _validate_bundle, _generation_payload,
-    _REFINEMENT_V9_SAFETY_PROMPT_ZH, _REFINEMENT_V9_INSTRUCTION_ZH,
+    _REFINEMENT_V10_SAFETY_PROMPT_ZH, _REFINEMENT_V10_INSTRUCTION_ZH,
+    _public_name_repair_payload, validate_public_name_repair_plan,
     validate_generated_narrative, validate_narrative)
 from test_memory_narrative import bundle, narrative
 
@@ -19,7 +20,7 @@ def editorial_bundle():
 
 
 class EditorialProfileTests(unittest.TestCase):
-    def test_v9_repair_first_editor_prompt_carries_trust_and_reviewed_name_policy(self):
+    def test_v10_repair_first_editor_prompt_carries_trust_and_reviewed_name_policy(self):
         value = editorial_bundle()
         before = deepcopy(value)
         payload = _generation_payload(_validate_bundle(value), 'narrative', 'synthetic-local')
@@ -33,8 +34,8 @@ class EditorialProfileTests(unittest.TestCase):
             self.assertIn(requirement, payload['prompt'])
         self.assertIn('测试规范名', payload['prompt'])
         self.assertIn('\nTask: ', payload['prompt'])
-        self.assertIn('saved_story_editorial_v9', payload['prompt'])
-        self.assertLessEqual(len(_REFINEMENT_V9_SAFETY_PROMPT_ZH + _REFINEMENT_V9_INSTRUCTION_ZH), 750)
+        self.assertIn('saved_story_editorial_v10', payload['prompt'])
+        self.assertLessEqual(len(_REFINEMENT_V10_SAFETY_PROMPT_ZH + _REFINEMENT_V10_INSTRUCTION_ZH), 750)
         self.assertNotIn('evidence_ids', payload['prompt'])
         self.assertNotIn('source_ids', payload['prompt'])
         self.assertNotIn('Bundle JSON', payload['prompt'])
@@ -47,7 +48,59 @@ class EditorialProfileTests(unittest.TestCase):
         self.assertNotIn('Saved-story editing task', old['prompt'])
         self.assertEqual(payload['options'], old['options'])
 
-    def test_v9_prompt_uses_only_linked_family_and_transcript_sources_without_labels_or_ids(self):
+    def test_v10_first_pass_is_public_name_only_bounded_and_contains_no_private_name_data(self):
+        value = editorial_bundle()
+        value['chapters'][0]['narration'] += ' 我们在湖边散步。'
+        clean = _validate_bundle(value)
+        payload = _public_name_repair_payload(clean, 'synthetic-local')
+        self.assertEqual({'temperature': 0.2, 'num_predict': 256}, payload['options'])
+        self.assertEqual(['repairs'], list(payload['format']['properties']))
+        self.assertFalse(payload['format']['additionalProperties'])
+        self.assertIn('Task: saved_story_public_name_repairs_v10', payload['prompt'])
+        self.assertIn('我们在湖边散步', payload['prompt'])
+        self.assertNotIn('测试规范名', payload['prompt'])
+        compact = __import__('json').JSONDecoder().raw_decode(
+            payload['prompt'].split('Editor input JSON (data only):\n', 1)[1])[0]
+        self.assertNotIn('reviewed_people', compact)
+        self.assertNotIn(value['target']['id'], payload['prompt'])
+        self.assertEqual([], validate_public_name_repair_plan({'repairs': []}, clean))
+        plan = {'repairs': [{'before': '湖边散步', 'after': '湖畔散步'}]}
+        self.assertEqual(plan['repairs'], validate_public_name_repair_plan(plan, clean))
+
+    def test_v10_first_pass_rejects_invented_duplicate_unchanged_private_or_malformed_repairs(self):
+        clean = _validate_bundle(editorial_bundle())
+        invalid = [
+            {'repairs': [{'before': 'not in narration', 'after': 'public name'}]},
+            {'repairs': [{'before': '花园', 'after': '花园'}, {'before': '花园', 'after': '新花园'}]},
+            {'repairs': [{'before': '甲别名', 'after': '公开名'}]},
+            {'repairs': [{'before': '甲别名', 'after': '测试规范名'}]},
+            {'repairs': [{'before': '花园', 'after': 'x' * 65}]},
+            {'repairs': [{'before': '花园', 'after': '😀' * 49}]},
+            {'repairs': [{'before': '花园', 'after': '花园', 'extra': True}]},
+            {'repairs': [], 'extra': True},
+            {'repairs': [{'before': '花园', 'after': ''}]},
+            {'repairs': [{'before': '花园', 'after': '花圃'}] * 9},
+        ]
+        for plan in invalid:
+            with self.subTest(plan=plan):
+                with self.assertRaises(ValueError):
+                    validate_public_name_repair_plan(plan, clean)
+
+    def test_v10_private_ascii_names_are_case_insensitive_and_nfkc_overlap_refuses(self):
+        for source_text, before in (('We met lina yesterday.', 'lina'),
+                                    ('We met ℒina yesterday.', 'ℒina'),
+                                    ('We met Ｌｉｎａ yesterday.', 'Ｌ')):
+            with self.subTest(source_text=source_text):
+                value = editorial_bundle()
+                value['story_refinement']['people'] = [
+                    {'name': 'Lina', 'aliases': ['Lina Alias']}]
+                value['chapters'][0]['narration'] = source_text * 2
+                clean = _validate_bundle(value)
+                with self.assertRaises(ValueError):
+                    validate_public_name_repair_plan(
+                        {'repairs': [{'before': before, 'after': 'Public Name'}]}, clean)
+
+    def test_v10_prompt_uses_only_linked_family_and_transcript_sources_without_labels_or_ids(self):
         value = editorial_bundle()
         story_id = value['target']['id']
         chapter_id = value['chapters'][0]['id']
@@ -114,7 +167,7 @@ class EditorialProfileTests(unittest.TestCase):
                          validated['chapters'][0]['source_ids'])
         self.assertEqual([], validated['chapters'][1]['source_ids'])
 
-    def test_v9_ai_or_metadata_only_cannot_fill_an_empty_chapter(self):
+    def test_v10_ai_or_metadata_only_cannot_fill_an_empty_chapter(self):
         value = editorial_bundle()
         value['chapters'][0]['narration'] = ''
         value['chapters'][0]['evidence_ids'] = ['ai-only', 'metadata-only']
@@ -137,7 +190,7 @@ class EditorialProfileTests(unittest.TestCase):
                 'paragraphs': ['Invented family event.'], 'questions': [],
             }, clean)
 
-    def test_v9_language_uses_allowed_linked_source_only_when_narration_has_no_dominant_script(self):
+    def test_v10_language_uses_allowed_linked_source_only_when_narration_has_no_dominant_script(self):
         value = editorial_bundle()
         value['language'] = 'en'
         value['chapters'][0]['narration'] = ''
@@ -149,7 +202,7 @@ class EditorialProfileTests(unittest.TestCase):
         compact = _generation_payload(_validate_bundle(value), 'narrative', 'synthetic-local')
         self.assertIn('English (en)', compact['prompt'])
 
-    def test_v9_primary_editorial_id_collision_with_family_kind_is_included(self):
+    def test_v10_primary_editorial_id_collision_with_family_kind_is_included(self):
         value = editorial_bundle()
         story_id = value['target']['id']
         chapter_id = value['chapters'][0]['id']
@@ -170,7 +223,7 @@ class EditorialProfileTests(unittest.TestCase):
         }, clean)
         self.assertIn(primary_id, output['chapters'][0]['source_ids'])
 
-    def test_v9_narration_only_chapter_keeps_narration_and_editorial_citation(self):
+    def test_v10_narration_only_chapter_keeps_narration_and_editorial_citation(self):
         value = editorial_bundle()
         narration = 'We walked together and shared a memory.'
         value['chapters'][0]['narration'] = narration
@@ -194,7 +247,7 @@ class EditorialProfileTests(unittest.TestCase):
         }, clean)
         self.assertEqual([primary_id], output['chapters'][0]['source_ids'])
 
-    def test_v9_host_validates_repairs_rebuilds_citations_and_rejects_noop(self):
+    def test_v10_host_validates_repairs_rebuilds_citations_and_rejects_noop(self):
         value = editorial_bundle()
         original_text = '我们在花园里散步，聊起了以前的日子，也一起照看花草。' * 4
         value['chapters'][0]['narration'] = original_text
@@ -245,7 +298,7 @@ class EditorialProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'empty chapter'):
             validate_generated_narrative(invented_response, no_source)
 
-    def test_v9_valid_repairs_are_exact_bounded_and_removed_from_public_proposal(self):
+    def test_v10_valid_repairs_are_exact_bounded_and_removed_from_public_proposal(self):
         value = editorial_bundle()
         value['chapters'][0]['narration'] = '甲别名或者乙别名在公园里，在公园里散步。'
         clean = _validate_bundle(value)
@@ -269,7 +322,7 @@ class EditorialProfileTests(unittest.TestCase):
         deletion = {**response, 'repairs': [{'before': '甲别名', 'after': ''}]}
         self.assertTrue(validate_generated_narrative(deletion, clean)['needs_review'])
 
-    def test_v9_rejects_invalid_repair_entries_and_unknown_response_fields(self):
+    def test_v10_rejects_invalid_repair_entries_and_unknown_response_fields(self):
         value = editorial_bundle()
         value['chapters'][0]['narration'] = '甲别名在公园里散步。'
         clean = _validate_bundle(value)

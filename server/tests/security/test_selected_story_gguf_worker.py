@@ -50,10 +50,13 @@ class SyntheticEngine:
         self.calls = []
         self.closed = False
         self.text = json.dumps(narrative())
+        self.responses = None
         self.fail_close = False
 
     def complete(self, generation, settings):
         self.calls.append((generation, settings))
+        if self.responses is not None:
+            return self.responses.pop(0)
         return self.text
 
     def close(self):
@@ -459,6 +462,38 @@ class GGUFWorkerTests(unittest.TestCase):
         self.assertEqual(system.encode(), calls[1].args[0])
         self.assertEqual(('Task: ' + body).encode(), calls[3].args[0])
         self.assertTrue(calls[-1].args[0].endswith(b'<|im_start|>assistant\n'))
+
+    def test_v10_plan_and_prose_payloads_use_real_chat_prompt_framing(self):
+        from backend.app.access.memory_narrative import (
+            STORY_REFINEMENT_PROFILE, _public_name_repair_payload,
+        )
+        value = bundle()
+        value.update(version=4,
+            target={'type': 'story', 'id': '12345678-1234-4234-8234-123456789abc',
+                    'revision': 1},
+            story_refinement={'profile': STORY_REFINEMENT_PROFILE, 'people': []})
+        value.pop('selection_revision')
+        for source in value['sources']:
+            source.pop('source_kind')
+        clean = worker._validate_bundle(value, allow_draft=True)
+        payloads = [
+            _public_name_repair_payload(clean, MODEL),
+            worker._generation_payload(clean, 'narrative', MODEL,
+                                       public_name_suggestions=[]),
+        ]
+        native = native_mock()
+        native.tokenize.return_value = [1, 2, 3]
+        engine = worker._LlamaEngine.__new__(worker._LlamaEngine)
+        engine.model = native
+        for payload in payloads:
+            system, separator, body = payload['prompt'].partition('\nTask: ')
+            self.assertTrue(system)
+            self.assertTrue(separator)
+            self.assertTrue(body)
+            tokens, stop = engine._chat_prompt_tokens(payload['prompt'])
+            self.assertTrue(tokens)
+            self.assertEqual(['<|im_end|>'], stop)
+        self.assertEqual(10, native.tokenize.call_count)
 
     def test_missing_or_invalid_chat_template_has_no_raw_prompt_fallback(self):
         native = native_mock()
