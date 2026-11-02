@@ -77,12 +77,13 @@ class HouseholdWorkerTests(unittest.TestCase):
         value['chapters'][0]['narration']=narration
         self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':value}
         self.write_request()
-        self.engine.responses=[json.dumps({'repairs':[]}),
-            json.dumps({'repairs':[],'title':'A small garden story',
-                'paragraphs':[narration], 'questions':[]},ensure_ascii=False)]
+        self.engine.text=json.dumps({'repairs':[],'title':'A small garden story',
+            'paragraphs':[narration], 'questions':[]},ensure_ascii=False)
         with self.assertRaises(worker.SavedStoryWorkerFailure) as caught:
             worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory)
         self.assertEqual('unchanged_narration',caught.exception.phase)
+        self.assertEqual(1,len(self.engine.calls))
+        self.assertTrue(self.engine.closed)
 
         self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':saved_bundle()}
         self.write_request()
@@ -98,63 +99,55 @@ class HouseholdWorkerTests(unittest.TestCase):
         code,record=worker._failure_record(backend_caught.exception)
         self.assertEqual(worker.SAVED_STORY_FAILURE_EXIT_CODES['tokenize'],code)
         self.assertEqual('tokenize',json.loads(record)['phase'])
-    def test_v10_trust_filtered_editorial_profile_reaches_actual_worker_prompt(self):
+    def test_v12_worker_grounds_copy_filters_sources_and_rechecks_final_prose(self):
         value = saved_bundle()
         value.update(version=4, story_refinement={'profile':STORY_REFINEMENT_PROFILE,
-            'people':[{'name':'Test Canonical','aliases':['Test Alias']}]})
-        value['title'] = 'Synthetic English story title label'
-        value['chapters'][0]['title'] = 'Synthetic English chapter label'
+            'people':[{'name':'小宁','aliases':['Mira']}]})
+        value['title'] = 'Synthetic editorial title label'
+        value['chapters'][0]['title'] = 'Synthetic chapter title label'
         value['chapters'][0]['narration'] = (
-            'A family gathered in the garden and talked beside the old tree, then recalled their walk home. ' * 2)
+            '我们在杭州看周结伦演唱会，Mira或者小凝 她也一起分享了回忆。')
         value['chapters'][0]['evidence_ids'].extend(['transcript-note', 'ai-caption', 'metadata-hint'])
         value['sources'].extend([
             {'id':'transcript-note','kind':'transcript',
-             'text':'We walked together after lunch and talked about the garden.',
+             'text':'我们看周结伦演唱会，提前订票。',
              'asset_id':None,'author':'Synthetic Speaker'},
             {'id':'ai-caption','kind':'ai',
-             'text':'An uncertain image guess: four jeweled lamps and an ornate blue clock.',
+             'text':'Uncertain synthetic visual guess about a silver lantern.',
              'asset_id':'synthetic-asset','author':None},
             {'id':'metadata-hint','kind':'metadata',
-             'text':'Unverified decoration note: four jeweled lamps and an ornate blue clock.',
+             'text':'Synthetic metadata note about a silver lantern.',
              'asset_id':None,'author':None},
         ])
         original_value=deepcopy(value)
         self.body={'version':1,'kind':'saved_story_narrative_v1',
                    'operation_id':OPERATION_ID,'bundle':value}
         self.write_request()
-        self.engine.responses=[json.dumps({'repairs':[{'before':'garden','after':'garden park'}]},ensure_ascii=False),
-            json.dumps({'repairs':[],'title':'花园里的回忆',
-                'paragraphs':['家人在花园里相聚，聊起往事，后来又一起走回家。'],
-                'questions':[]},ensure_ascii=False)]
+        self.engine.text=json.dumps({'repairs':[],'title':'杭州的音乐回忆',
+            'paragraphs':['我们看周结伦演唱会，Mira或者小凝 她也一同分享了这段回忆。'],
+            'questions':[]},ensure_ascii=False)
         self.assertEqual(worker.run(self.settings,enabled=True,environment=self.env,
                                     backend_factory=self.factory),0)
-        first_prompt=self.engine.calls[0][0]['prompt']
-        prompt=self.engine.calls[1][0]['prompt']
-        self.assertIn('Task: saved_story_public_name_repairs_v10', first_prompt)
-        self.assertNotIn('Test Canonical', first_prompt)
-        self.assertNotIn('Test Alias', first_prompt)
-        self.assertEqual({'temperature':0.2,'num_predict':256},self.engine.calls[0][0]['options'])
-        self.assertEqual({'temperature':0.2,'num_predict':2048},self.engine.calls[1][0]['options'])
+        prompt=self.engine.calls[0][0]['prompt']
+        compact_input=json.JSONDecoder().raw_decode(
+            prompt.split('Editor input JSON (data only):\n',1)[1])[0]
+        self.assertEqual(1,len(self.engine.calls))
+        self.assertEqual({'temperature':0.2,'num_predict':2048},self.engine.calls[0][0]['options'])
         self.assertIs(self.engine.calls[0][1],self.settings)
-        self.assertIs(self.engine.calls[1][1],self.settings)
-        self.assertIn('clear context and reliable common knowledge',prompt)
-        self.assertIn('obvious ASR homophones in public people, places or proper names',prompt)
-        self.assertIn('use only the canonical name',prompt)
-        self.assertIn('never repeat aliases or “or”',prompt)
-        self.assertIn('Preserve the full account',prompt)
-        self.assertIn('do not summarize',prompt)
         self.assertIn('saved_story_editorial_v10',prompt)
-        self.assertNotIn('Synthetic English story title label',prompt)
-        self.assertNotIn('Synthetic English chapter label',prompt)
-        self.assertNotIn('four jeweled lamps',prompt)
-        self.assertNotIn('ornate blue clock',prompt)
-        self.assertIn(value['sources'][0]['text'],prompt)
-        self.assertIn('Test Canonical',prompt)
-        self.assertIn('Test Alias',prompt)
+        self.assertIn('周杰伦',prompt)
+        self.assertIn('小宁',prompt)
+        self.assertEqual('我们在杭州看周杰伦演唱会，小宁 她也一起分享了回忆。',
+                         compact_input['chapters'][0]['narration'])
+        self.assertIn('我们看周杰伦演唱会，提前订票。',prompt)
+        self.assertNotIn('Synthetic editorial title label',prompt)
+        self.assertNotIn('Synthetic chapter title label',prompt)
+        self.assertNotIn('silver lantern',prompt)
         self.assertNotIn('ai-caption',prompt)
         self.assertNotIn('metadata-hint',prompt)
-        self.assertNotIn('family-note-1',prompt)
+        self.assertNotIn('Synthetic Speaker',prompt)
         self.assertNotIn('source_ids',prompt)
+        self.assertNotIn('public_name_suggestions',prompt)
         public_result=json.loads(self.response.read_bytes())['result']
         self.assertEqual({'version','title','chapters','questions','needs_review'},
                          set(public_result))
@@ -162,63 +155,38 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.assertEqual(value['chapters'][0]['id'], public_result['chapters'][0]['id'])
         self.assertEqual(['family-note-1', 'transcript-note'],
                          public_result['chapters'][0]['source_ids'])
-        self.assertIn('public_name_suggestions', prompt)
-        self.assertIn('garden park', prompt)
-        self.assertEqual(2,len(self.engine.calls))
+        self.assertEqual('我们看周杰伦演唱会，小宁 她也一同分享了这段回忆。',
+                         public_result['chapters'][0]['narration'])
         self.factory.assert_called_once_with(self.settings)
         self.assertEqual(original_value,value)
         self.assertTrue(self.engine.closed)
 
-    def test_v10_invalid_public_repair_plans_stop_before_prose_and_close_engine(self):
+    def test_v12_invalid_schema_or_out_of_input_repair_refuses_in_one_call_and_closes(self):
         value=saved_bundle()
         value.update(version=4,story_refinement={'profile':STORY_REFINEMENT_PROFILE,
-            'people':[{'name':'Private Canonical','aliases':['Private Alias']}]})
-        value['chapters'][0]['narration']='家人提到Private Alias，也在湖边散步。' * 2
-        self.body={'version':1,'kind':'saved_story_narrative_v1','operation_id':OPERATION_ID,'bundle':value}
-        invalid_plans=[
-            {'repairs':[{'before':'invented phrase','after':'public spelling'}]},
-            {'repairs':[{'before':'Private Alias','after':'public spelling'}]},
-            {'repairs':[{'before':'湖边散步','after':'Private Canonical'}]},
+            'people':[{'name':'小宁','aliases':['Mira']}]})
+        value['chapters'][0]['narration']='我们在湖边散步，Mira也一起去了。'
+        invalid_outputs=[
+            {'wrong':'shape'},
+            {'repairs':[{'before':'not in input','after':'invented'}],
+             'title':'湖边回忆','paragraphs':['我们在湖边散步。'],'questions':[]},
         ]
-        for plan in invalid_plans:
-            with self.subTest(plan=plan):
+        for output in invalid_outputs:
+            with self.subTest(output=output):
                 self.response.unlink(missing_ok=True)
                 self.engine=_worker_fixture.SyntheticEngine(self.settings)
                 self.factory=Mock(return_value=self.engine)
-                self.engine.responses=[json.dumps(plan,ensure_ascii=False),json.dumps({})]
+                self.engine.text=json.dumps(output,ensure_ascii=False)
+                self.body={'version':1,'kind':'saved_story_narrative_v1',
+                           'operation_id':OPERATION_ID,'bundle':deepcopy(value)}
                 self.write_request()
-                with self.assertRaises(worker.SavedStoryWorkerFailure) as caught:
-                    worker.run(self.settings,enabled=True,environment=self.env,backend_factory=self.factory)
-                self.assertEqual('output_validation',caught.exception.phase)
+                with self.assertRaises(worker.SavedStoryWorkerFailure):
+                    worker.run(self.settings,enabled=True,environment=self.env,
+                               backend_factory=self.factory)
                 self.assertEqual(1,len(self.engine.calls))
+                self.factory.assert_called_once_with(self.settings)
                 self.assertTrue(self.engine.closed)
                 self.assertFalse(self.response.exists())
-
-    def test_v11_worker_applies_validated_public_name_plan_ignored_by_prose(self):
-        value=saved_bundle()
-        value.update(version=4,story_refinement={'profile':STORY_REFINEMENT_PROFILE,'people':[]})
-        value['chapters'][0]['narration']='We visited Harber Bay together. ' * 3
-        original=deepcopy(value)
-        self.body={'version':1,'kind':'saved_story_narrative_v1',
-                   'operation_id':OPERATION_ID,'bundle':value}
-        self.engine.responses=[json.dumps({'repairs':[{'before':'Harber Bay',
-            'after':'Harbor Bay'}]}),json.dumps({'repairs':[],
-            'title':'Harber Bay in spring',
-            'paragraphs':['We visited Harber Bay and walked along the shore.'],
-            'questions':[]})]
-        self.write_request()
-        self.assertEqual(0,worker.run(self.settings,enabled=True,environment=self.env,
-                                      backend_factory=self.factory))
-        result=json.loads(self.response.read_bytes())['result']
-        self.assertEqual('We visited Harbor Bay and walked along the shore.',
-                         result['chapters'][0]['narration'])
-        self.assertEqual('Harbor Bay in spring',result['title'])
-        self.assertTrue(result['needs_review'])
-        self.assertEqual(value['chapters'][0]['id'],result['chapters'][0]['id'])
-        self.assertEqual(original,value)
-        self.assertEqual(2,len(self.engine.calls))
-        self.factory.assert_called_once_with(self.settings)
-        self.assertTrue(self.engine.closed)
 
     def test_saved_story_failure_exit_codes_are_closed_and_content_free(self):
         expected = worker.SAVED_STORY_FAILURE_EXIT_CODES

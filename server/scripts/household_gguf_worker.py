@@ -20,9 +20,9 @@ _STORY_RUN = story.run
 _STORY_FAILURE_RECORD = story._failure_record
 from app.access.agent_decision import generation, validate_state, validate_decision
 from app.access.memory_narrative import (
-    _generation_payload, _public_name_repair_payload, _validate_bundle,
-    apply_public_name_repair_plan,
-    validate_generated_narrative, validate_public_name_repair_plan,
+    _generation_payload, _validate_bundle,
+    grounded_editorial_bundle, validate_grounded_narrative,
+    validate_generated_narrative,
 )
 
 
@@ -193,34 +193,18 @@ def _saved_story_narrative(settings, environment, request, response, operation,
         engine = backend_factory(settings)
         try:
             phase = 'generation'
+            grounded = grounded_editorial_bundle(bundle) if bundle['version'] == 4 else bundle
             if bundle['version'] == 4:
-                plan_generation = _public_name_repair_payload(bundle, settings.model)
-                plan_output = engine.complete(plan_generation, settings)
-                phase = 'output_validation'
-                if (type(plan_output) is not str or
-                        len(plan_output.encode('utf-8', errors='strict')) > story.MAX_OUTPUT_BYTES):
-                    story._refuse(phase)
-                plan_decoded = story._strict_loads(plan_output.encode('utf-8'))
-                try:
-                    public_name_suggestions = validate_public_name_repair_plan(
-                        plan_decoded, bundle)
-                except ValueError:
-                    story._refuse(phase)
-                expected = _generation_payload(
-                    bundle, 'narrative', settings.model,
-                    public_name_suggestions=public_name_suggestions)
-                phase = 'generation'
+                expected = _generation_payload(grounded, 'narrative', settings.model)
             output = engine.complete(expected, settings)
             phase = 'output_validation'
             if type(output) is not str or len(output.encode('utf-8')) > story.MAX_OUTPUT_BYTES:
                 story._refuse(phase)
             decoded = story._strict_loads(output.encode('utf-8'))
             phase = 'narrative'
-            if bundle['version'] == 4:
-                decoded = apply_public_name_repair_plan(
-                    decoded, bundle, public_name_suggestions)
             try:
-                result = validate_generated_narrative(decoded, bundle)
+                result = (validate_grounded_narrative(decoded, bundle, grounded)
+                          if bundle['version'] == 4 else validate_generated_narrative(decoded, bundle))
             except ValueError as error:
                 if str(error) == 'story refinement returned unchanged narration':
                     raise SavedStoryWorkerFailure('unchanged_narration') from None

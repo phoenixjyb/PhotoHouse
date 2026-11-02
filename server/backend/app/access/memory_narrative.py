@@ -25,7 +25,7 @@ MAX_PROVIDER_BYTES = 128 * 1024
 MAX_CHAPTERS = 24
 MAX_SOURCES = 96
 MAX_RECENT_TURNS = 8
-STORY_REFINEMENT_PROFILE = 'asr_editorial_v11'
+STORY_REFINEMENT_PROFILE = 'asr_editorial_v12_grounded'
 MAX_EDITOR_REPAIRS = 8
 MAX_EDITOR_REPAIR_CHARS = 64
 MAX_EDITOR_REPAIR_BYTES = 192
@@ -649,6 +649,37 @@ def apply_public_name_repair_plan(compact_result: Any, bundle: Any,
     }
 
 
+def grounded_editorial_bundle(bundle: Any) -> dict:
+    """Ground a copied local-model input; saved narration and sources stay intact."""
+    from copy import deepcopy
+    from .story_name_grounding import ground_text
+    clean = deepcopy(_validate_bundle(bundle, allow_draft=True))
+    if clean['version'] != 4:
+        return clean
+    people = clean['story_refinement']['people']
+    for chapter in clean['chapters']:
+        chapter['narration'] = ground_text(chapter['narration'], people)['text']
+    for source in clean['sources']:
+        if source['kind'] in {'family', 'transcript'}:
+            source['text'] = ground_text(source['text'], people)['text']
+    return clean
+
+
+def validate_grounded_narrative(result: Any, original: Any, grounded: Any) -> dict:
+    """Validate the editor against its input, then bind its proposal to originals.
+
+    A final deterministic pass repairs copied homophones/aliases in generated
+    wording. It supplies no new events or source identifiers, and never saves.
+    """
+    from .story_name_grounding import ground_text
+    proposal = validate_generated_narrative(result, grounded)
+    people = original['story_refinement']['people']
+    proposal['chapters'] = [{**chapter,
+        'narration': ground_text(chapter['narration'], people)['text']}
+        for chapter in proposal['chapters']]
+    return validate_narrative(proposal, original)
+
+
 def _refinement_comparison_text(value: str) -> str:
     """Normalize only layout/punctuation so those edits cannot mask a full echo."""
     normalized = unicodedata.normalize('NFKC', value).casefold()
@@ -1154,7 +1185,9 @@ class LocalMemoryNarrator:
     def _generate(self, bundle, task):
         self._ollama_metrics = {}
         clean_bundle = _validate_bundle(bundle, allow_draft=task == 'narrative')
-        payload = _generation_payload(clean_bundle, task, self.model)
+        grounded = (grounded_editorial_bundle(clean_bundle)
+                    if task == 'narrative' and clean_bundle['version'] == 4 else clean_bundle)
+        payload = _generation_payload(grounded, task, self.model)
         deadline = self.monotonic() + self.timeout
         try:
             with httpx.Client(timeout=self.timeout, trust_env=False, transport=self.transport,
@@ -1181,7 +1214,9 @@ class LocalMemoryNarrator:
             result = _strict_loads(envelope['response'].encode('utf-8', errors='strict'))
             self._check_deadline(deadline)
             if task == 'narrative':
-                validated = validate_generated_narrative(result, clean_bundle)
+                validated = (validate_grounded_narrative(result, clean_bundle, grounded)
+                             if clean_bundle['version'] == 4 else
+                             validate_generated_narrative(result, clean_bundle))
             else:
                 validated = validate_companion(result, clean_bundle)
             self._check_deadline(deadline)

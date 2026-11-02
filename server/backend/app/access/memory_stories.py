@@ -161,6 +161,8 @@ class MemoryStories:
 
     def _present(self, row, library, member, source_review=False):
         result = self._read(row, library, member)
+        result['can_cloud_proofread'] = bool(self._can_edit(member, row) and
+                                              row['author_id'] == member['account_id'])
         result.pop('asset_ids')
         result.pop('evidence_versions', None)
         if source_review:
@@ -170,6 +172,38 @@ class MemoryStories:
         if len(JSONResponse(result).body) > MAX_RESPONSE:
             raise TransportError(503, 'Story response unavailable')
         return result
+
+    def proofreading_source(self, token, library, ident, revision):
+        """Authorize an author's saved wording; never export linked source records.
+
+        Cloud consent is deliberately narrower than library edit permission.
+        A library owner cannot send another contributor's story on their behalf.
+        """
+        with self.access._transaction():
+            member = self.access._require(token, library, 'library.read')
+            self._ready()
+            row = self._row(ident, library)
+            if row['author_id'] != member['account_id'] or not self._can_edit(member, row):
+                raise AccessDenied('Access denied')
+            if str(row['revision']) != str(revision):
+                raise TransportError(409, 'Story changed; prepare a new preview')
+            current = self._present(row, library, member)
+            story = {'title': current['title'], 'chapters': [
+                {key: chapter[key] for key in ('id', 'title', 'narration')}
+                for chapter in current['chapters']]}
+            resolver = self.access.story_refinement_context
+            people = []
+            identity = None
+            if resolver is not None:
+                people, identity = resolver(self.access, library, member,
+                    '\n'.join(c['narration'] for c in story['chapters']),
+                    selected_asset_ids=tuple(item['id'] for item in current['items']))
+            fingerprint = hashlib.sha256(json.dumps(
+                [story, current['selection_revision'], people, identity],
+                ensure_ascii=True, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            binding = {'actor': member['account_id'], 'library': library,
+                       'story': ident, 'revision': str(row['revision']), 'fingerprint': fingerprint}
+            return binding, story, people
 
     def list(self, token, library, page, theme=None):
         with self.access._transaction():

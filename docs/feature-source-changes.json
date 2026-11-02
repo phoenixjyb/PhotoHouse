@@ -33418,6 +33418,156 @@
         "Merge bounded source-bound repair records, dedupe identical pairs and refuse conflicting or overlapping applied edits; retain strict title/paragraph/question types and the existing canonical source/citation/review-required validator. Private reviewed-name repair restrictions remain mandatory.",
         "V11 separates the output-application cache contract; both model prompts, sampling, token limits, same-engine two-pass dispatch and all native/resource/closure controls remain unchanged. Focused tests cover ignored suggestions, already-correct output, no cascade/insertion, source scoping, invalid types and private/overlap/conflict refusal. Actual Windows qualification and deployment remain separate."
       ]
+    },
+    {
+      "feature": "offline-story-name-grounding-explicit-cloud-proofreading-20261102",
+      "source_base": "d5177247aad0e5487dd0b4461fa5d59081c1cfac",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "routes_added": true,
+      "cloud_enabled_by_default": false,
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "d613823976d7a41fdb4283199ebd0f4abe7a2e0093b16d00df0104172fab21a1",
+          "sha256": "c248e8260da8a37076168c78070c6b8409714d69d501d142c328e4ae6a340dc7"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "d4c60620deb3fa4f2236c4c5941bc952f0049c26e55303b5b541959dd54fb9a5",
+          "sha256": "b06fceffdabe8ad5311ba2da70f60742858d1abb7932e275a5cb661b5d536251"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "b2bd473c48b16caf410ddecd1fa32d02aaf1f6019dac34cdb889cf0df83fdeeb",
+          "sha256": "fff182f1e62cebc4920748e7a6439e1bae34ad502b9ad7f6f3a579185f7aefa7"
+        },
+        {
+          "path": "docs/STORY_GROUNDING_AND_CLOUD_PROOFREADING.md",
+          "before_sha256": null,
+          "sha256": "8ff9c5c16ee9066256dd3855f168f444bdbb3d69b079fffa49c88eba9ac2839d"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "6d0244ca4a585272866de8c5b62239393b6f279f3fe8b36359e2d916bbdf9669",
+          "sha256": "6f30b342f661dc2d8c3858c110e406125a521452d4ecfb7fbd489463e09c8108"
+        },
+        {
+          "path": "server/backend/app/access/data/PINYIN-DATA-LICENSE.txt",
+          "before_sha256": null,
+          "sha256": "9c048697be2502a16e8bcb282d5d465a07295b2def0ffb05a269c5d39dbe1586"
+        },
+        {
+          "path": "server/backend/app/access/data/pinyin-readings.json",
+          "before_sha256": null,
+          "sha256": "b677c27fcf6528f67d1f1ad851b392964bf921710ca9b37b56ba5922141bf6b7"
+        },
+        {
+          "path": "server/backend/app/access/data/story-grounding-provenance.json",
+          "before_sha256": null,
+          "sha256": "88e9de5665ddd12fb3e11a3fb40cdbee7cf3a69f9822b07e20c06a762f138784"
+        },
+        {
+          "path": "server/backend/app/access/data/story-public-names.json",
+          "before_sha256": null,
+          "sha256": "8e0bd8c33795cef503907e056f03ecd238c667cdb13ae30aba925d8b8c1b20f0"
+        },
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "e37f7a62033dfb146aa19ca97c3d1951fccb1a0678412a4d47b1b0dbe4cc48fc",
+          "sha256": "40c97f9498c271bd1cb1f30c7e7e4ade312993e46ca4cea0c3d6ed8175e86f3a"
+        },
+        {
+          "path": "server/backend/app/access/memory_stories.py",
+          "before_sha256": "0aa86fa648da0a7e1a54a67cab5ac4eeb922891bd1696109b21e251d1c7c5d10",
+          "sha256": "e52e484a97f194184c1465b8e7699a86487545d311035d7d472780b5b2e6305f"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "6a97539b2983ee8b4cd459874e653ce883ea1f8eafaa73a40ed734ed6b639d7f",
+          "sha256": "645d7bb9f656e5c5e048f5c5911db55a3ab8e66da7e672e5a81a2f39cbf8d7d9"
+        },
+        {
+          "path": "server/backend/app/access/story_cloud_proofreading.py",
+          "before_sha256": null,
+          "sha256": "aa80cdbf551fb0b16398139fd70286178c77b4f5ac3b9b4f97028154bd21f3c8"
+        },
+        {
+          "path": "server/backend/app/access/story_cloud_transport.py",
+          "before_sha256": null,
+          "sha256": "51b0776b15ff433c2bbebe7edc30439b98134dac8328aec86529c87b3c25f7dc"
+        },
+        {
+          "path": "server/backend/app/access/story_name_grounding.py",
+          "before_sha256": null,
+          "sha256": "e460d716893a4a63c9353f0c33aad0b95ea65b41bbae51bb788e5d7b004c7ed0"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "953176aae785f9ad8e333bccdfb8eee2921e006ca183f8e30e90cb4d50eb7007",
+          "sha256": "c4522c60d55357f4ad0e04d4742e1240d8ddba4df8caeee8d95ca5f36d4e54bb"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "7cad5965692b662726bf38ae0b8dcf910811ee6bbc464bd167172385498da225",
+          "sha256": "64b9c8c7873513f55058035e4920f819f92ecbf00215c9e712956f6fbc4f1077"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "f7a811127cb284f67b1abc2809f491503cbdbb2b0683aa1bfb067a9e98c0ac1a",
+          "sha256": "b769ed4c8a55fac2262b937dae6051cef5df1a7e755adb00023030148f6529d2"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "before_sha256": "f9d0a9d72f84306533c0d28c0d0ffe0674ae185d8f794301b9bb405ad8fcf97b",
+          "sha256": "900df765f9af600174904963feb86fd7db3188729605e1a0e3496cb0b00882aa"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "3f31187f3c7361107e003d4187b0ad0893cf9f7e848adb7a586a2fb6b0419a11",
+          "sha256": "a33acec6a7e1d8755b23e6847160359d65984196cfd5d536f305763f759d199c"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "51ae5d2dc189a61880a340a3d279124ab58184fb4d88ababb8dcb3c3d43dec14",
+          "sha256": "a4380fa66361b46dfbcccc743cc52df6ef70488c9158692d2700d7235a8055dc"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "0748f41c813e4a796dff8e1a8b9e31d1c18ba4822dacabe8bd1ba751c50fff2b",
+          "sha256": "220bde4460f925e6f5a7cc04d9ebca7e5f6167a9371c664f4ef6db42315958e1"
+        },
+        {
+          "path": "server/tests/security/test_story_cloud_browser.cjs",
+          "before_sha256": null,
+          "sha256": "06bc784d687fde74b44051eac6851e8544087658d20490acf91be6038f5dc858"
+        },
+        {
+          "path": "server/tests/security/test_story_cloud_proofreading.py",
+          "before_sha256": null,
+          "sha256": "e7f84944ca173cfb0a72933c19a6b7c03db65f03f68cb22889942f4288e704b3"
+        },
+        {
+          "path": "server/tests/security/test_story_cloud_transport.py",
+          "before_sha256": null,
+          "sha256": "df105dad7e9c175f3d4bad23431063ba6940e6666403233349fcccae79d8c374"
+        },
+        {
+          "path": "server/tests/security/test_story_name_grounding.py",
+          "before_sha256": null,
+          "sha256": "4fee78968a698015cc674226f7e5366e096d590216902fac195a8a13959bddc1"
+        },
+        {
+          "path": "third_party/story-name-data.md",
+          "before_sha256": null,
+          "sha256": "dd38572fb2f528352913f015e260691599ea94308aed153deaaa2b5e00590398"
+        }
+      ],
+      "notes": [
+        "Deterministic offline context-cued public-singer homophones and reviewed private aliases ground copied editorial inputs. V12 uses one local completion and re-grounds the review-only result; originals, source/citation authorization, native model/provider/resource/closure algorithms remain unchanged.",
+        "Cloud proofreading is author-only and disabled/unconfigured by default. Exact outgoing JSON and SHA, reviewed-name placeholders and common-sensitive-pattern removal precede a per-preview explicit unchecked consent flow; bounded expiring actor/library/revision/source/provider-bound previews are consumed before one HTTPS call. No automatic cloud fallback/retry or real cloud call.",
+        "Web reader/editor displays exact request, default-off state and unsaved proposal with explicit editor adoption and ordinary save. New routes are separately allowlisted and reauthorize before/after provider await. No schema, Search/grouping path, weights, live config or GitHub Actions change."
+      ]
     }
   ]
 }

@@ -41,6 +41,21 @@ Natural bilingual TTS remains separate; this change does not replace the voice.
 and the [Jude guide](JUDE_ASSISTANT.md#october-30-conversation-and-refinement)
 separate the delivered behavior from these remaining tasks.
 
+## November 2 story grounding and optional cloud proofreading (source/local)
+
+Local story refinement now grounds context-cued public singer spellings against
+an offline catalog, and private aliases against reviewed household identities,
+before one local model call. Originals stay unchanged. The local regression
+includes the birthday-story homophone and repeated mentions; ambiguous identities
+are left for review rather than guessed.
+
+An author-only cloud proofreading flow is implemented with an exact outgoing
+request preview, an initially unchecked consent box, one explicit send, and an
+unsaved review draft. It is **off by default**, with no credentials configured and
+no real cloud request or Windows rollout claimed. Search and grouping are not
+changed. See [grounding and cloud proofreading](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md)
+for the data licenses, configuration and privacy limits.
+
 ## Acceptance rules
 
 - A receipt is not upload approval, derived readiness, gallery visibility or TV publication.

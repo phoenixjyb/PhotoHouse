@@ -18,6 +18,7 @@ from .access.story_workspace import router as story_workspace_router
 from .access.selected_story_transport import router as selected_story_router
 from .access.memory_group_transport import router as memory_group_router, GroupVectorConfiguration
 from .access.memory_stories import router as memory_router
+from .access.story_cloud_transport import router as story_cloud_router
 from .access.memory_transport import router as memory_community_router
 from .access.memory_book_edition_transport import router as memory_edition_router
 from .access.people import router as people_router
@@ -54,7 +55,13 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_semantic_search_enabled=False,
                assistant_agent_runtime=None, assistant_agent_budget=None,
                selected_story_provider=None, selected_story_drafts_enabled=False,
-               selected_story_ui_enabled=False):
+               selected_story_ui_enabled=False,
+               story_cloud_proofreading_enabled=False, story_cloud_proofreading_provider=None):
+    from .access.story_cloud_proofreading import CloudProofreading
+    cloud_proofreading = CloudProofreading(enabled=story_cloud_proofreading_enabled,
+        provider=story_cloud_proofreading_provider)
+    if story_cloud_proofreading_enabled and (access_runtime is None or not memory_collaboration_enabled):
+        raise ValueError("Cloud proofreading requires an explicit collaboration runtime")
     if semantic_search_runtime is not None and (
             type(semantic_search_runtime) is not SemanticSearchRuntime or
             semantic_search_runtime.access is not access_runtime or
@@ -297,6 +304,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.memory_collaboration_enabled = memory_collaboration_enabled
     app.state.memory_originals_enabled = memory_originals_enabled
     app.state.memory_generation_enabled = memory_generation_enabled
+    app.state.story_cloud_proofreading = cloud_proofreading
     app.state.memory_auto_refinement_enabled = memory_auto_refinement_enabled
     app.state.memory_refinement_healthy = True
     app.state.memory_editorial_enabled = memory_editorial_enabled
@@ -328,6 +336,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(selected_story_router)
     app.include_router(memory_group_router)
     app.include_router(memory_router)
+    app.include_router(story_cloud_router)
     app.include_router(memory_edition_router)
     app.include_router(memory_community_router)
     app.include_router(people_router)

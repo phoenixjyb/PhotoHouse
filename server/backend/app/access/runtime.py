@@ -273,6 +273,8 @@ class RuntimeConfiguration:
     memory_originals_enabled: bool = False
     memory_generation_enabled: bool = False
     memory_auto_refinement_enabled: bool = False
+    story_cloud_proofreading_enabled: bool = False
+    story_cloud_proofreading_provider: object = None
     memory_editorial_enabled: bool = False
     memory_editions_enabled: bool = False
     family_note_erasure_enabled: bool = False
@@ -550,6 +552,8 @@ class RuntimeConfiguration:
                           memory_originals_enabled=self.memory_originals_enabled,
                           memory_generation_enabled=self.memory_generation_enabled,
                           memory_auto_refinement_enabled=self.memory_auto_refinement_enabled,
+                          story_cloud_proofreading_enabled=self.story_cloud_proofreading_enabled,
+                          story_cloud_proofreading_provider=self.story_cloud_proofreading_provider,
                           memory_editorial_enabled=self.memory_editorial_enabled,
                           memory_editions_enabled=self.memory_editions_enabled,
                           family_note_erasure_enabled=self.family_note_erasure_enabled,

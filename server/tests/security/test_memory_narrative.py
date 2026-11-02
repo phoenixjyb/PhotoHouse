@@ -7,6 +7,7 @@ from copy import deepcopy
 import httpx
 
 from backend.app.access.memory_narrative import (
+    STORY_REFINEMENT_PROFILE,
     MAX_EDITOR_REPAIRS,
     MAX_EDITOR_REPAIR_BYTES,
     MAX_EDITOR_REPAIR_CHARS,
@@ -50,7 +51,7 @@ def refinement_bundle(*, language='en', narration=''):
     value['version'] = 4
     value['chapters'][0]['narration'] = narration
     value['story_refinement'] = {
-        'profile': 'asr_editorial_v11',
+        'profile': STORY_REFINEMENT_PROFILE,
         'people': [{'name': 'Synthetic Person', 'aliases': ['Synthetic Alias', 'Synthetic Alias Two']}],
     }
     return value

@@ -61,7 +61,7 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIs(main.app.state.assistant_semantic_search_enabled, False)
                 self.assertIs(main.app.state.selected_story_drafts_enabled, False)
                 self.assertIs(main.app.state.selected_story_ui_enabled, False)
-                self.assertEqual(len(main.app.routes), 183)
+                self.assertEqual(len(main.app.routes), 185)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])
                 self.assertEqual(logging.getLogger().handlers, handlers)
@@ -202,11 +202,13 @@ class ClosedApplicationTests(unittest.TestCase):
             ('GET', '/ui/assistant-private-workspace.js'),
             ('GET', '/ui/voice-session-control.js'),
             ('GET', '/ui/voice-turn-timing.js'),
+            ('POST', '/memory-stories/{story_id}/proofreading/preview'),
+            ('POST', '/memory-stories/{story_id}/proofreading/confirm'),
         }
         actual = [(method, route.path) for route in self.app.routes for method in route.methods]
         self.assertEqual(len(actual), len(set(actual)))
         self.assertEqual(set(actual), expected)
-        self.assertEqual(len(actual), 183)
+        self.assertEqual(len(actual), 185)
         for method, path in actual:
             sample = (path.replace('{ident}', '11111111-1111-4111-8111-111111111111')
                       .replace('{upload_id}', '1'*32)

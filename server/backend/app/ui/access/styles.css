@@ -1286,3 +1286,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .assistant-workspace-footer .assistant-form textarea{min-height:2.5rem;max-height:6.5rem;font-size:.9rem}
   .assistant-workspace-footer .assistant-actions button{min-height:40px;padding:.35rem .58rem;font-size:.7rem}
 }
+
+/* Optional egress is visually separate from local story editing. */
+.story-cloud-review{margin:1.5rem 0;padding:1.25rem;border:1px solid var(--line,#dce3dd);border-radius:18px;background:var(--surface,#fff);text-align:left}
+.story-cloud-review h3{margin:0 0 .5rem}.story-cloud-review button{margin:.5rem .5rem .25rem 0}
+.story-cloud-warning{padding:.8rem 1rem;border-radius:12px;background:#fff6e5;color:#714b1e;font-size:.92rem;line-height:1.6}
+.story-cloud-wire{max-height:22rem;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;padding:1rem;border-radius:12px;background:#f1f4f2;font-size:.8rem;line-height:1.6;user-select:text}
+.story-cloud-consent{display:flex;align-items:flex-start;gap:.7rem;margin:1rem 0;line-height:1.6;font-size:.95rem}
+.story-cloud-consent input{flex:0 0 auto;width:1.2rem;height:1.2rem;margin-top:.2rem}.story-cloud-paragraph{white-space:pre-wrap;line-height:1.9}
+@media(max-width:600px){.story-cloud-review{padding:1rem}.story-cloud-review button{max-width:100%;white-space:normal}.story-cloud-wire{max-height:18rem}}
+
+.story-cloud-review{--cloud-bg:#fffdf8;--cloud-ink:#27382e;--cloud-muted:#5b6b61;--cloud-wire:#eef3ef;background:var(--cloud-bg);color:var(--cloud-ink)}
+#story-reader .story-cloud-review{--cloud-bg:#213b2c;--cloud-ink:#f4f0e7;--cloud-muted:#bdcbbf;--cloud-wire:#102419;border-color:#526d5c}
+.story-cloud-review :is(h3,h4,p,summary,label,pre,button),#story-reader .story-cloud-review :is(h3,h4,p,summary,label,pre,button){color:var(--cloud-ink)}
+.story-cloud-review .fine,#story-reader .story-cloud-review .fine{color:var(--cloud-muted)}
+.story-cloud-review .story-cloud-wire,#story-reader .story-cloud-review .story-cloud-wire{background:var(--cloud-wire);color:var(--cloud-ink)}
+.story-cloud-review .story-cloud-warning,#story-reader .story-cloud-review .story-cloud-warning{color:#714b1e}

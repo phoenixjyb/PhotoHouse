@@ -1546,7 +1546,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if($('story-reader').open){stopNarration();$('story-reader').close();}
     if(bookReader?.open){stopNarration();bookReader.close();}
     if(draftPreparation.pending){draftPreparation.pending.cancelled=true;void sendPrepareCancel(draftPreparation.pending.owner,draftPreparation.pending.body.request_id);}draftPreparation.pending=null;draftPreparation.capability=null;draftPreparation.capabilityEpoch++;clearDraftProposal(null,false,false);
-    endGuide();clearRelated();generation++;busy=false;pendingSave=null;activeLocalRevision=null;localReviewRequired=false;localReviewVisible=false;localStatus='';stopPlaying();stopAutoRefinementPolling();autoRefinementJob=null;autoRefinementOriginal=null;autoRefinementCapability=null;autoRefinementMayStart=false;autoRefinementQueueing=null;autoRefinementQueueError=false;skipAutoRefinementSave=null;
+    cloudReview=null;endGuide();clearRelated();generation++;busy=false;pendingSave=null;activeLocalRevision=null;localReviewRequired=false;localReviewVisible=false;localStatus='';stopPlaying();stopAutoRefinementPolling();autoRefinementJob=null;autoRefinementOriginal=null;autoRefinementCapability=null;autoRefinementMayStart=false;autoRefinementQueueing=null;autoRefinementQueueError=false;skipAutoRefinementSave=null;
     if(guided)guide={owner:{...scope()},ticket:generation,step:'frames'};
     invalidateTitles();titleView=null;titleComposing=false;
     items=nextItems||galleryItems.slice();
@@ -1589,7 +1589,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     community?.clear({cancelJobs:cancelCommunityJobs});if(bookReader){resetReaderFontScale(bookReader,bookReader.querySelector('.reader-font-presets'));bookReader.__photoHouseOpenBookStory=null;bookReader.close();bookReader.remove();bookReader=null;}
     $('story-reader-community').replaceChildren();$('memory-books').hidden=true;
     if(draftPreparation.pending){draftPreparation.pending.cancelled=true;void sendPrepareCancel(draftPreparation.pending.owner,draftPreparation.pending.body.request_id);}draftPreparation.pending=null;draftPreparation.capability=null;draftPreparation.capabilityEpoch++;clearDraftProposal(null,false,false);
-    generation++;sourceCapabilityEpoch++;sourceCapabilities=null;sourceReviewOptedIn=false;sourceProfileLoaded=false;resetSourceRefresh();busy=false;pendingSave=null;readerFromShelf=false;refsLoadEpoch++;contributionRefs=null;stopPlaying();stopAutoRefinementPolling();autoRefinementJob=null;autoRefinementOriginal=null;autoRefinementCapability=null;autoRefinementMayStart=false;autoRefinementQueueing=null;autoRefinementQueueError=false;skipAutoRefinementSave=null;shelfLoad++;shelf=[];shelfPage=1;shelfTheme=null;shelfBinding=null;canCreate=false;$('saved-memory-list').replaceChildren();$('saved-memory-status').textContent='';$('saved-memory-more').hidden=true;renderShelfFilters();galleryItems=[];items=[];selectionPage=0;selected.clear();draft=null;proposalReferenceWarnings=new Map();dirty=false;downloaded=false;
+    cloudReview=null;generation++;sourceCapabilityEpoch++;sourceCapabilities=null;sourceReviewOptedIn=false;sourceProfileLoaded=false;resetSourceRefresh();busy=false;pendingSave=null;readerFromShelf=false;refsLoadEpoch++;contributionRefs=null;stopPlaying();stopAutoRefinementPolling();autoRefinementJob=null;autoRefinementOriginal=null;autoRefinementCapability=null;autoRefinementMayStart=false;autoRefinementQueueing=null;autoRefinementQueueError=false;skipAutoRefinementSave=null;shelfLoad++;shelf=[];shelfPage=1;shelfTheme=null;shelfBinding=null;canCreate=false;$('saved-memory-list').replaceChildren();$('saved-memory-status').textContent='';$('saved-memory-more').hidden=true;renderShelfFilters();galleryItems=[];items=[];selectionPage=0;selected.clear();draft=null;proposalReferenceWarnings=new Map();dirty=false;downloaded=false;
     for(const id of ['story-workspace','story-reader'])if($(id).open)$(id).close();
     for(const id of ['story-selection','story-chapter-editor','story-reader-stage','story-reader-frames','story-reader-chapters'])$(id).replaceChildren();
     $('story-reader-frame-status')?.remove();
@@ -1674,9 +1674,91 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     }
     host.append(panel);
   }
+  let cloudReview=null;
+  const cloudLabels={zh:{title:'可选云端校对',help:'本地整理照常工作。云端默认关闭；先查看将发送的完整请求，再决定是否发送。只有故事作者可以使用。',preview:'预览发送内容',loading:'正在准备本地预览…',disabled:'云端未启用或未配置。当前只可预览，不会发送。',privacy:'只发送下方请求中的文字，不发送照片、录音或对话。已审核姓名已替换为占位符；仍可能含有其他私人信息，请逐项检查。',consent:'我已检查完整请求，同意将这些文字发送到上述云端服务。',send:'确认发送这份请求',sending:'正在等待云端校对；不会自动重试…',cancel:'关闭预览',failed:'未能完成；原故事保持不变。请重新预览后再决定。',body:'完整请求 JSON（按此内容发送）',result:'云端建议 · 尚未保存',adopt:'将建议带入编辑',review:'打开阅读器核对',expiry:'此预览 10 分钟内有效，只可发送一次。',original:'当前保存的原文'},en:{title:'Optional cloud proofreading',help:'Local editing remains available. Cloud is off by default: preview the complete request before deciding to send. Only the story author can use it.',preview:'Preview outgoing request',loading:'Preparing a local preview…',disabled:'Cloud is disabled or unconfigured. Preview only; nothing will be sent.',privacy:'Only the text in the request below is sent, without photos, audio or conversation history. Reviewed names are placeholders; other private information may remain. Check the entire request.',consent:'I reviewed the complete request and consent to sending this text to the cloud service above.',send:'Confirm and send this request',sending:'Waiting for cloud proofreading; no automatic retry…',cancel:'Close preview',failed:'Not completed. The original story is unchanged. Prepare a new preview before deciding again.',body:'Complete request JSON (sent exactly as shown)',result:'Cloud suggestion · unsaved',adopt:'Bring suggestion into editor',review:'Open reader to review',expiry:'This preview expires after 10 minutes and can be sent only once.',original:'Currently saved wording'}};
+  function cloudText(key){return cloudLabels[scope().language==='en'?'en':'zh'][key];}
+  function cloudCurrent(record){return Boolean(record&&draft===record.story&&current(record.ticket,record.owner)&&!scope().locked&&!dirty&&!pendingSave&&record.identity===autoRefinementIdentity(draft));}
+  function renderCloudPanels(){
+    const hosts=[[$('story-reader-title')?.parentElement,'reader'],[$('story-chapter-editor'),'editor']];
+    for(const [host,mode] of hosts){
+      if(!host)continue;host.querySelectorAll('.story-cloud-review').forEach(p=>p.remove());
+      if(!draft?.saved||draft.can_cloud_proofread!==true||scope().locked||dirty||pendingSave||!savedRequest)continue;
+      if(cloudReview&&!cloudCurrent(cloudReview))cloudReview=null;
+      const panel=node('section',undefined,'story-cloud-review');panel.append(node('h3',cloudText('title')),node('p',cloudText('help'),'fine'));
+      const active=cloudReview;
+      const preview=button(cloudText('preview'),()=>{if(panel.isConnected)void prepareCloudPreview();},'quiet');preview.disabled=Boolean(active?.pending);panel.append(preview);
+      if(active?.pending){const status=node('p',cloudText(active.sending?'sending':'loading'));status.setAttribute('role','status');panel.append(status);}
+      if(active?.failed){const status=node('p',cloudText('failed'));status.setAttribute('role','alert');panel.append(status);}
+      if(active?.preview){
+        const p=active.preview;
+        if(Array.isArray(p.grounding_repairs)&&p.grounding_repairs.length<=192){
+          const list=node('ul',undefined,'story-cloud-grounding');
+          for(const repair of p.grounding_repairs){if(typeof repair?.before==='string'&&typeof repair.after==='string'&&repair.before.length<=256&&repair.after.length<=256)list.append(node('li',`${repair.before} → ${repair.after}`));}
+          if(list.childElementCount){panel.append(node('h4',scope().language==='en'?'Local name grounding':'本地名称核对'),list);}
+        }
+        panel.append(node('p',`${p.provider} · ${p.model}`,'story-cloud-provider'),node('p',p.endpoint,'fine'),node('p',cloudText('privacy'),'story-cloud-warning'),node('p',cloudText('expiry'),'fine'));
+        const details=node('details');details.open=true;details.append(node('summary',cloudText('body')),node('pre',p.request_body,'story-cloud-wire'));panel.append(details);
+        if(!p.enabled||!p.configured)panel.append(node('p',cloudText('disabled'),'story-cloud-warning'));
+        const label=node('label',undefined,'story-cloud-consent'),check=document.createElement('input');check.type='checkbox';check.checked=false;check.disabled=active.pending||active.used||!p.enabled||!p.configured;
+        label.append(check,document.createTextNode(cloudText('consent')));panel.append(label);
+        const send=button(cloudText('send'),()=>{if(panel.isConnected&&check.checked)void sendCloudPreview(active);},'primary');send.disabled=true;
+        check.addEventListener('change',()=>{send.disabled=!check.checked||check.disabled||!cloudCurrent(active);});panel.append(send);
+        panel.append(button(cloudText('cancel'),()=>{if(panel.isConnected){cloudReview=null;renderCloudPanels();}},'quiet'));
+      }
+      if(active?.result){
+        panel.append(node('h4',cloudText('result')));
+        for(const [index,c] of active.result.chapters.entries()){
+          panel.append(node('p',c.narration,'story-cloud-paragraph'));
+          const compare=node('details');compare.append(node('summary',cloudText('original')),node('p',draft.chapters[index].narration));panel.append(compare);
+        }
+        if(mode==='reader')panel.append(button(cloudText('adopt'),()=>{if(panel.isConnected)void adoptCloudResult(active);},'primary'));
+        else panel.append(button(cloudText('review'),()=>{if(panel.isConnected)read();}));
+      }
+      host.append(panel);
+    }
+  }
+  async function prepareCloudPreview(){
+    if(!draft?.saved||draft.can_cloud_proofread!==true||scope().locked||dirty||pendingSave||cloudReview?.pending)return;
+    const record={story:draft,owner:{...scope()},ticket:generation,identity:autoRefinementIdentity(draft),pending:true};cloudReview=record;renderCloudPanels();
+    try{
+      const result=await savedRequest(`/memory-stories/${draft.id}/proofreading/preview`,{method:'POST',body:{revision:draft.revision}});
+      if(!cloudCurrent(record)||cloudReview!==record)return;
+      if(result?.schema!=='photohouse.private.story_cloud_proofreading_preview.v1'||!uuidOK(result.preview_id)||result.base_revision!==draft.revision||typeof result.request_body!=='string'||new TextEncoder().encode(result.request_body).length>98304||!/^[0-9a-f]{64}$/.test(result.request_sha256)||result.provider!=='DeepSeek'||typeof result.model!=='string'||result.model.length>128||result.endpoint!=='https://api.deepseek.com/chat/completions'||typeof result.enabled!=='boolean'||typeof result.configured!=='boolean')throw new Error('Invalid preview');
+      const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(result.request_body))),x=>x.toString(16).padStart(2,'0')).join('');
+      if(digest!==result.request_sha256)throw new Error('Invalid preview');
+      if(cloudCurrent(record)&&cloudReview===record)record.preview=result;
+    }catch(error){if(cloudCurrent(record)&&cloudReview===record){record.failed=true;if(error.status===401||error.status===403)onError(error);}}
+    finally{record.pending=false;if(cloudCurrent(record)&&cloudReview===record)renderCloudPanels();}
+  }
+  async function sendCloudPreview(record){
+    if(!cloudCurrent(record)||cloudReview!==record||record.pending||record.used||!record.preview?.enabled||!record.preview.configured)return;
+    record.used=true;record.pending=true;record.sending=true;renderCloudPanels();
+    try{
+      const result=await savedRequest(`/memory-stories/${record.story.id}/proofreading/confirm`,{method:'POST',body:{revision:record.story.revision,preview_id:record.preview.preview_id,request_sha256:record.preview.request_sha256,confirmed:'yes'}});
+      if(!cloudCurrent(record)||cloudReview!==record)return;
+      if(result?.version!==1||result.needs_review!==true||result.saved!==false||result.base_revision!==record.story.revision||!Array.isArray(result.chapters)||result.chapters.length!==record.story.chapters.length||!result.chapters.every((c,i)=>c.id===record.story.chapters[i].id&&validText(c.narration,6000)&&new TextEncoder().encode(c.narration).length<=6000))throw new Error('Invalid suggestion');
+      record.result=result;
+    }catch(error){if(cloudCurrent(record)&&cloudReview===record){record.failed=true;if(error.status===401||error.status===403)onError(error);}}
+    finally{record.pending=false;if(cloudCurrent(record)&&cloudReview===record)renderCloudPanels();}
+  }
+  async function adoptCloudResult(record){
+    if(!cloudCurrent(record)||cloudReview!==record||!record.result||!$('story-reader').open||!canDiscard())return;
+    try{
+    const latest=await savedRequest(`/memory-stories/${draft.id}`);
+    if(!cloudCurrent(record)||cloudReview!==record||latest.revision!==draft.revision||latest.can_cloud_proofread!==true||!$('story-reader').open)return;
+    const candidate=structuredClone(draft);
+    for(const [i,c] of record.result.chapters.entries())candidate.chapters[i].narration=c.narration;
+    if(!validDraft(candidate,candidate.items.map(i=>i.id),record.owner,sourceProfileLoaded))return;
+    if(!window.confirm(record.owner.language==='en'?'Bring this cloud suggestion into the editor? Review and save separately.':'将云端建议带入编辑？请核对后另行保存。'))return;
+    if(!cloudCurrent(record)||!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'}))return;
+    clearDraftProposal(null,false,false);draft=candidate;skipAutoRefinementSave={storyId:draft.id,baseRevision:draft.revision};cloudReview=null;dirty=true;downloaded=false;readerFromShelf=false;stopPlaying();$('story-reader').close();renderEditor();message('ready');if(!$('story-workspace').open)$('story-workspace').showModal();
+    }catch(error){if(cloudCurrent(record)){record.failed=true;renderCloudPanels();if(error.status===401||error.status===403)onError(error);}}
+  }
+
   function renderAutoRefinementPanels(){
     const readerHost=$('story-reader-title')?.parentElement;if(readerHost)renderAutoRefinementPanel(readerHost,'reader');
     const editor=$('story-chapter-editor');if(editor)renderAutoRefinementPanel(editor,'editor');
+    renderCloudPanels();
   }
   function autoRefinementIdentity(story,owner=scope()){return JSON.stringify([owner.account,owner.library,story?.id,story?.revision]);}
   function setAutoRefinementFromStory(story){
@@ -2188,7 +2270,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function togglePlaying(){if(playing){stopPlaying();return;}if(!draft||scope().locked)return;stopNarration();playing=true;$('story-reader').dataset.playing='true';$('story-reader-play').textContent=text('pauseStory');$('story-reader-play').setAttribute('aria-pressed','true');playTimer=setInterval(()=>{if(scope().locked||document.hidden||!$('story-reader').open){stopPlaying();return;}const c=draft.chapters[chapter];if(frame<c.asset_ids.length-1)frame++;else if(chapter<draft.chapters.length-1){chapter++;frame=0;}else{stopPlaying();return;}renderReader();},7000);}
   $('saved-memory-refresh').addEventListener('click',()=>{void loadShelf();});$('saved-memory-more').addEventListener('click',()=>{void loadShelf(true);});
   $('story-save-memory').addEventListener('click',()=>{void saveMemory();});$('story-reload-memory').addEventListener('click',()=>{if(draft?.id)void reopen(draft.id);});
-  $('story-reader-play').addEventListener('click',togglePlaying);$('story-reader').addEventListener('close',()=>{stopAutoRefinementPolling();resetReaderFontScale($('story-reader'),$('story-reader-font-presets'));stopPlaying();stopNarration();community?.detach($('story-reader-community'));if(readerFromShelf&&!$('story-workspace').open){contributionRefs=null;refsLoadEpoch++;}});$('story-reader').addEventListener('cancel',event=>{if(!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'})){event.preventDefault();return;}stopNarration();});document.addEventListener('visibilitychange',()=>{if(document.hidden){stopAutoRefinementPolling();cancelDictation();stopPlaying();stopNarration();}});window.addEventListener('pagehide',()=>{stopAutoRefinementPolling();cancelDictation();stopNarration();});window.addEventListener('photohouse-memory-audio-start',stopNarration);document.getElementById('view-play')?.addEventListener('click',stopNarration);
+  $('story-reader-play').addEventListener('click',togglePlaying);$('story-reader').addEventListener('close',()=>{stopAutoRefinementPolling();resetReaderFontScale($('story-reader'),$('story-reader-font-presets'));stopPlaying();stopNarration();community?.detach($('story-reader-community'));if(readerFromShelf&&!$('story-workspace').open){contributionRefs=null;refsLoadEpoch++;}});$('story-reader').addEventListener('cancel',event=>{if(!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'})){event.preventDefault();return;}stopNarration();});document.addEventListener('visibilitychange',()=>{if(document.hidden){cloudReview=null;renderCloudPanels();stopAutoRefinementPolling();cancelDictation();stopPlaying();stopNarration();}});window.addEventListener('pagehide',()=>{cloudReview=null;renderCloudPanels();stopAutoRefinementPolling();cancelDictation();stopNarration();});window.addEventListener('photohouse-memory-audio-start',stopNarration);document.getElementById('view-play')?.addEventListener('click',stopNarration);
   const storyReaderFontControls=$('story-reader-font-presets');
   if(storyReaderFontControls)for(const control of storyReaderFontControls.querySelectorAll('[data-reader-font-scale]'))control.addEventListener('click',()=>{if(!$('story-reader').open||!draft||scope().locked||!draft.chapters[chapter])return;syncReaderFontScale($('story-reader'),storyReaderFontControls,Number(control.dataset.readerFontScale));});
   $('story-reader-contribute').addEventListener('click',()=>{if(!draft||scope().locked||!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'}))return;const item=draft.items.find(i=>i.id===draft.chapters[chapter].asset_ids[frame]);stopPlaying();stopNarration();$('story-reader').close();$('story-workspace').close();openAsset(item);});
