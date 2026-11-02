@@ -33859,6 +33859,38 @@
         "Record the isolated last-search media phrase parser fix as source-only; 67 focused tests comprising 169 subtests passed, with no deployment or new live rollout claimed.",
         "The R10 natural-language follow-up remains refused, so there is no two-turn native pass; the local phrase reproduction establishes the discrepancy without establishing a broader cause."
       ]
+    },
+    {
+      "feature": "assistant-context-conflict-hides-stale-results-20261103",
+      "source_commit": "1d06d7bb9bf25ee11b82bbbde259142a2c13958a",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "c0eb8be3ef7a4d14feda9e95cd7d6f89826f963ffeb85640ffedb43e401bc194",
+          "sha256": "b43b6d72bcc26f2ea2d0f7cdca40168a6ed76390db087ea961c194fd1a22a895"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "35daf9ca0d419fe980eddf1eac1581bb7ad3b9e6de4bd55abba54a3d557c4849",
+          "sha256": "246e423c74d6ff251185dbc241e740f6e436350c6dabef62e1cf86285a851637"
+        },
+        {
+          "path": "server/tests/security/test_assistant_private_workspace_v3.cjs",
+          "before_sha256": "a1d8e8f709c3a8d5700d15f1bd4dc83491897f8f29e3f3750f4fad45bb15b341",
+          "sha256": "95c44e0f7dd3b8738b7286f8d84299e74b4eea357ed9a2ef5d4edaa825510e92"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "3b42c0fd5b2291b173be100a06a28a1313f62f38e8bcd2fc139b02502056b149",
+          "sha256": "b40ccdd3755b56bcf68f3243ccb4cc6933db34d90f1f2a271b021cf26589af56"
+        }
+      ],
+      "notes": [
+        "On HTTP 409 context_changed, clear the visible and in-memory prior search result, preserve the sent request as uncertain for explicit recovery or abandonment, and show localized guidance. Do not retry or renew context; generic network-error handling remains unchanged.",
+        "The focused client CJS regression and JavaScript syntax checks pass. The browser regression is authored but could not run in this clone: .venv is absent and system Python has no Alembic. No live runtime change or deployment is claimed."
+      ]
     }
   ]
 }
