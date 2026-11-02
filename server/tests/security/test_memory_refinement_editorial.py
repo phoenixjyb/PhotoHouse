@@ -5,7 +5,8 @@ import unittest
 from app.access.memory_narrative import (
     STORY_REFINEMENT_PROFILE, _validate_bundle, _generation_payload,
     _REFINEMENT_V10_SAFETY_PROMPT_ZH, _REFINEMENT_V10_INSTRUCTION_ZH,
-    _public_name_repair_payload, validate_public_name_repair_plan,
+    _public_name_repair_payload, apply_public_name_repair_plan,
+    validate_public_name_repair_plan,
     validate_generated_narrative, validate_narrative)
 from test_memory_narrative import bundle, narrative
 
@@ -99,6 +100,79 @@ class EditorialProfileTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     validate_public_name_repair_plan(
                         {'repairs': [{'before': before, 'after': 'Public Name'}]}, clean)
+
+    def test_v11_applies_only_validated_source_backed_repairs_without_mutating_inputs(self):
+        value = editorial_bundle()
+        value['story_refinement']['people'] = []
+        value['chapters'][0]['narration'] = 'We visited Harber Bay with family. ' * 3
+        value['title'] = 'Harber Bay memories'
+        clean = _validate_bundle(value)
+        compact = {'repairs': [], 'title': 'Harber Bay memories',
+                   'paragraphs': ['We visited Harber Bay and walked together.'],
+                   'questions': []}
+        before_bundle = deepcopy(clean)
+        before_result = deepcopy(compact)
+        adjusted = apply_public_name_repair_plan(
+            compact, clean, [{'before': 'Harber Bay', 'after': 'Harbor Bay'}])
+        self.assertEqual('We visited Harbor Bay and walked together.', adjusted['paragraphs'][0])
+        self.assertEqual('Harbor Bay memories', adjusted['title'])
+        self.assertEqual([{'before': 'Harber Bay', 'after': 'Harbor Bay'}], adjusted['repairs'])
+        self.assertEqual(clean, before_bundle)
+        self.assertEqual(compact, before_result)
+        proposal = validate_generated_narrative(adjusted, clean)
+        self.assertTrue(proposal['needs_review'])
+        self.assertEqual(clean['chapters'][0]['id'], proposal['chapters'][0]['id'])
+        self.assertEqual(['ev-1'], proposal['chapters'][0]['source_ids'])
+
+    def test_v11_replacement_is_single_pass_and_never_inserts_absent_source_text(self):
+        value = editorial_bundle()
+        value['story_refinement']['people'] = []
+        value['chapters'][0]['narration'] = 'Harber Bay and Harbor Bay were both mentioned. '
+        clean = _validate_bundle(value)
+        compact = {'repairs': [], 'title': 'A short walk',
+                   'paragraphs': ['Harber Bay was mentioned.'], 'questions': []}
+        plan = [{'before': 'Harber Bay', 'after': 'Harbor Bay'},
+                {'before': 'Harbor Bay', 'after': 'Port Bay'}]
+        adjusted = apply_public_name_repair_plan(compact, clean, plan)
+        self.assertEqual('Harbor Bay was mentioned.', adjusted['paragraphs'][0])
+        compact['paragraphs'] = ['The family walked together.']
+        unchanged = apply_public_name_repair_plan(compact, clean, plan)
+        self.assertEqual('The family walked together.', unchanged['paragraphs'][0])
+
+    def test_v11_merges_identical_repairs_and_rejects_conflicts_or_overlaps(self):
+        value = editorial_bundle()
+        value['story_refinement']['people'] = []
+        value['chapters'][0]['narration'] = 'Harber Bay was the destination. ' * 3
+        clean = _validate_bundle(value)
+        plan = [{'before': 'Harber Bay', 'after': 'Harbor Bay'}]
+        same = {'repairs': [{'before': 'Harber Bay', 'after': 'Harbor Bay'}],
+                'title': 'Visit Harber Bay', 'paragraphs': ['Harber Bay was lovely.'],
+                'questions': []}
+        adjusted = apply_public_name_repair_plan(same, clean, plan)
+        self.assertEqual(1, len(adjusted['repairs']))
+        conflicts = [
+            ({'repairs': [{'before': 'Harber Bay', 'after': 'Port Bay'}],
+              'title': 'Visit Harber Bay', 'paragraphs': ['Harber Bay was lovely.'],
+              'questions': []}, plan),
+            ({'repairs': [], 'title': 'Visit Harber Bay',
+              'paragraphs': ['Harber Bay was lovely.'], 'questions': []},
+             [{'before': 'Harber Bay', 'after': 'Harbor Bay'},
+              {'before': 'Harber', 'after': 'Harbor'}]),
+        ]
+        for compact, candidate_plan in conflicts:
+            with self.subTest(compact=compact, plan=candidate_plan):
+                with self.assertRaises(ValueError):
+                    apply_public_name_repair_plan(compact, clean, candidate_plan)
+
+    def test_v11_repair_application_does_not_coerce_invalid_output_types(self):
+        value = editorial_bundle()
+        clean = _validate_bundle(value)
+        compact = {'repairs': [], 'title': 'A memory',
+                   'paragraphs': ['The family visited the garden.'], 'questions': []}
+        for field, malformed in (('title', None), ('paragraphs', [7]),
+                                 ('questions', 'not an array')):
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                apply_public_name_repair_plan({**compact, field: malformed}, clean, [])
 
     def test_v10_prompt_uses_only_linked_family_and_transcript_sources_without_labels_or_ids(self):
         value = editorial_bundle()

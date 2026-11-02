@@ -194,6 +194,32 @@ class HouseholdWorkerTests(unittest.TestCase):
                 self.assertTrue(self.engine.closed)
                 self.assertFalse(self.response.exists())
 
+    def test_v11_worker_applies_validated_public_name_plan_ignored_by_prose(self):
+        value=saved_bundle()
+        value.update(version=4,story_refinement={'profile':STORY_REFINEMENT_PROFILE,'people':[]})
+        value['chapters'][0]['narration']='We visited Harber Bay together. ' * 3
+        original=deepcopy(value)
+        self.body={'version':1,'kind':'saved_story_narrative_v1',
+                   'operation_id':OPERATION_ID,'bundle':value}
+        self.engine.responses=[json.dumps({'repairs':[{'before':'Harber Bay',
+            'after':'Harbor Bay'}]}),json.dumps({'repairs':[],
+            'title':'Harber Bay in spring',
+            'paragraphs':['We visited Harber Bay and walked along the shore.'],
+            'questions':[]})]
+        self.write_request()
+        self.assertEqual(0,worker.run(self.settings,enabled=True,environment=self.env,
+                                      backend_factory=self.factory))
+        result=json.loads(self.response.read_bytes())['result']
+        self.assertEqual('We visited Harbor Bay and walked along the shore.',
+                         result['chapters'][0]['narration'])
+        self.assertEqual('Harbor Bay in spring',result['title'])
+        self.assertTrue(result['needs_review'])
+        self.assertEqual(value['chapters'][0]['id'],result['chapters'][0]['id'])
+        self.assertEqual(original,value)
+        self.assertEqual(2,len(self.engine.calls))
+        self.factory.assert_called_once_with(self.settings)
+        self.assertTrue(self.engine.closed)
+
     def test_saved_story_failure_exit_codes_are_closed_and_content_free(self):
         expected = worker.SAVED_STORY_FAILURE_EXIT_CODES
         self.assertEqual(set(expected.values()), set(range(80, 97)))

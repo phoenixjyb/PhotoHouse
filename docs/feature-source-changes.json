@@ -33380,6 +33380,44 @@
         "Both completions use the same existing backend instance inside the same native job, context, RAM/CPU/GPU and saved-story deadline. Existing close/failure handling, native ownership, process/control/profile algorithms and old v1-v3/agent single-call paths remain unchanged. No additional model/provider/dependency, process, file or external request is added.",
         "V10 separates the two-pass cache/input contract. Focused tests cover real chat-template framing of both prompts, same-engine dispatch, unchanged input, closed/bounded/no-op/unsupported plans, private-name overlap including ASCII case and normalized fragments, and refusal before prose with engine closure. Actual Windows quality and deployment require their own evidence."
       ]
+    },
+    {
+      "feature": "apply-source-bound-public-name-draft-edits-20261102",
+      "source_base": "9cca256f647c4db9c7303ff523e8160e0d919ae5",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "124a0aa5acd968b63b910007be2765bf8b65e186a024a411cea1f0eecbc6cfb2",
+          "sha256": "e37f7a62033dfb146aa19ca97c3d1951fccb1a0678412a4d47b1b0dbe4cc48fc"
+        },
+        {
+          "path": "server/scripts/household_gguf_worker.py",
+          "before_sha256": "379526f12e43aa81f77ae079f4ad217752a9f56ae6d21950fa8e983ed6d9fb57",
+          "sha256": "f9d0a9d72f84306533c0d28c0d0ffe0674ae185d8f794301b9bb405ad8fcf97b"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "31bc7f6d617fcea4557f6385d4e94de806ddb09e018e3386aed133678752cc90",
+          "sha256": "0748f41c813e4a796dff8e1a8b9e31d1c18ba4822dacabe8bd1ba751c50fff2b"
+        },
+        {
+          "path": "server/tests/security/test_memory_refinement_editorial.py",
+          "before_sha256": "982b308a406d12abc11f3e27e224eeb3b5d83cd457d7edd1935c3b69c04d1504",
+          "sha256": "fdd13534751fc71b9c43c3883b441d03a1f5da2764510704b8f21e5ae86ee037"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "01ceb5be1982e6e4a8db8440edaa86191d24b76251ba98017193cbde040eec2f",
+          "sha256": "51ae5d2dc189a61880a340a3d279124ab58184fb4d88ababb8dcb3c3d43dec14"
+        }
+      ],
+      "notes": [
+        "Apply validated public-name spelling proposals to copied model prose and title using single-pass exact replacements admitted by the corresponding original chapter narration. Never insert an absent source fact, cascade substitutions, or change saved originals.",
+        "Merge bounded source-bound repair records, dedupe identical pairs and refuse conflicting or overlapping applied edits; retain strict title/paragraph/question types and the existing canonical source/citation/review-required validator. Private reviewed-name repair restrictions remain mandatory.",
+        "V11 separates the output-application cache contract; both model prompts, sampling, token limits, same-engine two-pass dispatch and all native/resource/closure controls remain unchanged. Focused tests cover ignored suggestions, already-correct output, no cascade/insertion, source scoping, invalid types and private/overlap/conflict refusal. Actual Windows qualification and deployment remain separate."
+      ]
     }
   ]
 }

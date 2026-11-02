@@ -50,7 +50,7 @@ def refinement_bundle(*, language='en', narration=''):
     value['version'] = 4
     value['chapters'][0]['narration'] = narration
     value['story_refinement'] = {
-        'profile': 'asr_editorial_v10',
+        'profile': 'asr_editorial_v11',
         'people': [{'name': 'Synthetic Person', 'aliases': ['Synthetic Alias', 'Synthetic Alias Two']}],
     }
     return value

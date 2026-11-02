@@ -25,7 +25,7 @@ MAX_PROVIDER_BYTES = 128 * 1024
 MAX_CHAPTERS = 24
 MAX_SOURCES = 96
 MAX_RECENT_TURNS = 8
-STORY_REFINEMENT_PROFILE = 'asr_editorial_v10'
+STORY_REFINEMENT_PROFILE = 'asr_editorial_v11'
 MAX_EDITOR_REPAIRS = 8
 MAX_EDITOR_REPAIR_CHARS = 64
 MAX_EDITOR_REPAIR_BYTES = 192
@@ -565,6 +565,88 @@ def validate_public_name_repair_plan(result: Any, bundle: Any) -> list[dict[str,
         seen_before.add(before)
         validated.append({'before': before, 'after': after})
     return validated
+
+
+def apply_public_name_repair_plan(compact_result: Any, bundle: Any,
+                                  validated_plan: Any) -> dict:
+    """Apply only exact, original-narration-backed suggestions to a copied result."""
+    clean_bundle = _validate_bundle(bundle, allow_draft=True)
+    if clean_bundle['version'] != 4:
+        raise ValueError('public-name repair application requires an automatic editorial bundle')
+    compact_result = _object(compact_result,
+        {'repairs', 'title', 'paragraphs', 'questions'}, 'generated narrative')
+    _validate_editor_repairs(compact_result['repairs'], clean_bundle)
+    plan = validate_public_name_repair_plan({'repairs': validated_plan}, clean_bundle)
+    paragraphs = compact_result['paragraphs']
+    if type(paragraphs) is not list or len(paragraphs) != len(clean_bundle['chapters']):
+        raise ValueError('generated narrative paragraph set is incomplete')
+    title = _text(compact_result['title'], 512, 'narrative title', nonblank=True)
+    for paragraph in paragraphs:
+        _text(paragraph, 6000, 'narration')
+    questions = _questions(compact_result['questions'], 6, 'narrative question')
+
+    merged_by_before: dict[str, str] = {}
+    for repair in compact_result['repairs'] + plan:
+        before, after = repair['before'], repair['after']
+        previous = merged_by_before.get(before)
+        if previous is not None and previous != after:
+            raise ValueError('generated and public-name repairs conflict')
+        merged_by_before[before] = after
+    merged = [{'before': before, 'after': after}
+              for before, after in merged_by_before.items()]
+    _validate_editor_repairs(merged, clean_bundle)
+
+    # Only plan edits are applied. Main-pass repair records remain diagnostic;
+    # their source spans may describe a longer prose edit without shadowing one.
+    for chapter in clean_bundle['chapters']:
+        narration = chapter['narration']
+        spans = []
+        for repair in plan:
+            before = repair['before']
+            start = 0
+            while True:
+                start = narration.find(before, start)
+                if start < 0:
+                    break
+                spans.append((start, start + len(before), before))
+                start += 1
+        spans.sort()
+        for left, right in zip(spans, spans[1:]):
+            if left[1] > right[0] and left[2] != right[2]:
+                raise ValueError('generated repairs overlap in original narration')
+
+    def replace_once(source: str, chapter_repairs: list[dict[str, str]]) -> str:
+        if not chapter_repairs:
+            return source
+        by_before = {repair['before']: repair['after'] for repair in chapter_repairs}
+        output = []
+        index = 0
+        while index < len(source):
+            match = next((before for before in by_before
+                          if source.startswith(before, index)), None)
+            if match is None:
+                output.append(source[index])
+                index += 1
+            else:
+                output.append(by_before[match])
+                index += len(match)
+        return ''.join(output)
+
+    rewritten_paragraphs = []
+    for chapter, paragraph in zip(clean_bundle['chapters'], paragraphs):
+        narration = chapter['narration']
+        admitted = [repair for repair in plan if repair['before'] in narration]
+        rewritten_paragraphs.append(replace_once(paragraph, admitted))
+    title_repairs = [repair for repair in plan if any(
+        repair['before'] in chapter['narration'] for chapter in clean_bundle['chapters'])]
+
+    # Return a fresh compact object; never mutate model output or the original bundle.
+    return {
+        'repairs': merged,
+        'title': replace_once(title, title_repairs),
+        'paragraphs': rewritten_paragraphs,
+        'questions': questions,
+    }
 
 
 def _refinement_comparison_text(value: str) -> str:

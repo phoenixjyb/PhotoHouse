@@ -21,6 +21,7 @@ _STORY_FAILURE_RECORD = story._failure_record
 from app.access.agent_decision import generation, validate_state, validate_decision
 from app.access.memory_narrative import (
     _generation_payload, _public_name_repair_payload, _validate_bundle,
+    apply_public_name_repair_plan,
     validate_generated_narrative, validate_public_name_repair_plan,
 )
 
@@ -215,6 +216,9 @@ def _saved_story_narrative(settings, environment, request, response, operation,
                 story._refuse(phase)
             decoded = story._strict_loads(output.encode('utf-8'))
             phase = 'narrative'
+            if bundle['version'] == 4:
+                decoded = apply_public_name_repair_plan(
+                    decoded, bundle, public_name_suggestions)
             try:
                 result = validate_generated_narrative(decoded, bundle)
             except ValueError as error:
