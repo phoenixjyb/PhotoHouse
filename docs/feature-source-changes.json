@@ -33568,6 +33568,28 @@
         "Cloud proofreading is author-only and disabled/unconfigured by default. Exact outgoing JSON and SHA, reviewed-name placeholders and common-sensitive-pattern removal precede a per-preview explicit unchecked consent flow; bounded expiring actor/library/revision/source/provider-bound previews are consumed before one HTTPS call. No automatic cloud fallback/retry or real cloud call.",
         "Web reader/editor displays exact request, default-off state and unsaved proposal with explicit editor adoption and ordinary save. New routes are separately allowlisted and reauthorize before/after provider await. No schema, Search/grouping path, weights, live config or GitHub Actions change."
       ]
+    },
+    {
+      "feature": "retain-source-grounded-spellings-after-prose-reordering-20261102",
+      "source_base": "9fac5ec072b8d45c6624146d40d293a26a8f0eb6",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "40c97f9498c271bd1cb1f30c7e7e4ade312993e46ca4cea0c3d6ed8175e86f3a",
+          "sha256": "ffc49a6c20eaf2a94b7d4389b2014bb4de044e17c8a47b888620892d8920e3b8"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "a4380fa66361b46dfbcccc743cc52df6ef70488c9158692d2700d7235a8055dc",
+          "sha256": "3118a06ce7c29c507d205229fda23d788a30f847608e4dfbccf9594564e7336e"
+        }
+      ],
+      "notes": [
+        "Apply only the local grounder’s original-chapter-bound exact spelling repairs to copied generated prose before final grounding, so moving a name away from its concert cue cannot reintroduce its original ASR spelling. Title uses the same original-source-backed names. No model suggestion supplies repair authority; originals and canonical validation remain unchanged.",
+        "The actual worker fixture covers a copied misspelling in both title and prose after the concert cue is removed, with one completion, reviewed alias preservation, unchanged originals and owned engine closure."
+      ]
     }
   ]
 }

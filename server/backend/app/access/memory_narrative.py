@@ -674,9 +674,24 @@ def validate_grounded_narrative(result: Any, original: Any, grounded: Any) -> di
     from .story_name_grounding import ground_text
     proposal = validate_generated_narrative(result, grounded)
     people = original['story_refinement']['people']
+
+    def grounded_wording(wording, source):
+        # Preserve a source-grounded spelling even when prose moves the name
+        # away from its original concert cue. The model supplies no authority.
+        repairs = ground_text(source, people)['repairs']
+        mapping = {repair['before']: repair['after'] for repair in repairs}
+        if mapping:
+            patterns = [((r'(?<![A-Za-z0-9_])' + re.escape(before) + r'(?![A-Za-z0-9_])')
+                         if before.isascii() else re.escape(before))
+                        for before in sorted(mapping, key=len, reverse=True)]
+            wording = re.sub('|'.join(patterns), lambda match: mapping[match.group()], wording)
+        return ground_text(wording, people)['text']
+
     proposal['chapters'] = [{**chapter,
-        'narration': ground_text(chapter['narration'], people)['text']}
-        for chapter in proposal['chapters']]
+        'narration': grounded_wording(chapter['narration'], source['narration'])}
+        for chapter, source in zip(proposal['chapters'], original['chapters'])]
+    proposal['title'] = grounded_wording(proposal['title'],
+        '\n'.join(chapter['narration'] for chapter in original['chapters']))
     return validate_narrative(proposal, original)
 
 

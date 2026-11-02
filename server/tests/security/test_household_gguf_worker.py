@@ -123,8 +123,8 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.body={'version':1,'kind':'saved_story_narrative_v1',
                    'operation_id':OPERATION_ID,'bundle':value}
         self.write_request()
-        self.engine.text=json.dumps({'repairs':[],'title':'杭州的音乐回忆',
-            'paragraphs':['我们看周结伦演唱会，Mira或者小凝 她也一同分享了这段回忆。'],
+        self.engine.text=json.dumps({'repairs':[],'title':'周结伦的音乐回忆',
+            'paragraphs':['我们看了周结伦的表演，Mira或者小凝 她也一同分享了这段回忆。'],
             'questions':[]},ensure_ascii=False)
         self.assertEqual(worker.run(self.settings,enabled=True,environment=self.env,
                                     backend_factory=self.factory),0)
@@ -155,7 +155,8 @@ class HouseholdWorkerTests(unittest.TestCase):
         self.assertEqual(value['chapters'][0]['id'], public_result['chapters'][0]['id'])
         self.assertEqual(['family-note-1', 'transcript-note'],
                          public_result['chapters'][0]['source_ids'])
-        self.assertEqual('我们看周杰伦演唱会，小宁 她也一同分享了这段回忆。',
+        self.assertEqual('周杰伦的音乐回忆',public_result['title'])
+        self.assertEqual('我们看了周杰伦的表演，小宁 她也一同分享了这段回忆。',
                          public_result['chapters'][0]['narration'])
         self.factory.assert_called_once_with(self.settings)
         self.assertEqual(original_value,value)
