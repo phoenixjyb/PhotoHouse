@@ -33271,6 +33271,39 @@
         "Keep the same approved model weights, CPU threads, GPU selection, context, sampling/output limits, mmap/mlock behavior, private-file checks and the existing hard RAM/free-RAM/native ownership controls. This is a working-memory reduction, not a resource-cap relaxation.",
         "Fake-constructor tests verify the exact CPU and GPU kwargs. Actual model fit, generation quality, Search/grouping stability and deployment remain subject to Windows qualification."
       ]
+    },
+    {
+      "feature": "linked-sources-automatic-story-editor-20261102",
+      "source_base": "9528d496a521bb57dab0d369907626172b362e83",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_narrative.py",
+          "before_sha256": "76dfae823eec0f8974dca9519aae0cd3af6d9d38d999f1586f89882f77bedeb9",
+          "sha256": "00b5b679673f7e845ca142e0f8b57de8e66740762365424d267ac6fc10c6026a"
+        },
+        {
+          "path": "server/tests/security/test_memory_narrative.py",
+          "before_sha256": "dafc68461aeeb44b9f097fa41e67b373ea0a5b2dfbac2ac9ff8557f29aa58a7b",
+          "sha256": "c3762593adaae8a75b7d980d91a7b4126a79159bd87f471a0be121768eb568ca"
+        },
+        {
+          "path": "server/tests/security/test_memory_refinement_editorial.py",
+          "before_sha256": "49670331bd2a4979ae466f734c577267f644a984719974a18806fa751d5ee308",
+          "sha256": "ab017543f362e8ae99406b1a507a2fdd95f2f64033400a3a5ce6fff08a240fcc"
+        },
+        {
+          "path": "server/tests/security/test_household_gguf_worker.py",
+          "before_sha256": "b1b8a79581b4a2054fb8ced4478fa7ff3e8cb11a9aa18daf4517919fa1269f1b",
+          "sha256": "a640a46097937d1ac8edccbeeba058f852c90b64773b19e90198b77141dc0dc5"
+        }
+      ],
+      "notes": [
+        "Include only the validated nonblank sources linked to each chapter in automatic story editing, with source-kind uncertainty labels and no catalog/account/source identifiers or bylines in model input. Preserve narration as input and request a complete rewrite rather than a summary.",
+        "Use the same chapter-source selector for prompt input and host-owned citations. Keep exact-narration-only repair validation, original media/text preservation, review-required proposals, all model/resource/ownership guards and legacy v1-v3 contracts. Empty chapters require nonempty linked source text before expansion.",
+        "Separate the v8 input/cache contract from retained earlier drafts. Source/worker-boundary tests cover linked-source scope, no unrelated context, citation joins and no-op/invalid-output refusal. Native model quality and deployment require separate actual Windows evidence."
+      ]
     }
   ]
 }
