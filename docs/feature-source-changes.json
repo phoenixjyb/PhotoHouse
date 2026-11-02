@@ -33842,6 +33842,23 @@
         "Correct the 2,700-second live-rollout status: the 22:45 UTC latest-admission cutoff expired before qualification, so no live rollout, full live check or operation was admitted or run.",
         "Record only the confirmed local English-prefix reproduction and accepted phrase controls; the isolated source fix is in progress, not deployed, and no broader cause is claimed."
       ]
+    },
+    {
+      "feature": "document-source-only-search-refinement-parser-fix-status-20261103",
+      "source_commit": "96c269f7e8e478f2995f5c10c226ca20dc1522cf",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/JUDE_ASSISTANT.md",
+          "before_sha256": "1fd3c50981650927b181895d5552f57e369557c32db2d3d03c002fe6932b9f9a",
+          "sha256": "433a3edb7c79d4774af9f9a499b7374d43d3d270306cab8c0164984b69497cc0"
+        }
+      ],
+      "notes": [
+        "Record the isolated last-search media phrase parser fix as source-only; 67 focused tests comprising 169 subtests passed, with no deployment or new live rollout claimed.",
+        "The R10 natural-language follow-up remains refused, so there is no two-turn native pass; the local phrase reproduction establishes the discrepancy without establishing a broader cause."
+      ]
     }
   ]
 }

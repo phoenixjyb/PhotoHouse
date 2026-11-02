@@ -89,9 +89,11 @@ for the context binding and source checks.
 
 A local reproduction confirmed that `Refine the last search to videos only`
 returns clarification marked `unsupported_negation`, while `only videos` and
-`只看视频` are accepted. An isolated source fix is in progress and not deployed.
-This reproduces the discrepancy; it does not establish a broader cause. Keep the
-parser investigation distinct from the R10 native result.
+`只看视频` are accepted. The isolated parser fix is now implemented in source;
+67 focused tests covering 169 subtests passed. This is source-only evidence and
+does not establish deployment or native acceptance: the R10 follow-up was
+refused, so there is no two-turn native pass or new live rollout. The
+reproduction establishes the phrase discrepancy, not a broader cause.
 The deployed assistant carries recent exchanges in the signed-in library's
 server conversation and rechecks ownership and revision for each request.
 Continuity comes from app-managed, authorized retained history; the model does
