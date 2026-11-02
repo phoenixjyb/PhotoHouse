@@ -33908,6 +33908,29 @@
         "Add a focused environment guard to the existing synthetic browser fixture so the HTTP 409 context-change state can be rendered and inspected without running unrelated browser scenarios.",
         "The focused fixture passed with a synthetic ASGI backend and local headless Chromium. No application behavior or live runtime changed."
       ]
+    },
+    {
+      "feature": "document-post409-search-context-ui-status-20261103",
+      "source_commit": "1d06d7bb9bf25ee11b82bbbde259142a2c13958a",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/JUDE_ASSISTANT.md",
+          "before_sha256": "433a3edb7c79d4774af9f9a499b7374d43d3d270306cab8c0164984b69497cc0",
+          "sha256": "d8731bd6eab7bff3b21cc1ff7ea38b7c16cb0e76e6977f2e1320f05c053586ce"
+        },
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "71142d51394c494783cc64ec69d4ee032e7b093d557bb83b84db04d989c7a998",
+          "sha256": "cae27a7c8e6d15c74e3ead12a97dca28e075bf352db819a394a1cf1fbb0ce98b"
+        }
+      ],
+      "notes": [
+        "Document source-only HTTP 409 client behavior: stale active cards and reply are hidden, pending turn and draft remain, the UI offers explicit recover or abandon actions, and no automatic resend occurs.",
+        "Record passed focused client CJS and syntax checks plus the synthetic ASGI/Chromium case with screenshot review; this is not Windows installation or family/device acceptance.",
+        "Clarify that the 20 source tests cover qualification-helper session-rotation timing, not application authentication behavior. The 67 parser tests and 169 subtests remain source-only; the R10 native follow-up remains refused."
+      ]
     }
   ]
 }

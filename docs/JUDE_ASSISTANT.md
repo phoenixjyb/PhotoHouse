@@ -53,6 +53,18 @@ of starting another model action. A stale account/library/conversation receipt
 cannot restore an active microphone or execute an action. Stored history and
 returned cards do not bypass fresh authorization.
 
+### Search context conflict (HTTP 409)
+
+In the current client source, a context conflict hides stale active result cards
+and reply audio while retaining the pending turn and text draft. The UI gives
+guidance for the invalidated context and offers explicit Recover and Abandon
+actions; it does not resend automatically. Recovery remains subject to current
+server authorization and context checks. Token rotation invalidates the old
+result context and receipts, so a fresh Search is required for a new context.
+The focused client CJS and syntax checks and synthetic ASGI/Chromium case passed
+with screenshot review. This is local source-preview evidence, not Windows
+installation or family/device acceptance.
+
 ## Search conversation context and current qualification
 
 The October 30 compact chat layout and bounded conversation projection were
@@ -83,8 +95,9 @@ Search result context and its protected continuation/recovery receipts are bound
 to the authenticated login-token/session identity. Token rotation deliberately
 invalidates the prior context: reuse with the new token returns HTTP 409 and
 requires a fresh search. Result context is not carried between login sessions.
-The source fix has 20 focused source tests; this does not establish live token-
-rotation behavior. See [Search v2](ASSISTANT_JOINT_SEARCH_V2.md#contract-and-compatibility)
+The 20 focused source tests exercise qualification-helper session-rotation
+timing; they do not test application authentication behavior or establish live
+token-rotation behavior. See [Search v2](ASSISTANT_JOINT_SEARCH_V2.md#contract-and-compatibility)
 for the context binding and source checks.
 
 A local reproduction confirmed that `Refine the last search to videos only`

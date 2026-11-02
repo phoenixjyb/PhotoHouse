@@ -40,9 +40,10 @@ a fresh search. There is no cross-session result-context carryover. Downgrading
 a v2 context or using it in another session/library requires refresh; context
 never grants access.
 
-The source fix for login-token rotation invalidation passed 20 focused source
-tests. This is source-level evidence; it does not qualify normal native
-same-session follow-up or establish live behavior.
+The 20 focused source tests exercise qualification-helper session-rotation
+timing. They do not test application authentication behavior. This is
+source-level evidence; it does not qualify normal native same-session follow-up
+or establish live behavior.
 
 Examples using fictional reviewed names:
 
