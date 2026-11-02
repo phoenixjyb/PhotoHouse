@@ -3,9 +3,13 @@
 When automatic refinement is explicitly enabled on the Windows runtime, saving a
 story with narration also queues a separate proposal in the same transaction.
 The saved original and its revision history remain unchanged. A ready proposal
-appears next to the original; the user reviews it and explicitly saves any
-wording they want to adopt. Adopting that proposal does not immediately queue
-another refinement of the same save.
+appears next to the original; the user reviews the suggested chapter prose and
+explicitly saves any wording they want to adopt. For automatic saved-story
+refinement, the original title is shown as **原标题保留 / Original title kept**;
+a model-generated title is not presented as a replacement or adopted with the
+chapter prose. Other explicit proposal flows retain their own title behavior.
+Adopting an automatic refinement does not immediately queue another refinement
+of the same save.
 
 Existing stories have an explicit **Refine story** action. Repeating a request
 for the same story revision recovers the same job. A changed revision or changed

@@ -33653,6 +33653,34 @@
         "CPU2, GPU0 and context8192 remain mandatory for the two-role worker. One selected engine loads and closes; input cannot select arbitrary model paths or fallbacks. Real recipe/factory construction is inert; source, local tests and Windows qualification/deployment remain separate.",
         "The process-exchange fixture now uses the current exported editorial profile rather than a retired literal. No Search/grouping path, database schema, original data, cloud-default or GitHub Actions change."
       ]
+    },
+    {
+      "feature": "preserve-original-title-in-automatic-story-refinement-20261103",
+      "source_base": "4e3f592cb991d6b781dc4e122d8d66db10ef3c4b",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/STORY_REFINEMENT.md",
+          "before_sha256": "b4411b8da980364c7a33fec7732ce971a8aaad8be2f0cd52ab9aa7a2ff06e0f2",
+          "sha256": "d6cab156f30f34d9263d8de3e613d85b4c9be1ce95f5d7b498477a4df925bee6"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "64b9c8c7873513f55058035e4920f819f92ecbf00215c9e712956f6fbc4f1077",
+          "sha256": "60bf7bfd7db52c41f5f42c7cc6b2bad636624109c9c0555505362a0256042209"
+        },
+        {
+          "path": "server/tests/security/test_story_auto_refinement_browser.cjs",
+          "before_sha256": "c83ec674a5fc9184b6c8c98aaed3f109eb958d7f800603aea6b6c1bf37dd05bb",
+          "sha256": "e7a64af67d8958653e49a90abf07a3cae30f82d7461c3212fa826732279c8672"
+        }
+      ],
+      "notes": [
+        "Automatic saved-story refinement shows the saved title with an explicit title-kept label and adopts suggested chapter prose without replacing that title. Explicit non-automatic proposals retain their existing title behavior; newly composed story titles are unaffected.",
+        "Focused generated browser fixtures cover ready original comparison, no load-time model queue, stale revision refusal, explicit prose adoption, unchanged-title save, and the existing non-auto contribution proposal path. Desktop and 390-pixel phone panel renders were inspected.",
+        "No model/provider/prompt, source authorization, schema, original narration, cloud-default, Windows service or GitHub Actions change. Source/local browser evidence is not a deployment claim."
+      ]
     }
   ]
 }
