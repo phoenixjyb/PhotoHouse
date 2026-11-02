@@ -33709,6 +33709,95 @@
         "Focused planner tests cover the requested wording, bounded scaffold variants, fail-closed residue, and preservation of the full prior filter set. The in-process assistant API regression changes only media while preserving person, date, and literal-text constraints.",
         "No routes, schema, provider, model, runtime configuration, or deployment state changed. Local source and tests only."
       ]
+    },
+    {
+      "feature": "document-separate-story-and-assistant-role-status-20261103",
+      "source_commit": "eb9342fbc1710a108b99c309364aa09eca3f6318",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "c248e8260da8a37076168c78070c6b8409714d69d501d142c328e4ae6a340dc7",
+          "sha256": "ee220eedbb8ba6a187fa3427b98479e4e0c67e79709668a9e7664086bc9c4aed"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "b06fceffdabe8ad5311ba2da70f60742858d1abb7932e275a5cb661b5d536251",
+          "sha256": "e865341ebdbe2c54a3de8a5eb609421a21c226c9a7511990df9160297dc1307d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "fff182f1e62cebc4920748e7a6439e1bae34ad502b9ad7f6f3a579185f7aefa7",
+          "sha256": "fcfbb39bd1e523b6db92e0f5342f429433da3a531168611e6bd8abdee0fe97b9"
+        },
+        {
+          "path": "docs/STORY_GROUNDING_AND_CLOUD_PROOFREADING.md",
+          "before_sha256": "acbbc08fea4435e5066f81a4ff199101ec1e1e7a842e9fe179fe3a2b8d94fe87",
+          "sha256": "58d41a02e06b3f8f470b17aef94dd9b55c3184ecd8e487330dbc40abb8918bf2"
+        },
+        {
+          "path": "docs/JUDE_ASSISTANT.md",
+          "before_sha256": "c501cb07f3de1226b257c4f0059e09dea95bbf2e7dbb03260de8ac486db50f6d",
+          "sha256": "a8a5b84b1a37ec14ef1de3790a909172a12afee3953a43588f1b77f7efbea6a7"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "before_sha256": "d88e1ee9f7f4ebae9560a80b0fb8151d29f2d054ac073db4a6de29c7b64d776f",
+          "sha256": "beb038ee33eeabd3c16f994767e5da54bb62393db20584c66f6d67ab6e67994c"
+        },
+        {
+          "path": "docs/README.md",
+          "before_sha256": "24414b2ad4bf0a19c83f86c0753d225e179f3184ef6c1814d994f99039c8a219",
+          "sha256": "33837de93848e54e65c5678c89334e92f2218ebd9189362a2df5e42a151cb142"
+        }
+      ],
+      "notes": [
+        "Maintained documentation now separates the approved Qwen3-4B-Instruct-2507 story-refinement role from the incumbent qwen2.5-1.5b-instruct-q4-k-m-trial assistant/Search role and records the shared CPU-only, one-job, 4 GiB profile.",
+        "Documents distinguish private-copy native qualification and review-required proposals from live rollout and family acceptance; they preserve the cloud-proofreading opt-in boundary and app-managed authorized conversation history."
+      ]
+    },
+    {
+      "feature": "correct-native-qualification-and-remove-private-story-sample-20261103",
+      "source_commit": "296ca3638cb77d50c2403c7d5e1385ccf57412ef",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "ee220eedbb8ba6a187fa3427b98479e4e0c67e79709668a9e7664086bc9c4aed",
+          "sha256": "61306dd635d186d9dcd72b3edf1ca65397e9921ed4980dfe72fe5e80e80f8d62"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "before_sha256": "e865341ebdbe2c54a3de8a5eb609421a21c226c9a7511990df9160297dc1307d",
+          "sha256": "41310fb5da260b51ec021be3620afcc839bc41e88885e5218dfba76702c493db"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "fcfbb39bd1e523b6db92e0f5342f429433da3a531168611e6bd8abdee0fe97b9",
+          "sha256": "cfccf291c4b2ca99d3e51e64878f71966f62f4b4477aa531694270f297d38abd"
+        },
+        {
+          "path": "docs/JUDE_ASSISTANT.md",
+          "before_sha256": "a8a5b84b1a37ec14ef1de3790a909172a12afee3953a43588f1b77f7efbea6a7",
+          "sha256": "0843cc5ef4015a8a98db98b9b95b59dfabb77b6d6d8bb458f0eb9f9714ae8282"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "before_sha256": "beb038ee33eeabd3c16f994767e5da54bb62393db20584c66f6d67ab6e67994c",
+          "sha256": "003a9587948a9a42f1da8d253722afb7cbc5bfe0230720af627118c05f1f1cee"
+        },
+        {
+          "path": "docs/STORY_GROUNDING_AND_CLOUD_PROOFREADING.md",
+          "before_sha256": "58d41a02e06b3f8f470b17aef94dd9b55c3184ecd8e487330dbc40abb8918bf2",
+          "sha256": "05c85f6138dad289cb8d3afb56bcaa2f2d99e41378334d73b4af81ee0d6876c4"
+        }
+      ],
+      "notes": [
+        "Correct the native qualification count: the result covers three cases (active cancellation, real 30-second expiry, birthday-story generation), total 134.468 seconds on a private SQLite copy; the production original and retained draft were unchanged.",
+        "Remove the private family name and private story sample from public documentation. Keep detailed story provenance, authorization, revision and context-fingerprint safeguards in the Jude guide; link the other summaries to the technical role contract."
+      ]
     }
   ]
 }

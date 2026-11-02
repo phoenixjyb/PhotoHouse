@@ -67,10 +67,10 @@ requires clarification. Explicit dates override that context. Unsupported
 conditions still need clarification. Empty results are a valid answer and must
 not cause the service to silently discard a requested condition.
 
-The deployed agent carries recent exchanges in the signed-in library's server
-conversation. It rechecks ownership and revision for every new request. This
-provides continuity with the same local model; it does not make the model an
-unrestricted autonomous assistant or a source of access permissions.
+The deployed assistant carries recent exchanges in the signed-in library's
+server conversation and rechecks ownership and revision for each request.
+Continuity comes from app-managed, authorized retained history; the model does
+not have self-memory or an unconstrained agent loop.
 
 When optional automatic story refinement is deployed and enabled, a saved story
 can queue a proposal bound to that exact revision. An existing story can also be
@@ -80,31 +80,27 @@ the owner decides whether to adopt it. Original contributions/audio remain
 available. A changed story revision or access scope invalidates a stale proposal;
 request retries do not create duplicate jobs.
 
-Automatic refinement is available in the separately qualified Windows story
-runtime. It produces a review proposal beside the unchanged original; successful
-generation does not establish editorial quality. Household review found that the
-first recipe retained transcription errors and spoken repetition.
+Story refinement grounds public canonical names and authorized family context
+before generation. Private names come from the current authorized library
+catalog and account-scoped kinship graph. For currently selected photos, only
+manual, reviewed face-to-person assignments can supply an identity spelling;
+raw detections and unreviewed or ambiguous assignments do not. A mapping can
+help spell a mentioned name, but it does not establish who attended an event.
+Selected captions and family notes retain their provenance and access limits;
+the recipe starts no new vision job and scans no unselected media.
 
-The next source recipe, `asr_editorial_v2`, addresses that feedback for all saved
-stories. It asks the same local model to correct context-supported ASR spelling,
-remove fillers and repeated clauses, repair grammar and organize cohesive prose.
-Chinese output should read as restrained personal 散文, without invented scenery,
-dialogue or events. Relevant reviewed names and aliases come from the authorized
-library catalog and account-scoped kinship graph. The story context also uses
-manual, reviewed face-to-person assignments from its currently authorized selected
-photos. This can supply a known name when the transcript has no exact spelling
-match, without running another vision job. Raw detections and unreviewed or
-ambiguous assignments add no private identity. An identity mapping helps spell
-a mentioned name; it does not establish who attended an event. Existing selected
-captions and family notes keep their original provenance and access boundaries.
-No new vision model or unselected media scan is started by this recipe.
+Each proposal is tied to its story revision, access scope and name-context
+fingerprint. A change to those inputs fences stale work. A busy context read
+defers validation; a completed result is retained privately and revalidated
+without generating again. Originals and audio remain unchanged, and every
+proposal needs review before adoption.
 
-This recipe has its own input profile and queue identity, preserving older
-proposals. Name-context changes invalidate a stale result. A busy context read
-defers validation; a completed model proposal is retained privately and validated
-again without another generation. Originals remain unchanged and every proposal
-still requires family review. The new recipe is locally tested; its Windows
-output quality and rollout remain pending.
+The story and assistant model roles, shared runtime bounds, native qualification
+and current rollout status are in the [technical role and privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md).
+The new roles and name-grounding/cloud-preview UI are not live. Search and
+grouping remain on their existing paths. Optional cloud proofreading is off and
+unconfigured by default; it requires an exact preview and explicit per-send
+consent, has no background send, and returns an unsaved review suggestion.
 
 The current voice has not been replaced by this story change. Natural bilingual
 voice deployment remains a separate feature.

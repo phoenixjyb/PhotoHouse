@@ -1,6 +1,7 @@
 # Documentation map
 
-Reviewed 2026-10-30 against merged main `e808e30` and dated October 29 delivery.
+Maintained map. Dated release records describe their specific installed source
+and do not replace current source/runtime status.
 
 Start with the maintained summaries. Follow task contracts for implementation;
 use dated release/qualification records as evidence for their exact revision.
@@ -11,6 +12,7 @@ use dated release/qualification records as evidence for their exact revision.
 | What is delivered, enabled or still unaccepted | [Current project status](PROJECT_STATUS.md) |
 | Components, trust/data boundaries and stores | [Architecture](ARCHITECTURE.md) |
 | Jude conversation, voice controls and receipt recovery | [Assistant guide](JUDE_ASSISTANT.md) |
+| Story/assistant model roles, grounding and cloud-proofreading boundaries | [Role and privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md) |
 | Capabilities and acceptance | [Features](FEATURES.md) |
 | Active priorities and exit criteria | [Roadmap](ROADMAP.md) |
 | Architecture findings and maintenance decisions | [October 14 review](ARCHITECTURE_REVIEW_2026-10-14.md) |

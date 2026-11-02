@@ -13,9 +13,24 @@ artifacts and explicit comparison/reindex qualification.
 ## Conversation and refinement
 
 The October 30 compact UI and bounded conversation projection are deployed
-from `daa7e14`; saved-story refinement remains local source awaiting its matching
-Windows worker and rollout. The conversation store remains the authority for
-account/library ownership, thread revision, retention and current result scope.
+from `daa7e14`. The conversation store remains the authority for account/library
+ownership, thread revision, retention and current result scope. The new explicit
+story/assistant model roles and related name-grounding and cloud-preview UI are
+source and private native-qualification evidence only; they are not live. The
+current Windows rollout was blocked before effects. Search and grouping remain
+on their existing paths.
+
+Story refinement and interactive Search use separate model roles. Story
+refinement selects approved `Qwen3-4B-Instruct-2507`; Search and the Jude
+assistant retain `qwen2.5-1.5b-instruct-q4-k-m-trial`. Their shared local
+runtime limits and native qualification are recorded in the [story role and
+privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md). The new role pair
+is not live.
+
+Conversation continuity comes from app-managed, authorized retained history
+bound to the account, library, thread revision and result scope. The model does
+not own self-memory or run as an unconstrained agent. Prior turns are projected
+within the byte and turn limits below; the current request is preserved.
 Each model invocation receives a bounded projection rather than an unbounded
 transcript: at most four prior user/assistant pairs, 1,024 UTF-8 bytes per message
 and 4,096 bytes of dialogue text in total. The current request is preserved.
@@ -42,9 +57,10 @@ The optional cloud proofreading path is a separate author-only action over a
 saved story revision. Runtime configuration defaults it off and has no provider
 or credential autodiscovery. A preview shows the exact bounded JSON request,
 fixed endpoint and SHA-256 without networking. Only an explicitly configured
-and enabled provider can send after the author confirms that exact preview.
-The result stays unsaved and review-required. This source path has not been
-deployed or used for an actual cloud request.
+and enabled provider can send after the author gives explicit per-send consent
+to that exact preview. There is no background cloud send. The result stays
+unsaved and review-required. This source path has not been deployed or used for
+an actual cloud request.
 
 
 ## Current integration reference
