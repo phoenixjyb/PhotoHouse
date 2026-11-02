@@ -213,12 +213,13 @@ class _LlamaEngine:
     """Optional local native backend. No arbitrary kwargs, RPC or model discovery."""
     def __init__(self, settings):
         from llama_cpp import Llama, LLAMA_SPLIT_MODE_NONE
+        batch_size = 64 if settings.gpu_layers == 0 else 256
         self.model = Llama(model_path=settings.model_file, n_ctx=settings.context_tokens,
             n_threads=settings.threads, n_threads_batch=settings.threads,
             n_gpu_layers=settings.gpu_layers,
             main_gpu=settings.gpu_device if settings.gpu_device is not None else 0, tensor_split=None,
             split_mode=LLAMA_SPLIT_MODE_NONE, offload_kqv=settings.gpu_layers > 0,
-            op_offload=False, n_batch=256, n_ubatch=256,
+            op_offload=False, n_batch=batch_size, n_ubatch=batch_size,
             use_mmap=False, use_mlock=False, seed=0, verbose=False)
 
     def _chat_prompt_tokens(self, prompt):

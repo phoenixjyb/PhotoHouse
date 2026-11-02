@@ -33248,6 +33248,29 @@
         "Propagate legacy worker phases and the new backend-memory, architecture and dependency exit codes through native/process errors without changing failure categories, success conditions, ownership, deadlines, resource limits or cleanup. Unknown codes remain unknown.",
         "Focused fake-native tests cover constructor success/failure, exact callback restoration, injected backends, cold import and private text redaction. Real model loading, story quality and Windows deployment are separate and unproved by this source change."
       ]
+    },
+    {
+      "feature": "bounded-cpu-story-prefill-batches-20261102",
+      "source_base": "0e7c3b83756e9ea77a3a4287c7589f4271ab9f5e",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/selected_story_gguf_worker.py",
+          "before_sha256": "cb41f60332d063713dc2201366de1242f948d7dd269ffa20454fa46de6ab8b19",
+          "sha256": "dc6e362d3f4ac6ad942c63cdfc17e126b7eb1a5037cf172a8141d88fc709247c"
+        },
+        {
+          "path": "server/tests/security/test_selected_story_gguf_worker.py",
+          "before_sha256": "3694d438dbe2ded5777160970337b43876e521181ac00179f0672a63e1238f1a",
+          "sha256": "d4238321e144e415c4a4b095bc497d1fce5ef8a4df0fca795521ad3233a85c87"
+        }
+      ],
+      "notes": [
+        "Reduce CPU-only llama.cpp n_batch and n_ubatch from 256 to 64 to lower constructor/prefill scratch allocation after an actual bounded new-model allocation failure. GPU-layer configurations retain 256.",
+        "Keep the same approved model weights, CPU threads, GPU selection, context, sampling/output limits, mmap/mlock behavior, private-file checks and the existing hard RAM/free-RAM/native ownership controls. This is a working-memory reduction, not a resource-cap relaxation.",
+        "Fake-constructor tests verify the exact CPU and GPU kwargs. Actual model fit, generation quality, Search/grouping stability and deployment remain subject to Windows qualification."
+      ]
     }
   ]
 }

@@ -407,6 +407,8 @@ class GGUFWorkerTests(unittest.TestCase):
             engine.close()
         options=binding.Llama.call_args.kwargs
         self.assertEqual(str(self.model),options['model_path']);self.assertEqual(0,options['n_gpu_layers'])
+        self.assertEqual(64,options['n_batch']);self.assertEqual(64,options['n_ubatch'])
+        self.assertEqual(8192,options['n_ctx']);self.assertEqual(2,options['n_threads'])
         self.assertFalse(options['offload_kqv']);self.assertFalse(options['op_offload'])
         self.assertFalse(options['verbose']);self.assertFalse(options['use_mmap'])
         self.assertNotIn('rpc_servers',options)
@@ -573,6 +575,7 @@ class GGUFWorkerTests(unittest.TestCase):
         options=binding.Llama.call_args.kwargs
         self.assertEqual(1,options['main_gpu'])
         self.assertEqual(8,options['n_gpu_layers'])
+        self.assertEqual(256,options['n_batch']);self.assertEqual(256,options['n_ubatch'])
         self.assertEqual(0,options['split_mode'])
         self.assertTrue(options['offload_kqv'])
         # An ordinal is configuration, not a claim about physical GPU identity.
