@@ -96,26 +96,51 @@ class HouseholdWorkerTests(unittest.TestCase):
         code,record=worker._failure_record(backend_caught.exception)
         self.assertEqual(worker.SAVED_STORY_FAILURE_EXIT_CODES['tokenize'],code)
         self.assertEqual('tokenize',json.loads(record)['phase'])
-    def test_editorial_profile_reaches_the_actual_saved_story_worker_prompt(self):
+    def test_v9_trust_filtered_editorial_profile_reaches_actual_worker_prompt(self):
         value = saved_bundle()
         value.update(version=4, story_refinement={'profile':STORY_REFINEMENT_PROFILE,
-            'people':[{'name':'林澄','aliases':['Lina']}]})
+            'people':[{'name':'Test Canonical','aliases':['Test Alias']}]})
+        value['title'] = 'Synthetic English story title label'
+        value['chapters'][0]['title'] = 'Synthetic English chapter label'
         value['chapters'][0]['narration'] = (
-            'A family gathered in the garden and talked beside the old tree. ' * 2)
+            'A family gathered in the garden and talked beside the old tree, then recalled their walk home. ' * 2)
+        value['chapters'][0]['evidence_ids'].extend(['transcript-note', 'ai-caption', 'metadata-hint'])
+        value['sources'].extend([
+            {'id':'transcript-note','kind':'transcript',
+             'text':'We walked together after lunch and talked about the garden.',
+             'asset_id':None,'author':'Synthetic Speaker'},
+            {'id':'ai-caption','kind':'ai',
+             'text':'An uncertain image guess: four jeweled lamps and an ornate blue clock.',
+             'asset_id':'synthetic-asset','author':None},
+            {'id':'metadata-hint','kind':'metadata',
+             'text':'Unverified decoration note: four jeweled lamps and an ornate blue clock.',
+             'asset_id':None,'author':None},
+        ])
         self.body={'version':1,'kind':'saved_story_narrative_v1',
                    'operation_id':OPERATION_ID,'bundle':value}
         self.write_request()
-        self.engine.text=json.dumps({'repairs':[],'title':'A family memory',
-            'paragraphs':['The family met by the garden tree and shared memories.'],
+        self.engine.text=json.dumps({'repairs':[],'title':'花园里的回忆',
+            'paragraphs':['家人在花园里相聚，聊起往事，后来又一起走回家。'],
             'questions':[]},ensure_ascii=False)
         self.assertEqual(worker.run(self.settings,enabled=True,environment=self.env,
                                     backend_factory=self.factory),0)
         prompt=self.engine.calls[0][0]['prompt']
-        self.assertIn('ASR, homophones and common proper names',prompt)
-        self.assertIn('remove filler/repetition',prompt)
-        self.assertIn('rewrite the full account, not a summary',prompt)
+        self.assertIn('clear context and reliable common knowledge',prompt)
+        self.assertIn('obvious ASR homophones in public people, places or proper names',prompt)
+        self.assertIn('use only the canonical name',prompt)
+        self.assertIn('never repeat aliases or “or”',prompt)
+        self.assertIn('Preserve the full account',prompt)
+        self.assertIn('do not summarize',prompt)
+        self.assertIn('saved_story_editorial_v9',prompt)
+        self.assertNotIn('Synthetic English story title label',prompt)
+        self.assertNotIn('Synthetic English chapter label',prompt)
+        self.assertNotIn('four jeweled lamps',prompt)
+        self.assertNotIn('ornate blue clock',prompt)
         self.assertIn(value['sources'][0]['text'],prompt)
-        self.assertIn('林澄',prompt)
+        self.assertIn('Test Canonical',prompt)
+        self.assertIn('Test Alias',prompt)
+        self.assertNotIn('ai-caption',prompt)
+        self.assertNotIn('metadata-hint',prompt)
         self.assertNotIn('family-note-1',prompt)
         self.assertNotIn('source_ids',prompt)
         public_result=json.loads(self.response.read_bytes())['result']
@@ -123,7 +148,7 @@ class HouseholdWorkerTests(unittest.TestCase):
                          set(public_result))
         self.assertTrue(public_result['needs_review'])
         self.assertEqual(value['chapters'][0]['id'], public_result['chapters'][0]['id'])
-        self.assertEqual(value['chapters'][0]['evidence_ids'],
+        self.assertEqual(['family-note-1', 'transcript-note'],
                          public_result['chapters'][0]['source_ids'])
         self.assertEqual(1,len(self.engine.calls))
         self.assertTrue(self.engine.closed)
