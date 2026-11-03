@@ -2896,3 +2896,28 @@ are bounded synthetic observations, not a live latency guarantee. The frozen
 315-file native candidate retains the accepted story-worker bytes and model
 recipe; its fresh two-turn native acceptance and live birthday proposal identity
 check remain separate gates. No deployment is claimed by these local checks.
+
+The subsequent native attempt at `0fac6ee` also refused its first turn with
+`503 workspace_unavailable` after one actual inference. Content-free tracing
+again observed the five-second discovery deadline and SQLite interruption.
+Profile restoration, session revocation, provider/Job closure, temporary-task
+deletion and unchanged protected configurations were verified. A separate
+read-only native query-plan/timing probe is prepared; no result from that probe
+has yet been reconciled. Do not infer two-turn acceptance from the source tests.
+The authorized live birthday GET found a ready, review-required proposal, but
+its content differs from the retained Qwen3-qualified proposal. Those GETs left
+the original content unchanged; no generation, adoption or deployment occurred.
+
+Source `27ddd45` completes the staging builder's fixed allowlist with the eight
+story modules, grounding data and data license already present in the frozen
+315-file runtime. Batched Git metadata/body reads replace per-blob subprocesses;
+each size, total expanded size, exact object identity and bounded output remain
+checked. The attestor retains its thirty-second total inspection deadline and
+ten-second child deadline. Native fixture preparation preserves committed LF
+bytes and handles read-only loose objects without requesting more privileges.
+The focused package/attestation cohort ran 43 tests: 39 passed and four explicitly
+skipped POSIX permissions or unavailable Windows symlink privileges. Isolated
+archive imports and fixed grounding-data loads passed. The complete source-only
+archive was independently attested in 0.766 seconds on native Windows with no
+extraction, packaged-code execution, database access, model or service operation.
+Its 315 runtime-file hashes match the frozen `0fac6ee` candidate exactly.

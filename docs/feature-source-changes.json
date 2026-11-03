@@ -34029,6 +34029,45 @@
         "The final R20 cohort passed 95 cases; the focused Edge Search journey passed six checkpoints. The final affected Search/semantic cohort ran 52 cases (49 passed, three platform skips). Two POSIX open-file replacement cases are retained on POSIX, with a separate native Windows failure-closed case after baseline WinError32 reproduction. Adjacent accounting/text/media checks passed 26 cases and 411 subtests.",
         "The previous native diagnostic refused at the five-second discovery deadline with actual SQLite interrupt evidence and verified profile/session/provider/Job/task cleanup. The new frozen 315-file candidate retains the accepted story worker and recipe. Native two-turn acceptance, exact live birthday proposal identity and deployment remain unclaimed."
       ]
+    },
+    {
+      "feature": "native-complete-api-package-and-batched-attestation-20261103",
+      "source_commit": "27ddd4513338226f243e52a3cd3885a97ade4b1b",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "90fcb22ad1e2dd3f35f221d0ca4614df2bb77e0ce86c4db291be18f07af331b7",
+          "sha256": "c29db3714aa0619942ba6f84c14d884d70c6acc178a092b50cef292cfddeb34e"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "e102ba4c0e508285393621346534b8b9982afd9dcfb9c49a3391b5984d7c5619",
+          "sha256": "9204110e0142427a7f420155d2118cbd57c5b0b13133629b81eea8e62440283b"
+        },
+        {
+          "path": "tools/inspect_api_package.py",
+          "before_sha256": "b2cdcb7cc679fb3cd8b9524c9b36bcec0df0ea9267fae5a1afe2cf2313bc7f1c",
+          "sha256": "3a7821fc6e3710f608a604ac4a0ab8c186bc93a71f0bc8498c8558d17a41a863"
+        },
+        {
+          "path": "tools/tests/test_inspect_api_package.py",
+          "before_sha256": "edce4820891574816aefb9932f7abde779fc94d3d26f157d0d904b1675cb3268",
+          "sha256": "2dd681f173a1b13eec85d3c97ed0298af5469687d00393f6743962383fb6a0b1"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "fa370a2852c5e34ee6014d67ea6c4705ac63fecc82815d4822472e793d045384",
+          "sha256": "81d1746e9a4656e12bde29d29df945daf88d023dc44d8a93645ff6b28c86bb19"
+        }
+      ],
+      "notes": [
+        "Complete the fixed source-only allowlist with eight already retained story modules/data/license files. All315 runtime hashes match the frozen0fac6ee candidate; no production or provider change.",
+        "Replace per-object Git processes with two bounded batches; verify metadata before reading bodies, charge duplicate paths against expanded size and verify each Git blob identity. Attestation retains30-second total and10-second child deadlines.",
+        "Native focused package/attestation cohort43:39 passed,4 explicit platform/privilege skips. Isolated imports and packaged grounding-data loads passed. Complete315-file source archive independently attested in0.766seconds without extraction, model, database, service or network operation.",
+        "The native0fac6ee model attempt refused after one inference at the discovery deadline. Cleanup/restoration passed. Read-only query-plan evidence and two-turn acceptance remain pending. GET-only birthday inspection found a different ready proposal from the retained Qwen3 result; original content was unchanged by those reads. No deployment or new story generation."
+      ]
     }
   ]
 }
