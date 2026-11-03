@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'backend'))
 from app.access import discovery as d
-from app.access.discovery_index import accepted, DiscoveryIndexRefused
+from app.access.discovery_index import accepted, DiscoveryIndexRefused, shared_budget
 from app.access.discovery_provider import (ReviewedIndex, ProjectedIndex,
     RefreshingPlaceIndex, RefreshingPeopleIndex, ReviewedPerson, ReviewedFace,
     ReviewedPlace, NamedPlace, RegionRule, MemoryIndexProvider)
@@ -17,6 +17,35 @@ from phone_discovery_fixture import create, reviewed, TOKEN, NOW
 
 
 class DiscoveryIndexDocumentTests(unittest.TestCase):
+    def test_default_search_allows_slow_reads_and_still_has_a_deadline(self):
+        budget = shared_budget(None)
+        view = budget.search_view()
+        self.assertEqual(view.seconds, 30)
+        self.assertIs(view.slots, budget.slots)
+        self.assertEqual((view.rows, view.source_bytes, view.index_bytes, view.response_bytes),
+                         (100000, 64*1024**2, 4*1024**2, 512*1024))
+        clock = [0.0]
+        view.clock = lambda: clock[0]
+        db = sqlite3.connect(':memory:')
+        self.addCleanup(db.close)
+        with view.attempt(db, lambda: False) as (check, read):
+            clock[0] = 6.0
+            self.assertEqual(read('SELECT 1', ()), [(1,)])
+            clock[0] = 31.0
+            with self.assertRaises(d.DiscoveryUnavailable):
+                check()
+
+    def test_explicit_search_budget_and_cancellation_are_preserved(self):
+        explicit = d.ReadBudget(search_seconds=5)
+        self.assertIs(shared_budget(explicit), explicit)
+        self.assertEqual(explicit.search_view().seconds, 5)
+        db = sqlite3.connect(':memory:')
+        self.addCleanup(db.close)
+        view = shared_budget(None).search_view()
+        with self.assertRaises(d.DiscoveryCancelled):
+            with view.attempt(db, lambda: True):
+                self.fail('cancelled read admitted')
+
     def indexes(self):
         common = dict(library_id='family-a', revision='1', scope_ids=('101', '102'),
             indexed_ids=('101', '102'), source_digest='a' * 64,

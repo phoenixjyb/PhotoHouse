@@ -212,7 +212,7 @@ def shared_budget(value):
     if value is None:
         # Current bilingual text is larger than the legacy facet projection.
         # Both versions retain one concurrency pool and row/response/index limits.
-        return d.ReadBudget(search_source_bytes=64*1024**2, search_seconds=5.0)
+        return d.ReadBudget(search_source_bytes=64*1024**2, search_seconds=30.0)
     if not isinstance(value, d.ReadBudget):
         raise DiscoveryIndexRefused()
     return value
