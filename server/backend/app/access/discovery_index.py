@@ -14,7 +14,6 @@ Nothing here is wired into the application entry point's defaults. A deployment
 supplies explicit paths; no path is ever inferred, and no index is ever derived.
 """
 from contextlib import closing
-from dataclasses import asdict
 import json
 from pathlib import Path
 import re
@@ -201,7 +200,7 @@ def accepted(loaded, budget):
     """Refuse anything the service would itself reject, before a runtime exists."""
     try:
         d.validate(loaded, loaded.library_id, budget.rows)
-        if len(d.packed(asdict(loaded))) > budget.index_bytes:
+        if len(d.packed(d._index_document(loaded))) > budget.index_bytes:
             raise d.DiscoveryInvalid()
     except (d.DiscoveryInvalid, TypeError, KeyError, RecursionError):
         raise DiscoveryIndexRefused() from None

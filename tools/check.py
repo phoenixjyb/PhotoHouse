@@ -18,6 +18,7 @@ API_TESTS = (
     "test_assistant_agent_tools.py", "test_assistant_agent_workspace.py",
     "test_agent_decision.py", "test_local_tool_agent.py", "test_household_gguf_worker.py", "test_household_agent_factory.py",
     "test_discovery_text_validation.py", "test_discovery_chunk_accounting.py",
+    "test_discovery_index_document.py", "test_assistant_caption_scope.py",
     "test_refreshing_people.py", "test_refreshing_people_http.py",
     "test_reviewed_people_readiness.py",
     "test_people_review_candidates.py", "test_people_visual_review.py",

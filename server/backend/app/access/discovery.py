@@ -6,7 +6,7 @@ No SQL writes, filesystem/index loading, models, HTTP routes or original grants.
 from collections import Counter, defaultdict
 from contextlib import contextmanager
 from copy import copy
-from dataclasses import asdict, replace
+from dataclasses import fields, replace
 from datetime import date, datetime
 import hashlib
 import json
@@ -28,6 +28,13 @@ SOURCES = {'manual':'manual', 'cap':'caption', 'img':'image', 'cap+img':'caption
 MAX_ID = 2**63-1
 _TEXT_CONTROLS = re.compile(r'[\x00-\x08\x0b-\x1f]')
 SCOPE = " JOIN assets a ON a.id=x.asset_id JOIN access_asset_libraries m ON m.asset_id=a.id WHERE m.library_id=? AND (a.status='active' OR a.status IS NULL)"
+SCOPED_TEXT_CAPTIONS_SQL = (
+    'SELECT x.id,x.asset_id,CASE WHEN length(CAST(x.text AS BLOB))<=4096 THEN x.text END,'
+    'length(CAST(x.text AS BLOB)),length(CAST(x.text AS BLOB)),x.user_edited,x.superseded '
+    'FROM access_asset_libraries m JOIN assets a ON a.id=m.asset_id '
+    'CROSS JOIN captions x ON x.asset_id=a.id '
+    "WHERE m.library_id=? AND (a.status='active' OR a.status IS NULL) "
+    'AND x.superseded=0 ORDER BY x.id')
 
 
 class DiscoveryInvalid(ValueError):
@@ -412,6 +419,22 @@ def validate_region_rule(rule):
     require(not (rule.west == 180 and rule.east == -180))
 
 
+def _index_document(index):
+    """Preserve asdict's wire value after validate, without copying ID tuples.
+
+    The accepted index types contain frozen records and validated primitive
+    tuples only. Expand their nested records while retaining those immutable
+    tuples; JSON bytes, byte admission and continuation bindings stay identical.
+    This is per-call materialization, never a validation or authorization cache.
+    """
+    result = {field.name: getattr(index, field.name) for field in fields(index)}
+    for name in ('people', 'assignments', 'places', 'region_rules'):
+        if name in result:
+            result[name] = tuple({field.name: getattr(item, field.name)
+                                  for field in fields(item)} for item in result[name])
+    return result
+
+
 def region_contains(rule, lat, lon):
     longitude = (rule.west <= lon <= rule.east if rule.west < rule.east
                  else lon >= rule.west or lon <= rule.east)
@@ -496,19 +519,21 @@ class DiscoveryReads:
                 if index is None: raise DiscoveryUnavailable()
                 try:
                     people,places=validate(index,library,self.budget.rows)
-                    if len(packed(asdict(index)))>self.budget.index_bytes: raise DiscoveryUnavailable()
+                    index_document = _index_document(index)
+                    if len(packed(index_document))>self.budget.index_bytes: raise DiscoveryUnavailable()
                 except (DiscoveryInvalid,TypeError,KeyError,RecursionError): raise DiscoveryUnavailable() from None
                 source=index_source(index,read);check()
                 if type(index) is RefreshingPeopleIndex:
                     validate_people_source(index, source)
                 if type(index) in (RefreshingPlaceIndex, RefreshingPeopleIndex):
                     index=refreshed_index(index,source,check,self.budget.rows)
-                    if len(packed(asdict(index)))>self.budget.index_bytes: raise DiscoveryUnavailable()
+                    index_document = _index_document(index)
+                    if len(packed(index_document))>self.budget.index_bytes: raise DiscoveryUnavailable()
                     check()
                 if tuple(str(r[0]) for r in source['assets'])!=index.scope_ids or digest(source)!=index.source_digest: raise DiscoveryChanged()
                 extra = self._extra_source(index, source, read, check)
                 binding=digest({'policy':POLICY,'library':library,'session':session_digest(token),'account':member['account_id'],
-                                'membership':member['revision'],'originals':member['originals'],'index':asdict(index),
+                                'membership':member['revision'],'originals':member['originals'],'index':index_document,
                                 **({'extension': digest(extra)} if extra else {})})
                 if expected is not None:
                     require(hashed(expected))

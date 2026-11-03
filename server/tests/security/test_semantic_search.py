@@ -269,6 +269,51 @@ class SemanticSearchTests(unittest.TestCase):
             self.assertEqual(changed.status_code, 409, changed.text)
             self.assertNotIn('items', changed.json())
 
+    @unittest.skipUnless(os.name == 'nt', 'Native Windows open SQLite handle policy')
+    def test_windows_post_replay_replacement_refusal_withholds_the_response(self):
+        from app.access.semantic_request_snapshot import RequestSnapshotConnection, RequestSourceSnapshot
+        self.enable_request_source_snapshot()
+        path = self.fixture.database.resolve()
+        moved = path.with_name('windows-opened-old.sqlite')
+        original_commit = RequestSnapshotConnection.commit
+        original_bind = RequestSourceSnapshot.bind
+        original_read = RequestSourceSnapshot.read
+        connections = set()
+        state = {'commits': 0, 'replay': False, 'winerror': None}
+
+        def bind(snapshot, connection):
+            connections.add(id(connection))
+            return original_bind(snapshot, connection)
+
+        def read(snapshot, *args, **kwargs):
+            result = original_read(snapshot, *args, **kwargs)
+            state['replay'] = state['replay'] or snapshot.replay_used
+            return result
+
+        def commit(connection):
+            result = original_commit(connection)
+            if id(connection) in connections:
+                state['commits'] += 1
+                if state['commits'] == 2:
+                    try:
+                        os.replace(path, moved)
+                    except PermissionError as error:
+                        state['winerror'] = error.winerror
+                        raise
+            return result
+
+        with patch.object(RequestSourceSnapshot, 'bind', bind), \
+                patch.object(RequestSourceSnapshot, 'read', read), \
+                patch.object(RequestSnapshotConnection, 'commit', commit):
+            response = self.query()
+        self.assertTrue(state['replay'])
+        self.assertEqual(state['winerror'], 32)
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertNotIn('items', response.json())
+        self.assertTrue(path.is_file())
+        self.assertFalse(moved.exists())
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX open-file replacement; Windows refusal is checked separately')
     def test_post_replay_path_replacement_fails_closed_without_old_handle_fallback(self):
         from app.access.semantic_request_snapshot import RequestSnapshotConnection, RequestSourceSnapshot
         self.enable_request_source_snapshot()
@@ -316,6 +361,7 @@ class SemanticSearchTests(unittest.TestCase):
             self.assertEqual(db.execute(
                 "SELECT taken_at FROM assets WHERE id=101").fetchone(), ('2040-01-01',))
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX open-file replacement; Windows refusal is checked separately')
     def test_post_replay_environment_failure_cannot_mask_path_replacement(self):
         from app.access.semantic_request_snapshot import RequestSnapshotConnection, RequestSourceSnapshot
         self.enable_request_source_snapshot()

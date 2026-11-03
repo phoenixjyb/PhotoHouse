@@ -71,10 +71,10 @@ class AssistantSearchReads(d.DiscoveryReads):
         self._prepared_description_key = None
 
     def _extra_source(self, index, source, read, check):
+        # Keep the exact projection/order, but drive the join from this library
+        # rather than scanning the global caption ID order before scoping it.
         captions = source['captions'] if 'caption' in index.enabled else read(
-            'SELECT x.id,x.asset_id,CASE WHEN length(CAST(x.text AS BLOB))<=4096 THEN x.text END,'
-            'length(CAST(x.text AS BLOB)),length(CAST(x.text AS BLOB)),x.user_edited,x.superseded '
-            'FROM captions x' + d.SCOPE + ' AND x.superseded=0 ORDER BY x.id', (index.library_id,))
+            d.SCOPED_TEXT_CAPTIONS_SQL, (index.library_id,))
         # Same child AND parent scope as Stories.search; no revisions/history,
         # annotation drafts, saved multi-image stories, or assistant receipts.
         notes = read('''SELECT s.id,s.asset_id,s.revision,
