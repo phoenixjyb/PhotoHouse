@@ -2865,3 +2865,34 @@ unchanged. This is a refusal, not two-turn R20 acceptance or deployment. The
 separately retained R18 story generation/cancellation/expiry evidence remains
 bound to its own source and approved recipe. No new story was generated and
 no cloud proofreading or GitHub Actions operation was performed.
+
+The subsequent content-free native diagnostic at the same runtime source verified
+current-checkout imports and identified a five-second discovery deadline during
+the caption join (`SQLITE_INTERRUPT`). Its profile, session, provider, Job and
+temporary-task cleanup receipts passed; it remains a refused qualification.
+
+Source `0fac6ee` drives the assistant's current-caption join from the authorized
+library, using the existing caption asset-ID index and retaining the exact
+projection and ID order. The request-snapshot allowlist admits only that exact
+query shape. It also materializes the validated immutable index without deep
+copying its large ID tuples. Canonical JSON bytes, byte thresholds, bindings,
+source revalidation, Search ordering and resource limits are unchanged.
+
+The scoped-caption/index/joint-search cohort passed 46 cases. The final affected
+Search/semantic cohort ran 52 cases: 49 passed and three were explicit platform
+skips. Two POSIX file-swap fixtures were reproduced failing on Windows with
+`WinError 32` before adaptation; their original assertions remain on POSIX, and
+a separate Windows case verifies that an actual open-handle replacement refusal
+withholds the response. Adjacent accounting/text/media checks passed 26 cases
+and 411 subtests. The final R20 planner/refinement/agent cohort passed all 95
+cases, and the generated Edge Search journey passed six checkpoints, including
+GET-only recovery and bilingual enlarged phone layouts. These cohorts overlap.
+
+Generated query checks retain exact legacy rows/bytes and stay below 10,000
+SQLite VM steps with 20,000 foreign-library captions. A generated large-index
+measurement produced identical 628,127-byte JSON; median serialization was
+0.0414 seconds before and 0.007 seconds after across five local samples. These
+are bounded synthetic observations, not a live latency guarantee. The frozen
+315-file native candidate retains the accepted story-worker bytes and model
+recipe; its fresh two-turn native acceptance and live birthday proposal identity
+check remain separate gates. No deployment is claimed by these local checks.

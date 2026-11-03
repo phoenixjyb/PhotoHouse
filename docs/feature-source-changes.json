@@ -33970,6 +33970,65 @@
         "The final affected agent/store cohort passed 44 cases on Windows CPython 3.12.10. The initial 95-case cohort retained failures; its 67 pure query/refinement cases passed. The final focused Edge conflict journey passed seven checkpoints including 390px/150% text, keyboard focus, no replay, no external requests and no page errors. Story-title and both grouping browser journeys passed separately. Native model qualification and deployment remain separate.",
         "The bounded SYSTEM attempt verified 315 files and refused the first turn with workspace_unavailable after one real inference. Profile restoration, session revocation, provider/Job/task closure and identical protected configurations were observed. Two-turn model acceptance and live deployment are not claimed."
       ]
+    },
+    {
+      "feature": "native-scoped-caption-join-and-canonical-index-materialization-20261103",
+      "source_commit": "0fac6ee72ca26880dafa0ebf222de2ab858a3b79",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "26b79c7c37dfd90cb819b1c953937cbf9a3a11baff0d1dd49f3f295bf770b5f2",
+          "sha256": "e90d584cabf06a5458eb184dc32854063731cbd487f1032ad3910d970329d07a"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "bb501d2d99b4af72275c4fd20ec2d2e8b07abe5123d94651661f4b1d27350d6b",
+          "sha256": "34530f833aa4eeb8fcc417413a586062001cba3439632fa5e65f961a054eb505"
+        },
+        {
+          "path": "server/backend/app/access/discovery_index.py",
+          "before_sha256": "cd686470992cc8559a483b712b33f3c63d8e1f9d896469fb9a7ecc1a9460c0f3",
+          "sha256": "2d7f710ce13543c68e6b218d111245ac3b74049e96170bf3d54a0e547a7c12f1"
+        },
+        {
+          "path": "server/backend/app/access/semantic_request_snapshot.py",
+          "before_sha256": "c4f6f9b19a087b586252d592a27ff1bc1275e039adee1af1f280c63a26e16029",
+          "sha256": "1a28a16f6dc12451ff6c1c18e7a5c3cd32c0726cd41efd9095b3ba496bd14a27"
+        },
+        {
+          "path": "server/tests/security/test_assistant_caption_scope.py",
+          "before_sha256": null,
+          "sha256": "41698cde5c3744474704b54ce9074a0c717f61938666e38c12fd2f097fbb7df5"
+        },
+        {
+          "path": "server/tests/security/test_discovery_index_document.py",
+          "before_sha256": null,
+          "sha256": "4fca4407b0ac37365c8fcbaf3381e5e1309d1eb9fe7d6fc4ab8924dee12bb379"
+        },
+        {
+          "path": "server/tests/security/test_semantic_search.py",
+          "before_sha256": "5d0ef0c87db5c9facec5086c1e225b1c4938d74b7faf912734776d5a3b0827d6",
+          "sha256": "94b89a5fa3247dac55e72226a4ddcd5762cf323037c1aa7666ccdca5195260a9"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "fa7c592c0c456f182f986691afa52a2d6a196f0b01898ec6245e5477f802a8db",
+          "sha256": "705b077ccb1dfae406fec6cb7bfebfd278bfe04268685a6369031fc407ca8189"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "3a3c9bfeafe9ae4460056d5dc4c6d77c9e60e4428b15dafb1358ef90749bb681",
+          "sha256": "fa370a2852c5e34ee6014d67ea6c4705ac63fecc82815d4822472e793d045384"
+        }
+      ],
+      "notes": [
+        "Drive the current-caption join from the authorized library using the existing asset-ID index, preserving the complete projection and order. Admit only this exact additional query in the sealed snapshot whitelist. No query budget, row/byte cap, schema, authorization or grouping contract changes.",
+        "Materialize validated frozen index records without deep-copying primitive ID tuples. Exact canonical-byte and admission-threshold tests cover every supported index shape and a large generated index; Search responses/bindings are compared with the prior serializer.",
+        "The final R20 cohort passed 95 cases; the focused Edge Search journey passed six checkpoints. The final affected Search/semantic cohort ran 52 cases (49 passed, three platform skips). Two POSIX open-file replacement cases are retained on POSIX, with a separate native Windows failure-closed case after baseline WinError32 reproduction. Adjacent accounting/text/media checks passed 26 cases and 411 subtests.",
+        "The previous native diagnostic refused at the five-second discovery deadline with actual SQLite interrupt evidence and verified profile/session/provider/Job/task cleanup. The new frozen 315-file candidate retains the accepted story worker and recipe. Native two-turn acceptance, exact live birthday proposal identity and deployment remain unclaimed."
+      ]
     }
   ]
 }
