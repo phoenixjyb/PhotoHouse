@@ -71,8 +71,8 @@ class AssistantSearchReads(d.DiscoveryReads):
         self._prepared_description_key = None
 
     def _extra_source(self, index, source, read, check):
-        # Keep the exact projection/order, but drive the join from this library
-        # rather than scanning the global caption ID order before scoping it.
+        # Scope only IDs first, then read captions in primary-key order. This
+        # avoids sorting complete text rows while keeping projection/order.
         captions = source['captions'] if 'caption' in index.enabled else read(
             d.SCOPED_TEXT_CAPTIONS_SQL, (index.library_id,))
         # Same child AND parent scope as Stories.search; no revisions/history,

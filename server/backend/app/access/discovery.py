@@ -31,10 +31,11 @@ SCOPE = " JOIN assets a ON a.id=x.asset_id JOIN access_asset_libraries m ON m.as
 SCOPED_TEXT_CAPTIONS_SQL = (
     'SELECT x.id,x.asset_id,CASE WHEN length(CAST(x.text AS BLOB))<=4096 THEN x.text END,'
     'length(CAST(x.text AS BLOB)),length(CAST(x.text AS BLOB)),x.user_edited,x.superseded '
-    'FROM access_asset_libraries m JOIN assets a ON a.id=m.asset_id '
-    'CROSS JOIN captions x ON x.asset_id=a.id '
+    'FROM captions x WHERE x.id IN ('
+    'SELECT c.id FROM access_asset_libraries m JOIN assets a ON a.id=m.asset_id '
+    'CROSS JOIN captions c ON c.asset_id=a.id '
     "WHERE m.library_id=? AND (a.status='active' OR a.status IS NULL) "
-    'AND x.superseded=0 ORDER BY x.id')
+    'AND c.superseded=0) ORDER BY x.id')
 
 
 class DiscoveryInvalid(ValueError):
