@@ -3,6 +3,7 @@ import asyncio
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import uuid
 from dataclasses import replace
@@ -544,6 +545,10 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 409, response.text)
         self.assertEqual(self.runtime.calls, [])
 
+        # The HTTP refusal can arrive before its owned lease cleanup finishes.
+        # Wait for that cleanup before testing another independently bad history.
+        await self.settle()
+
         for field, value in (('thread_id', str(uuid.uuid4())),
                              ('library_id', 'another-library')):
             def foreign_history(account, library, thread, field=field, value=value):
@@ -555,6 +560,7 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
                 response = await self.post_turn('find photos in 2032', agent=True)
             self.assertEqual(response.status_code, 409, response.text)
             self.assertEqual(self.runtime.calls, [])
+            await self.settle()
 
     async def test_dialogue_projection_caps_utf8_and_keeps_newest_complete_pairs(self):
         exchanges = [
@@ -803,9 +809,15 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
         original = self.store.complete_turn
         supervisor = self.app.state.assistant_agent_supervisor
         supervisor.budget = AgentBudget(max_wall_seconds=0.5)
+        # Start the short real-time window at the commit barrier, so native
+        # fixture reads do not consume the interval this case is testing.
+        commit_started = [None]
+        supervisor.clock = lambda: (0 if commit_started[0] is None else
+                                    time.monotonic() - commit_started[0])
 
         def commit_then_gate(*args, **kwargs):
             result = original(*args, **kwargs)
+            commit_started[0] = time.monotonic()
             entered.set()
             release.wait(5)
             return result

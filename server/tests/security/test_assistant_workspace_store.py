@@ -1,5 +1,7 @@
 """Synthetic security checks for the private assistant workspace store."""
 from pathlib import Path
+from contextlib import closing
+import os
 import sqlite3
 import sys
 import tempfile
@@ -49,8 +51,9 @@ class AssistantWorkspaceStoreTests(unittest.TestCase):
                                           revision, **args)
 
     def test_exclusive_initialization_private_sqlite_and_absent_open(self):
-        self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
-        with sqlite3.connect(self.path) as db:
+        if os.name != 'nt':
+            self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
+        with closing(sqlite3.connect(self.path)) as db, db:
             self.assertEqual(db.execute('PRAGMA application_id').fetchone()[0], 1346914882)
             self.assertEqual(db.execute('PRAGMA user_version').fetchone()[0], 2)
             self.assertEqual(db.execute('PRAGMA journal_mode').fetchone()[0], 'delete')
@@ -62,6 +65,24 @@ class AssistantWorkspaceStoreTests(unittest.TestCase):
         with self.assertRaises(WorkspaceStoreUnavailable):
             AssistantWorkspaceStore(absent)
         self.assertFalse(absent.exists())
+
+    def test_initialization_closes_every_connection_before_returning(self):
+        opened = []
+        original_connect = sqlite3.connect
+
+        def tracked_connect(*args, **kwargs):
+            connection = original_connect(*args, **kwargs)
+            opened.append(connection)
+            return connection
+
+        path = self.path.with_name('closed-initializer.sqlite')
+        with patch.object(workspace_store_module.sqlite3, 'connect', tracked_connect):
+            initialize(path, clock=lambda: self.now[0])
+        self.assertTrue(opened)
+        for connection in opened:
+            with self.assertRaises(sqlite3.ProgrammingError):
+                connection.execute('SELECT 1')
+        path.unlink()
 
     def test_threads_are_private_to_exact_account_and_library(self):
         thread = self.store.create_thread('member-a', 'family-a')['thread_id']
@@ -166,7 +187,7 @@ class AssistantWorkspaceStoreTests(unittest.TestCase):
         thread = self.store.create_thread('member-a', 'family-a')['thread_id']
         first_request = new_id()
         first = self.append('member-a', 'family-a', thread, first_request, 0)
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             first_created, first_expires = db.execute(
                 'SELECT created_at,expires_at FROM exchanges WHERE request_id=?',
                 (first_request,)).fetchone()
@@ -207,7 +228,7 @@ class AssistantWorkspaceStoreTests(unittest.TestCase):
         self.assertEqual(self.store.get_preferences('member-a'), cleared)
 
     def test_open_refuses_an_existing_schema_mismatch(self):
-        with sqlite3.connect(self.path) as db:
+        with closing(sqlite3.connect(self.path)) as db, db:
             db.execute('ALTER TABLE threads ADD COLUMN unexpected TEXT')
         with self.assertRaises(WorkspaceStoreUnavailable):
             AssistantWorkspaceStore(self.path)
@@ -315,7 +336,7 @@ class AssistantWorkspaceStoreTests(unittest.TestCase):
 
         def append_concurrently():
             try:
-                with original_connect(self.path, timeout=3, isolation_level=None) as db:
+                with closing(original_connect(self.path, timeout=3, isolation_level=None)) as db, db:
                     db.execute('PRAGMA foreign_keys=ON')
                     db.execute('BEGIN IMMEDIATE')
                     now = self.now[0] + 1

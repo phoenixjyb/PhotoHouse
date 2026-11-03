@@ -5,7 +5,7 @@ receipt journal. It stores only bounded text, typed read-only references, and
 receipt IDs supplied by a trusted backend caller. It does not authorize or
 revalidate those references and it never invokes a provider or network client.
 """
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -415,7 +415,7 @@ def initialize_v2(path, *, clock=time.time):
             raise WorkspaceStoreUnavailable()
         descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         os.close(descriptor)
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db, db:
             if db.execute('PRAGMA journal_mode=DELETE').fetchone()[0] != 'delete':
                 raise WorkspaceStoreUnavailable()
             if db.execute('PRAGMA secure_delete=ON').fetchone()[0] != 1:

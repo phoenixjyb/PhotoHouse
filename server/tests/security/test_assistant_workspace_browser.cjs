@@ -186,6 +186,19 @@ async function installSyntheticTransport(targetContext){
     await page.screenshot({path:screenshot,fullPage:false});
     checkpoint('Focused context-conflict state hides stale cards and shows localized recovery controls');
     console.log('CONTEXT_CONFLICT_SCREENSHOT '+screenshot);
+    await page.setViewportSize({width:390,height:844});
+    await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),
+      'context-conflict recovery fits at 390px with 150% root text');
+    const recovery=page.locator('#assistant-private-recover');
+    await recovery.scrollIntoViewIfNeeded();await recovery.focus();
+    assert(await recovery.evaluate(element=>document.activeElement===element),
+      'the explicit recovery control accepts keyboard focus');
+    await page.screenshot({path:path.join(artifacts,'assistant-context-conflict-phone-390-150.png'),fullPage:false});
+    assert.equal(turns().length,beforeConflictTurns+1,'rendering and focus do not replay the pending request');
+    assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);
+    checkpoint('Phone 390px/150% recovery has no horizontal overflow, keeps keyboard focus and never resubmits');
+    fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,pageErrors,blockedOrigins,syntheticBackend:true},null,2));
     return;
   }
   await page.locator('#assistant-private-abandon').click();
