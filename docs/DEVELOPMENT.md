@@ -2921,3 +2921,31 @@ archive imports and fixed grounding-data loads passed. The complete source-only
 archive was independently attested in 0.766 seconds on native Windows with no
 extraction, packaged-code execution, database access, model or service operation.
 Its 315 runtime-file hashes match the frozen `0fac6ee` candidate exactly.
+
+The separate SYSTEM-owned read-only probe completed with zero model calls,
+sessions or admission-profile changes. Both caption query plans used the
+existing asset-ID index and a temporary sort for full projected rows. The first
+query hit its five-second budget; the subsequent legacy query completed in
+2.218 seconds. Sequential cache effects prevent treating those timings as a
+query-speed comparison. Protected configuration bytes, production task
+definitions and owned Job/task cleanup all passed their checks.
+
+Source `11be975` selects scoped caption IDs first, then fetches the unchanged
+caption projection in primary-key order. It avoids sorting complete text rows
+without changing schema, authorization, row/byte limits, deadlines or output
+order. Exact-row/accounting, foreign-library VM-step and no-full-text-sort
+fixtures passed. The caption/index/planner/refinement/agent/store cohort passed
+116 cases. The Search/semantic/turn cohort ran 74 cases: 71 passed and three
+explicit platform skips. Seventeen adjacent media/snapshot/socket-guard checks
+passed, and the generated Edge Search journey passed six checkpoints; its
+enlarged phone render was inspected. These cohorts overlap. An initial test
+command named a nonexistent module, and a broader gallery fixture run exposed
+its Windows asyncio wakeup socket being blocked. The gallery fixture now uses
+the existing bounded stdlib socketpair guard; its six cases pass with external
+network operations still denied. Those earlier failed receipts are retained.
+
+The complete 315-file `11be975` source-only package was independently attested
+in 0.781 seconds. A fresh native qualification packet is frozen with a read-only
+query preflight before model/profile/session work, unchanged two-turn prompts
+and acceptance oracle, tracing disabled and timing only at existing bounded
+read calls. The native two-turn result and deployment remain separate gates.

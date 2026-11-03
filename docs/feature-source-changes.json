@@ -34068,6 +34068,45 @@
         "Native focused package/attestation cohort43:39 passed,4 explicit platform/privilege skips. Isolated imports and packaged grounding-data loads passed. Complete315-file source archive independently attested in0.766seconds without extraction, model, database, service or network operation.",
         "The native0fac6ee model attempt refused after one inference at the discovery deadline. Cleanup/restoration passed. Read-only query-plan evidence and two-turn acceptance remain pending. GET-only birthday inspection found a different ready proposal from the retained Qwen3 result; original content was unchanged by those reads. No deployment or new story generation."
       ]
+    },
+    {
+      "feature": "native-caption-id-first-read-20261103",
+      "source_commit": "11be975f2f140bd12afb772801f55cbef2756410",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "e90d584cabf06a5458eb184dc32854063731cbd487f1032ad3910d970329d07a",
+          "sha256": "2f26e9394edcee8a14215232cdad9b072c58483daed23ab1341989fe6597ac3b"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "34530f833aa4eeb8fcc417413a586062001cba3439632fa5e65f961a054eb505",
+          "sha256": "9a93e9b2898916f9d2742d41259871c4f98abe8c20b1d72edf00f2798b4a5aba"
+        },
+        {
+          "path": "server/tests/security/test_assistant_caption_scope.py",
+          "before_sha256": "41698cde5c3744474704b54ce9074a0c717f61938666e38c12fd2f097fbb7df5",
+          "sha256": "15a5b9de462e052b16a09417be0bae7a7bffcc04c599eb1da6fa67fab98031d2"
+        },
+        {
+          "path": "server/tests/security/test_gallery_media_filter.py",
+          "before_sha256": "2f0bbf69a5c6cda94e3f279fec3e5931d541b913e96847a9e7dae9d514bc4714",
+          "sha256": "b93fcd4d110fcd5b23a5f61e646e232e0f1fd6495503507b40db6a73be8191ec"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "81d1746e9a4656e12bde29d29df945daf88d023dc44d8a93645ff6b28c86bb19",
+          "sha256": "377c3100fa14209c208876d45083d978422421c27dc2dff0435654ab1ca693b9"
+        }
+      ],
+      "notes": [
+        "Actual SYSTEM read-only probe completed with zero models, sessions or profile transitions and verified configuration/task/Job cleanup. Both prior plans sorted projected caption rows; cold/warm sequential timings are not a controlled speed comparison.",
+        "Select authorized active-library caption IDs using existing asset-ID index, then read unchanged text projection in primary-key order. No full-text temporary ORDER BY sort, global scan, new index or resource-limit change.",
+        "Focused116cases passed. Search/semantic/turn74cases ran with71passed and3platformskips. Adjacent17passed; generatedEdgeSearch6checkpoints passed and enlarged phone render inspected. Cohorts overlap. Failed invocation/gallery Windows wakeup fixture receipts retained; gallery fixture now uses existing strict socketpair guard and all6cases pass.",
+        "Complete315file source-only archive independently attested in0.781seconds. Fresh qualification packet uses read-only preflight, unchanged oracle/prompts, no Python tracing and content-free timing only at read-call boundaries. No native two-turn acceptance, deployment, story generation or adoption is claimed."
+      ]
     }
   ]
 }
