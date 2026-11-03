@@ -34,8 +34,8 @@ SCOPED_TEXT_CAPTIONS_SQL = (
     'FROM captions x WHERE x.id IN ('
     'SELECT c.id FROM access_asset_libraries m JOIN assets a ON a.id=m.asset_id '
     'CROSS JOIN captions c ON c.asset_id=a.id '
-    "WHERE m.library_id=? AND (a.status='active' OR a.status IS NULL) "
-    'AND c.superseded=0) ORDER BY x.id')
+    "WHERE m.library_id=? AND (a.status='active' OR a.status IS NULL)) "
+    'AND x.superseded=0 ORDER BY x.id')
 
 
 class DiscoveryInvalid(ValueError):

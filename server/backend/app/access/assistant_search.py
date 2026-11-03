@@ -73,6 +73,8 @@ class AssistantSearchReads(d.DiscoveryReads):
     def _extra_source(self, index, source, read, check):
         # Scope only IDs first, then read captions in primary-key order. This
         # avoids sorting complete text rows while keeping projection/order.
+        # Filter superseded rows at the outer lookup, so the inner asset-ID
+        # index scan never loads caption text rows merely to select their IDs.
         captions = source['captions'] if 'caption' in index.enabled else read(
             d.SCOPED_TEXT_CAPTIONS_SQL, (index.library_id,))
         # Same child AND parent scope as Stories.search; no revisions/history,

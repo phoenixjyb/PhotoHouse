@@ -63,7 +63,7 @@ class AssistantCaptionScopeTests(unittest.TestCase):
         self.assertTrue(_known_query(d.SCOPED_TEXT_CAPTIONS_SQL))
         self.assertTrue(_known_query(PRIOR))
         self.assertFalse(_known_query(d.SCOPED_TEXT_CAPTIONS_SQL.replace('m.library_id=? AND ', '')))
-        self.assertFalse(_known_query(d.SCOPED_TEXT_CAPTIONS_SQL.replace('c.superseded=0', '1=1')))
+        self.assertFalse(_known_query(d.SCOPED_TEXT_CAPTIONS_SQL.replace('x.superseded=0', '1=1')))
 
     def test_scoped_ids_avoid_sorting_complete_caption_text_rows(self):
         # Insert IDs out of asset order; a library/asset index traversal cannot
@@ -77,6 +77,19 @@ class AssistantCaptionScopeTests(unittest.TestCase):
             'EXPLAIN QUERY PLAN ' + d.SCOPED_TEXT_CAPTIONS_SQL, ('family-a',))]
         self.assertFalse(any('TEMP B-TREE FOR ORDER BY' in step for step in plan), plan)
         self.assertTrue(any('INTEGER PRIMARY KEY' in step for step in plan), plan)
+        self.assertTrue(any('COVERING INDEX ix_captions_asset_id' in step for step in plan), plan)
+
+    def test_id_lookup_stays_covering_with_many_superseded_rows(self):
+        self.db.executemany('INSERT INTO captions VALUES(?,?,?,?,?)',
+            ((1000 + i, 101 if i % 2 else 102, '\u6d77' * 1400, i % 2, 0 if i % 17 == 0 else 1)
+             for i in range(2048)))
+        expected = self.rows(PRIOR)
+        actual = self.rows(d.SCOPED_TEXT_CAPTIONS_SQL)
+        self.assertEqual(actual, expected)
+        self.assertEqual(d.packed(actual), d.packed(expected))
+        plan = [row[3] for row in self.db.execute(
+            'EXPLAIN QUERY PLAN ' + d.SCOPED_TEXT_CAPTIONS_SQL, ('family-a',))]
+        self.assertTrue(any('COVERING INDEX ix_captions_asset_id' in step for step in plan), plan)
 
     def test_budgeted_read_returns_the_same_rows_and_releases_its_slot(self):
         expected = self.rows(PRIOR)
