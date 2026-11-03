@@ -2978,3 +2978,18 @@ Fresh qualification requires two complete bounded readiness reads before any
 model/profile work, then the unchanged real two-turn oracle. These source and
 diagnostic checks do not establish that acceptance, a cutover or a live proposal
 import. GitHub Actions and cloud proofreading remain unused.
+
+
+## November 4 temporary assistant search budget
+
+At the owner's explicit request, source `396abf2` raises the default Search-v2
+read allowance from five to thirty seconds while performance work is deferred.
+Explicit caller-supplied budgets remain authoritative. Row/byte/index/response
+limits, the shared admission pool and cancellation checks are unchanged. Model
+request and enclosing native Job deadlines are separate and unchanged.
+
+The affected index/caption cohort passed eleven tests and seven subtests,
+including a generated read after six seconds, refusal after thirty seconds,
+retained cancellation, shared slots, explicit-budget preservation and exact
+caption output parity. This is source evidence; native model acceptance,
+deployment and proposal import retain their independent gates.

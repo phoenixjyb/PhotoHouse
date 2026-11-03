@@ -34216,6 +34216,33 @@
         "Native focused cohort: 60 tests and 40 subtests passed. Isolated committed candidate package cohort: 12 tests and 17 subtests passed, including extracted imports and synthetic API preparation. Installed launcher snapshot/default-D, C:-refusal and modified-pin refusal demonstrated without household data.",
         "Admission is not an OS disk quota. Ordinary check/cache/download paths, POSIX agent probe and immutable private SYSTEM qualification successor-plan/consumer conversion remain. Dependency-aware archive execution and remaining-C: inventory are not part of this milestone. No live tasks, services, models, schemas, databases, GitHub Actions or archive batches changed."
       ]
+    },
+    {
+      "feature": "owner-authorized-thirty-second-assistant-read-20261104",
+      "source_commit": "396abf21d7a029ec57327982590c4e64ba981007",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/discovery_index.py",
+          "before_sha256": "2d7f710ce13543c68e6b218d111245ac3b74049e96170bf3d54a0e547a7c12f1",
+          "sha256": "fa220bcddc0b863c4aead6ee2de75fed7c1222b5672be254f9c489a1e76ef628"
+        },
+        {
+          "path": "server/tests/security/test_discovery_index_document.py",
+          "before_sha256": "4fca4407b0ac37365c8fcbaf3381e5e1309d1eb9fe7d6fc4ab8924dee12bb379",
+          "sha256": "9a4f3fe623dfd2db05257fd64e753ef23349113d8b5867731731138411908059"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "8ae683ceb6e281992eb592c88fbb541ca2753ca6a34591d1392aa5487f342822",
+          "sha256": "1f590dacda0a18e1267f88967bc1c858dbfe8c37ebe2fc5b8113585453c719dd"
+        }
+      ],
+      "notes": [
+        "Owner explicitly authorized relaxing the five-second read guard and deferring performance optimization. Default Search-v2 allowance is thirty seconds; explicit budgets, data/concurrency/cancellation controls and model/native Job deadlines remain unchanged.",
+        "Eleven affected tests and seven subtests passed, including beyond-five-second reads, thirty-second refusal, cancellation, shared admission, explicit budgets and exact caption parity. No deployment or native acceptance is inferred."
+      ]
     }
   ]
 }
