@@ -2836,3 +2836,32 @@ external requests on Node 22.17.0, Playwright Core 1.55.0, Chromium 140.0.7339.1
 and Python 3.12.12. Desktop and bilingual enlarged phone renders were inspected.
 These are local source/browser results. No Windows runtime,
 production migration, Android artifact or physical-device acceptance is implied.
+
+## November 3 native Windows R20 focused continuation
+
+Source `918013d` closes the assistant workspace initializer's SQLite connection
+after its existing transaction context. The native fixtures close their direct
+connections, retain the POSIX mode check on POSIX, await owned refusal cleanup
+before testing another request, and start the short commit-timeout window at
+its commit barrier. Production deadlines, schema and authorization are unchanged.
+The added regression retains every initialization connection and verifies that
+all are closed before the initializer returns.
+
+On native Windows CPython 3.12.10 with hash-locked development dependencies,
+the final affected agent/store cohort passed **44 tests**. The initial focused
+run retained failures; its **67** pure planner/refinement cases passed. Those
+failed receipts are not qualification passes. The final focused Edge conflict
+journey passed seven checkpoints, including 390 px / 150% text, keyboard focus,
+no automatic replay, no external requests and no page errors. Its desktop and
+enlarged phone renders were inspected. The original-title refinement journey
+and both generated grouping journeys passed separately in installed Edge.
+
+A bounded SYSTEM-owned attempt verified 315 current runtime files, then refused
+the first turn with `503 workspace_unavailable` after one real model inference.
+Its receipts confirm restoration of the prior admission profile, session
+revocation, provider closure, drained native Job and deletion of its temporary
+task, with production task definitions and protected configuration bytes
+unchanged. This is a refusal, not two-turn R20 acceptance or deployment. The
+separately retained R18 story generation/cancellation/expiry evidence remains
+bound to its own source and approved recipe. No new story was generated and
+no cloud proofreading or GitHub Actions operation was performed.

@@ -33931,6 +33931,45 @@
         "Record passed focused client CJS and syntax checks plus the synthetic ASGI/Chromium case with screenshot review; this is not Windows installation or family/device acceptance.",
         "Clarify that the 20 source tests cover qualification-helper session-rotation timing, not application authentication behavior. The 67 parser tests and 169 subtests remain source-only; the R10 native follow-up remains refused."
       ]
+    },
+    {
+      "feature": "native-windows-workspace-connection-closure-and-focused-r20-checks-20261103",
+      "source_commit": "918013d169db8fc9bcd68f0a0f7cfdd28e68b561",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "1477901d23a11b7ad9e2c3ca462622c055b0d8cdcc787fcb1e588e23ccc02f96",
+          "sha256": "6e0ced312a37776442b701ca152a9268147f54998baf0090be76d318845d9a8d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_agent_workspace.py",
+          "before_sha256": "09c64c59833e9c29bc33aea34345d236a2139bed371d01d1caf13057d3ca9b59",
+          "sha256": "68fea90f16ab301019730569ca5e7deb93a463134350d8b8eec8260794778f66"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "cdd8a408049f9d2a66f77c11b9250eaa7683c64257ff80bda6dffc844b3de5d4",
+          "sha256": "2eb9be02c6a9f0f08e0c9f92062ecd28ff83c6ca17d5c9f5ee90e06905e84ae4"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_store.py",
+          "before_sha256": "f06c56239c231b544ce40c769eb9ffc5e0720841736108a9a9a064feb2dd8ef0",
+          "sha256": "990bd3c952f89b7333566bb3b195da04c5bde1abf8fb33bb5745bd85f75f55aa"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "4a27b57fd122e6f7054042b6726d9e70a49dd20bda7309ec5bb5133af7c5782c",
+          "sha256": "3a3c9bfeafe9ae4460056d5dc4c6d77c9e60e4428b15dafb1358ef90749bb681"
+        }
+      ],
+      "notes": [
+        "Explicitly close the workspace initializer connection after its existing transaction context; generated native tests retain opened connections and verify all are closed before return. SQLite schema and authorization contracts are unchanged.",
+        "Native fixtures close their direct SQLite connections, limit POSIX mode checks to POSIX, await owned refusal cleanup before the next independent request, and start the half-second commit-timeout window at its commit barrier. Production resource limits are unchanged.",
+        "The final affected agent/store cohort passed 44 cases on Windows CPython 3.12.10. The initial 95-case cohort retained failures; its 67 pure query/refinement cases passed. The final focused Edge conflict journey passed seven checkpoints including 390px/150% text, keyboard focus, no replay, no external requests and no page errors. Story-title and both grouping browser journeys passed separately. Native model qualification and deployment remain separate.",
+        "The bounded SYSTEM attempt verified 315 files and refused the first turn with workspace_unavailable after one real inference. Profile restoration, session revocation, provider/Job/task closure and identical protected configurations were observed. Two-turn model acceptance and live deployment are not claimed."
+      ]
     }
   ]
 }
