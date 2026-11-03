@@ -23,6 +23,8 @@ else:  # script execution places this directory, rather than its parent, on sys.
     from verify_current_source import VerificationError, verify_tree
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'server' / 'backend'))
+from app import work_storage as storage
 _OID = re.compile(rb"[0-9a-f]{40,64}\Z")
 _CRLF_PATH = "clients/android/android/gradlew.bat"
 _ARCHIVE_NAME = "source.zip"
@@ -293,6 +295,9 @@ def package_source(root: Path, output_dir: Path, *,
         actual_root = Path(_git(root, ["rev-parse", "--show-toplevel"]).decode("utf-8", "strict").strip()).resolve(strict=True)
         if actual_root != root:
             raise PackageError("root_not_repository_root")
+        if output_dir.is_absolute():
+            storage.direct(output_dir)
+            storage.volume(output_dir)
         target, parent = _output_target(root, output_dir)
         _ensure_clean(root)
         head = _head(root)
@@ -314,6 +319,24 @@ def package_source(root: Path, output_dir: Path, *,
         blobs = _blob_contents(root, records)
         working, eol_records = _working_contents(root, records, blobs)
 
+        # ZIP_STORED headers plus Git/archive rewriting and final publication
+        # can overlap. Budget three complete archives before any staging write.
+        archive_maximum = sum(len(data) for data in working.values()) + sum(
+            2 * len(str(record['path']).encode('utf-8')) + 512 for record in records) + 65536
+        with storage.operation([target], [(target, purpose, archive_maximum) for purpose in
+                ('git archive staging', 'rewritten archive', 'publication overlap')]):
+            return _stage_package(root, head, target, parent, records, blobs, working,
+                                  eol_records, source_report)
+    except storage.StorageRefused as error:
+        raise PackageError(str(error)) from None
+    except PackageError:
+        raise
+    except (OSError, UnicodeError, zipfile.BadZipFile):
+        raise PackageError("packaging_failed") from None
+
+
+def _stage_package(root, head, target, parent, records, blobs, working, eol_records, source_report):
+    try:
         stage = Path(tempfile.mkdtemp(prefix=f".{target.name}.package-", dir=parent))
         try:
             archive_path = stage / "git-archive.zip"
@@ -354,8 +377,6 @@ def package_source(root: Path, output_dir: Path, *,
         finally:
             if stage is not None:
                 shutil.rmtree(stage, ignore_errors=True)
-    except PackageError:
-        raise
     except (OSError, UnicodeError, zipfile.BadZipFile):
         raise PackageError("packaging_failed") from None
 
@@ -469,10 +490,14 @@ def _recheck_working_tree(root: Path, records: list[dict[str, object]],
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("output_dir", type=Path, help="absolute absent output directory outside the repository")
+    parser.add_argument("output_dir", type=Path, nargs='?', help="new private output; defaults to a work run")
     args = parser.parse_args(argv)
     try:
-        report = package_source(ROOT, args.output_dir)
+        output = args.output_dir if args.output_dir is not None else storage.new_run() / 'package'
+        report = package_source(ROOT, output)
+    except storage.StorageRefused as exc:
+        print(json.dumps({'status': 'refused', 'reason': str(exc)}, sort_keys=True))
+        return 1
     except PackageError as exc:
         result: dict[str, str] = {"status": "refused", "reason": exc.reason}
         if exc.path is not None:
@@ -480,6 +505,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result, sort_keys=True))
         return 1
     summary = {key: report[key] for key in ("status", "head", "archive_sha256", "tracked_file_count")}
+    summary['output'] = str(output)
     print(json.dumps(summary, sort_keys=True))
     return 0
 

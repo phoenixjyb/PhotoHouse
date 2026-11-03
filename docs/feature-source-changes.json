@@ -34147,6 +34147,75 @@
         "Native focused cohort70tests/33subtests passed with5explicitplatformskips, including actual Windows open-handle refusal. Preserve POSIX replacement test and add portable substituted-identity replay refusal. EdgeSearch6checkpoints passed; desktop and bilingual enlarged phone renders inspected. Earlier fixture/environment failures and interrupted sandbox run retained.",
         "Fresh qualification packet requires two complete actual readiness reads before model/profile work, then unchanged real two-turn oracle/prompts/recipe/limits. No two-turn acceptance, deployment, story generation/adoption, GitHub Actions or cloud proofreading claimed."
       ]
+    },
+    {
+      "feature": "windows-development-storage-admission-20261103",
+      "source_commit": "b481f8ffd82d2cf3da15a8115f67ef9ce63bdd00",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/STORAGE_POLICY.md",
+          "before_sha256": null,
+          "sha256": "f99a29e7ba2ec96676c234253c57efccbc13771160e99c037f057210c375f625"
+        },
+        {
+          "path": "server/backend/app/work_storage.py",
+          "before_sha256": null,
+          "sha256": "ef080c09e278d47bee98059dff47ed3d63e3a83812ed35bc22b1c68563215750"
+        },
+        {
+          "path": "server/scripts/build_editorial_rehearsal_package.py",
+          "before_sha256": "73be19a6ef5e68b47e21914b2e6dc58c654c4218f0bff5d1b0950c24ecbaf5a0",
+          "sha256": "d9c124af8b05e2ed1984101584a510c0f551fb2765cfa088bba9d2554416874a"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "c29db3714aa0619942ba6f84c14d884d70c6acc178a092b50cef292cfddeb34e",
+          "sha256": "18f3089bd10b273501a05982beaf7dd7b48ccb7af2b99946cd95deb960b25121"
+        },
+        {
+          "path": "server/scripts/rehearse_fullsize_database.py",
+          "before_sha256": "baa4c8c2aed44ea0ccbd91b2045869f779a6544ea5449e54db4f0d7937233c54",
+          "sha256": "62f525086ffc2cd6a24d1f4e844940943ade4297266b95d2dd2170e2db5b7305"
+        },
+        {
+          "path": "server/scripts/run_editorial_rehearsal_group.py",
+          "before_sha256": "bc9137fa5b781ca4bc0650851d8b071c72588085cc911888ce8ca30691a23c02",
+          "sha256": "d598edc686132d72781d6aaf8ba060c2af67ed4d6146ccd25fc6d407d470a998"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "9204110e0142427a7f420155d2118cbd57c5b0b13133629b81eea8e62440283b",
+          "sha256": "948272fb6dbce086e16f803d9907b60217a4d653f310f7b1278b9107c3f8ae16"
+        },
+        {
+          "path": "tools/package_source.py",
+          "before_sha256": "351c1c7695d4e15caf1a60767227df041c43f86c87c23c677300eec9046d047d",
+          "sha256": "6e973002e8cb2aa7e5c799071c8c97a0c0f5e8f4fab4d58cbee8dc27524b319f"
+        },
+        {
+          "path": "tools/tests/test_package_source.py",
+          "before_sha256": "1400d9d385224bf357148308cc766c5304acaa832576633066e7b66c2f8166f7",
+          "sha256": "62d74d31a59fe03fc3af9d639242b56b9ac630973f46605274dfd8e7a625ebeb"
+        },
+        {
+          "path": "tools/tests/test_work_storage.py",
+          "before_sha256": null,
+          "sha256": "b75551b00d8f500bf6cc9f1b3a048d238ef51c63094c9898f3148837081fef39"
+        },
+        {
+          "path": "tools/windows_work.py",
+          "before_sha256": null,
+          "sha256": "3b4378b1877ece3f9f03d7a2171b55c042f070207bce9df874563ec23cfc0c5c"
+        }
+      ],
+      "notes": [
+        "First storage milestone: shared local-volume identity/ACL/path checks, peak aggregation with per-volume safety reserve and nonblocking admission, scoped TEMP/TMP/TMPDIR/SQLite temporary storage and private lifecycle receipts. No existing runtime path or data relocation.",
+        "Integrates snapshot/rehearsal, source/API/editorial packaging and generated editorial groups. Packaged dependency closure includes the policy. Native source/hash-bound D: launcher installed and exercised with generated data only.",
+        "Native focused cohort: 60 tests and 40 subtests passed. Isolated committed candidate package cohort: 12 tests and 17 subtests passed, including extracted imports and synthetic API preparation. Installed launcher snapshot/default-D, C:-refusal and modified-pin refusal demonstrated without household data.",
+        "Admission is not an OS disk quota. Ordinary check/cache/download paths, POSIX agent probe and immutable private SYSTEM qualification successor-plan/consumer conversion remain. Dependency-aware archive execution and remaining-C: inventory are not part of this milestone. No live tasks, services, models, schemas, databases, GitHub Actions or archive batches changed."
+      ]
     }
   ]
 }

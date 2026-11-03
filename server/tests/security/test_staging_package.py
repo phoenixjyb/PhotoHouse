@@ -17,6 +17,7 @@ import build_staging_package as package
 class StagingPackageTests(unittest.TestCase):
     def test_curated_runtime_dependency_and_contract_closure_is_allowlisted(self):
         required = {
+            'backend/app/work_storage.py',
             'backend/app/access/assistant_search.py',
             'backend/app/access/assistant_query_plan.py',
             'backend/app/access/search_explanation.py',
@@ -248,6 +249,7 @@ class StagingPackageTests(unittest.TestCase):
                 'from selected_story_service_recipe import strict_recipe, build_recipe_provider\n'
                 'from serve_library_semantic_text import run as library_provider_run\n'
                 'import qualify_selected_story, selected_story_gguf_worker, json\n'
+                'from app import work_storage\nimport rehearse_fullsize_database\n'
                 "assert 'llama_cpp' not in sys.modules\n"
                 "manifest=json.loads((root/'manifest.json').read_text())\nassert qualify_selected_story._source_identity(manifest['source_commit'])==manifest['source_commit']\n"
                 "assert not hasattr(qualify_selected_story, 'WindowsAPI')\n"

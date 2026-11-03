@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,7 @@ GIT_PREFIX = 'server/'
 DEFAULT_MIGRATION_REVISION = 'a0c9d2e4f817'
 MIGRATION_REVISIONS = (DEFAULT_MIGRATION_REVISION, 'e7c1a9d5b304', 'f2a8c5d1e640')
 FILES = (
+    'backend/app/work_storage.py',
     'backend/alembic.ini',
     'backend/app/__init__.py',
     'backend/app/access/__init__.py',
@@ -426,21 +428,27 @@ def package_bytes(commit, files, *, schema_revision=DEFAULT_MIGRATION_REVISION):
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--commit',required=True)
-    parser.add_argument('--out',type=Path,required=True)
+    parser.add_argument('--out',type=Path)
     parser.add_argument('--schema-revision', choices=MIGRATION_REVISIONS,
                         default=DEFAULT_MIGRATION_REVISION,
                         help='Target API schema contract recorded in the source-only manifest')
     args=parser.parse_args(argv)
     try:
+        sys.path.insert(0, str(ROOT / 'backend'))
+        from app import work_storage as storage
+        if args.out is None:
+            args.out = storage.new_run() / 'api-source.zip'
+        storage.target(args.out)
         if (not args.out.is_absolute() or '..' in args.out.parts
                 or args.out.parent.resolve(strict=True) != args.out.parent):
             raise ValueError('Explicit direct output required')
         data=package_bytes(args.commit,source_files(args.commit),schema_revision=args.schema_revision)
         flags=os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_BINARY',0)
-        with os.fdopen(os.open(args.out,flags,0o600),'wb') as stream:
-            stream.write(data); stream.flush(); os.fsync(stream.fileno())
+        with storage.operation([args.out], [(args.out, 'API source archive', len(data))]):
+            with os.fdopen(os.open(args.out,flags,0o600),'wb') as stream:
+                stream.write(data); stream.flush(); os.fsync(stream.fileno())
         print(json.dumps({'source_commit':args.commit,'source_files':len(FILES),
-            'zip_sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'deployed':False}))
+            'zip_sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'output':str(args.out),'deployed':False}))
         return 0
     except (ValueError,OSError,subprocess.SubprocessError):
         print('Source packaging refused; no existing output was overwritten.')
