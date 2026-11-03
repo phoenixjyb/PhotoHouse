@@ -34107,6 +34107,46 @@
         "Focused116cases passed. Search/semantic/turn74cases ran with71passed and3platformskips. Adjacent17passed; generatedEdgeSearch6checkpoints passed and enlarged phone render inspected. Cohorts overlap. Failed invocation/gallery Windows wakeup fixture receipts retained; gallery fixture now uses existing strict socketpair guard and all6cases pass.",
         "Complete315file source-only archive independently attested in0.781seconds. Fresh qualification packet uses read-only preflight, unchanged oracle/prompts, no Python tracing and content-free timing only at read-call boundaries. No native two-turn acceptance, deployment, story generation or adoption is claimed."
       ]
+    },
+    {
+      "feature": "native-caption-covering-id-read-20261103",
+      "source_commit": "f0561899342ef46c3e6c3e5c4366d9b8320d652d",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "9a93e9b2898916f9d2742d41259871c4f98abe8c20b1d72edf00f2798b4a5aba",
+          "sha256": "259c8fb18312027c0862f7ffa5db71690bea2a3d06de24f075ffb69a0b23c2ff"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "2f26e9394edcee8a14215232cdad9b072c58483daed23ab1341989fe6597ac3b",
+          "sha256": "f712576cff39e2b839f6431d0062f686b94e4389de063ef19a8e7648c1347b4f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_caption_scope.py",
+          "before_sha256": "15a5b9de462e052b16a09417be0bae7a7bffcc04c599eb1da6fa67fab98031d2",
+          "sha256": "94bcafddc5db54ce0b69d12eb10271fdcd21073135486783380d40d56c57a5cc"
+        },
+        {
+          "path": "server/tests/security/test_semantic_request_snapshot.py",
+          "before_sha256": "3c7b0554c45f375c01d87eba0c357d3d2f13310e5563935b37f50284e21f7522",
+          "sha256": "2df264dcda41599fe44eb1f1c0a4346399463e1be389d88fbcc4ff150f092b53"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "377c3100fa14209c208876d45083d978422421c27dc2dff0435654ab1ca693b9",
+          "sha256": "8ae683ceb6e281992eb592c88fbb541ca2753ca6a34591d1392aa5487f342822"
+        }
+      ],
+      "notes": [
+        "Complete actual readiness-path diagnostics used zero providers/models/profile transitions, existing five-second/source/Job limits, and one explicitly issued/revoked member session. Configuration/task identities and Job/task cleanup passed; qualification remained refused.",
+        "Move superseded filtering to the outer caption primary-key lookup so scoped ID selection uses the existing covering asset-ID index. Exact rows/order/canonical bytes and current authorization/binding/deletion guards remain; no schema, cache or deadline change.",
+        "Bounded retained-copy A/B/B/A reads returned identical row hashes. Covering plan reduced read operations and bytes; ordered timings exposed cache effects and do not establish a fixed latency improvement.",
+        "Native focused cohort70tests/33subtests passed with5explicitplatformskips, including actual Windows open-handle refusal. Preserve POSIX replacement test and add portable substituted-identity replay refusal. EdgeSearch6checkpoints passed; desktop and bilingual enlarged phone renders inspected. Earlier fixture/environment failures and interrupted sandbox run retained.",
+        "Fresh qualification packet requires two complete actual readiness reads before model/profile work, then unchanged real two-turn oracle/prompts/recipe/limits. No two-turn acceptance, deployment, story generation/adoption, GitHub Actions or cloud proofreading claimed."
+      ]
     }
   ]
 }

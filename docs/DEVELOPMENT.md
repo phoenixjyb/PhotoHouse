@@ -2949,3 +2949,32 @@ in 0.781 seconds. A fresh native qualification packet is frozen with a read-only
 query preflight before model/profile/session work, unchanged two-turn prompts
 and acceptance oracle, tracing disabled and timing only at existing bounded
 read calls. The native two-turn result and deployment remain separate gates.
+
+The subsequent complete-request diagnosis used the actual Search-v2 readiness
+path without constructing providers or invoking models. It retained the shared
+five-second deadline, source limits and native Job bounds. Its temporary member
+session was revoked; protected configurations, production task definitions and
+owned Job/task cleanup were verified. The read-only standalone caption preflight
+was not an equivalent measurement of this complete request path.
+
+Source `f056189` moves the current-caption predicate to the outer primary-key
+lookup. The inner authorized caption-ID lookup now uses the existing covering
+asset-ID index, avoiding a second caption-row read. Rows, ordering, canonical
+bytes, source bindings, authorization, schema and resource limits are unchanged.
+The bounded retained-copy comparison verified identical rows and hashes in both
+query forms and fewer read operations/bytes with the covering plan. Its ordered
+timings show cache effects and are not a guaranteed latency improvement.
+
+The focused caption/accounting/request-snapshot/semantic cohort passed 70 tests
+and 33 subtests with five explicit platform skips. A cross-platform substituted
+file-identity case retains refusal before replay; the POSIX physical replacement
+case remains intact, and the existing native Windows open-handle replacement
+refusal case passed separately within this cohort. The generated Edge Search
+journey passed six checkpoints; desktop and bilingual enlarged phone renders
+were inspected. Initial sandbox/temp-path, Windows path-length and POSIX-rename
+fixture failures, plus an interrupted sandbox invocation, remain retained.
+
+Fresh qualification requires two complete bounded readiness reads before any
+model/profile work, then the unchanged real two-turn oracle. These source and
+diagnostic checks do not establish that acceptance, a cutover or a live proposal
+import. GitHub Actions and cloud proofreading remain unused.
