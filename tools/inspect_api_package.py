@@ -77,7 +77,7 @@ class LocalGit:
             raise Refused('git_changed')
         return raw, before
 
-    def __call__(self, *arguments):
+    def __call__(self, *arguments, input_data=None, output_limit=None):
         remaining = self.deadline - time.monotonic()
         if remaining <= 0:
             raise Refused('source_inspection_timeout')
@@ -86,8 +86,16 @@ class LocalGit:
         limit = 262144 if arguments[0] == 'ls-tree' else 2_000_000
         if arguments[0] == 'show':
             limit = 131072
+        if input_data is not None or output_limit is not None:
+            if (arguments not in (('cat-file', '--batch-check'), ('cat-file', '--batch')) or
+                    type(input_data) is not bytes or not 1 <= len(input_data) <= 262144 or
+                    re.fullmatch(rb'(?:[0-9a-f]{40}\n)+', input_data) is None or
+                    type(output_limit) is not int or not 1 <= output_limit <= 16_100_000):
+                raise Refused('git_output_limit')
+            limit = output_limit
         process = subprocess.Popen([str(self.executable), '--no-lazy-fetch', '-c', 'core.fsmonitor=false', *arguments],
             cwd=self.cwd, env=self.environment, stdout=subprocess.PIPE,
+            stdin=subprocess.PIPE if input_data is not None else subprocess.DEVNULL,
             stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         expired = threading.Event()
         def expire():
@@ -99,6 +107,19 @@ class LocalGit:
         timer = threading.Timer(min(10, remaining), expire)
         timer.daemon = True
         timer.start()
+        writer = None
+        write_failed = threading.Event()
+        if input_data is not None:
+            # Windows pipes can fill while Git emits metadata. Feed stdin in
+            # parallel with the bounded read; the existing timer owns both.
+            def feed():
+                try:
+                    process.stdin.write(input_data)
+                    process.stdin.close()
+                except OSError:
+                    write_failed.set()
+            writer = threading.Thread(target=feed, daemon=True)
+            writer.start()
         try:
             raw = process.stdout.read(limit + 1)
             if len(raw) > limit:
@@ -106,7 +127,9 @@ class LocalGit:
             process.wait(timeout=1)
             if expired.is_set():
                 raise Refused('source_inspection_timeout')
-            if process.returncode != 0:
+            if writer is not None:
+                writer.join(timeout=1)
+            if process.returncode != 0 or write_failed.is_set() or writer is not None and writer.is_alive():
                 raise Refused('local_git_failed')
             if stable_stat_identity(self.executable.stat()) != self.identity:
                 raise Refused('git_changed')
@@ -116,7 +139,11 @@ class LocalGit:
             if process.poll() is None:
                 process.kill()
                 process.wait(timeout=1)
+            if writer is not None:
+                writer.join(timeout=1)
             process.stdout.close()
+            if process.stdin is not None:
+                process.stdin.close()
 
     def revalidate(self):
         raw, identity = self._read_binary()

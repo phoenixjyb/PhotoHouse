@@ -216,6 +216,11 @@ class StagingPackageTests(unittest.TestCase):
                          'scripts/export_visual_people_review.py',
                          'scripts/inspect_reviewed_people_readiness.py',
                          'scripts/reviewed_people_source.py'})
+        required.update({'backend/app/access/' + name for name in (
+            'story_cloud_proofreading.py', 'story_cloud_transport.py',
+            'story_name_grounding.py', 'story_refinement_context.py',
+            'data/PINYIN-DATA-LICENSE.txt', 'data/pinyin-readings.json',
+            'data/story-grounding-provenance.json', 'data/story-public-names.json')})
         self.assertTrue(required <= set(package.FILES), required - set(package.FILES))
 
     def test_extracted_actual_api_imports_without_checkout_fallback(self):
@@ -254,6 +259,12 @@ class StagingPackageTests(unittest.TestCase):
                 "except ValueError: pass\nelse: raise AssertionError('non-Windows path accepted')\n"
                 "provider=LocalSelectedStoryProvider('http://127.0.0.1:11434', 'synthetic-local-model')\nassert provider.enabled is False\n"
                 'from app.access.story_titles import validate_bundle, validate_suggestions\n'
+                'from app.access import story_cloud_proofreading, story_cloud_transport, story_refinement_context\n'
+                'from app.access.story_name_grounding import _packaged_data, _validate_catalog, _validate_readings\n'
+                'catalog,readings=_packaged_data()\n'
+                'assert _validate_catalog(catalog) and _validate_readings(readings)\n'
+                "assert (root/'backend/app/access/data/PINYIN-DATA-LICENSE.txt').is_file()\n"
+                "assert (root/'backend/app/access/data/story-grounding-provenance.json').is_file()\n"
                 'from app.access.visual_vector_loader import VisualVectorReads\n'
                 'from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256\n'
                 'from app.access.visual_vector_schema import sqlite_visual_vector_contract\n'
@@ -434,6 +445,41 @@ class StagingPackageTests(unittest.TestCase):
         with patch.object(package,'git',side_effect=[b'commit\n',
                 b'120000 blob '+b'b'*40+b'\tserver/backend/app/main.py\0']):
             with self.assertRaises(ValueError): package.source_files('a'*40)
+
+    def test_batch_source_checks_sizes_before_bodies_and_verifies_blob_identity(self):
+        body = b'one\0source\n'
+        oid = hashlib.sha1(b'blob ' + str(len(body)).encode() + b'\0' + body).hexdigest()
+        entries = {'one': oid, 'same': oid}
+        metadata = (oid + ' blob ' + str(len(body)) + '\n').encode()
+        with patch.object(package, 'FILES', tuple(entries)), patch.object(package, 'git',
+                side_effect=[metadata, metadata + body + b'\n']) as git:
+            self.assertEqual(package._read_blobs(entries), {'one': body, 'same': body})
+            self.assertEqual(git.call_count, 2)
+            self.assertEqual(git.call_args_list[0].kwargs['input_data'], (oid + '\n').encode())
+        for invalid in (b'', metadata + metadata, metadata.replace(b'blob', b'tree'),
+                        metadata.replace(oid.encode(), b'0' * 40),
+                        (oid + ' missing\n').encode(),
+                        (oid + ' blob -1\n').encode(),
+                        (oid + ' blob 2000001\n').encode()):
+            with self.subTest(metadata=invalid), patch.object(package, 'git', return_value=invalid) as git:
+                with self.assertRaises(ValueError):
+                    package._read_blobs(entries)
+                self.assertEqual(git.call_count, 1)
+        for invalid in (metadata + body, metadata + body[:-1] + b'\n',
+                        metadata + b'X' * len(body) + b'\n',
+                        metadata + body + b'\nextra', metadata.replace(b'blob', b'tree') + body + b'\n'):
+            with self.subTest(body=invalid), patch.object(package, 'FILES', tuple(entries)), \
+                    patch.object(package, 'git', side_effect=[metadata, invalid]):
+                with self.assertRaises(ValueError):
+                    package._read_blobs(entries)
+
+    def test_duplicate_blob_paths_still_charge_total_expanded_budget(self):
+        oid = 'a' * 40
+        entries = {str(i): oid for i in range(9)}
+        with patch.object(package, 'git', return_value=(oid + ' blob 2000000\n').encode()) as git:
+            with self.assertRaises(ValueError):
+                package._read_blobs(entries)
+            self.assertEqual(git.call_count, 1)
 
 
 if __name__=='__main__': unittest.main()

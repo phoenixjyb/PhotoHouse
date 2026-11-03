@@ -88,6 +88,10 @@ FILES = (
     'backend/app/access/captions.py',
     'backend/app/access/credentials.py',
     'backend/app/access/date_hints.py',
+    'backend/app/access/data/PINYIN-DATA-LICENSE.txt',
+    'backend/app/access/data/pinyin-readings.json',
+    'backend/app/access/data/story-grounding-provenance.json',
+    'backend/app/access/data/story-public-names.json',
     'backend/app/access/discovery.py',
     'backend/app/access/discovery_index.py',
     'backend/app/access/discovery_provider.py',
@@ -157,6 +161,10 @@ FILES = (
     'backend/app/access/service.py',
     'backend/app/access/stories.py',
     'backend/app/access/story_outline.py',
+    'backend/app/access/story_cloud_proofreading.py',
+    'backend/app/access/story_cloud_transport.py',
+    'backend/app/access/story_name_grounding.py',
+    'backend/app/access/story_refinement_context.py',
     'backend/app/access/story_schema.py',
     'backend/app/access/story_titles.py',
     'backend/app/access/story_workspace.py',
@@ -329,8 +337,54 @@ FILES = (
 )
 
 
-def git(*args):
-    return subprocess.check_output(['git',*args],cwd=ROOT,stderr=subprocess.DEVNULL)
+def git(*args, input_data=None, output_limit=2_000_000):
+    raw = subprocess.check_output(['git', *args], cwd=ROOT,
+        input=input_data, stderr=subprocess.DEVNULL, timeout=10,
+        env=dict(os.environ, GIT_NO_REPLACE_OBJECTS='1', GIT_NO_LAZY_FETCH='1'))
+    if len(raw) > output_limit:
+        raise ValueError('Source object output exceeded')
+    return raw
+
+
+def _read_blobs(entries):
+    # Check every size before requesting any bodies. One immutable object may
+    # occur at several allowlisted paths; charge its size for each path.
+    oids = tuple(dict.fromkeys(entries.values()))
+    request = ''.join(oid + '\n' for oid in oids).encode('ascii')
+    metadata = git('cat-file', '--batch-check', input_data=request,
+                   output_limit=80 * len(oids)).splitlines()
+    if len(metadata) != len(oids):
+        raise ValueError('Source object metadata invalid')
+    sizes = {}
+    for oid, line in zip(oids, metadata):
+        match = re.fullmatch(oid.encode() + rb' blob (0|[1-9][0-9]{0,6})', line)
+        if match is None:
+            raise ValueError('Source object metadata invalid')
+        sizes[oid] = int(match[1])
+    if (any(size > 2_000_000 for size in sizes.values()) or
+            sum(sizes[oid] for oid in entries.values()) > 16_000_000):
+        raise ValueError('Source package size exceeded')
+    raw = git('cat-file', '--batch', input_data=request,
+              output_limit=sum(sizes.values()) + 80 * len(oids))
+    blobs, offset = {}, 0
+    for oid in oids:
+        header = (oid + ' blob ' + str(sizes[oid]) + '\n').encode('ascii')
+        if raw[offset:offset + len(header)] != header:
+            raise ValueError('Source object header invalid')
+        offset += len(header)
+        body = raw[offset:offset + sizes[oid]]
+        offset += sizes[oid]
+        if len(body) != sizes[oid] or raw[offset:offset + 1] != b'\n':
+            raise ValueError('Source object body incomplete')
+        offset += 1
+        digest = hashlib.sha1(b'blob ' + str(len(body)).encode() + b'\0' + body,
+                              usedforsecurity=False).hexdigest()
+        if digest != oid:
+            raise ValueError('Source object identity invalid')
+        blobs[oid] = body
+    if offset != len(raw):
+        raise ValueError('Source object trailing output')
+    return {name: blobs[entries[name]] for name in FILES}
 
 
 def source_files(commit):
@@ -341,7 +395,7 @@ def source_files(commit):
     for record in filter(None,records):
         identity,name = record.split(b'\t',1)
         mode,kind,oid = identity.decode('ascii').split()
-        if mode not in ('100644','100755') or kind != 'blob':
+        if mode not in ('100644','100755') or kind != 'blob' or not re.fullmatch('[0-9a-f]{40}', oid):
             raise ValueError('Only regular source blobs are allowed')
         path = name.decode('utf-8')
         if not path.startswith(GIT_PREFIX):
@@ -349,10 +403,7 @@ def source_files(commit):
         entries[path[len(GIT_PREFIX):]] = oid
     if set(entries) != set(FILES):
         raise ValueError('Selected commit lacks required source files')
-    sizes = {name:int(git('cat-file','-s',oid)) for name,oid in entries.items()}
-    if any(size > 2_000_000 for size in sizes.values()) or sum(sizes.values()) > 16_000_000:
-        raise ValueError('Source package size exceeded')
-    return {name:git('cat-file','blob',entries[name]) for name in FILES}
+    return _read_blobs(entries)
 
 
 def package_bytes(commit, files, *, schema_revision=DEFAULT_MIGRATION_REVISION):
@@ -391,7 +442,7 @@ def main(argv=None):
         print(json.dumps({'source_commit':args.commit,'source_files':len(FILES),
             'zip_sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'deployed':False}))
         return 0
-    except (ValueError,OSError,subprocess.CalledProcessError):
+    except (ValueError,OSError,subprocess.SubprocessError):
         print('Source packaging refused; no existing output was overwritten.')
         return 2
 
