@@ -782,6 +782,23 @@ boolean or invalid mode values fail closed. These tests do not contact a model.
 
 ## CPU quick start
 
+On the PhotoHouse Windows workstation, `tools/check.py api`, `memory`,
+`windows-cpu`, and `web` use generated scratch under
+`D:\PhotoHouseWork\tests\check-runs-v1`. The launcher uses a native Windows
+Job and D: storage admission. It sets temporary and cache paths for the check
+process and its children. Local Windows checks refuse a missing D: work root.
+Hosted GitHub checks remain portable. On another Windows machine without the
+PhotoHouse work root, set `PHOTOHOUSE_PORTABLE_WINDOWS_CHECKS=1` to select the
+portable profile explicitly.
+
+Allow up to 256 MiB per database with its journals, 1 GiB per run, and 4 GiB
+across the test root. The launcher retains the three most recent successful
+payloads and preserves their summaries separately. Failed or uncertain
+payloads stay in place and count toward the limits. If a run is refused,
+inspect the named evidence before starting another check. Use generated data
+or an approved compact fixture. Full live database copies require a separate
+recovery procedure.
+
 The private [review worksheet](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet)
 has nine standard-library tests for exact source/case/rubric bindings, explicit
 reviewer/time metadata, malformed inputs, private output creation before payload

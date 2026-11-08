@@ -9,10 +9,13 @@ import sys
 
 if __package__:
     from . import check_receipt
+    from . import check_windows_storage
 else:
     import check_receipt
+    import check_windows_storage
 
 ROOT = Path(__file__).resolve().parents[1]
+_lean_run = None
 API_TESTS = (
     "test_inference_admission.py", "test_host_inference_admission.py", "test_windows_story_capacity.py",
     "test_assistant_agent_tools.py", "test_assistant_agent_workspace.py",
@@ -189,6 +192,9 @@ WEB_TESTS = (
 
 
 def run(args, cwd=ROOT, env=None):
+    if _lean_run is not None:
+        _lean_run(args, cwd, env)
+        return
     subprocess.run(args, cwd=cwd, env=env, check=True)
 
 
@@ -203,6 +209,10 @@ def cpu_environment():
     env.update(PHOTOHOUSE_NO_DOTENV="1", PYTEST_DISABLE_PLUGIN_AUTOLOAD="1",
                PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1")
     return env
+
+
+WEB_TOOLCHAIN = ("PLAYWRIGHT_MODULE", "PLAYWRIGHT_MODULE_PATH", "PLAYWRIGHT_BROWSERS_PATH",
+                 "PH_BROWSER_PYTHON", "PH_BROWSER_EXECUTABLE", "PH_BROWSER_ARTIFACTS", "NODE_PATH")
 
 
 def api_tests(names, include_runtime_paths=False):
@@ -262,8 +272,7 @@ def web():
     # caller's explicit existing toolchain and artifact locations, not provider,
     # database, Python plugin or Node preload settings from an operator shell.
     env = cpu_environment()
-    for key in ("PLAYWRIGHT_MODULE", "PLAYWRIGHT_MODULE_PATH", "PLAYWRIGHT_BROWSERS_PATH",
-                "PH_BROWSER_PYTHON", "PH_BROWSER_EXECUTABLE", "PH_BROWSER_ARTIFACTS", "NODE_PATH"):
+    for key in WEB_TOOLCHAIN:
         if key in os.environ:
             env[key] = os.environ[key]
     module = env.get("PLAYWRIGHT_MODULE")
@@ -294,16 +303,25 @@ def web():
 
 
 def dispatch(profile):
-    if profile in ("api", "all"):
-        api()
-    if profile == "memory":
-        memory()
-    if profile in ("android", "all"):
+    if profile == "all":
+        dispatch("api")
         android()
-    if profile == "web":
-        web()
-    if profile == "windows-cpu":
-        windows_cpu()
+        return
+    if profile == "android":
+        android()
+        return
+    if check_windows_storage.enabled():
+        env = cpu_environment()
+        if profile == "web":
+            env.update({key: os.environ[key] for key in WEB_TOOLCHAIN
+                        if key in os.environ and key != "PH_BROWSER_ARTIFACTS"})
+        check_windows_storage.run_profile(profile, env)
+        return
+    generated_profile(profile)()
+
+
+def generated_profile(profile):
+    return {"api": api, "memory": memory, "windows-cpu": windows_cpu, "web": web}[profile]
 
 
 def _exit_code(error):
@@ -317,7 +335,9 @@ def _exit_code(error):
 
 
 def _with_receipt(profile, output):
+    guarded_receipt = profile != "android" and check_windows_storage.enabled()
     try:
+        parent_identity = check_windows_storage.require_d_receipt(output) if guarded_receipt else None
         destination = check_receipt.preflight_destination(output, ROOT)
     except check_receipt.ReceiptError as error:
         print(f"check receipt refused: {error}", file=sys.stderr)
@@ -337,6 +357,8 @@ def _with_receipt(profile, output):
                                          start_identity, end_identity,
                                          _exit_code(failure) if failure is not None else 0)
     try:
+        if guarded_receipt:
+            check_windows_storage.require_d_receipt(destination, parent_identity)
         check_receipt.write_receipt(destination, receipt)
     except check_receipt.ReceiptError as error:
         print(f"check receipt write failed: {error}", file=sys.stderr)

@@ -208,6 +208,20 @@ def _bytes(paths):
 
 
 @contextmanager
+def operation_temporaries_under(root):
+    """Keep nested operation scratch inside an already-owned test payload."""
+    root = direct(root)
+    require_private_directory(root)
+    identity, _ = volume(root)
+    prior = getattr(_leases, 'temporary_root', None)
+    _leases.temporary_root = (root, identity)
+    try:
+        yield
+    finally:
+        _leases.temporary_root = prior
+
+
+@contextmanager
 def operation(outputs, components):
     """Admit before data writes and redirect this process's temporary files.
 
@@ -224,6 +238,12 @@ def operation(outputs, components):
     totals = check_space(components)
     if any(volume(path)[0] not in totals for path in outputs):
         raise StorageRefused('unbudgeted_output_volume')
+    temporary_scope = getattr(_leases, 'temporary_root', None)
+    if temporary_scope is not None:
+        temporary_root, identity = temporary_scope
+        require_private_directory(direct(temporary_root))
+        if identity not in totals or volume(temporary_root)[0] != identity:
+            raise StorageRefused('unbudgeted_temporary_volume')
     with _process_lock, ExitStack() as stack:
         admissions = []
         if os.name == 'nt':
@@ -236,7 +256,8 @@ def operation(outputs, components):
             receipt_root = private_mkdir(admissions[0] / str(uuid.uuid4()))
         else:
             receipt_root = private_mkdir(outputs[0].parent / ('.work-' + str(uuid.uuid4())))
-        temporary = private_mkdir(receipt_root / 'temporary')
+        temporary = private_mkdir(temporary_root / receipt_root.name if temporary_scope is not None
+                                  else receipt_root / 'temporary')
         env_keys = ('TEMP', 'TMP', 'TMPDIR', 'SQLITE_TMPDIR')
         before = {key: os.environ.get(key) for key in env_keys}
         previous_temp = tempfile.tempdir

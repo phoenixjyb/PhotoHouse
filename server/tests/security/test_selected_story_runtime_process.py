@@ -488,8 +488,8 @@ class SelectedStoryRuntimeProcessIntegrationTests(unittest.IsolatedAsyncioTestCa
                     # Cancellation fences delivery first; the durable permit
                     # remains held until actual owner/exchange reconciliation.
                     deadline=time.monotonic()+5
-                    while self.claim_count():
-                        if time.monotonic()>=deadline:self.fail('owned claim did not reconcile')
+                    while self.claim_count() or self.provider._active is not None:
+                        if time.monotonic()>=deadline:self.fail('owned claim and exchange did not reconcile')
                         await asyncio.sleep(0.01)
                     self.assertIsNone(self.provider._active)
                     refused,_=await self.prepare_request(client,OTHER_REQUEST_ID)

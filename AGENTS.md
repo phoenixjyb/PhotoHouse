@@ -18,6 +18,13 @@ until their preservation and release-path gates are complete.
 
 - Follow `docs/DEVELOPMENT.md`. `tools/check.py api` uses temporary databases and
   generated media; it needs no model, GPU or listening server.
+- On the PhotoHouse Windows workstation, keep test databases, scratch files,
+  and caches on D:. Use generated data or an approved compact fixture. Stop
+  when storage admission refuses a run. Never make a generic test copy of a
+  live database, use C: as a fallback, or change the machine's TEMP settings.
+- Retain failed and uncertain runs. Clean up only verified successful scratch
+  owned by the test launcher, after its processes and storage admission close
+  and its summary is preserved.
 - `tools/check.py android` runs JVM tests, lint and unconfigured debug builds.
   It does not sign release packages, install them or publish updates.
 - Render changed UI at phone and desktop widths; check large text and keyboard
