@@ -20,6 +20,30 @@ import run_approved_image_embed_worker as worker
 
 
 class ApprovedImageEmbedWorkerTests(unittest.TestCase):
+    def test_child_retains_nvidia_discovery_and_d_cache_paths_with_uuid_selection(self):
+        selected = 'GPU-11111111-2222-3333-4444-555555555555'
+        environment = {'PROGRAMFILES': r'C:\Program Files',
+                       'PROGRAMW6432': r'C:\Program Files',
+                       'TMPDIR': r'D:\generated\temp',
+                       'HF_HOME': r'D:\generated\hf',
+                       'TORCH_HOME': r'D:\generated\torch',
+                       'CUDA_CACHE_PATH': r'D:\generated\cuda',
+                       'UNRELATED_SECRET': 'excluded'}
+        with patch.dict(worker.os.environ, environment, clear=True):
+            child = worker._child_environment('cuda:1', self.checkpoint, selected)
+        self.assertEqual(child['CUDA_VISIBLE_DEVICES'], selected)
+        for key, value in environment.items():
+            if key != 'UNRELATED_SECRET':
+                self.assertEqual(child[key], value)
+        self.assertNotIn('UNRELATED_SECRET', child)
+        self.assertEqual(child['HF_HUB_OFFLINE'], '1')
+
+    def test_gpu_child_refuses_missing_or_partial_uuid(self):
+        for value in (None, '', 'GPU-0095f55f', '1'):
+            with self.subTest(value=value), self.assertRaisesRegex(RuntimeError, 'gpu_device_unverifiable'):
+                worker._child_environment('cuda:1', self.checkpoint, value)
+        self.assertEqual(worker._child_environment('cpu', self.checkpoint)['CUDA_VISIBLE_DEVICES'], '')
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name).resolve()
@@ -316,7 +340,7 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
 
         def child(argv, *, env, **_kwargs):
             self.assertEqual(argv[argv.index('--device') + 1], 'cuda:0')
-            self.assertEqual(env['CUDA_VISIBLE_DEVICES'], '1')
+            self.assertEqual(env['CUDA_VISIBLE_DEVICES'], args.expected_gpu_uuid)
             Path(argv[argv.index('--receipt') + 1]).write_text(json.dumps(receipt))
 
         with patch.object(worker, 'gpu_free_memory', return_value=4 * 1024**3), \
@@ -330,7 +354,7 @@ class ApprovedImageEmbedWorkerTests(unittest.TestCase):
         stage = self.derived / 'stage'; stage.mkdir()
         def embed_child(argv, *, env, **_kwargs):
             self.assertEqual(argv[argv.index('--device') + 1], 'cuda:0')
-            self.assertEqual(env['CUDA_VISIBLE_DEVICES'], '1')
+            self.assertEqual(env['CUDA_VISIBLE_DEVICES'], args.expected_gpu_uuid)
             with (stage / 'vector.npy').open('wb') as stream:
                 np.save(stream, np.ones(512, dtype=np.float32) / np.sqrt(np.float32(512)), allow_pickle=False)
             (stage / 'result.json').write_text(json.dumps({

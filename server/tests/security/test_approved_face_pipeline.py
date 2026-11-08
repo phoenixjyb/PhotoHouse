@@ -14,6 +14,24 @@ import approved_face_queue as queue
 import run_approved_face_pipeline as worker
 
 
+def test_face_child_keeps_nvidia_discovery_and_d_cache_environment(monkeypatch, tmp_path):
+    selected = 'GPU-11111111-2222-3333-4444-555555555555'
+    for key, value in {'PROGRAMFILES': r'C:\Program Files',
+                       'PROGRAMW6432': r'C:\Program Files',
+                       'HF_HOME': r'D:\generated\hf',
+                       'CUDA_CACHE_PATH': r'D:\generated\cuda'}.items():
+        monkeypatch.setenv(key, value)
+    result = worker._environment(tmp_path, selected)
+    assert result['CUDA_VISIBLE_DEVICES'] == selected
+    assert result['PROGRAMFILES'] == r'C:\Program Files'
+    assert result['PROGRAMW6432'] == r'C:\Program Files'
+    assert result['HF_HOME'] == r'D:\generated\hf'
+    assert result['CUDA_CACHE_PATH'] == r'D:\generated\cuda'
+    assert result['TRANSFORMERS_OFFLINE'] == '1'
+    with pytest.raises(worker.Refused, match='gpu_uuid_required'):
+        worker._environment(tmp_path, 'GPU-short')
+
+
 def fixture(tmp_path):
     originals = tmp_path / 'originals'; originals.mkdir()
     derived = tmp_path / 'derived'; derived.mkdir()

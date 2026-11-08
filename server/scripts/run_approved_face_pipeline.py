@@ -90,13 +90,19 @@ def _config(args):
             'pending': dict(pending), 'gpu_uuid': args.gpu_uuid}
 
 
-def _environment(root):
+def _environment(root, gpu_uuid):
     keep = {'PATH', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'USERPROFILE',
             'LOCALAPPDATA', 'APPDATA', 'PROGRAMDATA', 'VIRTUAL_ENV', 'PATHEXT',
             'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE', 'HOME',
-            'LD_LIBRARY_PATH', 'CUDA_PATH', 'CUDA_PATH_V12_8', 'CUDNN_PATH'}
+            'LD_LIBRARY_PATH', 'CUDA_PATH', 'CUDA_PATH_V12_8', 'CUDNN_PATH',
+            'PROGRAMFILES', 'PROGRAMFILES(X86)', 'PROGRAMW6432',
+            'TMPDIR', 'SQLITE_TMPDIR', 'XDG_CACHE_HOME', 'HF_HOME', 'HF_HUB_CACHE',
+            'HUGGINGFACE_HUB_CACHE', 'TRANSFORMERS_CACHE', 'TORCH_HOME',
+            'MPLCONFIGDIR', 'CUDA_CACHE_PATH'}
+    if not re.fullmatch(r'GPU-[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', gpu_uuid or ''):
+        raise Refused('gpu_uuid_required')
     env = {key: value for key, value in os.environ.items() if key in keep}
-    env.update({'CUDA_VISIBLE_DEVICES': '1', 'INSIGHTFACE_ROOT': str(root),
+    env.update({'CUDA_VISIBLE_DEVICES': gpu_uuid, 'INSIGHTFACE_ROOT': str(root),
                 'PHOTOHOUSE_NO_DOTENV': '1', 'PHOTOHOUSE_STRICT_INFERENCE': '1',
                 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
                 'OPENBLAS_NUM_THREADS': '1', 'OMP_NUM_THREADS': '1',
@@ -115,7 +121,7 @@ def _child(operation, stage, config, image=None):
         argv.extend(('--insightface-root', str(config['root'])))
     if operation in ('embed', 'probe'):
         argv.extend(('--model-path', str(config['embedder'])))
-    run_supervised(argv, env=_environment(config['root']), derived=config['derived'],
+    run_supervised(argv, env=_environment(config['root'], config['gpu_uuid']), derived=config['derived'],
                    deadline=time.monotonic() + MAX_TASK_SECONDS)
     if (receipt.is_symlink() or not receipt.is_file()
             or not 0 < receipt.stat().st_size <= MAX_RECEIPT_BYTES):
