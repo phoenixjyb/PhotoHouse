@@ -1287,8 +1287,23 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .assistant-workspace-footer .assistant-actions button{min-height:40px;padding:.35rem .58rem;font-size:.7rem}
 }
 
+/* Local story edits stay reviewable before the separate library save. */
+.story-auto-refinement{--refine-bg:#f4f7f3;--refine-card:#fff;--refine-ink:#243b2e;--refine-muted:#58695e;--refine-line:#c7d6ca;margin:1.5rem 0;padding:1.25rem;min-width:0;border:1px solid var(--refine-line);border-radius:18px;background:var(--refine-bg);color:var(--refine-ink);text-align:left;overflow-wrap:anywhere}
+#story-reader .story-auto-refinement{--refine-bg:#213b2c;--refine-card:#162d20;--refine-ink:#f4f0e7;--refine-muted:#c1d2c5;--refine-line:#526d5c}
+.story-auto-refinement :is(h3,h4,h5,p){color:var(--refine-ink)}
+.story-auto-refinement h3{margin:0 0 .6rem}.story-auto-refinement h4{margin:1.2rem 0 .65rem}.story-auto-refinement h5{margin:0 0 .65rem;font-size:.9em}
+.story-auto-refinement .fine,.story-auto-refinement-title{color:var(--refine-muted)}
+.story-auto-refinement-status{padding:.75rem 1rem;border:1px solid var(--refine-line);border-radius:12px;line-height:1.65}
+.story-auto-refinement-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:.8rem;min-width:0}
+.story-auto-refinement-row article{min-width:0;padding:1rem;border:1px solid var(--refine-line);border-radius:12px;background:var(--refine-card)}
+.story-auto-refinement-row p{margin:0;white-space:pre-wrap;line-height:1.85}
+.story-auto-refinement button{max-width:100%;margin:.5rem .5rem .25rem 0;white-space:normal}
+.story-auto-refinement-questions{margin:1rem 0;padding:0 1rem;border-left:3px solid var(--refine-line)}
+@media(max-width:600px){.story-auto-refinement{padding:1rem}.story-auto-refinement-row{grid-template-columns:minmax(0,1fr)}}
+
 /* Optional egress is visually separate from local story editing. */
 .story-cloud-review{margin:1.5rem 0;padding:1.25rem;border:1px solid var(--line,#dce3dd);border-radius:18px;background:var(--surface,#fff);text-align:left}
+.story-cloud-review>summary{cursor:pointer;font-weight:650;line-height:1.6}.story-cloud-review[open]>summary{margin-bottom:.75rem}
 .story-cloud-review h3{margin:0 0 .5rem}.story-cloud-review button{margin:.5rem .5rem .25rem 0}
 .story-cloud-warning{padding:.8rem 1rem;border-radius:12px;background:#fff6e5;color:#714b1e;font-size:.92rem;line-height:1.6}
 .story-cloud-wire{max-height:22rem;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;padding:1rem;border-radius:12px;background:#f1f4f2;font-size:.8rem;line-height:1.6;user-select:text}
