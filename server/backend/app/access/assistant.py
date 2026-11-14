@@ -181,8 +181,11 @@ def _search_v2_endpoint(request):
     path = request.url.path
     return (path in ('/assistant/v1/turns', '/assistant/v1/speech', '/assistant/v1/capabilities',
                      '/assistant/workspace/v1/capabilities',
-                     '/assistant/workspace/v1/agent-capabilities') or
+                     '/assistant/workspace/v1/agent-capabilities',
+                     '/assistant/workspace/v1/result-page-capabilities') or
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/turns', path) is not None or
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+/result-pages', path) is not None or
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+/current-result', path) is not None or
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+(?:/speech)?', path) is not None)
 
 
@@ -199,6 +202,8 @@ def _scene_endpoint(request):
     if scene_reword is not None:
         return False
     return (re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/(?:turns|requests/[0-9a-f-]+)',
+                         request.url.path) is not None or
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+/current-result',
                          request.url.path) is not None or
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+/scene-pages',
                          request.url.path) is not None)
@@ -554,13 +559,13 @@ def _normalize_cards(result):
     return result
 
 
-def _search(engine, token, library, binding, filters, fingerprint=None):
-    return _normalize_cards(engine.call('search', token, library, lambda: False,
+def _search(engine, token, library, binding, filters, fingerprint=None, cancelled=None):
+    return _normalize_cards(engine.call('search', token, library, cancelled or (lambda: False),
                             {'binding': binding, 'filters': filters, 'page': 1,
                              'page_size': PAGE_SIZE, 'fingerprint': fingerprint}))
 
 
-def _context_result(engine, token, library, context):
+def _context_result(engine, token, library, context, cancelled=None):
     from .assistant_search import SearchRuntime
     if context.get('search_version', 1) != (engine.search_version if isinstance(engine, SearchRuntime) else 1):
         raise AssistantChanged()
@@ -569,10 +574,11 @@ def _context_result(engine, token, library, context):
     ids = context['visible_ids']
     if (context['filters'] == {} and context['total'] == 1 and len(ids) == 1
             and context['fingerprint'] == d.assistant_asset_fingerprint(context['binding'], ids[0])):
-        result = _normalize_cards(engine.call('assistant_asset', token, library, lambda: False,
+        result = _normalize_cards(engine.call('assistant_asset', token, library, cancelled or (lambda: False),
             {'asset_id': ids[0], 'binding': context['binding'], 'fingerprint': context['fingerprint']}))
     else:
-        result = _search(engine, token, library, context['binding'], context['filters'], context['fingerprint'])
+        result = _search(engine, token, library, context['binding'], context['filters'],
+                         context['fingerprint'], cancelled)
     if [item['id'] for item in result['items']] != ids or result['total'] != context['total']:
         raise AssistantChanged()
     return result
@@ -869,7 +875,29 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                                  dict(plan.filters, date=continuation['date']))
         if plan.status != 'ready':
             reply = _search_clarification_guidance(enabled, lang)
-            if plan.reason == 'unsupported_negation':
+            if plan.reason == 'unsupported_condition':
+                choices = []
+                for key, zh, en in (
+                        ('people', '已登记人物', 'reviewed person'),
+                        ('date', '拍摄日期', 'capture date'),
+                        ('tags', '标签', 'tag'),
+                        ('locations', '地点', 'place'),
+                        ('text', '说明原文', 'exact caption words')):
+                    if key in enabled:
+                        choices.append(zh if lang == 'zh' else en)
+                if choices:
+                    choice_text = '、'.join(choices) if lang == 'zh' else ', '.join(choices[:-1]) + (
+                        ', or ' if len(choices) > 1 else '') + choices[-1]
+                    question = (f'请问要用哪项：{choice_text}？' if lang == 'zh' else
+                                f'Which should I use: {choice_text}?')
+                else:
+                    question = '请问还需要提供什么条件？' if lang == 'zh' else 'What detail should I use?'
+                uncertainty = ('这些细节无法全部匹配到可检索证据。' if lang == 'zh' else
+                               'I could not match all those details to searchable evidence.')
+                no_new_search = ('没有执行新的结果检索。' if lang == 'zh' else
+                                 'No new result search was run.')
+                reply = ' '.join((uncertainty, no_new_search, question))
+            elif plan.reason == 'unsupported_negation':
                 from .search_policy import exclusion_reply
                 reply = exclusion_reply(lang)
             elif 'people' not in enabled and plan.reason in (
@@ -893,8 +921,8 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 reply = ('当前查找条件还没有明确人物，无法判断指的是谁。请提供已登记的姓名。' if lang == 'zh' else
                          'The current search has no selected people to refer to. Use a reviewed name first.')
             elif plan.reason == 'ambiguous_relative_date':
-                reply = ('“再早一点”没有指定具体日期。请提供明确的年份、月份或日期；当前人物、媒体和文字条件会保留。' if lang == 'zh' else
-                         '“Earlier” does not specify a capture date. Give a year, month, or date; the current people, media, and text filters will stay in place.')
+                reply = ('想查哪段更早的时间？请给出年份、月份或日期，其他筛选条件会保留。' if lang == 'zh' else
+                         'Which earlier year, month, or date? Your other filters will stay in place.')
             elif plan.reason == 'ambiguous_people_reference':
                 reply = ('这个人物指代与当前选定的人数不一致。请提供完整姓名，或明确要沿用哪些人物。' if lang == 'zh' else
                          'That reference does not match the number of selected people. Use full names or clarify who you mean.')

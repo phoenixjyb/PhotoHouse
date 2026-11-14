@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT / 'backend'))
 from fastapi.testclient import TestClient
 from app.access import discovery as d
 from app.access import assistant as assistant_module
+from app.access.assistant_search import SearchRuntime
 from app.access.discovery_provider import MemoryIndexProvider
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.assistant_journal import initialize as initialize_journal
@@ -241,8 +242,18 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         opened = self.turn(tid, opened_id, revision=1, text='打开第二个', headers=headers)
         self.assertEqual(opened.status_code, 200, opened.text)
         self.assertEqual(opened.json()['result']['effect'], {'type': 'open_asset', 'asset_id': '101'})
-        restored = self.request('GET', f'/threads/{tid}/requests/{opened_id}?library_id=family-a', headers=headers)
+        engine_calls = []
+        original_call = SearchRuntime.call
+
+        def counted_call(runtime, operation, token, library, cancelled, values):
+            engine_calls.append(operation)
+            return original_call(runtime, operation, token, library, cancelled, values)
+
+        with patch.object(SearchRuntime, 'call', new=counted_call):
+            restored = self.request(
+                'GET', f'/threads/{tid}/requests/{opened_id}?library_id=family-a', headers=headers)
         self.assertEqual(restored.status_code, 200, restored.text)
+        self.assertEqual(engine_calls, ['search'])  # Current source/scope revalidation only.
         self.assertTrue(restored.json()['recovered'])
         self.assertEqual(restored.json()['result']['version'], 2)
         self.assertEqual(restored.json()['result']['kind'], 'results')

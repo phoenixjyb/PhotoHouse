@@ -357,13 +357,13 @@ def _turn_text(value):
     return value
 
 
-def _turn_result(engine, token, library, summary, *, recovered):
+def _turn_result(engine, token, library, summary, *, recovered, cancelled=None):
     from .assistant_search import SearchRuntime
     from .assistant_scene_search import SceneSearchRuntime
     if summary['version'] == 4:
         if type(engine) is not SceneSearchRuntime:
             raise assistant_engine.AssistantChanged()
-        return engine.restore(token, library, summary)
+        return engine.restore(token, library, summary, cancelled=cancelled)
     if type(engine) is SceneSearchRuntime:
         engine = engine.base_engine({'search_version': summary['version'] if summary['version'] in (2, 3) else 2})
     if summary['version'] in (2, 3) and not isinstance(engine, SearchRuntime):
@@ -381,7 +381,7 @@ def _turn_result(engine, token, library, summary, *, recovered):
     items = []
     if context is not None:
         context = assistant_engine._context(context, library)
-        found = assistant_engine._context_result(engine, token, library, context)
+        found = assistant_engine._context_result(engine, token, library, context, cancelled)
         items = found['items']
     if summary['version'] in (2, 3):
         interpretation = found.get('interpretation') if context is not None else None
@@ -1816,6 +1816,244 @@ def _scene_page_runtime_ready(request, semantic, store, *, allow_query=False):
             getattr(request.app.state, 'semantic_search_runtime', None) is semantic and
             getattr(request.app.state, 'discovery_runtime', None) is semantic.discovery and
             semantic.discovery.access is access)
+
+
+def _result_page_runtime_ready(request, engine, store, *, allow_query=False):
+    from .assistant_search import SearchRuntime
+    from .discovery_transport import DiscoveryRuntime
+    try:
+        access = _runtime(request, allow_query=allow_query)
+    except Exception:
+        return False
+    discovery = getattr(request.app.state, 'discovery_runtime', None)
+    engine_matches = ((type(engine) is DiscoveryRuntime and engine is discovery) or
+                      (isinstance(engine, SearchRuntime) and engine.runtime is discovery))
+    return (getattr(request.app.state, 'assistant_enabled', False) is True and
+            getattr(request.app.state, 'assistant_workspace_healthy', False) is True and
+            getattr(request.app.state, 'assistant_workspace_store', None) is store and
+            type(store) is AssistantWorkspaceStore and
+            type(discovery) is DiscoveryRuntime and engine_matches and
+            discovery.access is access)
+
+
+def _current_result_runtime_ready(request, engine, store, version, *, allow_query=True):
+    if version == 4:
+        from .assistant_scene_search import SceneSearchRuntime
+        return (type(engine) is SceneSearchRuntime and
+                _scene_page_runtime_ready(request, engine.semantic, store,
+                                          allow_query=allow_query))
+    from .assistant_search import SearchRuntime
+    if version in (2, 3):
+        return (isinstance(engine, SearchRuntime) and engine.search_version == version and
+                _result_page_runtime_ready(request, engine, store, allow_query=allow_query))
+    from .discovery_transport import DiscoveryRuntime
+    return (type(engine) is DiscoveryRuntime and
+            _result_page_runtime_ready(request, engine, store, allow_query=allow_query))
+
+
+@router.get('/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/current-result')
+async def current_result(request: Request, thread_id: str, request_id: str):
+    query = _query(request, {'library_id', 'expected_revision'},
+                   {'library_id', 'expected_revision'})
+    library = _library(query['library_id'])
+    revision = _canonical_revision(query['expected_revision'])
+    selected_thread = _thread_id(thread_id)
+    selected_request = _thread_id(request_id)
+    version_header = _single(request, 'x-photohouse-search-version')
+    version = 1 if version_header in (None, '1') else int(version_header)
+    if version not in (1, 2, 3, 4):
+        raise WorkspaceInvalid()
+
+    account = await _principal(request, library)
+    store = _workspace(request)
+    access, engine = assistant_engine._engine(request)
+    if not _current_result_runtime_ready(request, engine, store, version):
+        raise WorkspaceStoreUnavailable()
+    if access is None:
+        raise WorkspaceStoreUnavailable()
+    token, _mode = credentials_from_request(request, allow_query=True)
+    source_reader = 'get_scene_page_source' if version == 4 else 'get_result_page_source'
+    source = await _call(store, source_reader, account, library,
+                         selected_thread, selected_request, revision)
+    summary = source['summary']
+    if (summary.get('version') != version or source['request'].get('revision') != revision or
+            source['request'].get('request_id') != selected_request):
+        raise WorkspaceStoreConflict()
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    if not _current_result_runtime_ready(request, engine, store, version):
+        raise discovery_engine.DiscoveryUnavailable()
+
+    cancelled = threading.Event()
+
+    async def watch_disconnect():
+        while not cancelled.is_set():
+            if await request.is_disconnected():
+                cancelled.set()
+                return
+            await asyncio.sleep(.025)
+
+    watcher = asyncio.create_task(watch_disconnect())
+    try:
+        def request_check():
+            if cancelled.is_set():
+                raise discovery_engine.DiscoveryCancelled()
+            if not _current_result_runtime_ready(request, engine, store, version):
+                raise discovery_engine.DiscoveryUnavailable()
+
+        request_check()
+        result = await run_in_threadpool(_turn_result, engine, token, library,
+                                         summary, recovered=True,
+                                         cancelled=cancelled.is_set)
+        request_check()
+        if version in (1, 2, 3):
+            context = assistant_engine._context(summary['context'], library)
+            await run_in_threadpool(engine.call, 'facets', token, library,
+                cancelled.is_set, {'facet': 'people', 'page': 1, 'page_size': 1,
+                                   'binding': context['binding']})
+            request_check()
+        current = await _call(store, source_reader, account, library,
+                              selected_thread, selected_request, revision)
+        if current['source_identity'] != source['source_identity']:
+            raise WorkspaceStoreConflict()
+        if await _principal(request, library) != account:
+            raise AccessDenied()
+        request_check()
+        response = JSONResponse({
+            'version': 1, 'thread_id': selected_thread, 'request_id': selected_request,
+            'status': 'completed', 'revision': revision, 'recovered': True,
+            'error': None, 'result': result,
+        }, headers=PRIVACY_HEADERS)
+        if len(response.body) > MAX_RESPONSE_BYTES:
+            raise WorkspaceStoreUnavailable()
+        request_check()
+        return response
+    finally:
+        cancelled.set()
+        watcher.cancel()
+        with suppress(asyncio.CancelledError):
+            await watcher
+
+
+@router.get('/assistant/workspace/v1/result-page-capabilities')
+async def result_page_capabilities(request: Request):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    store = _workspace(request)
+    from .discovery_transport import DiscoveryRuntime
+    engine = getattr(request.app.state, 'discovery_runtime', None)
+    available = _result_page_runtime_ready(request, engine, store, allow_query=True)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    available = available and _result_page_runtime_ready(request, engine, store, allow_query=True)
+    if type(engine) is not DiscoveryRuntime:
+        available = False
+    return JSONResponse({'version': 1, 'available': bool(available), 'page_size': 20},
+                        headers=PRIVACY_HEADERS)
+
+
+@router.post('/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/result-pages')
+async def result_page(request: Request, thread_id: str, request_id: str):
+    fields = {'version', 'library_id', 'expected_revision', 'page'}
+    body = await _body(request, fields, required=fields)
+    if type(body['version']) is not int or body['version'] != 1:
+        raise WorkspaceInvalid()
+    library = _library(body['library_id'])
+    selected_thread = _thread_id(thread_id)
+    selected_request = _thread_id(request_id)
+    revision = _revision(body['expected_revision'])
+    page = body['page']
+    if type(page) is not int or not 1 <= page <= 5000:
+        raise WorkspaceInvalid()
+
+    account = await _principal(request, library)
+    access, engine = assistant_engine._engine(request)
+    store = _workspace(request)
+    if not _result_page_runtime_ready(request, engine, store):
+        raise WorkspaceStoreUnavailable()
+    token, _mode = credentials_from_request(request)
+    source = await _call(store, 'get_result_page_source', account, library,
+                         selected_thread, selected_request, revision)
+    summary = source['summary']
+    context = assistant_engine._context(summary['context'], library)
+    from .assistant_search import SearchRuntime
+    from .discovery_transport import DiscoveryRuntime
+    selected_version = engine.search_version if isinstance(engine, SearchRuntime) else 1
+    if (summary['version'] != selected_version or
+            source['request']['request_id'] != selected_request or
+            source['request']['revision'] != revision or
+            type(engine) is not DiscoveryRuntime and not isinstance(engine, SearchRuntime)):
+        raise WorkspaceStoreConflict()
+    total = context['total']
+    page_count = (total + 19) // 20
+    if total <= 20 or page > page_count:
+        raise WorkspaceStoreConflict()
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    if not _result_page_runtime_ready(request, engine, store):
+        raise discovery_engine.DiscoveryUnavailable()
+
+    cancelled = threading.Event()
+
+    async def watch_disconnect():
+        while not cancelled.is_set():
+            if await request.is_disconnected():
+                cancelled.set()
+                return
+            await asyncio.sleep(.025)
+
+    watcher = asyncio.create_task(watch_disconnect())
+    try:
+        def request_check():
+            if cancelled.is_set():
+                raise discovery_engine.DiscoveryCancelled()
+            if not _result_page_runtime_ready(request, engine, store):
+                raise discovery_engine.DiscoveryUnavailable()
+
+        request_check()
+        found = await run_in_threadpool(engine.call, 'search', token, library,
+            cancelled.is_set, {'binding': context['binding'], 'filters': context['filters'],
+                               'fingerprint': context['fingerprint'], 'page': page,
+                               'page_size': 20})
+        request_check()
+        expected_items = min(20, max(0, total - (page - 1) * 20))
+        if (type(found) is not dict or found.get('binding') != context['binding'] or
+                found.get('fingerprint') != context['fingerprint'] or
+                found.get('page') != page or found.get('page_size') != 20 or
+                found.get('total') != total or type(found.get('has_more')) is not bool or
+                found.get('has_more') != (page * 20 < total) or
+                type(found.get('items')) is not list or len(found['items']) != expected_items):
+            raise discovery_engine.DiscoveryChanged()
+        items = assistant_engine._normalize_cards({'items': found['items']})['items']
+
+        # Revalidate the original source binding after paging. This is a fresh
+        # authorized read, not a parser/planner call or another result search.
+        await run_in_threadpool(engine.call, 'facets', token, library, cancelled.is_set,
+            {'facet': 'people', 'page': 1, 'page_size': 1, 'binding': context['binding']})
+        current = await _call(store, 'get_result_page_source', account, library,
+                              selected_thread, selected_request, revision)
+        if current['source_identity'] != source['source_identity']:
+            raise WorkspaceStoreConflict()
+        if await _principal(request, library) != account:
+            raise AccessDenied()
+        request_check()
+        response = JSONResponse({
+            'version': 1, 'library_id': library, 'thread_id': selected_thread,
+            'request_id': selected_request, 'revision': revision,
+            'search_version': selected_version, 'binding': context['binding'],
+            'fingerprint': context['fingerprint'], 'page': page, 'page_size': 20,
+            'total': total, 'has_more': found['has_more'], 'items': items,
+        }, headers=PRIVACY_HEADERS)
+        if len(response.body) > MAX_RESPONSE_BYTES:
+            raise discovery_engine.DiscoveryUnavailable()
+        request_check()
+        return response
+    finally:
+        cancelled.set()
+        watcher.cancel()
+        with suppress(asyncio.CancelledError):
+            await watcher
 
 
 @router.get('/assistant/workspace/v1/scene-page-capabilities')

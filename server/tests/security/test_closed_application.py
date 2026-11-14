@@ -61,7 +61,7 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIs(main.app.state.assistant_semantic_search_enabled, False)
                 self.assertIs(main.app.state.selected_story_drafts_enabled, False)
                 self.assertIs(main.app.state.selected_story_ui_enabled, False)
-                self.assertEqual(len(main.app.routes), 185)
+                self.assertEqual(len(main.app.routes), 188)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])
                 self.assertEqual(logging.getLogger().handlers, handlers)
@@ -177,6 +177,7 @@ class ClosedApplicationTests(unittest.TestCase):
             ('GET', '/assistant/workspace/v1/capabilities'),
             ('GET', '/assistant/workspace/v1/scene-search-capabilities'),
             ('GET', '/assistant/workspace/v1/scene-page-capabilities'),
+            ('GET', '/assistant/workspace/v1/result-page-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-action-capabilities'),
@@ -193,6 +194,8 @@ class ClosedApplicationTests(unittest.TestCase):
             ('POST', '/assistant/workspace/v1/preferences/reset'),
             ('POST', '/assistant/workspace/v1/threads/{thread_id}/turns'),
             ('POST', '/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/scene-pages'),
+            ('POST', '/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/result-pages'),
+            ('GET', '/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/current-result'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/history'),
@@ -208,7 +211,7 @@ class ClosedApplicationTests(unittest.TestCase):
         actual = [(method, route.path) for route in self.app.routes for method in route.methods]
         self.assertEqual(len(actual), len(set(actual)))
         self.assertEqual(set(actual), expected)
-        self.assertEqual(len(actual), 185)
+        self.assertEqual(len(actual), 188)
         for method, path in actual:
             sample = (path.replace('{ident}', '11111111-1111-4111-8111-111111111111')
                       .replace('{upload_id}', '1'*32)

@@ -53,6 +53,9 @@ _MEDIA_ONLY_REFINEMENT = re.compile(
     rf')[。.!！?？]*$', re.I)
 _SEARCH_OPEN = re.compile(
     r'^(?:'
+    # Route "the photos where ..." through the closed planner while keeping
+    # the stated media type as a hard filter.
+    r'(?:(?:the\s+)?(?:photos?|videos?|pictures?|images?)\s+where(?a:\b))|'
     r'(?:(?:please\s+)?(?:i(?:\s+am|[\x27’]m)\s+looking\s+for|'
     r'i\s+would\s+like\s+to\s+see|do\s+we\s+have|can\s+you\s+pull\s+up|'
     r'look\s+for)(?a:\b))|'
@@ -424,6 +427,19 @@ def _strip_prefix(text):
     leading = len(value) - len(value.lstrip())
     prefix = value[:leading]
     value = value[leading:]
+    natural_visual = re.match(
+        r'(?:(?P<refine>only(?a:\b))\s+)?(?:(?P<article>the)\s+)?'
+        r'(?P<media>photos?|videos?|pictures?|images?)\s+(?P<where>where)(?a:\b)',
+        value, re.I)
+    if natural_visual:
+        # Mask the article and connector in place, preserving offsets and the
+        # media noun for the ordinary hard-filter parser below.
+        chars = list(value)
+        spans = [natural_visual.span(name) for name in ('refine', 'article', 'where')
+                 if natural_visual.group(name) is not None]
+        for start, end in spans:
+            chars[start:end] = ' ' * (end - start)
+        return prefix + ''.join(chars)
     value = _SEARCH_OPEN.sub(lambda match: ' ' * len(match.group(0)), value, count=1)
     value = _REFINE_OPEN.sub(lambda match: ' ' * len(match.group(0)), value, count=1)
     value = prefix + value

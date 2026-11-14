@@ -13,6 +13,13 @@ release remains the last completed delivery evidence.
 
 ## Active priorities
 
+November 14 local development addresses priorities 1 and 3 through
+[ordinary result paging and explicit search-to-story selection](SEARCH_TO_STORY.md).
+The work uses generated data and keeps review/save explicit. The dated release
+records above remain historical; this source increment is not a new deployment.
+Real-library relevance, native responsiveness and family story review remain
+open. GitHub Actions are cost-paused; use local verification for this increment.
+
 ### 1. Finish conversational follow-up in the current search session
 
 Carry the current search result into a useful follow-up flow: answer questions
