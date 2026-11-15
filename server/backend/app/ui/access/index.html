@@ -319,7 +319,10 @@
     <section id="story-reader-community" class="story-reader-community" hidden></section>
     <nav class="story-reader-controls"><button id="story-reader-play" class="quiet" type="button" data-story-word="playStory">慢慢播放</button><button id="story-reader-contribute" class="quiet" type="button" data-story-word="contribute">补充这张照片的回忆</button><button id="story-reader-related" class="quiet" type="button" data-story-word="related">和助手找更多片段</button><button id="story-reader-previous" class="quiet" type="button" data-story-word="previous">上一章</button><button id="story-reader-next" class="quiet" type="button" data-story-word="next">下一章</button></nav>
   </dialog>
-  <dialog id="viewer"><button id="close-viewer" class="quiet close" type="button" data-i18n="close">Close</button>
+  <dialog id="viewer"><div class="viewer-heading">
+    <button id="close-viewer" class="quiet close" type="button" data-i18n="close">Close</button>
+    <button id="viewer-story-pick" class="quiet" type="button" hidden></button>
+  </div>
     <section id="photo-viewer" hidden>
       <div id="viewer-sequence" class="viewer-controls" hidden>
         <button id="view-previous" class="quiet" type="button" data-i18n="viewPrevious">Previous photo</button>

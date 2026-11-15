@@ -76,6 +76,10 @@ let browser,context,page;
   assert.match(await count(),/0\s*\/\s*24/);
   assert.equal(await picks().count(),await resultCards.count());
   assert.deepEqual(await resultCards.evaluateAll(cards=>cards.map(card=>card.dataset.assetId)),await pickIds());
+  await resultCards.first().locator('button').click();await page.locator('#viewer').waitFor({state:'visible'});
+  assert.equal(await page.locator('#viewer-story-pick').isVisible(),false,'ordinary viewer has no story-selection action');
+  await page.locator('#close-viewer').click();await page.locator('#viewer').waitFor({state:'hidden'});
+  await page.locator('#memory-assistant-link').click();await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
   pass('Result cards expose asset-bound selection controls and an empty, visible selection toolbar');
 
   // A normal search result uses image fixtures; the separate video-filtered
@@ -277,7 +281,29 @@ let browser,context,page;
   const appendFinalPage=await pickIds();assert(appendFinalPage.includes('102')&&appendFinalPage.includes('101'));
   const appendFinalResult=requests.filter(item=>item.method==='POST'&&/\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/result-pages(?:\?|$)/.test(item.path)).at(-1).response;
   assert.equal(appendFinalResult.items.find(item=>item.id==='102').kind,'video');assert.equal(appendFinalResult.items.find(item=>item.id==='101').kind,'image');
-  await page.locator('.assistant-story-pick[value="102"]').check();await page.locator('.assistant-story-pick[value="101"]').check();
+  await page.locator('.assistant-result[data-asset-id="102"] button').click();await page.locator('#viewer').waitFor({state:'visible'});
+  const viewerPick=page.locator('#viewer-story-pick');assert.equal(await viewerPick.isVisible(),true,'nested Assistant result viewer exposes the selection action');
+  assert.match(await viewerPick.innerText(),/选入故事|Select for story/i);
+  await viewerPick.click();assert.deepEqual(await selectedIds(),[appendPhoto,'102'],'viewed video is added to the pending selection without closing the viewer');
+  assert.match(await viewerPick.innerText(),/从选择中移除|Remove .* from selection/i);
+  await viewerPick.click();assert.deepEqual(await selectedIds(),[appendPhoto],'the viewer action removes its selected result without closing the viewer');
+  assert.match(await viewerPick.innerText(),/选入故事|Select for story/i);await viewerPick.click();
+  assert.deepEqual(await selectedIds(),[appendPhoto,'102']);
+  await page.screenshot({path:path.join(artifacts,'nested-video-viewer-selection.png'),fullPage:false});
+  await page.setViewportSize({width:390,height:845});await page.evaluate(()=>document.documentElement.style.fontSize='150%');
+  assert.equal(await viewerPick.evaluate(button=>{
+    const choice=button.getBoundingClientRect(),viewer=document.querySelector('#viewer').getBoundingClientRect();
+    return choice.height>=48&&choice.left>=viewer.left&&choice.right<=viewer.right&&choice.top>=viewer.top&&choice.bottom<innerHeight;
+  }),true,'the story selection action fits the phone viewer at enlarged text');
+  await page.screenshot({path:path.join(artifacts,'nested-video-viewer-phone-390-150.png'),fullPage:false});
+  await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
+  await page.locator(`#viewer-filmstrip button[data-viewer-index="${appendFinalPage.indexOf('101')}"]`).click();
+  await page.waitForFunction(()=>document.querySelector('#viewer-title')?.textContent.includes('101'));
+  await viewerPick.click();
+  assert.deepEqual(await selectedIds(),[appendPhoto,'102','101'],'filmstrip navigation keeps the picker and selects the viewed photo');
+  await page.keyboard.press('Escape');await page.locator('#viewer').waitFor({state:'hidden'});
+  await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
+  assert.deepEqual(await selectedIds(),[appendPhoto,'102','101'],'viewer choices remain pending when Escape returns to Assistant');
   const appendedIds=[appendPhoto,'102','101'];assert.deepEqual(await selectedIds(),appendedIds,'new photo/video choices retain deliberate click order');
   assert.match(await page.locator('#assistant-story-selection-count').innerText(),/3\s*\/\s*22\b/);
   await page.locator('#assistant-result-page-return').click();await page.waitForFunction(expected=>document.querySelector('.assistant-result')?.dataset.assetId===expected,pageOneAppend[0]);
@@ -356,6 +382,36 @@ let browser,context,page;
   assert.equal(update.response.revision,(BigInt(saveCall.response.revision)+1n).toString());
   assert.deepEqual(update.response.items.map(item=>item.id),updatedStoryIds);
   pass('Appending to an editable saved story preserves the same story ID and saves a new revision only on request');
+
+  // A chapter-scoped add inserts before later chapters and retains their prose.
+  await page.locator('#story-workspace-close').click();
+  await page.locator('[href="#assistant-panel"]').first().click();
+  await search('找示例儿童');
+  const [chapterOpening,chapterFollowing,chapterAddition]=await pickIds();
+  for(const id of [chapterOpening,chapterFollowing])await page.locator(`.assistant-story-pick[value="${id}"]`).check();
+  await page.locator('#assistant-shape-story').click();await page.locator('#story-workspace').waitFor({state:'visible'});
+  await page.locator('#story-build').click();await page.locator('.story-source-opt-in').first().click();
+  await page.locator('.story-chapter-split').first().click();
+  const chapters=page.locator('.story-chapter-card');
+  await chapters.nth(0).locator('textarea[maxlength="6000"]').fill('第一章的家人原话');
+  await chapters.nth(1).locator('textarea[maxlength="6000"]').fill('后面一章的家人原话');
+  const chapterFind=chapters.nth(0).locator('.story-chapter-find-frames');
+  await page.setViewportSize({width:390,height:845});await page.evaluate(()=>document.documentElement.style.fontSize='150%');
+  assert.equal(await chapterFind.evaluate(button=>button.scrollWidth<=button.clientWidth+1),true);
+  await chapterFind.click();
+  assert.match(await page.locator('#assistant-story-selection-title').innerText(),/第\s*1\s*章|chapter 1/i);
+  assert.match(await count(),/0\s*\/\s*3\b/,'one frame in the chapter leaves three chapter slots');
+  await page.locator('#assistant-story-selection').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'chapter-frame-picker-phone-390-150.png'),fullPage:false});
+  await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
+  await page.locator(`.assistant-story-pick[value="${chapterAddition}"]`).check();
+  const beforeChapterAdd=requests.length;
+  await page.locator('#assistant-shape-story').click();await page.locator('#assistant-workspace-dialog').waitFor({state:'hidden'});
+  const chapterOrder=await chapters.evaluateAll(cards=>cards.map(card=>Array.from(card.querySelectorAll('.story-chapter-strip img')).map(img=>img.alt)));
+  assert.deepEqual(chapterOrder,[[chapterOpening,chapterAddition],[chapterFollowing]]);
+  assert.deepEqual(await chapters.locator('textarea[maxlength="6000"]').evaluateAll(nodes=>nodes.map(node=>node.value)),['第一章的家人原话','后面一章的家人原话']);
+  assert.equal(requests.slice(beforeChapterAdd).some(item=>item.method==='POST'&&memoryStoryPath(item.path)),false);
+  pass('A chapter-scoped add inserts before later chapters while preserving both narrations');
 
   // Refinement starts a new query turn and must clear the previous selection.
   await page.locator('#story-workspace-close').click();await page.waitForFunction(()=>!document.querySelector('#story-workspace').open);

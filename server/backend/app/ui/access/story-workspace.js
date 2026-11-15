@@ -732,6 +732,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.en,{undoFrameAppend:'Undo last add',frameAppendUndone:'Undid the last frame addition.'});
   Object.assign(labels.zh,{relatedMediaType:'媒体类型',relatedMediaAll:'照片和视频',relatedMediaImage:'只看照片',relatedMediaVideo:'只看视频'});
   Object.assign(labels.en,{relatedMediaType:'Media type',relatedMediaAll:'Photos and videos',relatedMediaImage:'Photos only',relatedMediaVideo:'Videos only'});
+  Object.assign(labels.zh,{findFramesForChapter:'为本章查找画面',framesAddedToChapter:'已将新画面添加到所选章节。'});
+  Object.assign(labels.en,{findFramesForChapter:'Find frames for this chapter',framesAddedToChapter:'New frames added to the selected chapter.'});
   let relatedEpoch=0,relatedView=null,lastFrameAppend=null;
   function clearRelated(){relatedEpoch++;relatedView=null;$('story-related-items').replaceChildren();$('story-related-status').textContent='';$('story-related-more').hidden=true;}
   const relatedMedia=()=>$('story-related-media')?.value||'all';
@@ -780,7 +782,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   async function addRelatedFrame(view,item,trigger){
     if(!relatedCurrent(view)||view.busy||view.adding||!view.result.items.includes(item)||selected.has(item.id))return;
-    const target=frameAppendTarget(view);if(!target)return;
+    const target=frameAppendTarget({related:view});if(!target)return;
     const restoreFocus=document.activeElement===trigger;
     view.adding=item.id;view.addError=false;renderRelated();syncFrameSearch();
     const active=()=>relatedCurrent(view)&&view.adding===item.id;
@@ -888,14 +890,15 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(item.date_hint)return `${text(item.date_hint.source==='received'?'received':'filename')} · ${item.date_hint.value.slice(0,10)}`;
     return text('unknown');
   }
-  function lastChapterFrameSlots(story){
+  function chapterFrameSlots(story,section){
     // Existing source links need to be included explicitly when saving a changed chapter.
     if(story.saved&&!refsFor(story)?.available)return 0;
-    return 4-story.chapters.at(-1).asset_ids.length;
+    return 4-section.asset_ids.length;
   }
-  function frameSearchLimit(){
+  function frameSearchLimit(section=null){
     const remaining=24-selected.size;
-    return draft?Math.min(remaining,lastChapterFrameSlots(draft)+(6-draft.chapters.length)*4):remaining;
+    if(section)return draft?.chapters.includes(section)?Math.min(remaining,chapterFrameSlots(draft,section)):0;
+    return draft?Math.min(remaining,chapterFrameSlots(draft,draft.chapters.at(-1))+(6-draft.chapters.length)*4):remaining;
   }
   const frameSearchBlocked=()=>frozen()||sourceRefreshPending||sourceRefreshRequired||Boolean(dictation)||titleComposing||
     Boolean(draftPreparation.proposal)||Boolean(draft?.saved&&!refsFor(draft));
@@ -914,6 +917,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const pending=frameSearchBlocked()||Boolean(relatedView?.adding);
     trigger.disabled=!openFrameSearch||pending||limit<=0;
     $('story-find-more-limit').hidden=limit>0||selected.size>=24;
+    for(const button of $('story-chapter-editor').querySelectorAll('.story-chapter-find-frames')){
+      const section=draft?.chapters.find(value=>value.id===button.dataset.chapterId);
+      button.disabled=pending||!section||frameSearchLimit(section)<=0;
+    }
     const undo=$('story-undo-frames');
     if(undo){
       if(lastFrameAppend&&!frameUndoCurrent(lastFrameAppend))lastFrameAppend=null;
@@ -947,14 +954,16 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       next?.setSelectionRange(...range);
     }
   }
-  function frameAppendTarget(related=null){
+  function frameAppendTarget({related=null,section=null}={}){
     const owner={...scope()},ticket=generation,story=draft,pool=items,selection=selected;
     const orderedIds=()=>items.filter(item=>selected.has(item.id)).map(item=>item.id);
-    const assetIds=Object.freeze(orderedIds()),key=assetIds.join(','),limit=frameSearchLimit();
+    const assetIds=Object.freeze(orderedIds()),key=assetIds.join(','),limit=frameSearchLimit(section);
+    const anchor=section?.asset_ids.at(-1),insertAt=section?assetIds.indexOf(anchor)+1:assetIds.length;
     const isCurrent=()=>current(ticket,owner)&&$('story-workspace').open&&draft===story&&items===pool&&selected===selection&&
-      !frameSearchBlocked()&&orderedIds().join(',')===key;
-    if(!owner.account||!owner.library||limit<=0||!isCurrent())return;
-    return {assetIds,limit,isCurrent,append:async(chosen,isHandoffCurrent)=>{
+      !frameSearchBlocked()&&(!section||story.chapters.includes(section)&&section.asset_ids.at(-1)===anchor)&&orderedIds().join(',')===key;
+    if(!owner.account||!owner.library||limit<=0||section&&!insertAt||!isCurrent())return;
+    const chapterNumber=section?story.chapters.indexOf(section)+1:null;
+    return {assetIds,limit,chapterNumber,isCurrent,append:async(chosen,isHandoffCurrent)=>{
       if(!isCurrent()||!isHandoffCurrent())return false;
       const additions=new Map(),existing=new Set(assetIds);
       for(const item of chosen){
@@ -962,29 +971,32 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         if(!existing.has(item.id)&&!additions.has(item.id))additions.set(item.id,item);
       }
       const addedIds=[...additions.keys()];
-      if(!addedIds.length||addedIds.length>Math.min(limit,frameSearchLimit()))return false;
-      const expected=[...assetIds,...addedIds];
+      if(!addedIds.length||addedIds.length>Math.min(limit,frameSearchLimit(section)))return false;
+      const expected=[...assetIds.slice(0,insertAt),...addedIds,...assetIds.slice(insertAt)];
       let nextDraft=null;
       if(story){
         // Use the preview for current frame metadata and the new selection revision.
         const fresh=await request({asset_ids:expected.join(','),theme:story.theme,language:story.language,title:''});
-        if(!isCurrent()||!isHandoffCurrent()||addedIds.length>frameSearchLimit())return false;
+        if(!isCurrent()||!isHandoffCurrent()||addedIds.length>frameSearchLimit(section))return false;
         if(!validDraft(fresh,expected,owner)||fresh.saved!==false||fresh.theme!==story.theme||fresh.language!==story.language||
            fresh.items.some(item=>additions.has(item.id)&&additions.get(item.id).kind!==item.kind))return false;
-        const chapters=[...story.chapters],last=chapters.at(-1),intoLast=addedIds.slice(0,lastChapterFrameSlots(story));
-        if(intoLast.length)chapters[chapters.length-1]={...last,asset_ids:[...last.asset_ids,...intoLast]};
-        for(let offset=intoLast.length;offset<addedIds.length;offset+=4){
+        const chapters=[...story.chapters],destination=section||chapters.at(-1),destinationIndex=chapters.indexOf(destination);
+        const intoChapter=addedIds.slice(0,chapterFrameSlots(story,destination));
+        if(intoChapter.length)chapters[destinationIndex]={...destination,asset_ids:[...destination.asset_ids,...intoChapter]};
+        for(let offset=intoChapter.length;offset<addedIds.length;offset+=4){
           const number=chapters.length+1;
           chapters.push({id:`chapter-${number}`,title:labels[story.language].frameSearchChapter(number),narration:'',
             asset_ids:addedIds.slice(offset,offset+4),evidence_ids:[]});
         }
         nextDraft={...story,title:$('story-workspace-title').value,items:fresh.items,chapters,selection_revision:fresh.selection_revision};
         if(!validDraft(nextDraft,expected,owner,sourceProfileLoaded))return false;
-        if(intoLast.length&&authoredNarrations.has(last))authoredNarrations.add(chapters[story.chapters.length-1]);
+        if(intoChapter.length&&authoredNarrations.has(destination))authoredNarrations.add(chapters[destinationIndex]);
       }
       const before={items:pool,selected:selection,draft:story,page:selectionPage,dirty,downloaded,sourceAcknowledged:sourceRefreshAcknowledged};
-      // Move any reselected pool entries to the end in the user's new pick order.
-      items=[...pool.filter(item=>!additions.has(item.id)),...additions.values()];
+      // Move any reselected pool entries to the point where the new frames belong.
+      const retained=pool.filter(item=>!additions.has(item.id));
+      const poolIndex=section?retained.findIndex(item=>item.id===anchor)+1:retained.length;
+      items=[...retained.slice(0,poolIndex),...additions.values(),...retained.slice(poolIndex)];
       selected=new Set(expected);
       if(related)selectionPage=Math.floor((items.length-1)/8);
       else clearRelated();
@@ -997,13 +1009,13 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         renderFrameEdits();
       }
       lastFrameAppend={before,owner,ticket,afterItems:items,afterSelection:selected,afterDraft:draft,snapshot:frameUndoSnapshot()};
-      renderSelection();message('frameSearchAdded');
+      renderSelection();message(section?'framesAddedToChapter':'frameSearchAdded');
       return true;
     }};
   }
-  function findMoreFrames(event){
+  function findMoreFrames(event,section=null){
     if(relatedView?.adding)return;
-    const target=frameAppendTarget();
+    const target=frameAppendTarget({section});
     if(target)openFrameSearch?.(target,event.currentTarget);
   }
   function setSelectionCount() {
@@ -1385,6 +1397,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       title.addEventListener('input',()=>{c.title=title.value;dirty=true;downloaded=false;invalidateDraftReview();invalidateTitles();syncChapterStructureAvailability();syncLocalControls();});titleLabel.append(title);section.append(titleLabel);
       const strip=node('div',undefined,'story-chapter-strip');
       for(const id of c.asset_ids){const img=node('img');img.src=mediaURL(id,'thumbnail');img.alt=id;img.loading='lazy';strip.append(img);}section.append(strip);
+      if(openFrameSearch&&!readOnly()&&c.asset_ids.length<4){
+        const find=button(text('findFramesForChapter'),event=>findMoreFrames(event,c),'quiet story-chapter-find-frames');
+        find.dataset.chapterId=c.id;find.setAttribute('aria-haspopup','dialog');section.append(find);
+      }
       if(draftPreparation.proposal?.chapters.some(proposed=>proposed.id===c.id)){const origin=node('p',text('storyDraftAIProse'),'story-draft-prose-origin');origin.dataset.storyWord='storyDraftAIProse';section.append(origin);}
       const bodyLabel=node('label',text('narration')),body=node('textarea');body.value=c.narration;body.maxLength=6000;body.rows=5;
       if(guideCurrent())body.placeholder=text('guideNarrativePlaceholder');
