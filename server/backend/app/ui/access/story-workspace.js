@@ -732,6 +732,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.en,{undoFrameAppend:'Undo last add',frameAppendUndone:'Undid the last frame addition.'});
   Object.assign(labels.zh,{relatedMediaType:'媒体类型',relatedMediaAll:'照片和视频',relatedMediaImage:'只看照片',relatedMediaVideo:'只看视频'});
   Object.assign(labels.en,{relatedMediaType:'Media type',relatedMediaAll:'Photos and videos',relatedMediaImage:'Photos only',relatedMediaVideo:'Videos only'});
+  Object.assign(labels.zh,{relatedChapterScope:'拍摄日期来源',relatedAllChapters:'故事中的所有画面',relatedChapter:n=>`第 ${n} 章`,relatedAddToChapter:'加入本章'});
+  Object.assign(labels.en,{relatedChapterScope:'Match dates from',relatedAllChapters:'All selected frames',relatedChapter:n=>`Chapter ${n}`,relatedAddToChapter:'Add to chapter'});
   Object.assign(labels.zh,{findFramesForChapter:'为本章查找画面',framesAddedToChapter:'已将新画面添加到所选章节。'});
   Object.assign(labels.en,{findFramesForChapter:'Find frames for this chapter',framesAddedToChapter:'New frames added to the selected chapter.'});
   Object.assign(labels.zh,{removeChapterFrame:'移除画面',removeChapterFrameNamed:id=>`移除画面 ${id}`,frameRemoveWorking:'正在核对剩余画面…',frameRemoved:'已从草稿中移除画面。',frameRemoveFailed:'暂时无法移除这张画面，草稿仍保留。',frameRemoveSources:'请先取消选择只与这张画面关联的来源。',undoFrameRemoval:'撤销刚移除的画面',frameRemovalUndone:'已撤销刚才移除的画面。'});
@@ -746,7 +748,20 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   let relatedEpoch=0,relatedView=null,relatedRenderedResult=null,lastFrameEdit=null;
   function clearRelated(){relatedEpoch++;relatedView=null;relatedRenderedResult=null;$('story-related-items').replaceChildren();$('story-related-status').textContent='';$('story-related-more').hidden=true;}
   const relatedMedia=()=>$('story-related-media')?.value||'all';
-  function relatedCurrent(view){return relatedView===view&&view.media===relatedMedia()&&current(view.ticket,view.owner)&&$('story-workspace').open;}
+  const relatedChapter=()=>draft?.chapters.find(chapter=>chapter.id===$('story-related-chapter').value)||null;
+  function syncRelatedChapterFilter(){
+    const select=$('story-related-chapter'),chapters=draft?.chapters||[];
+    const visible=chapters.length>1,key=JSON.stringify([scope().language,chapters.map(chapter=>chapter.id)]);
+    if(select.dataset.options!==key){
+      const previous=select.value;
+      const options=visible?chapters.map((chapter,index)=>new Option(text('relatedChapter')(index+1),chapter.id)):[];
+      select.replaceChildren(new Option(text('relatedAllChapters'),'all'),...options);
+      if(options.some(option=>option.value===previous))select.value=previous;
+      select.dataset.options=key;
+    }
+    select.parentElement.hidden=!visible;
+  }
+  function relatedCurrent(view){return relatedView===view&&view.media===relatedMedia()&&view.section===relatedChapter()&&current(view.ticket,view.owner)&&$('story-workspace').open;}
   function relatedRecordedDay(value){
     if(typeof value!=='string'||value.length>128)return null;
     const parts=/^([0-9]{4}-[0-9]{2}-[0-9]{2})(?:[T ]([0-9]{2}):([0-9]{2})(?::([0-9]{2})(?:\.[0-9]{1,6})?)?(?:Z|[+-]([0-9]{2}):?([0-9]{2}))?)?$/.exec(value);
@@ -773,9 +788,13 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     return !value.has_more||(!before||BigInt(value.next_before_id)<BigInt(before))&&(!value.items.length||BigInt(value.next_before_id)<=prior);
   }
   function renderRelated(){
+    syncRelatedChapterFilter();
+    if(relatedView&&relatedView.section!==relatedChapter())clearRelated();
     const view=relatedView,result=view?.result??null,root=$('story-related-items');
     const pending=Boolean(view?.busy||view?.adding);
-    const filter=$('story-related-media');if(filter)filter.disabled=frozen()||sourceRefreshPending||Boolean(view?.adding);
+    const filterDisabled=frozen()||sourceRefreshPending||Boolean(view?.adding);
+    $('story-related-chapter').disabled=filterDisabled;
+    const filter=$('story-related-media');if(filter)filter.disabled=filterDisabled;
     $('story-related-find').disabled=frozen()||sourceRefreshPending||!selected.size||pending;
     $('story-related-more').hidden=!result?.has_more;
     $('story-related-more').disabled=frozen()||sourceRefreshPending||pending||!view?.seeds.every(id=>selected.has(id));
@@ -792,16 +811,16 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(!view)return;
     const status=$('story-related-status'),message=text(view.adding?'relatedDayAdding':view.addError?'relatedDayAddFailed':view.busy?'relatedDayWorking':view.error?'relatedDayFailed':result?.items.length?'relatedDayMatch':'relatedDayEmpty');
     if(status.textContent!==message)status.textContent=message;
-    const cannotAdd=frameSearchBlocked()||pending||frameSearchLimit()<=0;
+    const cannotAdd=frameSearchBlocked()||pending||frameSearchLimit(view.section)<=0;
     for(const add of root.querySelectorAll('button[data-related-id]')){
-      const added=selected.has(add.dataset.relatedId),label=text(added?'relatedDayAdded':'relatedDayAdd');
+      const added=selected.has(add.dataset.relatedId),label=text(added?'relatedDayAdded':view.section?'relatedAddToChapter':'relatedDayAdd');
       if(add.textContent!==label)add.textContent=label;
       add.disabled=cannotAdd||added;
     }
   }
   async function addRelatedFrame(view,item,trigger){
     if(!relatedCurrent(view)||view.busy||view.adding||!view.result.items.includes(item)||selected.has(item.id))return;
-    const target=frameAppendTarget({related:view});if(!target)return;
+    const target=frameAppendTarget({related:view,section:view.section});if(!target)return;
     const restoreFocus=document.activeElement===trigger;
     view.adding=item.id;view.addError=false;renderRelated();syncFrameSearch();
     const active=()=>relatedCurrent(view)&&view.adding===item.id;
@@ -825,11 +844,12 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   async function findRelated(more=false){
     if(!relatedRequest||frozen()||sourceRefreshPending||scope().locked||!selected.size||relatedView?.busy||relatedView?.adding)return;
-    const media=relatedMedia();
-    const owner={...scope()},ticket=generation,seeds=more?relatedView?.seeds:items.filter(item=>selected.has(item.id)).map(item=>item.id),before=more?relatedView?.result?.next_before_id:'';
-    if(!seeds||more&&(!relatedView?.result?.has_more||relatedView.media!==media||!seeds.every(id=>selected.has(id))))return;
+    const media=relatedMedia(),section=relatedChapter();
+    const owner={...scope()},ticket=generation,before=more?relatedView?.result?.next_before_id:'';
+    const seeds=more?relatedView?.seeds:section?.asset_ids.slice()||items.filter(item=>selected.has(item.id)).map(item=>item.id);
+    if(!seeds||more&&(!relatedView?.result?.has_more||relatedView.media!==media||relatedView.section!==section||!seeds.every(id=>selected.has(id))))return;
     const selection=JSON.stringify(items.filter(item=>selected.has(item.id)).map(item=>item.id)),epoch=++relatedEpoch;
-    const view={owner,ticket,seeds,media,busy:true,result:more?relatedView.result:null,error:false};relatedView=view;renderRelated();
+    const view={owner,ticket,seeds,media,section,busy:true,result:more?relatedView.result:null,error:false};relatedView=view;renderRelated();
     try{
       const result=await relatedRequest({asset_ids:seeds.join(','),before_id:before},media);
       if(!relatedCurrent(view)||relatedEpoch!==epoch)return;
@@ -980,15 +1000,16 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const result=await request({asset_ids:assetIds.join(','),theme:story.theme,language:story.language,title:''});
     return validDraft(result,assetIds,owner)&&result.saved===false&&result.theme===story.theme&&result.language===story.language?result:null;
   }
-  function applyFrameEdit(nextItems,assetIds,nextDraft,{related=false,kind='add'}={}){
+  function applyFrameEdit(nextItems,assetIds,nextDraft,{related=null,kind='add'}={}){
     const before={items,selected,draft,page:selectionPage,dirty,downloaded,sourceAcknowledged:sourceRefreshAcknowledged};
     items=nextItems;selected=new Set(assetIds);
-    if(related)selectionPage=Math.floor((items.length-1)/8);
+    if(related)selectionPage=Math.floor(Math.max(0,items.findIndex(item=>item.id===related.adding))/8);
     else clearRelated();
     if(nextDraft){
       const freshItems=new Map(nextDraft.items.map(item=>[item.id,item]));
       items=items.map(item=>freshItems.get(item.id)||item);
       draft=nextDraft;dirty=true;downloaded=false;
+      if(related?.section)related.section=draft.chapters.find(section=>section.id===related.section.id);
       invalidateTitles();invalidateSourceReviewAcknowledgement();renderFrameEdits();
     }
     lastFrameEdit={before,owner:{...scope()},ticket:generation,afterItems:items,afterSelection:selected,afterDraft:draft,snapshot:frameUndoSnapshot(),kind};
@@ -1035,7 +1056,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const retained=pool.filter(item=>!additions.has(item.id));
       const poolIndex=section?retained.findIndex(item=>item.id===anchor)+1:retained.length;
       const nextItems=[...retained.slice(0,poolIndex),...additions.values(),...retained.slice(poolIndex)];
-      applyFrameEdit(nextItems,expected,nextDraft,{related:!!related});
+      applyFrameEdit(nextItems,expected,nextDraft,{related});
       message(section?'framesAddedToChapter':'frameSearchAdded');
       return true;
     }};
@@ -2595,7 +2616,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   $('story-workspace-close').addEventListener('click',()=>$('story-workspace').close());
   $('story-find-more-frames')?.addEventListener('click',findMoreFrames);
   $('story-undo-frames')?.addEventListener('click',undoFrameEdit);
-  $('story-related-media')?.addEventListener('change',()=>{
+  for(const id of ['story-related-media','story-related-chapter'])$(id).addEventListener('change',()=>{
     if(frozen()||sourceRefreshPending||relatedView?.adding||!relatedView)return;
     clearRelated();void findRelated();
   });
