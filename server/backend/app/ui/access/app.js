@@ -444,7 +444,7 @@
   const faceState={page:1,total:0,load:0};
   const albumState={page:1,total:0,load:0,draft:null,archivedLoad:0};
   const photoState={image:null,surface:null,mode:'fit',scale:1,drag:null};
-  const sequenceState={items:[],index:0,origin:'single',playing:false,timer:null,busy:false,frameSearch:null};
+  const sequenceState={items:[],index:0,origin:'single',playing:false,timer:null,busy:false,frameSearch:null,relatedPreview:null};
   const transferState={selected:new Map(),source:null,destinations:[],review:null,busy:false,load:0,canMove:null};
   Object.assign(words.en,{viewPrevious:'Previous photo',viewNext:'Next photo',viewPlay:'Play slideshow',viewPause:'Pause slideshow',viewInterval:'Each preview',viewPage:'This page',viewAlbum:'This album',viewSequenceHelp:'Slideshow uses these previews only; videos are shown as still previews.'});
   Object.assign(words.zh,{viewPrevious:'上一张',viewNext:'下一张',viewPlay:'播放幻灯片',viewPause:'暂停幻灯片',viewInterval:'每张预览',viewPage:'当前页',viewAlbum:'当前相册',viewSequenceHelp:'幻灯片仅播放此组预览，视频显示为静态预览。'});
@@ -495,11 +495,12 @@
   function storyStatus(key){$('story-status').textContent=key?t(key):'';}
   function abandonStory(){return !storyState.busy&&(!storyState.dirty||window.confirm(t('unsavedStory')))&&(storyWorkspace?.canLeave()??true)&&(memoryGroups?.canLeave()??true);}
   function canLeaveViewer(){
-    if(!assistantFrameSearchItemCurrent(sequenceState.frameSearch,storyState.asset))return abandonStory();
+    if(!sequenceState.relatedPreview?.isCurrent()&&!assistantFrameSearchItemCurrent(sequenceState.frameSearch,storyState.asset))return abandonStory();
     return !storyState.busy&&(!storyState.dirty||window.confirm(t('unsavedStory')))&&(memoryGroups?.canLeave()??true);
   }
   function closeViewerFromUI(){
     const context=sequenceState.frameSearch,returnToSearch=assistantFrameSearchItemCurrent(context,storyState.asset);
+    const related=sequenceState.relatedPreview;
     if(!canLeaveViewer())return;
     closeViewer();
     if(returnToSearch&&assistantStoryAddTargetCurrent(context.entry)){
@@ -507,6 +508,7 @@
       $('assistant-workspace-content').scrollTop=context.scrollTop;
       if(context.returnFocus?.isConnected)context.returnFocus.focus({preventScroll:true});
     }else if(context&&assistantStoryTarget===context.entry)closeAssistantWorkspace({restoreFocus:false,restoreScroll:false});
+    else if(related?.isCurrent()&&related.trigger.isConnected)related.trigger.focus({preventScroll:true});
   }
   function resetStoryEditor(){
     storyState.editing=null;storyState.dirty=false;storyState.pending=null;
@@ -559,7 +561,9 @@
     memoryGroups?.clear();storyState.notes=[];
     if(state.videoRetryTimer){clearTimeout(state.videoRetryTimer);state.videoRetryTimer=null;}
     if(state.videoController){state.videoController.abort();state.videoController=null;}
-    stopSlideshow();sequenceState.items=[];sequenceState.index=0;sequenceState.busy=false;if(!keepFrame)sequenceState.frameSearch=null;updateSequence();
+    stopSlideshow();sequenceState.items=[];sequenceState.index=0;sequenceState.busy=false;
+    if(!keepFrame){sequenceState.frameSearch=null;sequenceState.relatedPreview=null;}
+    updateSequence();
     resetPhotoView(keepFrame);
     faceState.load++;faceState.page=1;$('face-list').replaceChildren();$('face-panel').hidden=true;$('face-panel').open=false;$('face-status').textContent='';$('face-pages').hidden=true;
     storyState.asset=null;storyState.load++;storyState.history++;storyState.loading=false;storyState.deletes.clear();resetStoryEditor();
@@ -2588,14 +2592,14 @@
     const next=s.index+delta;
     if(next<0||next>=s.items.length){stopSlideshow();return;}
     const {items,origin}=s;
-    await openAsset(items[next],{sequence:items,origin,advance:true,play:automatic&&s.playing,frameSearch:s.frameSearch});
+    await openAsset(items[next],{sequence:items,origin,advance:true,play:automatic&&s.playing,frameSearch:s.frameSearch,relatedPreview:s.relatedPreview});
   }
-  async function openAsset(item,{sequence=[item],origin='single',advance=false,play=false,frameSearch=null}={}) {
-    if(state.locked)return;
+  async function openAsset(item,{sequence=[item],origin='single',advance=false,play=false,frameSearch=null,relatedPreview=null}={}) {
+    if(state.locked||relatedPreview&&!relatedPreview.isCurrent())return;
     closeAssistantWorkspace({restoreFocus:false,restoreScroll:false,preserveFrameSearch:!!frameSearch});
     const epoch=state.generation;
     closeViewer({keepFrame:advance});storyState.asset=item;storyState.page=1;
-    sequenceState.items=sequence.slice();sequenceState.index=Math.max(0,sequence.findIndex(asset=>asset.id===item.id));sequenceState.origin=origin;sequenceState.busy=true;sequenceState.playing=play;sequenceState.frameSearch=frameSearch;updateSequence();
+    sequenceState.items=sequence.slice();sequenceState.index=Math.max(0,sequence.findIndex(asset=>asset.id===item.id));sequenceState.origin=origin;sequenceState.busy=true;sequenceState.playing=play;sequenceState.frameSearch=frameSearch;sequenceState.relatedPreview=relatedPreview;updateSequence();
     const viewerGeneration=state.viewerGeneration;if(!$('viewer').open)$('viewer').showModal();$('viewer-title').textContent=assetLabel(item);syncViewerStoryChoice();
     $('photo-viewer').hidden=false;$('view-quality').textContent=t('loading');
     void loadStories();
@@ -4432,6 +4436,7 @@
     request:body=>request(libraryPath('/story-workspace/preview'),{method:'POST',body,epoch:state.generation}),
     openFrameSearch:openAssistantFrameSearch,
     relatedRequest:(body,media='all')=>request(libraryPath('/story-workspace/related-media',media==='all'?{}:{media}),{method:'POST',body,epoch:state.generation}),
+    openRelatedAsset:(item,relatedPreview)=>{void openAsset(item,{sequence:relatedPreview.items,origin:'page',relatedPreview});},
     draftRequest:(path,{library=state.library,account=state.profile?.account_id,...options}={})=>{
       if(!['/story-workspace/drafts/capabilities','/story-workspace/drafts/prepare','/story-workspace/drafts/cancel'].includes(path))throw new Error('Invalid draft route');
       if(account!==state.profile?.account_id||!account||!library||(path!=='/story-workspace/drafts/cancel'&&library!==state.library))throw new DOMException('Stale draft scope','AbortError');
@@ -4531,9 +4536,9 @@
     if(!Number.isInteger(index)||index===sequenceState.index)return;
     if(!canLeaveViewer())return;
     stopSlideshow();
-    const {items,origin,frameSearch}=sequenceState;
+    const {items,origin,frameSearch,relatedPreview}=sequenceState;
     if(index<0||index>=items.length)return;
-    void openAsset(items[index],{sequence:items,origin,advance:true,frameSearch});
+    void openAsset(items[index],{sequence:items,origin,advance:true,frameSearch,relatedPreview});
   });
   for(const mode of ['fit','width','height','actual'])$('view-'+mode).addEventListener('click',()=>fitPhoto(mode));
   $('view-in').addEventListener('click',()=>zoomPhoto(1.25));$('view-out').addEventListener('click',()=>zoomPhoto(0.8));

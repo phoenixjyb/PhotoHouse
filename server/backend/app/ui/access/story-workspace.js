@@ -1,6 +1,6 @@
 'use strict';
 /* Library-private editorial workspace; publication uses protected APIs only. */
-window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError, openAssistant, openFrameSearch, savedRequest, draftRequest, community, titleRequest, relatedRequest, sourceAccessCheck, capture, voiceCapabilities, transcribe, canCapture=()=>true, reserveCapture=()=>null, claimCapture=()=>false, releaseCapture=()=>{}, stopAudioForCapture=()=>{}}) => {
+window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError, openAssistant, openFrameSearch, openRelatedAsset, savedRequest, draftRequest, community, titleRequest, relatedRequest, sourceAccessCheck, capture, voiceCapabilities, transcribe, canCapture=()=>true, reserveCapture=()=>null, claimCapture=()=>false, releaseCapture=()=>{}, stopAudioForCapture=()=>{}}) => {
   const $ = id => document.getElementById(id);
   const themes = ['everyday','trip','growing_up','birthday','grandparents','year_in_review'];
   const labels = {
@@ -734,6 +734,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.en,{relatedMediaType:'Media type',relatedMediaAll:'Photos and videos',relatedMediaImage:'Photos only',relatedMediaVideo:'Videos only'});
   Object.assign(labels.zh,{relatedChapterScope:'拍摄日期来源',relatedAllChapters:'故事中的所有画面',relatedChapter:n=>`第 ${n} 章`,relatedAddToChapter:'加入本章'});
   Object.assign(labels.en,{relatedChapterScope:'Match dates from',relatedAllChapters:'All selected frames',relatedChapter:n=>`Chapter ${n}`,relatedAddToChapter:'Add to chapter'});
+  Object.assign(labels.zh,{relatedPreview:'预览',relatedPreviewNamed:id=>`预览画面 ${id}`});
+  Object.assign(labels.en,{relatedPreview:'Preview',relatedPreviewNamed:id=>`Preview frame ${id}`});
   Object.assign(labels.zh,{findFramesForChapter:'为本章查找画面',framesAddedToChapter:'已将新画面添加到所选章节。'});
   Object.assign(labels.en,{findFramesForChapter:'Find frames for this chapter',framesAddedToChapter:'New frames added to the selected chapter.'});
   Object.assign(labels.zh,{removeChapterFrame:'移除画面',removeChapterFrameNamed:id=>`移除画面 ${id}`,frameRemoveWorking:'正在核对剩余画面…',frameRemoved:'已从草稿中移除画面。',frameRemoveFailed:'暂时无法移除这张画面，草稿仍保留。',frameRemoveSources:'请先取消选择只与这张画面关联的来源。',undoFrameRemoval:'撤销刚移除的画面',frameRemovalUndone:'已撤销刚才移除的画面。'});
@@ -748,9 +750,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   let relatedEpoch=0,relatedView=null,relatedRenderedResult=null,lastFrameEdit=null;
   function clearRelated(){relatedEpoch++;relatedView=null;relatedRenderedResult=null;$('story-related-items').replaceChildren();$('story-related-status').textContent='';$('story-related-more').hidden=true;}
   const relatedMedia=()=>$('story-related-media')?.value||'all';
-  const relatedChapter=()=>draft?.chapters.find(chapter=>chapter.id===$('story-related-chapter').value)||null;
+  const relatedChapter=()=>draft?.chapters.find(chapter=>chapter.id===$('story-related-chapter')?.value)||null;
   function syncRelatedChapterFilter(){
     const select=$('story-related-chapter'),chapters=draft?.chapters||[];
+    if(!select)return;
     const visible=chapters.length>1,key=JSON.stringify([scope().language,chapters.map(chapter=>chapter.id)]);
     if(select.dataset.options!==key){
       const previous=select.value;
@@ -793,7 +796,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const view=relatedView,result=view?.result??null,root=$('story-related-items');
     const pending=Boolean(view?.busy||view?.adding);
     const filterDisabled=frozen()||sourceRefreshPending||Boolean(view?.adding);
-    $('story-related-chapter').disabled=filterDisabled;
+    const chapterFilter=$('story-related-chapter');if(chapterFilter)chapterFilter.disabled=filterDisabled;
     const filter=$('story-related-media');if(filter)filter.disabled=filterDisabled;
     $('story-related-find').disabled=frozen()||sourceRefreshPending||!selected.size||pending;
     $('story-related-more').hidden=!result?.has_more;
@@ -804,7 +807,16 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         const label=node('p',`${item.kind==='video'?'▶ ':''}${item.id} · ${item.taken_at.slice(0,10)}`);
         const add=button('',()=>{if(relatedView?.result===result)void addRelatedFrame(relatedView,item,add);});
         add.dataset.relatedId=item.id;
-        card.append(img,label,add);return card;
+        const actions=node('div',undefined,'story-related-card-actions');
+        if(openRelatedAsset){
+          const preview=button('',event=>{
+            const view=relatedView,trigger=event.currentTarget;
+            const isCurrent=()=>trigger.isConnected&&view?.result===result&&relatedCurrent(view);
+            if(isCurrent()&&!view.busy&&!view.adding)openRelatedAsset(item,{isCurrent,trigger,items:result.items});
+          },'quiet story-related-preview');
+          preview.dataset.previewId=item.id;preview.setAttribute('aria-haspopup','dialog');actions.append(preview);
+        }
+        actions.append(add);card.append(img,label,actions);return card;
       });
       root.replaceChildren(...cards);relatedRenderedResult=result;
     }
@@ -812,6 +824,11 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const status=$('story-related-status'),message=text(view.adding?'relatedDayAdding':view.addError?'relatedDayAddFailed':view.busy?'relatedDayWorking':view.error?'relatedDayFailed':result?.items.length?'relatedDayMatch':'relatedDayEmpty');
     if(status.textContent!==message)status.textContent=message;
     const cannotAdd=frameSearchBlocked()||pending||frameSearchLimit(view.section)<=0;
+    for(const preview of root.querySelectorAll('.story-related-preview')){
+      const label=text('relatedPreview');if(preview.textContent!==label)preview.textContent=label;
+      preview.setAttribute('aria-label',text('relatedPreviewNamed')(preview.dataset.previewId));
+      preview.disabled=pending||scope().locked;
+    }
     for(const add of root.querySelectorAll('button[data-related-id]')){
       const added=selected.has(add.dataset.relatedId),label=text(added?'relatedDayAdded':view.section?'relatedAddToChapter':'relatedDayAdd');
       if(add.textContent!==label)add.textContent=label;
@@ -2629,7 +2646,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   $('story-workspace-close').addEventListener('click',()=>$('story-workspace').close());
   $('story-find-more-frames')?.addEventListener('click',findMoreFrames);
   $('story-undo-frames')?.addEventListener('click',undoFrameEdit);
-  for(const id of ['story-related-media','story-related-chapter'])$(id).addEventListener('change',()=>{
+  for(const id of ['story-related-media','story-related-chapter'])$(id)?.addEventListener('change',()=>{
     if(frozen()||sourceRefreshPending||relatedView?.adding||!relatedView)return;
     clearRelated();void findRelated();
   });
