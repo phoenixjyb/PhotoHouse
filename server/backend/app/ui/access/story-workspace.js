@@ -734,8 +734,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.en,{relatedMediaType:'Media type',relatedMediaAll:'Photos and videos',relatedMediaImage:'Photos only',relatedMediaVideo:'Videos only'});
   Object.assign(labels.zh,{findFramesForChapter:'为本章查找画面',framesAddedToChapter:'已将新画面添加到所选章节。'});
   Object.assign(labels.en,{findFramesForChapter:'Find frames for this chapter',framesAddedToChapter:'New frames added to the selected chapter.'});
-  let relatedEpoch=0,relatedView=null,lastFrameAppend=null;
-  function clearRelated(){relatedEpoch++;relatedView=null;$('story-related-items').replaceChildren();$('story-related-status').textContent='';$('story-related-more').hidden=true;}
+  let relatedEpoch=0,relatedView=null,relatedRenderedResult=null,lastFrameAppend=null;
+  function clearRelated(){relatedEpoch++;relatedView=null;relatedRenderedResult=null;$('story-related-items').replaceChildren();$('story-related-status').textContent='';$('story-related-more').hidden=true;}
   const relatedMedia=()=>$('story-related-media')?.value||'all';
   function relatedCurrent(view){return relatedView===view&&view.media===relatedMedia()&&current(view.ticket,view.owner)&&$('story-workspace').open;}
   function relatedRecordedDay(value){
@@ -764,20 +764,30 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     return !value.has_more||(!before||BigInt(value.next_before_id)<BigInt(before))&&(!value.items.length||BigInt(value.next_before_id)<=prior);
   }
   function renderRelated(){
-    const view=relatedView,root=$('story-related-items');root.replaceChildren();
+    const view=relatedView,result=view?.result??null,root=$('story-related-items');
     const pending=Boolean(view?.busy||view?.adding);
     const filter=$('story-related-media');if(filter)filter.disabled=frozen()||sourceRefreshPending||Boolean(view?.adding);
     $('story-related-find').disabled=frozen()||sourceRefreshPending||!selected.size||pending;
-    $('story-related-more').hidden=!view?.result?.has_more;
+    $('story-related-more').hidden=!result?.has_more;
     $('story-related-more').disabled=frozen()||sourceRefreshPending||pending||!view?.seeds.every(id=>selected.has(id));
+    if(relatedRenderedResult!==result){
+      const cards=(result?.items||[]).map(item=>{
+        const card=node('article',undefined,'story-related-card'),img=node('img');img.src=mediaURL(item.id,'thumbnail');img.alt='';img.loading='lazy';
+        const label=node('p',`${item.kind==='video'?'▶ ':''}${item.id} · ${item.taken_at.slice(0,10)}`);
+        const add=button('',()=>{if(relatedView?.result===result)void addRelatedFrame(relatedView,item,add);});
+        add.dataset.relatedId=item.id;
+        card.append(img,label,add);return card;
+      });
+      root.replaceChildren(...cards);relatedRenderedResult=result;
+    }
     if(!view)return;
-    $('story-related-status').textContent=text(view.adding?'relatedDayAdding':view.addError?'relatedDayAddFailed':view.busy?'relatedDayWorking':view.error?'relatedDayFailed':view.result?.items.length?'relatedDayMatch':'relatedDayEmpty');
-    for(const item of view.result?.items||[]){
-      const card=node('article',undefined,'story-related-card'),img=node('img');img.src=mediaURL(item.id,'thumbnail');img.alt='';img.loading='lazy';
-      const label=node('p',`${item.kind==='video'?'▶ ':''}${item.id} · ${item.taken_at.slice(0,10)}`);
-      const add=button(text(selected.has(item.id)?'relatedDayAdded':'relatedDayAdd'),()=>void addRelatedFrame(view,item,add));
-      add.dataset.relatedId=item.id;add.disabled=frameSearchBlocked()||pending||selected.has(item.id)||frameSearchLimit()<=0;
-      card.append(img,label,add);root.append(card);
+    const status=$('story-related-status'),message=text(view.adding?'relatedDayAdding':view.addError?'relatedDayAddFailed':view.busy?'relatedDayWorking':view.error?'relatedDayFailed':result?.items.length?'relatedDayMatch':'relatedDayEmpty');
+    if(status.textContent!==message)status.textContent=message;
+    const cannotAdd=frameSearchBlocked()||pending||frameSearchLimit()<=0;
+    for(const add of root.querySelectorAll('button[data-related-id]')){
+      const added=selected.has(add.dataset.relatedId),label=text(added?'relatedDayAdded':'relatedDayAdd');
+      if(add.textContent!==label)add.textContent=label;
+      add.disabled=cannotAdd||added;
     }
   }
   async function addRelatedFrame(view,item,trigger){
@@ -797,8 +807,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     }finally{
       if(active()){
         view.adding=null;renderRelated();syncFrameSearch();
-        if(restoreFocus&&document.activeElement===document.body){
-          const next=$('story-related-items').querySelector('button:not([disabled])')||$('story-selection-count');
+        if(restoreFocus&&(document.activeElement===document.body||document.activeElement===trigger)){
+          const next=!trigger.disabled?trigger:$('story-related-items').querySelector('button:not([disabled])')||$('story-selection-count');
           next.focus({preventScroll:true});
         }
       }
