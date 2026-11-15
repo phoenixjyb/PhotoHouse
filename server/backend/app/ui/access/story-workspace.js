@@ -726,6 +726,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.en,{relatedDayHeading:'More moments from the same day',relatedDayHelp:'Find by recorded capture date. Sharing a day does not establish a shared activity; choose which moments belong.',relatedDayFind:'Find moments from these days',relatedDayMore:'Keep looking',relatedDayWorking:'Finding moments from the same recorded days…',relatedDayEmpty:'No other moments found. Missing capture dates are never inferred from filenames or upload dates.',relatedDayFailed:'Could not find moments. Your selection and draft are kept.',relatedDayAdd:'Add to story',relatedDayAdded:'Added',relatedDayMatch:'Same recorded capture day · review'});
   Object.assign(labels.zh,{findMoreFrames:'查找更多画面',frameSearchChapter:n=>`第 ${n} 章`,frameSearchAdded:'已将新画面添加到故事末尾。',frameSearchChapterFull:'当前章节分组没有空间追加画面。'});
   Object.assign(labels.en,{findMoreFrames:'Find more frames',frameSearchChapter:n=>`Chapter ${n}`,frameSearchAdded:'New frames added at the end of the story.',frameSearchChapterFull:'There is no room to append frames with the current chapter layout.'});
+  Object.assign(labels.zh,{relatedDayAdding:'正在核对要加入的画面…',relatedDayAddFailed:'暂时无法添加这张画面，草稿仍保留。'});
+  Object.assign(labels.en,{relatedDayAdding:'Checking the frame to add…',relatedDayAddFailed:'Could not add this frame. Your draft is kept.'});
   let relatedEpoch=0,relatedView=null;
   function clearRelated(){relatedEpoch++;relatedView=null;$('story-related-items').replaceChildren();$('story-related-status').textContent='';$('story-related-more').hidden=true;}
   function relatedCurrent(view){return relatedView===view&&current(view.ticket,view.owner)&&$('story-workspace').open;}
@@ -756,29 +758,46 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   function renderRelated(){
     const view=relatedView,root=$('story-related-items');root.replaceChildren();
-    $('story-related-find').disabled=frozen()||sourceRefreshPending||!selected.size||Boolean(view?.busy);
+    const pending=Boolean(view?.busy||view?.adding);
+    $('story-related-find').disabled=frozen()||sourceRefreshPending||!selected.size||pending;
     $('story-related-more').hidden=!view?.result?.has_more;
-    $('story-related-more').disabled=frozen()||sourceRefreshPending||Boolean(view?.busy)||!view?.seeds.every(id=>selected.has(id));
+    $('story-related-more').disabled=frozen()||sourceRefreshPending||pending||!view?.seeds.every(id=>selected.has(id));
     if(!view)return;
-    $('story-related-status').textContent=text(view.busy?'relatedDayWorking':view.error?'relatedDayFailed':view.result?.items.length?'relatedDayMatch':'relatedDayEmpty');
+    $('story-related-status').textContent=text(view.adding?'relatedDayAdding':view.addError?'relatedDayAddFailed':view.busy?'relatedDayWorking':view.error?'relatedDayFailed':view.result?.items.length?'relatedDayMatch':'relatedDayEmpty');
     for(const item of view.result?.items||[]){
       const card=node('article',undefined,'story-related-card'),img=node('img');img.src=mediaURL(item.id,'thumbnail');img.alt='';img.loading='lazy';
-      const label=node('p',`${item.kind==='video'?'▶ ':''}${item.id} · ${item.taken_at.slice(0,10)}`),add=button(text(selected.has(item.id)?'relatedDayAdded':'relatedDayAdd'),()=>{
-        if(!relatedCurrent(view)||view.busy||frozen()||sourceRefreshPending||selected.has(item.id))return;
-        if(selected.size>=24){message('selectionLimit');return;}
-        if(!canDiscard())return;
-        // Explicit inclusion changes only this volatile selection. The normal
-        // preview will reload all current family/AI evidence before saving.
-        clearDraftProposal(null,false,false);
-        items=items.filter(existing=>existing.id!==item.id);items.push(item);selected.add(item.id);selectionPage=Math.floor((items.length-1)/8);
-        invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;
-        $('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');renderSelection();
-      });add.dataset.relatedId=item.id;add.disabled=frozen()||sourceRefreshPending||view.busy||selected.has(item.id)||selected.size>=24;
+      const label=node('p',`${item.kind==='video'?'▶ ':''}${item.id} · ${item.taken_at.slice(0,10)}`);
+      const add=button(text(selected.has(item.id)?'relatedDayAdded':'relatedDayAdd'),()=>void addRelatedFrame(view,item,add));
+      add.dataset.relatedId=item.id;add.disabled=frameSearchBlocked()||pending||selected.has(item.id)||frameSearchLimit()<=0;
       card.append(img,label,add);root.append(card);
     }
   }
+  async function addRelatedFrame(view,item,trigger){
+    if(!relatedCurrent(view)||view.busy||view.adding||!view.result.items.includes(item)||selected.has(item.id))return;
+    const target=frameAppendTarget(view);if(!target)return;
+    const restoreFocus=document.activeElement===trigger;
+    view.adding=item.id;view.addError=false;renderRelated();syncFrameSearch();
+    const active=()=>relatedCurrent(view)&&view.adding===item.id;
+    try{
+      const appended=await target.append([item],active);
+      if(active())view.addError=!appended;
+    }catch(error){
+      if(active()){
+        view.addError=true;
+        if([401,403].includes(error?.status))onError(error);
+      }
+    }finally{
+      if(active()){
+        view.adding=null;renderRelated();syncFrameSearch();
+        if(restoreFocus&&document.activeElement===document.body){
+          const next=$('story-related-items').querySelector('button:not([disabled])')||$('story-selection-count');
+          next.focus({preventScroll:true});
+        }
+      }
+    }
+  }
   async function findRelated(more=false){
-    if(!relatedRequest||frozen()||sourceRefreshPending||scope().locked||!selected.size||relatedView?.busy)return;
+    if(!relatedRequest||frozen()||sourceRefreshPending||scope().locked||!selected.size||relatedView?.busy||relatedView?.adding)return;
     const owner={...scope()},ticket=generation,seeds=more?relatedView?.seeds:items.filter(item=>selected.has(item.id)).map(item=>item.id),before=more?relatedView?.result?.next_before_id:'';
     if(!seeds||more&&(!relatedView?.result?.has_more||!seeds.every(id=>selected.has(id))))return;
     const selection=JSON.stringify(items.filter(item=>selected.has(item.id)).map(item=>item.id)),epoch=++relatedEpoch;
@@ -876,17 +895,17 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function syncFrameSearch(){
     const trigger=$('story-find-more-frames');if(!trigger)return;
     const limit=frameSearchLimit();
-    trigger.disabled=!openFrameSearch||frameSearchBlocked()||limit<=0;
+    trigger.disabled=!openFrameSearch||frameSearchBlocked()||Boolean(relatedView?.adding)||limit<=0;
     $('story-find-more-limit').hidden=limit>0||selected.size>=24;
   }
-  function findMoreFrames(event){
+  function frameAppendTarget(related=null){
     const owner={...scope()},ticket=generation,story=draft,pool=items,selection=selected;
     const orderedIds=()=>items.filter(item=>selected.has(item.id)).map(item=>item.id);
     const assetIds=Object.freeze(orderedIds()),key=assetIds.join(','),limit=frameSearchLimit();
     const isCurrent=()=>current(ticket,owner)&&$('story-workspace').open&&draft===story&&items===pool&&selected===selection&&
       !frameSearchBlocked()&&orderedIds().join(',')===key;
     if(!owner.account||!owner.library||limit<=0||!isCurrent())return;
-    openFrameSearch?.({assetIds,limit,isCurrent,append:async(chosen,isHandoffCurrent)=>{
+    return {assetIds,limit,isCurrent,append:async(chosen,isHandoffCurrent)=>{
       if(!isCurrent()||!isHandoffCurrent())return false;
       const additions=new Map(),existing=new Set(assetIds);
       for(const item of chosen){
@@ -917,7 +936,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       // Move any reselected pool entries to the end in the user's new pick order.
       items=[...pool.filter(item=>!additions.has(item.id)),...additions.values()];
       selected=new Set(expected);
-      clearRelated();
+      if(related)selectionPage=Math.floor((items.length-1)/8);
+      else clearRelated();
       if(nextDraft){
         const direction=$('story-draft-preparation')?.querySelector('.story-draft-direction')?.value;
         const freshItems=new Map(nextDraft.items.map(item=>[item.id,item]));
@@ -931,7 +951,12 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       }
       renderSelection();message('frameSearchAdded');
       return true;
-    }},event.currentTarget);
+    }};
+  }
+  function findMoreFrames(event){
+    if(relatedView?.adding)return;
+    const target=frameAppendTarget();
+    if(target)openFrameSearch?.(target,event.currentTarget);
   }
   function setSelectionCount() {
     syncStoryPreviewLabel();
@@ -2020,7 +2045,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const knownRefs=refsFor(draft);let path='/memory-stories'+(draft.id?'/'+draft.id:'');
       if(draft.saved&&draft.id&&knownRefs?.available){body.contribution_refs=JSON.stringify(draft.chapters.map(section=>({chapter_id:section.id,contribution_ids:[...(knownRefs.groups.get(section.id)||[])].map(id=>id.slice('contribution-'.length))})));path+='?contribution_refs=1';}
       if(sourceReviewOptedIn)path+=(path.includes('?')?'&':'?')+'source_review=1';
-      if(skipAutoRefinementSave?.storyId===draft.id&&skipAutoRefinementSave?.baseRevision===draft.revision)path+=(path.includes('?')?'&':'?')+'auto_refine=0';
+      if(skipAutoRefinementSave&&skipAutoRefinementSave.storyId===draft.id&&skipAutoRefinementSave.baseRevision===draft.revision)path+=(path.includes('?')?'&':'?')+'auto_refine=0';
       pendingSave={path,method:draft.id?'PUT':'POST',body};
     }
     for(const card of $('story-chapter-editor').querySelectorAll('.story-contribution-references'))closeContributionChooser(contributionCandidateViews.get(card),false);
@@ -2040,7 +2065,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
           if(!current(ticket,owner))return;
           localRecord=record;activeLocalRevision=record.revision;journalRevision=record.revision;
         }
-      }catch{if(current(ticket,owner)){busy=false;localError=true;setSelectionCount();}return;}
+      }catch{if(current(ticket,owner)){busy=false;localError=true;message('localFailed');setSelectionCount();}return;}
     }
     try{const result=await savedRequest(pending.path,{method:pending.method,body:pending.body});if(!current(ticket,owner))return;const expected=result.items?.map(i=>i.id);if(!Array.isArray(expected)||!validDraft(result,expected,owner,sourceReviewOptedIn)||!result.saved||(sourceReviewOptedIn&&result.source_policy!==SOURCE_POLICY)||(draft.id&&result.id!==draft.id))throw new Error('Invalid saved story');const newer=BigInt(result.revision)>BigInt(pending.body.revision)+1n;const savedWithRefs=Boolean(pending.body.contribution_refs);clearDraftProposal(null,false,false);draftPreparation.pending=null;draft=result;setAutoRefinementFromStory(result);skipAutoRefinementSave=null;sourceProfileLoaded=sourceReviewOptedIn;sourceReviewOptedIn=result.source_policy===SOURCE_POLICY;proposalReferenceWarnings=new Map();items=result.items;selectionPage=0;selected=new Set(expected);$('story-workspace-theme').value=result.theme;pendingSave=null;dirty=false;downloaded=false;
       if(result.id){let groups=null;const exactRevision=!newer&&BigInt(result.revision)===BigInt(pending.body.revision)+1n;if(savedWithRefs&&exactRevision)groups=new Map(JSON.parse(pending.body.contribution_refs).map(group=>[group.chapter_id,group.contribution_ids.map(id=>`contribution-${id}`)]));contributionRefs={storyId:result.id,revision:result.revision,groups,available:Boolean(groups)};}

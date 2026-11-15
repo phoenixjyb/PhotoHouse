@@ -6,7 +6,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const root=path.resolve(__dirname,'../..'),artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-related-'));
 fs.mkdirSync(artifacts,{recursive:true});
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
-let serial=0,readyResolve,readyReject,browser,ctx,hold=null,corrupt=false,fail=false;const pending=new Map(),errors=[],external=[],checks=[],requests=[];
+let serial=0,readyResolve,readyReject,browser,ctx,hold=null,holdAppend=null,corrupt=false,fail=false,failAppend=false;const pending=new Map(),errors=[],external=[],checks=[],requests=[];
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
 createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(line);if(value.ready)readyResolve();else{const item=pending.get(value.id);if(item){pending.delete(value.id);item.resolve(value);}}});
 bridge.stderr.on('data',v=>process.stderr.write(v));bridge.on('exit',code=>{if(code){readyReject(new Error('Bridge failed'));for(const item of pending.values())item.reject(new Error('Bridge failed'));}});
@@ -25,6 +25,10 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
    if(hold){const gate=hold;hold=null;gate.arrive();await gate.wait;complete=gate.complete;}
    if(corrupt){const value=JSON.parse(body);if(corrupt==='date')value.items[0].taken_at+='garbage';else value.items[0].thumbnail_url='/assets/201/thumbnail?library=family-b';body=Buffer.from(JSON.stringify(value));corrupt=false;}
    if(fail){fail=false;status=503;body=Buffer.from('{"detail":"Related moments unavailable"}');}
+  }
+  if(url.pathname==='/story-workspace/preview'){
+   if(holdAppend){const gate=holdAppend;holdAppend=null;gate.arrive();await gate.wait;}
+   if(failAppend){failAppend=false;status=503;body=Buffer.from('{"detail":"Frame preview unavailable"}');}
   }
   const output={...result.headers};delete output['content-length'];delete output['content-encoding'];try{await route.fulfill({status,headers:output,body});}catch(error){if(!/closed|handled|cancel|Invalid InterceptionId/i.test(error.message))throw error;}finally{complete?.();}
  });
@@ -50,7 +54,29 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  corrupt=true;await find.click();await page.waitForFunction(()=>document.querySelector('#story-related-status').textContent.includes('暂时'));assert.equal(await rows.count(),0);assert.equal(await page.locator('.story-chapter-card textarea').first().inputValue(),prose);
  corrupt='date';await find.click();await page.waitForFunction(()=>document.querySelector('#story-related-status').textContent.includes('暂时'));assert.equal(await rows.count(),0);assert.equal(await page.locator('.story-chapter-card textarea').first().inputValue(),prose);
  fail=true;await find.click();await page.waitForFunction(()=>!document.querySelector('#story-related-find').disabled);assert.equal(await page.locator('.story-chapter-card textarea').first().inputValue(),prose);assert.match(await page.locator('#story-selection-count').textContent(),/^2 \/ 24/);pass('Malformed date, foreign-library response and transient failure preserve edited prose and selection');
- await find.click();await rows.first().waitFor();await page.setViewportSize({width:390,height:844});await page.locator('#story-workspace').evaluate(el=>el.style.fontSize='150%');
+ await find.click();await rows.first().waitFor();
+ const title=page.locator('#story-workspace-title'),chapterTitle=page.locator('.story-chapter-card label input').first(),narration=page.locator('.story-chapter-card textarea[maxlength="6000"]').first();
+ await title.fill('同一天的家人回忆');await chapterTitle.fill('记得那一天');
+ const appendCandidate=rows.locator('button:enabled').first(),appendId=await appendCandidate.getAttribute('data-related-id');
+ failAppend=true;await appendCandidate.click();
+ await page.waitForFunction(()=>document.querySelector('#story-related-status').textContent.includes('暂时无法添加'));
+ assert.equal(await narration.inputValue(),prose);assert.match(await page.locator('#story-selection-count').textContent(),/^2 \/ 24/);
+ let arriveAppend,releaseAppend;
+ const appendReached=new Promise(resolve=>arriveAppend=resolve);
+ holdAppend={arrive:arriveAppend,wait:new Promise(resolve=>releaseAppend=resolve)};
+ await appendCandidate.click();await appendReached;
+ try{
+  assert.equal(await rows.locator('button:enabled').count(),0,'a pending add prevents a duplicate click or concurrent add');
+  await narration.fill(prose+' 我们还记得当时的笑声。');
+ }finally{releaseAppend();}
+ await page.waitForFunction(()=>document.querySelector('#story-selection-count').textContent.startsWith('3 / 24'));
+ assert.equal(JSON.parse(requests.filter(r=>r.path==='/story-workspace/preview').at(-1).body).asset_ids,`101,1129,${appendId}`);
+ assert.equal(await title.inputValue(),'同一天的家人回忆');assert.equal(await chapterTitle.inputValue(),'记得那一天');
+ assert.equal(await narration.inputValue(),prose+' 我们还记得当时的笑声。');
+ assert.equal(await rows.locator('[data-related-id="'+appendId+'"]').isDisabled(),true);
+ assert.equal(requests.filter(r=>r.method==='POST'&&r.path==='/memory-stories').length,0);
+ pass('Appending a same-day result preserves live draft edits and order after a retry without saving');
+ await page.setViewportSize({width:390,height:844});await page.locator('#story-workspace').evaluate(el=>el.style.fontSize='150%');
  for(const sel of ['#story-related','.story-related-items','.story-related-card'])assert(await page.locator(sel).first().evaluate(el=>el.scrollWidth<=el.clientWidth),sel+' fits at enlarged text');
  await page.locator('#story-related').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'related-moments-mobile-zh.png')});
  await page.evaluate(()=>window.__relatedLanguage('en'));assert.equal(await find.textContent(),'Find moments from these days');await page.screenshot({path:path.join(artifacts,'related-moments-mobile-en.png')});pass('Chinese and English picker render at 390px with 150 percent text');
