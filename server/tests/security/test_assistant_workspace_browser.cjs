@@ -239,11 +239,12 @@ async function installSyntheticTransport(targetContext){
   assert.equal(await page.locator('#assistant-text').inputValue(),'draft survives cancellation');
   cancelGate.release();await page.waitForTimeout(30);
   assert.equal(turns().length,beforeCancel+1);
-  const beforeCancelRecovery=turns().length;await page.locator('#assistant-private-recover').click();
-  await page.waitForFunction(()=>document.getElementById('assistant-private-recover').hidden||document.getElementById('assistant-private-recover').disabled);
-  assert.equal(await management.evaluate(el=>el.open),true,'canceled turn recovery stays in the expanded management section');
+  const beforeCancelRecovery=turns().length,cancelRecovery=page.locator('#assistant-private-recover');
+  await cancelRecovery.focus();await cancelRecovery.press('Enter');
+  await page.waitForFunction(()=>document.getElementById('assistant-private-recover').hidden&&document.activeElement===document.getElementById('assistant-text'));
+  assert.equal(await management.evaluate(el=>el.open),false,'successful recovery returns from automatically expanded management to the composer');
   assert.equal(turns().length,beforeCancelRecovery,'cancellation recovery is GET-only');
-  checkpoint('Cancel stops waiting and preserves the draft while the server result remains recoverable');
+  checkpoint('Cancel preserves the draft while the result is recoverable, and keyboard recovery returns focus to the composer');
 
   // A turn can be lost before it reaches the server. GET 404 remains an explicit
   // uncertainty gate: the question is preserved until the user acknowledges and

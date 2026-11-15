@@ -2354,14 +2354,23 @@
     finally{if(!stale(epoch)){assistantState.busy=false;assistantState.controller=null;privateAssistantBusy=false;renderPrivateAssistant(privateAssistant.state());syncAssistantControls();if(voiceMemoryAction&&currentAssistantVoice(voiceMemoryAction.token,binding))runAssistantMemoryAction(voiceMemoryAction.memory,voiceMemoryAction.turn,voiceMemoryAction.epoch,voiceMemoryAction.action,voiceMemoryAction.token);else if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding)&&assistantState.voiceSession.phase==='speaking')void playAssistantSpeech(voiceToken);}}
   }
 
-  async function recoverPrivateAssistant(){
+  async function recoverPrivateAssistant(trigger){
     const pending=privateAssistant?.state().pendingTurn;if(!pending||privateAssistantBusy)return;
-    const epoch=state.generation;privateAssistantBusy=true;
+    const epoch=state.generation,restoreFocus=document.activeElement===trigger;privateAssistantBusy=true;
     try{const envelope=await privateAssistant.recover(pending.thread_id,pending.request_id);if(stale(epoch))return;
       if(envelope.status==='completed'){showPrivateAssistantResult(envelope,pending.text);$('assistant-text').value=privateAssistant.state().draft;}
       else{$('assistant-private-status').textContent=envelope.status==='failed'&&envelope.error==='scene_query_unsupported'?'':t(envelope.status==='pending'?'assistantPrivateUnknown':'assistantPrivateFailed');if(envelope.status!=='pending'){assistantState.pendingTurn=null;$('assistant-receipt').hidden=true;}}
     }catch(error){if(!stale(epoch))$('assistant-private-status').textContent=t(error?.code==='context_changed'?'assistantPrivateContextChanged':'assistantPrivateUnknown');}
-    finally{privateAssistantBusy=false;renderPrivateAssistant(privateAssistant.state());syncAssistantControls();}
+    finally{
+      if(!stale(epoch)){
+        privateAssistantBusy=false;
+        const snapshot=privateAssistant.state();renderPrivateAssistant(snapshot);syncAssistantControls();
+        if(restoreFocus&&(document.activeElement===document.body||document.activeElement===trigger)){
+          const target=snapshot.pendingTurn?trigger:$('assistant-text');
+          if(!target.disabled&&target.getClientRects().length)target.focus();
+        }
+      }
+    }
   }
   function showAuth() {
     clearPeopleReview({hide:true});
@@ -4633,7 +4642,7 @@
     renderAssistantTrail({position});
   }));
   $('assistant-private-reload-history').addEventListener('click',()=>void readPrivateAssistant(privateAssistant?.state().activeThread?.thread_id));
-  $('assistant-private-recover').addEventListener('click',()=>void recoverPrivateAssistant());
+  $('assistant-private-recover').addEventListener('click',event=>void recoverPrivateAssistant(event.currentTarget));
   $('assistant-private-reconcile').addEventListener('click',()=>void privateAssistantAction(async()=>{
     const id=privateAssistant.state().pendingCreation?.thread_id;
     try{await privateAssistant.reconcileCreation();privateCreationRetryId=null;}
