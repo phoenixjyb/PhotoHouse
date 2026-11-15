@@ -728,7 +728,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.en,{findMoreFrames:'Find more frames',frameSearchChapter:n=>`Chapter ${n}`,frameSearchAdded:'New frames added at the end of the story.',frameSearchChapterFull:'There is no room to append frames with the current chapter layout.'});
   Object.assign(labels.zh,{relatedDayAdding:'正在核对要加入的画面…',relatedDayAddFailed:'暂时无法添加这张画面，草稿仍保留。'});
   Object.assign(labels.en,{relatedDayAdding:'Checking the frame to add…',relatedDayAddFailed:'Could not add this frame. Your draft is kept.'});
-  let relatedEpoch=0,relatedView=null;
+  Object.assign(labels.zh,{undoFrameAppend:'撤销刚添加的画面',frameAppendUndone:'已撤销刚添加的画面。'});
+  Object.assign(labels.en,{undoFrameAppend:'Undo last add',frameAppendUndone:'Undid the last frame addition.'});
+  let relatedEpoch=0,relatedView=null,lastFrameAppend=null;
   function clearRelated(){relatedEpoch++;relatedView=null;$('story-related-items').replaceChildren();$('story-related-status').textContent='';$('story-related-more').hidden=true;}
   function relatedCurrent(view){return relatedView===view&&current(view.ticket,view.owner)&&$('story-workspace').open;}
   function relatedRecordedDay(value){
@@ -892,11 +894,53 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   const frameSearchBlocked=()=>frozen()||sourceRefreshPending||sourceRefreshRequired||Boolean(dictation)||titleComposing||
     Boolean(draftPreparation.proposal)||Boolean(draft?.saved&&!refsFor(draft));
+  function frameUndoSnapshot(){
+    const refs=refsFor(draft),direction=$('story-draft-preparation')?.querySelector('.story-draft-direction')?.value||'';
+    return JSON.stringify([items.map(item=>[item.id,selected.has(item.id)]),titleSnapshot(),$('story-workspace-theme').value,activeLocalRevision,localReviewRequired,
+      sourceRefreshAcknowledged,refs?.available,refs?.groups&&[...refs.groups],direction]);
+  }
+  function frameUndoCurrent(append){
+    return append&&current(append.ticket,append.owner)&&$('story-workspace').open&&items===append.afterItems&&
+      selected===append.afterSelection&&draft===append.afterDraft&&frameUndoSnapshot()===append.snapshot;
+  }
   function syncFrameSearch(){
     const trigger=$('story-find-more-frames');if(!trigger)return;
     const limit=frameSearchLimit();
-    trigger.disabled=!openFrameSearch||frameSearchBlocked()||Boolean(relatedView?.adding)||limit<=0;
+    const pending=frameSearchBlocked()||Boolean(relatedView?.adding);
+    trigger.disabled=!openFrameSearch||pending||limit<=0;
     $('story-find-more-limit').hidden=limit>0||selected.size>=24;
+    const undo=$('story-undo-frames');
+    if(undo){
+      if(lastFrameAppend&&!frameUndoCurrent(lastFrameAppend))lastFrameAppend=null;
+      undo.hidden=!lastFrameAppend;undo.disabled=pending;
+    }
+  }
+  function undoFrameAppend(){
+    const append=lastFrameAppend;
+    if(frameSearchBlocked()||relatedView?.adding||!frameUndoCurrent(append))return;
+    lastFrameAppend=null;
+    const before=append.before;
+    items=before.items;selected=before.selected;draft=before.draft;selectionPage=before.page;
+    dirty=before.dirty;downloaded=before.downloaded;sourceRefreshAcknowledged=before.sourceAcknowledged;
+    clearRelated();invalidateTitles();
+    if(draft)renderFrameEdits();
+    renderSelection();message('frameAppendUndone');
+    $('story-selection-count').focus({preventScroll:true});
+  }
+  function renderFrameEdits(){
+    const direction=$('story-draft-preparation')?.querySelector('.story-draft-direction')?.value;
+    const active=document.activeElement,section=active?.closest('.story-chapter-card');
+    const field=section&&['input[maxlength="160"]','textarea[maxlength="6000"]'].find(selector=>active.matches(selector));
+    const range=field?[active.selectionStart,active.selectionEnd,active.selectionDirection]:null;
+    renderEditor();
+    const nextDirection=$('story-draft-preparation')?.querySelector('.story-draft-direction');
+    if(nextDirection&&direction!==undefined)nextDirection.value=direction;
+    if(field){
+      const next=Array.from($('story-chapter-editor').querySelectorAll('.story-chapter-card'))
+        .find(card=>card.dataset.chapterId===section.dataset.chapterId)?.querySelector(field);
+      next?.focus({preventScroll:true});
+      next?.setSelectionRange(...range);
+    }
   }
   function frameAppendTarget(related=null){
     const owner={...scope()},ticket=generation,story=draft,pool=items,selection=selected;
@@ -933,22 +977,21 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         if(!validDraft(nextDraft,expected,owner,sourceProfileLoaded))return false;
         if(intoLast.length&&authoredNarrations.has(last))authoredNarrations.add(chapters[story.chapters.length-1]);
       }
+      const before={items:pool,selected:selection,draft:story,page:selectionPage,dirty,downloaded,sourceAcknowledged:sourceRefreshAcknowledged};
       // Move any reselected pool entries to the end in the user's new pick order.
       items=[...pool.filter(item=>!additions.has(item.id)),...additions.values()];
       selected=new Set(expected);
       if(related)selectionPage=Math.floor((items.length-1)/8);
       else clearRelated();
       if(nextDraft){
-        const direction=$('story-draft-preparation')?.querySelector('.story-draft-direction')?.value;
         const freshItems=new Map(nextDraft.items.map(item=>[item.id,item]));
         items=items.map(item=>freshItems.get(item.id)||item);
         draft=nextDraft;dirty=true;downloaded=false;
         invalidateTitles();
         invalidateSourceReviewAcknowledgement();
-        renderEditor();
-        const nextDirection=$('story-draft-preparation')?.querySelector('.story-draft-direction');
-        if(nextDirection&&direction!==undefined)nextDirection.value=direction;
+        renderFrameEdits();
       }
+      lastFrameAppend={before,owner,ticket,afterItems:items,afterSelection:selected,afterDraft:draft,snapshot:frameUndoSnapshot()};
       renderSelection();message('frameSearchAdded');
       return true;
     }};
@@ -2411,7 +2454,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   $('story-reader-edit').addEventListener('click',()=>{if(!readerFromShelf||!draft?.saved||!draft.can_edit||scope().locked||!$('story-reader').open||!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'}))return;readerFromShelf=false;stopPlaying();stopNarration();$('story-reader').close();renderEditor();if(!$('story-workspace').open)$('story-workspace').showModal();if(autoRefinementActive())scheduleAutoRefinementPoll();});
   $('story-workspace-close').addEventListener('click',()=>$('story-workspace').close());
   $('story-find-more-frames')?.addEventListener('click',findMoreFrames);
-  $('story-workspace').addEventListener('close',()=>{stopAutoRefinementPolling();cancelDictation();invalidateTitles();if(!pendingSave&&(draftPreparation.pending||draftPreparation.proposal))void cancelStoryPreparation();if(sourceRefreshPending){sourceRefreshEpoch++;sourceRefreshPending=false;message('sourceRefreshFailed');setSelectionCount();}if(!pendingSave&&!readerFromShelf){contributionRefs=null;refsLoadEpoch++;}});
+  $('story-undo-frames')?.addEventListener('click',undoFrameAppend);
+  $('story-workspace').addEventListener('input',()=>{if(lastFrameAppend)syncFrameSearch();});
+  $('story-workspace').addEventListener('close',()=>{lastFrameAppend=null;stopAutoRefinementPolling();cancelDictation();invalidateTitles();if(!pendingSave&&(draftPreparation.pending||draftPreparation.proposal))void cancelStoryPreparation();if(sourceRefreshPending){sourceRefreshEpoch++;sourceRefreshPending=false;message('sourceRefreshFailed');setSelectionCount();}if(!pendingSave&&!readerFromShelf){contributionRefs=null;refsLoadEpoch++;}});
   const dictationObserver=new MutationObserver(()=>{if(dictation&&!dictationBound(dictation))cancelDictation();});dictationObserver.observe($('story-chapter-editor'),{childList:true,subtree:true});
   $('story-reader').addEventListener('keydown',event=>{
     if(!draft||event.defaultPrevented||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey||!['ArrowRight','ArrowLeft'].includes(event.key))return;
