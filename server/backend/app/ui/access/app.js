@@ -1690,12 +1690,14 @@
   Object.assign(words.en,{
     assistantStoryAddTitle:'Add frames to this story',
     assistantStoryAddChapterTitle:'Add frames to chapter {number}',
-    assistantStoryAddHelp:'Choose up to {limit} more photos or videos. Frames already in this story are marked and cannot be added again.',
+    assistantStoryAddHelp:'Choose up to {limit} more photos or videos. Frames already in this story can’t be selected.',
     assistantStoryAdd:'Add selected frames',
     assistantStoryReturn:'Return to story',
     assistantStoryAddCount:'{count} / {limit} new frames selected',
     assistantStoryAddLimit:'You have selected the available new frames.',
     assistantStoryAlreadyInStory:'Already in this story',
+    assistantStoryHideExisting:'Hide frames already in this story',
+    assistantStoryPageEmpty:'All frames on this page are already in your story. Try another page or change your search.',
     assistantStoryTargetChanged:'This story changed. Return to it and try again.',
     assistantStoryAddFailed:'These frames could not be added. Your story remains open.'
   });
@@ -1703,12 +1705,14 @@
   Object.assign(words.zh,{
     assistantStoryAddTitle:'为这个故事添加画面',
     assistantStoryAddChapterTitle:'为第 {number} 章添加画面',
-    assistantStoryAddHelp:'还可选择 {limit} 张照片或视频。已在故事中的画面会标记出来，不能重复添加。',
+    assistantStoryAddHelp:'还可选择 {limit} 张照片或视频。已在故事中的画面不能重复添加。',
     assistantStoryAdd:'添加所选画面',
     assistantStoryReturn:'返回故事',
     assistantStoryAddCount:'已选 {count} / {limit} 张新画面',
     assistantStoryAddLimit:'已选完可添加的新画面。',
     assistantStoryAlreadyInStory:'已在这个故事中',
+    assistantStoryHideExisting:'隐藏已在故事中的画面',
+    assistantStoryPageEmpty:'这一页的画面都已在故事中。可以翻页或换个关键词。',
     assistantStoryTargetChanged:'这个故事已更改。请返回故事后重试。',
     assistantStoryAddFailed:'暂时无法添加这些画面，故事仍保持打开。'
   });
@@ -1722,7 +1726,8 @@
     const snapshot=privateAssistant?.state(),privateRoute=!!(snapshot?.activeThread||snapshot?.capabilities?.server_owned_turns);
     const sourcePage=privateRoute?(snapshot.scenePageActive?snapshot.scenePageResult:snapshot.resultPageActive?snapshot.resultPageResult:snapshot.currentResult):null;
     if(privateRoute&&(!snapshot.storySelectionReady||!sourcePage||!Array.isArray(sourcePage.items)))return null;
-    return {entry,turn,epoch,root,items:items.slice(),privateRoute,sourceResult:snapshot?.currentResult,sourcePage,
+    const visibleItems=entry.hideExisting?items.filter(item=>!entry.existingIds.has(item.id)):items.slice();
+    return {entry,turn,epoch,root,items:visibleItems,privateRoute,sourceResult:snapshot?.currentResult,sourcePage,
       returnFocus,scrollTop:$('assistant-workspace-content').scrollTop};
   }
   function assistantFrameSearchItemCurrent(context,item){
@@ -1761,7 +1766,7 @@
   }
   function openAssistantFrameSearch(target,trigger){
     if(state.locked||$('assistant-workspace-dialog').open||!target.isCurrent())return;
-    assistantStoryTarget={target,trigger,existingIds:new Set(target.assetIds),limit:target.limit,
+    assistantStoryTarget={target,trigger,existingIds:new Set(target.assetIds),limit:target.limit,hideExisting:false,
       owner:{account:state.profile?.account_id,library:state.library,generation:state.generation}};
     clearAssistantStorySelection({keepResult:true});
     openAssistantWorkspace(trigger);
@@ -1778,6 +1783,7 @@
       $('assistant-story-selection').hidden=true;
       $('assistant-story-selected-list').replaceChildren();
       $('assistant-story-selection-status').textContent='';
+      $('assistant-story-page-empty').textContent='';
     }
   }
   function assistantStoryView(snapshot=privateAssistant?.state()){
@@ -1812,11 +1818,18 @@
       if(focused>=0){const buttons=list.querySelectorAll('button'),target=buttons[Math.min(focused,buttons.length-1)]||$('assistant-results').querySelector('.assistant-story-pick');target?.focus({preventScroll:true});}
     }
     for(const button of list.querySelectorAll('button'))button.disabled=view.blocked||!view.ready;
-    for(const input of $('assistant-results')?.querySelectorAll('.assistant-story-pick')||[]){
+    const filter=$('assistant-story-hide-existing'),hideExisting=assistantStoryTarget?.hideExisting===true;
+    $('assistant-story-filter').hidden=!view.existingIds?.size;
+    filter.checked=hideExisting;filter.disabled=view.blocked||!view.ready;
+    const choices=$('assistant-results').querySelectorAll('.assistant-story-pick');let hidden=0;
+    for(const input of choices){
       const position=order.get(input.value),already=!!view.existingIds?.has(input.value);input.checked=!!position;input.disabled=view.blocked||!view.ready||already||!position&&view.selected.length>=view.limit;
-      input.closest('.assistant-result').classList.toggle('assistant-result--selected',!!position);
+      const card=input.closest('.assistant-result');card.classList.toggle('assistant-result--selected',!!position);
+      card.hidden=hideExisting&&already;if(card.hidden)hidden++;
       input.nextElementSibling.textContent=already?t('assistantStoryAlreadyInStory'):position?t('assistantStoryPicked').replace('{order}',String(position)):t('assistantStoryPick');
     }
+    const empty=$('assistant-story-page-empty'),notice=hidden>0&&hidden===choices.length?t('assistantStoryPageEmpty'):'';
+    if(empty.textContent!==notice)empty.textContent=notice;
     syncViewerStoryChoice();
     syncAssistantStoryModeLabels();
     $('assistant-story-selection-status').textContent=!view.targetCurrent?t('assistantStoryTargetChanged'):assistantStoryHandoff?t('assistantStoryChecking'):assistantStoryNotice?t(assistantStoryNotice):view.selected.length>=view.limit?(view.addMode?t('assistantStoryAddLimit'):t('assistantStoryLimit')):'';
@@ -1963,9 +1976,9 @@
       button.addEventListener('click',()=>{
         if(stale(epoch)||state.locked||state.library!==assistantState.binding?.library)return;
         const frameSearch=assistantStoryTarget?assistantFrameSearchContext(turn,epoch,assistantState.items,button):null;
-        if(assistantStoryTarget&&!frameSearch)return;
+        if(assistantStoryTarget&&!assistantFrameSearchItemCurrent(frameSearch,item))return;
         reportAssistantOutcome(assistantState.turnReceipt,'open_requested');
-        void openAsset(item,{sequence:assistantState.items,origin:'assistant',frameSearch});
+        void openAsset(item,{sequence:frameSearch?.items||assistantState.items,origin:'assistant',frameSearch});
       });card.append(button);root.append(card);
       if(turn.kind==='results'&&['image','video'].includes(item.kind)){
         const label=document.createElement('label');label.className='assistant-story-choice';
@@ -4354,7 +4367,7 @@
     const dialog=$('assistant-workspace-dialog');
     const frameSearch=assistantStoryTarget;
     if(frameSearch&&!preserveFrameSearch){assistantStoryTarget=null;clearAssistantStorySelection({keepResult:true});}
-    if(!dialog?.open){if(frameSearch&&!preserveFrameSearch)syncAssistantStoryModeLabels();return;}
+    if(!dialog?.open){if(frameSearch&&!preserveFrameSearch)renderAssistantStoryControls();return;}
     if(stopVoice){if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();stopAssistantSpeech();}
     const panel=$('assistant-panel'),placeholder=$('assistant-panel-placeholder'),form=$('assistant-form'),formPlaceholder=$('assistant-form-placeholder'),voice=$('assistant-voice-session'),voicePlaceholder=$('assistant-voice-session-placeholder');
     if(voicePlaceholder?.parentNode)voicePlaceholder.before(voice);
@@ -4371,7 +4384,7 @@
       const target=preferred||(frameTarget?$('story-selection-count'):$('memory-assistant'));
       target?.focus?.({preventScroll:true});
     }
-    syncAssistantStoryModeLabels();
+    if(frameSearch&&!preserveFrameSearch)renderAssistantStoryControls();else syncAssistantStoryModeLabels();
   }
   const memoryScope=()=>{const membership=state.profile?.memberships?.find(item=>item.library_id===state.library&&item.available===true),revision=membership?.revision;return {account:state.profile?.account_id,library:state.library,membership_revision:Number.isSafeInteger(revision)&&revision>0?revision:null,language:state.language,locked:state.locked};};
   const communityRequest=(path,options={})=>{
@@ -4560,6 +4573,11 @@
   }
   $('assistant-scene').addEventListener('toggle',()=>syncAssistantControls());
   $('assistant-shape-story').addEventListener('click',()=>void openAssistantStorySelection());
+  $('assistant-story-hide-existing').addEventListener('change',event=>{
+    const view=assistantStoryView();
+    if(view.addMode&&view.ready&&!view.blocked)assistantStoryTarget.hideExisting=event.target.checked;
+    renderAssistantStoryControls();
+  });
   $('assistant-story-selection-clear').addEventListener('click',()=>{
     const view=assistantStoryView();if(view.blocked)return;
     if(view.privateRoute)privateAssistant.clearStorySelection();else assistantStoryLegacy?.selected.clear();

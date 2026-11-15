@@ -218,12 +218,17 @@
             <button id="assistant-shape-story" type="button" data-i18n="assistantStoryOpen" disabled>用所选画面编排故事</button>
             <button id="assistant-story-selection-clear" type="button" class="quiet" data-i18n="assistantStoryClear" disabled>清空选择</button>
           </div>
+          <label id="assistant-story-filter" class="assistant-story-choice" hidden>
+            <input id="assistant-story-hide-existing" type="checkbox" aria-controls="assistant-results">
+            <span data-i18n="assistantStoryHideExisting">隐藏已在故事中的画面</span>
+          </label>
           <details id="assistant-story-selected" hidden>
             <summary data-i18n="assistantStoryReview">查看选择顺序</summary>
             <ol id="assistant-story-selected-list"></ol>
           </details>
           <p id="assistant-story-selection-status" class="fine" role="status" aria-live="polite"></p>
         </section>
+        <p id="assistant-story-page-empty" class="fine" role="status" aria-live="polite"></p>
         <div id="assistant-results" class="assistant-results"></div>
       </details>
       <section id="library-transfer" class="access-panel library-transfer" hidden aria-labelledby="library-transfer-title"><div class="transfer-heading"><div><h2 id="library-transfer-title" data-i18n="moveMemories">Move memories</h2><p class="fine" data-i18n="moveMemoriesHelp">Move up to 50 photos or videos to another family library. Stories move with them.</p></div><span id="transfer-count" class="panel-count"></span></div><p id="transfer-status" role="status" aria-live="polite"></p><div class="transfer-actions"><button id="transfer-move" class="primary" type="button" disabled data-i18n="moveSelected">Move selected</button><button id="transfer-clear" class="quiet" type="button" data-i18n="clearSelection">Clear selection</button></div></section>
