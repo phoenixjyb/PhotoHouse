@@ -85,15 +85,29 @@ async function installSyntheticTransport(targetContext){
     await page.locator('#assistant-scene-text').fill(text);await page.locator('#assistant-scene-confirm').check();await page.locator('#assistant-scene-send').click();
     await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);return turns().at(-1);
   };
-  const captureCoverageReply=async(label,width,fontSize)=>{
+  const sceneReply=()=>page.locator('#assistant-turn-trail-list .assistant-turn-trail-entry:not(.assistant-turn-trail-entry--pending) > p:last-child').last();
+  const captureCoverageReply=async(label,width,fontSize,expected)=>{
     const height=width===390?845:900;
     await page.setViewportSize({width,height});
     await page.evaluate(size=>document.documentElement.style.fontSize=size,fontSize);
-    const content=page.locator('#assistant-workspace-content'),reply=page.locator('#assistant-reply');
-    await content.evaluate(element=>{element.scrollTop=element.scrollHeight;});
-    await reply.scrollIntoViewIfNeeded();
-    const bounds=await reply.boundingBox(),contentBounds=await content.boundingBox();
-    assert(bounds&&contentBounds&&bounds.y>=contentBounds.y&&bounds.y+bounds.height<=contentBounds.y+contentBounds.height,
+    const reply=sceneReply();
+    assert.equal(await reply.textContent(),expected,`${label} shows the complete coverage reply in the conversation`);
+    await reply.evaluate(async element=>{
+      const list=element.closest('#assistant-turn-trail-list'),content=element.closest('#assistant-workspace-content');
+      list.scrollTop=list.scrollHeight;
+      const bounds=element.getBoundingClientRect(),top=content.getBoundingClientRect().top;
+      content.scrollTop+=bounds.top-top-(content.clientHeight-bounds.height)/2;
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    });
+    const fits=await reply.evaluate(element=>{
+      const range=document.createRange();range.selectNodeContents(element);
+      const bounds=range.getBoundingClientRect();
+      return ['#assistant-turn-trail-list','#assistant-workspace-content'].every(selector=>{
+        const container=element.closest(selector).getBoundingClientRect();
+        return bounds.height>1&&bounds.top>=Math.max(0,container.top)-1&&bounds.bottom<=Math.min(innerHeight,container.bottom)+1;
+      });
+    });
+    assert(fits,
       `${label} full disclosure paragraph should be visible inside the assistant dialog`);
     await page.screenshot({path:path.join(artifacts,`coverage-${label}.png`),fullPage:false});
     if(width===390)assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,
@@ -118,7 +132,7 @@ async function installSyntheticTransport(targetContext){
     assert.deepEqual({...details,policy_sha256:'<pinned-policy>'},{version:1,policy_sha256:'<pinned-policy>',state:'partial',catalog_images:pageMode?111:67,searchable_images:pageMode?46:2,omitted_images:65,matched_omitted_images:0});
     coverageSummary={state:details.state,catalog_images:details.catalog_images,searchable_images:details.searchable_images,omitted_images:details.omitted_images,matched_omitted_images:details.matched_omitted_images,reply_languages:[]};
     const reply=search.response.result.reply;assert.match(reply,/65 张尚未建立索引/);assert.match(reply,/0 张未参与相似度排序/);assert.match(reply,/仍可通过普通搜索查找/);
-    await captureCoverageReply('zh-desktop',1280,'');await captureCoverageReply('zh-phone-150',390,'150%');
+    await captureCoverageReply('zh-desktop',1280,'',reply);await captureCoverageReply('zh-phone-150',390,'150%',reply);
     await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
     coverageSummary.reply_languages.push('zh');
   }
@@ -134,7 +148,7 @@ async function installSyntheticTransport(targetContext){
     await page.locator('#assistant-scene-page-next').click();await page.waitForFunction(()=>document.querySelector('#assistant-scene-page-position')?.textContent.includes('21–40'));
     assert.match(await page.locator('#assistant-scene-page-position').innerText(),/46/);assert.match(await page.locator('#assistant-scene-page-position').innerText(),/2\/3/);
     let visibleRanks=await page.locator('#assistant-results .assistant-scene-rank').allTextContents();assert.equal(visibleRanks.length,20);assert.equal(visibleRanks[0],'画面相似度排序 #21');assert.equal(visibleRanks.at(-1),'画面相似度排序 #40');
-    if(coverageMode)assert.match(await page.locator('#assistant-reply').innerText(),/65 张尚未建立索引/);
+    if(coverageMode)assert.match(await sceneReply().textContent(),/65 张尚未建立索引/);
     await page.locator('#assistant-scene-ranking').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'scene-page-zh-phone-150.png'),fullPage:false});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
     await page.locator('#assistant-scene-page-next').click();await page.waitForFunction(()=>document.querySelector('#assistant-scene-page-position')?.textContent.includes('41–46'));
@@ -153,7 +167,7 @@ async function installSyntheticTransport(targetContext){
   if(coverageMode){
     const details=english.response.result.semantic.coverage_details;assert.deepEqual({...details,policy_sha256:'<pinned-policy>'},{version:1,policy_sha256:'<pinned-policy>',state:'partial',catalog_images:pageMode?111:67,searchable_images:pageMode?46:2,omitted_images:65,matched_omitted_images:0});
     const reply=english.response.result.reply;assert.match(reply,/65 are not indexed yet/);assert.match(reply,/0 photos within your current filters were not ranked/);assert.match(reply,/You can still look for those photos using ordinary search/);
-    await captureCoverageReply('en-desktop',1280,'');await captureCoverageReply('en-phone-150',390,'150%');
+    await captureCoverageReply('en-desktop',1280,'',reply);await captureCoverageReply('en-phone-150',390,'150%',reply);
     await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
     coverageSummary.reply_languages.push('en');checkpoint('Partial coverage metadata and Chinese/English ordinary-search disclosures render fully at desktop and 390px/150%');
   }
