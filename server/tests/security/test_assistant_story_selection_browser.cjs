@@ -20,6 +20,7 @@ const requests=[],blocked=[],errors=[],checks=[];
 const startedAt=Date.now();
 let failNextFreshCheck=null,holdFreshCheck=null,arriveFreshCheck=null,releaseFreshCheck=null,settleHeldFreshCheck=null;
 let holdStoryPreview=null,arriveStoryPreview=null,releaseStoryPreview=null,settleHeldStoryPreview=null;
+let failNextFrameEdit=false;
 const pass=name=>{checks.push(name);console.log('PASS '+name);};
 const responseBody=response=>JSON.parse(Buffer.from(response.body,'base64').toString());
 const freshReadPath=value=>/\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/current-result(?:\?|$)/.test(value);
@@ -42,6 +43,9 @@ let browser,context,page;
       const gate=holdFreshCheck;holdFreshCheck=null;arriveFreshCheck();await gate;
     }
     const isStoryPreview=req.method()==='POST'&&url.pathname==='/story-workspace/preview';
+    if(isStoryPreview&&failNextFrameEdit){
+      failNextFrameEdit=false;entry.status=503;await route.fulfill({status:503,contentType:'application/json',body:'{"detail":"synthetic frame preview failure"}'});return;
+    }
     if(isStoryPreview&&holdStoryPreview){
       const gate=holdStoryPreview;holdStoryPreview=null;arriveStoryPreview();await gate;
     }
@@ -401,6 +405,36 @@ let browser,context,page;
   assert.equal(update.response.revision,(BigInt(saveCall.response.revision)+1n).toString());
   assert.deepEqual(update.response.items.map(item=>item.id),updatedStoryIds);
   pass('Appending to an editable saved story preserves the same story ID and saves a new revision only on request');
+  const remove=page.locator(`.story-chapter-remove-frame[data-asset-id="${lastPhoto}"]`),undoRemoval=page.locator('#story-undo-frames');
+  const beforeRemoval=await storyValues();
+  const beforeRemovalWrites=requests.filter(isStoryUpdate).length;
+  await page.setViewportSize({width:390,height:845});await page.evaluate(()=>document.documentElement.style.fontSize='150%');
+  await remove.scrollIntoViewIfNeeded();
+  assert.equal(await remove.evaluate(button=>button.getBoundingClientRect().height>=44),true);
+  assert.equal(await page.locator('#story-workspace').evaluate(dialog=>dialog.scrollWidth<=dialog.clientWidth+1),true,'saved story editor fits the phone horizontally');
+  await page.screenshot({path:path.join(artifacts,'chapter-remove-phone-390-150.png'),fullPage:false});
+  await page.setViewportSize({width:1280,height:900});await page.evaluate(()=>document.documentElement.style.fontSize='');
+  failNextFrameEdit=true;await remove.click();
+  await page.waitForFunction(()=>Array.from(document.querySelectorAll('.story-chapter-frame-status')).some(node=>/暂时无法移除|Could not remove/.test(node.textContent)));
+  assert.deepEqual(await storyValues(),beforeRemoval,'failed removal keeps all fields and frames');
+  await remove.click();
+  await page.waitForFunction(()=>/已从草稿中移除|Frame removed/.test(document.querySelector('#story-workspace-status')?.textContent||''));
+  assert.deepEqual(await storyValues(),{...beforeRemoval,ids:appendedStoryIds});
+  assert.match(await undoRemoval.textContent(),/撤销刚移除|Undo last removal/);
+  assert.equal(requests.filter(isStoryUpdate).length,beforeRemovalWrites,'draft removal waits for explicit Save');
+  const beforeUndoRemoval=requests.filter(r=>storyPreviewPath(r.path)).length;
+  await undoRemoval.click();
+  assert.deepEqual(await storyValues(),beforeRemoval,'undo restores the exact verified order and writing');
+  assert.equal(requests.filter(r=>storyPreviewPath(r.path)).length,beforeUndoRemoval);
+  await remove.click();await undoRemoval.waitFor({state:'visible'});
+  await page.locator('#story-save-memory').click();
+  await page.waitForFunction(()=>/Saved in this library|已保存/.test(document.querySelector('#story-workspace-status')?.textContent||''));
+  const savedRemoval=requests.filter(isStoryUpdate).at(-1);
+  assert.equal(savedRemoval.status,200);
+  assert.equal(savedRemoval.response.id,saveCall.response.id);
+  assert.equal(savedRemoval.response.revision,(BigInt(update.response.revision)+1n).toString());
+  assert.deepEqual(savedRemoval.response.items.map(item=>item.id),appendedStoryIds);
+  pass('Removing a chapter frame preserves writing and order through a failed attempt, undo and explicit revision save');
 
   // A chapter-scoped add inserts before later chapters and retains their prose.
   await page.locator('#story-workspace-close').click();
@@ -412,6 +446,7 @@ let browser,context,page;
   await page.locator('#story-build').click();await page.locator('.story-source-opt-in').first().click();
   await page.locator('.story-chapter-split').first().click();
   const chapters=page.locator('.story-chapter-card');
+  assert.equal(await chapters.locator('.story-chapter-remove-frame').count(),0,'each chapter keeps at least one frame');
   await chapters.nth(0).locator('textarea[maxlength="6000"]').fill('第一章的家人原话');
   await chapters.nth(1).locator('textarea[maxlength="6000"]').fill('后面一章的家人原话');
   const chapterFind=chapters.nth(0).locator('.story-chapter-find-frames');
