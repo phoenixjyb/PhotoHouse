@@ -1109,7 +1109,7 @@ async function reloadAndLogin(){
   pass('Replacing a saved-memory result aborts and ignores a late section response');
 
   await page.locator('#language').click();
-  await page.waitForFunction(()=>document.querySelector('#assistant-workspace-title')?.textContent==='PhotoHouse Memory Assistant',{},{timeout:10000});
+  await page.waitForFunction(()=>document.querySelector('#assistant-workspace-title')?.textContent==='Jude · PhotoHouse Assistant',{},{timeout:10000});
   const workspacePanel=page.locator('#assistant-panel');if(!await workspacePanel.evaluate(node=>node.open))await workspacePanel.locator(':scope > summary').click();
   await page.locator('#assistant-private').waitFor({state:'visible',timeout:10000});await ensureThread();
   const delayedEnglishPrimaryActions=await holdPrimaryActionCapabilities();

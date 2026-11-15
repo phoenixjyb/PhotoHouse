@@ -1291,6 +1291,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .assistant-workspace-voice .assistant-voice-mic-state{font-size:.66rem}
   .assistant-workspace-voice .assistant-voice-session>button,
   .assistant-workspace-voice .assistant-voice-session>button#assistant-voice-start{min-height:40px;padding:.35rem .55rem;font-size:.7rem}
+  .assistant-workspace-voice #assistant-voice-pause,
+  .assistant-workspace-voice #assistant-voice-end{min-height:48px}
   .assistant-workspace-content{padding:.3rem .75rem .75rem}
   .assistant-workspace-dialog .assistant-private-current{grid-template-columns:minmax(0,1fr) auto auto;gap:.1rem}
   .assistant-workspace-dialog .assistant-private-start,.assistant-workspace-dialog .assistant-private-management>summary{padding:.35rem .4rem;font-size:.68rem}
