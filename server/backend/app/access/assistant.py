@@ -52,15 +52,21 @@ BARE_FOLLOWUP = re.compile(
     r'(?:last year|this year))(?:呢)?[。！？.!?]*', re.IGNORECASE)
 
 
-def _search_clarification_guidance(enabled, lang):
+def _search_clarification_guidance(enabled, lang, *, unmatched=False):
     """Describe only capabilities in the current authorized search snapshot."""
+    reason = ('这些细节无法全部匹配到可检索证据。没有执行新的结果检索' if lang == 'zh' else
+              'I could not match all those details to searchable evidence. No new result search was run')
+    question = ('你想用哪些条件继续查找？' if lang == 'zh' else ' Which conditions would you like to use?')
     if {'people', 'date', 'tags', 'locations', 'text'} <= set(enabled):
-        return ('有些细节还无法匹配。请发送完整查找句，例如：找包含“红风筝”的照片。'
-                '如需限定人物、拍摄日期、标签或地点，也请在完整句中写明；未匹配的条件不会被忽略。'
-                if lang == 'zh' else
-                'Some details could not be matched. Send the complete query, for example: find photos '
-                'containing "red kite". Add any reviewed person, capture date, tag, or place you need; '
-                'unmatched conditions are not dropped.')
+        intro = reason + ('。' if lang == 'zh' else '. ') if unmatched else (
+            '有些细节还无法匹配。' if lang == 'zh' else 'Some details could not be matched. ')
+        guidance = ('请发送完整查找句。按说明原文查找时，可以写「找包含“红风筝”的照片」。'
+                    '如需限定人物、拍摄日期、标签或地点，也请在完整句中写明。未匹配的条件不会被忽略。'
+                    if lang == 'zh' else
+                    'Send the complete query. For exact caption words, try find photos containing "red kite". '
+                    'Include any reviewed person, capture date, tag, or place you need. '
+                    'Unmatched conditions are not dropped.')
+        return intro + guidance + (question if unmatched else '')
     labels = (
         ('people', '已登记人物', 'reviewed people'),
         ('date', '已记录的拍摄日期', 'recorded capture dates'),
@@ -71,15 +77,18 @@ def _search_clarification_guidance(enabled, lang):
         ('descriptive', '场景描述线索', 'scene description clues'),
     )
     available = [zh if lang == 'zh' else en for key, zh, en in labels if key in enabled]
-    reply = ('有些条件还未匹配，本次未执行新的查找；这些条件没有被忽略。' if lang == 'zh' else
-             'Some requested details could not be matched. No new search was run, and no conditions were dropped.')
+    if unmatched:
+        reply = reason + ('，这些条件没有被忽略。' if lang == 'zh' else ', and no conditions were dropped.')
+    else:
+        reply = ('有些条件还未匹配，本次未执行新的查找；这些条件没有被忽略。' if lang == 'zh' else
+                 'Some requested details could not be matched. No new search was run, and no conditions were dropped.')
     if 'people' not in enabled:
         reply += (' 当前相册库尚未启用人物检索。按姓名或亲属关系查找前，需要相册库主人确认人物资料并启用检索。' if lang == 'zh' else
                   ' People search is not enabled in this library. Its owner must review and enable people data before names or family relationships can filter results.')
     if available:
         reply += (' 当前可用条件：' + '、'.join(available) + '。' if lang == 'zh' else
                   ' Available search conditions: ' + ', '.join(available) + '.')
-    return reply
+    return reply + (question if unmatched else '')
 
 
 class AssistantInvalid(ValueError):
@@ -874,30 +883,8 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 plan = QueryPlan(plan.version, 'ready',
                                  dict(plan.filters, date=continuation['date']))
         if plan.status != 'ready':
-            reply = _search_clarification_guidance(enabled, lang)
-            if plan.reason == 'unsupported_condition':
-                choices = []
-                for key, zh, en in (
-                        ('people', '已登记人物', 'reviewed person'),
-                        ('date', '拍摄日期', 'capture date'),
-                        ('tags', '标签', 'tag'),
-                        ('locations', '地点', 'place'),
-                        ('text', '说明原文', 'exact caption words')):
-                    if key in enabled:
-                        choices.append(zh if lang == 'zh' else en)
-                if choices:
-                    choice_text = '、'.join(choices) if lang == 'zh' else ', '.join(choices[:-1]) + (
-                        ', or ' if len(choices) > 1 else '') + choices[-1]
-                    question = (f'请问要用哪项：{choice_text}？' if lang == 'zh' else
-                                f'Which should I use: {choice_text}?')
-                else:
-                    question = '请问还需要提供什么条件？' if lang == 'zh' else 'What detail should I use?'
-                uncertainty = ('这些细节无法全部匹配到可检索证据。' if lang == 'zh' else
-                               'I could not match all those details to searchable evidence.')
-                no_new_search = ('没有执行新的结果检索。' if lang == 'zh' else
-                                 'No new result search was run.')
-                reply = ' '.join((uncertainty, no_new_search, question))
-            elif plan.reason == 'unsupported_negation':
+            reply = _search_clarification_guidance(enabled, lang, unmatched=plan.reason == 'unsupported_condition')
+            if plan.reason == 'unsupported_negation':
                 from .search_policy import exclusion_reply
                 reply = exclusion_reply(lang)
             elif 'people' not in enabled and plan.reason in (
