@@ -1,4 +1,4 @@
-"""Synthetic assistant bridge variant with one generated video fixture."""
+"""Synthetic assistant bridge for mixed-media selections and story saves."""
 import runpy
 import sqlite3
 import sys
@@ -13,15 +13,18 @@ from test_library_reads import LibraryReadTests
 original_set_up = LibraryReadTests.setUp
 
 
-def set_up_with_video(self):
+def set_up_story_selection(self):
     original_set_up(self)
     # This is a disposable migrated test database created by setUp(), never a
     # household library. Keep asset identity and search fixtures unchanged.
     with closing(sqlite3.connect(self.path)) as db, db:
         db.execute("UPDATE assets SET mime='video/mp4' WHERE id=102")
+        db.execute("""UPDATE access_memberships SET role='contributor'
+                      WHERE account_id=? AND library_id='family-a'""",
+                   (self.member_id,))
 
 
-LibraryReadTests.setUp = set_up_with_video
+LibraryReadTests.setUp = set_up_story_selection
 
 sys.path.insert(0, str(ROOT / 'backend'))
 from app.access.runtime import RuntimeConfiguration

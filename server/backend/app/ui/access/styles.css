@@ -1276,6 +1276,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .assistant-workspace-header{align-items:center;padding:.55rem .75rem;gap:.3rem}
   .assistant-workspace-header>div:first-child{gap:.45rem}
   .assistant-workspace-header h2{font-size:.9rem}
+  [data-story-frame-search] .assistant-workspace-header>div:first-child{flex:1 1 0;flex-wrap:wrap;gap:.2rem .45rem}
+  [data-story-frame-search] .assistant-workspace-header h2{flex:0 1 auto;overflow-wrap:anywhere}
   .assistant-library-chip{max-width:38vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.65rem}
   .assistant-library-chip span{display:none}
   .assistant-library-chip strong{font-size:inherit}
