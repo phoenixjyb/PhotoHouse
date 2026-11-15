@@ -3018,8 +3018,12 @@
       open.setAttribute('aria-label',group&&stack&&!expanded?`${accessibleName} · ${t('photoStackCount').replace('{count}',String(stack.ids.length))}`:accessibleName);
       const preview=document.createElement('span');preview.className='asset-preview-wrap';
       const image=document.createElement('img');image.loading='lazy';image.alt='';
-      const fallback=document.createElement('span');fallback.className='asset-preview-fallback';fallback.dataset.i18n='previewMissing';fallback.hidden=true;fallback.textContent=t('previewMissing');
-      image.src=safeMediaURL(item.id,'thumbnail');image.addEventListener('error',()=>{if(!isCurrent()||!card.isConnected)return;image.hidden=true;fallback.hidden=false;},{once:true});
+      const fallback=document.createElement('span');fallback.id=`asset-preview-fallback-${item.id}`;fallback.className='asset-preview-fallback';fallback.dataset.i18n='previewMissing';fallback.hidden=true;fallback.textContent=t('previewMissing');
+      image.addEventListener('error',()=>{
+        if(!isCurrent()||!card.isConnected)return;
+        image.hidden=true;fallback.hidden=false;open.setAttribute('aria-describedby',fallback.id);
+      },{once:true});
+      image.src=safeMediaURL(item.id,'thumbnail');
       preview.append(image,fallback);
       if(group&&stack&&!expanded){const badge=document.createElement('span');badge.className='photo-stack-count';badge.textContent=t('photoStackCount').replace('{count}',String(stack.ids.length));preview.append(badge);}
       const label=document.createElement('span');label.className='asset-label';label.textContent=assetLabel(item);open.append(preview,label);
