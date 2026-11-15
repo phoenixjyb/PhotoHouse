@@ -736,6 +736,13 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.en,{findFramesForChapter:'Find frames for this chapter',framesAddedToChapter:'New frames added to the selected chapter.'});
   Object.assign(labels.zh,{removeChapterFrame:'移除画面',removeChapterFrameNamed:id=>`移除画面 ${id}`,frameRemoveWorking:'正在核对剩余画面…',frameRemoved:'已从草稿中移除画面。',frameRemoveFailed:'暂时无法移除这张画面，草稿仍保留。',frameRemoveSources:'请先取消选择只与这张画面关联的来源。',undoFrameRemoval:'撤销刚移除的画面',frameRemovalUndone:'已撤销刚才移除的画面。'});
   Object.assign(labels.en,{removeChapterFrame:'Remove',removeChapterFrameNamed:id=>`Remove frame ${id}`,frameRemoveWorking:'Checking the remaining frames…',frameRemoved:'Frame removed from the draft.',frameRemoveFailed:'Could not remove this frame. Your draft is kept.',frameRemoveSources:'Uncheck the sources tied to this frame before removing it.',undoFrameRemoval:'Undo last removal',frameRemovalUndone:'Restored the removed frame.'});
+  Object.assign(labels.zh,{moveWithinChapter:'在本章内调整画面顺序',startWithinChapter:'可将第一章的画面设为开头',frameMoveWorking:'正在核对新的画面顺序…',frameMoved:'已更新本章的画面顺序。',frameMoveFailed:'暂时无法调整顺序，草稿仍保留。',undoFrameMove:'撤销刚调整的顺序',frameMoveUndone:'已恢复原来的画面顺序。'});
+  Object.assign(labels.en,{moveWithinChapter:'Move within this chapter',startWithinChapter:'Choose an opening frame from the first chapter',frameMoveWorking:'Checking the new frame order…',frameMoved:'Updated the frame order in this chapter.',frameMoveFailed:'Could not move this frame. Your draft is kept.',undoFrameMove:'Undo last move',frameMoveUndone:'Restored the earlier frame order.'});
+  const frameEditWords={
+    add:{undo:'undoFrameAppend',undone:'frameAppendUndone'},
+    remove:{undo:'undoFrameRemoval',undone:'frameRemovalUndone',working:'frameRemoveWorking',failed:'frameRemoveFailed',done:'frameRemoved'},
+    move:{undo:'undoFrameMove',undone:'frameMoveUndone',working:'frameMoveWorking',failed:'frameMoveFailed',done:'frameMoved'},
+  };
   let relatedEpoch=0,relatedView=null,relatedRenderedResult=null,lastFrameEdit=null;
   function clearRelated(){relatedEpoch++;relatedView=null;relatedRenderedResult=null;$('story-related-items').replaceChildren();$('story-related-status').textContent='';$('story-related-more').hidden=true;}
   const relatedMedia=()=>$('story-related-media')?.value||'all';
@@ -932,12 +939,12 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     for(const button of $('story-chapter-editor').querySelectorAll('.story-chapter-find-frames,.story-chapter-remove-frame')){
       const section=draft?.chapters.find(value=>value.id===button.dataset.chapterId);
       const removing=button.classList.contains('story-chapter-remove-frame');
-      button.disabled=pending||!section||(removing?!chapterFrameRemovalAllowed(draft,section):frameSearchLimit(section)<=0);
+      button.disabled=pending||!section||(removing?!chapterFrameEditAllowed(draft,section):frameSearchLimit(section)<=0);
     }
     const undo=$('story-undo-frames');
     if(undo){
       if(lastFrameEdit&&!frameUndoCurrent(lastFrameEdit))lastFrameEdit=null;
-      const label=text(lastFrameEdit?.removed?'undoFrameRemoval':'undoFrameAppend');
+      const label=text(frameEditWords[lastFrameEdit?.kind||'add'].undo);
       if(undo.textContent!==label)undo.textContent=label;
       undo.hidden=!lastFrameEdit;undo.disabled=pending;
     }
@@ -951,7 +958,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     dirty=before.dirty;downloaded=before.downloaded;sourceRefreshAcknowledged=before.sourceAcknowledged;
     clearRelated();invalidateTitles();
     if(draft)renderFrameEdits();
-    renderSelection();message(edit.removed?'frameRemovalUndone':'frameAppendUndone');
+    renderSelection();message(frameEditWords[edit.kind].undone);
     $('story-selection-count').focus({preventScroll:true});
   }
   function renderFrameEdits(){
@@ -973,7 +980,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const result=await request({asset_ids:assetIds.join(','),theme:story.theme,language:story.language,title:''});
     return validDraft(result,assetIds,owner)&&result.saved===false&&result.theme===story.theme&&result.language===story.language?result:null;
   }
-  function applyFrameEdit(nextItems,assetIds,nextDraft,{related=false,removed=false}={}){
+  function applyFrameEdit(nextItems,assetIds,nextDraft,{related=false,kind='add'}={}){
     const before={items,selected,draft,page:selectionPage,dirty,downloaded,sourceAcknowledged:sourceRefreshAcknowledged};
     items=nextItems;selected=new Set(assetIds);
     if(related)selectionPage=Math.floor((items.length-1)/8);
@@ -984,7 +991,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       draft=nextDraft;dirty=true;downloaded=false;
       invalidateTitles();invalidateSourceReviewAcknowledgement();renderFrameEdits();
     }
-    lastFrameEdit={before,owner:{...scope()},ticket:generation,afterItems:items,afterSelection:selected,afterDraft:draft,snapshot:frameUndoSnapshot(),removed};
+    lastFrameEdit={before,owner:{...scope()},ticket:generation,afterItems:items,afterSelection:selected,afterDraft:draft,snapshot:frameUndoSnapshot(),kind};
     renderSelection();
   }
   function frameAppendTarget({related=null,section=null}={}){
@@ -1038,41 +1045,61 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const target=frameAppendTarget({section});
     if(target)openFrameSearch?.(target,event.currentTarget);
   }
-  function chapterFrameRemovalAllowed(story,section){
+  function chapterFrameEditAllowed(story,section){
     return story===draft&&section.asset_ids.length>1&&story.chapters.includes(section)&&!frameSearchBlocked()&&
       !relatedView?.adding&&(!story.saved||refsFor(story)?.available);
   }
-  async function removeChapterFrame(story,section,assetId,trigger){
-    if(!chapterFrameRemovalAllowed(story,section)||!trigger.isConnected||!$('story-workspace').open||!section.asset_ids.includes(assetId))return;
+  function removeChapterFrame(story,section,assetId,trigger){
+    if(!chapterFrameEditAllowed(story,section)||!trigger.isConnected||!$('story-workspace').open||!section.asset_ids.includes(assetId))return;
     const status=trigger.closest('.story-chapter-card').querySelector('.story-chapter-frame-status');
     const remaining=section.asset_ids.filter(id=>id!==assetId),retainedSources=evidenceForAssets(story.items,remaining);
     if(section.evidence_ids.some(id=>!retainedSources.has(id))){status.textContent=text('frameRemoveSources');return;}
-    const expected=story.items.map(item=>item.id).filter(id=>id!==assetId);
+    void updateDraftChapterFrames(story,section,remaining,items.filter(item=>item.id!==assetId),{kind:'remove',trigger,status});
+  }
+  function draftFrameMove(assetId,step){
+    const section=draft?.chapters.find(chapter=>chapter.asset_ids.includes(assetId));
+    if(!section||!chapterFrameEditAllowed(draft,section))return null;
+    const from=section.asset_ids.indexOf(assetId),to=step===0?0:from+step;
+    if(to<0||to>=section.asset_ids.length||from===to||step===0&&section!==draft.chapters[0])return null;
+    return {section,from,to};
+  }
+  function moveDraftFrame(assetId,step,trigger){
+    const move=draftFrameMove(assetId,step);if(!move||!trigger.isConnected||!$('story-workspace').open)return;
+    const {section,from,to}=move,ordered=[...section.asset_ids];
+    ordered.splice(from,1);ordered.splice(to,0,assetId);
+    const poolById=new Map(items.map(item=>[item.id,item]));
+    const replacements=new Map(section.asset_ids.map((id,index)=>[id,poolById.get(ordered[index])]));
+    const nextItems=items.map(item=>replacements.get(item.id)||item);
+    void updateDraftChapterFrames(draft,section,ordered,nextItems,{kind:'move',trigger,status:$('story-workspace-status')});
+  }
+  async function updateDraftChapterFrames(story,section,assetIds,nextItems,{kind,trigger,status}){
+    const expected=story.chapters.flatMap(chapter=>chapter===section?assetIds:chapter.asset_ids);
+    const words=frameEditWords[kind];
     const owner={...scope()},ticket=generation,restoreFocus=document.activeElement===trigger;
-    const active=()=>current(ticket,owner)&&draft===story&&$('story-workspace').open;
-    busy=true;status.textContent=text('frameRemoveWorking');setSelectionCount();
-    let removed=false;
+    const active=()=>current(ticket,owner)&&draft===story&&story.chapters.includes(section)&&$('story-workspace').open;
+    busy=true;status.textContent=text(words.working);setSelectionCount();
+    let applied=false;
     try{
       const fresh=await freshFrameSelection(story,expected,owner);
       if(!active())return;
-      if(!fresh){status.textContent=text('frameRemoveFailed');return;}
-      const nextSection={...section,asset_ids:remaining};
+      if(!fresh){status.textContent=text(words.failed);return;}
+      const nextSection={...section,asset_ids:assetIds};
       const nextDraft={...story,title:$('story-workspace-title').value,items:fresh.items,
         chapters:story.chapters.map(chapter=>chapter===section?nextSection:chapter),selection_revision:fresh.selection_revision};
-      if(!validDraft(nextDraft,expected,owner,sourceProfileLoaded)){status.textContent=text('frameRemoveFailed');return;}
+      if(!validDraft(nextDraft,expected,owner,sourceProfileLoaded)){status.textContent=text(words.failed);return;}
       if(authoredNarrations.has(section))authoredNarrations.add(nextSection);
-      applyFrameEdit(items.filter(item=>item.id!==assetId),expected,nextDraft,{removed:true});
-      removed=true;message('frameRemoved');
+      applyFrameEdit(nextItems,expected,nextDraft,{kind});
+      applied=true;message(words.done);
     }catch(error){
       if(!active())return;
-      status.textContent=text('frameRemoveFailed');
+      status.textContent=text(words.failed);
       if([401,403].includes(error?.status))onError(error);
     }finally{
       if(current(ticket,owner)){
         busy=false;setSelectionCount();
         if(restoreFocus&&(document.activeElement===document.body||document.activeElement===trigger)){
-          const target=removed?$('story-undo-frames'):trigger;
-          if(target.isConnected&&!target.disabled)target.focus({preventScroll:!removed});
+          const target=applied?$('story-undo-frames'):trigger;
+          if(target.isConnected&&!target.disabled)target.focus({preventScroll:!applied});
         }
       }
     }
@@ -1094,7 +1121,16 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     $('story-export').disabled=Boolean(draftPreparation.pending||draftPreparation.proposal);
     $('story-reload-memory').hidden=!draft?.id;
     for(const check of $('story-selection').querySelectorAll('input'))check.disabled=frozen()||sourceRefreshPending||(!check.checked&&selected.size>=24);
-    for(const b of $('story-selection').querySelectorAll('button'))b.disabled=frozen()||sourceRefreshPending||b.dataset.edge==='true'||(b.dataset.startId&&(!selected.has(b.dataset.startId)||items.find(item=>selected.has(item.id))?.id===b.dataset.startId));
+    for(const b of $('story-selection').querySelectorAll('button')){
+      const {orderId,orderStep,startId,edge}=b.dataset;
+      if(draft&&(orderId||startId)){
+        b.disabled=!draftFrameMove(startId||orderId,startId?0:Number(orderStep));
+        b.title=text(startId?'startWithinChapter':'moveWithinChapter');
+      }else{
+        b.disabled=frozen()||sourceRefreshPending||edge==='true'||Boolean(startId&&(!selected.has(startId)||items.find(item=>selected.has(item.id))?.id===startId));
+        b.removeAttribute('title');
+      }
+    }
     $('story-selection-clear').disabled=frozen()||sourceRefreshPending||!selected.size;
     $('story-selection-first').disabled=frozen()||sourceRefreshPending||!items.length;
     $('story-selection-first').hidden=items.length<=24;
@@ -1129,9 +1165,24 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       check.addEventListener('change',()=>{if(!choiceCurrent())return;if(frozen()||sourceRefreshPending||!canDiscard()){check.checked=selected.has(item.id);return;}if(check.checked&&!selected.has(item.id)&&selected.size>=24){check.checked=false;message('selectionLimit');setSelectionCount();return;}void cancelStoryPreparation();clearDraftProposal(null,true,false);clearRelated();if(check.checked)selected.add(item.id);else selected.delete(item.id);invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;$('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');setSelectionCount();});
       label.append(check,img,node('span',`${item.kind==='video'?'▶ ':''}${item.id}`));
       const order=node('div',undefined,'story-frame-order');
-      for(const [direction,word,symbol] of [[-1,'moveEarlier','←'],[1,'moveLater','→']]){const b=button(symbol,()=>{if(!choiceCurrent()||frozen()||sourceRefreshPending||position+direction<0||position+direction>=items.length)return;if(dirty&&!downloaded&&!window.confirm(text('leave')))return;void cancelStoryPreparation();clearDraftProposal(null,true,false);[items[position],items[position+direction]]=[items[position+direction],items[position]];invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;$('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;renderSelection();});b.setAttribute('aria-label',text(word)+' '+item.id);b.dataset.edge=String(position+direction<0||position+direction>=items.length);b.disabled=frozen()||sourceRefreshPending||b.dataset.edge==='true';order.append(b);}
-      const first=button(text('startWithFrame'),()=>{
-        if(!choiceCurrent()||frozen()||sourceRefreshPending||!selected.has(item.id)||!canDiscard())return;
+      for(const [direction,word,symbol] of [[-1,'moveEarlier','←'],[1,'moveLater','→']]){
+        const b=button(symbol,event=>{
+          if(!choiceCurrent())return;
+          if(draft){moveDraftFrame(item.id,direction,event.currentTarget);return;}
+          if(frozen()||sourceRefreshPending||position+direction<0||position+direction>=items.length)return;
+          if(dirty&&!downloaded&&!window.confirm(text('leave')))return;
+          void cancelStoryPreparation();clearDraftProposal(null,true,false);
+          [items[position],items[position+direction]]=[items[position+direction],items[position]];
+          invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;
+          $('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;renderSelection();
+        });
+        b.setAttribute('aria-label',text(word)+' '+item.id);b.dataset.orderId=item.id;b.dataset.orderStep=String(direction);
+        b.dataset.edge=String(position+direction<0||position+direction>=items.length);order.append(b);
+      }
+      const first=button(text('startWithFrame'),event=>{
+        if(!choiceCurrent())return;
+        if(draft){moveDraftFrame(item.id,0,event.currentTarget);return;}
+        if(frozen()||sourceRefreshPending||!selected.has(item.id)||!canDiscard())return;
         clearDraftProposal(null,false,false);
         items.splice(position,1);items.unshift(item);selectionPage=0;invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;
         $('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');renderSelection();

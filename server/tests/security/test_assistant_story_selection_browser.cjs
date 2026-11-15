@@ -477,6 +477,27 @@ let browser,context,page;
   assert.deepEqual(await chapters.locator('textarea[maxlength="6000"]').evaluateAll(nodes=>nodes.map(node=>node.value)),['第一章的家人原话','后面一章的家人原话']);
   assert.equal(requests.slice(beforeChapterAdd).some(item=>item.method==='POST'&&memoryStoryPath(item.path)),false);
   pass('A chapter-scoped add inserts before later chapters while preserving both narrations');
+  const chapterLayout=()=>chapters.evaluateAll(cards=>cards.map(card=>[...card.querySelectorAll('.story-chapter-strip img')].map(img=>img.alt)));
+  const openingMove=page.locator(`[data-order-id="${chapterAddition}"][data-order-step="-1"]`);
+  const laterChapterMove=page.locator(`[data-order-id="${chapterFollowing}"][data-order-step="-1"]`);
+  assert.equal(await laterChapterMove.isDisabled(),true,'the order controls preserve chapter boundaries');
+  assert.equal(await page.locator(`[data-start-id="${chapterFollowing}"]`).isDisabled(),true,'opening choices stay in the first chapter');
+  failNextFrameEdit=true;await openingMove.click();
+  await page.waitForFunction(()=>/暂时无法调整顺序|Could not move/.test(document.querySelector('#story-workspace-status')?.textContent||''));
+  assert.deepEqual(await chapterLayout(),chapterOrder,'a failed reorder does not change chapter membership or frame order');
+  await openingMove.click();
+  await page.waitForFunction(()=>/已更新本章|Updated the frame order/.test(document.querySelector('#story-workspace-status')?.textContent||''));
+  assert.deepEqual(await chapterLayout(),[[chapterAddition,chapterOpening],[chapterFollowing]]);
+  assert.equal(JSON.parse(requests.filter(item=>item.method==='POST'&&storyPreviewPath(item.path)).at(-1).body).asset_ids,[chapterAddition,chapterOpening,chapterFollowing].join(','));
+  assert.deepEqual(await chapters.locator('textarea[maxlength="6000"]').evaluateAll(nodes=>nodes.map(node=>node.value)),['第一章的家人原话','后面一章的家人原话']);
+  assert.match(await page.locator('#story-undo-frames').textContent(),/撤销刚调整|Undo last move/);
+  await page.locator('#story-undo-frames').click();
+  assert.deepEqual(await chapterLayout(),chapterOrder,'undo restores the authored chapter order');
+  await page.locator(`[data-start-id="${chapterAddition}"]`).click();
+  await page.waitForFunction(()=>/已更新本章|Updated the frame order/.test(document.querySelector('#story-workspace-status')?.textContent||''));
+  assert.deepEqual(await chapterLayout(),[[chapterAddition,chapterOpening],[chapterFollowing]]);
+  assert.equal(requests.slice(beforeChapterAdd).some(item=>item.method==='POST'&&memoryStoryPath(item.path)),false);
+  pass('The order controls move frames within their chapter, keep both narrations and let the author undo or choose the opener');
 
   // Refinement starts a new query turn and must clear the previous selection.
   await page.locator('#story-workspace-close').click();await page.waitForFunction(()=>!document.querySelector('#story-workspace').open);
