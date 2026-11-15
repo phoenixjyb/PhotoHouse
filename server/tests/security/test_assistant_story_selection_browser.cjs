@@ -478,6 +478,12 @@ let browser,context,page;
   assert.equal(requests.slice(beforeChapterAdd).some(item=>item.method==='POST'&&memoryStoryPath(item.path)),false);
   pass('A chapter-scoped add inserts before later chapters while preserving both narrations');
   const chapterLayout=()=>chapters.evaluateAll(cards=>cards.map(card=>[...card.querySelectorAll('.story-chapter-strip img')].map(img=>img.alt)));
+  const chapterThumbnail=await chapters.nth(0).locator(`.story-chapter-strip img[alt="${chapterOpening}"]`).elementHandle();
+  const selectionThumbnail=await page.locator(`.story-frame-choice:has(input[value="${chapterOpening}"]) img`).elementHandle();
+  const loadedThumbnails=[chapterThumbnail,selectionThumbnail];
+  await Promise.all(loadedThumbnails.map(handle=>handle.evaluate(async img=>{img.loading='eager';await img.decode();})));
+  const thumbnailReads=()=>requests.filter(item=>item.method==='GET'&&item.path.startsWith(`/assets/${chapterOpening}/thumbnail?`)).length;
+  const beforeMoveThumbnails=thumbnailReads();
   const openingMove=page.locator(`[data-order-id="${chapterAddition}"][data-order-step="-1"]`);
   const laterChapterMove=page.locator(`[data-order-id="${chapterFollowing}"][data-order-step="-1"]`);
   assert.equal(await laterChapterMove.isDisabled(),true,'the order controls preserve chapter boundaries');
@@ -493,6 +499,12 @@ let browser,context,page;
   assert.match(await page.locator('#story-undo-frames').textContent(),/撤销刚调整|Undo last move/);
   await page.locator('#story-undo-frames').click();
   assert.deepEqual(await chapterLayout(),chapterOrder,'undo restores the authored chapter order');
+  for(const handle of loadedThumbnails){
+    assert.equal(await handle.evaluate(img=>img.isConnected&&img.naturalWidth>0),true,'loaded frame thumbnail survives the edit and undo');
+    await handle.dispose();
+  }
+  assert.equal(thumbnailReads(),beforeMoveThumbnails,'reorder and undo make no repeat thumbnail request for the loaded frame');
+  pass('Reordering and undo keep loaded chapter and selection thumbnails without another download');
   await page.locator(`[data-start-id="${chapterAddition}"]`).click();
   await page.waitForFunction(()=>/已更新本章|Updated the frame order/.test(document.querySelector('#story-workspace-status')?.textContent||''));
   assert.deepEqual(await chapterLayout(),[[chapterAddition,chapterOpening],[chapterFollowing]]);

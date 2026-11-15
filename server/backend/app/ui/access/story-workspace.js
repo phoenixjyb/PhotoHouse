@@ -978,15 +978,26 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     dirty=before.dirty;downloaded=before.downloaded;sourceRefreshAcknowledged=before.sourceAcknowledged;
     clearRelated();invalidateTitles();
     if(draft)renderFrameEdits();
-    renderSelection();message(frameEditWords[edit.kind].undone);
+    renderSelection(true);message(frameEditWords[edit.kind].undone);
     $('story-selection-count').focus({preventScroll:true});
+  }
+  function loadedFrameThumbnails(root,selector){
+    const thumbnails=new Map();
+    for(const img of root.querySelectorAll(selector))if(img.complete&&img.naturalWidth)thumbnails.set(img.getAttribute('src'),img);
+    return thumbnails;
+  }
+  function frameThumbnail(id,alt,loaded){
+    const url=mediaURL(id,'thumbnail'),existing=loaded?.get(url);
+    if(existing)return existing;
+    const img=node('img');img.loading='lazy';img.alt=alt;img.src=url;
+    return img;
   }
   function renderFrameEdits(){
     const direction=$('story-draft-preparation')?.querySelector('.story-draft-direction')?.value;
     const active=document.activeElement,section=active?.closest('.story-chapter-card');
     const field=section&&['input[maxlength="160"]','textarea[maxlength="6000"]'].find(selector=>active.matches(selector));
     const range=field?[active.selectionStart,active.selectionEnd,active.selectionDirection]:null;
-    renderEditor();
+    renderEditor(true);
     const nextDirection=$('story-draft-preparation')?.querySelector('.story-draft-direction');
     if(nextDirection&&direction!==undefined)nextDirection.value=direction;
     if(field){
@@ -1013,7 +1024,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       invalidateTitles();invalidateSourceReviewAcknowledgement();renderFrameEdits();
     }
     lastFrameEdit={before,owner:{...scope()},ticket:generation,afterItems:items,afterSelection:selected,afterDraft:draft,snapshot:frameUndoSnapshot(),kind};
-    renderSelection();
+    renderSelection(true);
   }
   function frameAppendTarget({related=null,section=null}={}){
     const owner={...scope()},ticket=generation,story=draft,pool=items,selection=selected;
@@ -1172,9 +1183,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     clearRelated();selectionPage=0;selected=new Set(next);invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;
     $('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');renderSelection();
   }
-  function renderSelection() {
+  function renderSelection(keepThumbnails=false) {
     selectionPage=Math.max(0,Math.min(selectionPage,Math.ceil(items.length/8)-1));
     const pool=items,owner={...scope()},start=selectionPage*8,root=$('story-selection');
+    const loaded=keepThumbnails?loadedFrameThumbnails(root,'.story-frame-choice img'):null;
     root.replaceChildren();
     for(const [offset,item] of items.slice(start,start+8).entries()) {
       const position=start+offset;
@@ -1182,7 +1194,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const choiceCurrent=()=>items===pool&&card.parentNode===root&&scope().account===owner.account&&scope().library===owner.library&&!scope().locked;
       const check=node('input');check.type='checkbox';check.value=item.id;check.checked=selected.has(item.id);
       check.setAttribute('aria-label',`${text(item.kindKnown===false?'choiceFrame':item.kind==='video'?'choiceVideo':'photo')} ${item.id}`);
-      const img=node('img');img.src=mediaURL(item.id,'thumbnail');img.alt='';img.loading='lazy';
+      const img=frameThumbnail(item.id,'',loaded);
       check.addEventListener('change',()=>{if(!choiceCurrent())return;if(frozen()||sourceRefreshPending||!canDiscard()){check.checked=selected.has(item.id);return;}if(check.checked&&!selected.has(item.id)&&selected.size>=24){check.checked=false;message('selectionLimit');setSelectionCount();return;}void cancelStoryPreparation();clearDraftProposal(null,true,false);clearRelated();if(check.checked)selected.add(item.id);else selected.delete(item.id);invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;$('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');setSelectionCount();});
       label.append(check,img,node('span',`${item.kind==='video'?'▶ ':''}${item.id}`));
       const order=node('div',undefined,'story-frame-order');
@@ -1508,10 +1520,11 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     }
     refreshChapterStructureControls();
   }
-  function renderEditor() {
+  function renderEditor(keepThumbnails=false) {
     if(draft?.saved)endGuide();
     cancelDictation();
-    const root=$('story-chapter-editor');root.replaceChildren();$('story-draft-actions').hidden=!draft;
+    const root=$('story-chapter-editor'),loaded=keepThumbnails?loadedFrameThumbnails(root,'.story-chapter-strip img'):null;
+    root.replaceChildren();$('story-draft-actions').hidden=!draft;
     if(!draft)return;
     const renderedStory=draft,renderedOwner={...scope()},renderedTicket=generation;
     document.querySelector('[data-story-word=draftHelp]').textContent=text(readOnly()?'readOnly':draft.saved?'savedHelp':'draftHelp');
@@ -1528,7 +1541,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       title.addEventListener('input',()=>{c.title=title.value;dirty=true;downloaded=false;invalidateDraftReview();invalidateTitles();syncChapterStructureAvailability();syncLocalControls();});titleLabel.append(title);section.append(titleLabel);
       const strip=node('div',undefined,'story-chapter-strip'),showRemove=!readOnly()&&c.asset_ids.length>1;
       for(const id of c.asset_ids){
-        const img=node('img');img.src=mediaURL(id,'thumbnail');img.alt=id;img.loading='lazy';
+        const img=frameThumbnail(id,id,loaded);
         if(!showRemove){strip.append(img);continue;}
         const choice=node('div',undefined,'story-chapter-frame');
         const remove=button(text('removeChapterFrame'),event=>void removeChapterFrame(renderedStory,c,id,event.currentTarget),'quiet story-chapter-remove-frame');
