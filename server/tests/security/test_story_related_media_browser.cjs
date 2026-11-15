@@ -43,6 +43,25 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  assert.match(await rows.first().textContent(),/▶/);assert.match(await page.locator('#story-selection-count').textContent(),/^1 \/ 24/);
  assert.equal(await rows.locator('[data-related-id="102"]').count(),0);assert.equal(await rows.locator('[data-related-id="101"]').count(),0);
  pass('Explicit lookup returns bounded mixed-media same-day candidates, excludes seed and filename-only dates, selects nothing');
+ const mediaFilter=page.locator('#story-related-media');
+ let arriveFilter,releaseFilter,completeFilter;
+ const filterReached=new Promise(resolve=>arriveFilter=resolve),filterSettled=new Promise(resolve=>completeFilter=resolve);
+ hold={arrive:arriveFilter,wait:new Promise(resolve=>releaseFilter=resolve),complete:completeFilter};
+ await mediaFilter.selectOption('image');await filterReached;
+ try{
+  await mediaFilter.selectOption('video');
+  await page.waitForFunction(()=>document.querySelectorAll('.story-related-card').length===1&&document.querySelector('.story-related-card button')?.dataset.relatedId==='1129');
+ }finally{releaseFilter();}
+ await filterSettled;
+ assert.deepEqual(await rows.locator('button').evaluateAll(nodes=>nodes.map(node=>node.dataset.relatedId)),['1129']);
+ assert.equal(await page.locator('#story-related-more').isHidden(),true);
+ await mediaFilter.selectOption('image');
+ await page.waitForFunction(()=>document.querySelector('.story-related-card button')?.dataset.relatedId==='1128');
+ assert.equal(await rows.locator('[data-related-id="1129"]').count(),0);
+ assert.match(await page.locator('#story-selection-count').textContent(),/^1 \/ 24/);
+ await mediaFilter.selectOption('all');
+ await page.waitForFunction(()=>document.querySelector('.story-related-card button')?.dataset.relatedId==='1129');
+ pass('Photo and video filters restart same-day paging and ignore a late result from the previous filter');
  await page.locator('#story-related-more').click();await page.waitForFunction(()=>document.querySelector('.story-related-card button')?.dataset.relatedId==='1109');assert.equal(await rows.count(),9);assert.equal(await page.locator('#story-related-more').isVisible(),false);
  await find.click();await page.waitForFunction(()=>document.querySelector('.story-related-card button')?.dataset.relatedId==='1129');
  await page.screenshot({path:path.join(artifacts,'related-moments-desktop-zh.png'),fullPage:true});
@@ -97,7 +116,7 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  assert.equal(requests.filter(r=>r.method==='POST'&&r.path==='/memory-stories').length,0);
  pass('Undo last add restores the earlier frame order and draft, and later wording edits expire the undo');
  await page.setViewportSize({width:390,height:844});await page.locator('#story-workspace').evaluate(el=>el.style.fontSize='150%');
- for(const sel of ['#story-related','.story-related-items','.story-related-card'])assert(await page.locator(sel).first().evaluate(el=>el.scrollWidth<=el.clientWidth),sel+' fits at enlarged text');
+ for(const sel of ['#story-related','.story-related-filter select','.story-related-items','.story-related-card'])assert(await page.locator(sel).first().evaluate(el=>el.scrollWidth<=el.clientWidth),sel+' fits at enlarged text');
  await page.locator('#story-related').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'related-moments-mobile-zh.png')});
  await page.evaluate(()=>window.__relatedLanguage('en'));assert.equal(await find.textContent(),'Find moments from these days');await page.screenshot({path:path.join(artifacts,'related-moments-mobile-en.png')});pass('Chinese and English picker render at 390px with 150 percent text');
  async function late(edit){let arrive,release,complete;const reached=new Promise(r=>arrive=r),wait=new Promise(r=>release=r),finished=new Promise(r=>complete=r);hold={arrive,wait,complete};await find.click();await reached;await edit();release();await finished;assert.equal(await rows.count(),0);}

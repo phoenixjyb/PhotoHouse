@@ -4345,7 +4345,7 @@
     stopAudioForCapture:()=>{stopAssistantSpeech();memoryCommunity?.stopPlayback?.();window.dispatchEvent(new CustomEvent('photohouse-memory-audio-start'));},
     request:body=>request(libraryPath('/story-workspace/preview'),{method:'POST',body,epoch:state.generation}),
     openFrameSearch:openAssistantFrameSearch,
-    relatedRequest:body=>request(libraryPath('/story-workspace/related-media'),{method:'POST',body,epoch:state.generation}),
+    relatedRequest:(body,media='all')=>request(libraryPath('/story-workspace/related-media',media==='all'?{}:{media}),{method:'POST',body,epoch:state.generation}),
     draftRequest:(path,{library=state.library,account=state.profile?.account_id,...options}={})=>{
       if(!['/story-workspace/drafts/capabilities','/story-workspace/drafts/prepare','/story-workspace/drafts/cancel'].includes(path))throw new Error('Invalid draft route');
       if(account!==state.profile?.account_id||!account||!library||(path!=='/story-workspace/drafts/cancel'&&library!==state.library))throw new DOMException('Stale draft scope','AbortError');

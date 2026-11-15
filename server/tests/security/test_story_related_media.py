@@ -20,11 +20,14 @@ class StoryRelatedMediaTests(unittest.TestCase):
         self.client = self.f.client
         self.headers = {'Authorization': 'Bearer ' + self.f.member_token}
 
-    def request(self, *, asset_ids='101', before_id='', library='family-a', headers=None, raw=None):
+    def request(self, *, asset_ids='101', before_id='', library='family-a', media=None, headers=None, raw=None):
         selected_headers = dict(self.headers if headers is None else headers)
         if raw is not None:
             selected_headers.setdefault('Content-Type', 'application/json')
-        return self.client.post('/story-workspace/related-media?library=' + library,
+        params = {'library': library}
+        if media is not None:
+            params['media'] = media
+        return self.client.post('/story-workspace/related-media', params=params,
             headers=selected_headers,
             content=raw if raw is not None else None,
             json=None if raw is not None else {'asset_ids': asset_ids, 'before_id': before_id})
@@ -132,6 +135,26 @@ class StoryRelatedMediaTests(unittest.TestCase):
         self.assertEqual([item['id'] for item in second['items']], ['1001'])
         self.assertFalse(second['has_more'])
         self.assertIsNone(second['next_before_id'])
+
+    def test_media_filter_applies_before_paging_and_keeps_library_scope(self):
+        videos = list(map(str, range(120, 142)))
+        for ident in range(120, 142):
+            self.add_asset(ident, day='2026-01-01', mime='video/mp4')
+        for ident in range(220, 245):
+            self.add_asset(ident, day='2026-01-01')
+        self.add_asset(300, day='2026-01-01', mime='video/mp4', library='family-b')
+        self.add_asset(301, day='2026-01-01', mime='video/mp4', status='deleted')
+
+        response = self.request(media='video')
+        self.assertEqual(response.status_code, 200)
+        first = response.json()
+        self.assertEqual([item['id'] for item in first['items']], videos[::-1][:20])
+        self.assertTrue(first['has_more'])
+        second = self.request(media='video', before_id=first['next_before_id']).json()
+        self.assertEqual([item['id'] for item in second['items']], videos[:2][::-1])
+        self.assertFalse(second['has_more'])
+        self.assertEqual(self.request(media='image').json()['items'][0]['id'], '244')
+        self.assertEqual(self.request(media='other').status_code, 400)
 
     def test_cookie_csrf_body_bounds_and_closed_boundary(self):
         headers = {'Cookie': COOKIE + '=' + self.f.member_token,
