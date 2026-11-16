@@ -60,6 +60,14 @@ installation or instrumentation command. `--dry-run` performs no device writes.
 It never uninstalls an application or creates an AVD. A successful compile is
 separate from actual emulator results and inspected UI renders.
 
+The TV **Story review** workspace uses the protected PhotoHouse account service.
+Enable it with `-PphotohouseTvStoryApprovalEnabled=true` and provide a trusted
+HTTPS origin with `photohouseTvStoryOrigin`. The existing Home TV origin serves
+the anonymous gallery separately. The TV clears its private review session on
+exit or background. For generated instrumentation, enable the same switch with
+`-PphotohouseTvUiQa=true` and leave the origin unset so the tests supply synthetic
+stories and account responses.
+
 ## October 15 v60 delivery closure
 
 The owner authorized release of immutable source `53e3954`. Native Windows

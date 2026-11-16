@@ -16,6 +16,8 @@ data class StoryProposalAdoptionDraft internal constructor(
     val title: String?,
     val chapters: List<StoryProposalAdoptionChapter>,
     val questions: List<String>,
+    val fromAutoRefinement: Boolean = false,
+    val unlinkedSourceCount: Int = 0,
 )
 
 data class StoryProposalAdoptionChapter internal constructor(
@@ -33,6 +35,24 @@ fun storyProposalAdoptionDraft(
     references: SavedMemoryStoryContributionReferences,
     job: MemoryJob,
     selectedChapterIds: List<String>,
+    adoptTitle: Boolean,
+): StoryProposalAdoptionDraft? = buildStoryProposalAdoptionDraft(story, references, job, selectedChapterIds, adoptTitle)
+
+/** Approves the saved story's own automatic suggestion, retaining its title and existing chapter links. */
+fun savedStoryRefinementDraft(
+    story: SavedMemoryStory,
+    references: SavedMemoryStoryContributionReferences,
+): StoryProposalAdoptionDraft? {
+    val job = story.autoRefinement ?: return null
+    if (!story.autoRefinementAvailable || job.kind != "narrative") return null
+    return buildStoryProposalAdoptionDraft(story, references, job, selectedChapterIds = null, adoptTitle = false)
+}
+
+private fun buildStoryProposalAdoptionDraft(
+    story: SavedMemoryStory,
+    references: SavedMemoryStoryContributionReferences,
+    job: MemoryJob,
+    selectedChapterIds: List<String>?,
     adoptTitle: Boolean,
 ): StoryProposalAdoptionDraft? = runCatching {
     require(story.canEdit && story.revision > 0 && story.revision < Long.MAX_VALUE)
@@ -52,8 +72,10 @@ fun storyProposalAdoptionDraft(
             refs.contributionIds.all(::canonicalUuid)
     })
 
-    require(selectedChapterIds.isNotEmpty() && selectedChapterIds.distinct().size == selectedChapterIds.size)
-    require(selectedChapterIds.all { it in chapterIds })
+    if (selectedChapterIds != null) {
+        require(selectedChapterIds.isNotEmpty() && selectedChapterIds.distinct().size == selectedChapterIds.size)
+        require(selectedChapterIds.all { it in chapterIds })
+    }
     require(canonicalUuid(job.id) && job.state == "ready" && job.needsReview && job.baseRevision == story.revision)
     require(job.kind == "narrative" || job.kind == "chat")
     val rawNarrative = when (job.kind) {
@@ -81,15 +103,20 @@ fun storyProposalAdoptionDraft(
         candidate
     } else null
 
-    val selected = selectedChapterIds.toSet()
     val byId = story.chapters.associateBy { it.id }
     val refsById = references.chapters.associateBy { it.chapterId }
+    val autoRefinement = selectedChapterIds == null
+    val selected = selectedChapterIds?.toSet() ?: narrative.chapters
+        .filter { it.narration != byId.getValue(it.id).narration }.map { it.id }.toSet()
+    var unlinkedSourceCount = 0
     val adoptedChapters = narrative.chapters.filter { it.id in selected }.map { proposed ->
         val current = byId.getValue(proposed.id)
         val contributionIds = refsById.getValue(proposed.id).contributionIds.map { "contribution-$it" }.toSet()
         val allowedSources = current.evidenceIds.toSet() + contributionIds + "editorial-${story.id}-${current.id}"
-        require(proposed.sourceIds.all { it in allowedSources })
-        StoryProposalAdoptionChapter(proposed.id, proposed.narration, immutable(proposed.sourceIds))
+        val linkedSources = proposed.sourceIds.filter { it in allowedSources }
+        if (!autoRefinement) require(linkedSources.size == proposed.sourceIds.size)
+        unlinkedSourceCount += proposed.sourceIds.size - linkedSources.size
+        StoryProposalAdoptionChapter(proposed.id, proposed.narration, immutable(linkedSources))
     }
     require(adoptedChapters.isNotEmpty())
     StoryProposalAdoptionDraft(
@@ -102,6 +129,8 @@ fun storyProposalAdoptionDraft(
         title,
         immutable(adoptedChapters),
         immutable(narrative.questions),
+        fromAutoRefinement = autoRefinement,
+        unlinkedSourceCount = unlinkedSourceCount,
     )
 }.getOrNull()
 

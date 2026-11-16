@@ -235,13 +235,16 @@ internal fun SavedMemoryStoriesDialog(
                                 val linkDraftChanged = reading.contributionReferenceDraft?.let { draft ->
                                     draft != reading.contributionReferences?.chapters?.associate { it.chapterId to it.contributionIds }
                                 } == true
-                                val canStartEdit = referencesMatch && !reading.contributionReferencesBusy &&
+                                val canStartEdit = referencesMatch && !reading.contributionReferencesBusy && !reading.refinementBusy &&
                                     !reading.contributionReferenceSaveBusy && !reading.contributionReferenceSaveError &&
                                     !reading.contributionReferenceSaveConflict && reading.pendingContributionReferenceMutation == null &&
                                     !linkDraftChanged
                                 OutlinedButton(onClick = { store.beginSavedGroupedStoryEdit() }, enabled = canStartEdit,
                                     modifier = Modifier.fillMaxWidth().testTag("saved-memory-edit-story")) {
                                     Text(t("Edit saved story", "编辑已保存故事"))
+                                }
+                                if (story.autoRefinementAvailable) {
+                                    SavedStoryRefinementReview(store, reading, story, zh, canStartEdit)
                                 }
                                 if (!referencesMatch && !reading.contributionReferencesBusy) {
                                     Text(t("The complete chapter memory links must be checked before editing.",

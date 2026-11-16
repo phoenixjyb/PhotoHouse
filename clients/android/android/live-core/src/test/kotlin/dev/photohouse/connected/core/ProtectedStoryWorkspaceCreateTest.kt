@@ -216,4 +216,19 @@ class ProtectedStoryWorkspaceCreateTest {
         val legacy = ProtectedMemoryStoriesWire.detail(savedResponse().replace("\"questions\":[]", "\"questions\":[],\"source_policy\":null").toByteArray(), "family", storyId, 4, sourceReview = true)
         assertNull(legacy.sourcePolicy)
     }
+
+    @Test fun savedDetailAcceptsOnlyKnownAutoRefinementMetadataAndDeferredJobState() {
+        val job = """{"version":1,"id":"55555555-5555-4555-8555-555555555555","kind":"narrative","state":"deferred","created_at":1710000000,"updated_at":1710000001,"expires_at":1810000000,"error_code":null,"result":null,"needs_review":true,"base_revision":"4"}"""
+        val withJob = savedResponse().replace("\"questions\":[]", "\"questions\":[],\"auto_refinement\":$job")
+        val decoded = ProtectedMemoryStoriesWire.detail(withJob.toByteArray(), "family", storyId, 4)
+        assertTrue(decoded.autoRefinementAvailable)
+        assertEquals("deferred", decoded.autoRefinement?.state)
+        val noJob = ProtectedMemoryStoriesWire.detail(savedResponse().replace("\"questions\":[]",
+            "\"questions\":[],\"auto_refinement\":null").toByteArray(), "family", storyId, 4)
+        assertTrue(noJob.autoRefinementAvailable)
+        assertNull(noJob.autoRefinement)
+        assertFalse(ProtectedMemoryStoriesWire.detail(savedResponse().toByteArray(), "family", storyId, 4).autoRefinementAvailable)
+        badResponse { ProtectedMemoryStoriesWire.detail(withJob.replace("\"auto_refinement\":$job", "\"auto_refinement\":$job,\"unexpected\":true").toByteArray(), "family", storyId, 4) }
+        badResponse { ProtectedMemoryStoriesWire.detail(withJob.replace("\"state\":\"deferred\"", "\"state\":\"unknown\"").toByteArray(), "family", storyId, 4) }
+    }
 }

@@ -7,7 +7,8 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class StoryWorkspaceRepositoryTest {
-    private data class UpdateCall(val id: String, val json: String, val sourceReview: Boolean, val contributionReferences: Boolean)
+    private data class UpdateCall(val id: String, val json: String, val sourceReview: Boolean, val contributionReferences: Boolean,
+                                 val suppressAutoRefinement: Boolean)
     private val example = javaClass.classLoader!!.getResourceAsStream("story-workspace-contract/examples.json")!!.use {
         Json.parseToJsonElement(it.readBytes().toString(Charsets.UTF_8)).jsonObject
     }
@@ -71,7 +72,15 @@ class StoryWorkspaceRepositoryTest {
             token: Bearer, library: String, storyId: String, json: String,
             sourceReview: Boolean, contributionReferences: Boolean,
         ): ByteArray {
-            updates += UpdateCall(storyId, json, sourceReview, contributionReferences)
+            return update(token, storyId, json, sourceReview, contributionReferences, false)
+        }
+        override suspend fun updateGroupedStory(
+            token: Bearer, library: String, storyId: String, json: String,
+            sourceReview: Boolean, contributionReferences: Boolean, suppressAutoRefinement: Boolean,
+        ): ByteArray = update(token, storyId, json, sourceReview, contributionReferences, suppressAutoRefinement)
+        private fun update(token: Bearer, storyId: String, json: String, sourceReview: Boolean,
+                           contributionReferences: Boolean, suppressAutoRefinement: Boolean): ByteArray {
+            updates += UpdateCall(storyId, json, sourceReview, contributionReferences, suppressAutoRefinement)
             after?.invoke(); error?.let { throw it }; updateFailure?.let { throw it }
             return (updateResponse ?: updateReply()).also { buffer = it }
         }
@@ -226,6 +235,39 @@ class StoryWorkspaceRepositoryTest {
             catch (failure: ApiFailure) { assertEquals(FailureKind.INVALID_RESPONSE, failure.kind) }
             assertTrue(fake.buffer!!.all { it == 0.toByte() })
         }
+    }
+
+    @Test fun autoRefinementSuppressionIsFrozenAcrossRetryAndLegacyAdaptersRejectIt() = runBlocking {
+        val initial = ProtectedMemoryStoriesWire.decode(example.getValue("created").toString().toByteArray(),
+            "family-a", listOf("102", "101")).copy(revision = 4,
+            sourcePolicy = ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1)
+        val references = SavedMemoryStoryContributionReferences(initial.id, initial.libraryId, 4,
+            listOf(SavedMemoryChapterContributionReferences("chapter-1", emptyList())))
+        val binding = MemoryCommunityBinding(token(), "family-a", 1)
+        val fake = Fake()
+        val repo = StoryWorkspaceRepository(fake, { binding })
+        val pending = repo.freezeUpdate(initial, references, "Edited title", initial.chapters,
+            "22222222-2222-4222-8222-222222222222", reviewed = true, sourceReview = true,
+            sourcePolicy = ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1,
+            suppressAutoRefinement = true) { true }
+        assertTrue(pending.suppressAutoRefinement)
+        fake.updateFailure = ApiFailure(FailureKind.OFFLINE)
+        try { repo.save(pending) { true }; fail() } catch (_: ApiFailure) { }
+        fake.updateFailure = null
+        repo.save(pending) { true }
+        assertEquals(listOf(true, true), fake.updates.map { it.suppressAutoRefinement })
+        assertEquals(fake.updates.first(), fake.updates.last())
+
+        val legacy = object : StoryWorkspaceApi {
+            override suspend fun storyPreview(token: Bearer, library: String, json: String) = byteArrayOf()
+            override suspend fun storyTitleCapabilities(token: Bearer, library: String) = byteArrayOf()
+            override suspend fun storyTitles(token: Bearer, library: String, json: String) = byteArrayOf()
+            override suspend fun createGroupedStory(token: Bearer, library: String, json: String) = byteArrayOf()
+            override suspend fun updateGroupedStory(token: Bearer, library: String, storyId: String, json: String,
+                sourceReview: Boolean, contributionReferences: Boolean) = byteArrayOf()
+        }
+        try { legacy.updateGroupedStory(token(), "family-a", initial.id, "{}", true, true, true); fail() }
+        catch (failure: ApiFailure) { assertEquals(404, failure.status) }
     }
 
     @Test fun updateFreezeRejectsWrongStoryRevisionLinksOrUnreviewedInput() {

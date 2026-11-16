@@ -60,6 +60,10 @@ The main phone/API or TV/catalog origin is required, as is the phone Home origin
 when Home discovery is enabled. A disconnected debug profile is not a release
 profile. Optional disabled Home/OTA routes can remain empty.
 
+In a TV release profile, set `photohouseTvStoryApprovalEnabled=true` with an
+explicit `photohouseTvStoryOrigin` to include account-scoped story review.
+Existing profiles use the guest TV build by default.
+
 Its JSON contains source/profile/Gradle hashes, boolean choices and routing-value
 hashes, never the original endpoints. It performs no Gradle invocation, network
 request, signature access, service operation or publication. A passed preparation

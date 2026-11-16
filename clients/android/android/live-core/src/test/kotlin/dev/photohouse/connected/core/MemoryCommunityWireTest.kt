@@ -23,8 +23,13 @@ class MemoryCommunityWireTest {
     @Test fun parsesCapabilityFlagsIndependentlyAndRejectsInvalidDependencies() {
         val caps = """{"version":1,"enabled":true,"contributions_enabled":true,"generation_enabled":false,"conversation_retention_days":30,"audio_format":"wav_pcm16_mono_16000","max_audio_seconds":30,"max_text_bytes":8192,"original_retention":"until_owner_deletes"}"""
         assertFalse(ProtectedMemoryCommunityWire.capabilities(caps.toByteArray()).generationEnabled)
+        assertFalse(ProtectedMemoryCommunityWire.capabilities(caps.toByteArray()).autoRefinementEnabled)
+        assertTrue(ProtectedMemoryCommunityWire.capabilities(caps.replace("\"generation_enabled\":false",
+            "\"generation_enabled\":false,\"auto_refinement_enabled\":true").toByteArray()).autoRefinementEnabled)
         reject { ProtectedMemoryCommunityWire.capabilities(caps.replace("\"enabled\":true", "\"enabled\":false").toByteArray()) }
         reject { ProtectedMemoryCommunityWire.capabilities(caps.replace("\"enabled\":true", "\"enabled\":true,\"enabled\":true").toByteArray()) }
+        reject { ProtectedMemoryCommunityWire.capabilities(caps.replace("\"generation_enabled\":false",
+            "\"generation_enabled\":false,\"auto_refinement_enabled\":true,\"extra\":true").toByteArray()) }
     }
 
     @Test fun parsesContributionPagesAndDetailWithExactNullableFields() {

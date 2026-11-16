@@ -30,6 +30,8 @@ data class SavedMemoryStory(
     val selectionRevision: String, val title: String, val theme: String, val language: String,
     val items: List<MemoryStoryAsset>, val chapters: List<SavedMemoryStoryChapter>, val questions: List<String>,
     val sourcePolicy: String? = null,
+    val autoRefinementAvailable: Boolean = false,
+    val autoRefinement: MemoryJob? = null,
 )
 data class SavedMemoryChapterContributionReferences(val chapterId: String, val contributionIds: List<String>)
 data class SavedMemoryStoryContributionReferences(
@@ -100,7 +102,9 @@ internal object ProtectedMemoryStoriesWire {
         // separately caps the total at 10,000 and this per-array guard at 1,200.
         val root = obj(DiscoveryJson.parse(bytes, HttpsPhotoHouseApi.MEMORY_STORIES_LIMIT, 1200))
         val storyKeys = arrayOf("version", "library_id", "id", "revision", "created_at", "updated_at", "can_edit", "saved", "state", "generator", "needs_review", "selection_revision", "title", "theme", "language", "items", "chapters", "questions")
-        if (sourceReview) exact(root, *storyKeys, "source_policy") else exact(root, *storyKeys)
+        val expectedKeys = storyKeys.toSet() + if (sourceReview) setOf("source_policy") else emptySet()
+        val hasAutoRefinement = "auto_refinement" in root
+        check(root.keys == expectedKeys || root.keys == expectedKeys + "auto_refinement")
         val sourcePolicy = if (sourceReview) (root["source_policy"] ?: bad()).let { value ->
             if (value == JsonNull) null else field(JsonObject(mapOf("source_policy" to value)), "source_policy", 32)
         } else null
@@ -109,7 +113,8 @@ internal object ProtectedMemoryStoriesWire {
         val actualLibrary = field(root, "library_id", 256); val id = field(root, "id", 36); val revision = decimalString(root["revision"], positive = true)
         check(actualLibrary == library && id == expectedId && revision >= expectedRevision)
         uuid(id)
-        bool(root, "can_edit") // validated for contract integrity; this read-only slice never enables editing.
+        val canEdit = bool(root, "can_edit")
+        check(!hasAutoRefinement || canEdit)
         check(bool(root, "saved") && field(root, "state", 16) == "draft" && field(root, "generator", 40) == "family_edited_outline" && bool(root, "needs_review"))
         val selectionRevision = field(root, "selection_revision", 64); check(selectionRevision.matches(Regex("[0-9a-fA-F]{64}")))
         val title = field(root, "title", 160); val theme = field(root, "theme", 32).also(::theme)
@@ -134,8 +139,12 @@ internal object ProtectedMemoryStoriesWire {
             chapter.evidenceIds.all { it in evidenceIds }
         })
         val questions = array(root, "questions", 3).map { str(it, 500, allowNewline = true).also { q -> check(q.isNotBlank()) } }
-        SavedMemoryStory(id, actualLibrary, revision, long(root["created_at"]), long(root["updated_at"]), bool(root, "can_edit"), selectionRevision,
-            title, theme, language, items, chapters, questions, sourcePolicy).also { check(it.createdAt >= 0 && it.updatedAt >= 0) }
+        val autoRefinement = if (!hasAutoRefinement || root["auto_refinement"] == JsonNull) null else
+            ProtectedMemoryCommunityWire.job(root.getValue("auto_refinement").toString().toByteArray(Charsets.UTF_8))
+        check(autoRefinement == null || autoRefinement.kind == "narrative" && autoRefinement.baseRevision == revision)
+        SavedMemoryStory(id, actualLibrary, revision, long(root["created_at"]), long(root["updated_at"]), canEdit, selectionRevision,
+            title, theme, language, items, chapters, questions, sourcePolicy, hasAutoRefinement, autoRefinement)
+            .also { check(it.createdAt >= 0 && it.updatedAt >= 0) }
     }
 
     /** Strict create response entry point; the server may return a later revision after a mutation retry. */

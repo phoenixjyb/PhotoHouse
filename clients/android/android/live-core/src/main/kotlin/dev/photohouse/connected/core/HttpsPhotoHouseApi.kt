@@ -915,6 +915,11 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
     override suspend fun updateGroupedStory(
         token: Bearer, library: String, storyId: String, json: String,
         sourceReview: Boolean, contributionReferences: Boolean,
+    ): ByteArray = updateGroupedStory(token, library, storyId, json, sourceReview, contributionReferences, false)
+
+    override suspend fun updateGroupedStory(
+        token: Bearer, library: String, storyId: String, json: String,
+        sourceReview: Boolean, contributionReferences: Boolean, suppressAutoRefinement: Boolean,
     ): ByteArray {
         require(protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library))
         val canonicalId = storyId.also {
@@ -924,6 +929,7 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
             .addQueryParameter("library", library).apply {
                 if (contributionReferences) addQueryParameter("contribution_refs", "1")
                 if (sourceReview) addQueryParameter("source_review", "1")
+                if (suppressAutoRefinement) addQueryParameter("auto_refine", "0")
             }.build()
         val result = packet(target, token, json, limit = MEMORY_STORIES_LIMIT,
             requestLimit = 384 * 1024, method = "PUT")
@@ -955,6 +961,22 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json")
             throw ApiFailure(FailureKind.INVALID_RESPONSE)
         return ProtectedMemoryStoriesWire.detail(result.bytes, library, canonicalId, revision, sourceReview)
+    }
+    override suspend fun requestSavedStoryRefinement(
+        token: Bearer, library: String, storyId: String, revision: Long,
+    ): MemoryJob {
+        require(protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library) && revision > 0)
+        val canonicalId = storyId.also { require(runCatching { java.util.UUID.fromString(it).toString() == it }.getOrDefault(false)) }
+        val target = origin.url.newBuilder().addPathSegments("memory-stories").addPathSegment(canonicalId)
+            .addPathSegment("refinement").addQueryParameter("library", library).build()
+        val body = buildJsonObject { put("revision", revision.toString()) }.toString()
+        val result = packet(target, token, body, limit = MemoryCommunityResponseLimits.JSON_BYTES,
+            requestLimit = 1024, method = "POST")
+        if (result.code != 200 || result.contentType?.substringBefore(';')?.trim()?.lowercase() != "application/json") {
+            result.bytes.fill(0)
+            throw ApiFailure(FailureKind.INVALID_RESPONSE)
+        }
+        return try { ProtectedMemoryCommunityWire.job(result.bytes) } finally { result.bytes.fill(0) }
     }
     override suspend fun savedMemoryStoryContributionReferences(
         token: Bearer, library: String, storyId: String, revision: Long, chapterIds: List<String>,

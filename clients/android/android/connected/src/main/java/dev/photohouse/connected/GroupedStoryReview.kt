@@ -8,14 +8,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import dev.photohouse.connected.core.*
+import kotlin.math.roundToInt
 
 /** Review surface for the optional grouped-story store. Gallery entry is integrated separately. */
 @Composable
@@ -42,11 +48,19 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
     val guided = state.guideStep != null && !isSavedEdit
     val guideReview = guided && state.guideStep == StoryGuideStep.REVIEW
     val proposalImportReview = state.proposalImportReview.takeIf { state.savedStory == null }
+    val firstChangedChapterId = proposalImportReview?.firstChangedChapterId
+    var openedChangedChapter by remember(store, firstChangedChapterId) { mutableStateOf(false) }
     var proposalQuestionsExpanded by remember(store, proposalImportReview) { mutableStateOf(false) }
-    LaunchedEffect(state.guideStep) { reviewScrollState.scrollTo(0) }
+    LaunchedEffect(store, firstChangedChapterId) {
+        if (firstChangedChapterId == null) return@LaunchedEffect
+        val targetIndex = state.editableChapters.indexOfFirst { it.id == firstChangedChapterId }
+        if (targetIndex >= 0) chapterIndex = targetIndex
+    }
+    LaunchedEffect(state.guideStep) { if (firstChangedChapterId == null) reviewScrollState.scrollTo(0) }
     val editable = state.status == StoryWorkspaceStoreStatus.EDITING && !state.busy && !state.hasPendingSave && !savedEditReloading
-    Column(Modifier.fillMaxSize().verticalScroll(reviewScrollState).padding(20.dp)
-        .testTag("grouped-story-review"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxSize().testTag("grouped-story-review")) {
+        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(reviewScrollState).padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (guided) StoryGuideProgress(requireNotNull(state.guideStep), zh)
         Text(if (guided && state.guideStep == StoryGuideStep.FRAMES) t("Preparing your moments", "正在整理所选画面") else if (guideReview) t("Review and save", "检查与保存") else if (guided) t("Tell your memory", "讲述回忆") else if (isSavedEdit) t("Edit saved story", "编辑已保存故事") else t("Turn moments into a story", "把这些瞬间写成故事"), style = MaterialTheme.typography.headlineSmall,
             fontFamily = FontFamily.Serif)
@@ -183,11 +197,24 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
             }
             val index = chapterIndex.coerceIn(state.editableChapters.indices)
             val chapter = state.editableChapters[index]
+            val openChangedChapter = !openedChangedChapter && chapter.id == firstChangedChapterId
+            var chapterTop by remember(chapter.id) { mutableIntStateOf(-1) }
             LaunchedEffect(store, store.savedEditStoryId, store.savedEditStoryRevision, chapter.id) {
-                reviewScrollState.scrollTo(0)
+                if (!openChangedChapter) reviewScrollState.scrollTo(0)
             }
+            LaunchedEffect(openChangedChapter, chapterTop) {
+                if (openChangedChapter && chapterTop >= 0) {
+                    reviewScrollState.scrollTo(chapterTop)
+                    openedChangedChapter = true
+                }
+            }
+            val measureChapter = if (openChangedChapter) Modifier.onGloballyPositioned { coordinates ->
+                coordinates.parentLayoutCoordinates?.let { parent ->
+                    chapterTop = parent.localPositionOf(coordinates, Offset.Zero).y.roundToInt()
+                }
+            } else Modifier
             Text(t("Chapter ${index + 1} / ${state.editableChapters.size}", "篇章 ${index + 1} / ${state.editableChapters.size}"),
-                style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("grouped-story-chapter-position"))
+                style = MaterialTheme.typography.titleMedium, modifier = measureChapter.testTag("grouped-story-chapter-position"))
             if (store.chapterFrameSearchAvailable) {
                 OutlinedButton(
                     onClick = { finishTyping(); store.openChapterFrameSearch(chapter.id) },
@@ -342,7 +369,8 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
             if (!guided) draft.questions.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
             if (state.invalidInput) Text(t("Check the title and shorten any oversized text before saving.",
                 "请核对标题并缩短超长文字，再保存。"), color = MaterialTheme.colorScheme.error)
-            if (!guided) StorySaveConfirmation(store, state, zh, editable, dictationUnfinished, ::finishTyping)
+            if (!guided && proposalImportReview == null)
+                StorySaveConfirmation(store, state, zh, editable, dictationUnfinished, ::finishTyping)
         }
         if (guideReview && draft != null && state.savedStory == null) {
             StoryGuideDraftReview(state, zh, previewBytes)
@@ -455,6 +483,26 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
         }
         OutlinedButton(onClick = { finishTyping(); if (store.close()) onClose() else discard = true },
             modifier = Modifier.fillMaxWidth().testTag("grouped-story-close")) { Text(t("Close", "关闭")) }
+        }
+        if (proposalImportReview != null && state.draft != null && state.savedStory == null &&
+            state.status == StoryWorkspaceStoreStatus.EDITING && !guideReview) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().imePadding().navigationBarsPadding()
+                    .testTag("story-proposal-import-save-bar"),
+                tonalElevation = 3.dp,
+            ) {
+                BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    val wide = maxWidth >= 600.dp
+                    Column {
+                        Text(t("Applied to draft", "已带入草稿"),
+                            style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                                .testTag("story-proposal-import-applied"))
+                        StorySaveConfirmation(store, state, zh, editable, dictationUnfinished, ::finishTyping, wide)
+                    }
+                }
+            }
+        }
     }
     if (discard) AlertDialog(onDismissRequest = { discard = false },
         title = { Text(t("Leave this draft?", "离开这份草稿？")) },
@@ -495,18 +543,36 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
 
 @Composable
 private fun StorySaveConfirmation(store: StoryWorkspaceStore, state: StoryWorkspaceStoreState,
-    zh: Boolean, editable: Boolean, dictationUnfinished: Boolean, finishTyping: () -> Unit) {
+    zh: Boolean, editable: Boolean, dictationUnfinished: Boolean, finishTyping: () -> Unit, wide: Boolean = false) {
     fun t(en: String, cn: String) = if (zh) cn else en
     if (state.localDraftRequiresRecovery) Text(t("A saved story request still needs checking. Resume that draft before creating another story.",
         "仍有一条已保存的故事请求需要确认。请先继续该草稿，再创建其他故事。"),
         color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("local-story-draft-recovery-required"))
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(state.reviewed,
-        enabled = editable && !state.composing && !state.invalidInput && !dictationUnfinished, role = Role.Checkbox,
-        onValueChange = { finishTyping(); store.confirmReviewed(it) }).testTag("grouped-story-reviewed"), verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(state.reviewed, onCheckedChange = null)
-        Text(t("I reviewed these words and sources", "我已核对这些文字与来源"), Modifier.weight(1f))
+    val review: @Composable (Modifier) -> Unit = { modifier ->
+        Row(modifier.heightIn(min = 48.dp).toggleable(state.reviewed,
+            enabled = editable && !state.composing && !state.invalidInput && !dictationUnfinished, role = Role.Checkbox,
+            onValueChange = { finishTyping(); store.confirmReviewed(it) }).testTag("grouped-story-reviewed"),
+            verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(state.reviewed, onCheckedChange = null)
+            Text(t("I reviewed these words and sources", "我已核对这些文字与来源"), Modifier.weight(1f))
+        }
     }
-    Button(onClick = { finishTyping(); store.save() }, enabled = editable && state.reviewed && !state.composing && !state.invalidInput && !dictationUnfinished && !state.localDraftRequiresRecovery,
-        modifier = Modifier.fillMaxWidth().testTag("grouped-story-save")) { Text(t("Save story", "保存故事")) }
-
+    val save: @Composable (Modifier) -> Unit = { modifier ->
+        Button(onClick = { finishTyping(); store.save() },
+            enabled = editable && state.reviewed && !state.composing && !state.invalidInput &&
+                !dictationUnfinished && !state.localDraftRequiresRecovery,
+            modifier = modifier.heightIn(min = 48.dp).testTag("grouped-story-save")) {
+            Text(if (state.proposalImportReview != null) t("Save to library", "保存到相册库")
+                else t("Save story", "保存故事"))
+        }
+    }
+    if (wide) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            review(Modifier.weight(1f))
+            save(Modifier.widthIn(min = 200.dp))
+        }
+    } else {
+        review(Modifier.fillMaxWidth())
+        save(Modifier.fillMaxWidth())
+    }
 }

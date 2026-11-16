@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.net.URI
 
 plugins { id("com.android.application"); kotlin("android") }
 val localConfig = Properties().apply {
@@ -33,8 +34,33 @@ require(storyFixtureFlag in listOf("true", "false"))
 val storyFixtureEnabled = storyFixtureFlag == "true"
 val uiQa = providers.gradleProperty("photohouseTvUiQa").orElse("false").get()
 require(uiQa in listOf("true", "false"))
+val storyApprovalEnabled = providers.gradleProperty("photohouseTvStoryApprovalEnabled").orElse("false").get()
+require(storyApprovalEnabled in listOf("true", "false"))
+val storyApprovalOrigin = providers.gradleProperty("photohouseTvStoryOrigin").orElse(localConfig.getProperty("photohouseTvStoryOrigin", "")).get()
+require(storyApprovalOrigin.none { it == '\n' || it == '\r' || it == '"' || it == '\\' }) { "Invalid configured story origin" }
+if (storyApprovalEnabled == "true") {
+    if (uiQa == "true") {
+        require(storyApprovalOrigin.isEmpty()) { "TV UI QA must not use a configured story origin" }
+    } else {
+        val uri = runCatching { URI(storyApprovalOrigin) }.getOrNull()
+        require(uri != null && uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank() &&
+            uri.rawUserInfo == null && uri.rawQuery == null && uri.rawFragment == null &&
+            uri.rawPath.orEmpty() in listOf("", "/")) {
+            "Protected TV story approval requires an explicit HTTPS origin"
+        }
+    }
+} else {
+    require(storyApprovalOrigin.isEmpty()) { "Story origin requires story approval to be enabled" }
+}
 require(uiQa != "true" || listOf(configuredOrigin, configuredLanAddress, configuredUpdateOrigin, configuredUpdateLanAddress).all { it.isEmpty() })
 android {
+    // The default TV APK keeps the guest entry point. A configured profile adds protected APIs.
+    sourceSets.getByName("main").java.srcDir(
+        if (storyApprovalEnabled == "true") "src/protectedStories/java" else "src/guestStories/java"
+    )
+    if (storyApprovalEnabled == "true") {
+        sourceSets.getByName("androidTest").java.srcDir("src/protectedStoriesAndroidTest/java")
+    }
     if (storyFixtureEnabled) {
         sourceSets.getByName("debug").java.srcDir("../story-fixture-ui/src/main/java")
         sourceSets.getByName("debug").manifest.srcFile("../story-fixture-ui/src/main/AndroidManifest.xml")
@@ -65,6 +91,9 @@ android {
         buildConfigField("String", "PHOTOHOUSE_LAN_ADDRESS", "\"$configuredLanAddress\"")
         buildConfigField("String", "PHOTOHOUSE_UPDATE_ORIGIN", "\"$configuredUpdateOrigin\"")
         buildConfigField("String", "PHOTOHOUSE_UPDATE_LAN_ADDRESS", "\"$configuredUpdateLanAddress\"")
+        if (storyApprovalEnabled == "true") {
+            buildConfigField("String", "PHOTOHOUSE_TV_STORY_ORIGIN", "\"$storyApprovalOrigin\"")
+        }
     }
     buildFeatures { compose = true; buildConfig = true }
     composeOptions { kotlinCompilerExtensionVersion = "1.5.14" }
@@ -75,6 +104,7 @@ android {
 }
 dependencies {
     implementation("androidx.media3:media3-exoplayer:1.3.1")
+    if (storyApprovalEnabled == "true") implementation(project(":live-core"))
     if (storyFixtureEnabled) debugImplementation(project(":story-fixture-core"))
     testImplementation("junit:junit:4.13.2")
     implementation(project(":home-core"))

@@ -44,6 +44,8 @@ data class SavedMemoryStoriesReading(
     val pendingContributionReferenceMutation: SavedMemoryStoryContributionReferencesMutation? = null,
     val resumePosition: SavedStoryReaderPosition? = null,
     val selectedAssetId: String? = null,
+    val refinementBusy: Boolean = false,
+    val refinementProblem: LiveProblem? = null,
 )
 data class SavedMemoryContributionCandidateChooser(
     val storyId: String, val revision: Long, val chapterId: String,
@@ -1025,7 +1027,7 @@ class ConnectedStore(
         val story = reading.detail ?: return false
         val references = reading.contributionReferences ?: return false
         if (!groupedStoryCreationAvailable || !allowed() || state.value.busy || coolingDown() ||
-            reading.library != state.value.library || reading.detailBusy || !story.canEdit ||
+            reading.library != state.value.library || reading.detailBusy || reading.refinementBusy || !story.canEdit ||
             !completeContributionReferences(story, references) || reading.contributionReferencesBusy ||
             reading.contributionReferencesUnavailable || reading.contributionReferenceSaveBusy ||
             reading.contributionReferenceSaveError || reading.contributionReferenceSaveConflict ||
@@ -1068,6 +1070,80 @@ class ConnectedStore(
         return true
     }
 
+    private fun refinementReader(storyId: String, revision: Long): SavedMemoryStoriesReading? {
+        val live = state.value
+        val reading = live.savedMemoryStories ?: return null
+        val story = reading.detail ?: return null
+        return reading.takeIf {
+            groupedStoryCreationAvailable && allowed() && !live.busy && !coolingDown() &&
+                reading.library == live.library && story.libraryId == reading.library &&
+                reading.selectedSummary?.id == storyId && story.id == storyId && story.revision == revision &&
+                story.canEdit && story.autoRefinementAvailable && !reading.detailBusy && !reading.refinementBusy &&
+                live.groupedStoryCreation == null && live.memoryBooks == null
+        }
+    }
+
+    fun refreshSavedStoryRefinement(storyId: String, revision: Long, requestNew: Boolean = false): Boolean {
+        val reading = refinementReader(storyId, revision) ?: return false
+        val story = reading.detail ?: return false
+        val credential = token ?: return false
+        if (requestNew && (story.autoRefinement != null || savedStoryReaderSwitchBlocked(reading))) return false
+        val readerEpoch = savedMemoryReaderEpoch
+        val library = reading.library
+        mutable.value = state.value.copy(savedMemoryStories = reading.copy(refinementBusy = true, refinementProblem = null))
+        launch { generation ->
+            fun current(): SavedMemoryStoriesReading? = state.value.savedMemoryStories?.takeIf {
+                active(generation) && token === credential && allowed() && savedMemoryReaderEpoch == readerEpoch &&
+                    state.value.library == library && it.library == library && it.refinementBusy &&
+                    it.detail?.id == storyId && it.detail.revision == revision
+            }
+            try {
+                val updated = if (requestNew) {
+                    val job = api.requestSavedStoryRefinement(credential, library, storyId, revision)
+                    validResponse(job.kind == "narrative" && job.baseRevision == revision && job.needsReview)
+                    story.copy(autoRefinement = job)
+                } else {
+                    val fresh = api.savedMemoryStory(credential, library, storyId, revision, story.sourcePolicy != null)
+                    validResponse(fresh.libraryId == library && fresh.id == storyId && fresh.revision == revision)
+                    story.copy(canEdit = fresh.canEdit, autoRefinementAvailable = fresh.autoRefinementAvailable,
+                        autoRefinement = fresh.autoRefinement)
+                }
+                val latest = current() ?: return@launch
+                mutable.value = state.value.copy(savedMemoryStories = latest.copy(detail = updated, refinementBusy = false))
+            } catch (failure: CancellationException) { throw failure }
+            catch (failure: Exception) {
+                val latest = current() ?: return@launch
+                if (failure is ApiFailure && failure.status in setOf(401, 403)) {
+                    readFailure(failure, generation, credential) { closeSavedMemoryStories() }
+                } else {
+                    mutable.value = state.value.copy(savedMemoryStories = latest.copy(
+                        refinementBusy = false, refinementProblem = problem(failure)))
+                }
+            }
+        }
+        return true
+    }
+
+    fun beginSavedStoryRefinementEdit(storyId: String, revision: Long, jobId: String): Boolean {
+        val reading = refinementReader(storyId, revision) ?: return false
+        val story = reading.detail ?: return false
+        val job = story.autoRefinement?.takeIf { it.id == jobId } ?: return false
+        val references = reading.contributionReferences ?: return false
+        if (reading.refinementProblem != null || reading.contributionReferencesBusy ||
+            reading.contributionReferencesUnavailable || savedStoryReaderSwitchBlocked(reading)) return false
+        val proposal = savedStoryRefinementDraft(story, references) ?: return false
+        val workspace = api as? StoryWorkspaceApi ?: return false
+        val accountId = identity?.account_id ?: return false
+        val credential = token ?: return false
+        val request = ++savedGroupedStoryEditRequest
+        mutable.value = state.value.copy(groupedStoryCreation = GroupedStoryCreationState(
+            checking = true, isSavedEdit = true, savedEditStoryId = storyId, savedEditRequestId = request,
+            proposalAdoption = proposal, proposalJob = job))
+        loadSavedGroupedStoryEdit(workspace, accountId, credential, reading.library, storyId,
+            revision, savedMemoryReaderEpoch, request)
+        return true
+    }
+
     private fun eligibleSavedStoryProposal(
         readerScopeId: Long, jobId: String, selectedChapterIds: List<String>, adoptTitle: Boolean,
     ): Pair<StoryProposalAdoptionDraft, MemoryJob>? {
@@ -1078,7 +1154,7 @@ class ConnectedStore(
         val community = reading.community ?: return null
         if (!groupedStoryCreationAvailable || api !is StoryWorkspaceApi || memoryCommunity == null ||
             !allowed() || live.busy || coolingDown() || reading.library != live.library ||
-            reading.detailBusy || reading.contributionReferencesBusy || reading.contributionReferencesUnavailable ||
+            reading.detailBusy || reading.refinementBusy || reading.contributionReferencesBusy || reading.contributionReferencesUnavailable ||
             savedStoryReaderSwitchBlocked(reading) || live.groupedStoryCreation != null || live.memoryBooks != null ||
             community.readerScopeId != readerScopeId || community.storyId != story.id) return null
         val job = currentSavedStoryProposalJob(community, jobId) ?: return null
@@ -1234,13 +1310,18 @@ class ConnectedStore(
             fun proposalCurrent(): Boolean {
                 if (proposal == null) return true
                 val reading = state.value.savedMemoryStories ?: return false
-                val community = reading.community ?: return false
                 val localStory = reading.detail ?: return false
                 val localReferences = reading.contributionReferences ?: return false
+                if (reading.detailBusy || reading.refinementBusy || reading.contributionReferencesBusy ||
+                    reading.contributionReferencesUnavailable || savedStoryReaderSwitchBlocked(reading)) return false
+                if (proposal.fromAutoRefinement) {
+                    val job = localStory.autoRefinement ?: return false
+                    return reading.refinementProblem == null && sameStoryProposalJob(job, proposalJob) &&
+                        savedStoryRefinementDraft(localStory, localReferences) == proposal
+                }
+                val community = reading.community ?: return false
                 val currentJob = currentSavedStoryProposalJob(community, proposal.jobId) ?: return false
                 return community.readerScopeId == proposalReaderScope && community.storyId == storyId &&
-                    !reading.detailBusy && !reading.contributionReferencesBusy &&
-                    !reading.contributionReferencesUnavailable && !savedStoryReaderSwitchBlocked(reading) &&
                     sameStoryProposalJob(currentJob, proposalJob) &&
                     storyProposalAdoptionDraft(localStory, localReferences, currentJob,
                         proposal.chapters.map { it.id }, proposal.title != null) == proposal
@@ -1264,12 +1345,18 @@ class ConnectedStore(
                 validResponse(completeContributionReferences(fresh, references))
                 if (proposal != null) {
                     validResponse(proposalCurrent())
-                    val repository = memoryCommunity ?: error("Proposal repository unavailable")
-                    val freshJob = repository.job(proposal.jobId) { valid() }
-                    if (!valid()) return@launch
-                    validResponse(proposalCurrent() && sameStoryProposalJob(freshJob, proposalJob) &&
-                        storyProposalAdoptionDraft(fresh, references, freshJob,
-                            proposal.chapters.map { it.id }, proposal.title != null) == proposal)
+                    if (proposal.fromAutoRefinement) {
+                        val freshJob = fresh.autoRefinement ?: throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                        validResponse(sameStoryProposalJob(freshJob, proposalJob) &&
+                            savedStoryRefinementDraft(fresh, references) == proposal)
+                    } else {
+                        val repository = memoryCommunity ?: error("Proposal repository unavailable")
+                        val freshJob = repository.job(proposal.jobId) { valid() }
+                        if (!valid()) return@launch
+                        validResponse(proposalCurrent() && sameStoryProposalJob(freshJob, proposalJob) &&
+                            storyProposalAdoptionDraft(fresh, references, freshJob,
+                                proposal.chapters.map { it.id }, proposal.title != null) == proposal)
+                    }
                 }
                 lateinit var editor: StoryWorkspaceStore
                 val binding = {
@@ -1870,7 +1957,7 @@ class ConnectedStore(
         savedMemoryFramesRequest++; savedMemoryHeroRequest++
         mutable.value = state.value.copy(savedMemoryStories = reading.copy(detail = null, detailBusy = true, detailUnavailable = false,
             selectedSummary = summary, selectedChapter = 0, frames = emptyMap(), heroAssetId = null, hero = null, heroBusy = false,
-            resumePosition = null, selectedAssetId = null,
+            resumePosition = null, selectedAssetId = null, refinementBusy = false, refinementProblem = null,
             contributionReferences = null, contributionReferencesBusy = false, contributionReferencesUnavailable = false,
             contributionCandidateChooser = null, contributionCandidateMetadata = emptyMap(),
             contributionReferenceDraft = null, contributionReferenceSaveBusy = false,
@@ -4201,7 +4288,7 @@ class ConnectedStore(
         reading.hero?.fill(0)
         mutable.value = state.value.copy(savedMemoryStories = reading.copy(detail = null, detailBusy = false,
             detailUnavailable = false, selectedSummary = null, selectedChapter = 0, selectedAssetId = null,
-            resumePosition = null, frames = emptyMap(), heroAssetId = null,
+            resumePosition = null, frames = emptyMap(), heroAssetId = null, refinementBusy = false, refinementProblem = null,
             hero = null, heroBusy = false, framesBusy = false, contributionReferences = null,
             contributionReferencesBusy = false, contributionReferencesUnavailable = false,
             contributionCandidateChooser = null, contributionCandidateMetadata = emptyMap(),

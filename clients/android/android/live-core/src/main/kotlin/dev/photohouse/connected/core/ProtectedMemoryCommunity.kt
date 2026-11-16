@@ -15,6 +15,7 @@ data class MemoryCommunityCapabilities(
     val maxAudioSeconds: Int,
     val maxTextBytes: Int,
     val originalRetention: String,
+    val autoRefinementEnabled: Boolean = false,
 )
 
 data class MemoryContribution(
@@ -184,8 +185,10 @@ internal object ProtectedMemoryCommunityWire {
     } catch (e: ApiFailure) { throw e } catch (_: Exception) { bad() }
 
     fun capabilities(bytes: ByteArray): MemoryCommunityCapabilities = guarded {
-        val r = root(bytes); obj(r, "version", "enabled", "contributions_enabled", "generation_enabled",
+        val r = root(bytes)
+        val legacyKeys = setOf("version", "enabled", "contributions_enabled", "generation_enabled",
             "conversation_retention_days", "audio_format", "max_audio_seconds", "max_text_bytes", "original_retention")
+        check(r.keys == legacyKeys || r.keys == legacyKeys + "auto_refinement_enabled")
         check(int(r["version"], 1, 1) == 1)
         val retention = int(r["conversation_retention_days"], 30, 30)
         val format = str(r["audio_format"], 64).also { check(it == "wav_pcm16_mono_16000") }
@@ -194,8 +197,10 @@ internal object ProtectedMemoryCommunityWire {
         val originalRetention = str(r["original_retention"], 64).also { check(it == "until_owner_deletes") }
         val enabled = bool(r["enabled"]); val contributions = bool(r["contributions_enabled"])
         val generation = bool(r["generation_enabled"])
+        val autoRefinement = if ("auto_refinement_enabled" in r) bool(r["auto_refinement_enabled"]) else false
         check((contributions.not() || enabled) && (generation.not() || enabled))
-        MemoryCommunityCapabilities(enabled, contributions, generation, retention, format, seconds, textBytes, originalRetention)
+        check(autoRefinement.not() || enabled)
+        MemoryCommunityCapabilities(enabled, contributions, generation, retention, format, seconds, textBytes, originalRetention, autoRefinement)
     }
 
     private fun contribution(v: JsonElement?, receipt: Boolean = false): MemoryContributionReceipt {
@@ -481,7 +486,7 @@ internal object ProtectedMemoryCommunityWire {
         check(int(r["version"], 1, 1) == 1)
         val id = uuid(str(r["id"], 36)); if (expectedId != null) check(id == expectedId)
         val kind = str(r["kind"], 16).also { check(it in setOf("narrative", "chat")) }
-        val state = str(r["state"], 16).also { check(it in setOf("queued", "running", "ready", "failed", "cancelled", "stale")) }
+        val state = str(r["state"], 16).also { check(it in setOf("queued", "running", "ready", "failed", "cancelled", "stale", "deferred")) }
         val result = if (r["result"] == JsonNull) null else r["result"] as? JsonObject ?: bad()
         check((state == "ready") == (result != null))
         result?.let { if (kind == "chat") companionResult(it) else narrativeResult(it) }

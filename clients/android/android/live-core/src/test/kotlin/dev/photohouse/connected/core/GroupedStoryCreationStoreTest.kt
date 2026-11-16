@@ -21,6 +21,39 @@ class GroupedStoryCreationStoreTest {
 
     private fun fixtureBytes(name: String) = examples.getValue(name).toString().toByteArray(Charsets.UTF_8)
 
+    private fun autoRefinementJobJson(
+        jobId: String, secondNarration: String = "AI refined second wording",
+    ) = buildJsonObject {
+        put("version", 1)
+        put("id", jobId)
+        put("kind", "narrative")
+        put("state", "ready")
+        put("created_at", 10)
+        put("updated_at", 11)
+        put("expires_at", 1000)
+        put("error_code", JsonNull)
+        put("needs_review", true)
+        put("base_revision", "2")
+        put("result", buildJsonObject {
+            put("version", 1)
+            put("title", "Suggested title that must not replace the family title")
+            put("needs_review", true)
+            put("chapters", buildJsonArray {
+                add(buildJsonObject {
+                    put("id", "chapter-1")
+                    put("narration", "我们一起种花，这是家人留下的回忆。")
+                    put("source_ids", buildJsonArray { })
+                })
+                add(buildJsonObject {
+                    put("id", "chapter-2")
+                    put("narration", secondNarration)
+                    put("source_ids", buildJsonArray { add("editorial-$storyId-chapter-2") })
+                })
+            })
+            put("questions", buildJsonArray { add("Confirm this detail") })
+        })
+    }.toString()
+
     private inner class FakeApi(
         var role: String = "viewer",
         var canCreate: Boolean = true,
@@ -31,12 +64,15 @@ class GroupedStoryCreationStoreTest {
         var galleryPages = mutableListOf<Int>()
         var freshStoryReads = 0
         var freshStoryRevision = 2L
+        val freshStoryAutoRefinements = mutableListOf<MemoryJob?>()
         var updateResponseRevision: Long? = null
         var latestSavedStoryJson: String? = null
+        var autoRefinementJson: String? = null
         var groupedUpdateFailure: ApiFailure? = null
         var groupedCreateFailure: ApiFailure? = null
         var groupedCreateGate: CompletableDeferred<Unit>? = null
         val groupedUpdateRequests = mutableListOf<Triple<String, String, Pair<Boolean, Boolean>>>()
+        val groupedUpdateSuppressAutoRefinement = mutableListOf<Boolean>()
         var detailFailures = 0
         var contributionReferenceFailures = 0
         var contributionReferenceFailureStatus: Int? = null
@@ -113,10 +149,13 @@ class GroupedStoryCreationStoreTest {
                 detailFailures--
                 throw ApiFailure(FailureKind.OFFLINE)
             }
-            val body = (latestSavedStoryJson ?: fixtureBytes("create_retry_after_edit").decodeToString())
+            val savedJson = latestSavedStoryJson ?: fixtureBytes("create_retry_after_edit").decodeToString()
+            val body = (autoRefinementJson?.let { withAutoRefinement(savedJson, it) } ?: savedJson)
                 .replace("\"revision\":\"2\"", "\"revision\":\"$freshStoryRevision\"")
                 .toByteArray(Charsets.UTF_8)
-            return ProtectedMemoryStoriesWire.detail(body, library, storyId, revision)
+            return ProtectedMemoryStoriesWire.detail(body, library, storyId, revision).also {
+                freshStoryAutoRefinements += it.autoRefinement
+            }
         }
 
         override suspend fun updateGroupedStory(
@@ -128,15 +167,26 @@ class GroupedStoryCreationStoreTest {
             val revision = updateResponseRevision ?: throw ApiFailure(FailureKind.OFFLINE)
             freshStoryRevision = revision
             val request = Json.parseToJsonElement(json).jsonObject
-            val title = request.getValue("title").jsonPrimitive.content
-            val chapterJson = Json.parseToJsonElement(request.getValue("chapters").jsonPrimitive.content).jsonArray
-            val narration = chapterJson.single().jsonObject.getValue("narration").jsonPrimitive.content
-            val original = fixtureBytes("create_retry_after_edit").decodeToString()
-            latestSavedStoryJson = original
-                .replace(JsonPrimitive("家人修改后的标题").toString(), JsonPrimitive(title).toString())
-                .replace(JsonPrimitive("我们一起种花，这是家人留下的回忆。").toString(), JsonPrimitive(narration).toString())
-                .replace("\"revision\":\"2\"", "\"revision\":\"$revision\"")
+            val priorJson = latestSavedStoryJson ?: fixtureBytes("create_retry_after_edit").decodeToString()
+            val updateBaseJson = autoRefinementJson?.let { withAutoRefinement(priorJson, it) } ?: priorJson
+            val updated = Json.parseToJsonElement(updateBaseJson).jsonObject.toMutableMap()
+            updated["title"] = request.getValue("title")
+            updated["chapters"] = Json.parseToJsonElement(request.getValue("chapters").jsonPrimitive.content)
+            updated["revision"] = JsonPrimitive(revision.toString())
+            if (groupedUpdateSuppressAutoRefinement.lastOrNull() == true && "auto_refinement" in updated) {
+                updated["auto_refinement"] = JsonNull
+                autoRefinementJson = null
+            }
+            latestSavedStoryJson = JsonObject(updated).toString()
             return latestSavedStoryJson!!.toByteArray(Charsets.UTF_8)
+        }
+
+        override suspend fun updateGroupedStory(
+            token: Bearer, library: String, storyId: String, json: String,
+            sourceReview: Boolean, contributionReferences: Boolean, suppressAutoRefinement: Boolean,
+        ): ByteArray {
+            groupedUpdateSuppressAutoRefinement += suppressAutoRefinement
+            return updateGroupedStory(token, library, storyId, json, sourceReview, contributionReferences)
         }
 
         override suspend fun savedMemoryStoryContributionReferences(
@@ -163,6 +213,28 @@ class GroupedStoryCreationStoreTest {
             groupedCreateGate?.let { withContext(NonCancellable) { it.await() } }
             groupedCreateFailure?.let { throw it }
             return fixtureBytes("created")
+        }
+
+        private fun withAutoRefinement(savedStoryJson: String, jobJson: String): String {
+            val story = Json.parseToJsonElement(savedStoryJson).jsonObject.toMutableMap()
+            val originalChapter = story.getValue("chapters").jsonArray.single().jsonObject
+            val firstChapter = originalChapter.toMutableMap().apply {
+                put("asset_ids", buildJsonArray { add("102") })
+                put("evidence_ids", buildJsonArray { add("caption-102") })
+            }
+            val secondChapter = buildJsonObject {
+                put("id", "chapter-2")
+                put("title", "Later chapter")
+                put("narration", "Original second wording")
+                put("asset_ids", buildJsonArray { add("101") })
+                put("evidence_ids", buildJsonArray {
+                    add("family-11111111-1111-4111-8111-111111111111")
+                    add("caption-101")
+                })
+            }
+            story["chapters"] = JsonArray(listOf(JsonObject(firstChapter), secondChapter))
+            story["auto_refinement"] = Json.parseToJsonElement(jobJson)
+            return JsonObject(story).toString()
         }
 
         override suspend fun capabilities(token: Bearer, library: String) =
@@ -422,6 +494,114 @@ class GroupedStoryCreationStoreTest {
         assertEquals(references.chapters.map { it.chapterId }, familyLinks.map { it.jsonObject.getValue("chapter_id").jsonPrimitive.content })
         assertEquals(listOf(linkedId), familyLinks.single().jsonObject.getValue("contribution_ids").jsonArray.map { it.jsonPrimitive.content })
         assertEquals(StoryWorkspaceStoreStatus.SAVED, editor.state.value.status)
+    }
+
+    @Test fun savedReaderAutoRefinementFreshChecksAndExplicitlyUpdatesOnlyChangedChapter() = runTest {
+        val linkedId = "88888888-8888-4888-8888-888888888888"
+        val jobId = "55555555-5555-4555-8555-555555555555"
+        val api = FakeApi().apply {
+            linkedContributionIds = listOf(linkedId)
+            updateResponseRevision = 3L
+            autoRefinementJson = autoRefinementJobJson(jobId)
+        }
+        val store = newStore(api)
+        createReceiptAndOpenReader(store)
+
+        val readsBeforeRefresh = api.freshStoryReads
+        val storyBeforeRefresh = store.state.value.savedMemoryStories!!.detail!!
+        assertTrue(store.refreshSavedStoryRefinement(storyBeforeRefresh.id, storyBeforeRefresh.revision))
+        runCurrent()
+        assertEquals(readsBeforeRefresh + 1, api.freshStoryReads)
+
+        val reading = store.state.value.savedMemoryStories!!
+        val story = reading.detail!!
+        val references = reading.contributionReferences!!
+        val job = story.autoRefinement!!
+        assertTrue(story.autoRefinementAvailable)
+        assertEquals(2, story.chapters.size)
+        assertEquals(listOf("102", "101"), story.chapters.flatMap { it.assetIds })
+        assertEquals(listOf("chapter-1", "chapter-2"), references.chapters.map { it.chapterId })
+        val freshReadsBefore = api.freshStoryReads
+        val referenceReadsBefore = api.contributionReferenceRequests.size
+
+        assertTrue(store.beginSavedStoryRefinementEdit(story.id, story.revision, job.id))
+        runCurrent()
+
+        val editor = store.state.value.groupedStoryCreation!!.editor!!
+        val imported = editor.state.value
+        assertEquals(freshReadsBefore + 1, api.freshStoryReads)
+        assertEquals(job, api.freshStoryAutoRefinements.last())
+        assertEquals(Triple(story.id, story.revision, listOf("chapter-1", "chapter-2")),
+            api.contributionReferenceRequests.drop(referenceReadsBefore).single())
+        assertEquals(story.title, imported.title)
+        assertEquals(story.chapters[0].narration, imported.editableChapters[0].narration)
+        assertEquals("Original second wording", story.chapters[1].narration)
+        assertEquals("AI refined second wording", imported.editableChapters[1].narration)
+        assertEquals(listOf("102"), imported.editableChapters[0].assetIds)
+        assertEquals(listOf("101"), imported.editableChapters[1].assetIds)
+        assertEquals("chapter-2", imported.proposalImportReview?.firstChangedChapterId)
+        assertTrue(imported.proposalImportReview?.fromAutoRefinement == true)
+        assertFalse(imported.reviewed)
+        assertTrue(imported.dirty)
+        assertTrue(api.groupedUpdateRequests.isEmpty())
+        assertEquals(story, store.state.value.savedMemoryStories!!.detail)
+        assertFalse(editor.save())
+
+        assertTrue(editor.confirmReviewed(true))
+        assertTrue(api.groupedUpdateRequests.isEmpty())
+        assertTrue(editor.save())
+        runCurrent()
+
+        assertEquals(1, api.groupedUpdateRequests.size)
+        assertEquals(listOf(true), api.groupedUpdateSuppressAutoRefinement)
+        val (updatedStoryId, bodyJson, modes) = api.groupedUpdateRequests.single()
+        assertEquals(story.id, updatedStoryId)
+        assertEquals(false to true, modes)
+        val body = Json.parseToJsonElement(bodyJson).jsonObject
+        assertEquals(story.title, body.getValue("title").jsonPrimitive.content)
+        assertEquals("102,101", body.getValue("asset_ids").jsonPrimitive.content)
+        val chapters = Json.parseToJsonElement(body.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertEquals(listOf("chapter-1", "chapter-2"), chapters.map { it.jsonObject.getValue("id").jsonPrimitive.content })
+        assertEquals(listOf("102", "101"), chapters.flatMap {
+            it.jsonObject.getValue("asset_ids").jsonArray.map { id -> id.jsonPrimitive.content }
+        })
+        assertEquals(listOf("caption-102"), chapters[0].jsonObject.getValue("evidence_ids").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(listOf("family-11111111-1111-4111-8111-111111111111", "caption-101"),
+            chapters[1].jsonObject.getValue("evidence_ids").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals("我们一起种花，这是家人留下的回忆。", chapters[0].jsonObject.getValue("narration").jsonPrimitive.content)
+        assertEquals("AI refined second wording", chapters[1].jsonObject.getValue("narration").jsonPrimitive.content)
+        val savedReferences = Json.parseToJsonElement(body.getValue("contribution_refs").jsonPrimitive.content).jsonArray
+        assertEquals(references.chapters.map { it.chapterId }, savedReferences.map {
+            it.jsonObject.getValue("chapter_id").jsonPrimitive.content
+        })
+        assertTrue(savedReferences.all {
+            it.jsonObject.getValue("contribution_ids").jsonArray.map { id -> id.jsonPrimitive.content } == listOf(linkedId)
+        })
+        assertEquals(StoryWorkspaceStoreStatus.SAVED, editor.state.value.status)
+    }
+
+    @Test fun savedReaderAutoRefinementRefusesAReplacedFreshJob() = runTest {
+        val originalJobId = "55555555-5555-4555-8555-555555555555"
+        val replacementJobId = "99999999-9999-4999-8999-999999999999"
+        val api = FakeApi().apply { autoRefinementJson = autoRefinementJobJson(originalJobId) }
+        val store = newStore(api)
+        createReceiptAndOpenReader(store)
+        val story = store.state.value.savedMemoryStories!!.detail!!
+        assertEquals(originalJobId, story.autoRefinement?.id)
+        val freshReadsBefore = api.freshStoryReads
+        api.autoRefinementJson = autoRefinementJobJson(replacementJobId)
+
+        assertTrue(store.beginSavedStoryRefinementEdit(story.id, story.revision, originalJobId))
+        runCurrent()
+
+        val creation = store.state.value.groupedStoryCreation!!
+        assertNull(creation.editor)
+        assertNotNull(creation.problem)
+        assertEquals(freshReadsBefore + 1, api.freshStoryReads)
+        assertEquals(replacementJobId, api.freshStoryAutoRefinements.last()?.id)
+        assertEquals(Triple(story.id, story.revision, listOf("chapter-1", "chapter-2")),
+            api.contributionReferenceRequests.last())
+        assertTrue(api.groupedUpdateRequests.isEmpty())
     }
 
     @Test fun closedProposalImportIgnoresLateJobAndDenialCannotInvalidateReader() = runTest {

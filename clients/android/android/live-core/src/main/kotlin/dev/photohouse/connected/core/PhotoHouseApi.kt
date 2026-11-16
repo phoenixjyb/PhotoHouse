@@ -147,6 +147,9 @@ interface PhotoHouseApi {
     suspend fun sourceCapabilities(token: Bearer, library: String): ByteArray = throw ApiFailure(FailureKind.HTTP, 404)
     suspend fun savedMemoryStory(token: Bearer, library: String, storyId: String, revision: Long, sourceReview: Boolean): SavedMemoryStory =
         if (sourceReview) throw ApiFailure(FailureKind.HTTP, 403) else savedMemoryStory(token, library, storyId, revision)
+    /** Explicitly queue or retry one saved-story refinement for the exact current revision. */
+    suspend fun requestSavedStoryRefinement(token: Bearer, library: String, storyId: String, revision: Long): MemoryJob =
+        throw ApiFailure(FailureKind.HTTP, 404)
     /** Additive, read-only chapter source links; unsupported adapters keep saved-story v1 intact. */
     suspend fun savedMemoryStoryContributionReferences(
         token: Bearer, library: String, storyId: String, revision: Long, chapterIds: List<String>,

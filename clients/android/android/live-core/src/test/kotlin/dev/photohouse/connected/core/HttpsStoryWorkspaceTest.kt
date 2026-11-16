@@ -85,13 +85,44 @@ class HttpsStoryWorkspaceTest {
             val id = "33333333-3333-4333-8333-333333333333"
             val body = "{\"revision\":\"8\",\"mutation_id\":\"22222222-2222-4222-8222-222222222222\",\"contribution_refs\":\"[]\"}"
             server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody("{}"))
-            api.updateGroupedStory(token, "family-a", id, body, sourceReview = true, contributionReferences = true)
+            api.updateGroupedStory(token, "family-a", id, body, sourceReview = true, contributionReferences = true,
+                suppressAutoRefinement = true)
             val request = server.takeRequest()
-            assertEquals("/memory-stories/$id?library=family-a&contribution_refs=1&source_review=1", request.path)
+            assertEquals("/memory-stories/$id?library=family-a&contribution_refs=1&source_review=1&auto_refine=0", request.path)
             assertEquals("PUT", request.method)
             assertEquals(token.header(), request.getHeader("Authorization"))
             assertEquals(body, request.body.readUtf8())
             try { api.updateGroupedStory(token, "family-a", "not-a-uuid", body, false, true); fail() }
+            catch (_: IllegalArgumentException) { }
+            assertEquals(1, server.requestCount)
+        } finally {
+            server.shutdown(); client.dispatcher.executorService.shutdown(); client.connectionPool.evictAll()
+        }
+    }
+
+    @Test fun explicitStoryRefinementBindsLibraryRevisionAndProtectedIdentity() = runBlocking {
+        val cert = HeldCertificate.Builder().addSubjectAlternativeName("localhost").build()
+        val server = MockWebServer()
+        val trust = HandshakeCertificates.Builder().addTrustedCertificate(cert.certificate).build()
+        val client = OkHttpClient.Builder().sslSocketFactory(trust.sslSocketFactory(), trust.trustManager).build()
+        server.useHttps(HandshakeCertificates.Builder().heldCertificate(cert).build().sslSocketFactory(), false)
+        server.start(InetAddress.getByName("127.0.0.1"), 0)
+        try {
+            val api = HttpsPhotoHouseApi(TrustedOrigin.parse("https://localhost:${server.port}"), client,
+                protectedNativeV2Enabled = true)
+            val token = Bearer.from(SessionToken(86400, "T".repeat(43), "Bearer"))
+            val id = "33333333-3333-4333-8333-333333333333"
+            val response = """{"version":1,"id":"55555555-5555-4555-8555-555555555555","kind":"narrative","state":"queued","created_at":1710000000,"updated_at":1710000000,"expires_at":1810000000,"error_code":null,"result":null,"needs_review":true,"base_revision":"8"}"""
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(response))
+            val job = api.requestSavedStoryRefinement(token, "family-a", id, 8)
+            assertEquals("queued", job.state)
+            val request = server.takeRequest()
+            assertEquals("/memory-stories/$id/refinement?library=family-a", request.path)
+            assertEquals("POST", request.method)
+            assertEquals(token.header(), request.getHeader("Authorization"))
+            assertEquals("{\"revision\":\"8\"}", request.body.readUtf8())
+            assertEquals("no-store", request.getHeader("Cache-Control"))
+            try { api.requestSavedStoryRefinement(token, "family-a", "not-a-uuid", 8); fail() }
             catch (_: IllegalArgumentException) { }
             assertEquals(1, server.requestCount)
         } finally {

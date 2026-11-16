@@ -14,6 +14,7 @@ import dev.photohouse.home.*
 class TvViewModel(api: HomeApi?, gateway: DiscoveryGateway? = null) : ViewModel() {
     val store = api?.let { HomeStore(it, viewModelScope) }
     val discovery = if (store != null && gateway != null) DiscoveryController(gateway, store, viewModelScope) else null
+    val protectedStories = createTvProtectedStories(viewModelScope)
 }
 class MainActivity : ComponentActivity() {
     private val model by viewModels<TvViewModel> {
@@ -43,8 +44,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(null)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         window.decorView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
-        setContent { TvApp(model.store, model.discovery) }
+        setContent { TvApp(model.store, model.discovery, protectedStories = model.protectedStories) }
     }
-    override fun onPause() { model.discovery?.background(); model.store?.background(); super.onPause() }
+    override fun onPause() { model.protectedStories?.background(); model.discovery?.background(); model.store?.background(); super.onPause() }
     override fun onResume() { super.onResume(); model.store?.foreground() }
 }

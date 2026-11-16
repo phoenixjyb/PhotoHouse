@@ -96,6 +96,19 @@ class AndroidProfileTests(unittest.TestCase):
         with self.assertRaises(profile.Refused):
             profile.validate_profile('phone',raw({**values('phone'),'photohousePhoneHomeDiscoveryEnabled':'true'}),gradle('phone'))
 
+    def test_tv_protected_story_origin_and_release_mode(self):
+        enabled = 'photohouseTvStoryApprovalEnabled'
+        origin = 'photohouseTvStoryOrigin'
+        valid = {**values('tv'), enabled: 'true', origin: 'https://stories.synthetic.invalid:8443'}
+        report = profile.validate_profile('tv', raw(valid), gradle('tv'))
+        self.assertTrue(report['boolean_choices'][enabled])
+        for change in ({origin: ''}, {enabled: 'false'}, {origin: 'https://stories.synthetic.invalid/ui'},
+                       {'photohouseTvUiQa': 'true'}):
+            with self.subTest(keys=tuple(change)), self.assertRaises(profile.Refused):
+                profile.validate_profile('tv', raw({**valid, **change}), gradle('tv'))
+        previous = {key: value for key, value in values('tv').items() if key not in profile.TV_PROFILE_DEFAULTS}
+        self.assertFalse(profile.validate_profile('tv', raw(previous), gradle('tv'))['boolean_choices'][enabled])
+
     def test_home_origins_match_canonical_runtime_and_lan_ranges(self):
         for module, key in (('phone','photohouseOrigin'), ('phone','photohousePhoneHomeOrigin'),
                             ('tv','photohouseTvOrigin'), ('tv','photohouseTvUpdateOrigin')):

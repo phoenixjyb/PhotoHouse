@@ -20,7 +20,8 @@ from app.access.private_storage import require_private_file, stable_stat_identit
 DIGEST = re.compile(r'[0-9a-f]{64}\Z')
 COMMIT = re.compile(r'[0-9a-f]{40}\Z')
 PHONE_STRINGS = {'photohouseOrigin', 'photohousePhoneHomeOrigin', 'photohousePhoneHomeLanAddress'}
-TV_STRINGS = {'photohouseTvOrigin', 'photohouseTvLanAddress', 'photohouseTvUpdateOrigin', 'photohouseTvUpdateLanAddress'}
+TV_STRINGS = {'photohouseTvOrigin', 'photohouseTvLanAddress', 'photohouseTvUpdateOrigin', 'photohouseTvUpdateLanAddress',
+    'photohouseTvStoryOrigin'}
 PRIVATE_NETWORKS = tuple(map(ipaddress.ip_network, ('10.0.0.0/8','172.16.0.0/12','192.168.0.0/16')))
 MAX_GRADLE_BYTES = 128 * 1024
 PHONE_BOOLEANS = {
@@ -34,7 +35,9 @@ PHONE_BOOLEANS = {
     'photohouseStoryFixtureEnabled', 'photohousePhoneUiQa',
 }
 TV_BOOLEANS = {'photohouseTvDiscoveryEnabled', 'photohouseTvBrowseEnabled',
-    'photohouseHomeTagLookupEnabled', 'photohouseHomeCalendarEnabled', 'photohouseStoryFixtureEnabled'}
+    'photohouseHomeTagLookupEnabled', 'photohouseHomeCalendarEnabled', 'photohouseStoryFixtureEnabled',
+    'photohouseTvUiQa', 'photohouseTvStoryApprovalEnabled'}
+TV_PROFILE_DEFAULTS = {'photohouseTvUiQa': 'false', 'photohouseTvStoryApprovalEnabled': 'false', 'photohouseTvStoryOrigin': ''}
 
 
 class Refused(ValueError):
@@ -92,6 +95,8 @@ def validate_profile(module, raw, gradle_text):
     if module not in {'phone', 'tv'}:
         raise Refused('module_invalid')
     values = parse_properties(raw)
+    if module == 'tv':
+        values = {**TV_PROFILE_DEFAULTS, **values}
     strings = PHONE_STRINGS if module == 'phone' else TV_STRINGS
     booleans = PHONE_BOOLEANS if module == 'phone' else TV_BOOLEANS
     expected = strings | booleans | ({'photohouseTvCatalogVersion'} if module == 'tv' else set())
@@ -101,7 +106,8 @@ def validate_profile(module, raw, gradle_text):
         raise Refused('profile_source_keys_mismatch')
     if any(values[key] not in {'true', 'false'} for key in booleans):
         raise Refused('profile_boolean_invalid')
-    if values['photohouseStoryFixtureEnabled'] != 'false' or (module == 'phone' and values['photohousePhoneUiQa'] != 'false'):
+    qa_key = 'photohousePhoneUiQa' if module == 'phone' else 'photohouseTvUiQa'
+    if values['photohouseStoryFixtureEnabled'] != 'false' or values[qa_key] != 'false':
         raise Refused('profile_release_mode_invalid')
     if values['photohouseHomeCalendarEnabled'] == 'true' and values['photohouseHomeTagLookupEnabled'] != 'true':
         raise Refused('profile_feature_dependency_invalid')
@@ -128,6 +134,10 @@ def validate_profile(module, raw, gradle_text):
                 values['photohouseTvBrowseEnabled'] == 'true' and version != '3'):
             raise Refused('profile_catalog_dependency_invalid')
         _origin(values['photohouseTvOrigin']); _origin(values['photohouseTvUpdateOrigin'])
+        story_origin = values['photohouseTvStoryOrigin']
+        _origin(story_origin)
+        if (values['photohouseTvStoryApprovalEnabled'] == 'true') != bool(story_origin):
+            raise Refused('profile_story_origin_dependency_invalid')
         pairs = [('photohouseTvLanAddress','photohouseTvOrigin'), ('photohouseTvUpdateLanAddress','photohouseTvUpdateOrigin')]
     for address_key, origin_key in pairs:
         if values[address_key]:

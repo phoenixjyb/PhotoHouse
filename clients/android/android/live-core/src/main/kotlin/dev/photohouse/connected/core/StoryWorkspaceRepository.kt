@@ -21,6 +21,14 @@ interface StoryWorkspaceApi {
         token: Bearer, library: String, storyId: String, json: String,
         sourceReview: Boolean, contributionReferences: Boolean,
     ): ByteArray = throw ApiFailure(FailureKind.HTTP, 404)
+    /** Additive suppression switch; old adapters remain compatible unless suppression is required. */
+    suspend fun updateGroupedStory(
+        token: Bearer, library: String, storyId: String, json: String,
+        sourceReview: Boolean, contributionReferences: Boolean, suppressAutoRefinement: Boolean,
+    ): ByteArray {
+        if (suppressAutoRefinement) throw ApiFailure(FailureKind.HTTP, 404)
+        return updateGroupedStory(token, library, storyId, json, sourceReview, contributionReferences)
+    }
     /** Optional v1 same-recorded-day candidate lookup; legacy adapters remain unsupported. */
     suspend fun relatedStoryMedia(token: Bearer, library: String, json: String): ByteArray =
         throw ApiFailure(FailureKind.INVALID_INPUT)
@@ -35,6 +43,7 @@ class PendingGroupedStorySave internal constructor(
     val targetStoryId: String? = null,
     val baseRevision: Long = 0,
     val contributionReferences: Boolean = false,
+    val suppressAutoRefinement: Boolean = false,
 ) {
     val assetIds: List<String> = Collections.unmodifiableList(ArrayList(assetIds))
     override fun toString() = "PendingGroupedStorySave(content omitted)"
@@ -181,6 +190,7 @@ class StoryWorkspaceRepository(
         reviewed: Boolean,
         sourceReview: Boolean,
         sourcePolicy: String?,
+        suppressAutoRefinement: Boolean = false,
         editorCurrent: () -> Boolean,
     ): PendingGroupedStorySave {
         val bound = binding()
@@ -210,7 +220,8 @@ class StoryWorkspaceRepository(
         val body = ProtectedStoryWorkspaceCreateWire.encode(draft, title, chapters, mutationId,
             chosenPolicy, revision = story.revision, contributionReferences = referenceChapters)
         return PendingGroupedStorySave(bound, body, story.items.map { it.asset.id }, sourceReview,
-            targetStoryId = story.id, baseRevision = story.revision, contributionReferences = true)
+            targetStoryId = story.id, baseRevision = story.revision, contributionReferences = true,
+            suppressAutoRefinement = suppressAutoRefinement)
     }
 
     suspend fun save(pending: PendingGroupedStorySave, editorCurrent: () -> Boolean): SavedMemoryStory =
@@ -225,7 +236,7 @@ class StoryWorkspaceRepository(
             val saved = owned({
                 if (expectedId == null) api.createGroupedStory(bound.token, bound.libraryId, pending.body, pending.sourceReview)
                 else api.updateGroupedStory(bound.token, bound.libraryId, expectedId, pending.body,
-                    pending.sourceReview, pending.contributionReferences)
+                    pending.sourceReview, pending.contributionReferences, pending.suppressAutoRefinement)
             }) {
                 if (expectedId == null) {
                     ProtectedMemoryStoriesWire.decode(it, bound.libraryId, pending.assetIds,

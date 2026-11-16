@@ -45,6 +45,8 @@ data class StoryProposalImportReview internal constructor(
     val chapterIds: List<String>,
     val sourceCount: Int,
     val questions: List<String>,
+    val firstChangedChapterId: String? = null,
+    val fromAutoRefinement: Boolean = false,
 )
 
 data class StoryWorkspaceStoreState(
@@ -920,6 +922,7 @@ class StoryWorkspaceStore(
             live.editableChapters.map { it.id } != base.chapters.map { it.id } ||
             draft.jobKind !in setOf("narrative", "chat") ||
             runCatching { UUID.fromString(draft.jobId).toString() == draft.jobId }.getOrDefault(false).not()) return false
+        if (draft.fromAutoRefinement && savedStoryRefinementDraft(base, references) != draft) return false
 
         val baseChapterIds = base.chapters.map { it.id }
         val importedIds = draft.chapters.map { it.id }
@@ -951,6 +954,9 @@ class StoryWorkspaceStore(
         })
         val updatedTitle = draft.title ?: live.title
         val updatedDraft = detachDraft(editorDraft).copy(title = updatedTitle, chapters = updatedChapters)
+        val firstChange = live.editableChapters.firstOrNull { original ->
+            imported[original.id]?.let { it.narration != original.narration } == true
+        }
         mutable.value = live.copy(
             title = updatedTitle,
             draft = updatedDraft,
@@ -960,6 +966,7 @@ class StoryWorkspaceStore(
             invalidInput = false,
             proposalImportReview = StoryProposalImportReview(
                 chapterIds = immutable(importedIds), sourceCount = sourceCount, questions = immutable(draft.questions),
+                firstChangedChapterId = firstChange?.id, fromAutoRefinement = draft.fromAutoRefinement,
             ),
         )
         return true
@@ -1616,7 +1623,9 @@ class StoryWorkspaceStore(
                 else updateBaseWithAppend(base, draft) ?: return false,
                 savedEditReferences ?: return false, state.value.title, chapters,
                 mutationId, true, state.value.sourceReviewEnabled,
-                if (state.value.sourceReviewEnabled) ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1 else null) { current(expected) }
+                if (state.value.sourceReviewEnabled) ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1 else null,
+                suppressAutoRefinement = state.value.proposalImportReview?.fromAutoRefinement == true,
+            ) { current(expected) }
         }
         catch (_: CancellationException) { stale(epoch); return false }
         catch (failure: ApiFailure) {
