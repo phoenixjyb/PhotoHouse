@@ -1696,6 +1696,9 @@
     assistantStoryAddChapterTitle:'Add frames to chapter {number}',
     assistantStoryAddHelp:'Choose up to {limit} more photos or videos. Frames already in this story can’t be selected.',
     assistantStoryAdd:'Add selected frames',
+    assistantStoryAddKeepSearching:'Add and keep searching',
+    assistantStoryChapterAdded:'Frames added to this chapter.',
+    assistantStoryChapterFull:'This chapter is full. Return to the story to edit its frames.',
     assistantStoryReturn:'Return to story',
     assistantStoryAddCount:'{count} / {limit} new frames selected',
     assistantStoryAddLimit:'You have selected the available new frames.',
@@ -1711,6 +1714,9 @@
     assistantStoryAddChapterTitle:'为第 {number} 章添加画面',
     assistantStoryAddHelp:'还可选择 {limit} 张照片或视频。已在故事中的画面不能重复添加。',
     assistantStoryAdd:'添加所选画面',
+    assistantStoryAddKeepSearching:'添加并继续查找',
+    assistantStoryChapterAdded:'已将所选画面添加到本章。',
+    assistantStoryChapterFull:'本章已满。可以返回故事调整画面。',
     assistantStoryReturn:'返回故事',
     assistantStoryAddCount:'已选 {count} / {limit} 张新画面',
     assistantStoryAddLimit:'已选完可添加的新画面。',
@@ -1764,7 +1770,7 @@
     const title=$('assistant-story-selection-title'),help=panel?.querySelector('[data-i18n="assistantStoryHelp"]');
     const chapter=entry?.target.chapterNumber;
     if(title)title.textContent=chapter?t('assistantStoryAddChapterTitle').replace('{number}',String(chapter)):t(addMode?'assistantStoryAddTitle':'assistantStoryTitle');
-    if(help)help.textContent=addMode?t('assistantStoryAddHelp').replace('{limit}',String(entry.limit)):t('assistantStoryHelp');
+    if(help)help.textContent=chapter&&entry.limit===0?t('assistantStoryChapterFull'):addMode?t('assistantStoryAddHelp').replace('{limit}',String(entry.limit)):t('assistantStoryHelp');
     const open=$('assistant-shape-story');if(open)open.textContent=t(addMode?'assistantStoryAdd':'assistantStoryOpen');
     const close=$('assistant-workspace-close');if(close)close.textContent=t(addMode?'assistantStoryReturn':'assistantWorkspaceClose');
   }
@@ -1811,6 +1817,9 @@
     panel.hidden=!view.visible;
     $('assistant-story-selection-count').textContent=view.addMode?t('assistantStoryAddCount').replace('{count}',String(view.selected.length)).replace('{limit}',String(view.limit)):t('assistantStoryCount').replace('{count}',String(view.selected.length));
     $('assistant-shape-story').disabled=!view.ready||view.blocked||!view.selected.length;
+    const keepSearching=$('assistant-add-keep-searching');
+    keepSearching.hidden=!assistantStoryTarget?.target.chapterNumber;
+    keepSearching.disabled=keepSearching.hidden||$('assistant-shape-story').disabled;
     $('assistant-story-selection-clear').disabled=view.blocked||!view.selected.length;
     $('assistant-story-selected').hidden=!view.selected.length;
     const list=$('assistant-story-selected-list');
@@ -1836,7 +1845,7 @@
     if(empty.textContent!==notice)empty.textContent=notice;
     syncViewerStoryChoice();
     syncAssistantStoryModeLabels();
-    $('assistant-story-selection-status').textContent=!view.targetCurrent?t('assistantStoryTargetChanged'):assistantStoryHandoff?t('assistantStoryChecking'):assistantStoryNotice?t(assistantStoryNotice):view.selected.length>=view.limit?(view.addMode?t('assistantStoryAddLimit'):t('assistantStoryLimit')):'';
+    $('assistant-story-selection-status').textContent=!view.targetCurrent?t('assistantStoryTargetChanged'):assistantStoryHandoff?t('assistantStoryChecking'):assistantStoryNotice?t(assistantStoryNotice):view.limit>0&&view.selected.length>=view.limit?(view.addMode?t('assistantStoryAddLimit'):t('assistantStoryLimit')):'';
   }
   function toggleAssistantStoryItem(id){
     const view=assistantStoryView();if(!view.ready||view.blocked)return;
@@ -1849,9 +1858,10 @@
       assistantStorySerial++;assistantStoryNotice='';renderAssistantStoryControls();
     }catch{clearAssistantStorySelection();$('assistant-story-selection-status').textContent=t('assistantStoryUnavailable');}
   }
-  async function openAssistantStorySelection(){
+  async function openAssistantStorySelection({keepSearching=false}={}){
     const view=assistantStoryView();if(!view.ready||view.blocked||!view.selected.length)return;
     const addTarget=assistantStoryTarget;
+    if(keepSearching&&!addTarget?.target.chapterNumber)return;
     if(addTarget&&view.selected.length>addTarget.limit){
       assistantStoryNotice='assistantStoryAddFailed';
       renderAssistantStoryControls();return;
@@ -1881,8 +1891,15 @@
       if(addTarget){
         const appended=await addTarget.target.append(chosen,current);
         if(!operationCurrent())return;
-        if(appended===true){closeAssistantWorkspace({restoreFocus:true,restoreScroll:false});return;}
-        assistantStoryNotice='assistantStoryAddFailed';renderAssistantStoryControls();return;
+        if(!appended){assistantStoryNotice='assistantStoryAddFailed';return;}
+        const nextTarget=appended.nextTarget;
+        if(!keepSearching||!nextTarget){closeAssistantWorkspace({restoreFocus:true,restoreScroll:false});return;}
+        assistantStoryTarget={...addTarget,target:nextTarget,existingIds:new Set(nextTarget.assetIds),limit:nextTarget.limit};
+        clearAssistantStorySelection({keepResult:true});
+        assistantStoryNotice='assistantStoryChapterAdded';
+        syncAssistantControls();
+        focusAfterChapterAdd(nextTarget.limit);
+        return;
       }
       // The editor retains its unsaved-work guard and explicit Build/Save steps.
       const opened=storyWorkspace.fromResults(chosen);
@@ -1897,6 +1914,17 @@
         if(error.status===401||error.status===403)await failure(error,owner.generation);
       }
     }finally{if(assistantStoryHandoff===operation)assistantStoryHandoff=null;syncAssistantControls();}
+  }
+  function focusAfterChapterAdd(limit){
+    const snapshot=privateAssistant?.state(),sceneOpen=$('assistant-scene').open&&!$('assistant-scene').hidden;
+    let focus=$('assistant-workspace-close');
+    if(limit>0){
+      if(snapshot?.scenePageActive)focus=$('assistant-scene-page-return');
+      else if(snapshot?.resultPageActive)focus=$('assistant-result-page-return');
+      else if(sceneOpen)focus=$('assistant-scene-text').disabled?$('assistant-scene-back'):$('assistant-scene-text');
+      else if(!$('assistant-workspace-footer').hidden)focus=$('assistant-text');
+    }
+    focus.focus();
   }
   function renderAssistantTurn(turn,epoch,owner='legacy') {
     if(!turn.result_page)privateResultRenderedPage=null;
@@ -4587,6 +4615,7 @@
   }
   $('assistant-scene').addEventListener('toggle',()=>syncAssistantControls());
   $('assistant-shape-story').addEventListener('click',()=>void openAssistantStorySelection());
+  $('assistant-add-keep-searching').addEventListener('click',()=>void openAssistantStorySelection({keepSearching:true}));
   $('assistant-story-hide-existing').addEventListener('change',event=>{
     const view=assistantStoryView();
     if(view.addMode&&view.ready&&!view.blocked)assistantStoryTarget.hideExisting=event.target.checked;

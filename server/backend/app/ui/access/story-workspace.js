@@ -837,7 +837,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   async function addRelatedFrame(view,item,trigger){
     if(!relatedCurrent(view)||view.busy||view.adding||!view.result.items.includes(item)||selected.has(item.id))return;
-    const target=frameAppendTarget({related:view,section:view.section});if(!target)return;
+    const target=frameAppendTarget({related:view,section:view.section});if(!target||target.limit<=0)return;
     const restoreFocus=document.activeElement===trigger;
     view.adding=item.id;view.addError=false;renderRelated();syncFrameSearch();
     const active=()=>relatedCurrent(view)&&view.adding===item.id;
@@ -1050,7 +1050,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const anchor=section?.asset_ids.at(-1),insertAt=section?assetIds.indexOf(anchor)+1:assetIds.length;
     const isCurrent=()=>current(ticket,owner)&&$('story-workspace').open&&draft===story&&items===pool&&selected===selection&&
       !frameSearchBlocked()&&(!section||story.chapters.includes(section)&&section.asset_ids.at(-1)===anchor)&&orderedIds().join(',')===key;
-    if(!owner.account||!owner.library||limit<=0||section&&!insertAt||!isCurrent())return;
+    if(!owner.account||!owner.library||section&&!insertAt||!isCurrent())return;
     const chapterNumber=section?story.chapters.indexOf(section)+1:null;
     return {assetIds,limit,chapterNumber,isCurrent,append:async(chosen,isHandoffCurrent)=>{
       if(!isCurrent()||!isHandoffCurrent())return false;
@@ -1086,13 +1086,14 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const nextItems=[...retained.slice(0,poolIndex),...additions.values(),...retained.slice(poolIndex)];
       applyFrameEdit(nextItems,expected,nextDraft,{related});
       message(section?'framesAddedToChapter':'frameSearchAdded');
-      return true;
+      const nextTarget=section?frameAppendTarget({section:nextDraft.chapters[chapterNumber-1]}):null;
+      return {nextTarget};
     }};
   }
   function findMoreFrames(event,section=null){
     if(relatedView?.adding)return;
     const target=frameAppendTarget({section});
-    if(target)openFrameSearch?.(target,event.currentTarget);
+    if(target&&target.limit>0)openFrameSearch?.(target,event.currentTarget);
   }
   function chapterFrameEditAllowed(story,section){
     return story===draft&&section.asset_ids.length>1&&story.chapters.includes(section)&&!frameSearchBlocked()&&
