@@ -2,6 +2,7 @@
 import base64
 from contextlib import closing
 import json
+import os
 from pathlib import Path
 import sys
 import uuid
@@ -67,6 +68,18 @@ preview=fixture.client.post('/story-workspace/preview?library=family-a',headers=
     json={'asset_ids':'101,102','title':'一起走过的日子','theme':'everyday','language':'zh'})
 if preview.status_code!=200:raise RuntimeError('Synthetic story setup failed')
 draft=preview.json();draft['chapters'][0]['narration']='家人一起沿着湖边散步，留下了这段回忆。'
+if os.environ.get('PH_BROWSER_MULTICHAPTER_STORY')=='1':
+    # Keep the ordinary bridge fixture unchanged for other browser callers.
+    # This opt-in journey splits its two generated frames into two saved chapters.
+    generated=draft['chapters'][0]
+    items=draft['items']
+    if len(items)<2:raise RuntimeError('Synthetic multi-chapter story needs two generated frames')
+    draft['chapters']=[
+        {**generated,'id':'chapter-1','title':'湖边散步','narration':'家人一起沿着湖边散步，留下了这段回忆。',
+         'asset_ids':[str(items[0]['id'])],'evidence_ids':[]},
+        {**generated,'id':'chapter-2','title':'湖边聊天','narration':'家人接着坐在湖边聊天，记录那天的心情。',
+         'asset_ids':[str(items[1]['id'])],'evidence_ids':[]},
+    ]
 body={'title':draft['title'],'theme':draft['theme'],'language':'zh','asset_ids':'101,102',
       'chapters':json.dumps(draft['chapters'],ensure_ascii=False),
       'selection_revision':draft['selection_revision'],'revision':'0','mutation_id':str(uuid.uuid4())}

@@ -43,8 +43,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.en,{autoRefinement:'Local AI story suggestion · review',autoRefinementHelp:'Arranged by local AI without sending text to the cloud. Compare it with the original, approve it for editing, then choose Save to update the story.',autoRefinementLoading:'Checking the story suggestion…',autoRefinementQueued:'The suggestion is queued. It will be checked automatically; you can also refresh it manually.',autoRefinementWorking:'The story is being arranged…',autoRefinementReady:'The suggestion is ready for your review.',autoRefinementFailed:'The suggestion is unavailable. The original story is unchanged.',autoRefinementRefresh:'Refresh suggestion',autoRefinementReview:'Review and bring into the reader',autoRefinementAdopt:'Approve and edit',autoRefinementOriginal:'Currently saved wording',autoRefinementSuggestion:'Suggested wording',autoRefinementTitleKept:'Original title kept',autoRefinementQuestions:'Questions to review',autoRefinementSaveHelp:'After bringing it into the editor, review it and choose Save to library separately.',autoRefinementStart:'Refine this story',autoRefinementStartWorking:'Submitting the refinement request…',autoRefinementStartFailed:'The request could not be submitted. The original story is unchanged.'});
   Object.assign(labels.zh,{dictateChapter:'录音讲这一章',dictationStop:'结束录音并转写',dictationCancel:'取消录音',dictationWait:'正在检查语音服务…',dictationStarting:'正在等待麦克风权限…',dictationRecording:'正在录音。结束后会先显示可编辑的转写。',dictationTranscribing:'正在转写录音…',dictationTranscript:'转写内容（可编辑）',dictationHelp:'录音仅用于本次转写，不会作为原始家庭录音保存；语音服务会保留 30 天的识别文字和状态记录。请核对并明确添加转写，再检查并另行保存故事。',dictationAdd:'添加到本章',dictationDiscard:'丢弃转写',dictationCancelSession:'取消并丢弃',dictationAdded:'已添加到本章文字；请检查并另行保存故事。',dictationNeedResolve:'请先添加或丢弃待处理的转写，再继续此操作。',dictationOverflow:'文字超过 6000 UTF-8 字节。原章节文字和完整转写都已保留，请缩短后再添加。',dictationInvalidTranscript:'转写内容含无效字符或超过 64 KiB，请修改后重试。',dictationUnavailable:'语音转写暂不可用。章节文字仍保留。',dictationDenied:'语音权限或服务访问被拒绝。',dictationPermission:'麦克风权限不可用。请检查浏览器权限后重试。',dictationCaptureError:'录音未能开始或完成；章节文字仍保留。',dictationAsrError:'转写未能完成；章节文字仍保留。',dictationBusy:'请先结束其他录音或语音任务。',dictationEmpty:'没有可供核对的转写内容。'});
   Object.assign(labels.en,{dictateChapter:'Dictate this chapter',dictationStop:'Stop and transcribe',dictationCancel:'Cancel recording',dictationWait:'Checking voice availability…',dictationStarting:'Waiting for microphone permission…',dictationRecording:'Recording. Stop to review an editable transcript.',dictationTranscribing:'Transcribing the recording…',dictationTranscript:'Transcript (editable)',dictationHelp:'Audio is used only for this transcription and is not saved as an original family recording. The voice service keeps recognized text and status receipts for 30 days. Review and explicitly add the transcript, then review and save the story separately.',dictationAdd:'Add to chapter',dictationDiscard:'Discard transcript',dictationCancelSession:'Cancel and discard',dictationAdded:'Added to chapter wording. Review it and save the story separately.',dictationNeedResolve:'Add or discard the pending transcript before continuing.',dictationOverflow:'The text exceeds 6,000 UTF-8 bytes. Both the chapter wording and full transcript are kept; shorten it before adding.',dictationInvalidTranscript:'The transcript contains invalid characters or exceeds 64 KiB. Edit it and try again.',dictationUnavailable:'Voice transcription is unavailable. Your chapter wording is kept.',dictationDenied:'Microphone permission or voice-service access was denied.',dictationPermission:'Microphone permission is unavailable. Check browser permission and try again.',dictationCaptureError:'Recording did not start or finish. Your chapter wording is kept.',dictationAsrError:'Transcription did not finish. Your chapter wording is kept.',dictationBusy:'Finish the other recording or voice task first.',dictationEmpty:'There is no transcript to review.'});
-  Object.assign(labels.zh,{autoRefinementDeferred:'资料暂时忙碌，稍后会继续检查本地 AI 建议。',autoRefinementApproved:'已采用本地 AI 建议',autoRefinementKeep:'保留原文',autoRefinementKept:'已保留原文，AI 建议未保存。',autoRefinementReopen:'重新审核建议',autoRefinementEditing:'本地 AI 建议已带入编辑，尚未保存。你可以继续修改，再点击“保存到相册库”。'});
-  Object.assign(labels.en,{autoRefinementDeferred:'Context is temporarily busy. The local AI suggestion will be checked again shortly.',autoRefinementApproved:'Local AI edits approved',autoRefinementKeep:'Keep original',autoRefinementKept:'The original is kept. The AI suggestion was not saved.',autoRefinementReopen:'Review suggestion again',autoRefinementEditing:'The local AI suggestion is in the editor and is not saved yet. Make any changes, then choose Save to library.'});
+  Object.assign(labels.zh,{autoRefinementDeferred:'资料暂时忙碌，稍后会继续检查本地 AI 建议。',autoRefinementKeep:'保留原文',autoRefinementKept:'已保留原文，AI 建议未保存。',autoRefinementReopen:'重新审核建议',appliedToDraft:'已带入草稿',editedChapter:(number,title)=>`第 ${number} 章 · ${title}`});
+  Object.assign(labels.en,{autoRefinementDeferred:'Context is temporarily busy. The local AI suggestion will be checked again shortly.',autoRefinementKeep:'Keep original',autoRefinementKept:'The original is kept. The AI suggestion was not saved.',autoRefinementReopen:'Review suggestion again',appliedToDraft:'Applied to draft',editedChapter:(number,title)=>`Chapter ${number} · ${title}`});
   labels.zh.savedNewer='已保存到这个相册库。家人随后修改了故事，现已打开最新版本。';
   labels.en.savedNewer='Saved in this library. Your family changed the story afterward; the latest version is now open.';
   Object.assign(labels.zh,{guideStart:'讲一个故事',guideEmptyTitle:'让第一则故事，从几个画面开始',guideEmptyHelp:'选一些相关的照片或视频，写下或口述你记得的事，再检查后保存。照片上的原始回忆会保持独立。',guideProgress:'故事编排进度',guideStepFrames:'挑选画面',guideStepWords:'讲述回忆',guideStepReview:'检查保存',guideFrames:'挑选画面',guideWords:'讲述回忆',guideReview:'检查与保存',guideFramesHelp:'先挑几个属于这段回忆的画面，也可以只选一个。顺序和开头由你决定；下一步不会保存故事。',guideWordsHelp:'先在开篇写一句你记得的事，也可以录音、检查转写后再加入。共同的回忆写在开篇即可，其他章节可以稍后补充。',guideReviewHelp:'核对标题、顺序和正文。预览只是查看；只有点击“保存到相册库”，这个相册库的成员才能看到这则故事。',guideNext:'下一步：讲述回忆',guideToReview:'下一步：检查故事',guideBack:'上一步',guideAdvanced:'使用完整编排界面',guideDraftOnly:'待保存的故事草稿',guideSources:'请核对画面与素材来源；AI 观察不是已确认的事实。新增文字会保存为故事正文，不会改写照片原始回忆，也不会自动复制到每张照片。',guideNoWords:'这一章还没有正文，可以返回补充。',guideCount:(frames,chapters)=>`${frames} 个画面 · ${chapters} 章`});
@@ -60,6 +60,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   const bookPositions=new Map();
   const savedStoryPositions=new Map();
   let galleryItems=[], items=[], selectionPage=0, selected=new Set(), draft=null, generation=0, busy=false, chapter=0, frame=0, dirty=false, downloaded=false, readerFromShelf=false,readerMountEpoch=0;
+  let appliedDraft=null;
   let autoRefinementDismissed=null,autoRefinementJob=null,autoRefinementOriginal=null,autoRefinementTimer=null,autoRefinementAttempts=0,autoRefinementCapability=null,autoRefinementMayStart=false,autoRefinementQueueing=null,autoRefinementQueueError=false,skipAutoRefinementSave=null;
   // Proposal source IDs outside the per-asset evidence set and accepted
   // contribution-reference contract get a volatile review note beside this draft.
@@ -1168,6 +1169,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const reviewRequired=Boolean(draftPreparation.proposal&&!pendingSave&&(draftProposalFingerprint()!==draftPreparation.reviewedFingerprint||!$('story-draft-preparation')?.querySelector('.story-draft-reviewed')?.checked));
     $('story-save-memory').disabled=busy||localBusy||Boolean(draftPreparation.pending)||localReviewRequired||sourceRefreshPending||sourceRefreshRequired||(sourceRefreshNeedsAcknowledgement&&!sourceRefreshAcknowledged)||readOnly()||!draft||reviewRequired;
     $('story-save-memory').textContent=text(busy?'savingMemory':pendingSave?'retrySave':'saveMemory');
+    if(appliedDraft&&(!dirty||draft?.id!==appliedDraft.id||draft.revision!==appliedDraft.revision))appliedDraft=null;
+    const approvalStatus=$('story-approval-status'),approvalText=appliedDraft?text('appliedToDraft'):'';
+    approvalStatus.hidden=!appliedDraft;
+    if(approvalStatus.textContent!==approvalText)approvalStatus.textContent=approvalText;
     $('story-export').disabled=Boolean(draftPreparation.pending||draftPreparation.proposal);
     $('story-reload-memory').hidden=!draft?.id;
     for(const check of $('story-selection').querySelectorAll('input'))check.disabled=frozen()||sourceRefreshPending||(!check.checked&&selected.size>=24);
@@ -1992,11 +1997,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       start.disabled=autoRefinementQueueing===autoRefinementIdentity(draft);panel.append(start);host.append(panel);return;
     }
     if(job.base_revision!==draft.revision)return;
+    if(mode==='editor'&&skipAutoRefinementSave?.storyId===draft.id&&skipAutoRefinementSave.baseRevision===draft.revision)return;
     const panel=node('section',undefined,'story-auto-refinement');panel.dataset.jobId=job.id;panel.append(node('h3',text('autoRefinement')));
     panel.append(node('p',text('autoRefinementHelp'),'fine'));
-    if(mode==='editor'&&skipAutoRefinementSave?.storyId===draft.id&&skipAutoRefinementSave.baseRevision===draft.revision){
-      panel.querySelector('h3').textContent=text('autoRefinementApproved');panel.append(node('p',text('autoRefinementEditing'),'story-auto-refinement-status'));host.append(panel);return;
-    }
     const status=job.state==='queued'?text('autoRefinementQueued'):job.state==='running'?text('autoRefinementWorking'):job.state==='deferred'?text('autoRefinementDeferred'):job.state==='ready'?text('autoRefinementReady'):text('autoRefinementFailed');
     const statusNode=node('p',status,'story-auto-refinement-status');statusNode.setAttribute('role','status');panel.append(statusNode);
     const refresh=button(text('autoRefinementRefresh'),()=>void refreshAutoRefinement(true),'quiet');panel.append(refresh);
@@ -2101,7 +2104,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(!validDraft(candidate,candidate.items.map(i=>i.id),record.owner,sourceProfileLoaded))return;
     if(!window.confirm(record.owner.language==='en'?'Bring this cloud suggestion into the editor? Review and save separately.':'将云端建议带入编辑？请核对后另行保存。'))return;
     if(!cloudCurrent(record)||!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'}))return;
-    clearDraftProposal(null,false,false);draft=candidate;skipAutoRefinementSave={storyId:draft.id,baseRevision:draft.revision};cloudReview=null;dirty=true;downloaded=false;readerFromShelf=false;stopPlaying();$('story-reader').close();renderEditor();message('ready');if(!$('story-workspace').open)$('story-workspace').showModal();
+    if(!cloudCurrent(record)||cloudReview!==record||!$('story-reader').open)return;
+    skipAutoRefinementSave={storyId:candidate.id,baseRevision:candidate.revision};
+    cloudReview=null;
+    openAppliedDraft(candidate);
     }catch(error){if(cloudCurrent(record)){record.failed=true;renderCloudPanels();if(error.status===401||error.status===403)onError(error);}}
   }
 
@@ -2327,6 +2333,41 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       if(current(ticket,owner)){busy=false;setSelectionCount();if(draft?.saved)updateContributionRefViews(draft);}
     }}
   }
+  function openAppliedDraft(candidate,referenceChapterId){
+    const changed=candidate.chapters.find((section,index)=>{
+      const before=draft.chapters[index];
+      return section.title!==before.title||section.narration!==before.narration;
+    });
+    const chapterId=changed?.id??referenceChapterId;
+    clearDraftProposal(null,false,false);
+    draft=candidate;
+    appliedDraft={id:candidate.id,revision:candidate.revision};
+    dirty=true;
+    downloaded=false;
+    readerFromShelf=false;
+    stopPlaying();
+    stopNarration();
+    $('story-reader').close();
+    renderEditor();
+    message('');
+    const editor=$('story-workspace');
+    if(!editor.open)editor.showModal();
+    const cards=[...$('story-chapter-editor').querySelectorAll('.story-chapter-card')];
+    const targetIndex=cards.findIndex(card=>card.dataset.chapterId===chapterId);
+    const card=cards[targetIndex];
+    if(card){
+      card.tabIndex=-1;
+      card.setAttribute('aria-label',text('editedChapter')(targetIndex+1,draft.chapters[targetIndex].title));
+      card.setAttribute('aria-describedby','story-approval-status');
+    }
+    const target=card??$('story-workspace-title');
+    target.focus({preventScroll:true});
+    const heading=editor.querySelector('.story-workspace-heading');
+    const scrollPadding=editor.style.scrollPaddingTop;
+    editor.style.scrollPaddingTop=`calc(${heading.offsetHeight}px + .75rem)`;
+    target.scrollIntoView({block:'start',inline:'nearest'});
+    editor.style.scrollPaddingTop=scrollPadding;
+  }
   async function acceptProposal(proposal){
     if(!draft?.saved||!draft.can_edit||busy||pendingSave||scope().locked||
        proposal.story_id!==draft.id||proposal.revision!==draft.revision||!uuidOK(proposal.job_id)||!canDiscard())return;
@@ -2336,7 +2377,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       if(!current(ticket,owner)||!$('story-reader').open||job.state!=='ready'||job.base_revision!==draft.revision)return;
       const result=job.kind==='chat'?job.result?.proposal:job.result;
       if(!result||result.version!==1||result.needs_review!==true||!Array.isArray(result.chapters)||result.chapters.length!==draft.chapters.length)return;
-      const candidate=structuredClone(draft),warnings=new Map(),knownRefs=refsFor(draft),proposedGroups=knownRefs?.available?new Map([...knownRefs.groups].map(([id,refs])=>[id,[...refs]])):null;let contributionReferences=false,unpersistedReferenceCount=0;
+      const candidate=structuredClone(draft),warnings=new Map(),knownRefs=refsFor(draft),proposedGroups=knownRefs?.available?new Map([...knownRefs.groups].map(([id,refs])=>[id,[...refs]])):null;
+      let contributionReferences=false,unpersistedReferenceCount=0,referenceChapterId;
       for(const [index,section] of result.chapters.entries()){
         const before=candidate.chapters[index],refs=proposal.source_refs?.[index];
         if(section.id!==before.id||refs?.chapter_id!==section.id||JSON.stringify(refs.source_ids)!==JSON.stringify(section.source_ids)||
@@ -2359,7 +2401,11 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
           warnings.set(before.id,{count:remaining.length,hasContribution});
         }
         const userSelected=sourceReviewOptedIn?new Set(before.evidence_ids):null;
-        before.evidence_ids=section.source_ids.filter(id=>known.has(id)&&(!userSelected||userSelected.has(id)));
+        const evidence=section.source_ids.filter(id=>known.has(id)&&(!userSelected||userSelected.has(id)));
+        const groupsChanged=proposedGroups&&proposedGroups.get(before.id)?.length!==knownRefs.groups.get(before.id)?.length;
+        const evidenceChanged=JSON.stringify(evidence)!==JSON.stringify(before.evidence_ids);
+        if(!referenceChapterId&&(remaining.length||groupsChanged||evidenceChanged))referenceChapterId=before.id;
+        before.evidence_ids=evidence;
       }
       if(proposal.auto_refinement!==true&&validText(result.title,160)&&result.title.trim())candidate.title=result.title;
       if(!validDraft(candidate,candidate.items.map(i=>i.id),owner,sourceProfileLoaded))return;
@@ -2367,8 +2413,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         (owner.language==='en'?'Bring this AI draft into the editor for your review? It will be saved only when you choose Save.':'将这份 AI 建议带入编辑，供你核对？只有再次点击“保存到相册库”才会保存。');
       if(!window.confirm(prompt))return;
       if(!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'})||!current(ticket,owner)||draft.id!==proposal.story_id||draft.revision!==proposal.revision||!$('story-reader').open)return;
-      clearDraftProposal(null,false,false);draft=candidate;if(proposal.auto_refinement===true)skipAutoRefinementSave={storyId:draft.id,baseRevision:draft.revision};proposalReferenceWarnings=warnings;if(proposedGroups){refsLoadEpoch++;contributionRefs={...knownRefs,groups:proposedGroups};}dirty=true;downloaded=false;readerFromShelf=false;stopPlaying();$('story-reader').close();renderEditor();
-      message(proposal.auto_refinement===true?'autoRefinementEditing':'ready');if(!$('story-workspace').open)$('story-workspace').showModal();if(autoRefinementActive())scheduleAutoRefinementPoll();$('story-chapter-editor').scrollIntoView({block:'start',behavior:'smooth'});
+      if(proposal.auto_refinement===true)skipAutoRefinementSave={storyId:candidate.id,baseRevision:candidate.revision};
+      proposalReferenceWarnings=warnings;
+      if(proposedGroups){refsLoadEpoch++;contributionRefs={...knownRefs,groups:proposedGroups};}
+      openAppliedDraft(candidate,referenceChapterId);
     }catch(error){if(current(ticket,owner))onError(error);}
   }
   function proposalSourceWarningPrompt(chapters,refs,hasContribution) {

@@ -7,7 +7,7 @@ const fs=require('node:fs/promises');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||process.env.PLAYWRIGHT_MODULE_PATH||'playwright-core');
 const path=require('node:path');
 const root=path.resolve(__dirname,'../..');
-const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'memory_community_browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
+const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'memory_community_browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe'],env:{...process.env,PH_BROWSER_MULTICHAPTER_STORY:'1'}});
 let serial=0,storyId,story,readyResolve,readyReject;const pending=new Map(),requests=[],pageErrors=[];
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
 bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
@@ -34,7 +34,7 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
       const caps=JSON.parse(responseBody.toString());caps.enabled=true;caps.auto_refinement_enabled=true;responseBody=Buffer.from(JSON.stringify(caps));
     }else if(entry.method==='GET'&&url.pathname==='/memory-community/v1/jobs/'+jobId){
       jobPolls++;const state=jobPolls===1?'deferred':'ready';
-      const result=state==='ready'?{version:1,title:modelTitle,chapters:story.chapters.map(chapter=>({id:chapter.id,narration:'待家人核对的整理建议：湖边散步。',source_ids:[]})),questions:['那天还有谁同行？'],needs_review:true}:null;
+      const result=state==='ready'?{version:1,title:modelTitle,chapters:story.chapters.map(chapter=>({id:chapter.id,narration:chapter.id==='chapter-2'?'待家人核对的整理建议：湖边散步。':chapter.narration,source_ids:[]})),questions:['那天还有谁同行？'],needs_review:true}:null;
       responseBody=Buffer.from(JSON.stringify({version:1,id:jobId,kind:'narrative',state,created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:null,result,needs_review:true,base_revision:story.revision}));status=200;headersOut={'content-type':'application/json'};
     }else{
       if(entry.method==='PUT'&&url.pathname==='/memory-stories/'+storyId)saveBodies.push(JSON.parse((request.postDataBuffer()||Buffer.alloc(0)).toString()));
@@ -44,11 +44,12 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
         responseBody=Buffer.from(JSON.stringify(story));
       }
     }
-    delete headersOut['content-length'];delete headersOut['content-encoding'];await route.fulfill({status,headers:headersOut,body:responseBody});
+    entry.status=status;delete headersOut['content-length'];delete headersOut['content-encoding'];await route.fulfill({status,headers:headersOut,body:responseBody});
   });
   page=await context.newPage();page.on('pageerror',error=>pageErrors.push(error.stack||error.message));page.on('dialog',dialog=>{const dismiss=confirmAction==='dismiss';if(dismiss)confirmAction='accept';void (dismiss?dialog.dismiss():dialog.accept()).then(()=>{if(dialogWaiter){dialogWaiter();dialogWaiter=null;}}).catch(()=>{});});
   await page.goto('https://photohouse.test/ui');await page.locator('#auth').waitFor({state:'visible'});await page.locator('#phone').fill('+12025550100');await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();
   await page.locator('.saved-memory-cover').first().click();const panel=page.locator('#story-reader-title').locator('xpath=..').locator('.story-auto-refinement');await panel.waitFor({timeout:5000});
+  assert.deepEqual(story.chapters.map(chapter=>chapter.id),['chapter-1','chapter-2'],'both generated chapters were saved through the fixture API');assert.deepEqual(story.chapters.map(chapter=>chapter.asset_ids),[['101'],['102']],'the generated saved chapters retain their ordered frame references');
   assert.match(await panel.textContent(),/本地 AI 整理建议 · 待核对/);const original='家人一起沿着湖边散步，留下了这段回忆。',originalReaderHeading=await page.locator('#story-reader-title').textContent();assert.equal(await page.locator('#story-reader-text').textContent(),original);
   assert.equal(await panel.getByRole('button',{name:'整理这个故事'}).count(),1,'the existing story has an explicit refinement action');assert.equal(refinementPosts,0,'opening the saved story does not queue generation');
   await panel.getByRole('button',{name:'整理这个故事'}).click();await panel.getByText('整理任务已排队。稍后会自动检查；你也可以手动刷新。').waitFor();assert.equal(refinementPosts,1,'one explicit click queues one revision-bound refinement');assert.equal(await page.locator('#story-reader-text').textContent(),original,'queueing never edits the saved story');
@@ -59,20 +60,23 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   await panel.getByText(deferNotice,{exact:true}).waitFor({timeout:7000});assert.equal(jobPolls,1,'deferred is shown as a temporary state and remains pollable');
   await page.waitForFunction(()=>document.querySelector('.story-auto-refinement-status')?.textContent.includes('建议已就绪'),null,{timeout:7000});
   assert.match(await panel.textContent(),/待家人核对的整理建议：湖边散步。/);assert.match(await panel.textContent(),/那天还有谁同行/);assert.match(await panel.textContent(),/原标题保留/);assert.match(await panel.textContent(),new RegExp(originalTitle));assert.equal(await panel.getByText(modelTitle,{exact:true}).count(),0,'the model title is not presented as a replacement');assert.equal(await page.locator('#story-reader-title').textContent(),originalReaderHeading,'the reader heading remains unchanged');assert.equal(await page.locator('#story-reader-text').textContent(),original,'the saved reader keeps showing its original text');
-  const rows=panel.locator('.story-auto-refinement-row');assert.equal(await rows.count(),1,'the story comparison is grouped by chapter');
-  const row=rows.first(),originalCard=row.locator('.story-auto-refinement-comparison'),suggestedCard=row.locator('.story-auto-refinement-chapter');
+  const rows=panel.locator('.story-auto-refinement-row'),sections=panel.locator('.story-auto-refinement-section');assert.equal(await rows.count(),2,'the saved story comparison includes both chapters');assert.equal(await sections.count(),2);
+  const firstRow=rows.nth(0),firstOriginal=firstRow.locator('.story-auto-refinement-comparison'),firstSuggested=firstRow.locator('.story-auto-refinement-chapter');
+  assert.equal(await firstOriginal.isVisible(),true);assert.equal(await firstSuggested.isVisible(),true);
+  assert.match(await firstOriginal.textContent(),new RegExp(original));assert.match(await firstSuggested.textContent(),new RegExp(original),'the first chapter wording is unchanged in the suggestion');
+  const secondRow=rows.nth(1),originalCard=secondRow.locator('.story-auto-refinement-comparison'),suggestedCard=secondRow.locator('.story-auto-refinement-chapter');
   assert.equal(await originalCard.isVisible(),true);assert.equal(await suggestedCard.isVisible(),true);
-  assert.match(await originalCard.locator('h5').textContent(),/当前保存的原文/);assert.match(await originalCard.textContent(),new RegExp(original));
+  assert.match(await originalCard.locator('h5').textContent(),/当前保存的原文/);assert.match(await originalCard.textContent(),/家人接着坐在湖边聊天，记录那天的心情。/);
   assert.match(await suggestedCard.locator('h5').textContent(),/整理建议/);assert.match(await suggestedCard.textContent(),/待家人核对的整理建议：湖边散步。/);
   if(process.env.PH_BROWSER_ARTIFACTS){
     await fs.mkdir(process.env.PH_BROWSER_ARTIFACTS,{recursive:true});
     await panel.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'story-local-ai-review-desktop.png')});
     await page.setViewportSize({width:390,height:844});
     const phonePanelBox=await panel.boundingBox();assert.ok(phonePanelBox&&phonePanelBox.x>=0&&phonePanelBox.x+phonePanelBox.width<=390,'the refinement panel fits the phone viewport');
-    assert.equal(await row.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'chapter comparison fits at 390px');
+    assert.equal(await secondRow.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'chapter comparison fits at 390px');
     await panel.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'story-local-ai-review-phone-viewport.png')});
     const scaled=await panel.evaluate(root=>[...root.querySelectorAll('*')].filter(node=>[...node.childNodes].some(child=>child.nodeType===3&&child.textContent.trim())).map((node,index)=>{const style=getComputedStyle(node),row={index,size:parseFloat(style.fontSize),height:parseFloat(style.lineHeight),font:node.style.fontSize,line:node.style.lineHeight};node.dataset.reviewScale=String(index);node.style.fontSize=`${row.size*1.5}px`;if(Number.isFinite(row.height))node.style.lineHeight=`${row.height*1.5}px`;return row;}));
-    assert.equal(await row.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'chapter comparison wraps at 150% text');
+    assert.equal(await secondRow.evaluate(node=>node.scrollWidth<=node.clientWidth),true,'chapter comparison wraps at 150% text');
     await panel.scrollIntoViewIfNeeded();await page.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'story-local-ai-review-phone-text150-viewport.png')});
     await panel.evaluate((root,rows)=>rows.forEach(row=>{const node=root.querySelector(`[data-review-scale="${row.index}"]`);if(node){node.style.fontSize=row.font;node.style.lineHeight=row.line;delete node.dataset.reviewScale;}}),scaled);
     await page.setViewportSize({width:1280,height:900});
@@ -82,7 +86,7 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   await panel.getByText('已保留原文，AI 建议未保存。',{exact:true}).waitFor();
   assert.equal(await panel.locator('.story-auto-refinement-row').count(),0,'keeping the original hides the suggestion comparison');
   assert.equal(requests.filter(item=>['PUT','DELETE'].includes(item.method)).length,keepWrites,'keeping the original does not write');assert.equal(generationPosts(),keepGenerations,'keeping the original does not generate');assert.equal(refinementPosts,keepRefinements);
-  await panel.getByRole('button',{name:'重新审核建议',exact:true}).click();await panel.locator('.story-auto-refinement-row').waitFor();
+  await panel.getByRole('button',{name:'重新审核建议',exact:true}).click();await panel.locator('.story-auto-refinement-row').first().waitFor();
   assert.equal(generationPosts(),keepGenerations,'returning to review reuses the ready suggestion');assert.equal(refinementPosts,keepRefinements);
   if(process.env.PH_BROWSER_ARTIFACTS){
     await page.setViewportSize({width:390,height:844});
@@ -101,20 +105,64 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   confirmAction='dismiss';const dismissed=new Promise(resolve=>{dialogWaiter=resolve;});
   await readerPanel.getByRole('button',{name:'审核通过，带入编辑'}).click();await dismissed;
   await page.locator('#story-reader').waitFor({state:'visible'});
-  assert.equal(await page.locator('#story-reader-text').textContent(),original,'declining the adoption confirmation preserves the saved original');assert.equal(saveBodies.length,0,'declining adoption issues no save');
+  assert.equal(await page.locator('#story-reader-text').textContent(),original,'declining the adoption confirmation preserves the saved original');assert.equal(saveBodies.length,0,'declining adoption issues no save');assert.equal(requests.filter(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)).length,0,'declining adoption issues zero story PUTs');
+  let phoneEditorBaseSize;
+  if(process.env.PH_BROWSER_ARTIFACTS){
+    await page.setViewportSize({width:390,height:844});
+    phoneEditorBaseSize=await page.evaluate(()=>{
+      const root=document.querySelector('#story-workspace'),nodes=[root,root.querySelector('.story-workspace-heading h2'),root.querySelector('#story-chapter-editor'),root.querySelector('#story-approval-status'),...root.querySelectorAll('#story-draft-actions button')];
+      const snapshots=nodes.map(node=>({node,prior:node.style.fontSize,size:parseFloat(getComputedStyle(node).fontSize)}));
+      for(const item of snapshots){item.node.dataset.approvalScale='150';item.node.dataset.approvalPriorFont=item.prior;item.node.style.fontSize=`${item.size*1.5}px`;}
+      return snapshots[2].size;
+    });
+  }
   confirmAction='accept';const accepted=new Promise(resolve=>{dialogWaiter=resolve;});
-  await readerPanel.getByRole('button',{name:'审核通过，带入编辑'}).click();await accepted;
-  await page.locator('#story-chapter-editor .story-auto-refinement-status').getByText('本地 AI 建议已带入编辑，尚未保存。你可以继续修改，再点击“保存到相册库”。',{exact:true}).waitFor();
-  await page.locator('#story-chapter-editor textarea').first().waitFor();assert.equal(await page.locator('#story-workspace-title').inputValue(),originalTitle,'bringing prose into the editor preserves the saved story title');
-  const approvedText='待家人核对的整理建议：湖边散步。家人补充：那天夕阳很美。';
-  const narration=page.locator('#story-chapter-editor textarea').first();assert.match(await narration.inputValue(),/待家人核对的整理建议：湖边散步。/,'the suggestion is only brought into the editable draft after confirmation');
-  await narration.fill(approvedText);assert.equal(saveBodies.length,0,'editing an adopted suggestion still does not save automatically');
-  await page.locator('#story-save-memory').click();const deadline=Date.now()+5000;while(Date.now()<deadline&&!requests.some(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)))await new Promise(resolve=>setTimeout(resolve,25));
+  const approveButton=readerPanel.getByRole('button',{name:'审核通过，带入编辑'});await approveButton.focus();await approveButton.press('Enter');await accepted;
+  assert.equal(saveBodies.length,0,'approval does not issue a save');assert.equal(requests.filter(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)).length,0,'approval issues zero story PUTs');
+  await page.locator('#story-approval-status').getByText('已带入草稿',{exact:true}).waitFor();
+  await page.locator('#story-chapter-editor textarea[maxlength="6000"]').first().waitFor();assert.equal(await page.locator('#story-workspace-title').inputValue(),originalTitle,'bringing prose into the editor preserves the saved story title');
+  const approvedText='待家人核对的整理建议：湖边散步。家人补充：那天夕阳很美。',chapter1=page.locator('#story-chapter-editor .story-chapter-card[data-chapter-id="chapter-1"]'),chapter2=page.locator('#story-chapter-editor .story-chapter-card[data-chapter-id="chapter-2"]');
+  await chapter2.waitFor();assert.equal(await page.locator('#story-chapter-editor .story-chapter-card').count(),2,'approval preserves both saved chapter cards');
+  assert.equal(await chapter1.locator('textarea[maxlength="6000"]').inputValue(),'家人一起沿着湖边散步，留下了这段回忆。','approval leaves the unchanged first chapter intact');
+  assert.match(await chapter2.locator('textarea[maxlength="6000"]').inputValue(),/待家人核对的整理建议：湖边散步。/,'only the second chapter suggestion is brought into the editable draft');
+  assert.equal(await chapter2.evaluate(card=>{const box=card.getBoundingClientRect();return box.top>=0&&box.top<innerHeight&&box.bottom>0;}),true,'approval scrolls the changed chapter card into view');
+  assert.equal(await chapter2.evaluate(card=>card.contains(document.activeElement)),true,'approval focuses the changed chapter card');
+  if(process.env.PH_BROWSER_ARTIFACTS){
+    const chapterCardSize=await chapter2.evaluate(node=>parseFloat(getComputedStyle(node).fontSize));assert.ok(chapterCardSize>=phoneEditorBaseSize*1.4,`chapter card uses 150% text sizing before approval (${chapterCardSize}px from ${phoneEditorBaseSize}px)`);
+    assert.ok(await page.locator('#story-approval-status').evaluate(node=>parseFloat(getComputedStyle(node).fontSize))>16,'approval status is enlarged before approval');
+    assert.ok(await page.locator('#story-save-memory').evaluate(node=>parseFloat(getComputedStyle(node).fontSize))>16,'Save button is enlarged before approval');
+  }
+  assert.equal(await page.locator('#story-approval-status').textContent(),'已带入草稿');
+  const saveButton=page.locator('#story-save-memory');assert.match(await saveButton.textContent(),/保存到相册库/,'the explicit Save label is in Chinese');assert.equal(await saveButton.isVisible(),true,'explicit Save remains visible after approval');assert.equal(await saveButton.isEnabled(),true,'explicit Save is enabled after approval');
+  if(process.env.PH_BROWSER_ARTIFACTS){
+    assert.equal(await page.locator('#story-workspace').evaluate(root=>{const target=root.querySelector('.story-chapter-card[data-chapter-id="chapter-2"]')?.getBoundingClientRect(),head=root.querySelector('.story-workspace-heading')?.getBoundingClientRect(),bar=root.querySelector('#story-draft-actions')?.getBoundingClientRect();return Boolean(target&&head&&bar&&head.bottom<=target.top&&target.top<bar.top);}),true,'the changed card sits below the workspace heading and above draft actions');
+    const dialog=page.locator('#story-workspace'),approvalStatus=page.locator('#story-approval-status');
+    for(const control of [approvalStatus,saveButton]){const box=await control.evaluate((node,dialogNode)=>{const rect=node.getBoundingClientRect(),frame=dialogNode.getBoundingClientRect();return {inside:rect.width>0&&rect.height>0&&rect.top>=frame.top&&rect.bottom<=frame.bottom&&rect.top>=0&&rect.bottom<=innerHeight,top:rect.top,bottom:rect.bottom,dialogTop:frame.top,dialogBottom:frame.bottom,viewportHeight:innerHeight};},await dialog.elementHandle());assert.equal(box.inside,true,`${control===approvalStatus?'approval text':'Save button'} stays inside the visible 390px dialog at 150% text without scrolling: ${JSON.stringify(box)}`);}
+    await page.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'story-local-ai-approval-to-edit-phone-390-text150.png')});
+    await page.locator('#story-workspace').evaluate(root=>{
+      for(const node of [root,...root.querySelectorAll('[data-approval-scale="150"]')]){if(node.dataset.approvalScale!=='150')continue;node.style.fontSize=node.dataset.approvalPriorFont||'';delete node.dataset.approvalScale;delete node.dataset.approvalPriorFont;}
+    });
+    await page.setViewportSize({width:1280,height:900});
+    await page.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'story-local-ai-approval-desktop.png')});
+  }
+  await chapter2.locator('textarea[maxlength="6000"]').fill(approvedText);assert.equal(saveBodies.length,0,'editing an adopted suggestion still does not save automatically');assert.equal(requests.filter(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)).length,0,'approval and editing issue zero story PUTs');
+  await saveButton.click();const deadline=Date.now()+5000;while(Date.now()<deadline&&!requests.some(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)))await new Promise(resolve=>setTimeout(resolve,25));
   const save=requests.find(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId));assert.ok(save,'the adopted wording is saved only by the explicit Save action');assert.match(save.path,/[?&]auto_refine=0(?:&|$)/,'the adoption save skips one refinement cycle');
-  assert.equal(saveBodies.length,1);assert.equal(saveBodies[0].title,originalTitle,'the explicit adoption save keeps the saved story title');assert.equal(JSON.parse(saveBodies[0].chapters)[0].narration,approvedText,'the explicit save persists the reviewed edit');
+  assert.equal(saveBodies.length,1);assert.equal(requests.filter(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)).length,1,'exactly one story PUT is sent by explicit Save');await page.locator('#story-workspace-status').getByText('已保存到这个相册库',{exact:false}).waitFor();assert.equal(save.status,200,'the fixture API confirms the explicit story Save');assert.equal(saveBodies[0].title,originalTitle,'the explicit adoption save keeps the saved story title');
+  const savedChapters=JSON.parse(saveBodies[0].chapters);assert.deepEqual(savedChapters.map(chapter=>chapter.id),['chapter-1','chapter-2'],'the explicit save preserves chapter IDs and order');assert.equal(savedChapters[0].narration,'家人一起沿着湖边散步，留下了这段回忆。','the explicit save preserves unchanged chapter one');assert.equal(savedChapters[1].narration,approvedText,'the explicit save persists only the reviewed second chapter edit');
+  assert.deepEqual(savedChapters.map(chapter=>chapter.asset_ids),[['101'],['102']],'the explicit save preserves chapter frame ownership and order');
+  assert.equal((await page.locator('#story-approval-status').textContent()).trim(),'','approval status clears after confirmed Save');assert.equal(await page.locator('#story-approval-status').isHidden(),true,'approval status is hidden after confirmed Save');
   noAutoJob=true;
   await page.locator('#story-workspace-close').click();await page.locator('#story-workspace').waitFor({state:'hidden'});
-  await page.locator('.saved-memory-cover').first().click();await page.locator('#story-reader-text').getByText(approvedText,{exact:true}).waitFor();assert.equal(await page.locator('#story-reader-title').textContent(),originalReaderHeading,'reopening the saved story keeps the original title');
+  await page.locator('.saved-memory-cover').first().click();await page.locator('#story-reader-chapters').getByRole('button').nth(1).click();await page.locator('#story-reader-text').getByText(approvedText,{exact:true}).waitFor();assert.equal(await page.locator('#story-reader-memory-title').textContent(),originalTitle,'reopening the saved story keeps its original story title');
   assert.equal(generationPosts(),0);assert.equal(refinementPosts,1);assert.deepEqual(external,[]);assert.deepEqual(pageErrors,[]);assert.ok(jobPolls>=3,'deferred and ready refinement states were both polled');const terminalPollCount=jobPolls;await page.waitForTimeout(3200);assert.equal(jobPolls,terminalPollCount,'polling stops when the job reaches ready');
-  console.log('PASS local refinement defer-to-ready, original/suggestion comparison, keep-and-reopen review, declined adoption, edited explicit save and saved-story reopen');
+  await page.locator('#story-reader-close').click();noAutoJob=false;await page.locator('#language').click();await page.waitForFunction(()=>document.documentElement.lang==='en');
+  await page.locator('.saved-memory-cover').first().click();await page.waitForFunction(()=>document.querySelector('.story-auto-refinement-status')?.textContent.includes('ready'),null,{timeout:7000});
+  await page.locator('#story-reader-edit').click();const englishEditor=page.locator('#story-chapter-editor .story-auto-refinement');await englishEditor.waitFor();await englishEditor.getByRole('button',{name:'Review and bring into the reader'}).click();
+  const englishReaderPanel=page.locator('#story-reader-title').locator('xpath=..').locator('.story-auto-refinement');await englishReaderPanel.waitFor();
+  const englishApprove=englishReaderPanel.getByRole('button',{name:'Approve and edit'});await englishApprove.focus();await englishApprove.press('Enter');
+  await page.locator('#story-approval-status').getByText('Applied to draft',{exact:true}).waitFor();const englishSave=page.locator('#story-save-memory');assert.equal((await englishSave.textContent()).trim(),'Save to library');assert.equal(await englishSave.isVisible(),true);assert.equal(await englishSave.isEnabled(),true);assert.equal(requests.filter(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)).length,1,'English approval also issues no story PUT');
+  if(process.env.PH_BROWSER_ARTIFACTS)await page.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'story-local-ai-approval-english-desktop.png')});
+  assert.deepEqual(external,[]);assert.deepEqual(pageErrors,[]);
+  console.log('PASS local refinement defer-to-ready, chapter-specific review, declined approval, explicit save/reopen and English approval labels');
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{try{await context?.close();await browser?.close();}finally{if(bridge&&!bridge.killed){bridge.stdin.end();bridge.kill();}}});
