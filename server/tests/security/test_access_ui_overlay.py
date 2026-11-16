@@ -259,6 +259,57 @@ class OverlayBindTests(unittest.TestCase):
                     self.assertEqual(response.status_code, 200)
                     self.assertEqual(response.content, files[asset])
 
+    def test_shell_versions_allowlisted_refs_and_static_assets_negotiate_gzip(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        self.bind()
+        self.ui.INDEX_FILE.write_text(
+            '<script src="/ui/app.js"></script><template><script src="/ui/memory-groups.js"></script></template>'
+            '<img src="https://other.test/ui/app.js"><script src="/ui/unknown.js"></script>' + (' ' * 600),
+            encoding='utf-8')
+        self.ui.APP_FILE.write_bytes((b'window.synthetic = "value";\n' * 100))
+        app = FastAPI()
+        app.include_router(self.ui.router)
+        with TestClient(app, base_url='https://photohouse.test') as client:
+            shell = client.get('/ui', headers={'accept-encoding': 'gzip'})
+            self.assertEqual(shell.status_code, 200)
+            self.assertIn('cache-control', shell.headers)
+            self.assertIn('no-store', shell.headers['cache-control'])
+            self.assertEqual(shell.headers.get('content-encoding'), 'gzip')
+            expected_app = hashlib.sha256(self.ui.APP_FILE.read_bytes()).hexdigest()
+            self.assertIn(f'/ui/app.js?v={expected_app}', shell.text)
+            self.assertRegex(shell.text, r'/ui/memory-groups\.js\?v=[0-9a-f]{64}')
+            self.assertIn('https://other.test/ui/app.js', shell.text)
+            self.assertIn('/ui/unknown.js', shell.text)
+
+            versioned = client.get(f'/ui/app.js?v={expected_app}')
+            self.assertEqual(versioned.content, self.ui.APP_FILE.read_bytes())
+            self.assertEqual(versioned.headers['cache-control'], 'public, max-age=31536000, immutable')
+            self.assertEqual(versioned.headers.get('vary'), 'Accept-Encoding')
+            compressed = client.get(f'/ui/app.js?v={expected_app}', headers={'accept-encoding': 'gzip'})
+            self.assertEqual(compressed.headers.get('content-encoding'), 'gzip')
+            self.assertEqual(compressed.content, self.ui.APP_FILE.read_bytes())
+            self.assertEqual(compressed.headers.get('vary'), 'Accept-Encoding')
+            identity = client.get(f'/ui/app.js?v={expected_app}',
+                                  headers={'accept-encoding': 'gzip;q=0, *;q=1'})
+            self.assertNotIn('content-encoding', identity.headers)
+            self.assertEqual(identity.content, compressed.content)
+
+            stale = client.get('/ui/app.js?v=' + '0' * 64)
+            self.assertEqual(stale.status_code, 404)
+            self.assertIn('no-store', stale.headers['cache-control'])
+            legacy = client.get('/ui/app.js', headers={'accept-encoding': 'gzip'})
+            self.assertEqual(legacy.content, self.ui.APP_FILE.read_bytes())
+            self.assertNotIn('content-encoding', legacy.headers)
+
+            updated = self.ui.APP_FILE.read_bytes().replace(b'value', b'fresh')
+            self.ui.APP_FILE.write_bytes(updated)
+            new_digest = hashlib.sha256(updated).hexdigest()
+            self.assertIn(f'/ui/app.js?v={new_digest}', client.get('/ui').text)
+            self.assertEqual(client.get(f'/ui/app.js?v={expected_app}').status_code, 404)
+            self.assertEqual(client.get(f'/ui/app.js?v={new_digest}').content, updated)
+
     def test_old_five_asset_manifest_is_rejected_before_binding(self):
         missing = 'backend/app/ui/access/memory-groups.js'
         (self.root / missing).unlink()

@@ -124,7 +124,16 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   });
   let dismissDialogs=false,dialogCount=0;
   const page=await ctx.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>{dialogCount++;return dismissDialogs?d.dismiss():d.accept();});
-  async function login(phone='+12025550102'){await page.goto('https://photohouse.test/ui');await page.locator('#auth').waitFor({state:'visible'});await page.locator('#phone').fill(phone);await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();}
+  async function login(phone='+12025550102'){
+    await page.goto('https://photohouse.test/ui');
+    await page.locator('#auth').waitFor({state:'visible'});
+    await page.locator('#phone').fill(phone);
+    await page.locator('#password').fill('Synthetic family passphrase!');
+    await page.locator('#auth-submit').click();
+    await page.locator('#grid .asset').first().waitFor();
+    // This fixture drives the story controller directly later in the journey.
+    await page.waitForFunction(()=>typeof window.__storyWorkspaceTest?.open==='function');
+  }
   await login();
   assert.equal(await page.locator('.memory-theme').count(),6);
   assert.equal(await page.locator('#memory-home').isVisible(),true);

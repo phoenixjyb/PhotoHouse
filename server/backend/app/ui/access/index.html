@@ -6,11 +6,13 @@
   <meta name="referrer" content="no-referrer">
   <title>PhotoHouse · 家庭相册</title>
   <link rel="stylesheet" href="/ui/styles.css">
-  <script src="/ui/memory-community.js" defer></script>
-  <script src="/ui/story-draft-store.js" defer></script>
-  <script src="/ui/story-workspace.js" defer></script>
-  <script src="/ui/memory-groups.js" defer></script>
-  <script src="/ui/assistant-private-workspace.js" defer></script>
+  <template id="deferred-ui-scripts">
+    <script data-module="memory-community" src="/ui/memory-community.js"></script>
+    <script data-module="story-draft-store" src="/ui/story-draft-store.js"></script>
+    <script data-module="story-workspace" src="/ui/story-workspace.js"></script>
+    <script data-module="memory-groups" src="/ui/memory-groups.js"></script>
+    <script data-module="assistant-private-workspace" src="/ui/assistant-private-workspace.js"></script>
+  </template>
   <script src="/ui/voice-session-control.js" defer></script>
   <script src="/ui/voice-turn-timing.js" defer></script>
   <script src="/ui/app.js" defer></script>
