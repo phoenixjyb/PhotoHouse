@@ -46,8 +46,10 @@ runtime operations or turn these dated results into a fresh service probe.
 
 ## Explicit emulator instrumentation
 
-Build the unconfigured QA variant with `-PphotohousePhoneUiQa=true`; its app ID
-is `dev.photohouse.connected.qa`, separate from the installed family app.
+Build the unconfigured phone QA variant with `-PphotohousePhoneUiQa=true`
+(`dev.photohouse.connected.qa`). Build the TV QA variant with
+`-PphotohouseTvUiQa=true` (`dev.photohouse.tv.qa`), then pass `--client tv`
+to the emulator runner. These variants use separate application IDs.
 Do not run broad Gradle `connected*AndroidTest` tasks on a Mac with physical
 phones attached: they can select and remove apps from those devices.
 

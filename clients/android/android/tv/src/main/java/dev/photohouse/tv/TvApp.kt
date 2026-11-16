@@ -61,9 +61,32 @@ internal val Edge = Color(0xFF496258)
     // state while Compose subscribes to the browse store after clearing the search.
     val state = key(store) { store?.state?.collectAsState()?.value ?: HomeState() }
     val viewer = state.asset != null
+    val selectionFeed = state.feed
+    val browseSelection = store?.selection
+    var selectedAssetIds by remember(store, selectionFeed?.id, selectionFeed?.page, selectionFeed?.revision,
+        browseSelection, discoveryState.query) { mutableStateOf(emptyList<Int>()) }
+    var selectingMoments by remember(store, selectionFeed?.id, selectionFeed?.page, selectionFeed?.revision,
+        browseSelection, discoveryState.query) { mutableStateOf(false) }
+    var selectionReview by remember(store, selectionFeed?.id, selectionFeed?.page, selectionFeed?.revision,
+        browseSelection, discoveryState.query) { mutableStateOf(false) }
+    val selectedAssets = selectedAssetIds.mapNotNull { id -> selectionFeed?.items?.firstOrNull { it.id == id } }
+    val selectedAssetsValid = selectedAssets.size == selectedAssetIds.size &&
+        selectedAssets.all { it.canOpen() } && selectedAssetIds.distinct().size == selectedAssetIds.size
+    val selectionUsable = store != null && discoveryState.query != null && selectionFeed != null && !state.busy &&
+        !state.covered && !state.disconnected && state.problem == null && selectedAssetsValid
+    LaunchedEffect(state.covered, state.disconnected, state.problem, discoveryState.query,
+        selectedAssetsValid, selectionFeed?.id, selectionFeed?.page, selectionFeed?.revision) {
+        if (state.covered || state.disconnected || state.problem != null ||
+            discoveryState.query == null || !selectedAssetsValid) {
+            selectedAssetIds = emptyList()
+            selectingMoments = false
+            selectionReview = false
+        }
+    }
     var exploring by remember { mutableStateOf(false) }
     var restoreExplore by remember { mutableStateOf(false) }
     val exploreFocus = remember { FocusRequester() }
+    val resultActionFocus = remember { FocusRequester() }
     var playing by remember(store, state.feed?.id, state.feed?.page, state.feed?.revision,
         store?.selection?.collectionId) { mutableStateOf(false) }
     var slideSeconds by remember { mutableIntStateOf(TV_SLIDESHOW_DEFAULT_SECONDS) }
@@ -159,7 +182,7 @@ internal val Edge = Color(0xFF496258)
         }
         if (route != "explore") runCatching {
             if (route == "grid" && restoreExplore) {
-                (if (focusAsset == null) first else exploreFocus).requestFocus()
+                (if (focusAsset == null) first else if (discoveryState.query != null) resultActionFocus else exploreFocus).requestFocus()
                 // Keep the return target through a result-store switch and its
                 // asynchronous browse reload. Entering a viewer clears it.
             } else first.requestFocus()
@@ -529,6 +552,34 @@ internal val Edge = Color(0xFF496258)
                             previewRecovery = TvPreviewRecoverySession(targetIds)
                             store.retryPreviews()
                         }
+                        fun openPickedAsset(asset: HomeAsset) {
+                            val latest = store.state.value
+                            val currentStore = discovery?.state?.value?.results ?: browseStore
+                            val latestFeed = latest.feed
+                            val currentAsset = latestFeed?.items?.firstOrNull { it.id == asset.id }
+                            if (!selectionUsable || currentStore !== store || store.selection != selection ||
+                                latest.busy || latest.covered || latest.disconnected || latest.problem != null ||
+                                gallery == null || latestFeed == null || latestFeed.id != gallery.id ||
+                                latestFeed.page != gallery.page || latestFeed.revision != gallery.revision ||
+                                asset.id !in selectedAssetIds || currentAsset == null || !currentAsset.canOpen()) {
+                                selectedAssetIds = emptyList()
+                                selectionReview = false
+                                return
+                            }
+                            lastAsset = currentAsset.id
+                            selectionReview = false
+                            store.openAsset(currentAsset,
+                                openPlayer = currentAsset.kind == AssetKind.VIDEO && currentAsset.video != null)
+                        }
+                        if (selectionReview) TvResultSelectionReview(
+                            assets = selectedAssets,
+                            valid = selectionUsable,
+                            zh = zh,
+                            onDismiss = { selectionReview = false },
+                            onRemove = { id -> selectedAssetIds = selectedAssetIds.filterNot { it == id } },
+                            onOpen = ::openPickedAsset,
+                            onClear = { selectedAssetIds = emptyList(); selectionReview = false; selectingMoments = false },
+                        )
                         val compactGallery = LocalConfiguration.current.screenHeightDp <= 650
                         val galleryFontScale = LocalConfiguration.current.fontScale
                         val featured = gallery?.items?.firstOrNull { it.kind == AssetKind.PHOTO && it.canOpen() }
@@ -571,15 +622,27 @@ internal val Edge = Color(0xFF496258)
                                     if (showFeatured && featured != null) {
                                         var featuredFocus by remember(featured.id) { mutableStateOf(false) }
                                         OutlinedButton(
-                                            onClick = { lastAsset = featured.id; store.openAsset(featured, openPlayer = featured.kind == AssetKind.VIDEO && featured.video != null) },
+                                            onClick = {
+                                                if (selectingMoments) {
+                                                    selectedAssetIds = toggleTvResultSelection(selectedAssetIds, featured.id,
+                                                        eligible = featured.canOpen() && selectionUsable)
+                                                } else {
+                                                    lastAsset = featured.id
+                                                    store.openAsset(featured, openPlayer = featured.kind == AssetKind.VIDEO && featured.video != null)
+                                                }
+                                            },
                                             modifier = Modifier.fillMaxWidth().height(when {
                                                 galleryFontScale >= 2f -> 120.dp
                                                 galleryFontScale >= 1.5f -> 184.dp
                                                 compactGallery -> 128.dp
                                                 else -> 166.dp
                                             }).onFocusChanged { featuredFocus = it.isFocused }
-                                                .focusProperties { canFocus = featured.canOpen() }.testTag("featured-asset-${featured.id}"),
-                                            enabled = featured.canOpen(), shape = RoundedCornerShape(20.dp),
+                                                .semantics { selected = featured.id in selectedAssetIds }
+                                                .focusProperties { canFocus = featured.canOpen() && (!selectingMoments || selectionUsable &&
+                                                    (featured.id in selectedAssetIds || selectedAssetIds.size < TV_RESULT_SELECTION_LIMIT)) }
+                                                .testTag("featured-asset-${featured.id}"),
+                                            enabled = featured.canOpen() && (!selectingMoments || selectionUsable &&
+                                                (featured.id in selectedAssetIds || selectedAssetIds.size < TV_RESULT_SELECTION_LIMIT)), shape = RoundedCornerShape(20.dp),
                                             contentPadding = PaddingValues(0.dp),
                                             colors = ButtonDefaults.outlinedButtonColors(containerColor = Moss, contentColor = Cream),
                                             border = BorderStroke(if (featuredFocus) 4.dp else 1.dp, if (featuredFocus) Gold else Edge)
@@ -596,7 +659,11 @@ internal val Edge = Color(0xFF496258)
                                                     Text(featured.caption.ifEmpty { t("A moment from your library", "来自家庭媒体库的一刻") },
                                                         maxLines = if (galleryFontScale >= 1.5f) 1 else 2, overflow = TextOverflow.Ellipsis,
                                                         style = MaterialTheme.typography.titleLarge, color = Cream)
-                                                    Text(if (featured.kind == AssetKind.VIDEO) t("Video · Open to watch", "视频 · 打开观看") else t("Open photo", "打开照片"),
+                                                    Text(if (selectingMoments) {
+                                                        val order = selectedAssetIds.indexOf(featured.id)
+                                                        if (order >= 0) t("Selected ${order + 1} · press to remove", "已选 ${order + 1} · 再按一次移除")
+                                                        else t("Press to add to selection", "按下加入选择")
+                                                    } else if (featured.kind == AssetKind.VIDEO) t("Video · Open to watch", "视频 · 打开观看") else t("Open photo", "打开照片"),
                                                         style = MaterialTheme.typography.bodyMedium, color = Muted)
                                                 }
                                             }
@@ -673,8 +740,8 @@ internal val Edge = Color(0xFF496258)
                                     store.selectBrowse(selection.copy(order = if (selection.order == BrowseOrder.READY_FIRST) BrowseOrder.CATALOG else BrowseOrder.READY_FIRST))
                                 }
                             }
-                            if (gallery != null && gallery.page > 1) TvButton(t("Previous page", "上一页"), enabled = !state.busy) { store.loadPage(gallery.page - 1) }
-                            if (gallery != null && gallery.hasMore && gallery.page < 2000) TvButton(t("Next page", "下一页"), enabled = !state.busy) { store.loadPage(gallery.page + 1) }
+                            if (gallery != null && gallery.page > 1) TvButton(t("Previous page", "上一页"), Modifier.testTag("page-previous"), !state.busy) { store.loadPage(gallery.page - 1) }
+                            if (gallery != null && gallery.hasMore && gallery.page < 2000) TvButton(t("Next page", "下一页"), Modifier.testTag("page-next"), !state.busy) { store.loadPage(gallery.page + 1) }
                             if (gallery != null && gallery.total > 50) TvButton(t("Page ${gallery.page}…", "第 ${gallery.page} 页…"), Modifier.testTag("page-jump"), !state.busy) { pages = true }
                             Box {
                                 TvButton(t("More", "更多"), Modifier.testTag("gallery-more")
@@ -692,6 +759,42 @@ internal val Edge = Color(0xFF496258)
                                     DropdownMenuItem(text = { Text(t("Disconnect", "断开连接")) }, modifier = Modifier.testTag("disconnect"), onClick = { menu = false; playing = false; discovery?.background(); browseStore?.disconnect() })
                                 }
                             }
+                        }
+                        if (discoveryState.query != null) {
+                            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).testTag("result-actions"),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                TvButton(t("Refine search", "修改搜索"), Modifier.focusRequester(resultActionFocus).testTag("refine-search"),
+                                    enabled = !state.busy && !state.covered && !state.disconnected && state.problem == null) {
+                                    selectionReview = false
+                                    restoreExplore = true
+                                    exploring = true
+                                    discovery?.open()
+                                }
+                                if (!selectingMoments) {
+                                    TvButton(t("Select moments", "选择回忆"), Modifier.testTag("select-moments"),
+                                        enabled = !state.busy && !state.covered && !state.disconnected && state.problem == null &&
+                                            gallery?.items?.any { it.canOpen() } == true) {
+                                        selectingMoments = true
+                                    }
+                                } else {
+                                    TvButton(t("Review ${selectedAssetIds.size}", "检查 ${selectedAssetIds.size} 项"),
+                                        Modifier.testTag("review-selection"), enabled = selectionUsable && selectedAssetIds.isNotEmpty()) {
+                                        selectionReview = true
+                                    }
+                                    Text("${selectedAssetIds.size}/$TV_RESULT_SELECTION_LIMIT",
+                                        Modifier.testTag("selection-count"), style = MaterialTheme.typography.labelLarge, color = Gold)
+                                    TvButton(t("Clear picks", "清除选择"), Modifier.testTag("clear-picks"),
+                                        enabled = selectedAssetIds.isNotEmpty()) { selectedAssetIds = emptyList() }
+                                    TvButton(t("Done", "完成"), Modifier.testTag("selection-done")) {
+                                        selectingMoments = false
+                                        selectionReview = false
+                                    }
+                                }
+                            }
+                            if (selectingMoments) Text(
+                                t("Choose up to $TV_RESULT_SELECTION_LIMIT moments from this page. Your order is kept here.",
+                                    "在本页选择最多 $TV_RESULT_SELECTION_LIMIT 项回忆，并保留选择顺序。"),
+                                Modifier.testTag("selection-guidance"), style = MaterialTheme.typography.bodySmall, color = Muted)
                         }
                         if (discoveryState.query != null) Text(t("${discoveryState.query!!.count} filters applied", "已应用 ${discoveryState.query!!.count} 类条件"), Modifier.testTag("applied-search").padding(top = 4.dp), style = MaterialTheme.typography.bodySmall, color = Muted)
                         gallery?.browseCounts?.let { counts ->
@@ -742,16 +845,39 @@ internal val Edge = Color(0xFF496258)
                                 contentPadding = PaddingValues(vertical = gridVerticalPadding), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 items(gallery?.items.orEmpty(), key = { it.id }) { asset ->
                                     val target = focusAsset?.id
+                                    val selectedOrder = selectedAssetIds.indexOf(asset.id)
                                     var focused by remember { mutableStateOf(false) }
-                                    OutlinedButton({ lastAsset = asset.id; store.openAsset(asset, openPlayer = asset.kind == AssetKind.VIDEO && asset.video != null) },
-                                        Modifier.fillMaxWidth().height(if (compactGallery) gridItemHeight else if (LocalConfiguration.current.fontScale >= 1.5f) 280.dp else 250.dp).then(if (asset.id == target) Modifier.focusRequester(first) else Modifier)
-                                            .focusProperties { canFocus = asset.canOpen() }.onFocusChanged { focused = it.isFocused }.testTag("asset-${asset.id}"),
-                                        enabled = asset.canOpen(), shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(6.dp),
+                                    OutlinedButton(onClick = {
+                                        if (selectingMoments) {
+                                            if (selectionUsable) {
+                                                selectedAssetIds = toggleTvResultSelection(selectedAssetIds, asset.id,
+                                                    eligible = asset.canOpen())
+                                            }
+                                        } else {
+                                            lastAsset = asset.id
+                                            store.openAsset(asset, openPlayer = asset.kind == AssetKind.VIDEO && asset.video != null)
+                                        }
+                                    },
+                                        modifier = Modifier.fillMaxWidth().height(if (compactGallery) gridItemHeight else if (LocalConfiguration.current.fontScale >= 1.5f) 280.dp else 250.dp).then(if (asset.id == target) Modifier.focusRequester(first) else Modifier)
+                                            .focusProperties { canFocus = asset.canOpen() && (!selectingMoments || selectionUsable &&
+                                                (selectedOrder >= 0 || selectedAssetIds.size < TV_RESULT_SELECTION_LIMIT)) }
+                                            .onFocusChanged { focused = it.isFocused }
+                                            .semantics { selected = selectedOrder >= 0 }.testTag("asset-${asset.id}"),
+                                        enabled = asset.canOpen() && (!selectingMoments || selectionUsable &&
+                                            (selectedOrder >= 0 || selectedAssetIds.size < TV_RESULT_SELECTION_LIMIT)),
+                                        shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(6.dp),
                                         colors = ButtonDefaults.outlinedButtonColors(containerColor = Moss, contentColor = Cream),
-                                        border = BorderStroke(if (focused) 3.dp else 1.dp, if (focused) Gold else Moss)) {
+                                        border = BorderStroke(if (focused || selectedOrder >= 0) 3.dp else 1.dp,
+                                            if (focused || selectedOrder >= 0) Gold else Moss)) {
                                         Column(Modifier.fillMaxSize()) {
                                             TvImage(state.grids[asset.id], t("Photo", "照片") + " ${asset.id}", Modifier.fillMaxWidth().weight(1f), if (asset.id in state.gridProblems || asset.id in state.missingGrids) t("Preview load failed · Retry above", "预览加载失败 · 请用上方重试") else if (asset.kind == AssetKind.VIDEO && asset.video != null) t("Ready to play", "可以播放") else unavailableText(asset.gridUnavailable, zh), maxPixels = 262144, loading = asset.grid != null && state.grids[asset.id] == null && asset.id !in state.missingGrids && asset.id !in state.gridProblems)
                                             if (asset.kind != AssetKind.PHOTO) Text(if (asset.kind == AssetKind.VIDEO) (if (asset.video != null) t("Video · Play", "视频 · 播放") else t("Video · Not ready", "视频 · 尚未就绪")) else t("Unsupported format", "不支持的格式"), Modifier.testTag("asset-kind-${asset.id}"), style = MaterialTheme.typography.labelSmall)
+                                            if (selectingMoments) Text(
+                                                when {
+                                                    selectedOrder >= 0 -> t("Selected ${selectedOrder + 1} · press to remove", "已选 ${selectedOrder + 1} · 再按一次移除")
+                                                    selectedAssetIds.size >= TV_RESULT_SELECTION_LIMIT -> t("Limit reached · 24 moments", "已达上限 · 24 项回忆")
+                                                    else -> t("Press to add to selection", "按下加入选择")
+                                                }, Modifier.testTag("asset-selection-${asset.id}"), style = MaterialTheme.typography.labelSmall, color = Gold)
                                             Text(asset.caption.ifEmpty { t("Photo", "照片") + " ${asset.id}" }, maxLines = 2,
                                                 style = if (LocalConfiguration.current.fontScale >= 1.5f) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.labelLarge)
                                         }

@@ -51,6 +51,62 @@ class GroupedStoryCreationUiTest {
     @Test fun chinesePrivateDraftResumesThroughFreshEditorAt150Percent() = privateDraftJourney(true)
     @Test fun englishPrivateDraftResumesThroughFreshEditorAt150Percent() = privateDraftJourney(false)
 
+    @Test fun chapterFramePickerAdaptsAndKeepsEditingBetweenSearches() {
+        val api = SyntheticGroupedStoryApi().also {
+            it.chapterSearchFixture = true
+            it.expectedSimpleIds = listOf("102")
+        }
+        val store = ConnectedStore(api, scope)
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 1.5f)) {
+                ConnectedApp(store, initialLanguage = "en")
+            }
+        }
+        rule.runOnIdle { store.authenticate("+12025550123", "synthetic-password") }
+        rule.waitUntil(5000) { store.state.value.library == SyntheticGroupedStoryApi.LIBRARY }
+        rule.onNodeWithTag("open-story-first-guide").performScrollTo().performClick()
+        rule.waitUntil(5000) { store.state.value.groupedStoryCreation?.let { it.gallery != null && !it.pageBusy } == true }
+        rule.onNodeWithTag("grouped-story-select-102").performScrollTo().performClick()
+        rule.onNodeWithTag("grouped-story-selection-preview").assertIsEnabled().performClick()
+        rule.waitUntil(5000) { store.state.value.groupedStoryCreation?.editor?.state?.value?.guideStep == StoryGuideStep.WORDS }
+        val editor = requireNotNull(store.state.value.groupedStoryCreation?.editor)
+        rule.onNodeWithTag("grouped-story-title").performScrollTo().performTextReplacement("A family walk")
+        rule.onNodeWithTag("grouped-story-chapter-words").performScrollTo().performTextReplacement("Grandma showed us the flowers.")
+        rule.onNodeWithTag("grouped-story-find-chapter-frames").performScrollTo().assertIsEnabled().performClick()
+        val wide = InstrumentationRegistry.getInstrumentation().targetContext.resources.configuration.screenWidthDp >= 752
+        rule.onNodeWithTag(if (wide) "chapter-frame-search-expanded" else "chapter-frame-search-compact").assertIsDisplayed()
+        fun search(query: String, assetId: String) {
+            rule.onNodeWithTag("chapter-frame-search-query").performTextReplacement(query)
+            rule.onNodeWithTag("chapter-frame-search-submit").performClick()
+            rule.waitUntil(5000) { editor.state.value.frameSearch?.results?.any { it.id == assetId } == true }
+            rule.onNodeWithTag("chapter-frame-choice-$assetId").assertIsDisplayed().performClick()
+        }
+        search("Garden photos", "101")
+        rule.onNodeWithTag("chapter-frame-choice-102").assertDoesNotExist()
+        rule.onNodeWithTag("chapter-frame-search-count").assertTextEquals("1 / 3 new frames")
+        capture("chapter-frame-search", if (wide) "chapter-frame-picker-expanded-150.png" else "chapter-frame-picker-compact-150.png")
+        rule.runOnIdle { api.expectedSimpleIds = listOf("102", "101") }
+        rule.onNodeWithTag("chapter-frame-add-continue").assertIsDisplayed().performClick()
+        rule.waitUntil(5000) { editor.state.value.selectedAssetIds == listOf("102", "101") }
+        rule.onNodeWithTag("chapter-frame-search").assertIsDisplayed()
+        rule.onNodeWithTag("chapter-frame-search-count").assertTextEquals("0 / 2 new frames")
+        rule.onNodeWithTag("chapter-frame-choice-101").assertDoesNotExist()
+        search("Garden videos", "103")
+        rule.runOnIdle { api.expectedSimpleIds = listOf("102", "101", "103") }
+        rule.onNodeWithTag("chapter-frame-add-return").assertIsDisplayed().performClick()
+        rule.waitUntil(5000) { editor.state.value.frameSearch == null }
+        rule.onNodeWithTag("chapter-frame-search").assertDoesNotExist()
+        rule.runOnIdle {
+            val draft = editor.state.value
+            assertEquals(listOf("102", "101", "103"), draft.editableChapters.single().assetIds)
+            assertEquals("A family walk", draft.title)
+            assertEquals("Grandma showed us the flowers.", draft.editableChapters.single().narration)
+            assertEquals(3, api.storyPreviewRequests)
+            assertEquals(0, api.saveRequests)
+        }
+    }
+
     private fun privateDraftJourney(zh: Boolean) {
         val api = SyntheticGroupedStoryApi().also { it.expectedSimpleIds = listOf("102", "101") }
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -441,6 +497,8 @@ class GroupedStoryCreationUiTest {
 
     private class SyntheticGroupedStoryApi : PhotoHouseApi, StoryWorkspaceApi {
         var expectedSimpleIds = listOf("102", "101", "103")
+        var chapterSearchFixture = false
+        override val assistantEnabled: Boolean get() = chapterSearchFixture
         override val protectedNativeV2Enabled = true
         var saveRequests = 0
         var storyPreviewRequests = 0
@@ -480,6 +538,15 @@ class GroupedStoryCreationUiTest {
         override suspend fun acceptInvitation(token: Bearer, code: String) = Unit
         override suspend fun gallery(token: Bearer, library: String, page: Int) =
             Gallery(library, page, 2, 2, false, listOf(assets.getValue("102"), assets.getValue("101")))
+        override suspend fun assistantTurn(token: Bearer, library: String, text: String, context: JsonObject?): AssistantTurn {
+            check(chapterSearchFixture && library == LIBRARY && context == null)
+            val hits = when (text) {
+                "Garden photos" -> listOf(assets.getValue("102"), assets.getValue("101"))
+                "Garden videos" -> listOf(assets.getValue("102"), assets.getValue("103"))
+                else -> error("Unexpected generated chapter search")
+            }
+            return AssistantTurn("results", "", null, null, hits, hits.size, false, null)
+        }
         override suspend fun libraryAlbums(token: Bearer, library: String, page: Int) : ProtectedLibraryAlbumPage {
             albumReads++
             val album = ProtectedLibraryAlbum(ALBUM_ID, "Summer family days", "夏日家庭时光", "A set of family days.",
@@ -570,6 +637,17 @@ class GroupedStoryCreationUiTest {
             }
             preview = result
             return result.toString().encodeToByteArray()
+        }
+
+        override suspend fun storySourceCapabilities(token: Bearer, library: String): ByteArray {
+            if (!chapterSearchFixture) throw ApiFailure(FailureKind.HTTP, 404)
+            check(library == LIBRARY)
+            return buildJsonObject {
+                put("version", 1)
+                put("source_policy", "chapter_sources_v1")
+                put("max_sources_per_chapter", 12)
+                put("needs_review", true)
+            }.toString().encodeToByteArray()
         }
 
         override suspend fun storyTitleCapabilities(token: Bearer, library: String) =

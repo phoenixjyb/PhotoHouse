@@ -55,6 +55,17 @@ class EmulatorBoundaryTests(unittest.TestCase):
             execute(self.args(), self.run_command)
         self.assertFalse(any("install" in argv for argv in self.calls))
 
+    def test_tv_qa_selects_only_the_separate_tv_package_and_runner(self):
+        self.app_id = "dev.photohouse.tv.qa"
+        result = execute(self.args(client="tv", test_class="dev.photohouse.tv.DiscoveryUiTest", dry_run=True), self.run_command)
+        self.assertEqual("dev.photohouse.tv.qa.test/androidx.test.runner.AndroidJUnitRunner", result["commands"][-1][-1])
+        with self.assertRaises(Refused):
+            execute(self.args(client="tv"), self.run_command)
+        self.app_id = "dev.photohouse.tv"
+        with self.assertRaises(Refused):
+            execute(self.args(client="tv", test_class="dev.photohouse.tv.DiscoveryUiTest"), self.run_command)
+        self.assertFalse(any("install" in argv for argv in self.calls))
+
     def test_non_emulator_property_refuses_install(self):
         for value in ("0", ""):
             with self.subTest(qemu=value):

@@ -37,8 +37,7 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
     var discardDictation by remember(store) { mutableStateOf(false) }
     var confirmSavedEditReload by remember(store) { mutableStateOf(false) }
     var confirmLocalDraftReplace by remember(store) { mutableStateOf(false) }
-    var chapterIndex by remember(store, store.savedEditStoryId, store.savedEditStoryRevision,
-        state.draft?.selectionRevision) { mutableIntStateOf(0) }
+    var chapterIndex by remember(store, store.savedEditStoryId, store.savedEditStoryRevision) { mutableIntStateOf(0) }
     val reviewScrollState = rememberScrollState()
     val guided = state.guideStep != null && !isSavedEdit
     val guideReview = guided && state.guideStep == StoryGuideStep.REVIEW
@@ -184,12 +183,23 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
             }
             val index = chapterIndex.coerceIn(state.editableChapters.indices)
             val chapter = state.editableChapters[index]
-            LaunchedEffect(store, store.savedEditStoryId, store.savedEditStoryRevision,
-                draft.selectionRevision, chapter.id) {
+            LaunchedEffect(store, store.savedEditStoryId, store.savedEditStoryRevision, chapter.id) {
                 reviewScrollState.scrollTo(0)
             }
             Text(t("Chapter ${index + 1} / ${state.editableChapters.size}", "篇章 ${index + 1} / ${state.editableChapters.size}"),
                 style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("grouped-story-chapter-position"))
+            if (store.chapterFrameSearchAvailable) {
+                OutlinedButton(
+                    onClick = { finishTyping(); store.openChapterFrameSearch(chapter.id) },
+                    enabled = editable && !state.composing && !state.invalidInput && !dictationUnfinished && dictationStore == null &&
+                        chapter.assetIds.size < 4 && state.selectedAssetIds.size < 24,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("grouped-story-find-chapter-frames"),
+                ) { Text(t("Find frames for this chapter", "查找本篇画面")) }
+            }
+            state.frameSearch?.let { search ->
+                val target = state.editableChapters.find { it.id == search.chapterId } ?: return@let
+                ChapterFrameSearchDialog(store, search, target.title, state.selectedAssetIds, zh)
+            }
             if (state.sourceReviewEnabled && !isSavedEdit) {
                 var arrangeExpanded by remember(store, draft.selectionRevision, chapter.id, chapter.assetIds) { mutableStateOf(false) }
                 var arrangeRejected by remember(store, draft.selectionRevision, chapter.id, chapter.assetIds) { mutableStateOf(false) }

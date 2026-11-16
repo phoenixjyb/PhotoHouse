@@ -31,11 +31,19 @@ require(calendarEnabled != "true" || tagLookupEnabled == "true")
 val storyFixtureFlag = providers.gradleProperty("photohouseStoryFixtureEnabled").orElse("false").get()
 require(storyFixtureFlag in listOf("true", "false"))
 val storyFixtureEnabled = storyFixtureFlag == "true"
+val uiQa = providers.gradleProperty("photohouseTvUiQa").orElse("false").get()
+require(uiQa in listOf("true", "false"))
+require(uiQa != "true" || listOf(configuredOrigin, configuredLanAddress, configuredUpdateOrigin, configuredUpdateLanAddress).all { it.isEmpty() })
 android {
     if (storyFixtureEnabled) {
         sourceSets.getByName("debug").java.srcDir("../story-fixture-ui/src/main/java")
         sourceSets.getByName("debug").manifest.srcFile("../story-fixture-ui/src/main/AndroidManifest.xml")
         sourceSets.getByName("androidTest").java.srcDir("../story-fixture-ui/src/androidTest/java")
+    }
+    buildTypes {
+        getByName("debug") {
+            if (uiQa == "true") applicationIdSuffix = ".qa"
+        }
     }
     sourceSets.getByName("main").res.srcDir("../branding/res")
     namespace = "dev.photohouse.tv"
