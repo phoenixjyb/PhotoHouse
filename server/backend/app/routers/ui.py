@@ -35,6 +35,8 @@ ASSET_MEDIA_TYPES = {
     "voice-turn-timing.js": "application/javascript",
     "photohouse-icon.svg": "image/svg+xml",
 }
+UI_ASSET_PATHS = frozenset(f"/ui/{name}" for name in ASSET_MEDIA_TYPES)
+VERSIONED_UI_ASSET = "photohouse.versioned_ui_asset"
 VERSIONED_HEADERS = {
     **{key: value for key, value in NO_CACHE_HEADERS.items()
        if key not in {"Cache-Control", "Pragma", "Expires"}},
@@ -104,6 +106,7 @@ def _asset_response(request: Request, name: str, version: str | None) -> Respons
     data, digest = _read_asset(path)
     if version != digest:
         raise HTTPException(status_code=404, detail="UI asset version not found", headers=NO_CACHE_HEADERS)
+    request.scope[VERSIONED_UI_ASSET] = True
     return _static_response(request, data, media_type, VERSIONED_HEADERS)
 
 

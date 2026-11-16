@@ -291,6 +291,30 @@ class ClosedApplicationTests(unittest.TestCase):
             self.assertNotIn('private-synthetic', response.text)
         self.assertEqual(self.client.get('/ui/access/index.html').status_code, 403)
 
+    def test_only_verified_versioned_ui_files_keep_a_public_cache_policy(self):
+        shell = self.client.get('/ui')
+        self.assert_private(shell)
+        app_url = re.search(r'/ui/app\.js\?v=[0-9a-f]{64}', shell.text)[0]
+        versioned = self.client.get(app_url, headers={'Accept-Encoding': 'gzip'})
+        self.assertEqual(versioned.status_code, 200)
+        self.assertEqual(versioned.headers['cache-control'], 'public, max-age=31536000, immutable')
+        self.assertEqual(versioned.headers['vary'], 'Accept-Encoding')
+        self.assertEqual(versioned.headers['content-encoding'], 'gzip')
+        self.assertEqual(versioned.headers['cross-origin-resource-policy'], 'same-origin')
+        self.assertNotIn('pragma', versioned.headers)
+        self.assertEqual(versioned.content, (ROOT / 'backend/app/ui/access/app.js').read_bytes())
+
+        self.assert_private(self.client.get('/ui/app.js'))
+        stale = self.client.get('/ui/app.js?v=' + '0' * 64)
+        self.assertEqual(stale.status_code, 404)
+        self.assert_private(stale)
+        session = self.client.get('/auth/session', headers=self.headers())
+        self.assertEqual(session.status_code, 200)
+        self.assert_private(session)
+        media = self.client.get('/assets/101/media?library=family-a', headers=self.headers())
+        self.assertEqual(media.status_code, 200)
+        self.assert_private(media)
+
     def test_head_denials_have_no_asgi_body_even_before_an_http_server(self):
         import asyncio
         for path in ('/unfinished', '/assets/101/media'):
