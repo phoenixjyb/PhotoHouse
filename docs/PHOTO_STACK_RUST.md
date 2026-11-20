@@ -38,8 +38,9 @@ PYTHONPATH=rust/photo-stack-python/target/python \
 
 The helper copies the release library into a gitignored Python import directory.
 It does not install into an ambient environment. The PyO3 adapter uses the stable
-CPython ABI. Native import was checked on macOS with Python 3.12 and 3.14; Windows
-and Linux binaries still need platform-specific build and runtime qualification.
+CPython ABI. Native import was checked on macOS with Python 3.12 and 3.14 and on
+Windows x64 with Python 3.12.10 using the cross-compiled artifact described below.
+Windows MSVC builds, Linux binaries and installed worker integration remain open.
 There is no wheel publication or automatic runtime download.
 
 On the shared Windows workstation, obtain fresh coordinator admission first. Use
@@ -92,9 +93,44 @@ are nine-run results on a shared Mac, not a latency guarantee. The characterized
 core passed 178 recorded cases, including expected refusals; the separate
 callback adapter is exercised by the public-builder/worker contract tests.
 
-The earlier native Windows Python baseline was 4.178 s median (3.952–4.474 s),
-Python 3.12.10 on a Xeon W-2145. It is not a Rust measurement or a matched-hardware
-comparison. This synthetic fixture stresses discovery/rejection, not real dense
-photo collections. Native Windows Rust speed and installed worker acceptance
-remain delivery gates. GitHub Actions remains cost-paused; all workflows remain
-manual-only and must not be dispatched for this change.
+## Native Windows comparison
+
+The same four variants ran on Windows 11 x64 / Python 3.12.10 on 2026-11-20,
+from source `163025e20456fc8bee13d0b718d81668dee0e589`. Each had one warm-up and
+nine sequential measured calls with the full bridge included, using the same
+20,000-row fixture described above.
+
+| Builder | Median wall seconds | Min–max seconds | Median process CPU seconds |
+|---|---:|---:|---:|
+| Python | 3.802240 | 3.654861–4.255652 | 3.796875 |
+| Rust | 0.661721 | 0.598461–0.711183 | 0.671875 |
+| Python with cancellation callback | 3.808576 | 3.718417–4.098365 | 3.796875 |
+| Rust with cancellation callback | 1.266237 | 1.194800–1.365674 | 1.265625 |
+
+Observed median speedups were **5.75×** without a callback and **3.01×** with one.
+All timing calls returned zero groups. Separately, 178 recorded kernel cases
+(including 66 expected errors) and 208 public-builder parity cases (178 producing
+nonempty groups) passed on Windows. Outputs, errors and exact callback counts
+matched; active cancellation, the original callback exception and the exact
+1,993,226-comparison budget boundary passed too.
+
+The release extension was cross-compiled on Mac arm64 with Rust 1.98.0 and the
+existing LLVM-MinGW 20261117 UCRT toolchain for `x86_64-pc-windows-gnullvm`, then
+executed natively on Windows. Its SHA-256 was
+`74a2741f9e3a5a3d49c243932726e7a46041aa8ae488c87dd1c696306c073bd4`.
+The matching `libunwind.dll` accompanied it in the isolated benchmark directory.
+This run establishes runtime behavior for that artifact; it does not qualify a
+native Windows MSVC build or a distributable wheel.
+
+The coordinator accepted the evidence and closed the bounded Windows Job,
+verified the exact child/supervisor process identities absent, removed successful
+executable staging and preserved results/manifests. Scratch stayed on D:; no live
+library data, model execution or production activation was involved.
+
+The earlier Windows Python-only median of 4.178 s (3.952–4.474 s) is historical;
+the table above is the matched comparison for this source. This synthetic fixture
+stresses discovery/rejection, not real dense photo collections or end-to-end
+worker latency. Binary packaging, Linux build/runtime qualification and installed
+Windows worker acceptance remain delivery gates. GitHub Actions remains
+cost-paused; workflows remain manual-only and must not be dispatched for this
+change.

@@ -32088,7 +32088,7 @@
           "sha256": "7584b50ffb7a3dbe3cdf997506a6702dbd0574bef4a437700834be8764314eb0"
         }
       ],
-      "description": "Name the assistant Jude in English and 小贾 in Chinese, including its explicit agent action. Behavior unchanged.",
+      "description": "Name the assistant Jude in English and \u5c0f\u8d3e in Chinese, including its explicit agent action. Behavior unchanged.",
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
@@ -32560,6 +32560,24 @@
         "Matched Mac arm64 Python 3.14.8 20k fixture: nine-run median 1.846s Python versus 0.342s Rust (5.41x), callback-enabled 1.809s versus 0.611s (2.96x); bridge included. Shared-host synthetic evidence, not a Windows Rust measurement or real-photo guarantee.",
         "Native import exercised on Mac Python 3.12 and 3.14. Windows/Linux native build and installed worker acceptance remain open. GitHub Actions paused; no models, services, media, database or schema changes.",
         "Curated source staging allowlist includes the portable Python reference and selector. Extracted default-backend import/grouping and check-profile integration are verified separately; no native binary is bundled by the source-only packager."
+      ]
+    },
+    {
+      "feature": "rust-photo-stack-windows-comparison-20261120",
+      "source_commit": "163025e20456fc8bee13d0b718d81668dee0e589",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": "a237df617d4ec031a52f913105f8acbb184e1e1ce6505c4027cd448115517e96",
+          "sha256": "4e7cce1f8fb30e43e63ee3f4927b5f3b6db7a2042673e553f627fdb912943024"
+        }
+      ],
+      "notes": [
+        "Documentation-only follow-up: native Windows Python 3.12.10 synthetic full-builder comparison, one warm-up plus nine measured calls per variant; source and runtime hashes accepted by the coordinator.",
+        "Python/Rust median 3.802240s/0.6617207s (5.745989x); callback-enabled 3.808576s/1.2662372s (3.007790x). All 178 kernel and 208 public parity cases, callback/cancellation/error and exact-budget checks passed.",
+        "Mac-cross-compiled GNU/UCRT release executed natively on Windows; native MSVC compilation, binary packaging, Linux qualification and installed production worker acceptance remain open. No runtime activation or GitHub CI."
       ]
     }
   ]
