@@ -274,6 +274,9 @@ def _child(arguments):
 
 def _bounded_execute(arguments):
     from bounded_windows_job import CheckRefused, WindowsAPI, run_bounded
+    engine = os.environ.get('PHOTOHOUSE_PHOTO_STACK_ENGINE', 'python')
+    if engine not in ('python', 'rust'):
+        raise CheckRefused('invalid_photo_stack_engine')
     system_root = os.environ.get('SystemRoot') or os.environ.get('SYSTEMROOT')
     if not system_root:
         raise CheckRefused('system_root_unavailable')
@@ -284,7 +287,8 @@ def _bounded_execute(arguments):
     control = str(stop_file.parent)
     environment = {'PATH':str(Path(executable).parent), 'SYSTEMROOT':system_root, 'WINDIR':system_root,
                    'TEMP':control, 'TMP':control, 'PHOTOHOUSE_NO_DOTENV':'1',
-                   'PYTHONNOUSERSITE':'1', 'PYTHONDONTWRITEBYTECODE':'1'}
+                   'PYTHONNOUSERSITE':'1', 'PYTHONDONTWRITEBYTECODE':'1',
+                   'PHOTOHOUSE_PHOTO_STACK_ENGINE':engine}
     # Only fixed internal function dispatch; no caller-marked child CLI bypass.
     program = ('import runpy\n' + f"raise SystemExit(runpy.run_path({str(Path(__file__).resolve())!r},run_name='photo_stack_bounded_worker')['_child']({arguments!r}))\n")
     argv = [executable, '-I', '-B', '-c', program]

@@ -32088,7 +32088,7 @@
           "sha256": "7584b50ffb7a3dbe3cdf997506a6702dbd0574bef4a437700834be8764314eb0"
         }
       ],
-      "description": "Name the assistant Jude in English and 小贾 in Chinese, including its explicit agent action. Behavior unchanged.",
+      "description": "Name the assistant Jude in English and \u5c0f\u8d3e in Chinese, including its explicit agent action. Behavior unchanged.",
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
@@ -32390,6 +32390,294 @@
       "notes": [
         "Remove push and pull-request triggers from both existing GitHub workflows under the owner cost pause.",
         "Workflow jobs and pinned dependencies are retained for a future explicit resumption; manual dispatch is not authorized during the pause. Local testing and GitLab CI are independent."
+      ]
+    },
+    {
+      "feature": "optional-rust-photo-stack-kernel-20261120",
+      "source_commit": "8b0b168c6e7c609a02a6fb5cf314459e3affb521",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": null,
+          "sha256": "a237df617d4ec031a52f913105f8acbb184e1e1ce6505c4027cd448115517e96"
+        },
+        {
+          "path": "rust/photo-stack-core/.gitignore",
+          "before_sha256": null,
+          "sha256": "9d645029f3fb432ef0ca5ac90f5554644488b7e486f6c3e8578a100b9085ca02"
+        },
+        {
+          "path": "rust/photo-stack-core/Cargo.lock",
+          "before_sha256": null,
+          "sha256": "3e30adc7bbba66ca39ac229b25c10619c9d9fc0e2441aa4e29332964685932e3"
+        },
+        {
+          "path": "rust/photo-stack-core/Cargo.toml",
+          "before_sha256": null,
+          "sha256": "fe4d7d95292e37f758bf1221cdcda9e6f26370d09fcb6cef3389cffd7e3d059f"
+        },
+        {
+          "path": "rust/photo-stack-core/README.md",
+          "before_sha256": null,
+          "sha256": "b646d5195d25f8048a69a2c446bf39041044d4dcb3e779c990a75e026d8a1d5a"
+        },
+        {
+          "path": "rust/photo-stack-core/build.rs",
+          "before_sha256": null,
+          "sha256": "619d6658e2e4e542a13fb43d8ccbc9403567002142b21f2bcc84c8d7a41eca50"
+        },
+        {
+          "path": "rust/photo-stack-core/cases.jsonl",
+          "before_sha256": null,
+          "sha256": "099cb31cc564581cf75377d2dfd05c636a365db0d7102fe062bd89c868dccbeb"
+        },
+        {
+          "path": "rust/photo-stack-core/inputs.jsonl",
+          "before_sha256": null,
+          "sha256": "976c30a3fbbf3201265efbb9857b3157e5cd3509e5ea37d841a695f117b1cae0"
+        },
+        {
+          "path": "rust/photo-stack-core/python/photo_stack_core/__init__.py",
+          "before_sha256": null,
+          "sha256": "ae091a80a8bd30bd51623a6fcba73f0167f2dfe1cf07245356889f11ae6e6e49"
+        },
+        {
+          "path": "rust/photo-stack-core/recorded-from.json",
+          "before_sha256": null,
+          "sha256": "48f252d91fc5d5a58b8ee56716c41a12dad1a676241cca57f3e61c203412464a"
+        },
+        {
+          "path": "rust/photo-stack-core/rust-anything.json",
+          "before_sha256": null,
+          "sha256": "5d75cda4349c1433fed17e1fce481d3a346e8428d085b68d84d1ea607974c1d9"
+        },
+        {
+          "path": "rust/photo-stack-core/shadow/photo_stack_core_shadow.py",
+          "before_sha256": null,
+          "sha256": "ccfd8e238259de92758f42aa48222afe9544ab6bf9f5e97a830e2e3f74ab6991"
+        },
+        {
+          "path": "rust/photo-stack-core/src/lib.rs",
+          "before_sha256": null,
+          "sha256": "52cc3eeb1e15f01adcf032355e9f3918f23dca350d5b14d7c0a4f36de37d32d8"
+        },
+        {
+          "path": "rust/photo-stack-core/src/port.rs",
+          "before_sha256": null,
+          "sha256": "ba3c5ebc6522b177fba35adfdbdd876fb2355d49171f9aa6b47267cac7b91a1c"
+        },
+        {
+          "path": "rust/photo-stack-core/test-inputs.jsonl",
+          "before_sha256": null,
+          "sha256": "16334d48505e9a0472672456d5dcd66d0b56c52c54c983f563878a1b3d303c52"
+        },
+        {
+          "path": "rust/photo-stack-python/.gitignore",
+          "before_sha256": null,
+          "sha256": "b53ee26e6ff1da219b0563333a76d2c9ec19eec713d6ee54e11a1edacb0e9f3d"
+        },
+        {
+          "path": "rust/photo-stack-python/Cargo.lock",
+          "before_sha256": null,
+          "sha256": "8d666d160c99e2fd528d693cc5c4f30b483ce47b95ae68b13eb9439b79777d66"
+        },
+        {
+          "path": "rust/photo-stack-python/Cargo.toml",
+          "before_sha256": null,
+          "sha256": "9f373e8609c3f983104ec0c8b8b65c1dad9993b9a73e778e105abe45c43d8b0c"
+        },
+        {
+          "path": "rust/photo-stack-python/build.rs",
+          "before_sha256": null,
+          "sha256": "619d6658e2e4e542a13fb43d8ccbc9403567002142b21f2bcc84c8d7a41eca50"
+        },
+        {
+          "path": "rust/photo-stack-python/src/lib.rs",
+          "before_sha256": null,
+          "sha256": "8d5ab9e7c70c6b8f6c50a31d8e6d9297ba09fa24bad7cb008f077ef557491492"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_acceleration.py",
+          "before_sha256": null,
+          "sha256": "415cfb86e9b630fcf6749cd46693c8e1c9858c69ee8a155a04f1180c7f9a0db0"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_index.py",
+          "before_sha256": "bee3e8fc356054f166d12baea7487e93eea00ae39a8c4e679979a7cc67ce53e1",
+          "sha256": "143992553c72a83156ebe0db47b2c207d5d128d7702409c969763c1d7219db55"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_reference/__init__.py",
+          "before_sha256": null,
+          "sha256": "25ac423569f1eec13e1a988d2180ed5be8608b563f69594c2e73c8026cbf1b03"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_reference/algorithm.py",
+          "before_sha256": null,
+          "sha256": "000405dac0e6a14992047b191234ddf7c277c49c19f419d7fdf4e824d150e4c0"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "90fcb22ad1e2dd3f35f221d0ca4614df2bb77e0ce86c4db291be18f07af331b7",
+          "sha256": "daa2ee13af5f595ce5a6ba348956836786dcf2388b7b48b8957b54c2e8bd0b04"
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_rust.py",
+          "before_sha256": null,
+          "sha256": "9d6c05c3a544473bce0ae3d0f5cdc791c603eb863218a28e77b4d1477868300d"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "e102ba4c0e508285393621346534b8b9982afd9dcfb9c49a3391b5984d7c5619",
+          "sha256": "e5cf4127474ec467bec46e030d54fc1fe631a83e19bce77d66b55294fb34aeff"
+        },
+        {
+          "path": "third_party/licenses/rust-anything-MIT.txt",
+          "before_sha256": null,
+          "sha256": "f7c6d76768cf5bdcd8fbc9f4df6b040789ed9802707e49987dd8357a6bd92759"
+        },
+        {
+          "path": "third_party/photo-stack-rust.md",
+          "before_sha256": null,
+          "sha256": "332c3881e1f400ebbbc68ece0e9d70a38de8caedd3750f50086b1e53f19c16ae"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "a789709e64d739b02a63f954dda6d412036d9f2a43f306a346a09f6f4a72a756",
+          "sha256": "1fe1f81fcd3ffa5b9197820dc6c7b9eb67636c7636632e6160b13e957fac7e4f"
+        },
+        {
+          "path": "tools/photo_stack_native.py",
+          "before_sha256": null,
+          "sha256": "deaa68e63025ee3f60b459bd9b09569795553c6e674f0f0ba15612413c20578b"
+        }
+      ],
+      "notes": [
+        "Opt-in whole-library Rust candidate discovery and complete-link grouping with the existing Python public validation, timestamp parsing, policy fingerprint and reference backend retained. Default remains Python; no deployment, activation or binary publication.",
+        "Rust-anything core gate passed 178 recorded cases; native public-builder/library/worker cohort passed 70 tests and 22 subtests; 200 frozen-main/reference/native cases matched results, errors and cancellation check counts.",
+        "Matched Mac arm64 Python 3.14.8 20k fixture: nine-run median 1.846s Python versus 0.342s Rust (5.41x), callback-enabled 1.809s versus 0.611s (2.96x); bridge included. Shared-host synthetic evidence, not a Windows Rust measurement or real-photo guarantee.",
+        "Native import exercised on Mac Python 3.12 and 3.14. Windows/Linux native build and installed worker acceptance remain open. GitHub Actions paused; no models, services, media, database or schema changes.",
+        "Curated source staging allowlist includes the portable Python reference and selector. Extracted default-backend import/grouping and check-profile integration are verified separately; no native binary is bundled by the source-only packager."
+      ]
+    },
+    {
+      "feature": "rust-photo-stack-windows-comparison-20261120",
+      "source_commit": "163025e20456fc8bee13d0b718d81668dee0e589",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": "a237df617d4ec031a52f913105f8acbb184e1e1ce6505c4027cd448115517e96",
+          "sha256": "4e7cce1f8fb30e43e63ee3f4927b5f3b6db7a2042673e553f627fdb912943024"
+        }
+      ],
+      "notes": [
+        "Documentation-only follow-up: native Windows Python 3.12.10 synthetic full-builder comparison, one warm-up plus nine measured calls per variant; source and runtime hashes accepted by the coordinator.",
+        "Python/Rust median 3.802240s/0.6617207s (5.745989x); callback-enabled 3.808576s/1.2662372s (3.007790x). All 178 kernel and 208 public parity cases, callback/cancellation/error and exact-budget checks passed.",
+        "Mac-cross-compiled GNU/UCRT release executed natively on Windows; native MSVC compilation, binary packaging, Linux qualification and installed production worker acceptance remain open. No runtime activation or GitHub CI."
+      ]
+    },
+    {
+      "feature": "rust-photo-stack-native-packaging-and-nonempty-fixtures-20261120",
+      "source_commit": "09bb6857d11119882dbafbc7cdfac8e9e96d3669",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": "4e7cce1f8fb30e43e63ee3f4927b5f3b6db7a2042673e553f627fdb912943024",
+          "sha256": "a57dd46d0da895d83d62a86b2a529ffe56493071e2d73a32905dd52854495ead"
+        },
+        {
+          "path": "tools/photo_stack_workloads.py",
+          "before_sha256": null,
+          "sha256": "ab2dfdb724696490d357eecdfce3f3bf4bc0bf7f1b443e70c3d9e8d9317d9cf3"
+        },
+        {
+          "path": "tools/photo_stack_benchmark.py",
+          "before_sha256": null,
+          "sha256": "0573b9eafb084e92dfcb6e043f7858533de4e5dec8454853c493621877be09d6"
+        },
+        {
+          "path": "tools/package_photo_stack_native.py",
+          "before_sha256": null,
+          "sha256": "d9e616329e71789289fd34faad98b221bca7d14776a2a11c6f354be8de5d3696"
+        },
+        {
+          "path": "tools/tests/test_photo_stack_native_package.py",
+          "before_sha256": null,
+          "sha256": "a55cd55155f2dfa08e2a87f3f874b16174c0eaf7de2989acf3b561a17f605e2b"
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_worker_host.py",
+          "before_sha256": "027dc97ee56a937235aca5c6b11a80e12eee708231de4ffa8e7f357de2792d63",
+          "sha256": "67d292ea78c16a84dfeb744f4dee88408090c544a52cceb2dca51f0c1512bb74"
+        }
+      ],
+      "notes": [
+        "Adds deterministic unpublished Windows ABI3 wheel packaging with lock-matching dependency notices and complete RECORD; no binary publication or installation.",
+        "Adds generated nonempty burst/mixed-metadata benchmarks, per-process peak memory, exact result/callback checks and active cancellation measurements. Fixtures contain no household data.",
+        "Adds generated worker source-change retry coverage; native Windows MSVC build/import/worker acceptance remains subject to actual isolated coordinator-run evidence. No production change or GitHub CI."
+      ]
+    },
+    {
+      "feature": "rust-photo-stack-bounded-worker-selector-20261120",
+      "source_commit": "ecca95533f93781b3706d197d449a663ba36bd1a",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/run_photo_stack_worker.py",
+          "before_sha256": "badf0036f3881a17c98559bf4fadaec18368751e8cdb00f3e5d21ec4b226942c",
+          "sha256": "e00dfd16e78c2b4ee52b4512809d7f2c783ce019be6b44a7847cea3338593aee"
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_worker_host.py",
+          "before_sha256": "67d292ea78c16a84dfeb744f4dee88408090c544a52cceb2dca51f0c1512bb74",
+          "sha256": "01a7f7010425893efbccfee029cdba653d492c6b1717d10427bf6abfb0ccb514"
+        },
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": "a57dd46d0da895d83d62a86b2a529ffe56493071e2d73a32905dd52854495ead",
+          "sha256": "1d9a9ddd0bc277aca7df9fb1026ab0fd39cf05ea197f70ff8d1e084a19e27423"
+        }
+      ],
+      "notes": [
+        "The Windows bounded worker supervisor now validates and forwards only the existing python/rust engine selector; the prior child environment silently reset explicit Rust selection to Python.",
+        "Default remains Python; invalid selectors refuse before Job creation. Arbitrary Python paths and unrelated database/provider environment settings stay excluded. No installation, deployment, activation or CI.",
+        "Grouping/native kernel bytes are unchanged. Isolated real Windows CLI qualification and final build-lifecycle acceptance bind their later native operation evidence."
+      ]
+    },
+    {
+      "feature": "rust-photo-stack-native-windows-qualification-results-20261120",
+      "source_commit": "bb1f248b788ef50d5887c688958f050dbd299366",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": "1d9a9ddd0bc277aca7df9fb1026ab0fd39cf05ea197f70ff8d1e084a19e27423",
+          "sha256": "1e4b2d1d4afbb88f778d4bc6d3977e958cc31a9d9eefbec3f9e2fdb0366df310"
+        },
+        {
+          "path": "docs/benchmarks/photo-stack-windows-20261120.json",
+          "before_sha256": null,
+          "sha256": "2a943bdfdab2dbf603ce00b43313fdc4d62feabf253195250a3d84838104a25a"
+        },
+        {
+          "path": "third_party/photo-stack-rust.md",
+          "before_sha256": "332c3881e1f400ebbbc68ece0e9d70a38de8caedd3750f50086b1e53f19c16ae",
+          "sha256": "cb14b187062258e95eb7fe00f95ea24ee9be1eedccce41d314cf6b64e186215e"
+        }
+      ],
+      "notes": [
+        "Documentation/data-only results for native Windows MSVC build and private ABI3 wheel, exact wheel/native hashes and all21dependency notice sets. No new implementation or binary publication.",
+        "Accepted178kernel cases/66errors,8fresh-process9-run nonempty variants,16internal worker tests/9nativecalls, and6real bounded CLI exit/SQL-effect cases against exact same source/wheel.",
+        "Burst speedups4.59x/4.72x callback; mixed3.71x/3.16x callback. Rust process peak working set about4\u20135MiB higher. Raw measured samples and hashes retained in public synthetic-only JSON without host paths.",
+        "Independent component acceptance preserves the original later-qualifier failure; fresh CLI-only scope passed, successful scratch cleaned, exact operation released. Earlier failures retained. Python default, production/live-data/Linux/CI acceptance not implied."
       ]
     }
   ]
