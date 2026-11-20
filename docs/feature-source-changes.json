@@ -32579,6 +32579,49 @@
         "Python/Rust median 3.802240s/0.6617207s (5.745989x); callback-enabled 3.808576s/1.2662372s (3.007790x). All 178 kernel and 208 public parity cases, callback/cancellation/error and exact-budget checks passed.",
         "Mac-cross-compiled GNU/UCRT release executed natively on Windows; native MSVC compilation, binary packaging, Linux qualification and installed production worker acceptance remain open. No runtime activation or GitHub CI."
       ]
+    },
+    {
+      "feature": "rust-photo-stack-native-packaging-and-nonempty-fixtures-20261120",
+      "source_commit": "09bb6857d11119882dbafbc7cdfac8e9e96d3669",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": "4e7cce1f8fb30e43e63ee3f4927b5f3b6db7a2042673e553f627fdb912943024",
+          "sha256": "a57dd46d0da895d83d62a86b2a529ffe56493071e2d73a32905dd52854495ead"
+        },
+        {
+          "path": "tools/photo_stack_workloads.py",
+          "before_sha256": null,
+          "sha256": "ab2dfdb724696490d357eecdfce3f3bf4bc0bf7f1b443e70c3d9e8d9317d9cf3"
+        },
+        {
+          "path": "tools/photo_stack_benchmark.py",
+          "before_sha256": null,
+          "sha256": "0573b9eafb084e92dfcb6e043f7858533de4e5dec8454853c493621877be09d6"
+        },
+        {
+          "path": "tools/package_photo_stack_native.py",
+          "before_sha256": null,
+          "sha256": "d9e616329e71789289fd34faad98b221bca7d14776a2a11c6f354be8de5d3696"
+        },
+        {
+          "path": "tools/tests/test_photo_stack_native_package.py",
+          "before_sha256": null,
+          "sha256": "a55cd55155f2dfa08e2a87f3f874b16174c0eaf7de2989acf3b561a17f605e2b"
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_worker_host.py",
+          "before_sha256": "027dc97ee56a937235aca5c6b11a80e12eee708231de4ffa8e7f357de2792d63",
+          "sha256": "67d292ea78c16a84dfeb744f4dee88408090c544a52cceb2dca51f0c1512bb74"
+        }
+      ],
+      "notes": [
+        "Adds deterministic unpublished Windows ABI3 wheel packaging with lock-matching dependency notices and complete RECORD; no binary publication or installation.",
+        "Adds generated nonempty burst/mixed-metadata benchmarks, per-process peak memory, exact result/callback checks and active cancellation measurements. Fixtures contain no household data.",
+        "Adds generated worker source-change retry coverage; native Windows MSVC build/import/worker acceptance remains subject to actual isolated coordinator-run evidence. No production change or GitHub CI."
+      ]
     }
   ]
 }

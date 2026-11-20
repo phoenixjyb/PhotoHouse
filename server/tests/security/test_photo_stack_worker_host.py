@@ -85,6 +85,26 @@ class PhotoStackWorkerHostTests(unittest.TestCase):
         self.assertEqual(host.execute_once(**self.arguments)['results'][0]['status'], 'updated')
         self.assertEqual(tasks, self.rows('tasks'))
 
+    def test_changed_source_retries_without_publishing_a_partial_index(self):
+        first = host.execute_once(**self.arguments)
+        previous = {name:self.rows(name) for name in fixture.TABLES}
+        journal_hash = hashlib.sha256(self.journal_path.read_bytes()).hexdigest()
+        with closing(fixture.fixture._db(self.database)) as db:
+            db.execute('UPDATE assets SET width=800 WHERE id=101'); db.commit()
+        def source_changes(rows, **options):
+            with closing(fixture.fixture._db(self.database)) as db:
+                db.execute('UPDATE assets SET width=900 WHERE id=101'); db.commit()
+            return build_library_photo_stacks(rows, **options)
+        with patch('app.access.photo_stack_index.build_library_photo_stacks', side_effect=source_changes):
+            retry = host.execute_once(**self.arguments)
+        self.assertEqual(retry['results'][0]['status'], 'changed_retry')
+        self.assertEqual(previous, {name:self.rows(name) for name in fixture.TABLES})
+        second = host.execute_once(**self.arguments)
+        self.assertEqual(second['results'][0]['status'], 'updated')
+        self.assertNotEqual(first['results'][0]['index_revision'], second['results'][0]['index_revision'])
+        self.assertEqual(host.execute_once(**self.arguments)['results'][0]['status'], 'unchanged')
+        self.assertEqual(journal_hash, hashlib.sha256(self.journal_path.read_bytes()).hexdigest())
+
     def test_stop_control_or_signal_before_start_never_creates_lock_or_index(self):
         fixture.fixture._create_file(self.stop)
         for entry in (host.preflight, host.execute_once):

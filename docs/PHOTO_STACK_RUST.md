@@ -134,3 +134,50 @@ worker latency. Binary packaging, Linux build/runtime qualification and installe
 Windows worker acceptance remain delivery gates. GitHub Actions remains
 cost-paused; workflows remain manual-only and must not be dispatched for this
 change.
+
+## Preparing a native Windows candidate
+
+Use the existing compiler and locked vendored crates in an admitted isolated D:
+namespace. Build for `x86_64-pc-windows-msvc` with Cargo `--offline --locked --jobs 2`,
+explicit D: Cargo home/target/TEMP, and the pinned base Python interpreter. The
+Windows coordinator must enforce a Job-wide CPU cap, memory/process limits and a
+timeout for the compiler and all descendants; Cargo jobs alone is not a CPU cap.
+No toolchain installation or dependency download is needed on the workstation.
+
+`tools/package_photo_stack_native.py` creates an unpublished
+`cp39-abi3-win_amd64` wheel from an explicitly selected release DLL, source commit
+and lock-matching vendored crates. It retains project/scaffolding notices and
+checksum-verified license files for every locked registry dependency. The wheel
+has deterministic members and a complete RECORD. Packaging alone does not prove
+that a binary imports or that its runtime DLL dependencies are available.
+
+Extract the wheel into a fresh directory and import it with the direct base
+interpreter using `-I -S -B` and only that explicit module path. Inspect the PE
+imports and kernel/policy handshake before testing. Do not install it into the
+household runtime as part of qualification.
+
+`tools/photo_stack_benchmark.py` measures generated nonempty libraries in separate
+processes. `bursts` contains 12,800 rows forming 400 groups of 24 and 400 groups of
+8; `mixed` contains 6,400 rows forming 400 groups of 16 across aware/naive times,
+timezone offsets and unknown-time upload batches. Run both Python and Rust, with
+and without callbacks, using one warm-up and nine measured calls per process.
+For example, inside the admitted D: checkout:
+
+```sh
+python -I -S -B tools/photo_stack_benchmark.py --fixture bursts --engine rust \
+  --native-dir D:/explicit-candidate/import --runs 9 --output D:/explicit-candidate/bursts-rust.json
+```
+
+Compare exact input/output digests and callback counts as well as time. Process
+peak memory includes input generation, warm-up and all measured calls; it is not
+an allocation-only kernel measurement. Cancellation records both total call time
+and propagation time after the stop callback requests cancellation.
+
+The isolated worker acceptance cohort is
+`server/tests/security/test_photo_stack_worker_host.py`. It uses generated,
+migrated databases/journals and checks publication/no-op, changed-source retry,
+retained hash failures, locking, cancellation rollback and deletion-history
+identity. Run with Rust explicitly selected and count actual native calls. Keep
+failed/uncertain scratch and diagnostics; successful scratch cleanup follows Job
+closure, source/result verification and coordinator release. Existing dependency
+roots may be explicitly added without executing ambient `.pth`/`sitecustomize`.
