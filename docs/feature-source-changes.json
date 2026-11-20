@@ -32650,6 +32650,35 @@
         "Default remains Python; invalid selectors refuse before Job creation. Arbitrary Python paths and unrelated database/provider environment settings stay excluded. No installation, deployment, activation or CI.",
         "Grouping/native kernel bytes are unchanged. Isolated real Windows CLI qualification and final build-lifecycle acceptance bind their later native operation evidence."
       ]
+    },
+    {
+      "feature": "rust-photo-stack-native-windows-qualification-results-20261120",
+      "source_commit": "bb1f248b788ef50d5887c688958f050dbd299366",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": "1d9a9ddd0bc277aca7df9fb1026ab0fd39cf05ea197f70ff8d1e084a19e27423",
+          "sha256": "1e4b2d1d4afbb88f778d4bc6d3977e958cc31a9d9eefbec3f9e2fdb0366df310"
+        },
+        {
+          "path": "docs/benchmarks/photo-stack-windows-20261120.json",
+          "before_sha256": null,
+          "sha256": "2a943bdfdab2dbf603ce00b43313fdc4d62feabf253195250a3d84838104a25a"
+        },
+        {
+          "path": "third_party/photo-stack-rust.md",
+          "before_sha256": "332c3881e1f400ebbbc68ece0e9d70a38de8caedd3750f50086b1e53f19c16ae",
+          "sha256": "cb14b187062258e95eb7fe00f95ea24ee9be1eedccce41d314cf6b64e186215e"
+        }
+      ],
+      "notes": [
+        "Documentation/data-only results for native Windows MSVC build and private ABI3 wheel, exact wheel/native hashes and all21dependency notice sets. No new implementation or binary publication.",
+        "Accepted178kernel cases/66errors,8fresh-process9-run nonempty variants,16internal worker tests/9nativecalls, and6real bounded CLI exit/SQL-effect cases against exact same source/wheel.",
+        "Burst speedups4.59x/4.72x callback; mixed3.71x/3.16x callback. Rust process peak working set about4\u20135MiB higher. Raw measured samples and hashes retained in public synthetic-only JSON without host paths.",
+        "Independent component acceptance preserves the original later-qualifier failure; fresh CLI-only scope passed, successful scratch cleaned, exact operation released. Earlier failures retained. Python default, production/live-data/Linux/CI acceptance not implied."
+      ]
     }
   ]
 }
