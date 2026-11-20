@@ -107,14 +107,23 @@ The portable bulk storage test module now has one additional cross-platform
 hardlink refusal/recovery case. Windows qualification explicitly reports two
 POSIX-only fixtures (chmod permission bits and symlink-creation assumptions) as
 excluded platform coverage, rather than treating them as native DACL proof.
-Their Mac checks remain mandatory. The Windows target is 42 Python and 38
+Their Mac checks remain mandatory. Windows qualification executed 42 Python and 38
 backend-neutral Rust storage checks, eight native-boundary checks and ten endpoint
-checks per engine; two platform exclusions per engine must be named in results.
+checks per engine; two platform exclusions per engine are named in the private result records.
 
-No Windows-native comparison, actual installed extension, production activation,
-model change or physical-device acceptance is established by these local checks.
-Keep the deployed Search/grouping/model configuration unchanged until the exact
-new Windows artifact and host operation are independently qualified. Roll back
-an optional deployment by restoring the Python engine and its prior pinned
-runtime; do not reinterpret earlier successful scopes as a new deployment grant.
+The subsequent Windows MSVC qualification bound source `cad2d0a` to an unpublished
+ABI3 wheel and passed the exact corpus, 80 executed storage checks, eight native
+boundary checks, 20 generated ASGI endpoint checks and seven fresh-process
+benchmark variants. Windows asyncio's standard wakeup socket pair was permitted
+only within its factory: literal loopback, ephemeral port, exact peer matching,
+closed listener and closed pair sockets. Other test network calls were refused.
+A pinned NumPy wheel was unpacked in owned test scratch; it was not installed into
+the existing runtime. See [the results](../rust/VECTOR_RESULTS.md) for timings,
+platform exclusions and measurement limits.
+
+This establishes Windows artifact/component qualification, not an installed
+extension, production activation, model change or physical-device acceptance.
+Python remains the default and live Search/grouping/model settings are unchanged.
+Any optional rollout needs the exact wheel, reviewed runtime bindings and a
+rollback to Python; prior successful operation grants are not reusable.
 GitHub Actions remains paused.
