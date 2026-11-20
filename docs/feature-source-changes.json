@@ -32622,6 +32622,34 @@
         "Adds generated nonempty burst/mixed-metadata benchmarks, per-process peak memory, exact result/callback checks and active cancellation measurements. Fixtures contain no household data.",
         "Adds generated worker source-change retry coverage; native Windows MSVC build/import/worker acceptance remains subject to actual isolated coordinator-run evidence. No production change or GitHub CI."
       ]
+    },
+    {
+      "feature": "rust-photo-stack-bounded-worker-selector-20261120",
+      "source_commit": "ecca95533f93781b3706d197d449a663ba36bd1a",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "server/scripts/run_photo_stack_worker.py",
+          "before_sha256": "badf0036f3881a17c98559bf4fadaec18368751e8cdb00f3e5d21ec4b226942c",
+          "sha256": "e00dfd16e78c2b4ee52b4512809d7f2c783ce019be6b44a7847cea3338593aee"
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_worker_host.py",
+          "before_sha256": "67d292ea78c16a84dfeb744f4dee88408090c544a52cceb2dca51f0c1512bb74",
+          "sha256": "01a7f7010425893efbccfee029cdba653d492c6b1717d10427bf6abfb0ccb514"
+        },
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": "a57dd46d0da895d83d62a86b2a529ffe56493071e2d73a32905dd52854495ead",
+          "sha256": "1d9a9ddd0bc277aca7df9fb1026ab0fd39cf05ea197f70ff8d1e084a19e27423"
+        }
+      ],
+      "notes": [
+        "The Windows bounded worker supervisor now validates and forwards only the existing python/rust engine selector; the prior child environment silently reset explicit Rust selection to Python.",
+        "Default remains Python; invalid selectors refuse before Job creation. Arbitrary Python paths and unrelated database/provider environment settings stay excluded. No installation, deployment, activation or CI.",
+        "Grouping/native kernel bytes are unchanged. Isolated real Windows CLI qualification and final build-lifecycle acceptance bind their later native operation evidence."
+      ]
     }
   ]
 }

@@ -236,6 +236,30 @@ class PhotoStackWorkerHostTests(unittest.TestCase):
         with patch('sys.stderr',new_callable=io.StringIO), self.assertRaises(host.Refused):
             host.main(['--bounded-child'])
 
+    def test_windows_child_keeps_only_a_valid_explicit_engine_selection(self):
+        arguments = {k:str(v) if isinstance(v,Path) else v for k,v in self.arguments.items()}
+        for selected, expected in ((None,'python'), ('python','python'), ('rust','rust')):
+            environment = {'SystemRoot':'synthetic-system', 'DATABASE_URL':'must-not-forward',
+                           'PYTHONPATH':'must-not-forward'}
+            if selected is not None:
+                environment['PHOTOHOUSE_PHOTO_STACK_ENGINE'] = selected
+            with self.subTest(engine=selected), patch.dict(os.environ,environment,clear=True), \
+                    patch.object(controller,'WindowsAPI',return_value=object()), \
+                    patch.object(controller,'run_bounded',return_value=0) as launch:
+                self.assertEqual(host._bounded_execute(arguments),0)
+            child = launch.call_args.args[3]
+            self.assertEqual(child['PHOTOHOUSE_PHOTO_STACK_ENGINE'],expected)
+            self.assertNotIn('DATABASE_URL',child)
+            self.assertNotIn('PYTHONPATH',child)
+        for invalid in ('', 'auto', 'RUST'):
+            with self.subTest(invalid=invalid), \
+                    patch.dict(os.environ,{'PHOTOHOUSE_PHOTO_STACK_ENGINE':invalid}), \
+                    patch.object(controller,'WindowsAPI') as api, \
+                    patch.object(controller,'run_bounded') as launch:
+                with self.assertRaisesRegex(controller.CheckRefused,'invalid_photo_stack_engine'):
+                    host._bounded_execute(arguments)
+                api.assert_not_called();launch.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -181,3 +181,9 @@ identity. Run with Rust explicitly selected and count actual native calls. Keep
 failed/uncertain scratch and diagnostics; successful scratch cleanup follows Job
 closure, source/result verification and coordinator release. Existing dependency
 roots may be explicitly added without executing ambient `.pth`/`sitecustomize`.
+
+The Windows worker CLI validates and forwards the selected `python`/`rust` engine
+to its bounded child. An invalid selector is refused before creating a Job;
+unrelated environment settings and arbitrary import paths are not forwarded.
+A Rust-selected child without an importable compatible extension fails rather
+than silently running the reference engine. Python remains the default.
