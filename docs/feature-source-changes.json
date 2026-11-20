@@ -32391,6 +32391,176 @@
         "Remove push and pull-request triggers from both existing GitHub workflows under the owner cost pause.",
         "Workflow jobs and pinned dependencies are retained for a future explicit resumption; manual dispatch is not authorized during the pause. Local testing and GitLab CI are independent."
       ]
+    },
+    {
+      "feature": "optional-rust-photo-stack-kernel-20261120",
+      "source_commit": "8b0b168c6e7c609a02a6fb5cf314459e3affb521",
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "files": [
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": null,
+          "sha256": "a237df617d4ec031a52f913105f8acbb184e1e1ce6505c4027cd448115517e96"
+        },
+        {
+          "path": "rust/photo-stack-core/.gitignore",
+          "before_sha256": null,
+          "sha256": "9d645029f3fb432ef0ca5ac90f5554644488b7e486f6c3e8578a100b9085ca02"
+        },
+        {
+          "path": "rust/photo-stack-core/Cargo.lock",
+          "before_sha256": null,
+          "sha256": "3e30adc7bbba66ca39ac229b25c10619c9d9fc0e2441aa4e29332964685932e3"
+        },
+        {
+          "path": "rust/photo-stack-core/Cargo.toml",
+          "before_sha256": null,
+          "sha256": "fe4d7d95292e37f758bf1221cdcda9e6f26370d09fcb6cef3389cffd7e3d059f"
+        },
+        {
+          "path": "rust/photo-stack-core/README.md",
+          "before_sha256": null,
+          "sha256": "b646d5195d25f8048a69a2c446bf39041044d4dcb3e779c990a75e026d8a1d5a"
+        },
+        {
+          "path": "rust/photo-stack-core/build.rs",
+          "before_sha256": null,
+          "sha256": "619d6658e2e4e542a13fb43d8ccbc9403567002142b21f2bcc84c8d7a41eca50"
+        },
+        {
+          "path": "rust/photo-stack-core/cases.jsonl",
+          "before_sha256": null,
+          "sha256": "099cb31cc564581cf75377d2dfd05c636a365db0d7102fe062bd89c868dccbeb"
+        },
+        {
+          "path": "rust/photo-stack-core/inputs.jsonl",
+          "before_sha256": null,
+          "sha256": "976c30a3fbbf3201265efbb9857b3157e5cd3509e5ea37d841a695f117b1cae0"
+        },
+        {
+          "path": "rust/photo-stack-core/python/photo_stack_core/__init__.py",
+          "before_sha256": null,
+          "sha256": "ae091a80a8bd30bd51623a6fcba73f0167f2dfe1cf07245356889f11ae6e6e49"
+        },
+        {
+          "path": "rust/photo-stack-core/recorded-from.json",
+          "before_sha256": null,
+          "sha256": "48f252d91fc5d5a58b8ee56716c41a12dad1a676241cca57f3e61c203412464a"
+        },
+        {
+          "path": "rust/photo-stack-core/rust-anything.json",
+          "before_sha256": null,
+          "sha256": "5d75cda4349c1433fed17e1fce481d3a346e8428d085b68d84d1ea607974c1d9"
+        },
+        {
+          "path": "rust/photo-stack-core/shadow/photo_stack_core_shadow.py",
+          "before_sha256": null,
+          "sha256": "ccfd8e238259de92758f42aa48222afe9544ab6bf9f5e97a830e2e3f74ab6991"
+        },
+        {
+          "path": "rust/photo-stack-core/src/lib.rs",
+          "before_sha256": null,
+          "sha256": "52cc3eeb1e15f01adcf032355e9f3918f23dca350d5b14d7c0a4f36de37d32d8"
+        },
+        {
+          "path": "rust/photo-stack-core/src/port.rs",
+          "before_sha256": null,
+          "sha256": "ba3c5ebc6522b177fba35adfdbdd876fb2355d49171f9aa6b47267cac7b91a1c"
+        },
+        {
+          "path": "rust/photo-stack-core/test-inputs.jsonl",
+          "before_sha256": null,
+          "sha256": "16334d48505e9a0472672456d5dcd66d0b56c52c54c983f563878a1b3d303c52"
+        },
+        {
+          "path": "rust/photo-stack-python/.gitignore",
+          "before_sha256": null,
+          "sha256": "b53ee26e6ff1da219b0563333a76d2c9ec19eec713d6ee54e11a1edacb0e9f3d"
+        },
+        {
+          "path": "rust/photo-stack-python/Cargo.lock",
+          "before_sha256": null,
+          "sha256": "8d666d160c99e2fd528d693cc5c4f30b483ce47b95ae68b13eb9439b79777d66"
+        },
+        {
+          "path": "rust/photo-stack-python/Cargo.toml",
+          "before_sha256": null,
+          "sha256": "9f373e8609c3f983104ec0c8b8b65c1dad9993b9a73e778e105abe45c43d8b0c"
+        },
+        {
+          "path": "rust/photo-stack-python/build.rs",
+          "before_sha256": null,
+          "sha256": "619d6658e2e4e542a13fb43d8ccbc9403567002142b21f2bcc84c8d7a41eca50"
+        },
+        {
+          "path": "rust/photo-stack-python/src/lib.rs",
+          "before_sha256": null,
+          "sha256": "8d5ab9e7c70c6b8f6c50a31d8e6d9297ba09fa24bad7cb008f077ef557491492"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_acceleration.py",
+          "before_sha256": null,
+          "sha256": "415cfb86e9b630fcf6749cd46693c8e1c9858c69ee8a155a04f1180c7f9a0db0"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_index.py",
+          "before_sha256": "bee3e8fc356054f166d12baea7487e93eea00ae39a8c4e679979a7cc67ce53e1",
+          "sha256": "143992553c72a83156ebe0db47b2c207d5d128d7702409c969763c1d7219db55"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_reference/__init__.py",
+          "before_sha256": null,
+          "sha256": "25ac423569f1eec13e1a988d2180ed5be8608b563f69594c2e73c8026cbf1b03"
+        },
+        {
+          "path": "server/backend/app/access/photo_stack_reference/algorithm.py",
+          "before_sha256": null,
+          "sha256": "000405dac0e6a14992047b191234ddf7c277c49c19f419d7fdf4e824d150e4c0"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "90fcb22ad1e2dd3f35f221d0ca4614df2bb77e0ce86c4db291be18f07af331b7",
+          "sha256": "daa2ee13af5f595ce5a6ba348956836786dcf2388b7b48b8957b54c2e8bd0b04"
+        },
+        {
+          "path": "server/tests/security/test_photo_stack_rust.py",
+          "before_sha256": null,
+          "sha256": "9d6c05c3a544473bce0ae3d0f5cdc791c603eb863218a28e77b4d1477868300d"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "e102ba4c0e508285393621346534b8b9982afd9dcfb9c49a3391b5984d7c5619",
+          "sha256": "e5cf4127474ec467bec46e030d54fc1fe631a83e19bce77d66b55294fb34aeff"
+        },
+        {
+          "path": "third_party/licenses/rust-anything-MIT.txt",
+          "before_sha256": null,
+          "sha256": "f7c6d76768cf5bdcd8fbc9f4df6b040789ed9802707e49987dd8357a6bd92759"
+        },
+        {
+          "path": "third_party/photo-stack-rust.md",
+          "before_sha256": null,
+          "sha256": "332c3881e1f400ebbbc68ece0e9d70a38de8caedd3750f50086b1e53f19c16ae"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "a789709e64d739b02a63f954dda6d412036d9f2a43f306a346a09f6f4a72a756",
+          "sha256": "1fe1f81fcd3ffa5b9197820dc6c7b9eb67636c7636632e6160b13e957fac7e4f"
+        },
+        {
+          "path": "tools/photo_stack_native.py",
+          "before_sha256": null,
+          "sha256": "deaa68e63025ee3f60b459bd9b09569795553c6e674f0f0ba15612413c20578b"
+        }
+      ],
+      "notes": [
+        "Opt-in whole-library Rust candidate discovery and complete-link grouping with the existing Python public validation, timestamp parsing, policy fingerprint and reference backend retained. Default remains Python; no deployment, activation or binary publication.",
+        "Rust-anything core gate passed 178 recorded cases; native public-builder/library/worker cohort passed 70 tests and 22 subtests; 200 frozen-main/reference/native cases matched results, errors and cancellation check counts.",
+        "Matched Mac arm64 Python 3.14.8 20k fixture: nine-run median 1.846s Python versus 0.342s Rust (5.41x), callback-enabled 1.809s versus 0.611s (2.96x); bridge included. Shared-host synthetic evidence, not a Windows Rust measurement or real-photo guarantee.",
+        "Native import exercised on Mac Python 3.12 and 3.14. Windows/Linux native build and installed worker acceptance remain open. GitHub Actions paused; no models, services, media, database or schema changes.",
+        "Curated source staging allowlist includes the portable Python reference and selector. Extracted default-backend import/grouping and check-profile integration are verified separately; no native binary is bundled by the source-only packager."
+      ]
     }
   ]
 }
