@@ -59,6 +59,21 @@ target, Cargo cache or temporary directory on C:; all must explicitly be on D:.
 This check does not grant a Windows build or production admission. No global TEMP
 or application environment is changed.
 
+For a source-bound Windows ABI3 artifact, `rust/package_vector_kernel.py` packages
+an already built MSVC x64 DLL and locked vendored license notices. It performs no
+build, download or installation and refuses an existing output. Native imports,
+parity and host qualification remain separate from packaging.
+
+`rust/benchmark_vector_kernel.py --case warm_numpy --output <new-file>` runs one
+case per fresh process; the other cases cover cold Python/Rust, scalar ranking,
+Rust ranking and cold-plus-rank. Use the same generated 4,096 × 768 fixture on
+both engines. Each output includes exact matrix/rank digests, callback counts,
+all five timing samples and peak process memory, including the common reference
+setup. An absent NumPy baseline refuses the benchmark rather than substituting a
+slower comparator. `--native-dir` and `--dependency-root` select only explicit
+operator inputs; they are not application request options. On Windows source,
+native scratch and output must be on D:.
+
 `rust/generate_vector_cases.py` regenerates public/synthetic inputs. The golden
 corpus in `rust/vector-core/cases.jsonl` characterizes the Python reference;
 keep original errors and expected outputs intact when modifying the Rust code.
