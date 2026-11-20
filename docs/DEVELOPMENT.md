@@ -3010,3 +3010,10 @@ including a generated read after six seconds, refusal after thirty seconds,
 retained cancellation, shared slots, explicit-budget preservation and exact
 caption output parity. This is source evidence; native model acceptance,
 deployment and proposal import retain their independent gates.
+
+## Optional vector acceleration
+
+The default CPU application retains Python/NumPy. For the separate Rust vector
+kernel, build and validate the opt-in extension with the commands and exact
+compatibility boundaries in [RUST_VECTOR_KERNEL.md](RUST_VECTOR_KERNEL.md).
+Local measurements do not activate a Windows runtime; GitHub Actions stays paused.

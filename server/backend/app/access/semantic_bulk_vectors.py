@@ -21,6 +21,7 @@ import threading
 from typing import Callable
 
 from .private_storage import require_private_directory, require_private_file
+from .vector_acceleration import backend as _vector_backend
 from .visual_candidates import MAX_DIMENSION, VectorRecord, VectorSpaceIdentity, _canonical_components
 from .visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256, validate_artifact
 from .visual_vector_loader import _COLUMNS, _checked_root, _is_reparse, _read_vector, _root_snapshot, _same_file
@@ -639,6 +640,26 @@ def _snapshot_asset_ids(artifacts):
     return asset_ids
 
 
+def _native_rank_blocks(native, blocks, rows_per_block, dimension, query, ordered_ids, wanted, check):
+    query_bytes = struct.pack(f"={dimension}d", *query)
+    ranked = []
+    for number, block in enumerate(blocks):
+        start = number * rows_per_block
+        count = min(rows_per_block, len(ordered_ids) - start)
+        def selected(offset):
+            _check_callback(check)
+            return ordered_ids[start + offset] in wanted
+        scores = native.score(block, query_bytes, dimension, selected)
+        expected = tuple(offset for offset in range(count) if ordered_ids[start + offset] in wanted)
+        if (type(scores) is not list or len(scores) != len(expected)
+                or any(type(row) is not tuple or len(row) != 2
+                       or type(row[0]) is not int or row[0] != offset or type(row[1]) is not float
+                       for row, offset in zip(scores, expected))):
+            _unavailable()
+        ranked.extend((ordered_ids[start + offset], score) for offset, score in scores)
+    return ranked
+
+
 class BulkVectorSnapshot:
     """Internal view of a Store-validated cohort, not an input admission API.
 
@@ -703,7 +724,12 @@ class BulkVectorSnapshot:
             _unavailable()
         blocks, rows_per_block = _native_matrix_parts(
             matrix, dimension, len(ordered_ids), identity_digest)
-        ranked = []
+        try:
+            native = _vector_backend()
+            ranked = (_native_rank_blocks(native, blocks, rows_per_block, dimension,
+                      query, ordered_ids, wanted, check) if native is not None else [])
+        except (ValueError, TypeError, struct.error):
+            _unavailable()
         views = {}
         numpy_backend = None
         numpy_checked = False
@@ -713,7 +739,9 @@ class BulkVectorSnapshot:
         product_cursor = 0
         product_view = None
         product_block_number = None
-        for index, aid in enumerate(ordered_ids):
+        # The native path has already called check once per row, including
+        # unselected rows. The existing Python/NumPy path stays the default.
+        for index, aid in (() if native is not None else enumerate(ordered_ids)):
             _check_callback(check)
             if aid not in wanted:
                 continue
@@ -855,8 +883,28 @@ def _canonical_matrix(payload, artifacts, identity, check):
     rows_per_block = max(1, _CACHE_BLOCK_BYTES // canonical_row_bytes)
     blocks = []
     try:
+        native = _vector_backend()
+        # File admission produces immutable bytes. Keep arbitrary mutable or
+        # noncontiguous internal test buffers on the reference path so row
+        # callbacks retain their existing observation semantics.
+        immutable = (type(payload) is bytes or (type(payload) is memoryview
+                     and type(payload.obj) is bytes and payload.readonly
+                     and payload.c_contiguous and payload.format == "B" and payload.ndim == 1))
         for block_start in range(0, len(artifacts), rows_per_block):
             block_count = min(rows_per_block, len(artifacts) - block_start)
+            if native is not None and immutable:
+                def checksum(offset):
+                    _check_callback(check)
+                    value = artifacts[block_start + offset].component_sha256
+                    if type(value) is not str or _SHA256.fullmatch(value) is None:
+                        _unavailable()
+                    return value
+                block = native.canonicalize(bytes(payload[block_start * row_bytes:
+                    (block_start + block_count) * row_bytes]), dimension, checksum)
+                if type(block) is not bytes or len(block) != block_count * canonical_row_bytes:
+                    _unavailable()
+                blocks.append(block)
+                continue
             matrix = bytearray(block_count * canonical_row_bytes)
             for offset in range(block_count):
                 index = block_start + offset
