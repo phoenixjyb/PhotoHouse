@@ -103,6 +103,14 @@ to `.runtime/vector-kernel/benchmark.json`; validation logs remain under the sam
 ignored directory. These component measurements exclude secure file admission,
 HTTP, database, provider and network work and are not live request latency.
 
+The portable bulk storage test module now has one additional cross-platform
+hardlink refusal/recovery case. Windows qualification explicitly reports two
+POSIX-only fixtures (chmod permission bits and symlink-creation assumptions) as
+excluded platform coverage, rather than treating them as native DACL proof.
+Their Mac checks remain mandatory. The Windows target is 42 Python and 38
+backend-neutral Rust storage checks, eight native-boundary checks and ten endpoint
+checks per engine; two platform exclusions per engine must be named in results.
+
 No Windows-native comparison, actual installed extension, production activation,
 model change or physical-device acceptance is established by these local checks.
 Keep the deployed Search/grouping/model configuration unchanged until the exact
