@@ -92,10 +92,12 @@ must stay on D: within an admitted operation.
 
 ## Evidence and rollout status
 
-See [VISUAL_RESULTS.md](../rust/VISUAL_RESULTS.md) for the Mac measurements and
-exact check counts. This consumer has local source/native-extension evidence;
-it has not been qualified on Windows or activated in production. Prior bulk
-Windows results do not qualify the new consumer. A rollout needs a fresh native
-artifact and current runtime bindings, with rollback to the Python selector.
+See [VISUAL_RESULTS.md](../rust/VISUAL_RESULTS.md) for the Mac measurements,
+exact check counts and partial Windows follow-up. The new MSVC artifact passed
+its corpus and 76 checks, but Windows HTTP/benchmark qualification remains open
+after a failed completion operation and unavailable diagnostic connection.
+It has not been activated in production. Prior bulk Windows results do not
+qualify the new consumer. A rollout needs completed native qualification and
+current runtime bindings, with rollback to the Python selector.
 Search, grouping, models and providers remain unchanged on the live machine.
 GitHub Actions stays paused.

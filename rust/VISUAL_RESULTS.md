@@ -64,7 +64,46 @@ in the private `rust-visual-20261121` handoff. See the
 ## Delivery boundary
 
 This round establishes local Mac native-extension and API integration evidence.
-Windows native qualification, production installation and activation have not
-been performed for this consumer. Earlier bulk-only Windows artifacts lack its
-visual capability. No live settings, media, schema, models, providers or saved
-groups changed. GitHub Actions remains off; no push or deployment was performed.
+The Windows follow-up below adds partial native evidence; production installation
+and activation have not been performed. Earlier bulk-only Windows artifacts lack
+this visual capability. No live settings, media, schema, models, providers or
+saved groups changed. GitHub Actions remains off; no push or deployment ran.
+
+## Windows follow-up — partial, not rollout qualification
+
+Source `8b10e0aefbe4c45a324c882a8f29857b12123e32` built successfully with
+MSVC and the existing CPython 3.12.10 runtime, using locked offline dependencies
+and private D: scratch. A source-bound ABI3 wheel was produced and clean-imported.
+The independently built characterization image passed all 687 exact outcomes,
+including 279 expected errors. The visual/grouping tests passed on both selected
+engines, and all twenty non-HTTP native/selector tests passed: 76 tests total.
+
+Two generated HTTP tests failed because a fixture cached the dependency-probe's
+temporary socket-bind mock at import. That failure remains a failure. The
+operator was corrected locally to compose the fixture's saved socket functions
+with the existing outer wakeup-pair fence. Reproducing the poisoned import and
+Windows fallback locally then passed both HTTP tests, with five pairs and all
+ten pair sockets normally closed. The application and numerical code did not
+change for this operator correction.
+
+A separate, narrow Windows operation reused the same wheel to attempt only the
+two missing HTTP tests and eight benchmark variants. Its child exited 1 after
+17.125 seconds. The original result-read connection and one separately granted
+diagnostic read both closed before returning stdout. The inner error and
+individual HTTP/benchmark outcomes were therefore **not retrieved**. Local
+correction evidence is not promoted to Windows acceptance, and Mac speedups are
+not relabeled as Windows measurements. No further SSH attempts were made.
+
+Both operations' test Jobs naturally drained to zero, with five handles closed
+per Job. The build Job also drained after its explicitly allowed owned-descendant
+teardown. Failed D: scratch and original evidence are retained; normal success
+cleanup was not used. Each scope requires its own offline/local-owned audit and
+explicit release, recorded in the private coordinator records. This is bounded
+owned-Job closure evidence, not a global Windows process inventory.
+
+The new consumer remains **partially qualified on Windows and inactive**. The
+next step is to retrieve the exact retained child failure/result files through a
+working authorized connection or a Windows-local session, diagnose that concrete
+error, and qualify only the remaining gap. The successful build, corpus and
+76 tests need no replay while their source contracts remain unchanged. The
+default stays Python; GitHub CI and production activation remain off.
