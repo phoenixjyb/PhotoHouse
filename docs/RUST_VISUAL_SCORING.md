@@ -92,12 +92,14 @@ must stay on D: within an admitted operation.
 
 ## Evidence and rollout status
 
-See [VISUAL_RESULTS.md](../rust/VISUAL_RESULTS.md) for the Mac measurements,
-exact check counts and partial Windows follow-up. The new MSVC artifact passed
-its corpus and 76 checks, but Windows HTTP/benchmark qualification remains open
-after a failed completion operation and unavailable diagnostic connection.
-It has not been activated in production. Prior bulk Windows results do not
-qualify the new consumer. A rollout needs completed native qualification and
-current runtime bindings, with rollback to the Python selector.
+See [VISUAL_RESULTS.md](../rust/VISUAL_RESULTS.md) for Mac and Windows measurements,
+exact check counts and retained failures. The source-bound MSVC artifact passed
+687 exact cases and all 78 integration checks; the final two protected API tests
+and eight benchmark variants reused the accepted wheel without rebuilding or
+replaying the 76 earlier passing tests. The captured Windows fixture failure was
+a 264-character path, resolved by a new private operation root giving 221-character
+paths; global path settings and application behavior were unchanged.
+It has not been activated in production. A rollout needs the qualified artifact
+and current runtime bindings, with rollback to the Python selector.
 Search, grouping, models and providers remain unchanged on the live machine.
 GitHub Actions stays paused.

@@ -69,7 +69,7 @@ and activation have not been performed. Earlier bulk-only Windows artifacts lack
 this visual capability. No live settings, media, schema, models, providers or
 saved groups changed. GitHub Actions remains off; no push or deployment ran.
 
-## Windows follow-up — partial, not rollout qualification
+## Windows native qualification
 
 Source `8b10e0aefbe4c45a324c882a8f29857b12123e32` built successfully with
 MSVC and the existing CPython 3.12.10 runtime, using locked offline dependencies
@@ -89,21 +89,59 @@ change for this operator correction.
 A separate, narrow Windows operation reused the same wheel to attempt only the
 two missing HTTP tests and eight benchmark variants. Its child exited 1 after
 17.125 seconds. The original result-read connection and one separately granted
-diagnostic read both closed before returning stdout. The inner error and
-individual HTTP/benchmark outcomes were therefore **not retrieved**. Local
-correction evidence is not promoted to Windows acceptance, and Mac speedups are
-not relabeled as Windows measurements. No further SSH attempts were made.
+diagnostic read both closed before returning stdout. That operation was released
+with the inner error explicitly unknown, rather than promoting local correction
+evidence to Windows acceptance.
 
-Both operations' test Jobs naturally drained to zero, with five handles closed
-per Job. The build Job also drained after its explicitly allowed owned-descendant
-teardown. Failed D: scratch and original evidence are retained; normal success
-cleanup was not used. Each scope requires its own offline/local-owned audit and
-explicit release, recorded in the private coordinator records. This is bounded
-owned-Job closure evidence, not a global Windows process inventory.
+After the owner's explicit continuation, a fresh read-only operation retrieved
+the retained error. Both generated fixture writes had failed with WinError 2:
+their `.npy` paths were 264 characters long. Neither target test body nor the
+benchmarks had run in that operation. A new short, private D: namespace reduced those exact
+paths to 221 characters. Windows global long-path settings, fixture filenames,
+application code and live runtime paths were unchanged. A child-side namespace
+length guard now refuses an overlong qualification root before fixture writes.
 
-The new consumer remains **partially qualified on Windows and inactive**. The
-next step is to retrieve the exact retained child failure/result files through a
-working authorized connection or a Windows-local session, diagnose that concrete
-error, and qualify only the remaining gap. The successful build, corpus and
-76 tests need no replay while their source contracts remain unchanged. The
-default stays Python; GitHub CI and production activation remain off.
+The final narrow operation used the **same already-built wheel**. It passed both
+generated protected API tests, all eight fresh-process benchmarks and full result
+digest comparisons. Its test Job naturally drained to zero in 31.672 seconds,
+with five handles closed. Five accounted internal wakeup pairs closed all ten
+sockets normally. Neither Cargo, the 687-case replay nor the 76 already accepted
+tests were repeated. Together the retained component and completion evidence
+qualify all 78 required engine-specific integration checks on this Windows artifact.
+
+### Windows same-call measurements
+
+CPython 3.12.10 x64, the same 512 × 768 generated fixture with 64 patterns,
+one warmup and five timed calls per variant, serial fresh processes. The test
+Job had a 2 GiB memory limit, four-process limit and a verified 20% CPU hard cap;
+GPU use was zero. Selected one-seed Rust still executes the Python scorer.
+
+| Consumer | Seeds | Python median | Rust-selected median | Ratio |
+|---|---:|---:|---:|---:|
+| Visual ranking | 1 | 135.105 ms | 131.358 ms | Same Python scoring path |
+| Visual ranking | 24 | 564.664 ms | 327.242 ms | 1.73× |
+| Grouping proposal | 8 | 279.318 ms | 219.159 ms | 1.27× |
+| Grouping proposal | 16 | 438.443 ms | 282.517 ms | 1.55× |
+
+Python/Rust whole-process peak working sets were 38.73/45.45 MiB for 24-seed
+visual ranking, 38.93/45.54 MiB for eight-seed grouping and 43.43/46.35 MiB for
+sixteen-seed grouping. Corresponding peak commit was 30.84/37.52, 30.74/38.19
+and 31.84/39.14 MiB. These include fixture/reference setup and are component
+measurements, not live household Search latency. Authorization transactions,
+file/DB admission, HTTP and model/provider work are outside the timings.
+
+The failed operations' test Jobs naturally drained to zero, with five handles
+closed per Job. The build Job also drained after its explicitly allowed owned
+descendant teardown. Failed D: scratch and original evidence are retained;
+normal success cleanup was not used on failures. The final successful scratch
+was sealed, source/hash checked and removed only after owned process closure;
+results, manifests and the original wheel remain preserved. Offline/local-owned
+audits and exact releases are recorded separately in the private coordinator
+records. This is bounded owned-Job closure evidence, not a global Windows
+process inventory.
+
+The new consumer is **qualified on Windows and inactive**. A production rollout
+still needs exact current runtime/source bindings, the qualified wheel, explicit
+visual-engine selection and a rollback to Python. No installation, production
+activation or physical-device acceptance is claimed by these generated tests.
+The default stays Python; GitHub CI and production activation remain off.
