@@ -466,6 +466,21 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertNotIn('Family beach visit', response.text)
         self.assertNotIn('在海边玩', response.text)
 
+    def test_literal_query_tokens_are_prepared_once_per_search_and_never_shared_between_turns(self):
+        from app.access import search_text
+        original = search_text._tokens
+        for words, phrase, expected in (
+                ('找包含“海边”的照片', '海边', ['103', '101']),
+                ('找包含“海边”的照片', '海边', ['103', '101']),
+                ('find photos containing "Family beach"', 'family beach', ['101'])):
+            with patch.object(search_text, '_tokens', wraps=original) as calls:
+                response = self.turn(words)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual([item['id'] for item in response.json()['items']], expected)
+            self.assertEqual(sum(call.args == (phrase,) for call in calls.call_args_list), 1)
+            self.assertNotIn('_entry', response.text)
+            self.assertNotIn('token_coverage', response.text)
+
     def test_two_character_unicode_text_and_quoted_mixed_language_phrase(self):
         chinese = self.turn('找包含“海边”的照片')
         self.assertEqual(chinese.status_code, 200, chinese.text)

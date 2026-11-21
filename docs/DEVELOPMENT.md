@@ -3020,3 +3020,7 @@ Multi-photo visual ranking and grouping proposals have a separate opt-in
 selector; see [RUST_VISUAL_SCORING.md](RUST_VISUAL_SCORING.md) for the scoring
 boundary, focused checks and measured limits.
 Local measurements do not activate a Windows runtime; GitHub Actions stays paused.
+
+The subsequent [literal text-search optimization](LITERAL_SEARCH_PERFORMANCE.md)
+removes repeated query tokenization and per-character regex calls in Python.
+It retains existing literal/Unicode behavior and introduces no native dependency.
