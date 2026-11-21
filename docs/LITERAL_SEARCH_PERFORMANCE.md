@@ -65,7 +65,47 @@ from these unprofiled wall medians.
 These are generated source normalization/matching/ranking component measurements.
 They exclude authorization transactions, file/DB reads, HTTP and model/network
 time, and do not establish live request latency or a household distribution.
-No Windows qualification or live rollout was performed in this round.
+The initial source round was Mac-only. The later Windows qualification below
+does not activate a live deployment.
+
+## Windows qualification
+
+Source `471d40cb0cc7ad199c5fd53339dbe4d3948ad9bd` passed the same 64 checks
+without failures or skips on CPython 3.12.10 x64, including the complete Unicode
+token comparison, 1,000 mixed-script cases and the protected assistant API flows.
+Both original and optimized implementations ran under that Windows interpreter;
+Mac timings were not reused as Windows evidence.
+
+The source-only operation ran in a fresh short D: namespace, inside a 2 GiB,
+four-process Job with a verified 20% CPU hard cap and no GPU/model work. The
+test and six fresh-process benchmark variants completed in 47.516 seconds. Each
+variant used the same 10,000 generated assets, two sources each, one warmup and
+five measured scans. Full ranked cards, reasons, qualities and cancellation-check
+counts matched exactly before and after optimization.
+
+| Fixture | Original Windows median | Optimized Windows median | Ratio |
+|---|---:|---:|---:|
+| All sources match a CJK phrase | 524.633ms | 339.003ms | 1.55× |
+| All sources match an ASCII phrase | 484.485ms | 350.143ms | 1.38× |
+| Twenty percent match a CJK phrase | 152.341ms | 96.256ms | 1.58× |
+
+These are CPU component timings with normalization, matching, sorting and Python
+call overhead; they exclude secure source admission, DB/file reads, HTTP,
+provider/model time and network latency. They are not live library latency or
+a representative household distribution.
+
+The in-process API checks used 131 narrowly accounted Windows stdlib wakeup pairs;
+all 262 pair sockets closed normally. Each test group retained the existing
+256-pair fence and refused other bind/connect/connect_ex/sendto calls. The Job
+naturally drained to zero and five handles closed. Source/hash sealing and exact
+process-identity checks preceded cleanup of successful generated scratch; evidence
+and manifests were retained. Offline and exact-owned release records are kept
+separately in the private coordinator.
+
+No Rust build, native installation, model download, live service/task change,
+production data operation, GitHub push or GitHub Actions run occurred. Existing
+live Search and grouping were untouched. This establishes Windows qualification
+of the source change, with production activation still separate.
 
 ## Reproduce and continue
 
@@ -88,5 +128,6 @@ The final token operations already run through Python's compiled regex engine.
 A further Rust batch has no measured gain yet and would need its own exact
 Unicode, cancellation and bridge-overhead proof. Keep this measured improvement
 without introducing another native dependency on that assumption. Windows
-qualification and deployment remain separate next steps; existing live settings
-and the GitHub Actions cost pause are unchanged.
+qualification is complete; a controlled rollout still requires current live
+source/runtime bindings and rollback. Existing live settings and the GitHub
+Actions cost pause are unchanged.
