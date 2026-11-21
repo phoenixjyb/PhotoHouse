@@ -15,6 +15,8 @@ import re
 import struct
 from typing import Literal
 
+from .vector_acceleration import visual_backend as _visual_backend
+
 
 MAX_SEEDS = 24
 MAX_CANDIDATES = 512
@@ -189,6 +191,32 @@ def _score(left: tuple[float, ...], right: tuple[float, ...]) -> float:
     return math.fsum(map(operator.mul, left, right))
 
 
+
+def _native_rank(native, seeds, candidates, dimension):
+    # Only canonical private tuples cross the bridge, after the whole cohort
+    # has passed authorization, identity, checksum, norm and coverage checks.
+    seed_ids = tuple(sorted(seeds, key=int))
+    queries = b"".join(struct.pack(f"={dimension}d", *seeds[key]) for key in seed_ids)
+    rows = tuple((key, value) for key, value in candidates.items() if key not in seeds)
+    block_rows = max(1, (4 * 1024 * 1024) // (dimension * 8))
+    ranked = []
+    for start in range(0, len(rows), block_rows):
+        block = rows[start:start + block_rows]
+        raw = b"".join(struct.pack(f"={dimension}d", *vector) for _, vector in block)
+        matches = native.best_seed(raw, queries, dimension, lambda _: None)
+        if type(matches) is not list or len(matches) != len(block):
+            raise ValueError("invalid_visual_kernel_result")
+        for index, match in enumerate(matches):
+            if (type(match) is not tuple or len(match) != 3
+                    or type(match[0]) is not int or match[0] != index
+                    or type(match[1]) is not int or not 0 <= match[1] < len(seed_ids)
+                    or type(match[2]) is not float or not math.isfinite(match[2])):
+                raise ValueError("invalid_visual_kernel_result")
+            candidate_id = block[index][0]
+            ranked.append((match[2], int(candidate_id), candidate_id, seed_ids[match[1]]))
+    return ranked
+
+
 def rank_visual_candidates(
     authorization: AuthorizationSnapshot,
     *,
@@ -267,23 +295,27 @@ def rank_visual_candidates(
                     or seed_record.checksum_sha256 != candidate_record.checksum_sha256):
                 return UNAVAILABLE
 
-        ranked = []
-        for candidate_id, vector in candidates.items():
-            if candidate_id in seeds:
-                continue
-            best_score = None
-            best_seed = None
-            for seed_id, seed_vector in seeds.items():
-                score = _score(seed_vector, vector)
-                if (best_score is None or score > best_score
-                        or score == best_score and int(seed_id) < int(best_seed)):
-                    best_score, best_seed = score, seed_id
-            ranked.append((best_score, int(candidate_id), candidate_id, best_seed))
-
+        native = _visual_backend()
+        if native is None or len(seeds) == 1:
+            # A single seed has no measured bridge win; retain the reference loop.
+            ranked = []
+            for candidate_id, vector in candidates.items():
+                if candidate_id in seeds:
+                    continue
+                best_score = None
+                best_seed = None
+                for seed_id, seed_vector in seeds.items():
+                    score = _score(seed_vector, vector)
+                    if (best_score is None or score > best_score
+                            or score == best_score and int(seed_id) < int(best_seed)):
+                        best_score, best_seed = score, seed_id
+                ranked.append((best_score, int(candidate_id), candidate_id, best_seed))
+        else:
+            ranked = _native_rank(native, seeds, candidates, expected_identity.dimension)
         ranked.sort(key=lambda item: (-item[0], item[1]))
         return RankingResult("ready", tuple(
             VisualCandidate(asset_id, seed_id)
             for _score_value, _numeric_id, asset_id, seed_id in ranked[:MAX_RESULTS]
         ))
-    except (TypeError, ValueError, OverflowError, RecursionError):
+    except (TypeError, ValueError, OverflowError, RecursionError, struct.error):
         return UNAVAILABLE

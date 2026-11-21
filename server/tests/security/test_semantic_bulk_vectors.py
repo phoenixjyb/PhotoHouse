@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import operator
+import os
 from pathlib import Path
 import struct
 import sys
@@ -159,6 +160,7 @@ class SemanticBulkVectorTests(unittest.TestCase):
         with self.assertRaises(BulkVectorUnavailable):
             changed_store.snapshot(records, library_id="family-a")
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX symlink fixture; native Windows reparse checks are separate')
     def test_source_file_symlink_root_change_and_failed_build_leave_no_final(self):
         ident = identity()
         record = self.source(ident, 1, "a", (1.0, 0.0))
@@ -197,13 +199,18 @@ class SemanticBulkVectorTests(unittest.TestCase):
                     oversized.truncate(MAX_BULK_BYTES + 1)
                 store.snapshot(records, library_id="family-a")
 
-    def test_bulk_path_must_stay_private_regular_and_unaliased(self):
+    def test_bulk_path_hardlink_is_refused(self):
         store, records = self.build(((1, "a", (1.0, 0.0)),))
         alias = self.base / "hardlink.bulk"
         alias.hardlink_to(self.out)
         with self.assertRaises(BulkVectorUnavailable):
             store.snapshot(records, library_id="family-a")
         alias.unlink()
+        self.assertEqual(store.snapshot(records, library_id="family-a").rank((1.0, 0.0), ("1",)), (("1", 1.0),))
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX mode/symlink fixture; Windows checks real DACLs')
+    def test_bulk_path_must_stay_private_regular_and_unaliased(self):
+        store, records = self.build(((1, "a", (1.0, 0.0)),))
         self.out.chmod(0o644)
         with self.assertRaises(BulkVectorUnavailable):
             store.snapshot(records, library_id="family-a")

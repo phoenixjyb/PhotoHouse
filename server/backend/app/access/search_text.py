@@ -86,14 +86,37 @@ def _tokens(value: str) -> tuple[str, ...]:
         token = match.group(0)
         # Chinese text commonly arrives without spaces. Character units provide
         # a stable coverage signal while substring matching remains authoritative.
-        if _CJK.search(token):
-            tokens.extend(char for char in token if _CJK.fullmatch(char))
-            remainder = "".join(char for char in token if not _CJK.fullmatch(char))
+        characters = _CJK.findall(token)
+        if characters:
+            tokens.extend(characters)
+            remainder = _CJK.sub("", token)
             if remainder:
                 tokens.append(remainder)
         else:
             tokens.append(token)
     return tuple(tokens)
+
+
+class TextQueryCache:
+    """One reader's literal query tokens; never stores source text or results.
+
+    Entries are immutable and replaced together. Returning the local entry keeps
+    a simultaneous different query from mixing a phrase with another token set.
+    Tokens are prepared lazily after the existing source cancellation check and
+    literal eligibility test, so a query with no matching source does no work.
+    """
+
+    __slots__ = ("_entry",)
+
+    def __init__(self):
+        self._entry = None
+
+    def tokens_for(self, phrase: str) -> tuple[str, ...]:
+        entry = self._entry
+        if entry is None or entry[0] != phrase:
+            entry = (phrase, _tokens(phrase))
+            self._entry = entry
+        return entry[1]
 
 
 def _has_whole_phrase_boundary(content: str, phrase: str) -> bool:
@@ -111,8 +134,9 @@ def _has_whole_phrase_boundary(content: str, phrase: str) -> bool:
         offset = start + 1
 
 
-def _coverage(content: str, phrase: str) -> int:
-    query_tokens = _tokens(phrase)
+def _coverage(content: str, phrase: str, query_tokens=None) -> int:
+    if query_tokens is None:
+        query_tokens = _tokens(phrase)
     if not query_tokens:
         return 0
     available = set(_tokens(content))
@@ -121,7 +145,8 @@ def _coverage(content: str, phrase: str) -> int:
 
 
 def match_text(row: Mapping, normalized_filters: Mapping,
-               check: Callable[[], None] = lambda: None) -> tuple[bool, list, tuple[int, ...]]:
+               check: Callable[[], None] = lambda: None, *,
+               query_cache: TextQueryCache | None = None) -> tuple[bool, list, tuple[int, ...]]:
     """Match literal text and return bounded provenance plus quality metadata.
 
     `normalized_filters` should come from `normalize_filters`, and
@@ -138,17 +163,21 @@ def match_text(row: Mapping, normalized_filters: Mapping,
     reasons = []
     best = None
     authored = 0
+    query_tokens = None
     if type(sources) not in (tuple, list):
         sources = ()
     for source in sources:
         check()
         if type(source) is not NormalizedSource or phrase not in source.normalized_text:
             continue
+        if query_tokens is None:
+            query_tokens = (query_cache.tokens_for(phrase)
+                            if type(query_cache) is TextQueryCache else _tokens(phrase))
         if len(reasons) < MAX_MATCH_REASONS:
             reasons.append(source.reason())
         authored = max(authored, int(source.source in _AUTHORED_SOURCES))
         candidate = (
-            _coverage(source.normalized_text, phrase),
+            _coverage(source.normalized_text, phrase, query_tokens),
             int(_has_whole_phrase_boundary(source.normalized_text, phrase)),
             -len(source.normalized_text),
         )

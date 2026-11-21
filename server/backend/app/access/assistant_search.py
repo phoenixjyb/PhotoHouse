@@ -69,6 +69,7 @@ class AssistantSearchReads(d.DiscoveryReads):
         self._check = lambda: None
         self._prepared_description = None
         self._prepared_description_key = None
+        self._text_query_cache = search_text.TextQueryCache()
 
     def _extra_source(self, index, source, read, check):
         # Scope only IDs first, then read captions in primary-key order. This
@@ -181,7 +182,8 @@ class AssistantSearchReads(d.DiscoveryReads):
         if row and ('text' in filters or 'descriptive' in filters) and '_normalized_sources' not in row:
             row['_normalized_sources'] = search_text.normalize_sources(row['text_sources'], self._check)
         text_match, text_reasons, text_quality = search_text.match_text(
-            {'text_sources': row.get('_normalized_sources', ())} if row else {}, filters, self._check)
+            {'text_sources': row.get('_normalized_sources', ())} if row else {}, filters, self._check,
+            query_cache=self._text_query_cache)
         if not text_match:
             return False, []
         description_match = True
