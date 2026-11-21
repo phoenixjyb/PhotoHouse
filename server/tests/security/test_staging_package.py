@@ -15,6 +15,42 @@ import build_staging_package as package
 
 
 class StagingPackageTests(unittest.TestCase):
+    def test_packaged_optional_kernels_import_and_keep_python_fallback(self):
+        """A release archive must contain transitive adapter/reference packages."""
+        root = Path(package.__file__).resolve().parents[1]
+        files = {name: (root / name).read_bytes() for name in package.FILES}
+        raw = package.package_bytes('a' * 40, files)
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary).resolve()
+            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                archive.extractall(destination)
+            program = '''import json, os, struct, sys
+sys.path.insert(0, sys.argv[1])
+from app.access.photo_stack_index import build_library_photo_stacks
+from app.access.vector_kernel_reference import run_batch
+from app.access.vector_acceleration import backend
+rows = [(i, 'image/jpeg', 'generated', 1, 1, '2026-10-22T08:00:00Z',
+         '0000000000000000', None, None) for i in (1, 2)]
+assert build_library_photo_stacks(rows)[0]['asset_ids'] == ['1', '2']
+assert backend() is None
+one = struct.pack('<dd', 1, 0).hex()
+assert bytes.fromhex(run_batch(json.dumps({'op':'score', 'dimension':2,
+    'byteorder':'little', 'data':one, 'query':one}))) == struct.pack('<d', 1)
+os.environ['PHOTOHOUSE_PHOTO_STACK_ENGINE'] = 'rust'
+try:
+    build_library_photo_stacks(rows)
+except RuntimeError as error:
+    assert 'selected but unavailable' in str(error)
+else:
+    raise AssertionError('source-only archive silently enabled a native dependency')
+print('packaged-adapters-and-fallback-pass')
+'''
+            result = subprocess.run(
+                [sys.executable, '-I', '-S', '-B', '-c', program,
+                 str(destination / 'backend')],
+                capture_output=True, text=True, timeout=20, check=True)
+            self.assertEqual(result.stdout.strip(), 'packaged-adapters-and-fallback-pass')
+
     def test_curated_runtime_dependency_and_contract_closure_is_allowlisted(self):
         required = {
             'backend/app/work_storage.py',
