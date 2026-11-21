@@ -104,6 +104,13 @@ fn read64(row: &[u8; 8], little: bool) -> f64 {
         f64::from_be_bytes(*row)
     }
 }
+fn read_values(raw: &[u8], little: bool) -> Vec<f64> {
+    raw.as_chunks::<8>()
+        .0
+        .iter()
+        .map(|v| read64(v, little))
+        .collect()
+}
 fn push64(out: &mut Vec<u8>, value: f64, little: bool) {
     out.extend_from_slice(&if little {
         value.to_le_bytes()
@@ -170,12 +177,7 @@ impl Kernel {
         {
             return Err(invalid());
         }
-        let query: Vec<f64> = query
-            .as_chunks::<8>()
-            .0
-            .iter()
-            .map(|x| read64(x, little))
-            .collect();
+        let query = read_values(query, little);
         if query.iter().any(|x| !x.is_finite()) {
             return Err(invalid());
         }
@@ -191,6 +193,51 @@ impl Kernel {
             result.push((index, sum.total()?));
         }
         Ok(result)
+    }
+    /// Queries arrive in numeric seed-ID order; equal scores retain the first.
+    pub fn best_seed(
+        raw: &[u8],
+        queries: &[u8],
+        dimension: usize,
+        little: bool,
+        observe: &mut dyn FnMut(usize) -> Result<(), String>,
+    ) -> Result<Vec<(usize, usize, f64)>, String> {
+        if !(1..=4096).contains(&dimension)
+            || raw.len() > MAX
+            || !raw.len().is_multiple_of(dimension * 8)
+            || raw.len() / (dimension * 8) > 512
+            || !queries.len().is_multiple_of(dimension * 8)
+            || !(1..=24).contains(&(queries.len() / (dimension * 8)))
+        {
+            return Err(invalid());
+        }
+        let queries = read_values(queries, little);
+        if queries.iter().any(|v| !v.is_finite()) {
+            return Err(invalid());
+        }
+        let mut output = Vec::with_capacity(raw.len() / (dimension * 8));
+        for (row_index, row) in raw.chunks_exact(dimension * 8).enumerate() {
+            observe(row_index)?;
+            let values = read_values(row, little);
+            if values.iter().any(|v| !v.is_finite()) {
+                return Err(invalid());
+            }
+            let mut best: Option<(usize, f64)> = None;
+            for (query_index, query) in queries.chunks_exact(dimension).enumerate() {
+                let mut sum = Sum::default();
+                for (left, right) in values.iter().zip(query) {
+                    sum.add(left * right)?;
+                }
+                let score = sum.total()?;
+                if best.is_none_or(|(_, previous)| score > previous) {
+                    best = Some((query_index, score));
+                }
+            }
+            // Query-count admission above guarantees a nonempty best value.
+            let (seed, score) = best.ok_or_else(invalid)?;
+            output.push((row_index, seed, score));
+        }
+        Ok(output)
     }
 }
 /// The portable characterization envelope; production calls the byte-buffer API.
@@ -233,6 +280,20 @@ pub fn run_batch(payload: String) -> Result<String, String> {
             })
             .map(|x| hex(&x))
         }
+        Some("best_seed") => {
+            let queries = decode(text("query")?)?;
+            let result = Kernel::best_seed(&raw, &queries, dimension, little, &mut |_| Ok(()))?;
+            let mut out = Vec::with_capacity(result.len() * 12);
+            for (_, seed, score) in result {
+                out.extend_from_slice(&if little {
+                    (seed as u32).to_le_bytes()
+                } else {
+                    (seed as u32).to_be_bytes()
+                });
+                push64(&mut out, score, little);
+            }
+            Ok(hex(&out))
+        }
         Some("score") => {
             let query = decode(text("query")?)?;
             let result = Kernel::score(&raw, &query, dimension, little, &mut |_| Ok(true))?;
@@ -253,6 +314,12 @@ mod tests {
         assert!(Kernel::canonicalize(&[0; 8], 2, true, &mut |_| Err("cancel".into())).is_err());
         assert!(Kernel::score(&[0; 8], &[0; 8], 0, true, &mut |_| Ok(true)).is_err());
         assert!(decode("FF").is_err());
+    }
+    #[test]
+    fn best_seed_refuses_and_cancels() {
+        let bytes = [0; 8];
+        assert!(Kernel::best_seed(&bytes, &bytes, 0, true, &mut |_| Ok(())).is_err());
+        assert!(Kernel::best_seed(&bytes, &bytes, 1, true, &mut |_| Err("cancel".into())).is_err());
     }
     #[test]
     fn accurate_cancellation_and_half_even() -> Result<(), String> {

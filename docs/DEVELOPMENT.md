@@ -3016,4 +3016,7 @@ deployment and proposal import retain their independent gates.
 The default CPU application retains Python/NumPy. For the separate Rust vector
 kernel, build and validate the opt-in extension with the commands and exact
 compatibility boundaries in [RUST_VECTOR_KERNEL.md](RUST_VECTOR_KERNEL.md).
+Multi-photo visual ranking and grouping proposals have a separate opt-in
+selector; see [RUST_VISUAL_SCORING.md](RUST_VISUAL_SCORING.md) for the scoring
+boundary, focused checks and measured limits.
 Local measurements do not activate a Windows runtime; GitHub Actions stays paused.

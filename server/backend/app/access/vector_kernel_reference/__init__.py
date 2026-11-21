@@ -77,4 +77,27 @@ def run_batch(payload: str) -> str:
         for row in struct.iter_unpack(f"{code}{dimension}d", raw):
             result.extend(struct.pack(code + "d", math.fsum(a * b for a, b in zip(query, row))))
         return result.hex()
+    if data.get("op") == "best_seed":
+        if set(data) != {"op", "dimension", "byteorder", "data", "query"}:
+            _invalid()
+        query_raw = _bytes(data["query"])
+        row_bytes = dimension * 8
+        if (len(raw) % row_bytes or len(raw) // row_bytes > 512
+                or len(query_raw) % row_bytes
+                or not 1 <= len(query_raw) // row_bytes <= 24):
+            _invalid()
+        queries = tuple(struct.iter_unpack(f"{code}{dimension}d", query_raw))
+        if not all(math.isfinite(v) for row in queries for v in row):
+            _invalid()
+        result = bytearray()
+        for row in struct.iter_unpack(f"{code}{dimension}d", raw):
+            if not all(map(math.isfinite, row)):
+                _invalid()
+            best = None
+            for index, query in enumerate(queries):
+                score = math.fsum(a * b for a, b in zip(query, row))
+                if best is None or score > best[1]:
+                    best = (index, score)
+            result.extend(struct.pack(code + "Id", *best))
+        return result.hex()
     _invalid()

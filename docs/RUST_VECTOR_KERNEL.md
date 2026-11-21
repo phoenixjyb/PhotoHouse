@@ -1,9 +1,10 @@
 # Optional Rust vector kernel
 
 The first consumer is bulk semantic Search: cold canonical matrix construction
-and warm exact ranking. The same immutable-buffer core can support other rankers,
-but visual suggestions and non-bulk semantic paths still use their existing
-Python implementations. No model, provider, vector space, search eligibility,
+and warm exact ranking. The same immutable-buffer core now also supports an
+independently selected [multi-photo visual scorer](RUST_VISUAL_SCORING.md).
+Non-bulk semantic paths retain their existing Python implementations.
+No model, provider, vector space, search eligibility,
 authorization, database schema, file format or feature setting changes here.
 
 Python is the default. The extension is not installed or activated by importing
