@@ -47,7 +47,7 @@ API_TESTS = (
     "test_semantic_policy_separation.py",
     "test_multilingual_index_provider.py",
     "test_multilingual_library_coverage.py", "test_semantic_loopback_network.py",
-    "test_multilingual_index_collection.py", "test_semantic_streaming_search.py", "test_semantic_bulk_vectors.py", "test_semantic_bulk_search.py",
+    "test_multilingual_index_collection.py", "test_semantic_streaming_search.py", "test_semantic_rust_reuse.py", "test_semantic_bulk_vectors.py", "test_semantic_bulk_search.py",
     "test_semantic_artifact_field_extraction.py",
     "test_semantic_eligibility.py", "test_semantic_eligibility_search.py",
     "test_semantic_request_snapshot.py",

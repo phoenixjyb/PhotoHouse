@@ -1,5 +1,10 @@
 # Optional Rust vector kernel
 
+The later [non-bulk semantic consumers](SEMANTIC_RUST_REUSE.md) reuse the same
+binary for per-record normalization with the original cancellation boundaries.
+Their local measurements and pending Windows delivery are separate from this
+kernel's original qualification.
+
 The first consumer is bulk semantic Search: cold canonical matrix construction
 and warm exact ranking. The same immutable-buffer core now also supports an
 independently selected [multi-photo visual scorer](RUST_VISUAL_SCORING.md).

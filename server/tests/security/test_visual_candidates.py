@@ -175,21 +175,22 @@ class VisualCandidateRankingTests(unittest.TestCase):
         replacement = UnexpectedConversion()
         source = [1.0]
         def mutate_after_check(values):
-            result = builtins.any(values)
+            result = builtins.all(values)
             source[0] = replacement
             return result
-        with patch.object(candidates, 'any', mutate_after_check, create=True):
+        with patch.object(candidates, 'all', mutate_after_check, create=True):
             self.assertEqual(bytes.fromhex('3f800000'), _packed_vector(source))
+        self.assertIs(source[0], replacement)
         self.assertFalse(hasattr(replacement, 'fail'))
 
     def test_checksum_dimension_is_bound_to_snapshot_when_original_list_grows(self):
         source = [1.0]
         expected = canonical_vector_checksum((1.0,))
         def grow_after_check(values):
-            result = builtins.any(values)
+            result = builtins.all(values)
             source.append(2.0)
             return result
-        with patch.object(candidates, 'any', grow_after_check, create=True):
+        with patch.object(candidates, 'all', grow_after_check, create=True):
             self.assertEqual(expected, canonical_vector_checksum(source))
         self.assertGreater(len(source), 1)
 

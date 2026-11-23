@@ -338,9 +338,15 @@ def rank_semantic(
                 or type(query_vector.checksum_sha256) is not str
                 or _SHA256.fullmatch(query_vector.checksum_sha256) is None):
             raise SemanticUnavailable()
+        from .vector_acceleration import backend
+        native = backend()
+        def canonical(record, identity):
+            if native is None:
+                return _canonical_components(record, identity)
+            return _canonical_components(record, identity, kernel=native)
         query_record = VectorRecord("1", binding.text_identity, query_vector.vector,
                                     query_vector.checksum_sha256)
-        query = _canonical_components(query_record, binding.text_identity)
+        query = canonical(query_record, binding.text_identity)
         _checked(check)
         ids: set[str] = set()
         vectors: list[tuple[str, tuple[float, ...]]] = []
@@ -350,7 +356,7 @@ def rank_semantic(
                     or record.asset_id in ids):
                 raise SemanticUnavailable()
             ids.add(record.asset_id)
-            candidate_vector = _canonical_components(record, binding.image_identity)
+            candidate_vector = canonical(record, binding.image_identity)
             _checked(check)
             vectors.append((record.asset_id, candidate_vector))
         _checked(check)

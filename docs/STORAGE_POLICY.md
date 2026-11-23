@@ -93,9 +93,14 @@ It also supports:
 
 ## Remaining conversions and acceptance boundaries
 
-This is the first storage milestone, not universal prevention of C: growth.
-The ordinary `tools/check.py` launch environment, Android/package-manager caches,
-downloads and POSIX agent-probe scratch still need integration. Existing shared
+This is not universal prevention of C: growth. On the native workstation,
+`tools/check.py` now routes its API, memory, Windows CPU and Web generated-data
+profiles through the existing D: admission and owned Job. Successful scratch is
+retired only after its manifest and closure are verified; three successful runs
+are retained. Failed or uncertain runs are preserved. This is a source contract,
+not a fresh inventory or a claim that every historical launcher uses it.
+Android/package-manager caches, downloads and POSIX agent-probe scratch still
+need integration. Existing shared
 tools/models require version/hash/layout verification before reuse; this change
 does not download or relocate them.
 
@@ -110,3 +115,27 @@ Dependency-aware archival and a fresh remaining-C: inventory are later milestone
 Current runtime, known-good rollback, failed/uncertain operations and retained
 dependencies remain protected. GitHub Actions stays disabled; installation and
 generated-file tests do not authorize production operations.
+
+## Reuse Rust build storage without copying worktrees or databases
+
+The literal and vector build helpers accept `--target-dir`; otherwise they honor
+`CARGO_TARGET_DIR`, then retain the legacy `<crate>/target` default. Both Cargo
+and artifact readback use the same selected path. Previously an inherited Cargo
+target could redirect the build while the helper read a stale legacy output.
+Importing either helper no longer starts a build.
+
+For new development, explicitly select one reviewed cache on D: for the existing
+toolchain instead of generating a cache for every worktree. The helpers keep
+`--locked --offline` and do not download dependencies, copy a database, create
+backup sets or install into a live environment. Windows source, target, Cargo
+cache and temporary directories must be direct D: paths; existing components,
+actual non-system fixed-volume identity and private storage are checked before
+Cargo starts. The build operation still owns peak-space/resource admission and
+cleanup; path validation is not a quota or a new native qualification.
+
+This change does not relocate old caches, change global environment settings,
+or delete old outputs. Keep required rollback artifacts and the original
+failure records. Retire a historical directory only after identifying its
+owner, current dependencies and active processes; an old date alone is not proof
+that it is safe to delete. Reuse the already qualified binaries for qualification
+of a new caller whenever the kernel itself has not changed.

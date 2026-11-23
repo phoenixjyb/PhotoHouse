@@ -122,6 +122,9 @@ def canonical_vector_checksum(vector: tuple[float, ...] | list[float]) -> str:
     return hashlib.sha256(_CHECKSUM_PREFIX + struct.pack(">I", len(packed) // 4) + packed).hexdigest()
 
 
+_COMPONENT_TYPES = frozenset((int, float))
+
+
 def _packed_vector(vector: tuple[float, ...] | list[float]) -> bytes:
     if type(vector) not in (tuple, list) or not 1 <= len(vector) <= MAX_DIMENSION:
         raise ValueError("invalid_vector")
@@ -130,7 +133,9 @@ def _packed_vector(vector: tuple[float, ...] | list[float]) -> bytes:
     vector = vector if type(vector) is tuple else tuple(vector[:MAX_DIMENSION + 1])
     if not 1 <= len(vector) <= MAX_DIMENSION:
         raise ValueError("invalid_vector")
-    if any(type(component) not in (int, float) for component in vector):
+    # Keep exact builtin types (including refusal of bool and numeric subclasses)
+    # while avoiding a Python generator frame for every component.
+    if not all(map(_COMPONENT_TYPES.__contains__, map(type, vector))):
         raise ValueError("invalid_vector")
     try:
         # struct performs builtin int/float conversion while packing, avoiding
@@ -143,13 +148,34 @@ def _packed_vector(vector: tuple[float, ...] | list[float]) -> bytes:
     return packed
 
 
-def _canonical_components(record: VectorRecord, identity: VectorSpaceIdentity) -> tuple[float, ...]:
+def _canonical_components(record: VectorRecord, identity: VectorSpaceIdentity, *,
+                          kernel=None) -> tuple[float, ...]:
     if (type(record) is not VectorRecord or type(record.identity) is not VectorSpaceIdentity
             or record.identity != identity or type(record.checksum_sha256) is not str
             or _SHA256.fullmatch(record.checksum_sha256) is None
             or type(record.vector) is not tuple or len(record.vector) != identity.dimension):
         raise ValueError("invalid_vector_record")
     packed = _packed_vector(record.vector)
+    if kernel is not None:
+        # Reuse the existing qualified byte-buffer kernel. Call it for this row
+        # only: callers retain their original per-row cancellation/mutation
+        # boundaries instead of freezing a later batch before those checks.
+        observed = []
+        def checksum(index):
+            if type(index) is not int or index != 0 or observed:
+                raise ValueError("invalid_vector_record")
+            observed.append(index)
+            return record.checksum_sha256
+        try:
+            raw = kernel.canonicalize(packed, len(record.vector), checksum)
+            if type(raw) is not bytes or len(raw) != len(packed) * 2 or observed != [0]:
+                raise ValueError("invalid_vector_record")
+            values = struct.unpack(f"={len(packed) // 4}d", raw)
+            if not all(map(math.isfinite, values)):
+                raise ValueError("invalid_vector_record")
+            return values
+        except (AttributeError, TypeError, ValueError, OverflowError, struct.error):
+            raise ValueError("invalid_vector_record") from None
     checksum = hashlib.sha256(
         _CHECKSUM_PREFIX + struct.pack(">I", len(record.vector)) + packed
     ).hexdigest()
