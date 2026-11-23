@@ -118,7 +118,10 @@ let browser,context,page;
   });
   const pausedPaneHeight=await page.locator('#assistant-workspace-content').evaluate(node=>node.clientHeight);
   assert(pausedPaneHeight>=80,'paused voice at 200% text retains a usable conversation pane');
-  await page.locator('#assistant-text').focus();assert(await page.locator('#assistant-text').evaluate(node=>{const r=node.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),'large-text paused composer remains keyboard reachable');
+  // Enter the composer from an enabled header control. Refocusing an
+  // already focused textarea after a synthetic layout change does not invoke
+  // native focus scrolling, and is not a keyboard navigation action.
+  await page.locator('#assistant-workspace-close').focus();assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-workspace-close');await page.locator('#assistant-text').focus();const pausedComposer=await page.locator('#assistant-text').evaluate(node=>{const r=node.getBoundingClientRect(),dialog=document.getElementById('assistant-workspace-dialog');return {top:r.top,bottom:r.bottom,viewport:innerHeight,focus:document.activeElement.id,scrollTop:dialog.scrollTop,scrollHeight:dialog.scrollHeight,clientHeight:dialog.clientHeight};});assert(pausedComposer.top>=0&&pausedComposer.bottom<=pausedComposer.viewport,`large-text paused composer remains keyboard reachable ${JSON.stringify(pausedComposer)}`);
   await page.locator('#assistant-send').focus();
   assert(await page.locator('#assistant-send').evaluate(node=>{const r=node.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),'large-text paused Send action stays reachable by keyboard');
   await writeShot('assistant-design-paused-phone-text200.png');

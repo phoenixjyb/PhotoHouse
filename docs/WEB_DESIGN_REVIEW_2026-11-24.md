@@ -16,7 +16,7 @@ The conversation trail now scrolls within the pane that actually owns scrolling.
 
 ## Generated-browser evidence
 
-The final design journey used the private-workspace ASGI bridge, a synthetic same-origin browser route, generated account/chat data, and generated placeholder SVG thumbnails only for fixture thumbnail requests that returned 404. No household media, model, Windows host, or microphone was used. The private `design-reflow-final/result.json` receipt records these measured states:
+The final design journey used the private-workspace ASGI bridge, a synthetic same-origin browser route, generated account/chat data, and generated placeholder SVG thumbnails only for fixture thumbnail requests that returned 404. No household media, model, Windows host, or microphone was used. The private `design-reflow-keyboard/result.json` receipt records these measured states:
 
 | View | Page width | Dialog | Composer footer | Minimum sampled small-text contrast | Enabled control minimum height |
 | --- | ---: | --- | --- | ---: | ---: |
@@ -25,7 +25,7 @@ The final design journey used the private-workspace ASGI bridge, a synthetic sam
 | Phone, 320 × 720, 150% root text | 320 px; no horizontal overflow | 320 × 720 px | Bottom at viewport edge; 18 px padding | 5.33:1 | 44 px |
 | Phone, 320 × 720, 200% root text | 320 px; no horizontal overflow | 320 × 720 px | Bottom at viewport edge; 24 px padding | 5.33:1 | 44 px |
 
-The companion private `design-reflow-final.log` records PASS for the native dialog name/heading, keyboard focus and Escape return, two explicit typed follow-ups in one private conversation, and reduced-motion/forced-colors focus checks. The forced-colors computed focus outline was solid and 3 px. The 150% and 200% states enlarge the root font size. They are text-resize checks, not browser zoom or device-scale-factor tests. The final receipt lists sign-in, library, conversation, forced-colors and generated paused-voice styling screenshots. Sign-in and the library also passed 320px/200% root-text reflow. The generated paused layout retained a 128px conversation pane and keyboard-reachable typing/Send actions without microphone access.
+The companion private `design-reflow-keyboard.log` records PASS for the native dialog name/heading, keyboard focus and Escape return, two explicit typed follow-ups in one private conversation, and reduced-motion/forced-colors focus checks. The forced-colors computed focus outline was solid and 3 px. The 150% and 200% states enlarge the root font size. They are text-resize checks, not browser zoom or device-scale-factor tests. The final receipt lists sign-in, library, conversation, forced-colors and generated paused-voice styling screenshots. Sign-in and the library also passed 320px/200% root-text reflow. The generated paused layout retained a 128px conversation pane and keyboard-reachable typing/Send actions without microphone access.
 
 The private `trail-r6.log` reports PASS for the eight-turn Chinese trail at 390 px with 150% root text, for the actual modal scroll pane and older-message position preservation, for “Jump to latest” and keyboard scrolling, and for English localization, narrow layout, lazy restoration, draft preservation, and no automatic replay. It also records delayed-response and account-scope protections.
 
