@@ -13,6 +13,11 @@ PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家
 生成数据浏览器检查通过；这不代表新版已部署到 Windows，也不替代家庭实际试用。
 详见[设计审查与交付边界](docs/WEB_DESIGN_REVIEW_2026-11-24.md)。GitHub CI 继续暂停。
 
+两次新版界面部署被现有启动校验的 PowerShell 查询超时阻断，均已回滚。
+[查询预算修复](docs/WINDOWS_PLAYBACK_QUERY_BUDGET.md)通过 19 项本地测试与 8 次 Windows 只读查询，
+其中一次实际耗时 35 秒；新上限为 45 秒，仍受原有 900 秒总预算约束。
+该修复尚未安装到 SYSTEM 启动链，新界面尚未上线。回滚后的分组定时任务已自然运行并返回结果 0。
+
 ## 当前交付：2026-10-29
 
 [PR #111](https://github.com/phoenixjyb/PhotoHouse/pull/111) 已合并到 main

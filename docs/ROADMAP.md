@@ -44,6 +44,12 @@ this file retain the date and scope of their original evidence.
   failed native playback startup and was safely rolled back; the new UI is not
   live while that issue is being resolved.
 
+The [playback task-query budget repair](WINDOWS_PLAYBACK_QUERY_BUDGET.md) passed
+19 focused local cases and eight exact Windows queries, including one 35-second
+query. It remains separate from live SYSTEM startup adoption and UI delivery.
+A post-rollback grouping task observation found the expected binding and a
+natural completed run with result 0; its bounded status-file scan was incomplete.
+
 Search relevance on real household material, story quality, and in-home
 interaction need family review. Generated fixtures establish software behavior,
 not those product outcomes.
