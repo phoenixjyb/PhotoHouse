@@ -26,7 +26,14 @@ independently reauthorize their own capabilities and current sources.
 ## Family workflow
 
 1. Open the existing story editor, choose up to 24 photos/videos and arrange
-   their chapters. The initial version prepares new, unsaved stories.
+   their chapters. The initial version prepares new, unsaved stories. When the
+   editor opens from selected private-assistant results, the author may
+   explicitly copy the latest user message as a starting point for writing
+   direction. The assistant checks account, library, thread and revision at
+   handoff. This carries one user-authored message only; it does not resume the
+   conversation in the editor. The field is blank by default, never includes
+   assistant wording or full history, and does not overwrite direction already
+   typed.
 2. Opt into chapter source review and check the family notes or captions to use
    for each chapter. An empty choice supplies no evidence; it never means all
    sources. Family wording, family-edited captions and AI observations remain
@@ -91,8 +98,9 @@ service rechecks authority and resolves the same mutation idempotently.
   exercises selection, reference inspection, edits/review, explicit Save,
   ambiguous-save retry, foreign citation rejection, frozen preparation retries,
   changed source choices/revisions, cancellation/expiry, delayed capability
-  negotiation and Chinese/English layout checks. The November 24 increment passed
-  17 generated checkpoints, including original/proposal comparison, keyboard
+  negotiation, scoped assistant-direction opt-in and Chinese/English layout
+  checks. The November 24 increment passed 18 generated checkpoints, including
+  original/proposal comparison, keyboard
   disclosure, enlarged phone reflow and clearing without automatic generation or
   saving. This is local browser evidence, not a Windows/model qualification.
 

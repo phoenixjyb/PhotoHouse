@@ -1952,7 +1952,9 @@
         return;
       }
       // The editor retains its unsaved-work guard and explicit Build/Save steps.
-      const opened=workspace.fromResults(chosen);
+      let direction=null;
+      if(view.privateRoute){try{direction=privateAssistant.storyDirectionCandidate?.()||null;}catch{direction=null;}}
+      const opened=workspace.fromResults(chosen,direction);
       if(opened===true)closeAssistantWorkspace({restoreFocus:false,restoreScroll:false});
       else assistantStoryNotice='assistantStoryNotOpened';
     }catch(error){
@@ -4609,7 +4611,7 @@
       onProposal:proposal=>{void storyWorkspace?.acceptProposal(proposal);},
       onOpenStory:value=>{if(typeof value==='string')void storyWorkspace?.reopen(value);else storyWorkspace?.openBook(value);},
       onOpenBookStory:context=>storyWorkspace?.openBookStory(context)??false});
-    storyWorkspace=window.PhotoHouseStoryWorkspace({scope:()=>({account:state.profile?.account_id,library:state.library,language:state.language,locked:state.locked}),
+    storyWorkspace=window.PhotoHouseStoryWorkspace({scope:()=>({account:state.profile?.account_id,library:state.library,generation:state.generation,language:state.language,locked:state.locked}),
       sourceAccessCheck:async owner=>{const epoch=state.generation;try{const profile=await request('/auth/session',{epoch});if(stale(epoch)||state.profile?.account_id!==owner.account||state.library!==owner.library)return null;if(typeof profile?.account_id!=='string'||!Array.isArray(profile.memberships))return null;return profile.account_id===owner.account&&profile.memberships.some(member=>member.library_id===owner.library&&member.available===true);}catch(error){if(error.status===401)throw error;return null;}},
       community:memoryCommunity,
       capture:annotationCapture,

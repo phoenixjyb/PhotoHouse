@@ -22,7 +22,7 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  await ready;
  browser=await chromium.launch({headless:true,...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
  context=await browser.newContext({viewport:{width:1280,height:960},serviceWorkers:'block'});
- await context.addInitScript(()=>{let factory;Object.defineProperty(window,'PhotoHouseStoryWorkspace',{configurable:true,get:()=>factory,set:value=>{factory=config=>{let language=null;const scope=config.scope;const instance=value({...config,scope:()=>({...scope(),...(language?{language}:{})})});window.__draftTestLanguage=next=>{language=next;instance.translate();};return instance;};}});});
+ await context.addInitScript(()=>{let factory;Object.defineProperty(window,'PhotoHouseStoryWorkspace',{configurable:true,get:()=>factory,set:value=>{factory=config=>{let language=null;const scope=config.scope;const instance=value({...config,scope:()=>({...scope(),...(language?{language}:{})})});window.__draftTestLanguage=next=>{language=next;instance.translate();};window.__draftTestFromResults=candidate=>instance.fromResults([{id:'101',kind:'image'}],candidate);window.__draftTestCandidate=(overrides={})=>({version:1,text:'写成温和的回忆，提到 Jane 第一次看见河边。',account:scope().account,library:scope().library,generation:scope().generation??null,thread_id:'00000000-0000-4000-8000-000000000001',revision:1,...overrides});return instance;};}});});
  await context.route('**/*',async route=>{
   const request=route.request(),url=new URL(request.url());
   if(url.origin!=='https://photohouse.test'){external.push(url.origin);await route.abort();return;}
@@ -62,13 +62,28 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  assert.equal(await panel().isVisible(),false);assert.equal(prepareRows().length,0);pass('Default-off hides AI controls and never prepares');
  assert.equal((await rpc({command:'provider-status'})).generation_calls,0);
  await page.locator('#story-workspace-close').click();await rpc({command:'mutate',scenario:'enable-draft-ui'});
- const capabilityGate={arrived:delay(),release:delay()};heldCapability=capabilityGate;await open();await capabilityGate.arrived.promise;
+ await page.evaluate(()=>window.__draftTestFromResults(window.__draftTestCandidate({account:'another-account'})));await page.locator('#story-build').click();await page.locator('.story-chapter-card textarea[maxlength="6000"]').first().waitFor();await chooseSources();
+ assert.equal(await page.locator('.story-draft-use-direction').count(),0,'a direction from another account is refused');assert.equal(await page.locator('.story-draft-direction').inputValue(),'');
+ await page.locator('#story-workspace-close').click();await page.waitForFunction(()=>document.querySelector('#story-workspace').open===false);
+ await page.evaluate(()=>window.__draftTestFromResults(window.__draftTestCandidate({generation:(window.__draftTestCandidate().generation||0)+1})));await page.locator('#story-build').click();await page.locator('.story-chapter-card textarea[maxlength="6000"]').first().waitFor();await chooseSources();
+ assert.equal(await page.locator('.story-draft-use-direction').count(),0,'a candidate from another app generation is refused');assert.equal(await page.locator('.story-draft-direction').inputValue(),'');
+ await page.locator('#story-workspace-close').click();await page.waitForFunction(()=>document.querySelector('#story-workspace').open===false);
+ await page.evaluate(()=>window.__draftTestFromResults(window.__draftTestCandidate({text:'bad\u0000direction'})));await page.locator('#story-build').click();await page.locator('.story-chapter-card textarea[maxlength="6000"]').first().waitFor();await chooseSources();
+ assert.equal(await page.locator('.story-draft-use-direction').count(),0,'a control character in the candidate is refused');assert.equal(await page.locator('.story-draft-direction').inputValue(),'');
+ await page.locator('#story-workspace-close').click();await page.waitForFunction(()=>document.querySelector('#story-workspace').open===false);
+ await page.evaluate(()=>window.__draftTestFromResults(window.__draftTestCandidate()));await page.locator('#story-build').click();await page.locator('.story-chapter-card textarea[maxlength="6000"]').first().waitFor();await chooseSources();
+ const directionField=page.locator('.story-draft-direction'),useRecentDirection=page.locator('.story-draft-use-direction');assert.equal(await directionField.inputValue(),'');assert.equal(await useRecentDirection.isVisible(),true,'the current scoped user message is opt-in and blank by default');
+ await directionField.fill('手动输入的方向');await useRecentDirection.click();assert.equal(await directionField.inputValue(),'手动输入的方向','the handoff never overwrites author-entered direction');
+ await directionField.fill('');await useRecentDirection.click();assert.equal(await directionField.inputValue(),'写成温和的回忆，提到 Jane 第一次看见河边。');
+ assert.equal(prepareRows().length,0);assert.equal((await rpc({command:'provider-status'})).generation_calls,0);pass('Selected-source handoff offers only the scoped user message by explicit choice; blank and mismatched scopes stay blank');
+ await page.locator('#story-workspace-close').click();
+ const capabilityGate={arrived:delay(),release:delay()};heldCapability=capabilityGate;await page.evaluate(()=>window.__draftTestFromResults(window.__draftTestCandidate()));await page.locator('#story-build').click();await capabilityGate.arrived.promise;
  await words().fill('能力检查期间的家人文字。');await words().focus();const chapterField=await words().elementHandle();capabilityGate.release.done();await panel().waitFor();
  assert.equal(await chapterField.evaluate(node=>node===document.activeElement&&node.isConnected&&node.value==='能力检查期间的家人文字。'),true);
  pass('Delayed capability negotiation preserves focused chapter wording');await chooseSources();
- await words().fill('家人自己写下的原话。');await page.locator('.story-draft-direction').fill('保留家人的说法。');
+ await words().fill('家人自己写下的原话。');assert.equal(await page.locator('.story-draft-direction').inputValue(),'');await page.locator('.story-draft-use-direction').click();assert.equal(await page.locator('.story-draft-direction').inputValue(),'写成温和的回忆，提到 Jane 第一次看见河边。');
  const before=writes().length;await prepare();assert.equal(writes().length,before);assert.equal(await page.locator('#story-save-memory').isDisabled(),true);
- const sent=JSON.parse(prepareRows().at(-1).body);assert.equal(sent.selection.source_policy,'chapter_sources_v1');assert.equal(sent.selection.chapters[0].evidence_ids.length,1);assert(sent.selection.chapters[0].evidence_ids[0].startsWith('family-'));assert.equal('sources' in sent,false);assert.equal(sent.author_direction,'保留家人的说法。');
+ const sent=JSON.parse(prepareRows().at(-1).body);assert.equal(sent.selection.source_policy,'chapter_sources_v1');assert.equal(sent.selection.chapters[0].evidence_ids.length,1);assert(sent.selection.chapters[0].evidence_ids[0].startsWith('family-'));assert.equal('sources' in sent,false);assert.equal(sent.author_direction,'写成温和的回忆，提到 Jane 第一次看见河边。');
  assert.equal(await page.locator('.story-draft-direction').inputValue(),sent.author_direction);assert.equal(await page.locator('.story-draft-direction').isDisabled(),true);
  pass('Explicit photo/memory choices prepare a review-only draft through protected ASGI');
  const comparison=page.locator('.story-draft-original').first(),comparisonSummary=comparison.locator('summary');

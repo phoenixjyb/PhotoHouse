@@ -69,6 +69,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   const SOURCE_POLICY='chapter_sources_v1';
   let sourceCapabilities=null,sourceCapabilityEpoch=0,sourceReviewOptedIn=false,sourceProfileLoaded=false;
   const draftPreparation={capability:null,capabilityEpoch:0,pending:null,proposal:null,reviewedFingerprint:null,expiresTimer:null,editing:false,notice:null};
+  let draftDirectionCandidate=null;
   let sourceRefreshEpoch=0,sourceRefreshRequired=false,sourceRefreshPending=false,sourceRefreshNeedsAcknowledgement=false,sourceRefreshAcknowledged=false,sourceRefreshUI=null;
   let dictation=null,dictationEpoch=0;
   let localStore=null,localRecord=null,activeLocalRevision=null,localEpoch=0,localBusy=false,localError=false,localStatus='',localReviewRequired=false,localReviewVisible=false;
@@ -180,8 +181,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   let contributionRefs=null,refsLoadEpoch=0;
   const contributionCandidateViews=new WeakMap();
   const text = key => labels[scope().language==='en'?'en':'zh'][key] || key;
-  Object.assign(labels.zh,{storyDraftHeading:'用已选择的资料准备故事',storyDraftHelp:'只使用已选择的画面和逐章勾选的资料。AI 文字会放入章节正文；故事标题和章节标题仍由你决定。核对后再另行保存。',storyDraftDirection:'写作方向（可选）',storyDraftPrepare:'准备故事草稿',storyDraftCancel:'取消并清除生成内容',storyDraftRetry:'用同一请求重试',storyDraftReview:'我已核对 AI 草稿、章节和引用来源',storyDraftAIProse:'AI 生成文字 · 待核对',storyDraftOriginal:'查看原始文字',storyDraftOriginalEmpty:'原始章节没有文字。',storyDraftQuestions:'AI 提出的回忆问题 · 请核对',sourceFamilyNote:'家人留言',sourceAICaption:'AI 画面说明',sourceFamilyEditedCaption:'家人修改的画面说明',storyDraftNeedSources:'请先启用来源核对，并逐章选择资料；可以留空。',storyDraftWorking:'正在准备故事草稿…',storyDraftReady:'AI 草稿已加入章节正文，请核对内容与引用。',storyDraftReviewRequired:'请先勾选已核对，再明确保存。',storyDraftExpired:'AI 草稿已过期并清除；原有手写内容已恢复。',storyDraftCancelled:'生成草稿已清除；原有手写内容已恢复。',storyDraftFailed:'暂时无法准备草稿。原有章节内容已保留。',storyDraftConflict:'所选资料或故事版本已变化。请刷新并重新核对来源后再准备。',storyDraftCitation:'引用来源',storyDraftExpiry:'草稿有效至',storyDraftUnavailable:'故事草稿准备当前不可用。',storyDraftNoFallback:'不会自动切换服务或重试。'});
-  Object.assign(labels.en,{storyDraftHeading:'Prepare a story from selected sources',storyDraftHelp:'Uses only selected frames and sources checked for each chapter. AI wording goes into chapter bodies; you keep control of the story and chapter titles. Review it before saving.',storyDraftDirection:'Writing direction (optional)',storyDraftPrepare:'Prepare story draft',storyDraftCancel:'Cancel and clear generated wording',storyDraftRetry:'Retry the same request',storyDraftReview:'I reviewed the AI draft, chapters and citations',storyDraftAIProse:'AI-generated wording · pending review',storyDraftOriginal:'View original wording',storyDraftOriginalEmpty:'The original chapter has no wording.',storyDraftQuestions:'AI questions to help recall · review these',sourceFamilyNote:'Family note',sourceAICaption:'AI caption',sourceFamilyEditedCaption:'Family-edited caption',storyDraftNeedSources:'Opt in to source review first, then choose sources per chapter. Choices may be empty.',storyDraftWorking:'Preparing the story draft…',storyDraftReady:'The AI draft is in the chapter fields. Review the wording and citations.',storyDraftReviewRequired:'Check the review box before explicitly saving.',storyDraftExpired:'The AI draft expired and was cleared; your earlier wording was restored.',storyDraftCancelled:'The generated draft was cleared; your earlier wording was restored.',storyDraftFailed:'The draft could not be prepared. Existing chapter wording is preserved.',storyDraftConflict:'Selected sources or story revision changed. Refresh and review sources before preparing again.',storyDraftCitation:'Cited source',storyDraftExpiry:'Draft expires',storyDraftUnavailable:'Story draft preparation is unavailable.',storyDraftNoFallback:'No automatic provider switch or retry will occur.'});
+  Object.assign(labels.zh,{storyDraftHeading:'用已选择的资料准备故事',storyDraftHelp:'只使用已选择的画面和逐章勾选的资料。AI 文字会放入章节正文；故事标题和章节标题仍由你决定。核对后再另行保存。',storyDraftDirection:'写作方向（可选）',storyDraftUseDirection:'将我在助手中的最近消息用作起点',storyDraftDirectionKept:'已复制到写作方向，可继续编辑。',storyDraftDirectionNoOverwrite:'先清空写作方向，再使用助手消息；已有文字未改动。',storyDraftPrepare:'准备故事草稿',storyDraftCancel:'取消并清除生成内容',storyDraftRetry:'用同一请求重试',storyDraftReview:'我已核对 AI 草稿、章节和引用来源',storyDraftAIProse:'AI 生成文字 · 待核对',storyDraftOriginal:'查看原始文字',storyDraftOriginalEmpty:'原始章节没有文字。',storyDraftQuestions:'AI 提出的回忆问题 · 请核对',sourceFamilyNote:'家人留言',sourceAICaption:'AI 画面说明',sourceFamilyEditedCaption:'家人修改的画面说明',storyDraftNeedSources:'请先启用来源核对，并逐章选择资料；可以留空。',storyDraftWorking:'正在准备故事草稿…',storyDraftReady:'AI 草稿已加入章节正文，请核对内容与引用。',storyDraftReviewRequired:'请先勾选已核对，再明确保存。',storyDraftExpired:'AI 草稿已过期并清除；原有手写内容已恢复。',storyDraftCancelled:'生成草稿已清除；原有手写内容已恢复。',storyDraftFailed:'暂时无法准备草稿。原有章节内容已保留。',storyDraftConflict:'所选资料或故事版本已变化。请刷新并重新核对来源后再准备。',storyDraftCitation:'引用来源',storyDraftExpiry:'草稿有效至',storyDraftUnavailable:'故事草稿准备当前不可用。',storyDraftNoFallback:'不会自动切换服务或重试。'});
+  Object.assign(labels.en,{storyDraftHeading:'Prepare a story from selected sources',storyDraftHelp:'Uses only selected frames and sources checked for each chapter. AI wording goes into chapter bodies; you keep control of the story and chapter titles. Review it before saving.',storyDraftDirection:'Writing direction (optional)',storyDraftUseDirection:'Use my latest assistant-chat message as a starting point',storyDraftDirectionKept:'Copied into writing direction; you can edit it.',storyDraftDirectionNoOverwrite:'Clear the writing direction before using your assistant-chat message. Existing text was kept.',storyDraftPrepare:'Prepare story draft',storyDraftCancel:'Cancel and clear generated wording',storyDraftRetry:'Retry the same request',storyDraftReview:'I reviewed the AI draft, chapters and citations',storyDraftAIProse:'AI-generated wording · pending review',storyDraftOriginal:'View original wording',storyDraftOriginalEmpty:'The original chapter has no wording.',storyDraftQuestions:'AI questions to help recall · review these',sourceFamilyNote:'Family note',sourceAICaption:'AI caption',sourceFamilyEditedCaption:'Family-edited caption',storyDraftNeedSources:'Opt in to source review first, then choose sources per chapter. Choices may be empty.',storyDraftWorking:'Preparing the story draft…',storyDraftReady:'The AI draft is in the chapter fields. Review the wording and citations.',storyDraftReviewRequired:'Check the review box before explicitly saving.',storyDraftExpired:'The AI draft expired and was cleared; your earlier wording was restored.',storyDraftCancelled:'The generated draft was cleared; your earlier wording was restored.',storyDraftFailed:'The draft could not be prepared. Existing chapter wording is preserved.',storyDraftConflict:'Selected sources or story revision changed. Refresh and review sources before preparing again.',storyDraftCitation:'Cited source',storyDraftExpiry:'Draft expires',storyDraftUnavailable:'Story draft preparation is unavailable.',storyDraftNoFallback:'No automatic provider switch or retry will occur.'});
   function clearDraftExpiry(){if(draftPreparation.expiresTimer){clearTimeout(draftPreparation.expiresTimer);draftPreparation.expiresTimer=null;}}
   function draftProposalFingerprint(){
     if(!draftPreparation.proposal||!draft)return null;
@@ -210,12 +211,13 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function syncDraftPreparationPanel(){
     const panel=$('story-draft-preparation');if(!panel)return;
     const pending=draftPreparation.pending,proposal=draftPreparation.proposal;
-    const prepare=panel.querySelector('.story-draft-prepare'),cancel=panel.querySelector('.story-draft-cancel'),retry=panel.querySelector('.story-draft-retry'),reviewed=panel.querySelector('.story-draft-reviewed'),direction=panel.querySelector('.story-draft-direction');
+    const prepare=panel.querySelector('.story-draft-prepare'),cancel=panel.querySelector('.story-draft-cancel'),retry=panel.querySelector('.story-draft-retry'),reviewed=panel.querySelector('.story-draft-reviewed'),direction=panel.querySelector('.story-draft-direction'),useDirection=panel.querySelector('.story-draft-use-direction');
     if(prepare)prepare.disabled=Boolean(pending||proposal)||frozen()||!sourceReviewOptedIn||!sourceReviewAvailable()||sourceRefreshRequired||sourceRefreshPending||!draftRequest;
     if(cancel){cancel.hidden=!pending&&!proposal;cancel.disabled=Boolean(pendingSave);}
     if(retry)retry.hidden=!pending?.retryable;
     if(reviewed)reviewed.disabled=!proposal||Boolean(pending)||frozen();
     if(direction)direction.disabled=Boolean(pending||proposal)||frozen();
+    if(useDirection)useDirection.disabled=Boolean(pending||proposal)||frozen()||!draftDirectionCandidate;
   }
   function loadDraftCapabilities(owner,ticket){
     if(typeof draftRequest!=='function'||scope().locked||!owner?.library)return Promise.resolve(null);
@@ -1627,6 +1629,19 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(story.saved||readOnly()||!draftPreparation.capability?.enabled||!draftPreparation.capability.can_prepare)return null;
     const panel=node('section',undefined,'story-draft-preparation');panel.id='story-draft-preparation';panel.append(node('h3',text('storyDraftHeading')),node('p',text('storyDraftHelp'),'fine'));
     const directionLabel=node('label',text('storyDraftDirection')),direction=node('textarea');direction.className='story-draft-direction';direction.maxLength=8192;direction.rows=3;direction.value=draftPreparation.pending?.direction||draftPreparation.proposal?.request.author_direction||'';direction.disabled=Boolean(draftPreparation.pending||draftPreparation.proposal);direction.addEventListener('input',invalidateDraftReview);directionLabel.append(direction);panel.append(directionLabel);
+    if(directionCandidateCurrent(draftDirectionCandidate,owner,ticket)){
+      const useDirection=button(text('storyDraftUseDirection'),()=>{
+        const candidate=draftDirectionCandidate;
+        if(!directionCandidateCurrent(candidate,owner,ticket)||!current(ticket,owner)||draft!==story||frozen()){
+          draftDirectionCandidate=null;useDirection.hidden=true;return;
+        }
+        if(direction.value.trim()){const status=panel.querySelector('.story-draft-direction-status');if(status)status.textContent=text('storyDraftDirectionNoOverwrite');return;}
+        direction.value=candidate.text;draftDirectionCandidate=null;
+        const status=panel.querySelector('.story-draft-direction-status');if(status)status.textContent=text('storyDraftDirectionKept');
+        setSelectionCount();
+      },'quiet story-draft-use-direction');useDirection.className='quiet story-draft-use-direction';
+      const directionStatus=node('p','','story-draft-direction-status');directionStatus.className='story-draft-direction-status fine';directionStatus.setAttribute('role','status');directionStatus.setAttribute('aria-live','polite');panel.append(useDirection,directionStatus);
+    }
     const status=node('p','','story-draft-status');status.className='story-draft-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');panel.append(status);
     const actions=node('div',undefined,'story-draft-actions');const prepare=button(text('storyDraftPrepare'),()=>void prepareStory(panel,story,owner,ticket),'primary story-draft-prepare');prepare.className='story-draft-prepare';
     const cancel=button(text('storyDraftCancel'),()=>void cancelStoryPreparation(),'quiet story-draft-cancel');cancel.className='story-draft-cancel';
@@ -1654,6 +1669,21 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(draftPreparation.pending){status.textContent=draftPreparation.pending.retryable?text('storyDraftFailed'):text('storyDraftWorking');}
     syncDraftPreparationPanel();
     return panel;
+  }
+  function validDirectionCandidate(value,owner){
+    return !!value&&Object.keys(value).sort().join(',')==='account,generation,library,revision,text,thread_id,version'&&
+      value.version===1&&value.account===owner?.account&&value.library===owner?.library&&
+      typeof value.text==='string'&&value.text.trim()===value.text&&value.text.length>0&&
+      new TextEncoder().encode(value.text).length<=1024&&
+      !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/u.test(value.text)&&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value.thread_id)&&
+      Number.isSafeInteger(value.revision)&&value.revision>0&&
+      value.generation===(owner?.generation??null);
+  }
+  function directionCandidateCurrent(value,owner,ticket){
+    return value===draftDirectionCandidate&&validDirectionCandidate(value,owner)&&
+      current(ticket,owner)&&scope().account===value.account&&scope().library===value.library&&
+      (scope().generation??null)===value.generation&&!scope().locked;
   }
   function refreshDraftPreparationPanel(){
     if(!draft||!$('story-workspace').open)return;
@@ -1695,6 +1725,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const direction=panel.querySelector('.story-draft-direction').value;
     if(new TextEncoder().encode(direction).length>8192){panel.querySelector('.story-draft-status').textContent=text('textTooLong');return;}
     const body=makePrepareBody(story,owner,direction,crypto.randomUUID());
+    draftDirectionCandidate=null;
     const pending={body,owner:{...owner},ticket,story,direction,retryable:false,cancelled:false};draftPreparation.pending=pending;void sendPrepare(pending,panel);
   }
   function retryStoryPreparation(panel){const pending=draftPreparation.pending;if(!pending?.retryable||pending.cancelled||!current(pending.ticket,pending.owner)||draft!==pending.story)return;void sendPrepare(pending,panel);}
@@ -1704,6 +1735,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   async function cancelStoryPreparation(){
     if(pendingSave)return;
+    draftDirectionCandidate=null;
     const pending=draftPreparation.pending;const proposal=draftPreparation.proposal;
     if(pending){pending.cancelled=true;draftPreparation.pending=null;busy=false;setSelectionCount();void sendPrepareCancel(pending.owner,pending.body.request_id);}
     if(proposal)clearDraftProposal('storyDraftCancelled',true);
@@ -1875,7 +1907,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const anchor=node('a');anchor.href=url;anchor.download='PhotoHouse-story-draft.json';anchor.click();
     setTimeout(()=>URL.revokeObjectURL(url),1000);downloaded=true;message('exported');
   }
-  function open(ids=null,theme='everyday',guided=false) {
+  function open(ids=null,theme='everyday',guided=false,directionCandidate=null) {
     if(scope().locked||!scope().account||!scope().library||draftPreparation.pending||!dictationGuard())return;
     if(localBusy)return;
     if(localRecord?.payload.pending&&!pendingSave){void resumeLocalDraft();return;}
@@ -1888,12 +1920,13 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       if(nextItems.some(item=>!item||!idOK(item.id)||!['image','video'].includes(item.kind))||new Set(nextItems.map(item=>item.id)).size!==nextItems.length){message('error');return;}
     }
     if(!(nextItems||galleryItems).length){message('selectionEmpty');return;}
+    const acceptedDirection=validDirectionCandidate(directionCandidate,scope())?Object.freeze({...directionCandidate}):null;
     if(dirty&&!downloaded&&!window.confirm(text('leave')))return;
     if($('story-reader').open&&!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'}))return;
     if(bookReader?.open&&!confirmReaderLeave(bookReader.querySelector('.memory-book-companion'),bookReader.__photoHouseBookTarget))return;
     if($('story-reader').open){stopNarration();$('story-reader').close();}
     if(bookReader?.open){stopNarration();bookReader.close();}
-    if(draftPreparation.pending){draftPreparation.pending.cancelled=true;void sendPrepareCancel(draftPreparation.pending.owner,draftPreparation.pending.body.request_id);}draftPreparation.pending=null;draftPreparation.capability=null;draftPreparation.capabilityEpoch++;clearDraftProposal(null,false,false);
+    if(draftPreparation.pending){draftPreparation.pending.cancelled=true;void sendPrepareCancel(draftPreparation.pending.owner,draftPreparation.pending.body.request_id);}draftPreparation.pending=null;draftPreparation.capability=null;draftPreparation.capabilityEpoch++;clearDraftProposal(null,false,false);draftDirectionCandidate=null;
     cloudReview=null;endGuide();clearRelated();generation++;busy=false;pendingSave=null;activeLocalRevision=null;localReviewRequired=false;localReviewVisible=false;localStatus='';stopPlaying();stopAutoRefinementPolling();autoRefinementDismissed=null;autoRefinementJob=null;autoRefinementOriginal=null;autoRefinementCapability=null;autoRefinementMayStart=false;autoRefinementQueueing=null;autoRefinementQueueError=false;skipAutoRefinementSave=null;
     if(guided)guide={owner:{...scope()},ticket:generation,step:'frames'};
     invalidateTitles();titleView=null;titleComposing=false;
@@ -1903,6 +1936,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     $('story-workspace-theme').value=themes.includes(theme)?theme:'everyday';$('story-workspace-title').value='';
     $('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message(ids&&ids.length>24?'onlyFirst':'');renderSelection();
     document.querySelector('[data-story-word=draftHelp]').textContent=text('draftHelp');$('story-workspace').showModal();
+    draftDirectionCandidate=acceptedDirection;
     loadSourceCapabilities({...scope()},generation);if(guided)focusGuide();
     return true;
   }
@@ -1929,6 +1963,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     setSelectionCount();
   }
   function clear({cancelCommunityJobs=true}={}) {
+    draftDirectionCandidate=null;
     endGuide();shelfReady=false;localEpoch++;localRecord=null;activeLocalRevision=null;localBusy=false;localError=false;localStatus='';localReviewRequired=false;localReviewVisible=false;outlineScaffolding.clear();authoredNarrations=new WeakSet();
     cancelDictation();
     clearRelated();
@@ -2707,7 +2742,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     clearRelated();void findRelated();
   });
   $('story-workspace').addEventListener('input',()=>{if(lastFrameEdit)syncFrameSearch();});
-  $('story-workspace').addEventListener('close',()=>{lastFrameEdit=null;stopAutoRefinementPolling();cancelDictation();invalidateTitles();if(!pendingSave&&(draftPreparation.pending||draftPreparation.proposal))void cancelStoryPreparation();if(sourceRefreshPending){sourceRefreshEpoch++;sourceRefreshPending=false;message('sourceRefreshFailed');setSelectionCount();}if(!pendingSave&&!readerFromShelf){contributionRefs=null;refsLoadEpoch++;}});
+  $('story-workspace').addEventListener('close',()=>{if(!$('story-workspace').open)draftDirectionCandidate=null;lastFrameEdit=null;stopAutoRefinementPolling();cancelDictation();invalidateTitles();if(!pendingSave&&(draftPreparation.pending||draftPreparation.proposal))void cancelStoryPreparation();if(sourceRefreshPending){sourceRefreshEpoch++;sourceRefreshPending=false;message('sourceRefreshFailed');setSelectionCount();}if(!pendingSave&&!readerFromShelf){contributionRefs=null;refsLoadEpoch++;}});
   const dictationObserver=new MutationObserver(()=>{if(dictation&&!dictationBound(dictation))cancelDictation();});dictationObserver.observe($('story-chapter-editor'),{childList:true,subtree:true});
   $('story-reader').addEventListener('keydown',event=>{
     if(!draft||event.defaultPrevented||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey||!['ArrowRight','ArrowLeft'].includes(event.key))return;
@@ -2729,5 +2764,5 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   translate();
   return {clear,open,translate,reopen,openBook,openBookStory,acceptProposal,validateAssistantSavedMemory,acceptAssistantSavedMemory,canLeave(){if(!canDiscardDraft())return false;cancelDictation();return true;},mountReplySpeech,
     setItems(value){if(dictation){dictation.status.textContent=text('dictationNeedResolve');return;}if(shelfBinding!==JSON.stringify([scope().account,scope().library]))void loadShelf();galleryItems=value.filter(i=>idOK(i.id)&&['image','video'].includes(i.kind)).slice(0,24);const first=galleryItems[0];$('memory-home').hidden=!first;for(const b of $('memory-themes').querySelectorAll('button'))b.disabled=!first;if(first){const image=$('memory-home-image');image.onerror=()=>{image.onerror=null;image.src=mediaURL(first.id,'thumbnail');};image.src=mediaURL(first.id,first.kind==='video'?'thumbnail': 'preview');image.alt='';}},
-    fromResults(value){return open(value);}};
+    fromResults(value,directionCandidate){return open(value,'everyday',false,directionCandidate);}};
 };
