@@ -1,5 +1,9 @@
 # Literal text search: query-token reuse
 
+The subsequent optional [Rust quality fast path](LITERAL_SEARCH_RUST.md) builds
+on this unchanged Python baseline. Its separate local evidence does not activate
+Windows production or replace this baseline's qualification record.
+
 This implements the Python-first text-search step from the Rust migration audit.
 It does not add a new Rust extension or replace the existing optional vector and
 grouping kernels. Literal matching, Unicode policy and result membership are

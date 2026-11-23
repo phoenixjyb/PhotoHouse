@@ -7,6 +7,8 @@ adds candidates or changes hard-filter behavior.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import importlib
+import os
 import re
 import unicodedata
 from typing import Callable, Mapping, Sequence
@@ -106,10 +108,23 @@ class TextQueryCache:
     literal eligibility test, so a query with no matching source does no work.
     """
 
-    __slots__ = ("_entry",)
+    __slots__ = ("_entry", "_native", "_shadow")
 
-    def __init__(self):
+    def __init__(self, *, engine=None):
         self._entry = None
+        engine = os.environ.get('PHOTOHOUSE_LITERAL_TEXT_ENGINE', 'python') if engine is None else engine
+        if engine not in ('python', 'rust', 'shadow'):
+            raise ValueError('invalid_literal_text_engine')
+        self._native = None
+        self._shadow = engine == 'shadow'
+        if engine != 'python':
+            try:
+                native = importlib.import_module('photohouse_literal_kernel')
+                if native.POLICY_VERSION != SEARCH_TEXT_POLICY_VERSION or not callable(native.quality):
+                    raise ValueError()
+                self._native = native.quality
+            except (ImportError, AttributeError, ValueError):
+                raise RuntimeError('literal_text_kernel_unavailable') from None
 
     def tokens_for(self, phrase: str) -> tuple[str, ...]:
         entry = self._entry
@@ -117,6 +132,17 @@ class TextQueryCache:
             entry = (phrase, _tokens(phrase))
             self._entry = entry
         return entry[1]
+
+    def quality_for(self, content: str, phrase: str):
+        if self._native is None:
+            return None
+        value = self._native(content, phrase)
+        if value is not None and (type(value) is not tuple or len(value) != 3
+                or any(type(n) is not int for n in value)
+                or not 0 <= value[0] <= 1000 or value[1] not in (0, 1)
+                or value[2] != -len(content)):
+            raise RuntimeError('invalid_literal_text_kernel_result')
+        return value
 
 
 def _has_whole_phrase_boundary(content: str, phrase: str) -> bool:
@@ -176,11 +202,17 @@ def match_text(row: Mapping, normalized_filters: Mapping,
         if len(reasons) < MAX_MATCH_REASONS:
             reasons.append(source.reason())
         authored = max(authored, int(source.source in _AUTHORED_SOURCES))
-        candidate = (
-            _coverage(source.normalized_text, phrase, query_tokens),
-            int(_has_whole_phrase_boundary(source.normalized_text, phrase)),
-            -len(source.normalized_text),
-        )
+        candidate = (query_cache.quality_for(source.normalized_text, phrase)
+                     if type(query_cache) is TextQueryCache else None)
+        if candidate is None or query_cache._shadow:
+            original = (
+                _coverage(source.normalized_text, phrase, query_tokens),
+                int(_has_whole_phrase_boundary(source.normalized_text, phrase)),
+                -len(source.normalized_text),
+            )
+            if candidate is not None and candidate != original:
+                raise RuntimeError('literal_text_shadow_mismatch')
+            candidate = original
         if best is None or candidate > best:
             best = candidate
     check()
