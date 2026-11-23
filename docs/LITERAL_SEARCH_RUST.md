@@ -1,7 +1,7 @@
 # Optional Rust literal-search quality fast path
 
 This source adds one isolated optional kernel. Production remains on its current
-unchanged deployment; the new kernel is **not Windows-qualified or activated**.
+unchanged deployment; the new kernel is **Windows-qualified, not activated**.
 It builds neither the qualified vector/visual kernels nor the grouping kernel.
 Search, grouping, automatic importing, model/provider settings and GitHub CI
 are unchanged.
@@ -65,11 +65,56 @@ that number is not the full scan or a production latency claim.
   code points in the fast character domain, unchanged callbacks at every
   cancellation point, the reason cap and sanitized native refusals.
 - The direct binding passed warnings-as-errors clippy and formatting.
-- No Windows check, production restart, kernel replacement or CI run is claimed.
+- No production restart, replacement of a deployed kernel, or CI run occurred.
+
+## Native Windows qualification
+
+The new extension built with the existing pinned Windows MSVC/Rust 1.88.0
+installation and CPython 3.12.10 x64, entirely offline from locked/vendored source
+in private D: scratch. Only `literal-core` and `literal-python` were built;
+previous vector/visual/grouping binaries were neither built nor installed.
+The resulting direct extension is 255,488 bytes and imports through the stable
+`python3.dll` ABI. All 832 recorded core cases matched on Windows.
+
+The initial selected-Rust test run exposed a Python-specific instrumentation
+test: it expected 11 Python tokenizer calls even though native source scoring
+correctly leaves only the one query-token preparation in Python. Its existing
+11-call assertion now explicitly selects Python. The actual failed Windows log
+was checked for that exact sole failure before resuming. No product behavior,
+expected result or original assertion was weakened. A separate local protected-
+API fixture verified four actual native quality calls with expected ordering,
+provenance and privacy assertions.
+
+The completed Windows build, 832-case parity and first ten successful tests were
+reused by checksum/source binding. A fresh test-only Job ran the remaining 59
+checks and all six benchmark processes; it built no Rust code. The total is
+**69 successful focused tests**, with both current-source/refusal behavior and
+selected native Search covered. Original failed captures remain preserved.
+
+Windows used one warmup plus five samples per fresh process, the same 10,000
+rows/two sources and exact digest/callback comparisons as the Mac component run.
+The generated workload ran under a verified 20% CPU hard cap, two-GiB/four-
+process test Job and no GPU; the separate build used its established four-GiB/
+12-process cap. Both required at least 12 GiB free RAM and D: disk reserve.
+
+| Windows generated fixture | Optimized Python | Rust fast path | Ratio |
+| --- | ---: | ---: | ---: |
+| cjk | 337.423 ms | 199.412 ms | 1.69× |
+| ascii | 347.242 ms | 210.793 ms | 1.65× |
+| mostly_miss | 92.516 ms | 69.272 ms | 1.34× |
+
+These include Python/native crossing and full normalization/matching/ranking;
+they exclude real-library admission, HTTP and model time. They are not a claim
+that a whole household request is 1.69× faster. The new binary is retained for
+rollout without rebuilding. Current live Search/grouping/intake configuration
+is unchanged and the optional literal selector remains off in production.
 
 ## Build and qualify only this new unit
 
-From the checkout root, use the existing CPU Python and cached Rust dependencies:
+The current Windows artifact is retained and should be reused for its qualified
+source/runtime. These build commands are for reproduction or a relevant source/
+runtime change, not a request to rebuild the passed component. From the checkout
+root, use the existing CPU Python and cached Rust dependencies:
 
 ```sh
 python rust/build_literal_kernel.py
