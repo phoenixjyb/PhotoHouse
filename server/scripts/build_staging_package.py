@@ -341,6 +341,7 @@ FILES = (
     'scripts/qualify_reviewed_semantic_scenes.py',
     'scripts/serve_semantic_text.py',
     'scripts/staging_app.py',
+    'scripts/rust_overlay_selection.py',
 )
 
 

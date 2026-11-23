@@ -29,10 +29,19 @@ sys.path.insert(0, sys.argv[1])
 from app.access.photo_stack_index import build_library_photo_stacks
 from app.access.vector_kernel_reference import run_batch
 from app.access.vector_acceleration import backend
+from app.access.search_text import TextQueryCache
 rows = [(i, 'image/jpeg', 'generated', 1, 1, '2026-10-22T08:00:00Z',
          '0000000000000000', None, None) for i in (1, 2)]
 assert build_library_photo_stacks(rows)[0]['asset_ids'] == ['1', '2']
 assert backend() is None
+assert TextQueryCache()._native is None
+assert 'photohouse_literal_kernel' not in sys.modules
+try:
+    TextQueryCache(engine='rust')
+except RuntimeError as error:
+    assert str(error) == 'literal_text_kernel_unavailable'
+else:
+    raise AssertionError('source-only archive silently enabled literal native code')
 one = struct.pack('<dd', 1, 0).hex()
 assert bytes.fromhex(run_batch(json.dumps({'op':'score', 'dimension':2,
     'byteorder':'little', 'data':one, 'query':one}))) == struct.pack('<d', 1)
@@ -272,6 +281,7 @@ print('packaged-adapters-and-fallback-pass')
                 f'root=Path({str(root)!r})\n'
                 "sys.path[:0]=[str(root/'scripts'),str(root/'backend')]\n"
                 'from staging_app import load_configuration\n'
+                'from rust_overlay_selection import validate_rust_overlay_selection\n'
                 'from app.access.runtime import RuntimeConfiguration\n'
                 'from app.access.model_binding import project_configuration\n'
                 'from app.access.model_deployment import validate_deployment\n'

@@ -1,5 +1,8 @@
 # Optional Rust literal-search quality fast path
 
+The next [delivery-package and protected-launch integration](LITERAL_SEARCH_ROLLOUT.md)
+reuses the qualified binary and keeps production activation separate.
+
 This source adds one isolated optional kernel. Production remains on its current
 unchanged deployment; the new kernel is **Windows-qualified, not activated**.
 It builds neither the qualified vector/visual kernels nor the grouping kernel.
