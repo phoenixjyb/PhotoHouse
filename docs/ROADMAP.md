@@ -1,12 +1,17 @@
 # Product roadmap
 
-Reviewed **2026-11-23** against the current source tree. This is a product plan,
+Reviewed **2026-11-24** against the current source tree. This is a product plan,
 not a live service check. Use [Project Status](PROJECT_STATUS.md) and the dated
 [release record](RELEASE_2026-10-29.md) for delivery evidence; older entries in
 this file retain the date and scope of their original evidence.
 
 ## Current capability and evidence
 
+- **Web design:** the November 24 local redesign consolidates the assistant
+  surface, gives the conversation its actual scroll owner, and checks native
+  dialog keyboard access, contrast, touch controls and narrow/text-resized
+  layouts. This is generated browser evidence, not a new Windows release
+  ([design review](WEB_DESIGN_REVIEW_2026-11-24.md)).
 - **Source:** the November 14 local increment adds ordinary result paging,
   fresh current-result validation, and selected-frame handoff to the existing
   story editor ([details](SEARCH_TO_STORY.md)). The selection lasts only in the

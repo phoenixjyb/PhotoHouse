@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="referrer" content="no-referrer">
   <title>PhotoHouse · 家庭相册</title>
   <link rel="stylesheet" href="/ui/styles.css">
@@ -56,11 +56,11 @@
       <span id="assistant-panel-placeholder" hidden></span>
       <dialog id="assistant-workspace-dialog" class="assistant-workspace-dialog" aria-labelledby="assistant-workspace-title">
         <header class="assistant-workspace-header">
-          <div><p class="assistant-workspace-kicker" data-i18n="assistantWorkspaceKicker">PRIVATE FAMILY SEARCH</p><h2 id="assistant-workspace-title" data-i18n="assistantTitle">拾光助手</h2><div class="assistant-library-chip"><span data-i18n="assistantPrivateLibrary">当前私密相册库</span><strong id="assistant-workspace-library"></strong></div></div>
+          <div><p class="assistant-workspace-kicker" data-i18n="assistantWorkspaceKicker">PRIVATE FAMILY SEARCH</p><h1 id="assistant-workspace-title" data-i18n="assistantTitle">拾光助手</h1><div class="assistant-library-chip"><span data-i18n="assistantPrivateLibrary">当前私密相册库</span><strong id="assistant-workspace-library"></strong></div></div>
           <div class="assistant-workspace-header-actions"><button id="assistant-workspace-lock" class="quiet" type="button" data-i18n="signOut">退出登录</button><button id="assistant-workspace-close" class="quiet" type="button" data-i18n="assistantWorkspaceClose">返回</button></div>
         </header>
         <div id="assistant-workspace-voice" class="assistant-workspace-voice" role="group" aria-labelledby="assistant-voice-session-status"></div>
-        <div id="assistant-workspace-content" class="assistant-workspace-content" tabindex="0"></div>
+        <div id="assistant-workspace-content" class="assistant-workspace-content" role="region" aria-labelledby="assistant-workspace-title" tabindex="0"></div>
         <footer id="assistant-workspace-footer" class="assistant-workspace-footer"></footer>
       </dialog>
       <details id="assistant-panel" class="access-panel assistant-panel">
@@ -140,7 +140,7 @@
           <label for="assistant-text" data-i18n="assistantPrompt">你想找什么？</label>
           <p id="assistant-send-shortcut" class="fine" data-i18n="assistantSendShortcut">Ctrl/⌘ + Enter 发送；Enter 换行。</p>
           <textarea id="assistant-text" maxlength="1024" rows="2" autocomplete="off" aria-describedby="assistant-send-shortcut" aria-keyshortcuts="Control+Enter Meta+Enter"></textarea>
-          <div class="assistant-actions"><button id="assistant-send" class="primary" type="submit" data-i18n="assistantSend">查找</button><button id="assistant-agent-send" class="quiet" type="button" hidden data-i18n="assistantAgentSend">AI 查找</button><button id="assistant-clear" class="quiet" type="button" data-i18n="assistantClear">清空</button><button id="assistant-cancel" class="quiet" type="button" hidden data-i18n="assistantCancel">取消</button></div>
+          <div class="assistant-actions"><button id="assistant-clear" class="quiet" type="button" data-i18n="assistantClear">清空</button><button id="assistant-cancel" class="quiet" type="button" hidden data-i18n="assistantCancel">取消</button><button id="assistant-agent-send" class="quiet" type="button" hidden data-i18n="assistantAgentSend">AI 查找</button><button id="assistant-send" class="primary" type="submit" data-i18n="assistantSend">查找</button></div>
         </form>
         <p id="assistant-status" role="status" aria-live="polite"></p>
         <section id="assistant-receipt" class="assistant-receipt" hidden aria-live="polite">

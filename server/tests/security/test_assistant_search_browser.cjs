@@ -183,7 +183,9 @@ async function installSyntheticTransport(targetContext){
   await page.setViewportSize({width:320,height:845});
   await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(artifacts,'people-scope-phone-zh-150-320.png'),fullPage:false});
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  const overflow320=await page.evaluate(()=>({width:innerWidth,page:document.documentElement.scrollWidth,
+    elements:Array.from(document.querySelectorAll('body *')).filter(node=>{const r=node.getBoundingClientRect();return r.width>0&&r.right>innerWidth+1;}).slice(0,12).map(node=>({tag:node.tagName,id:node.id,className:typeof node.className==='string'?node.className:'',right:node.getBoundingClientRect().right,width:node.getBoundingClientRect().width}))}));
+  assert.equal(overflow320.page<=overflow320.width+1,true,JSON.stringify(overflow320));
   checkpoint('Reviewed-person scope stays visible in enlarged English/Chinese empty replies without changing joint filters, context or opening media');
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,pageErrors,blockedOrigins,syntheticBackend:true,externalRequests:0,timings,timing_scope:'Generated ASGI bridge + browser click-to-render; not native or provider latency'},null,2));

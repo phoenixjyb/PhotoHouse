@@ -157,6 +157,7 @@ WEB_TESTS = (
     "server/tests/security/test_private_assistant_agent.cjs",
     "server/tests/security/test_assistant_intent_browser.cjs",
     "server/tests/security/test_assistant_workspace_browser.cjs",
+    "server/tests/security/test_assistant_design_browser.cjs",
     "server/tests/security/test_assistant_search_browser.cjs",
     "server/tests/security/test_assistant_story_selection.cjs",
     "server/tests/security/test_assistant_story_selection_browser.cjs",

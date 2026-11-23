@@ -1,0 +1,49 @@
+# PhotoHouse Web redesign review — 2026-11-24
+
+## Scope and method
+
+This review covers the signed-in PhotoHouse Web Assistant modal and its private conversation pane in the `literal-rust-20261123` worktree. It records the redesign and the available generated-browser evidence; it is not a whole-application accessibility certification.
+
+The requested Google Chrome `modern-web-guidance` audit used package snapshot `v2026_11_16-268fb9ea` and CLI 1.0.2 through an ephemeral npm invocation. No persistent installer or package change was made. The responsive-design, form-factor-adaptation, CSS-layout, dialog, accessibility, and motion guides informed the review. The [official repository](https://github.com/GoogleChrome/modern-web-guidance) and its [skill workflow](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/SKILL.md) are the primary references. Reproduce the retrieved snapshot with `npx -y modern-web-guidance@latest retrieve "responsive-design,form-factor-adaptation,css-layout,dialog,accessibility,motion" --skill-version 2026_11_16-268fb9ea`.
+
+The supporting legacy-rule scan covered 9 files and 52 rules, about 20% of the identified corpus. It surfaced a `Promise.withResolvers()` suggestion in `story-workspace.js`; the existing deferred helper was retained for compatibility. This bounded scan does not certify the unscanned code.
+
+## Design changes
+
+The modal now has a named `h1`, a named conversation region, and explicit header, voice, conversation, and composer grid rows. The header and private controls wrap at narrow widths, including long library labels; controls keep a 44 CSS-pixel minimum. Small text and the composer placeholder use darker contrast tokens. The mobile layout uses dynamic viewport sizing and safe-area padding for the header and composer, while the footer stays inside the modal. Focus-visible styling remains visible in forced colors, and decorative listening motion is opt-in under `prefers-reduced-motion: no-preference`.
+
+The conversation trail now scrolls within the pane that actually owns scrolling. While the modal is open, that is `#assistant-workspace-content`; in the inline view, it is the bounded message list. New replies follow the tail only when the reader was already there. When older messages are being read, the visible message anchor and scroll position are restored after the next reply. “Jump to latest” and the trail keyboard scroll keys act on the active pane without scrolling the page or moving the voice controls. See [app.js](../server/backend/app/ui/access/app.js), [index.html](../server/backend/app/ui/access/index.html), and [styles.css](../server/backend/app/ui/access/styles.css).
+
+## Generated-browser evidence
+
+The final design journey used the private-workspace ASGI bridge, a synthetic same-origin browser route, generated account/chat data, and generated placeholder SVG thumbnails only for fixture thumbnail requests that returned 404. No household media, model, Windows host, or microphone was used. The private `design-motion-final/result.json` receipt records these measured states:
+
+| View | Page width | Dialog | Composer footer | Minimum sampled small-text contrast | Enabled control minimum height |
+| --- | ---: | --- | --- | ---: | ---: |
+| Desktop, 1280 × 900 | 1280 px; no horizontal overflow | 1120 × 852 px, within viewport | Bottom at 875 px; 17.6 px padding | 5.33:1 | 44 px |
+| Phone, 390 × 844 | 390 px; no horizontal overflow | 390 × 844 px | Bottom at viewport edge; 12 px padding | 5.33:1 | 44 px |
+| Phone, 320 × 720, 150% root text | 320 px; no horizontal overflow | 320 × 720 px | Bottom at viewport edge; 18 px padding | 5.33:1 | 44 px |
+| Phone, 320 × 720, 200% root text | 320 px; no horizontal overflow | 320 × 720 px | Bottom at viewport edge; 24 px padding | 5.33:1 | 44 px |
+
+The companion private `design-motion-final.log` records PASS for the native dialog name/heading, keyboard focus and Escape return, two explicit typed follow-ups in one private conversation, and reduced-motion/forced-colors focus checks. The forced-colors computed focus outline was solid and 3 px. The 150% and 200% states enlarge the root font size. They are text-resize checks, not browser zoom or device-scale-factor tests. Five screenshots and a JSON report are listed in the final design receipt.
+
+The private `trail-r6.log` reports PASS for the eight-turn Chinese trail at 390 px with 150% root text, for the actual modal scroll pane and older-message position preservation, for “Jump to latest” and keyboard scrolling, and for English localization, narrow layout, lazy restoration, draft preservation, and no automatic replay. It also records delayed-response and account-scope protections.
+
+The final affected journeys passed against generated, scoped data:
+
+| Journey | Result |
+| --- | --- |
+| Assistant search, `redesign-search-r3` | 8 checkpoints; joint person/text search, date refinement, ordered results and GET-only recovery |
+| Private workspace, `workspace-final` | 17 checkpoints; creation, history, preferences, refinements and scope protection |
+| Selected frames to story, `story-final` | 19 checkpoints; ordered handoff, paging, explicit saves, undo and permission refusal |
+| Voice session, `voice-final` | Passed; foreground Start/Pause/End, reply, transcript review, interruption and scoped cleanup |
+| Turn trail, `trail-r6` | Passed; inline and modal scroll owners, anchor preservation, restoration and late-response protection |
+| UI overlay builder/router | 12 tests passed; exact source-only asset binding |
+
+The search journey predates the final keyboard-only focus and motion-test changes; the affected modal layout and source behavior were unchanged afterward. The final design journey explicitly resumes the current authorized thread after a locale refresh, verifies that reading history sends no turn, and checks listening-state CSS under both reduced-motion settings without requesting a microphone. Node 22.17.0, Python 3.12.12 and Playwright 1.55.0 were used. Detailed generated screenshots, request logs and private receipts are retained outside Git; this document deliberately does not link to developer-local artifacts.
+
+During the trail-test update, an older fixture assumption expected private capabilities to load eagerly and allowed a turn while account restoration was still blocking the UI. The fixture was corrected to preserve the existing restoration gate; the trail-r6 run then passed with that gate intact. This was a stale test expectation, not authorization to bypass the application’s account-restoration behavior.
+
+## Acceptance boundary
+
+These artifacts establish source and generated local-browser evidence only. They do not establish Windows deployment, service behavior, physical-device layout, real microphone consent/capture, or family acceptance. The final checks above cover the changed source and its generated journeys. Safari, Firefox, actual browser zoom, production Core Web Vitals and physical microphone/speaker behavior were not evaluated in this increment. No Windows deployment is claimed here.

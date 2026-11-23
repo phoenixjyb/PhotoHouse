@@ -1453,20 +1453,39 @@
     syncAssistantControls();
     return stopped;
   }
-  function assistantTrailAtTail(list){return list.scrollHeight-list.clientHeight-list.scrollTop<=2;}
+  function assistantTrailScroller(list){
+    const workspace=$('assistant-workspace-content');
+    return $('assistant-workspace-dialog').open&&workspace.contains(list)?workspace:list;
+  }
+  function assistantTrailAtTail(list){
+    const scroller=assistantTrailScroller(list);
+    if(scroller===list)return list.scrollHeight-list.clientHeight-list.scrollTop<=2;
+    const bounds=scroller.getBoundingClientRect(),tail=list.getBoundingClientRect();
+    return tail.bottom>bounds.top&&tail.bottom<=bounds.bottom+2;
+  }
   function captureAssistantTrailPosition(list){
-    const bounds=list.getBoundingClientRect();
-    return [...list.children].map(item=>({id:item.dataset.assistantTurnId,offset:item.getBoundingClientRect().top-bounds.top,
-      visible:item.getBoundingClientRect().bottom>bounds.top&&item.getBoundingClientRect().top<bounds.bottom})).filter(item=>item.visible);
+    const scroller=assistantTrailScroller(list),bounds=scroller.getBoundingClientRect();
+    return {scrollerId:scroller.id,scrollTop:scroller.scrollTop,entries:[...list.children].map(item=>({id:item.dataset.assistantTurnId,offset:item.getBoundingClientRect().top-bounds.top,
+      visible:item.getBoundingClientRect().bottom>bounds.top&&item.getBoundingClientRect().top<bounds.bottom})).filter(item=>item.visible)};
   }
   function restoreAssistantTrailPosition(list,positions){
-    for(const position of positions){
+    const scroller=assistantTrailScroller(list),saved=Array.isArray(positions)?{scrollerId:list.id,scrollTop:0,entries:positions}:positions;
+    if(!saved||saved.scrollerId!==scroller.id)return;
+    for(const position of saved.entries){
       const item=[...list.children].find(entry=>entry.dataset.assistantTurnId===position.id);
       if(!item)continue;
-      const bounds=list.getBoundingClientRect(),offset=item.getBoundingClientRect().top-bounds.top;
-      list.scrollTop+=offset-position.offset;return;
+      const bounds=scroller.getBoundingClientRect(),offset=item.getBoundingClientRect().top-bounds.top;
+      scroller.scrollTop+=offset-position.offset;return;
     }
-    list.scrollTop=0;
+    scroller.scrollTop=saved.entries.length?0:saved.scrollTop;
+  }
+  function revealAssistantTrailTail(list,{explicit=false}={}){
+    const scroller=assistantTrailScroller(list);
+    if(scroller===list){list.scrollTop=list.scrollHeight;return;}
+    const distance=list.getBoundingClientRect().bottom-scroller.getBoundingClientRect().bottom+8;
+    // Change only the owned pane; scrollIntoView could scroll the page or move
+    // the sticky voice controls. Automatic following never jumps upwards.
+    if(explicit||distance>0)scroller.scrollTop+=distance;
   }
   function updateAssistantTrailLatest(){
     const button=$('assistant-turn-trail-latest');
@@ -1479,19 +1498,21 @@
     list.tabIndex=0;list.setAttribute('aria-labelledby','assistant-turn-trail-title');
     if(list.dataset.keyboardScrollBound!=='true'){
       list.dataset.keyboardScrollBound='true';
-      list.addEventListener('scroll',()=>{if(assistantState.turnTrailHasNewer&&assistantTrailAtTail(list)){assistantState.turnTrailHasNewer=false;updateAssistantTrailLatest();}},{passive:true});
+      const observe=event=>{if(event.currentTarget===assistantTrailScroller(list)&&assistantState.turnTrailHasNewer&&assistantTrailAtTail(list)){assistantState.turnTrailHasNewer=false;updateAssistantTrailLatest();}};
+      list.addEventListener('scroll',observe,{passive:true});
+      $('assistant-workspace-content').addEventListener('scroll',observe,{passive:true});
       list.addEventListener('keydown',event=>{
-        const step=Math.max(48,Math.floor(list.clientHeight*.8));
-        if(event.key==='Home'){list.scrollTop=0;event.preventDefault();}
-        else if(event.key==='End'){list.scrollTop=list.scrollHeight;event.preventDefault();}
-        else if(event.key==='PageDown'||event.key==='ArrowDown'){list.scrollTop+=event.key==='PageDown'?step:48;event.preventDefault();}
-        else if(event.key==='PageUp'||event.key==='ArrowUp'){list.scrollTop-=event.key==='PageUp'?step:48;event.preventDefault();}
+        const scroller=assistantTrailScroller(list),step=Math.max(48,Math.floor(scroller.clientHeight*.8));
+        if(event.key==='Home'){scroller.scrollTop=0;event.preventDefault();}
+        else if(event.key==='End'){scroller.scrollTop=scroller.scrollHeight;event.preventDefault();}
+        else if(event.key==='PageDown'||event.key==='ArrowDown'){scroller.scrollTop+=event.key==='PageDown'?step:48;event.preventDefault();}
+        else if(event.key==='PageUp'||event.key==='ArrowUp'){scroller.scrollTop-=event.key==='PageUp'?step:48;event.preventDefault();}
       });
     }
     const jump=$('assistant-turn-trail-latest');
     if(jump&&jump.dataset.bound!=='true'){
       jump.dataset.bound='true';
-      jump.addEventListener('click',()=>{list.scrollTop=list.scrollHeight;assistantState.turnTrailHasNewer=false;updateAssistantTrailLatest();list.focus({preventScroll:true});});
+      jump.addEventListener('click',()=>{revealAssistantTrailTail(list,{explicit:true});assistantState.turnTrailHasNewer=false;updateAssistantTrailLatest();list.focus({preventScroll:true});});
     }
     list.replaceChildren();
     for(const exchange of assistantState.turnTrail){
@@ -1513,7 +1534,7 @@
     const hasTurns=assistantState.turnTrail.length>0||assistantState.voicePendingText!==null;
     section.hidden=!hasTurns;
     if(!hasTurns){assistantState.turnTrailHasNewer=false;list.scrollTop=0;}
-    else if(followLatest)list.scrollTop=list.scrollHeight;
+    else if(followLatest)revealAssistantTrailTail(list);
     else restoreAssistantTrailPosition(list,previousPosition);
     updateAssistantTrailLatest();
   }

@@ -5,6 +5,13 @@ PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家
 后端、Web、Android 手机与 TV 在 [PhotoHouse 主仓库](https://github.com/phoenixjyb/PhotoHouse)
 共同维护；旧应用仓库按[整合规则](docs/REPOSITORY_TRANSITION.md)保留为历史与私有运行参考。
 
+## 11 月 24 日 Web 设计改进（本地源码）
+
+参考 Google Modern Web Guidance，统一了小贾对话界面、控件与配色，改用独立滚动的对话区，
+并检查键盘访问、小屏和放大文字、对比度及减少动画设置。搜索细化、语音状态与故事选择的
+生成数据浏览器检查通过；这不代表新版已部署到 Windows，也不替代家庭实际试用。
+详见[设计审查与交付边界](docs/WEB_DESIGN_REVIEW_2026-11-24.md)。GitHub CI 继续暂停。
+
 ## 当前交付：2026-10-29
 
 [PR #111](https://github.com/phoenixjyb/PhotoHouse/pull/111) 已合并到 main
