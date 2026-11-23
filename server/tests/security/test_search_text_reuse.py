@@ -100,7 +100,9 @@ class TextReuseTests(unittest.TestCase):
             self.assertEqual(text.match_text(sources, filters, query_cache=cache), expected)
 
     def test_query_tokens_are_reused_across_sources_and_rows_only(self):
-        cache = text.TextQueryCache()
+        # This test counts Python tokenization calls; native mode intentionally
+        # performs current-source tokenization inside Rust instead.
+        cache = text.TextQueryCache(engine='python')
         sources = row([('edited_caption', '海边合影 family'), ('photo_memory', '合影 海边合影')])
         filters = {'text': '海边合影'}
         original = text._tokens
