@@ -4,7 +4,7 @@
 
 This review covers the signed-in PhotoHouse Web Assistant modal and its private conversation pane in the `literal-rust-20261123` worktree. It records the redesign and the available generated-browser evidence; it is not a whole-application accessibility certification.
 
-The requested Google Chrome `modern-web-guidance` audit used package snapshot `v2026_11_16-268fb9ea` and CLI 1.0.2 through an ephemeral npm invocation. No persistent installer or package change was made. The responsive-design, form-factor-adaptation, CSS-layout, dialog, accessibility, and motion guides informed the review. The [official repository](https://github.com/GoogleChrome/modern-web-guidance) and its [skill workflow](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/SKILL.md) are the primary references. Reproduce the retrieved snapshot with `npx -y modern-web-guidance@latest retrieve "responsive-design,form-factor-adaptation,css-layout,dialog,accessibility,motion" --skill-version 2026_11_16-268fb9ea`.
+The requested Google Chrome `modern-web-guidance` audit used package snapshot `v2026_11_16-268fb9ea` and CLI 1.0.2 through an ephemeral npm invocation. No persistent installer or package change was made. The responsive-design, form-factor-adaptation, CSS-layout, dialog, accessibility, motion, and JavaScript guides informed the review. The [official repository](https://github.com/GoogleChrome/modern-web-guidance) and its [skill workflow](https://github.com/GoogleChrome/modern-web-guidance/blob/main/skills/modern-web-guidance/SKILL.md) are the primary references. Reproduce the retrieved snapshot with `npx -y modern-web-guidance@latest retrieve "responsive-design,form-factor-adaptation,css-layout,dialog,accessibility,motion,js" --skill-version 2026_11_16-268fb9ea`.
 
 The supporting legacy-rule scan covered 9 files and 52 rules, about 20% of the identified corpus. It surfaced a `Promise.withResolvers()` suggestion in `story-workspace.js`; the existing deferred helper was retained for compatibility. This bounded scan does not certify the unscanned code.
 
@@ -16,7 +16,9 @@ The conversation trail now scrolls within the pane that actually owns scrolling.
 
 ## Generated-browser evidence
 
-The final design journey used the private-workspace ASGI bridge, a synthetic same-origin browser route, generated account/chat data, and generated placeholder SVG thumbnails only for fixture thumbnail requests that returned 404. No household media, model, Windows host, or microphone was used. The private `design-reflow-keyboard/result.json` receipt records these measured states:
+An explicit language change can now resume the same idle private conversation after a fresh session, membership, capability, list and exact-thread read. Only server-confirmed text history returns; previous result cards, media and audio do not. An unsent draft survives only when no newer typing has replaced it. Account/library changes, a manual conversation selection, missing permission and late responses discard the superseded resume intent. This is an in-memory language-change convenience, not background execution or automatic submission. The nine-case generated locale-resume browser regression covers successful resumption, an explicit next turn, newer typing, permission loss, pending work and superseded success/failure responses.
+
+The final design journey used the private-workspace ASGI bridge, a synthetic same-origin browser route, generated account/chat data, and generated placeholder SVG thumbnails only for fixture thumbnail requests that returned 404. No household media, model, Windows host, or microphone was used. The private `final-locale-design/result.json` receipt records these measured states:
 
 | View | Page width | Dialog | Composer footer | Minimum sampled small-text contrast | Enabled control minimum height |
 | --- | ---: | --- | --- | ---: | ---: |
@@ -25,22 +27,23 @@ The final design journey used the private-workspace ASGI bridge, a synthetic sam
 | Phone, 320 × 720, 150% root text | 320 px; no horizontal overflow | 320 × 720 px | Bottom at viewport edge; 18 px padding | 5.33:1 | 44 px |
 | Phone, 320 × 720, 200% root text | 320 px; no horizontal overflow | 320 × 720 px | Bottom at viewport edge; 24 px padding | 5.33:1 | 44 px |
 
-The companion private `design-reflow-keyboard.log` records PASS for the native dialog name/heading, keyboard focus and Escape return, two explicit typed follow-ups in one private conversation, and reduced-motion/forced-colors focus checks. The forced-colors computed focus outline was solid and 3 px. The 150% and 200% states enlarge the root font size. They are text-resize checks, not browser zoom or device-scale-factor tests. The final receipt lists sign-in, library, conversation, forced-colors and generated paused-voice styling screenshots. Sign-in and the library also passed 320px/200% root-text reflow. The generated paused layout retained a 128px conversation pane and keyboard-reachable typing/Send actions without microphone access.
+The companion private `final-locale-design/run.log` records PASS for the native dialog name/heading, keyboard focus and Escape return, two explicit typed follow-ups in one private conversation, and reduced-motion/forced-colors focus checks. The forced-colors computed focus outline was solid and 3 px. The 150% and 200% states enlarge the root font size. They are text-resize checks, not browser zoom or device-scale-factor tests. The final receipt lists sign-in, library, conversation, forced-colors and generated paused-voice styling screenshots. Sign-in and the library also passed 320px/200% root-text reflow. The generated paused layout retained a 128px conversation pane and keyboard-reachable typing/Send actions without microphone access.
 
-The private `trail-r6.log` reports PASS for the eight-turn Chinese trail at 390 px with 150% root text, for the actual modal scroll pane and older-message position preservation, for “Jump to latest” and keyboard scrolling, and for English localization, narrow layout, lazy restoration, draft preservation, and no automatic replay. It also records delayed-response and account-scope protections.
+The private `final-locale-turn_trail/run.log` reports PASS for the eight-turn Chinese trail at 390 px with 150% root text, for the actual modal scroll pane and older-message position preservation, for “Jump to latest” and keyboard scrolling, and for English localization, narrow layout, lazy restoration, draft preservation, and no automatic replay. It also records delayed-response and account-scope protections.
 
 The final affected journeys passed against generated, scoped data:
 
 | Journey | Result |
 | --- | --- |
-| Assistant search, `redesign-search-r3` | 8 checkpoints; joint person/text search, date refinement, ordered results and GET-only recovery |
-| Private workspace, `workspace-final` | 17 checkpoints; creation, history, preferences, refinements and scope protection |
-| Selected frames to story, `story-final` | 19 checkpoints; ordered handoff, paging, explicit saves, undo and permission refusal |
-| Voice session, `voice-final` | Passed; foreground Start/Pause/End, reply, transcript review, interruption and scoped cleanup |
-| Turn trail, `trail-r6` | Passed; inline and modal scroll owners, anchor preservation, restoration and late-response protection |
+| Assistant search, `final-locale-search` | 8 checkpoints; joint person/text search, date refinement, ordered results and GET-only recovery |
+| Private workspace, `final-locale-workspace` | 17 checkpoints; creation, history, preferences, refinements and scope protection |
+| Selected frames to story, `final-locale-story` | 19 checkpoints; ordered handoff, paging, explicit saves, undo and permission refusal |
+| Voice session, `final-locale-voice_session` | Passed; foreground Start/Pause/End, reply, transcript review, interruption and scoped cleanup |
+| Turn trail, `final-locale-turn_trail` | Passed; inline and modal scroll owners, anchor preservation, restoration and late-response protection |
+| Explicit language change, `final-locale-locale_resume` | 9 cases passed; authorized history/draft resume, no automatic send or capture, late-response and scope protection |
 | UI overlay builder/router | 12 tests passed; exact source-only asset binding |
 
-The search journey predates the final keyboard-only focus and motion-test changes; the affected modal layout and source behavior were unchanged afterward. The final design journey explicitly resumes the current authorized thread after a locale refresh, verifies that reading history sends no turn, and checks listening-state CSS under both reduced-motion settings without requesting a microphone. Node 22.17.0, Python 3.12.12 and Playwright 1.55.0 were used. Detailed generated screenshots, request logs and private receipts are retained outside Git; this document deliberately does not link to developer-local artifacts.
+After integrating locale resumption, the affected design, workspace, search, voice-session, turn-trail and nine-case locale journeys all passed again. The final design journey checks listening-state CSS under both reduced-motion settings without requesting a microphone. Node 22.17.0, Python 3.12.12 and Playwright 1.55.0 were used. Detailed generated screenshots, request logs and private receipts are retained outside Git; this document deliberately does not link to developer-local artifacts.
 
 During the trail-test update, an older fixture assumption expected private capabilities to load eagerly and allowed a turn while account restoration was still blocking the UI. The fixture was corrected to preserve the existing restoration gate; the trail-r6 run then passed with that gate intact. This was a stale test expectation, not authorization to bypass the application’s account-restoration behavior.
 

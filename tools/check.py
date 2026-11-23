@@ -165,6 +165,7 @@ WEB_TESTS = (
     "server/tests/security/test_annotation_web_wav.cjs",
     "server/tests/security/test_assistant_pending_recovery_browser.cjs",
     "server/tests/security/test_assistant_turn_trail_browser.cjs",
+    "server/tests/security/test_assistant_locale_resume_browser.cjs",
     "server/tests/security/test_assistant_transcript_browser.cjs",
     "server/tests/security/test_assistant_capture_scope_browser.cjs",
     "server/tests/security/test_assistant_voice_session_browser.cjs",

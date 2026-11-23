@@ -10,7 +10,8 @@ this file retain the date and scope of their original evidence.
 - **Web design:** the November 24 local redesign consolidates the assistant
   surface, gives the conversation its actual scroll owner, and checks native
   dialog keyboard access, contrast, touch controls and narrow/text-resized
-  layouts. This is generated browser evidence, not a new Windows release
+  layouts. Explicit language changes can resume freshly authorized idle private
+  conversation text and an unsent draft without replay. This is generated browser evidence, not a new Windows release
   ([design review](WEB_DESIGN_REVIEW_2026-11-24.md)).
 - **Source:** the November 14 local increment adds ordinary result paging,
   fresh current-result validation, and selected-frame handoff to the existing
