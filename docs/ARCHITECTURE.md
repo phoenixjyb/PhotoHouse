@@ -10,6 +10,20 @@ and isolated inference runtimes. The offline catalog is descriptive; it does not
 load weights or select a live deployment. New embedding spaces require versioned
 artifacts and explicit comparison/reindex qualification.
 
+## Web presentation and delivery identities
+
+The browser uses native HTML controls and a native assistant dialog. Header,
+voice state, scrolling conversation and composer have separate layout rows;
+large-text layouts retain a usable message pane and can scroll the dialog.
+The [November 24 design review](WEB_DESIGN_REVIEW_2026-11-24.md) records the
+generated checks and physical/Windows acceptance limits.
+
+Static UI provenance is independent of the API backend and native-kernel
+revision. The closed ten-asset manifest is verified before the UI router is
+bound; it does not select a model, change a schema or enable backend features.
+A production launch plan must retain both identities and keep active overlays
+out of scratch cleanup. See [Web delivery](WEB_DELIVERY.md).
+
 ## Conversation and refinement
 
 The October 30 compact UI and bounded conversation projection are deployed
@@ -17,7 +31,7 @@ from `daa7e14`. The conversation store remains the authority for account/library
 ownership, thread revision, retention and current result scope. The new explicit
 story/assistant model roles and related name-grounding and cloud-preview UI are
 source and private native-qualification evidence only; they are not live. The
-current Windows rollout was blocked before effects. Search and grouping remain
+role-pair Windows rollout recorded here was blocked before effects. Search and grouping remain
 on their existing paths.
 
 Story refinement and interactive Search use separate model roles. Story

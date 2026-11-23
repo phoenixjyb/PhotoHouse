@@ -47,7 +47,7 @@ def _commit_id(commit):
 
 
 def source_files(commit):
-    """Read exactly the six selected regular blobs from the immutable commit."""
+    """Read exactly the allowlisted regular blobs from the immutable commit."""
     commit = _commit_id(commit)
     prefix = git('rev-parse', '--show-prefix').decode('utf-8').strip()
     records = git('ls-tree', '-r', '-z', '--full-tree', commit,
