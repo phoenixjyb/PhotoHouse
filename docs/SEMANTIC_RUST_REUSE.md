@@ -52,8 +52,36 @@ source mutation, invalid input/wire results and explicit unavailable selection.
 The affected Python-default cohort completed 83 tests: 82 passed and one
 platform-specific case was skipped. A 51-test cohort with the saved real Mac
 extension selected completed with 50 passes and the same platform skip. The
-new consumer paths still need their own Windows
-qualification and controlled rollout; the old binary's qualification is retained.
+new consumer paths have the separate Windows evidence below; controlled rollout
+remains a distinct step. The old binary's qualification is retained.
+
+## Windows generated qualification — November 24
+
+The same existing 308,224-byte extension was used with CPython 3.12.10 x64;
+no native build, model request or production configuration change occurred.
+The actual Windows test suite returned **56 passes, zero failures/errors and
+two explicit POSIX-only skips** across 58 cases. The skipped fixtures concern
+POSIX mode/symlink behavior; this increment does not qualify Windows reparse
+or DACL behavior. Existing storage controls remain separate and unchanged.
+
+The original qualification wrapper rejected those skips and stopped before
+benchmarking. Its failed result was retained. A separate benchmark-only operation
+bound that exact source/native/test receipt and ran only the missing two cases;
+it did not repeat the suite or relabel the original operation as successful.
+
+| Windows generated component | Python | Existing Rust kernel | Ratio |
+| --- | ---: | ---: | ---: |
+| Small cohort, 512 vectors | 107.873 ms | 90.159 ms | 1.20x |
+| Streaming, 4,096 vectors | 862.647 ms | 724.817 ms | 1.19x |
+
+Each case used 768 dimensions, one warmup and seven samples per engine under a
+20% CPU hard cap, a 2 GiB/four-process native Job, no GPU, and at least 12 GiB
+free RAM and D: disk reserve. Both engines produced identical full ranked
+results and callback counts: 1,540 for small and 8,226 for streaming. These are
+component wall-time medians under that profile, not household Search latency.
+The native Job drained, its handles closed, successful D: scratch was removed,
+and transport/source/offline closure was accepted. Live API activation remains
+outside this generated qualification.
 
 ## Reproduce without rebuilding
 
