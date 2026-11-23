@@ -53,3 +53,9 @@ During the trail-test update, an older fixture assumption expected private capab
 ## Acceptance boundary
 
 These artifacts establish source and generated local-browser evidence only. They do not establish Windows deployment, service behavior, physical-device layout, real microphone consent/capture, or family acceptance. The final checks above cover the changed source and its generated journeys. Safari, Firefox, actual browser zoom, production Core Web Vitals and physical microphone/speaker behavior were not evaluated in this increment. No Windows deployment is claimed here.
+
+## Windows rollout outcome
+
+The reviewed UI artifact at source `68d6baba` has not been accepted live. Two guarded Windows attempts stopped in the existing playback startup check before the grouping transition. Their native records identify a PowerShell subprocess timeout; both restored the previous API/UI and passed rollback startup and HTTPS checks. The timeout's underlying cause remains unresolved. Deployment retries stopped; this review does not relabel either failed attempt as successful.
+
+The environment and atomic grouping-receipt source corrections were retained, but those later phases were not reached by these two attempts. No model inference, model replacement, database backup or schema change was needed for the redesign. The existing backend and grouping configuration remain the restored deployment. Physical microphone/speaker and household review remain separate.

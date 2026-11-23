@@ -15,7 +15,9 @@ this file retain the date and scope of their original evidence.
   ([design review](WEB_DESIGN_REVIEW_2026-11-24.md)).
 - **Story review:** selected-source proposals now offer an explicit original-wording
   disclosure beside the editable chapter text, using the existing volatile snapshot.
-  The focused local journey passed 17 checkpoints; save remains explicit
+  From selected assistant results, the author can also explicitly copy the latest
+  user message as optional writing direction. The focused local generated journey
+  passed 18 checkpoints; save remains explicit
   ([editor contract](SELECTED_SOURCE_STORY_UI.md)).
 - **Source:** the November 14 local increment adds ordinary result paging,
   fresh current-result validation, and selected-frame handoff to the existing
@@ -38,7 +40,9 @@ this file retain the date and scope of their original evidence.
   broader rollout, installed phone/TV clients and family review are separate
   evidence. The October 29 release and October 30 API/Web status remain dated
   records, not claims about current service state. No new Android/TV delivery or
-  broad household acceptance is claimed here.
+  broad household acceptance is claimed here. The November 24 Web UI rollout
+  failed native playback startup and was safely rolled back; the new UI is not
+  live while that issue is being resolved.
 
 Search relevance on real household material, story quality, and in-home
 interaction need family review. Generated fixtures establish software behavior,
@@ -48,30 +52,30 @@ not those product outcomes.
 
 ### 1. Make an assistant conversation useful from question to follow-up
 
-Complete one coherent typed conversation journey across search, result
-explanation, clarification and refinement. Answers should say what visible,
-authorized evidence they use, distinguish a source observation from an
-inference, and ask when the source cannot support an answer. Refinements should
-preserve only the filters the person meant to keep; ambiguous or unsupported
+Search, supported refinements, clarification and bounded conversation history
+already exist. The next gap is a family-reviewed conversation that explains
+what visible, authorized evidence supports an answer, distinguishes an
+observation from an inference, and says when the source cannot support a claim.
+Refinements must preserve only intended filters; ambiguous or unsupported
 conditions must not broaden the search. Keep domain operations versioned,
 read-only unless a separate explicit action is chosen, and checked by the
 application on every use. Evolve capability profiles around reviewed family
 tasks; retain PH-A1 v1 as a regression fixture.
 
 **Deliver:** a small bilingual set of realistic tasks covering find, explain,
-clarify, refine and explicitly open or select a result. For each reviewed task,
-record whether the evidence was correct, whether a condition was lost, whether
-the person had to correct or repeat the request, and whether the assistant
-refused when evidence was missing. Include the relevant source references in
-the review record. Start with representative family-reviewed cases; do not
-claim full-library relevance from generated fixtures or invent a global pass
-threshold before measuring the cases.
+clarify, refine and explicitly open or select a result. For example, after a
+September search is refined to Jane, ask what supports a “by the river” claim:
+the assistant should cite visible authorized evidence or say it cannot tell.
+For each family-reviewed task, record evidence correctness, lost conditions,
+user corrections and unsupported-claim refusals with relevant source references.
+Generated fixtures remain software evidence, not full-library relevance; do not
+invent a global pass threshold before measuring representative cases.
 
 ### 2. Resume safely and make cancellation understandable
 
-Make reopening a conversation useful without reviving stale cards or hidden
-context. Show what request and result are current, revalidate the account,
-library, source revisions and authorization before displaying or acting on them,
+Normal conversation reopening can recover the latest valid result. Complete the
+remaining pending and uncertain-turn experience without reviving stale cards or
+hidden context: revalidate account, library, source revisions and authorization,
 and ask for a fresh search when the old scope cannot be restored. Define an
 explicit cancel action and its visible outcome for an in-flight assistant turn.
 Navigation, closing a view and a lost connection must not silently mean either
@@ -87,22 +91,24 @@ their owners differ.
 ### 3. Complete the reviewable story path
 
 Keep selected-result handoff, selected-source drafting and saved-story
-refinement as distinct steps. The local source already carries selected frames
-across result pages and opens the existing editor after a fresh current-result
-check. Next, improve safe context resumption for that handoff, and make
-proposal review easy to compare with the original, including source attribution,
-uncertain wording and current revisions. The author must explicitly adopt or
+refinement as distinct steps. The local source carries selected frames across
+result pages and opens the existing editor after a fresh current-result check,
+but selections are page-only and do not return when a conversation is reopened.
+Add safe resumption bound to the same current result and scope, clearing choices
+after a refined search or changed thread, account, library or source revision.
+The selected-source editor now has an explicit original-wording disclosure and
+editable direction handoff; next, keep source attribution, uncertain wording
+and current revisions clear in review. The author must explicitly adopt or
 reject a proposal; saving, publishing, sharing or changing access never follows
 from generation alone.
 
-**Deliver:** first qualify the local review flow with generated data and stale
-source/revision cases. Reconcile the saved-story refinement's last recorded
+**Deliver:** first test selection resumption and stale source/revision refusal
+with generated data. Reconcile the saved-story refinement's last recorded
 transport and native-quality gates against the intended runtime, then prepare
-one requested story proposal for family
-review. Record the original and proposal separately, note names/facts/style the
-reviewer accepts or corrects, and preserve explicit adoption. Do not turn one
-story's feedback into a claim of general quality or a background rewrite of
-other stories.
+one requested story proposal for family review. Record the original and
+proposal separately, note names, facts and style the reviewer accepts or
+corrects, and preserve explicit adoption. Do not turn one story's feedback into
+a claim of general quality or a background rewrite of other stories.
 
 ### 4. Check usefulness with the household before widening scope
 
