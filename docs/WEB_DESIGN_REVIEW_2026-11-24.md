@@ -14,6 +14,8 @@ The modal now has a named `h1`, a named conversation region, and explicit header
 
 The conversation trail now scrolls within the pane that actually owns scrolling. While the modal is open, that is `#assistant-workspace-content`; in the inline view, it is the bounded message list. New replies follow the tail only when the reader was already there. When older messages are being read, the visible message anchor and scroll position are restored after the next reply. “Jump to latest” and the trail keyboard scroll keys act on the active pane without scrolling the page or moving the voice controls. See [app.js](../server/backend/app/ui/access/app.js), [index.html](../server/backend/app/ui/access/index.html), and [styles.css](../server/backend/app/ui/access/styles.css).
 
+The selected-source story editor also has a native, collapsed **View original wording** disclosure for each proposed chapter. It reuses the existing volatile pre-generation text, keeps the proposal editable and preserves explicit review/Save. Its 44px disclosure retains the browser's open/closed marker. See the [story editor contract](SELECTED_SOURCE_STORY_UI.md); this is distinct from the saved-story refinement screen's existing comparison.
+
 ## Generated-browser evidence
 
 An explicit language change can now resume the same idle private conversation after a fresh session, membership, capability, list and exact-thread read. Only server-confirmed text history returns; previous result cards, media and audio do not. An unsent draft survives only when no newer typing has replaced it. Account/library changes, a manual conversation selection, missing permission and late responses discard the superseded resume intent. This is an in-memory language-change convenience, not background execution or automatic submission. The nine-case generated locale-resume browser regression covers successful resumption, an explicit next turn, newer typing, permission loss, pending work and superseded success/failure responses.
@@ -41,6 +43,7 @@ The final affected journeys passed against generated, scoped data:
 | Voice session, `final-locale-voice_session` | Passed; foreground Start/Pause/End, reply, transcript review, interruption and scoped cleanup |
 | Turn trail, `final-locale-turn_trail` | Passed; inline and modal scroll owners, anchor preservation, restoration and late-response protection |
 | Explicit language change, `final-locale-locale_resume` | 9 cases passed; authorized history/draft resume, no automatic send or capture, late-response and scope protection |
+| Selected-source proposal review, `story-original-phone-final` | 17 checkpoints passed; original/proposal distinction, keyboard disclosure, enlarged phone reflow, cancel/source-change clearing and explicit save |
 | UI overlay builder/router | 12 tests passed; exact source-only asset binding |
 
 After integrating locale resumption, the affected design, workspace, search, voice-session, turn-trail and nine-case locale journeys all passed again. The final design journey checks listening-state CSS under both reduced-motion settings without requesting a microphone. Node 22.17.0, Python 3.12.12 and Playwright 1.55.0 were used. Detailed generated screenshots, request logs and private receipts are retained outside Git; this document deliberately does not link to developer-local artifacts.

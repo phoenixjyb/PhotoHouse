@@ -13,6 +13,10 @@ this file retain the date and scope of their original evidence.
   layouts. Explicit language changes can resume freshly authorized idle private
   conversation text and an unsent draft without replay. This is generated browser evidence, not a new Windows release
   ([design review](WEB_DESIGN_REVIEW_2026-11-24.md)).
+- **Story review:** selected-source proposals now offer an explicit original-wording
+  disclosure beside the editable chapter text, using the existing volatile snapshot.
+  The focused local journey passed 17 checkpoints; save remains explicit
+  ([editor contract](SELECTED_SOURCE_STORY_UI.md)).
 - **Source:** the November 14 local increment adds ordinary result paging,
   fresh current-result validation, and selected-frame handoff to the existing
   story editor ([details](SEARCH_TO_STORY.md)). The selection lasts only in the

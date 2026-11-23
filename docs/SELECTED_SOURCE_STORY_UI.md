@@ -40,7 +40,12 @@ independently reauthorize their own capabilities and current sources.
    alongside the citations and are not silently added to the saved story.
 4. Inspect citations and original family wording/bylines, then edit chapter
    narration in the existing editor. Generated words are labelled as AI wording
-   pending review. Any edit clears the review confirmation. Changes to selected
+   pending review. **View original wording** expands the chapter's pre-generation
+   text beside the editable proposal. It is collapsed by default, works with the
+   keyboard, and makes no request or save. Cancel, expiry, a replacement outline
+   or changed source selection clears the comparison with the proposal. This
+   uses the existing volatile restoration snapshot, without new retention.
+   Any edit clears the review confirmation. Changes to selected
    sources, chapter/media layout or source revision invalidate the old proposal
    rather than rebinding its words to new evidence.
 5. Check the review confirmation for the exact current proposal and explicitly
@@ -86,7 +91,10 @@ service rechecks authority and resolves the same mutation idempotently.
   exercises selection, reference inspection, edits/review, explicit Save,
   ambiguous-save retry, foreign citation rejection, frozen preparation retries,
   changed source choices/revisions, cancellation/expiry, delayed capability
-  negotiation and Chinese/English layout checks.
+  negotiation and Chinese/English layout checks. The November 24 increment passed
+  17 generated checkpoints, including original/proposal comparison, keyboard
+  disclosure, enlarged phone reflow and clearing without automatic generation or
+  saving. This is local browser evidence, not a Windows/model qualification.
 
 Native locality, quality/latency, ASR/TTS, cross-process GPU coordination,
 physical family-device acceptance and deployment remain separate. The HTTP

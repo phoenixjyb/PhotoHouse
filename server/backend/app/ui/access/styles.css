@@ -445,6 +445,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .story-draft-citation{padding:.45rem 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
 .story-draft-citation p{white-space:pre-wrap;overflow-wrap:anywhere}
 .story-draft-prose-origin{display:inline-block;margin:.5rem 0 0;padding:.25rem .55rem;border-radius:999px;background:#f1e5c9;color:#654b17;font-size:.78rem;font-weight:600;overflow-wrap:anywhere}
+.story-draft-original{min-width:0;margin:.5rem 0;padding:0 .7rem;border:1px solid var(--line);border-radius:9px;background:#fffdfa}
+.story-draft-original summary{min-height:44px;display:list-item;list-style-position:inside;padding:.5rem 0;cursor:pointer;font-weight:600;overflow-wrap:anywhere}
+.story-draft-original-text{margin:0 0 .75rem;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
 .story-chapter-dictation{min-width:0;margin:.75rem 0 1rem;padding:.75rem 0;border-top:1px solid var(--line)}
 .story-chapter-dictation>button{min-height:44px;max-width:100%;white-space:normal}
 .story-dictation-status{min-height:1.4em;margin:.35rem 0;color:var(--muted);font-size:.88rem;line-height:1.5;overflow-wrap:anywhere}
