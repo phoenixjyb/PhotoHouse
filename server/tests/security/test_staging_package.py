@@ -78,6 +78,9 @@ print('packaged-adapters-and-fallback-pass')
             'backend/app/access/search_evaluation.py',
             'backend/app/access/kinship.py',
             'backend/app/access/photo_stacks.py',
+            'backend/app/access/photo_stack_acceleration.py',
+            'backend/app/access/photo_stack_reference/__init__.py',
+            'backend/app/access/photo_stack_reference/algorithm.py',
             'backend/app/access/upload_preparation.py',
             'backend/app/access/assistant_journal.py',
             'backend/app/access/assistant_workspace_store.py',
@@ -277,6 +280,7 @@ print('packaged-adapters-and-fallback-pass')
             with zipfile.ZipFile(io.BytesIO(package.package_bytes(commit, files))) as archive:
                 archive.extractall(root)
             program = (
+                "import os; os.environ.pop('PHOTOHOUSE_PHOTO_STACK_ENGINE', None)\n"
                 'import sys\nfrom pathlib import Path\n'
                 f'root=Path({str(root)!r})\n'
                 "sys.path[:0]=[str(root/'scripts'),str(root/'backend')]\n"
@@ -287,6 +291,10 @@ print('packaged-adapters-and-fallback-pass')
                 'from app.access.model_deployment import validate_deployment\n'
                 'from app.access.model_qualification import validate_qualification\n'
                 'from app.main import create_app\n'
+                'from app.access.photo_stack_index import build_library_photo_stacks\n'
+                "rows=[(i,'image/jpeg','generated',1,1,'2026-10-22T08:00:00Z','0'*16,None,None) for i in (1,2)]\n"
+                "assert build_library_photo_stacks(rows)[0]['asset_ids']==['1','2']\n"
+                "assert 'photohouse_photo_stack' not in sys.modules\n"
                 'from app.access.selected_story_lifecycle import SelectedStoryLifecycle\n'
                 'from app.access.selected_story_local import LocalSelectedStoryProvider\n'
                 'from app.access.selected_story_native import NativeStoryLaunch\n'
