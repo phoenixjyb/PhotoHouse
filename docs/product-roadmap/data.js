@@ -530,23 +530,23 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "Conversation records and follow-up source paths exist.",
-          "zh": "已有对话记录与追问处理源码。"
+          "en": "Generated English, Chinese and mixed-language journeys retain the date and media filters. A follow-up can change the month and keep the reviewed person filter.",
+          "zh": "合成的中英文及混合语言流程能保留日期和媒体类型条件。追问可以更改月份，同时保留已核实的人物筛选。"
         }
       ],
       "gaps": [
         {
-          "en": "Ambiguity, exclusions and all retained filters need a coherent end-to-end experience.",
-          "zh": "歧义、排除条件和保留的全部筛选条件仍需形成连贯完整体验。"
+          "en": "Real household phrasing, ambiguous requests and exclusions still need native end-to-end evaluation.",
+          "zh": "真实家庭用语、存在歧义的请求以及排除条件仍需本机端到端评估。"
         }
       ],
       "next_step": {
-        "en": "Deliver a find → clarify → narrow → open journey with visible conditions.",
-        "zh": "交付“查找 → 澄清 → 缩小范围 → 打开结果”的完整流程，条件始终可见。"
+        "en": "Qualify the find, clarify, narrow and open journey on approved household devices with visible filters.",
+        "zh": "在获准的家庭设备上验证查找、澄清、缩小范围和打开结果的完整流程，保持筛选条件可见。"
       },
       "delivery_note": {
-        "en": "Partial implementation; no broad multi-turn family acceptance is claimed.",
-        "zh": "目前为部分实现；尚未宣称广泛多轮家庭验收完成。"
+        "en": "Local generated journeys passed. Native relevance and device acceptance remain open.",
+        "zh": "本地合成流程已通过。本机搜索相关性和设备验收仍待完成。"
       },
       "acceptance_note": {
         "en": "Test with real user phrasing without hardcoding a demonstration.",
@@ -556,10 +556,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "kind": "source",
           "label": {
-            "en": "ROADMAP.md · assistant Search contracts",
-            "zh": "ROADMAP.md · 助手搜索契约"
+            "en": "Audit reconciliation · generated Search journeys",
+            "zh": "审计对照记录 · 合成搜索流程"
           },
-          "at": "2026-11-24",
+          "at": "2026-11-25",
           "state": "partial"
         }
       ]
@@ -975,14 +975,14 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "The optional Web recorder saves short sections, resumes unfinished recordings, and lets authors play completed sections. Generated browser checks covered duplicate-free retry and playback after reload.",
-          "zh": "可选的网页录音支持分段保存、继续未完成的录音，以及由作者回听已完成的录音。合成浏览器测试验证了无重复重试和刷新后回听。"
+          "en": "The optional Web recorder saves short sections, resumes unfinished recordings, and lets authors play completed sections. With processing consent, authors can request an unsaved local transcript of a selected section.",
+          "zh": "可选的网页录音支持分段保存、继续未完成的录音，以及由作者回听已完成的录音。取得处理同意后，作者可对选定段落发起本机转写，查看未保存的转写稿。"
         }
       ],
       "gaps": [
         {
-          "en": "Physical capture, transcription, editorial review and production storage qualification remain open.",
-          "zh": "真机录音、转写、编辑审阅及生产存储验证仍待完成。"
+          "en": "Physical capture, native transcription, transcript editing and production storage qualification remain open.",
+          "zh": "真机录音、本机转写效果、转写稿编辑及生产存储验证仍待完成。"
         }
       ],
       "next_step": {
@@ -990,8 +990,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "先交付一个可恢复的录音到已审阅故事流程，再扩展自动化。"
       },
       "delivery_note": {
-        "en": "Generated Web and API checks passed. The recorder remains off in the deployed configuration.",
-        "zh": "合成网页与 API 测试通过。已部署配置仍未启用录音。"
+        "en": "Generated Web and API checks covered exact retry, section playback and transcript preview. Both recording and transcription remain off in the deployed configuration.",
+        "zh": "合成网页与 API 测试覆盖了无重复重试、分段回听和转写预览。已部署配置未启用录音和转写。"
       },
       "acceptance_note": {
         "en": "Recording consent, attribution and author adoption remain explicit.",
