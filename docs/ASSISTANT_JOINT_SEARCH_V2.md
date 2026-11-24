@@ -146,7 +146,9 @@ weeks, calendar months/years and explicit Chinese/English dates use the supplied
 server civil date. “This weekend” or “本周末” selects Saturday through Sunday of
 that week. “Last weekend” or “上周末” selects those two days of the previous week.
 A weekend follow-up changes the date and retains the current search's other
-conditions.
+conditions. After a dated result, the Web assistant's **Any date** control
+puts that instruction in the composer for review and explicit Send. It keeps
+the existing media, person, place and text conditions.
 Resolved names that overlap a date or media keyword (for example, `May`) also
 require clarification instead of silently adding that condition. Quoted text
 must fit the existing 512-byte text filter limit; a longer literal asks for a
