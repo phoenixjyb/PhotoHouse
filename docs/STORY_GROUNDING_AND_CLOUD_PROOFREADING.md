@@ -60,6 +60,11 @@ input hashes are recorded in
 Both datasets are read from fixed local package files; grounding makes no
 network request and sends no family data to prepare them.
 
+The worker reuses an immutable index of those validated public files for the
+life of its process. Reviewed household names and story text are processed per
+request. Singer cues inspect only the adjacent text that can contain a valid
+catalog name, even in a long unpunctuated transcript.
+
 Public singer spellings are corrected only when a unique phonetic catalog match
 is found in an explicit context such as a singer/artist cue or a related song,
 concert or performance phrase. Multiple matches remain ambiguous and are not

@@ -906,7 +906,11 @@
     const privateMode=privateSnapshot?.capabilities?.available===true&&privateSnapshot?.capabilities?.threads===true;
     $('assistant-clear').disabled=state.locked||(privateMode&&(privateAssistantBusy||!!privatePending||sessionOwnsVoice));
     $('assistant-clear').textContent=privateMode?t('assistantPrivateNew'):recoveryPending?t('assistantRecoveryAcknowledge'):assistantState.pendingTurn?(state.language==='en'?'Clear draft':'清空输入'):t('assistantClear');
-    $('assistant-cancel').hidden=!assistantState.busy;
+    const cancel=$('assistant-cancel');
+    if(!assistantState.busy&&document.activeElement===cancel&&!state.locked&&!sessionOwnsVoice){
+      $('assistant-text').focus({preventScroll:true});
+    }
+    cancel.hidden=!assistantState.busy;
     renderAssistantSceneControls(privateAssistant?.state());
     if(assistantState.pendingTurn)renderAssistantPending();
   }

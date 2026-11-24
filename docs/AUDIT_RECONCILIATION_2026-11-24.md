@@ -119,8 +119,8 @@ using the same trusted HTTPS address on the home network.
 | PH-004 story integration | One generated Web journey goes from a refined Jude search and ordered picks across result pages to chapter arrangement, explicit family evidence, proposal review, save and reopen. A separate journey checks current Jude selection recovery. Phone and TV debug checks ran offline. | Combined installed-client journeys and physical review. |
 | PH-005 Web responsiveness | The generated browser shows a photo while the description response is held, and discards that description if you close or change photos. Thumbnail placeholders keep their shape and adjacent viewer steps retain the same authorized filmstrip images. | Matched scrolling and video-start measurements on representative devices. |
 | PH-006 Rust grouping | The qualified Rust grouping work is integrated, and the existing Windows grouping selection completed the fullscreen handoff. | Whole-refresh performance and dense-library quality. |
-| PH-007 family usability | Bilingual Home, Photos, Family, Stories, and Jude links reach existing destinations. Tab from a populated Jude composer reaches Send first. Voice controls retain 48px targets with enlarged Chinese text. | Usability sessions with family members. |
-| PH-008 identity and kinship | Authorized accounts can use their own reviewed perspective. The private draft tool accepts reviewed relationships and aliases, verifies the exact base, and preserves catalog bindings and account scope. | Family-facing editing and activation review. |
+| PH-007 family usability | Bilingual Home, Photos, Family, Stories, and Jude links reach existing destinations. Tab from a populated Jude composer reaches Send first. Focus returns to the composer if the focused Cancel control disappears when a request completes. Voice controls retain 48px targets with enlarged Chinese text. | Usability sessions with family members. |
+| PH-008 identity and kinship | Authorized accounts can use their own reviewed perspective. The private draft tool accepts reviewed relationships and aliases, verifies the exact base, and preserves catalog bindings and account scope. Story grounding reuses its public name index and checks reviewed household aliases separately for each request. | Family-facing editing and activation review. |
 | PH-009 uploads and pairing | Android keeps interrupted cancellations out of upload retries. The remembered-folder shortcut rechecks the exact account, library and read grant before the user reviews that folder again. Web invitations remain phone-bound and require explicit registration. | Automatic OS-managed backup, iOS, TV pairing, and household device acceptance. |
 | PH-010 voice | Generated checks cover voice entry, recovery, half-duplex playback, and new-turn timing. The Windows bridge accepts and verifies optional exact names of installed voices without a cloud speech request. | Native listening quality, physical audio devices, and resource measurements with real local inference. |
 | PH-011 memory groups | A generated browser opens an unsaved story in the saved group's order. The optional suggestion action covers more reviewed seed photos when the ordinary page is dominated by one seed. It keeps manual choices and exclusions. | Automated multi-device event discovery and household review. |
@@ -194,6 +194,17 @@ decode. The median was **295.2 ms** (288.2–300.1) at `0f1130b` and **38.0 ms**
 (32.2–47.4) at `2d41f0b`. The test uses an in-process generated service and
 measures the dependency on the description request. Home-network, phone and
 representative-library timing remain open.
+
+### Local story name grounding
+
+A four-example batch exercised a public singer correction, an uncued name, a
+reviewed synthetic household alias, and a longer concert reference. Two fresh
+processes per version returned identical grounded text, repairs and ambiguity
+reports. On the same Mac, the warm median for the four lookups was 80.7–81.2 ms
+at `9c6736b` and about 0.12 ms with the validated public index reused. Each
+process measured 24 warm batches. First batches took 95.8–100.7 ms before and
+31.0–31.2 ms afterward. These measurements cover name grounding alone. Native
+generation, transcription quality and Windows story latency remain open.
 
 ## Household walkthrough
 

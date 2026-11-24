@@ -67,6 +67,27 @@ class StoryNameGroundingTests(unittest.TestCase):
         self.assertEqual('看嘉宁演唱会，提前订了嘉宁在杭州的演唱会。', result['text'])
         self.assertEqual(2, len(result['repairs']))
 
+    def test_singer_cue_uses_only_the_adjacent_name(self):
+        lead = '一早大家从城郊坐地铁到市中心一路聊着昨晚的饭菜'
+        for ending, expected in (
+                ('去看假宁演唱会。', '去看嘉宁演唱会。'),
+                ('去看旧城中心广场假宁演唱会。', '去看旧城中心广场假宁演唱会。'),
+                ('的假宁演唱会。', '的假宁演唱会。')):
+            with self.subTest(ending=ending):
+                grounded = ground_text(lead + ending, [], catalog=catalog('嘉宁'),
+                                       readings=READINGS)
+                self.assertEqual(lead + expected, grounded['text'])
+
+    def test_packaged_index_does_not_reuse_private_people_or_custom_catalog(self):
+        text = '我们去看周结伦演唱会。Mira也来了。'
+        reviewed = [{'name': '小宁', 'aliases': ['Mira']}]
+        self.assertEqual('我们去看周杰伦演唱会。小宁也来了。',
+                         ground_text(text, reviewed)['text'])
+        self.assertEqual(text, ground_text(text, [], catalog=catalog())['text'])
+        self.assertEqual(text, ground_text(text, [], readings={})['text'])
+        self.assertEqual('我们去看周杰伦演唱会。Mira也来了。',
+                         ground_text(text, [])['text'])
+
     def test_ambiguous_public_homophones_are_reported_without_replacement(self):
         text = '看假宁演唱会。'
         result = ground_text(text, [], catalog=catalog('嘉宁', '家宁'), readings=READINGS)
