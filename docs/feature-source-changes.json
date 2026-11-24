@@ -37406,6 +37406,103 @@
         }
       ],
       "notes": "Explicit user activation shares only the same-origin registration link through a supported device menu. Generated Chromium verified fallback copy, cancellation, large-text mobile controls, no network use and explicit phone-bound registration."
+    },
+    {
+      "feature": "audit-private-recording-text-review-20261125",
+      "source_commit": "b673cfbaac7f4f5b087b09fb42818ec9b55a4161",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "507b4f15ee4973f4b1c747679a27427ed8ad292ebe94031abd174c0625e1bde9",
+          "sha256": "eeb20e3b076cd667e584f67efe7357dbd1ff98e2ffea14ffb9e25938a125ec04"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "8a76083ea5e0750cebc2e27790b1606339ceba9a5d651e709614ea7f39923d45",
+          "sha256": "8a0b1291ef629e9646165f65f5183721d7893956e1ce71a9c4b6626efc96aa5b"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "f2d4dbfb97e87defa995f79424903a9c20b4862a3d15d07906b868f8b76c001c",
+          "sha256": "3d13f121df534edcbc7f2bea4f809d98a16c33c98069c3be9f62992b05c35a9e"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "992032ba74a113a5e3fa2ee10d6eb1f6c3d32dfeb5906671499ac5627214bc4e",
+          "sha256": "e9fa6dd02aca142597131f59465c427ae037264fa7f2a9eb38b3cafe47564519"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "9afc28096fe7582996a70793a309caaa2e23b9322ca0a0979b665bd6c1c85651",
+          "sha256": "fd2fb74f675b3c5f4167892b7a77f6bf84701b4cdc15e69ff6031b7c073974e0"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "cb0692500533ef752c8358a7e3120c2b7a1ea5573b250016b7608b05ab186d2e",
+          "sha256": "63297e6e4a6b582c3b8b007c5cc283b2f89fdc277fdf126f6da431ffdbd2c87a"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_intake.py",
+          "before_sha256": "ec681c99b8f8a51c59959ec97f125d1d8d40b91b24e4c11d522dae775c705969",
+          "sha256": "1f12b89cf865982646ce2dcd21b61957b73c093ff1de3c190b70064bf543b939"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_schema.py",
+          "before_sha256": "221b967ddd7876cd84b5f97a349de809507e027d1adcaef7a56cc2ea3d1dcd02",
+          "sha256": "fe9c6336fa3deeed77fcd624ddf5b097616723c597d19eabde86ae054670af5c"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_transport.py",
+          "before_sha256": "cb9101e311e83aa9fe2912bfd5d7b6a34457ab47a59babd03881e28db715c800",
+          "sha256": "e4cc782016609cef7f49931db89da3abd150d8cc0828408e9935c68cd511aac7"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "a17bbd55715e98bec57436dd3634ab9406d16cb0bc8291ab39625b3d4231d4de",
+          "sha256": "e4843f02b5c45658b363a90d8f36abb09c7d5c12b8584b2d150ab92e69f9b286"
+        },
+        {
+          "path": "server/backend/app/routers/ui.py",
+          "before_sha256": "31e7d40f4e6cda87e2800a8c2060520232663c43aea9514555d3bbde8cf6785a",
+          "sha256": "c0f31a6b4adc457cced3493f73fb7d16539c88aea35ce1ae1ed99c91e27b0335"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "97a82a179cb872a0727d8fe8e22cdab0dca9d0f65ad2b69e6113fc326a384729",
+          "sha256": "eb575a14ca931dea6f3e1be52dca493be658ea807b6ba3339db32786548bd689"
+        },
+        {
+          "path": "server/backend/app/ui/access/oral-history.js",
+          "before_sha256": "3f5d219e8af3ee7e5fd23198b78cc2247101275aaae6001fe5dee59f031e028d",
+          "sha256": "b63eb2bb372b227f9115a329c9b02215b27c1cfdcbb72277b7560c6c721f6867"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "8aff241eccd02e595a17d8ef690e8bfdf14fdc6ca93bb16a75f21ece90194c1a",
+          "sha256": "6ed7317405097d5e46497b346a1a9a9a45d933a29104df16286bfc75fd7344bd"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "before_sha256": "c760ab25408e3426b156a246421db121d00573eb00d065ea1d9d502ea7162ab6",
+          "sha256": "2071ba8cdd8686bbee9b7c44f2c8c62acf390abbcaf44e0db2062b5aaca86149"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_transport.py",
+          "before_sha256": "cee3875b9cb4623c0ef64e15af108380772dc3cf9683c1d68fce2fdc3b8ebb85",
+          "sha256": "10e433e137af3456fd782ae036d3da8e56eb62f320befbabcaddb97453382a17"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_withdrawal.py",
+          "before_sha256": "fb1dcd3da80ae8ea3a6eaefe869a94100fb7537f91da96e0f230aff79bd0e6ad",
+          "sha256": "1b8f66e9f041800a4fcbd36a65cb795a9f4dd08e9640fc05f0cf6d0fb4752273"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "de86d4ea0c9c4697d7302cff1795c0c341bddabcce6d6a8c2da6f9bb32083971",
+          "sha256": "ba6af21a002f66931eeaf946edf2d489cb2eab06b781c0493d927067392fbfab"
+        }
+      ],
+      "notes": "Generated author UI and API cover keyboard review, scoped edit preservation, one revision after lost acknowledgement, guarded reopen, original audio preservation, and hiding reviewed text after replaying withdrawal against an older generated backup. Review is opted in only with a separate fixture schema."
     }
   ]
 }

@@ -975,14 +975,14 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "The optional Web recorder saves short sections, resumes unfinished recordings, and lets authors play completed sections. With processing consent, authors can request an unsaved local transcript of a selected section.",
-          "zh": "可选的网页录音支持分段保存、继续未完成的录音，以及由作者回听已完成的录音。取得处理同意后，作者可对选定段落发起本机转写，查看未保存的转写稿。"
+          "en": "Authors can resume private recordings, play completed sections, and request local transcription with processing consent. They can edit and explicitly save reviewed wording while preserving the original audio.",
+          "zh": "作者可以继续私密录音、回听已完成的段落，并在取得处理同意后发起本机转写。作者可以编辑并主动保存审阅文字，原始录音保持完整。"
         }
       ],
       "gaps": [
         {
-          "en": "Physical capture, native transcription, transcript editing and production storage qualification remain open.",
-          "zh": "真机录音、本机转写效果、转写稿编辑及生产存储验证仍待完成。"
+          "en": "Physical capture, native transcription, source-linked story adoption and production storage qualification remain open.",
+          "zh": "真机录音、本机转写效果、保留出处的故事采纳及生产存储验证仍待完成。"
         }
       ],
       "next_step": {
@@ -990,8 +990,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "先交付一个可恢复的录音到已审阅故事流程，再扩展自动化。"
       },
       "delivery_note": {
-        "en": "Generated Web and API checks covered exact retry, section playback and transcript preview. Both recording and transcription remain off in the deployed configuration.",
-        "zh": "合成网页与 API 测试覆盖了无重复重试、分段回听和转写预览。已部署配置未启用录音和转写。"
+        "en": "Generated checks covered exact retries, audio playback, transcript preview and reopening reviewed text. The recording and review features remain off in the deployed configuration.",
+        "zh": "合成测试覆盖了无重复重试、回听、转写预览和重新打开审阅文字。已部署配置未启用录音与审阅功能。"
       },
       "acceptance_note": {
         "en": "Recording consent, attribution and author adoption remain explicit.",

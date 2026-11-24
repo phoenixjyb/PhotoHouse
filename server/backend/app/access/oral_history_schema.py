@@ -8,6 +8,9 @@ import sqlite3
 SESSION = 'access_oral_history_sessions'
 SECTION = 'access_oral_history_sections'
 MUTATION = 'access_oral_history_mutations'
+REVIEW = 'access_recording_section_reviews'
+MAX_REVIEW_TEXT_BYTES = 8192
+MAX_REVIEW_REVISION = 2**53 - 1
 MAX_SECTIONS = 180
 MAX_SECTION_FRAMES = 20 * 16000
 MAX_SECTION_BYTES = 44 + MAX_SECTION_FRAMES * 2
@@ -155,3 +158,33 @@ def install_fixture_schema(db):
         db.execute('ROLLBACK TO oral_history_fixture_schema')
         db.execute('RELEASE oral_history_fixture_schema')
         raise
+
+
+REVIEW_SCHEMA = f'''CREATE TABLE {REVIEW} (
+    session_id TEXT NOT NULL,
+    ordinal INTEGER NOT NULL CHECK(typeof(ordinal)='integer' AND ordinal BETWEEN 0 AND {MAX_SECTIONS-1}),
+    source_revision INTEGER NOT NULL CHECK(typeof(source_revision)='integer' AND source_revision BETWEEN 3 AND {MAX_SECTIONS+2}),
+    source_sha256 TEXT NOT NULL CHECK(length(source_sha256)=64 AND source_sha256 NOT GLOB '*[^0-9a-f]*'),
+    revision INTEGER NOT NULL CHECK(typeof(revision)='integer' AND revision BETWEEN 1 AND {MAX_REVIEW_REVISION}),
+    text TEXT NOT NULL CHECK(typeof(text)='text' AND length(CAST(text AS BLOB)) BETWEEN 1 AND {MAX_REVIEW_TEXT_BYTES}),
+    text_sha256 TEXT NOT NULL CHECK(length(text_sha256)=64 AND text_sha256 NOT GLOB '*[^0-9a-f]*'),
+    PRIMARY KEY(session_id, ordinal),
+    FOREIGN KEY(session_id, ordinal) REFERENCES {SECTION}(session_id, ordinal) ON DELETE RESTRICT
+)'''
+
+
+def assert_review_schema(db):
+    rows = db.execute('SELECT name,sql FROM sqlite_master WHERE tbl_name=? AND sql IS NOT NULL',
+                      (REVIEW,)).fetchall()
+    if [tuple(row) for row in rows] != [(REVIEW, REVIEW_SCHEMA)]:
+        raise ValueError('recording_review_schema_unavailable')
+
+
+def install_fixture_review_schema(db):
+    """Create the separate reviewed-text table only in an explicit fixture transaction."""
+    if not db.in_transaction:
+        raise ValueError('recording_review_schema_requires_owned_transaction')
+    assert_schema(db)
+    if not db.execute('SELECT 1 FROM sqlite_master WHERE name=?', (REVIEW,)).fetchone():
+        db.execute(REVIEW_SCHEMA)
+    assert_review_schema(db)

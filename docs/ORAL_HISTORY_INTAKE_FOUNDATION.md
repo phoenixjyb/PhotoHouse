@@ -6,8 +6,8 @@ fixtures. A protected HTTP transport is available only when its explicit
 `oral_history_intake_enabled` app option is true. The optional Web recorder
 shares that setting and uses the existing generated-fixture schema. The default app
 and the current Windows runtime leave it off. Source now supports a separate
-local transcription preview. Production storage, native speech qualification
-and transcript editing remain open.
+local transcription preview and editable author-reviewed text. Production
+storage, native speech qualification and source-linked story adoption remain open.
 
 The October 15 source increment adds separate opt-in, author-only withdrawal
 and V4 journal replay. Withdrawal retains original bytes but denies ordinary
@@ -107,8 +107,28 @@ preview can be retried by the author.
 
 The preview is an unsaved machine transcript. The Web panel removes it on a
 section change, close, backgrounding or account/library change. The original
-audio remains playable in the same view. Transcript correction, persistence
-and adoption into a story require separate work.
+audio remains playable in the same view.
+
+### Save the author's reviewed wording
+
+With `oral_history_reviewed_text_enabled=True` and the separate review schema
+installed, **Review text** opens the current section's saved wording. An empty
+review can start from the displayed machine draft or from typed text. **Save
+reviewed text privately** is the only action that writes the wording. It stays
+separate from the original WAV and the machine preview. The author can reopen it
+without running speech recognition again.
+
+`GET .../sections/{ordinal}/reviewed-text` accepts the existing expected source
+revision header. `PUT` accepts `expected_revision`, `expected_review_revision`
+and `text`. Each action verifies the current completed recording, author,
+original audio and exact section. Reviewed text is capped at 8 KiB of UTF-8.
+An identical retry returns the current accepted wording. Saving different text
+at a stale revision reports a conflict. A withdrawn source no longer returns
+its review. These actions never change the WAV or save a story.
+
+The generated restore check denies the reviewed wording before and after
+replaying a later withdrawal against an older backup. The separate review table
+still needs production migration and paired backup/restore qualification.
 
 ## Section and quota contract
 
@@ -212,5 +232,7 @@ qualify the operator's journal/schema upgrade and paired restore, specify
 permanent erasure and backup retention, and qualify recording on physical
 devices. The generated transcript preview exercises current consent,
 authorization and revision, including a withdrawal during the provider
-request. No native ASR or household audio was used. The recorder and
-transcription preview stay default-off pending production admission.
+request. A generated author review verifies explicit save, exact retry,
+different-text conflict and reopen without recognition or audio changes.
+Native ASR and household audio remain untested in this increment. Intake,
+transcription and reviewed text each stay off in the deployed configuration.

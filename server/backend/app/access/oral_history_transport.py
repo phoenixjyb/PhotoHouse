@@ -9,7 +9,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .assistant_speech import AssistantAsrFailure
 from .oral_history_intake import OralHistoryIntake, CREATE_FIELDS, _uuid
-from .oral_history_schema import MAX_SECTION_BYTES, MAX_SECTIONS
+from .oral_history_schema import MAX_SECTION_BYTES, MAX_SECTIONS, MAX_REVIEW_REVISION, MAX_REVIEW_TEXT_BYTES
 from .service import AccessService
 from .transport import AccessRoute, TransportError, _runtime, _single, credentials_from_request
 
@@ -209,6 +209,38 @@ async def transcribe_section(library_id: str, session_id: str, ordinal: str, req
     result = await run_in_threadpool(_transcription_preview, runtime, token, library_id,
                                     session_id, int(ordinal), body['expected_revision'],
                                     state.assistant_asr, state.oral_history_transcription_lock)
+    return _json_response(result)
+
+
+@router.api_route(
+    '/oral-history/v1/libraries/{library_id}/sessions/{session_id}/sections/{ordinal}/reviewed-text',
+    methods=['GET', 'PUT'],
+)
+async def reviewed_section(library_id: str, session_id: str, ordinal: str, request: Request):
+    runtime, token = _admitted(request)
+    await run_in_threadpool(_authorize, runtime, token, library_id)
+    if not request.app.state.oral_history_reviewed_text_enabled:
+        raise TransportError(503, 'Recording review unavailable')
+    if not re.fullmatch(r'(?:0|[1-9][0-9]{0,2})', ordinal) or int(ordinal) >= MAX_SECTIONS:
+        raise TransportError(400, 'Invalid recording section')
+    if request.method == 'PUT':
+        body = await _read_json(request, 6 * MAX_REVIEW_TEXT_BYTES + MAX_JSON_BYTES)
+        if (type(body) is not dict or set(body) != {'expected_revision', 'expected_review_revision', 'text'}
+                or type(body['expected_revision']) is not int
+                or not 1 <= body['expected_revision'] <= MAX_SECTIONS + 2
+                or type(body['expected_review_revision']) is not int
+                or not 0 <= body['expected_review_revision'] <= MAX_REVIEW_REVISION
+                or type(body['text']) is not str):
+            raise TransportError(400, 'Invalid recording section')
+        options = body
+    else:
+        expected = _single(request, 'x-photohouse-expected-revision')
+        if (expected is None or not re.fullmatch(r'[1-9][0-9]{0,2}', expected)
+                or int(expected) > MAX_SECTIONS + 2):
+            raise TransportError(400, 'Invalid recording section')
+        options = {'expected_revision': int(expected)}
+    result = await run_in_threadpool(_intake_call, runtime, 'reviewed_section', token, library_id,
+                                    session_id, int(ordinal), **options)
     return _json_response(result)
 
 
