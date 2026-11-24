@@ -38217,6 +38217,144 @@
         }
       ],
       "notes": "Restore focus to the description summary before replacing the focused retry button."
+    },
+    {
+      "feature": "stories_recent_memory_group_library_read",
+      "source_commit": "04681bc945381f5566d7be99074fc81f75016d0a",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "79567dcd40f701749283bf3744cde15cdf801eecb2275105631141e1dda8cdef",
+          "sha256": "46c3ac8f092f2eddf3e7e4e50765847c847bf7bf9be12430b53854a0565bc675"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "3660aa2748651be6cd32e282c80bd0ee9c0f83e2cdbdcb4c3d5c1006fb37384f",
+          "sha256": "6f4c0156f53e2e948287ba04336cc521ba7b27b6a99e8ef0a8f5956e3ff3a469"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "8a3db87662206e0d4019508103013c309acf7f107f0109810a4b7461ff897919",
+          "sha256": "60239701c56c811c436d022c1fa8b68b3e6ee0b4d21c9a2b5e8e2069ef903a74"
+        },
+        {
+          "path": "server/backend/app/access/memory_group_transport.py",
+          "before_sha256": "6506205eaff18c2b777b3263694b08a9c154fd25e1825dfcbe49798f3537b472",
+          "sha256": "054f65e8c69a57311fd03b145705585872ebda731dee4f307bb2238acb4e687e"
+        },
+        {
+          "path": "server/backend/app/access/memory_groups.py",
+          "before_sha256": "775b805bb9a1903af5c85b87f2b26215c5a3a93e8c0495300f77f488af35e78d",
+          "sha256": "ccc7f0f4eeadbffa49736868c3e84ad0249f39875c83cd70be01e39fe4e4d729"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "3e30b551395d6c1fd19cc56de5e523974fc5f01adb46edfd7ff1afe8b5287ffc",
+          "sha256": "e2a8f26bd5672ac8acf9ff4798c683cbc4b3e4d3bf6e8d61def1d05df7c8028a"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "5d57ca6fd4ea09a8c19d4f2008f8c3c19850dbaedbd42165a3dd5c67627b69a9",
+          "sha256": "96c51eca9a0feed6861ba8171b5b7cdea5ed0c1542187257c22d0fb801b11ccd"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "db38ab7c0238a2c28f8b3d56f06c9a61cec62e8f0a282a05b759145f29364bb1",
+          "sha256": "bd01670d777ab9b06449ea003a0cb583a898d93102d3496e21e88c87e2106616"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "5145a8d024bb513b6e08bf60c82b1f180db3a8d5ad6733e94bb6375d5c34590e",
+          "sha256": "e3d478676ed6a7bfee4d624a69d3f653c292d2274399d3c3991ddf411d92ec0f"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "e419e96912b77f008b8c42611c2ec1a77768190e169436db52cab3fd8a7be11f",
+          "sha256": "118f34c291da5b90c9c2f6313819fb7806e129ed2371c99f710e818b7a3bfa6c"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "1e1367ac8389f793f86a9c180c07ce666a740000d71e32a40b9aaf3de2213fec",
+          "sha256": "0cdb29483f178439af3f59d0f9962d2b7554e647282ffe9f156cad783dd5c909"
+        },
+        {
+          "path": "server/tests/security/test_memory_group_routes.py",
+          "before_sha256": "e42952c93597ec29e63bbf2b3c94120eb762123ea1c6971358f567d0dab18955",
+          "sha256": "24c8eff756fa37140b7a32c2f52b4c900780a776d6a457e96df2a7cb7b8cb177"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "db78b3c3de836ebfc2f651cde0de5565767dd82deb3341c01fe71b1274438e84",
+          "sha256": "edb65237c1396d995b475c9d51c694722701fec140b662230036308f3bd0d3fc"
+        }
+      ],
+      "notes": "Open recent memory groups from Stories in their saved order. Validate every member and recheck the exact revision. The generated browser covers legacy and logout behavior."
+    },
+    {
+      "feature": "protected_video_readiness_overlap",
+      "source_commit": "0e1b16df05c02c05159cf383190cd3fb2463f7bf",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "46c3ac8f092f2eddf3e7e4e50765847c847bf7bf9be12430b53854a0565bc675",
+          "sha256": "f87d68172bad05b5b01d0515da72e27eca27f17e782decff1b68dd1583a5ac56"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "e2a8f26bd5672ac8acf9ff4798c683cbc4b3e4d3bf6e8d61def1d05df7c8028a",
+          "sha256": "81ef3423711ab44b47b795ba374f07b3e9b3e5744cc13058517f7669a4d9d9a4"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "1bae21ca688c60c1b8908e72919971f402c5c0a2995dd582f90dae8677f34fdb",
+          "sha256": "f96a30b3fcc1c773d97a133db02ecfb929040049942d9f6182f066d63e585290"
+        }
+      ],
+      "notes": "Overlap the authorized detail and protected HEAD reads for a selected prepared video. The player and media GET wait for both. Matched generated Chromium frame timing is recorded separately from Windows."
+    },
+    {
+      "feature": "doctor_web_profile_inventory",
+      "source_commit": "ffd2a2b1d17eb7dd7397e510c0164d7786fc4e8c",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT_ENVIRONMENT.md",
+          "before_sha256": "342bcc78331c967bf821ec40e7d58088d7d27d19e74239eac7145c92758f036d",
+          "sha256": "4490a0a3e9fdcb51bd6155ca79ddc04e3dd42ffadd5722d70a9425d298bad9e0"
+        },
+        {
+          "path": "tools/doctor.py",
+          "before_sha256": "84d06c352f07c260d1cafa060203c7fd0e4b26570b8c4ac0fa98f373e41f1a2c",
+          "sha256": "b447a396ed0c9a90e41310ae92f5eff282b0de64cc91733a581c012a677b8099"
+        },
+        {
+          "path": "tools/tests/test_doctor.py",
+          "before_sha256": "7d6f8643e004e3482eabebba2d240a1e8fef65d9d1d00ce6c532bd16c96d96c2",
+          "sha256": "8cbca6d237bb8049eb5069a479c98e6450d4c1f60946efdb29bcc92078089a94"
+        }
+      ],
+      "notes": "Use the exact Web check inventory in the doctor and report a missing required suite."
+    },
+    {
+      "feature": "assistant_date_filter_clear_control",
+      "source_commit": "793b7c336e1703242b9bc7d22ebb35c4367c3e63",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "03622bda8111181dc8836c5f4988cafaca709c8c94a00cdea9ed4bd15458a312",
+          "sha256": "b9bf44be7742d7a0a130740f527cd9994b49d709afa642e5c8a459c1c7c3a5fb"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "81ef3423711ab44b47b795ba374f07b3e9b3e5744cc13058517f7669a4d9d9a4",
+          "sha256": "af183dceb26e5d9308d0fd6b592da92d57041de9be1f777c73df5ba9a104e36f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "77596b8ff413a8b2a92a383d5927ef5acda81e72ca7898453a7498f14db0120f",
+          "sha256": "5e963a26e035d93c204a4eb8a1d1034a2e2a07a37d0b0a9e93baee31a32cc13a"
+        }
+      ],
+      "notes": "Offer a reviewable Any date instruction for a dated current Search. The user sends it and existing nondate filters remain bound."
     }
   ]
 }
