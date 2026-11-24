@@ -107,11 +107,11 @@ Only the selected saved chapter prose is included in the request, in chapter
 order. It excludes story title, story/chapter IDs, asset and source references,
 photos, audio, conversation history and other linked context. Reviewed names
 and aliases are replaced locally with opaque placeholders and restored locally
-after a valid reply. Common URL, email, local-path and obvious API-key patterns
-are removed. These filters are limited safeguards: other private content may
-remain, and names/placeholders or public reference matches are not proof of
-anonymity or factual accuracy. The UI requires the author to inspect the full
-request; its consent checkbox starts unchecked.
+after a valid reply. The preview masks common URLs, email addresses, phone
+numbers, local paths and obvious API keys. Phone masking covers compact
+international numbers and common grouped Mainland China and +1 formats,
+including full-width digits. The author reviews the complete request for
+any other private content. The consent checkbox starts unchecked.
 
 The preview binds the actor, library, story, revision and source fingerprint.
 It expires after 600 seconds, is held in a bounded process-local cache of at

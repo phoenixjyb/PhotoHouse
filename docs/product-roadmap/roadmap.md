@@ -5,7 +5,7 @@
 
 Reviewed integration record / 部署与集成回顾记录
 
-The bilingual roadmap and fullscreen viewer have Windows delivery records. Later audit improvements have local source checks. Household use, native Search relevance and installed-client acceptance remain open. / 双语路线图与全屏浏览器已有 Windows 交付记录。之后的审计改进已完成本地源码检查。家庭实际使用、本机搜索相关性以及已安装客户端的验收仍待完成。
+Windows delivery records cover the bilingual roadmap and fullscreen viewer. Later audit changes have local API, browser and Android emulator evidence. Household use, native Search relevance and installed-client checks are still open. / 双语路线图与全屏浏览器已有 Windows 交付记录。之后的审计改进已有本地 API、浏览器及 Android 模拟器验证。家庭实际使用、本机搜索相关性和已安装客户端仍待验收。
 
 This is a dated product record, not a live health check. / 这是有日期的产品记录，不是实时健康检查。
 
@@ -42,6 +42,7 @@ Library membership bounds browsing, assistant requests and contributions. / 相�
 **Implemented / 已实现**
 
 - Protected API/Web routes and owner review are implemented. / 已实现受保护的 API／网页入口和所有者审核。
+- An owner can revoke an unused registration link by entering the same phone number after returning to the library. / 所有者再次进入相册库后，可以输入同一手机号撤销尚未使用的注册链接。
 
 **Gaps / 差距**
 
@@ -56,6 +57,7 @@ Library membership bounds browsing, assistant requests and contributions. / 相�
 **Evidence record / 证据记录**
 
 - 2026-10-29 · FEATURES.md · RELEASE_2026-10-29.md / FEATURES.md · RELEASE_2026-10-29.md
+- 2026-11-25 · AUDIT_RECONCILIATION_2026-11-24.md / AUDIT_RECONCILIATION_2026-11-24.md
 
 <a id="upload-and-review"></a>
 
@@ -68,6 +70,7 @@ Import photos and videos with visible ownership and processing states. / 导入�
 **Implemented / 已实现**
 
 - Protected uploads, owner review and recoverable request receipts exist. / 已实现受保护上传、所有者审核与可恢复请求回执。
+- Android reviews selected file sizes, remembers an approved folder and requests metered-data consent for each transfer run. / Android 会核对已选文件大小、记住所选授权文件夹，并在每次使用计费网络传输前征得同意。
 
 **Gaps / 差距**
 
@@ -82,6 +85,7 @@ Import photos and videos with visible ownership and processing states. / 导入�
 **Evidence record / 证据记录**
 
 - 2026-10-29 · UPLOAD_PREPARATION.md · PHONE_IMPORT_STATUS.md / UPLOAD_PREPARATION.md · PHONE_IMPORT_STATUS.md
+- 2026-11-25 · ANDROID_UPLOAD_RECOVERY.md / ANDROID_UPLOAD_RECOVERY.md
 
 <a id="automatic-intake"></a>
 
@@ -198,6 +202,7 @@ Use local embeddings to complement exact filters and indexed text. / 用本地�
 **Implemented / 已实现**
 
 - Semantic source, scoped indexes and qualified Rust vector components exist. / 已有语义搜索源码、范围明确的索引与已验证 Rust 向量组件。
+- The quality scorecard marks an empty page as inconclusive when some items within the active filters have no semantic index. / 当当前筛选范围内仍有未建立语义索引的项目时，质量评分卡会将空结果标记为尚不能确认。
 
 **Gaps / 差距**
 
@@ -212,6 +217,33 @@ Use local embeddings to complement exact filters and indexed text. / 用本地�
 **Evidence record / 证据记录**
 
 - 2026-11-24 · SEMANTIC_SEARCH_PILOT.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md / SEMANTIC_SEARCH_PILOT.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md
+- 2026-11-25 · SEARCH_QUALITY_SCORECARD.md / SEARCH_QUALITY_SCORECARD.md
+
+<a id="scoped-external-search"></a>
+
+### Permission-aware external search / 具备权限约束的外部搜索
+
+In progress / 进行中 · Later / 后续
+
+Give approved clients a limited read-only view of one library. / 让获授权的客户端在单个相册库内获得有限的只读结果。
+
+**Implemented / 已实现**
+
+- An internal reader enforces library scope, expiry, revocation and bounded metadata. / 内部读取接口已约束相册库范围、到期、撤销与元数据数量。
+
+**Gaps / 差距**
+
+- External transport, scoped credential issuance and client integration remain open. / 外部传输、范围限定的凭证签发及客户端接入仍待完成。
+
+**Next / 下一步:** Define a revocable grant for one explicitly selected library. / 定义仅用于一个明确选定相册库的可撤销授权。
+
+**Delivery / 交付背景:** The internal reader passed generated source checks. / 内部读取接口已通过合成数据源码检查。
+
+**Acceptance / 验收背景:** Verify revocation and isolation before connecting any external client. / 接入外部客户端前，须验证授权撤销与相册库隔离。
+
+**Evidence record / 证据记录**
+
+- 2026-11-25 · EXTERNAL_SEARCH_INTERFACE.md / EXTERNAL_SEARCH_INTERFACE.md
 
 <a id="assistant-search"></a>
 
@@ -348,27 +380,28 @@ Refresh persistent visual grouping through the existing scheduled worker. / 通�
 
 ### Activities & memory groups / 活动与记忆分组
 
-Planned / 计划中 · Later / 后续
+In progress / 进行中 · Next / 下一步
 
 Organize related moments into meaningful activities, not only look-alike images. / 将相关时刻整理成有意义的活动，而不仅是外观相似的图片。
 
 **Implemented / 已实现**
 
-- Existing gallery and story links provide a foundation. / 现有相册与故事关联提供基础。
+- A Web editor can add same-day photos or videos from the current library, split a saved group and open an ordered story draft. / 网页编辑器可从当前相册库添加同日照片或视频、拆分已保存的回忆组，并按顺序打开故事草稿。
 
 **Gaps / 差距**
 
-- A reviewed activity model, grouping rules and reversible user controls are still needed. / 仍需经过审阅的活动模型、分组规则与可撤销用户控制。
+- Automatic event discovery across devices, group merging and household review remain open. / 跨设备自动识别活动、合并回忆组以及家庭使用验收仍待完成。
 
-**Next / 下一步:** Define one family-useful grouping flow with transparent evidence and correction. / 定义一个对家庭有用、依据透明且可纠正的分组流程。
+**Next / 下一步:** Try the editable groups with a small reviewed set of family events. / 用一小组可审阅的家庭活动试用可编辑的回忆组。
 
-**Delivery / 交付背景:** Planned product work; visual stacks do not count as this feature. / 属于计划中的产品工作；视觉堆叠不等于此功能。
+**Delivery / 交付背景:** Generated browser checks covered explicit addition, save, split and retry. The optional activity group editor awaits Windows release. / 合成浏览器测试覆盖主动添加、保存、拆分和重试。可选的活动回忆组编辑器仍待 Windows 交付。
 
 **Acceptance / 验收背景:** Family usefulness must be evaluated directly. / 家庭实用性必须直接评价。
 
 **Evidence record / 证据记录**
 
 - 2026-11-24 · ROADMAP.md · FEATURES.md / ROADMAP.md · FEATURES.md
+- 2026-11-25 · AUDIT_RECONCILIATION_2026-11-24.md / AUDIT_RECONCILIATION_2026-11-24.md
 
 <a id="story-editor-and-sources"></a>
 
@@ -563,10 +596,11 @@ Bring protected browsing, playback and Search to household devices. / 让家庭�
 **Implemented / 已实现**
 
 - Android phone/TV source and local build evidence exist. / 已有 Android 手机／电视源码与本地构建证据。
+- The Android emulator verified confirmation before resuming on metered or unknown networks and reuse of the saved offset after a pause. / Android 模拟器已验证计费或未知网络恢复上传前的确认，以及暂停后沿用已保存的传输进度。
 
 **Gaps / 差距**
 
-- Installed artifact, signing continuity, TV catalog and physical playback need current records. / 已安装版本、签名连续性、电视目录与真实播放仍需当前记录。
+- Automatic mobile backup, iOS and private TV pairing are open. Installed artifacts, signing continuity and physical playback need current evidence. / 手机自动备份、iOS 原生端与私密电视配对仍待开发。已安装版本、签名连续性与真机播放仍需验证。
 
 **Next / 下一步:** Finish one installed-client journey before claiming cross-device parity. / 先完成一个已安装客户端流程，再宣称跨设备能力一致。
 
@@ -577,6 +611,7 @@ Bring protected browsing, playback and Search to household devices. / 让家庭�
 **Evidence record / 证据记录**
 
 - 2026-11-24 · FEATURES.md · FEATURES.md / FEATURES.md · FEATURES.md
+- 2026-11-25 · ANDROID_UPLOAD_RECOVERY.md / ANDROID_UPLOAD_RECOVERY.md
 
 <a id="web-assistant-redesign"></a>
 
@@ -655,3 +690,29 @@ Reuse prepared native work when parity and measured benefit justify it. / 在行
 **Evidence record / 证据记录**
 
 - 2026-11-24 · WINDOWS_PLAYBACK_QUERY_BUDGET.md · Rust qualification / WINDOWS_PLAYBACK_QUERY_BUDGET.md · Rust 验证
+
+<a id="installation-and-recovery"></a>
+
+### Installation and recovery / 安装与恢复
+
+In progress / 进行中 · Next / 下一步
+
+Make new installations and backup restores repeatable. / 让新安装和备份恢复可以可靠复现。
+
+**Implemented / 已实现**
+
+- An extracted source package can provision a synthetic owner, import a photo and recover without restoring withdrawn access. / 解包后的源码可创建合成测试所有者、导入照片，并在恢复时保留已撤销的访问限制。
+
+**Gaps / 差距**
+
+- Supported installers, service lifecycle and household recovery drills still need qualification. / 受支持的安装程序、服务生命周期与家庭恢复演练仍待验证。
+
+**Next / 下一步:** Rehearse the documented recovery flow with generated data for each supported platform. / 为各受支持平台用合成数据演练文档中的恢复流程。
+
+**Delivery / 交付背景:** Current evidence is a local package and synthetic restore drill. / 当前证据来自本地打包与合成数据恢复演练。
+
+**Acceptance / 验收背景:** Record runtime, storage, rollback and restored permissions for each platform. / 按平台记录运行环境、存储、回滚与恢复后的权限。
+
+**Evidence record / 证据记录**
+
+- 2026-11-25 · AUDIT_RECONCILIATION_2026-11-24.md / AUDIT_RECONCILIATION_2026-11-24.md

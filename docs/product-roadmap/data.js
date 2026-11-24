@@ -13,8 +13,8 @@ window.PHOTOHOUSE_ROADMAP = {
       "zh": "部署与集成回顾记录"
     },
     "body": {
-      "en": "The bilingual roadmap and fullscreen viewer have Windows delivery records. Later audit improvements have local source checks. Household use, native Search relevance and installed-client acceptance remain open.",
-      "zh": "双语路线图与全屏浏览器已有 Windows 交付记录。之后的审计改进已完成本地源码检查。家庭实际使用、本机搜索相关性以及已安装客户端的验收仍待完成。"
+      "en": "Windows delivery records cover the bilingual roadmap and fullscreen viewer. Later audit changes have local API, browser and Android emulator evidence. Household use, native Search relevance and installed-client checks are still open.",
+      "zh": "双语路线图与全屏浏览器已有 Windows 交付记录。之后的审计改进已有本地 API、浏览器及 Android 模拟器验证。家庭实际使用、本机搜索相关性和已安装客户端仍待验收。"
     }
   },
   "areas": [
@@ -72,6 +72,13 @@ window.PHOTOHOUSE_ROADMAP = {
       "title": {
         "en": "Rust & reliability",
         "zh": "Rust 与可靠性"
+      }
+    },
+    {
+      "id": "operations",
+      "title": {
+        "en": "Installation & recovery",
+        "zh": "安装与恢复"
       }
     }
   ],
@@ -140,6 +147,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Protected API/Web routes and owner review are implemented.",
           "zh": "已实现受保护的 API／网页入口和所有者审核。"
+        },
+        {
+          "en": "An owner can revoke an unused registration link by entering the same phone number after returning to the library.",
+          "zh": "所有者再次进入相册库后，可以输入同一手机号撤销尚未使用的注册链接。"
         }
       ],
       "gaps": [
@@ -169,6 +180,15 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-10-29",
           "state": "verified"
+        },
+        {
+          "kind": "source",
+          "label": {
+            "en": "AUDIT_RECONCILIATION_2026-11-24.md",
+            "zh": "AUDIT_RECONCILIATION_2026-11-24.md"
+          },
+          "at": "2026-11-25",
+          "state": "verified"
         }
       ]
     },
@@ -189,6 +209,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Protected uploads, owner review and recoverable request receipts exist.",
           "zh": "已实现受保护上传、所有者审核与可恢复请求回执。"
+        },
+        {
+          "en": "Android reviews selected file sizes, remembers an approved folder and requests metered-data consent for each transfer run.",
+          "zh": "Android 会核对已选文件大小、记住所选授权文件夹，并在每次使用计费网络传输前征得同意。"
         }
       ],
       "gaps": [
@@ -217,6 +241,15 @@ window.PHOTOHOUSE_ROADMAP = {
             "zh": "UPLOAD_PREPARATION.md · PHONE_IMPORT_STATUS.md"
           },
           "at": "2026-10-29",
+          "state": "verified"
+        },
+        {
+          "kind": "source",
+          "label": {
+            "en": "ANDROID_UPLOAD_RECOVERY.md",
+            "zh": "ANDROID_UPLOAD_RECOVERY.md"
+          },
+          "at": "2026-11-25",
           "state": "verified"
         }
       ]
@@ -434,6 +467,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Semantic source, scoped indexes and qualified Rust vector components exist.",
           "zh": "已有语义搜索源码、范围明确的索引与已验证 Rust 向量组件。"
+        },
+        {
+          "en": "The quality scorecard marks an empty page as inconclusive when some items within the active filters have no semantic index.",
+          "zh": "当当前筛选范围内仍有未建立语义索引的项目时，质量评分卡会将空结果标记为尚不能确认。"
         }
       ],
       "gaps": [
@@ -463,6 +500,64 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-24",
           "state": "partial"
+        },
+        {
+          "kind": "source",
+          "label": {
+            "en": "SEARCH_QUALITY_SCORECARD.md",
+            "zh": "SEARCH_QUALITY_SCORECARD.md"
+          },
+          "at": "2026-11-25",
+          "state": "verified"
+        }
+      ]
+    },
+    {
+      "id": "scoped-external-search",
+      "area": "search",
+      "stage": "in_progress",
+      "priority": "later",
+      "title": {
+        "en": "Permission-aware external search",
+        "zh": "具备权限约束的外部搜索"
+      },
+      "summary": {
+        "en": "Give approved clients a limited read-only view of one library.",
+        "zh": "让获授权的客户端在单个相册库内获得有限的只读结果。"
+      },
+      "implementation": [
+        {
+          "en": "An internal reader enforces library scope, expiry, revocation and bounded metadata.",
+          "zh": "内部读取接口已约束相册库范围、到期、撤销与元数据数量。"
+        }
+      ],
+      "gaps": [
+        {
+          "en": "External transport, scoped credential issuance and client integration remain open.",
+          "zh": "外部传输、范围限定的凭证签发及客户端接入仍待完成。"
+        }
+      ],
+      "next_step": {
+        "en": "Define a revocable grant for one explicitly selected library.",
+        "zh": "定义仅用于一个明确选定相册库的可撤销授权。"
+      },
+      "delivery_note": {
+        "en": "The internal reader passed generated source checks.",
+        "zh": "内部读取接口已通过合成数据源码检查。"
+      },
+      "acceptance_note": {
+        "en": "Verify revocation and isolation before connecting any external client.",
+        "zh": "接入外部客户端前，须验证授权撤销与相册库隔离。"
+      },
+      "evidence": [
+        {
+          "kind": "source",
+          "label": {
+            "en": "EXTERNAL_SEARCH_INTERFACE.md",
+            "zh": "EXTERNAL_SEARCH_INTERFACE.md"
+          },
+          "at": "2026-11-25",
+          "state": "verified"
         }
       ]
     },
@@ -718,8 +813,8 @@ window.PHOTOHOUSE_ROADMAP = {
     {
       "id": "activity-memory-grouping",
       "area": "grouping",
-      "stage": "planned",
-      "priority": "later",
+      "stage": "in_progress",
+      "priority": "next",
       "title": {
         "en": "Activities & memory groups",
         "zh": "活动与记忆分组"
@@ -730,23 +825,23 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "Existing gallery and story links provide a foundation.",
-          "zh": "现有相册与故事关联提供基础。"
+          "en": "A Web editor can add same-day photos or videos from the current library, split a saved group and open an ordered story draft.",
+          "zh": "网页编辑器可从当前相册库添加同日照片或视频、拆分已保存的回忆组，并按顺序打开故事草稿。"
         }
       ],
       "gaps": [
         {
-          "en": "A reviewed activity model, grouping rules and reversible user controls are still needed.",
-          "zh": "仍需经过审阅的活动模型、分组规则与可撤销用户控制。"
+          "en": "Automatic event discovery across devices, group merging and household review remain open.",
+          "zh": "跨设备自动识别活动、合并回忆组以及家庭使用验收仍待完成。"
         }
       ],
       "next_step": {
-        "en": "Define one family-useful grouping flow with transparent evidence and correction.",
-        "zh": "定义一个对家庭有用、依据透明且可纠正的分组流程。"
+        "en": "Try the editable groups with a small reviewed set of family events.",
+        "zh": "用一小组可审阅的家庭活动试用可编辑的回忆组。"
       },
       "delivery_note": {
-        "en": "Planned product work; visual stacks do not count as this feature.",
-        "zh": "属于计划中的产品工作；视觉堆叠不等于此功能。"
+        "en": "Generated browser checks covered explicit addition, save, split and retry. The optional activity group editor awaits Windows release.",
+        "zh": "合成浏览器测试覆盖主动添加、保存、拆分和重试。可选的活动回忆组编辑器仍待 Windows 交付。"
       },
       "acceptance_note": {
         "en": "Family usefulness must be evaluated directly.",
@@ -761,6 +856,15 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-24",
           "state": "partial"
+        },
+        {
+          "kind": "source",
+          "label": {
+            "en": "AUDIT_RECONCILIATION_2026-11-24.md",
+            "zh": "AUDIT_RECONCILIATION_2026-11-24.md"
+          },
+          "at": "2026-11-25",
+          "state": "verified"
         }
       ]
     },
@@ -1124,12 +1228,16 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Android phone/TV source and local build evidence exist.",
           "zh": "已有 Android 手机／电视源码与本地构建证据。"
+        },
+        {
+          "en": "The Android emulator verified confirmation before resuming on metered or unknown networks and reuse of the saved offset after a pause.",
+          "zh": "Android 模拟器已验证计费或未知网络恢复上传前的确认，以及暂停后沿用已保存的传输进度。"
         }
       ],
       "gaps": [
         {
-          "en": "Installed artifact, signing continuity, TV catalog and physical playback need current records.",
-          "zh": "已安装版本、签名连续性、电视目录与真实播放仍需当前记录。"
+          "en": "Automatic mobile backup, iOS and private TV pairing are open. Installed artifacts, signing continuity and physical playback need current evidence.",
+          "zh": "手机自动备份、iOS 原生端与私密电视配对仍待开发。已安装版本、签名连续性与真机播放仍需验证。"
         }
       ],
       "next_step": {
@@ -1153,6 +1261,15 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-24",
           "state": "partial"
+        },
+        {
+          "kind": "source",
+          "label": {
+            "en": "ANDROID_UPLOAD_RECOVERY.md",
+            "zh": "ANDROID_UPLOAD_RECOVERY.md"
+          },
+          "at": "2026-11-25",
+          "state": "verified"
         }
       ]
     },
@@ -1299,6 +1416,55 @@ window.PHOTOHOUSE_ROADMAP = {
             "zh": "WINDOWS_PLAYBACK_QUERY_BUDGET.md · Rust 验证"
           },
           "at": "2026-11-24",
+          "state": "verified"
+        }
+      ]
+    },
+    {
+      "id": "installation-and-recovery",
+      "area": "operations",
+      "stage": "in_progress",
+      "priority": "next",
+      "title": {
+        "en": "Installation and recovery",
+        "zh": "安装与恢复"
+      },
+      "summary": {
+        "en": "Make new installations and backup restores repeatable.",
+        "zh": "让新安装和备份恢复可以可靠复现。"
+      },
+      "implementation": [
+        {
+          "en": "An extracted source package can provision a synthetic owner, import a photo and recover without restoring withdrawn access.",
+          "zh": "解包后的源码可创建合成测试所有者、导入照片，并在恢复时保留已撤销的访问限制。"
+        }
+      ],
+      "gaps": [
+        {
+          "en": "Supported installers, service lifecycle and household recovery drills still need qualification.",
+          "zh": "受支持的安装程序、服务生命周期与家庭恢复演练仍待验证。"
+        }
+      ],
+      "next_step": {
+        "en": "Rehearse the documented recovery flow with generated data for each supported platform.",
+        "zh": "为各受支持平台用合成数据演练文档中的恢复流程。"
+      },
+      "delivery_note": {
+        "en": "Current evidence is a local package and synthetic restore drill.",
+        "zh": "当前证据来自本地打包与合成数据恢复演练。"
+      },
+      "acceptance_note": {
+        "en": "Record runtime, storage, rollback and restored permissions for each platform.",
+        "zh": "按平台记录运行环境、存储、回滚与恢复后的权限。"
+      },
+      "evidence": [
+        {
+          "kind": "source",
+          "label": {
+            "en": "AUDIT_RECONCILIATION_2026-11-24.md",
+            "zh": "AUDIT_RECONCILIATION_2026-11-24.md"
+          },
+          "at": "2026-11-25",
           "state": "verified"
         }
       ]

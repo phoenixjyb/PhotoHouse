@@ -55,11 +55,14 @@ const turns=()=>requests.filter(item=>item.method==='POST'&&/\/threads\/[0-9a-f-
     args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
   context=await browser.newContext({viewport:{width:390,height:845},serviceWorkers:'block'});context.setDefaultTimeout(15000);
   await installTransport(context);page=await context.newPage();page.on('pageerror',error=>errors.push(error.stack||error.message));
+  const absentCapabilityResponse=page.waitForResponse(response=>response.request().method()==='GET'&&
+    new URL(response.url()).pathname==='/assistant/workspace/v1/agent-capabilities');
+  absentCapabilityResponse.catch(()=>{});
   await loginAndOpen();
   await page.locator('#assistant-private-new').click();
   await page.waitForFunction(()=>document.querySelector('#assistant-private-select')?.value&&!document.querySelector('#assistant-private-new').disabled);
-  const absentCapability=requests.find(item=>item.method==='GET'&&new URL(item.path,'https://photohouse.test').pathname==='/assistant/workspace/v1/agent-capabilities');
-  assert.ok(absentCapability,'agent capability route should be queried');assert.equal(absentCapability.status,200);assert.equal(absentCapability.response.available,false);
+  const absentCapability=await absentCapabilityResponse;
+  assert.equal(absentCapability.status(),200);assert.equal((await absentCapability.json()).available,false);
   assert.equal(await page.locator('#assistant-agent-send').isHidden(),true,'control stays hidden when agent is absent');
   checkpoint('Absent agent capability keeps the new control hidden');
 

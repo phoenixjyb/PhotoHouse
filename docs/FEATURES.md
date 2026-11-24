@@ -54,8 +54,8 @@ follows. Current installed-client and voice acceptance remain separate.
   group preserves its selected order. Linked family notes follow their items.
 - In the Web group editor, choose **Find photos and videos from this day** to
   browse the current library using the photo or video's recorded capture date.
-  Adding an item changes the selection. Use **Save this memory group** to keep
-  those changes.
+  Use the up and down buttons to arrange the selected items in story order.
+  Choose **Save this memory group** to keep the changes.
 - An optional video-moment catalog can match reviewed labels in the videos-only
   filter. Selecting a moment seeks the protected player to its start and binds
   playback to the prepared version used for that result. Operators supply the
@@ -64,6 +64,8 @@ follows. Current installed-client and voice acceptance remain separate.
 - Owners can copy a phone-bound registration link from Family settings, or
   open their device's share menu in a browser that supports Web Share.
   Registration still requires the invited phone number and an explicit submit.
+  Enter the same number and choose **Cancel unused links for this number** to
+  withdraw a pending invitation after leaving the page or signing back in.
 - Android can remember a user-selected upload folder in encrypted local
   storage. Opening it again checks the current account, library and Android
   read permission before the usual review and explicit upload. The folder

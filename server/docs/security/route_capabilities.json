@@ -841,8 +841,8 @@
    "capabilities": [
     "library.members.manage"
    ],
-   "scope": "Own account/session or explicitly selected library invitation; no media access.",
-   "current_control": "Current selected-library owner policy; library-scoped cancellation; cookie Origin and CSRF required. Cookie reads require same-origin Fetch Metadata or configured Origin; native bearer remains separate.",
+   "scope": "One code or all unused unexpired invitations addressed to one explicit phone number in the selected library.",
+   "current_control": "Current selected-library owner policy, exactly one input, exact target match and no existence readback; cookie Origin and CSRF required. Existing member access is managed separately.",
    "gap": "Synthetic ASGI, migrated SQLite, explicit adapter and browser-contract evidence only. No live migration/mapping, TLS/proxy, actual Fetch Metadata/CORP network enforcement, Windows filesystem or mobile device acceptance."
   },
   {

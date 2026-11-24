@@ -6,6 +6,16 @@
 > fixes described below. See the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md)
 > for source progress, installed-runtime evidence and open device checks.
 
+## November 25 merged source
+
+[PR #130](https://github.com/phoenixjyb/PhotoHouse/pull/130) added explicit
+same-day photo and video choices and memory-group splitting, Android consent
+before metered or unknown-network retries, and coverage-aware Search negatives.
+Its backend passed 3,853 API tests and 4,582 subtests with six skips. All 47 Web
+suites passed on the final source. The Android upload checks passed 21 focused
+JVM tests and five API 36 emulator tests. This is a merged source milestone.
+The Windows installation below records the delivered runtime and Web assets.
+
 ## November 25 fullscreen and local integration
 
 Windows serves the fullscreen Web viewer from `85eb866` with the existing

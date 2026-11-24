@@ -77,7 +77,7 @@ class CloudProofreadingTests(unittest.TestCase):
         self.assertEqual("DeepSeek", preview["provider"])
         self.assertEqual("test-model", preview["model"])
         self.assertEqual("https://api.deepseek.com/chat/completions", preview["endpoint"])
-        self.assertIn("other private content may remain", preview["warning"])
+        self.assertIn("other private content may remain", preview["warning"].lower())
         body = preview["request_body"].encode("utf-8")
         self.assertEqual(hashlib.sha256(body).hexdigest(), preview["request_sha256"])
         decoded = json.loads(body)
@@ -128,6 +128,30 @@ class CloudProofreadingTests(unittest.TestCase):
         self.assertIn("Anniversary", text)
         self.assertEqual(2, text.count("⟦PH_PERSON_0001⟧"))
         self.assertNotIn("Ann Smith", text)
+
+    def test_preview_masks_recognizable_phone_formats_and_keeps_dates(self):
+        value = story()
+        numbers = ('+1 (202) 555-0104', '+442079460123', '+86 139 0000 0104', '１３８０００００１０４')
+        date_phrase = '2026年9月26日 at 17:30'
+        value['chapters'][0]['narration'] = date_phrase + ' 电话' + '；电话'.join(numbers)
+        service = CloudProofreading(clock=Clock())
+        preview = service.preview(binding(), value, [])
+        payload = json.loads(preview['request_body'])
+        text = json.loads(payload['messages'][1]['content'])['chapters'][0]['narration']
+        self.assertIn(date_phrase, text)
+        self.assertEqual(4, text.count('[PHONE_REMOVED]'))
+        for number in numbers:
+            self.assertNotIn(number, text)
+        self.assertIn('phone numbers', preview['warning'])
+
+    def test_proposal_refuses_a_number_returned_by_the_provider(self):
+        provider = FakeProvider({'paragraphs': ['Contact ＋１ (202) 555-0104 for details.']})
+        service = CloudProofreading(enabled=True, provider=provider, clock=Clock())
+        preview = service.preview(binding(), story(), [])
+        with self.assertRaises(CloudProofreadingError) as caught:
+            service.confirm(preview['preview_id'], binding(), preview['request_sha256'], confirmed=True)
+        self.assertEqual('invalid_provider_response', caught.exception.category)
+        self.assertEqual([preview['request_body'].encode('utf-8')], provider.bodies)
 
     def test_empty_chapters_keep_their_position_and_must_remain_empty(self):
         value = story()

@@ -37964,6 +37964,156 @@
         }
       ],
       "notes": "The related-media and reader fixtures wait for the lazy story controller before calling it."
+    },
+    {
+      "feature": "protected-invitation-revoke-by-phone",
+      "source_commit": "6c5310e62265ce1e81c59b84465917c5e6f4d953",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "25aac9f6d229473632d1b16c0e2c5180325f00c96e0fb55e937ad93ce2b8c8aa",
+          "sha256": "f0d6282c4fe92d2e295e34640a7df7edaa55eb7031d9fa493be8e54b18cbb27e"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "14c5de3e28273fd00c477e2f2a0d33219c5193e1b9029777747b800a7b7238aa",
+          "sha256": "f9dd7a7c965ef4f393b2ddf31f0b3b45306f2eb2f1a06c7b5b1b5523ed73a107"
+        },
+        {
+          "path": "server/backend/app/access/service.py",
+          "before_sha256": "6c9df1abd85d9f9e82c02c46450b912e19f066ac060da250201bd3866d5c267b",
+          "sha256": "c9994bed9501fd9d45e1354267f89c519795ed6da22374be78df43be9588497b"
+        },
+        {
+          "path": "server/backend/app/access/transport.py",
+          "before_sha256": "927a691620f47c3c5eb2ded4e14c5723cc4963ff6c970d66c5e425e571ce91a3",
+          "sha256": "71a646885091c98f0e292ede764d0f2f5f888ff35901c1b2c2518372316c5e49"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "3ba3bba377d03ade4c92b6794086bbe0d8b456718f07db632f5590e36c6e2b67",
+          "sha256": "5c782e31e59813c8a11754f338b331cd7a09b36475ab5526ac3ed56c7013c70c"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "0372c0d1d3fa784d94a93d01269266e27df0a9b225d1c6568878fd5ed61cb5ff",
+          "sha256": "fc78b5dd4755fd72d1aea914d86b3274329c86c66f5434cdc8d9d289910de0d1"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "b2366ac15fda75536ac7e8c2ea663fd1e860e685a2b14b7380935e4155f3c35b",
+          "sha256": "e419e96912b77f008b8c42611c2ec1a77768190e169436db52cab3fd8a7be11f"
+        },
+        {
+          "path": "server/tests/security/test_access_transport.py",
+          "before_sha256": "5f47ff0dfb760dce50aaa21243d58688ad47e63d1ceccf2c7262dc6c5d83f5dd",
+          "sha256": "389b73bb639204360b7b122d607b1b05fbff1107a39388c3a623219e68f99c6f"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "f8d58678c4cc6a0e57c1f279f60960d4a6e6dffee6d25686e1e26cdff4a96958",
+          "sha256": "f47d7899293946e964e40f8ceb086b5805e7985f6f0b4b569077cada9fec3930"
+        }
+      ],
+      "notes": "An authenticated owner returned in a new browser tab, revoked the unused scoped link and the old invitation could no longer register."
+    },
+    {
+      "feature": "bilingual-roadmap-november-evidence",
+      "source_commit": "d03f3d499e253eaf55c2676621523e09f9795078",
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "e389ea56a1b2b7a3f9a9fa9c36f7754b7fdbd23c6519b75ea984477816fd5c10",
+          "sha256": "310f129ba683c5874de0f42a585885144da02c3beaf3980ad5040b38b4f6e1ab"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "bfc4829326261f6d2aeedaf2b28912d74ccecfa533a4cc707890d9a0292ab26b",
+          "sha256": "dd21244fe8d08f4a6ecc36ea68913e0fc23d33c8afc1ba74ef16850523bb576f"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "e9fa6dd02aca142597131f59465c427ae037264fa7f2a9eb38b3cafe47564519",
+          "sha256": "5066f529c56d78b9be1f6d8992ecbb1c8f1cac49f6002acb32d693d29e0ea5d0"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "fd2fb74f675b3c5f4167892b7a77f6bf84701b4cdc15e69ff6031b7c073974e0",
+          "sha256": "7f20f5097dd3997a093c62f721cb6c9d593a3d4f2cf9f8cec243403979530842"
+        },
+        {
+          "path": "docs/product-roadmap/styles.css",
+          "before_sha256": "85fb076326ef25cb30225d555a83d1e14ab6b2ae700bb9c6745bba174239769b",
+          "sha256": "1be73d6dcda53c3576fc1633cd1decac55c1172509afd80c2ee5936cd947798b"
+        },
+        {
+          "path": "tools/test_product_roadmap_browser.cjs",
+          "before_sha256": "757e9cdcc43be4f47258345cde6b2b4af3111da522fc214e9de6ac4917503ac8",
+          "sha256": "8bb178da71bc536f82e4aa920dcddb1972bdcb3e6a81c8b5461c7f313f3ec520"
+        }
+      ],
+      "notes": "Bilingual 26-item source snapshot and recorded delivery boundaries. Local 320/390/1440 and large text checks passed."
+    },
+    {
+      "feature": "optional-proofreading-contact-redaction",
+      "source_commit": "8a257a0b9962911e097ed05226bf7bed51ecf546",
+      "files": [
+        {
+          "path": "docs/STORY_GROUNDING_AND_CLOUD_PROOFREADING.md",
+          "before_sha256": "4175a0d9dce32c59cc6d03e777b708ee6302259bdd8fd28aa03d9d78b17b462d",
+          "sha256": "051ca399defc5d828ff00c0cd717ca90287e33422defccccc3e520f8e1de6ec9"
+        },
+        {
+          "path": "server/backend/app/access/story_cloud_proofreading.py",
+          "before_sha256": "aa80cdbf551fb0b16398139fd70286178c77b4f5ac3b9b4f97028154bd21f3c8",
+          "sha256": "ba60f83401a85ba327b00b772e3367b2d1a88d3798a033e7a2d452795e8357da"
+        },
+        {
+          "path": "server/tests/security/test_story_cloud_proofreading.py",
+          "before_sha256": "e7f84944ca173cfb0a72933c19a6b7c03db65f03f68cb22889942f4288e704b3",
+          "sha256": "1f1450f6dcb200bc94105fb06c0c11ff6398376aef8a6fbd79664afb704ddb44"
+        }
+      ],
+      "notes": "Recognizable generated phone numbers masked and dates preserved. Exact preview and simulated reviewer checked without external calls."
+    },
+    {
+      "feature": "local-agent-capability-response-wait",
+      "source_commit": "a04a11bd944c72727254bf2bbc3a1efc8554e45a",
+      "files": [
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "before_sha256": "de43b557aa374e55feaeabc48cd717839481a39159f55309c4f897bf84d9206c",
+          "sha256": "e16064b4cbd5dad8c8b3a0bcda065593e4aba9f0f6976734d046fa40f7abf4a0"
+        }
+      ],
+      "notes": "Generated Chromium reads the actual absence response after ordinary conversation creation."
+    },
+    {
+      "feature": "ordered-memory-group-media",
+      "source_commit": "765c7ad20bce3033a7e0b68b3dc0cfb3d761421b",
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "f9dd7a7c965ef4f393b2ddf31f0b3b45306f2eb2f1a06c7b5b1b5523ed73a107",
+          "sha256": "3660aa2748651be6cd32e282c80bd0ee9c0f83e2cdbdcb4c3d5c1006fb37384f"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "3e81c762f93b953701a26b9b02788880f3b41ce78119f8d51bb9676bc17e2c53",
+          "sha256": "db38ab7c0238a2c28f8b3d56f06c9a61cec62e8f0a282a05b759145f29364bb1"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "2a07406ff2d3bdda0b2be8341154318298a7ad269dee174e367606c4ce54d3fc",
+          "sha256": "5145a8d024bb513b6e08bf60c82b1f180db3a8d5ad6733e94bb6375d5c34590e"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "3cb803e8a8bf3f4f7d79a63e77a46d2f7a9d1132bb6b953d75d2dc43d0d9bcf9",
+          "sha256": "db78b3c3de836ebfc2f651cde0de5565767dd82deb3341c01fe71b1274438e84"
+        }
+      ],
+      "notes": "Protected browser persists the deliberate photo/video order and carries it into an unsaved story. Keyboard focus and large tap targets checked."
     }
   ]
 }

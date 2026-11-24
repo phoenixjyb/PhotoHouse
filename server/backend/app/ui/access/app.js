@@ -3675,8 +3675,13 @@
     // current view, so revealing the control earlier could discard an open
     // history panel during this same restore.
     $('my-uploads-open').hidden=true;$('my-uploads-panel').hidden=true;
+    const cancelPhone=$('cancel-invite-phone');
+    if(cancelPhone)cancelPhone.hidden=true;
     try {
-      const profile=await request('/auth/session',{epoch});
+      let pendingInviteCancel=false;
+      const profile=await request('/auth/session',{epoch,onResponse:response=>{
+        pendingInviteCancel=response.headers.get('X-PhotoHouse-Pending-Invite-Cancel')==='1';
+      }});
       if(stale(epoch))return;
       registrationInvite=null;
       state.sessionCheckFailed=false;
@@ -3715,6 +3720,7 @@
         }else discardLocaleAssistantResume(localeIntent,{clearDraft:true});
       }
       $('my-uploads-open').hidden=!available.length;$('my-uploads-panel').hidden=!available.length;
+      if(cancelPhone)cancelPhone.hidden=!isOwner||!pendingInviteCancel;
       restored=true;
       if(state.library&&(recovery||$('assistant-panel').open)){
         assistantDeferred=true;
@@ -3758,6 +3764,8 @@
   }
   Object.assign(words.en, {phoneHelp:'China (+86) is the default. For another country, enter + and its country code.',invalidPhone:'Enter an 11-digit number, or a full international number starting with +.'});
   Object.assign(words.zh, {phoneHelp:'默认中国区号 +86，无需输入。其他国家请填写以 + 和国家区号开头的完整号码。',invalidPhone:'请输入 11 位号码，或以 + 和国家区号开头的完整号码。'});
+  Object.assign(words.en,{cancelPendingInvite:'Cancel unused links for this number',pendingInviteCancelled:'Any unused invitation for that number in this library has been cancelled.'});
+  Object.assign(words.zh,{cancelPendingInvite:'撤销此号码的未使用邀请',pendingInviteCancelled:'此相册库内该号码尚未使用的邀请已撤销。'});
   Object.assign(words.en, {invalidCode:'Enter the invitation code sent by your library owner.',enterPassword:'Enter your password.'});
   Object.assign(words.zh, {invalidCode:'请输入相册主人发给你的邀请码。',enterPassword:'请输入密码。'});
   async function signIn(event) {
@@ -3802,7 +3810,7 @@
     const library=state.library;
     try {
       const result=await request(`/libraries/${encodeURIComponent(library)}/invitations`,{method:'POST',body:{phone},epoch});
-      state.invite={code:result.code,library};$('created-code').value=result.code;$('invitation-result').hidden=false;status('');
+      state.invite={code:result.code,library,phone};$('created-code').value=result.code;$('invitation-result').hidden=false;status('');
       const share=$('share-invite-link');
       if(share)share.hidden=typeof navigator.share!=='function'||!registrationLink(state.invite);
     } catch(error){await failure(error,epoch);}finally{state.busy=false;}
@@ -3837,11 +3845,20 @@
       button.disabled=false;
     }
   }
-  async function cancelInvite() {
-    if(state.busy||state.locked||!state.invite)return;state.busy=true;const epoch=state.generation;
+  async function cancelInvite(byPhone=false) {
+    if(state.busy||state.locked||!state.library)return;
+    const invite=state.invite,library=state.library,epoch=state.generation;
+    if(byPhone?$('cancel-invite-phone')?.hidden!==false:invite?.library!==library)return;
+    const phone=byPhone?phoneForRequest($('invite-phone').value):null;
+    if(byPhone&&!phone){status('invalidPhone');return;}
+    state.busy=true;
     try {
-      await request(`/libraries/${encodeURIComponent(state.invite.library)}/invitations/cancel`,{method:'POST',body:{code:state.invite.code},epoch});
-      $('created-code').value='';$('invitation-result').hidden=true;state.invite=null;status('cancelled');
+      await request(`/libraries/${encodeURIComponent(library)}/invitations/cancel`,{method:'POST',body:byPhone?{phone}:{code:invite.code},epoch});
+      if(stale(epoch)||state.library!==library)return;
+      if(state.invite===invite&&(!byPhone||invite?.phone===phone)){
+        $('created-code').value='';$('invitation-result').hidden=true;state.invite=null;
+      }
+      status(byPhone?'pendingInviteCancelled':'cancelled');
     } catch(error){await failure(error,epoch);}finally{state.busy=false;}
   }
   async function accept(event) {
@@ -5425,6 +5442,7 @@
     }
   });
   $('cancel-invite').addEventListener('click',()=>{void cancelInvite();});
+  $('cancel-invite-phone')?.addEventListener('click',()=>{void cancelInvite(true);});
   $('accept-form').addEventListener('submit',event=>{void accept(event);});
   $('language').addEventListener('click',()=>{
     if(!abandonStory())return;

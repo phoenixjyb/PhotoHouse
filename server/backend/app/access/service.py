@@ -166,6 +166,16 @@ class AccessService:
                             (digest, library_id))
             self._audit(owner['account_id'], 'cancel_invitation', library_id)
 
+    def cancel_pending_invitations(self, owner_token: str, library_id: str, phone: str):
+        """Revoke unused invitations without recovering their original codes."""
+        canonical = phone_login(phone)
+        with self._transaction(write=True):
+            owner = self._member(owner_token, library_id, owner=True)
+            self.db.execute('''UPDATE access_invitations SET cancelled=1
+                WHERE library_id=? AND target_phone=? AND consumed=0
+                    AND cancelled=0 AND expires_at>?''', (library_id, canonical, self._now()))
+            self._audit(owner['account_id'], 'cancel_invitation', library_id)
+
     def _invitation(self, canonical, digest):
         invite = self._one('SELECT * FROM access_invitations WHERE digest=? AND target_phone=?',
                            (digest, canonical))
