@@ -14,6 +14,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Jude conversation, voice controls and receipt recovery | [Assistant guide](JUDE_ASSISTANT.md) |
 | Story/assistant model roles, grounding and cloud-proofreading boundaries | [Role and privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md) |
 | Capabilities and acceptance | [Features](FEATURES.md) |
+| Bilingual product dashboard / 双语产品看板 | [Interactive roadmap](product-roadmap/index.html), [maintenance / 维护](product-roadmap/README.md) |
 | Active priorities and exit criteria | [Roadmap](ROADMAP.md) |
 | Architecture findings and maintenance decisions | [October 14 review](ARCHITECTURE_REVIEW_2026-10-14.md) |
 | Local development commands | [Development](DEVELOPMENT.md#cpu-quick-start), [environment doctor](DEVELOPMENT_ENVIRONMENT.md) |

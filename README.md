@@ -1,5 +1,13 @@
 # 拾光相册 · PhotoHouse
 
+## Product roadmap / 产品路线图
+
+[English / 中文 dashboard](docs/product-roadmap/index.html) · [Maintenance / 维护](docs/product-roadmap/README.md).
+
+The bilingual snapshot separates recorded delivery, source-ready work, gaps and next steps.
+双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows route: `/roadmap/` (deployment is tracked separately).
+
+
 PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家庭自己的设备或服务器，
 照片、视频、录音和文字共同承载可以讲述、阅读和聆听的故事。
 后端、Web、Android 手机与 TV 在 [PhotoHouse 主仓库](https://github.com/phoenixjyb/PhotoHouse)

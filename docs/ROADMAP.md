@@ -1,5 +1,13 @@
 # Product roadmap
 
+## Interactive product view / 交互式产品视图
+
+[English / 中文 dashboard](product-roadmap/index.html) · [Maintenance / 维护](product-roadmap/README.md).
+
+The bilingual snapshot separates recorded delivery, source-ready work, gaps and next steps.
+双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows route: `/roadmap/` (deployment is tracked separately).
+
+
 Reviewed **2026-11-24** against the current source tree. This is a product plan,
 not a live service check. Use [Project Status](PROJECT_STATUS.md) and the dated
 [release record](RELEASE_2026-10-29.md) for delivery evidence; older entries in
