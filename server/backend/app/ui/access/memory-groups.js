@@ -149,9 +149,12 @@ window.PhotoHouseMemoryGroups = {
       const list=panel.querySelector('#recent-group-list');
       const story=panel.querySelector('#recent-groups-story');
       const refresh=panel.querySelector('#recent-groups-refresh');
+      const readStatus=message=>{
+        status.textContent=[notice,message].filter(Boolean).map(t).join(' ');
+      };
       const selected=new Map(), choices=[], browseButtons=[];
       let opening=false, reviewing=false, combine=null;
-      list.replaceChildren();story.replaceChildren();status.textContent=t('loading');refresh.disabled=true;
+      list.replaceChildren();story.replaceChildren();readStatus('loading');refresh.disabled=true;
       if(recentPending&&recentPending.key!==scopeKey(binding))recentPending=null;
       if(recentPending){
         await finishCombinedSave(recentPending,false);
@@ -289,7 +292,7 @@ window.PhotoHouseMemoryGroups = {
         const caps=await request(binding,'/memory-groups/capabilities');
         if(!current())return;
         if(caps?.version!==1||caps.enabled!==true||caps.recent!==true){
-          status.textContent=t('recentUnavailable');refresh.hidden=true;return;
+          readStatus('recentUnavailable');refresh.hidden=true;return;
         }
         if(caps.combine===true)combine=button(t('reviewCombine'),reviewCombine,'quiet recent-group-combine');
         const result=await request(binding,'/memory-groups');
@@ -302,7 +305,7 @@ window.PhotoHouseMemoryGroups = {
               !Number.isInteger(group.count)||group.count<1||group.count>24||
               !safeThumbnail(group.cover)||!['image','video'].includes(group.cover.kind)))
           throw Error('Invalid recent memory groups');
-        status.textContent=notice?t(notice):items.length?'':t('recentEmpty');
+        readStatus(items.length?'':'recentEmpty');
         for(const group of items){
           const label=t('themes')[group.theme];
           const card=node('li','', 'recent-group-card');
@@ -348,7 +351,7 @@ window.PhotoHouseMemoryGroups = {
         syncChoices();
         refresh.hidden=false;
       }catch{
-        if(current()){status.textContent=t('failed');refresh.hidden=false;}
+        if(current()){readStatus('failed');refresh.hidden=false;}
       }finally{
         if(current())refresh.disabled=false;
       }

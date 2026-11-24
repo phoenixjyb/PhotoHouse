@@ -6,7 +6,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const root=path.resolve(__dirname,'../..'),artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-groups-'));
 fs.mkdirSync(artifacts,{recursive:true});
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
-let serial=0,readyResolve,readyReject,browser,ctx,holdRecent=null,legacyGroups=false,hideCombine=false,fail=false,loseSplit=false,loseCombine=false;const pending=new Map(),errors=[],external=[],checks=[],requests=[];
+let serial=0,readyResolve,readyReject,browser,ctx,holdRecent=null,legacyGroups=false,hideCombine=false,fail=false,loseSplit=false,loseCombine=false,failCombinedRefresh=false;const pending=new Map(),errors=[],external=[],checks=[],requests=[];
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
 createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(line);if(value.ready)readyResolve();else{const item=pending.get(value.id);if(item){pending.delete(value.id);item.resolve(value);}}});
 bridge.stderr.on('data',v=>process.stderr.write(v));bridge.on('exit',code=>{if(code){readyReject(new Error('Bridge failed'));for(const item of pending.values())item.reject(new Error('Bridge failed'));}});
@@ -40,6 +40,10 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
     loseCombine=false;
     await route.abort();
     return;
+  }
+  if(failCombinedRefresh&&req.method()==='GET'&&url.pathname==='/memory-groups'){
+    failCombinedRefresh=false;
+    status=503;body=Buffer.from('{"detail":"Synthetic post-save list failure"}');
   }
   const output={...result.headers};delete output['content-length'];delete output['content-encoding'];
   await route.fulfill({status,headers:output,body});
@@ -269,8 +273,13 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  await retry.waitFor();
  assert.equal(await recent.locator('.recent-group-card').count(),0);
  await recentSummary.click();await recentSummary.click();await retry.waitFor();
- await retry.press('Enter');
- await recent.getByText('Combined group saved.',{exact:true}).waitFor();
+ failCombinedRefresh=true;await retry.press('Enter');
+ const recentStatus=recent.locator('#recent-groups-status');
+ await recent.getByText(/Could not load this yet/).waitFor();
+ assert.match(await recentStatus.textContent(),/^Combined group saved\./);
+ assert.equal(await retry.count(),0,'only the list can be retried after a confirmed save');
+ await recent.locator('#recent-groups-refresh').click();
+ await recent.getByText('Year in review',{exact:true}).waitFor();
  const combineWrites=requests.slice(saveStart).filter(req=>req.method==='POST');
  assert.deepEqual(combineWrites.map(req=>req.path),['/memory-groups/combine','/memory-groups/combine']);
  assert.deepEqual(JSON.parse(combineWrites[0].body),JSON.parse(combineWrites[1].body));
@@ -280,7 +289,7 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  await recent.getByText('Year in review',{exact:true}).waitFor();
  await recent.getByText('Trip',{exact:true}).waitFor();
  await recent.getByText('Birthday',{exact:true}).waitFor();
- pass('Reviewing a combined group writes nothing, and retrying a lost save after reopening creates a single new group');
+ pass('A lost save can be retried once, and a later list read failure preserves the confirmed group without offering another save');
 
  let release,arrived;
  const pendingRead=new Promise(resolve=>{arrived=resolve;});
