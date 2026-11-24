@@ -1,9 +1,32 @@
-# External search interface: first design slice
+# External search interface
 
-**Status:** design proposal only. No external MCP transport, OAuth grant flow,
-external token, or new route is implemented or enabled by this document. The
-current local assistant and protected discovery code are candidates for reuse,
-not evidence that an external client can connect.
+The [in-process reader](../server/backend/app/access/external_search.py) can
+search a reviewed library and retrieve metadata through the existing protected
+discovery service. The generated proof supplies a host-authenticated client
+identity and an explicit library scope. MCP transport, OAuth, user consent and
+production activation remain open.
+
+## What the local reader supports
+
+A trusted host constructs an `ExternalSearchSession` for one authenticated
+client, one library and a current host session, with an independent expiry.
+The host can revoke the reader without changing the member's app session. Each
+operation checks that the reader still accepts the client and the member
+still has access. Expiration and revocation close that reader permanently.
+
+`search_media` accepts recorded date and media filters and optional caption
+matching against a reviewed index. It returns up to 20 items per page, with an
+opaque reference, kind and recorded capture date. The response reports the
+result total and whether the reviewed index covers the catalog. An unsupported
+filter returns a refusal. `get_media_detail` rechecks the exact current search
+binding before returning that item's safe metadata. A continuation sends the
+opaque cursor alone.
+
+A reader retains up to 128 recent references and 16 cursors for its current
+search. A successful fresh search clears the previous handles. Current
+membership, source and index changes can invalidate them earlier. The two read
+methods keep their HTTP, OAuth and client credentials outside this interface.
+Generated authorization tests exercise this adapter without a network listener.
 
 ## Initial contract
 
@@ -101,20 +124,20 @@ route or physical-erasure flow is enabled by this proposal.
 
 ## Generated acceptance matrix
 
-These are future external-transport acceptance cases. Existing generated tests
-below exercise candidate domain prerequisites only; they do not establish an
-external client, OAuth flow, external token scope, or deployed interface.
+These cases define the remaining external-transport acceptance. The local
+reader exercises the protected domain path with generated data. A named external
+client still needs a verified consent and connection flow.
 
 | Case | Required future behavior | Existing generated evidence |
 |---|---|---|
 | Explicit opt-in and `library.read` grant | Default disabled; opted-in client can search only the named library | `test_phone_discovery_http.py`: `test_facets_and_search_string_ids_and_coverage`; candidate runtime requires explicit factory configuration, but external opt-in is unimplemented |
 | Missing, expired, or revoked host session | Deny before provider/index access with a generic response | `test_phone_discovery_http.py`: `test_missing_foreign_expired_revoked_denied_before_provider_or_bad_body` |
 | Unknown, pending, expired, or revoked membership | Deny without disclosing discovery data | `test_phone_discovery_http.py`: `test_unknown_library_and_membership_states` |
-| Cross-library or cross-principal cursor/reference | Deny; handles cannot be replayed under another scope | `test_assistant_agent_tools.py`: `test_selector_is_exact_run_scoped_and_revalidates_source_binding`; external handle binding remains unimplemented |
-| Expired or revoked external grant / missing external scope | Deny search and detail on every request | No external grant implementation or generated test exists |
+| Cross-library or cross-principal cursor/reference | Deny; handles cannot be replayed under another scope | `test_assistant_agent_tools.py`: `test_selector_is_exact_run_scoped_and_revalidates_source_binding`; the local reader binds its own references and cursors to the named client and current search |
+| Expired or revoked external grant / missing external scope | Deny search and detail on every request | `test_external_search.py` checks independent reader expiry and revocation, including during a read. OAuth grant issuance remains open |
 | Stale page cursor or changed source/index | Refuse continuation and require a fresh search | `test_phone_discovery_http.py`: `test_changed_binding_fingerprint_and_session`, `test_paginated_search_fingerprint_normalization`; `test_phone_discovery.py`: `test_paging_binding_and_fingerprint_prevent_mixed_results` |
-| Source withdrawn between search and detail | Return no stale metadata or media; require fresh search | `test_asset_tombstones.py` and `test_upload_original_deletion_journal.py` cover internal tombstone/source guards; no external detail route exists |
-| Detail request with guessed or foreign asset ID | Deny without resolving identity or crossing library scope | `test_assistant_agent_tools.py`: `test_dispatch_rejects_unreviewed_names_and_nonempty_search_arguments`; external detail contract remains unimplemented |
+| Source withdrawn between search and detail | Return no stale metadata or media; require fresh search | `test_asset_tombstones.py` and `test_upload_original_deletion_journal.py` cover internal tombstone/source guards; the in-process reader refuses metadata after a source change |
+| Detail request with guessed or foreign asset ID | Deny without resolving identity or crossing library scope | `test_assistant_agent_tools.py`: `test_dispatch_rejects_unreviewed_names_and_nonempty_search_arguments`; the in-process detail method refuses guessed IDs and other readers' references |
 | Path, token, SQL, provider error, or excessive response | Redact and bound output; return generic error | `test_phone_discovery_http.py`: `test_service_errors_generic_busy_and_budget`, `test_body_limits_and_strict_envelope` |
 | Attempted write, original fetch, note/audio access | Reject as unsupported or missing capability; preserve originals | `test_original_deletions.py` and `test_asset_tombstones.py` validate internal deletion guards; external transport must have no such operation |
 
@@ -122,6 +145,9 @@ external client, OAuth flow, external token scope, or deployed interface.
 
 On generated fixtures only, the focused local checks passed:
 
+- `test_external_search.py` checks protected paging and detail, safe metadata,
+  changed sources, foreign handles, ignored-filter prevention, current host
+  authorization and independent reader expiry and revocation.
 - `test_assistant_agent_tools.py`: 7 tests, including exact run-scoped handles,
   current-source invalidation, and rejection of unreviewed tool names.
 - `test_phone_discovery_http.py`: 18 tests, including session/membership denial,
@@ -131,6 +157,6 @@ On generated fixtures only, the focused local checks passed:
 - `test_asset_tombstones.py`: 14 tests, covering generated tombstone binding,
   refusal, retry, and replay behavior.
 
-These checks establish relevant existing local prerequisites only. They do not
-test or activate an external transport, external consent, OAuth/token issuance,
-grant revocation, or client interoperability.
+These checks cover the local reader and discovery prerequisites. External
+transport, consent, OAuth/token issuance and client interoperability remain
+future integration work.

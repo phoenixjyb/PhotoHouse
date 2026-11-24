@@ -54,7 +54,9 @@ async function context(browser){
   ctx.on('response',response=>{const url=new URL(response.url());if(url.origin==='https://photohouse.test'&&(url.pathname.startsWith('/assets/105/')||url.pathname==='/assets/101/thumbnail')){const headers=response.headers();browserResponses.push({status:response.status(),method:response.request().method(),path:url.pathname+url.search,contentType:headers['content-type']||'',contentRange:headers['content-range']||'',contentLength:headers['content-length']||'',acceptRanges:headers['accept-ranges']||'',etag:headers.etag||''});}});
   await ctx.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
-    browserRequests.push({method:request.method(),path:url.pathname+url.search});
+    const observation={method:request.method(),path:url.pathname+url.search};
+    if(url.pathname==='/library-catalogue')observation.catalogueView=request.headers()['x-photohouse-catalogue-view'];
+    browserRequests.push(observation);
     if(url.origin!=='https://photohouse.test'){external.push(url.origin);await route.abort();return;}
     const galleryThumbnail=/^\/assets\/([1-9][0-9]*)\/thumbnail$/.exec(url.pathname);
     if(request.method()==='GET'&&galleryThumbnail&&failGalleryThumbnailIds.has(galleryThumbnail[1])){await route.fulfill({status:503,headers:{'cache-control':'no-store'},body:''});return;}
@@ -709,6 +711,7 @@ let browser;
     await auth(page,'10000000000');
     await page.locator('#memory-home').waitFor({state:'visible'});
     const startup=browserRequests.slice(galleryStart);
+    assert.equal(startup.find(row=>row.path==='/library-catalogue')?.catalogueView,'navigation');
     const galleryRequest=startup.findIndex(row=>/^\/(?:photo-stacks\/gallery|assets)\?/.test(row.path));
     assert(galleryRequest>=0);
     assert(startup.findIndex(row=>deferredPanel.test(row.path))>galleryRequest);

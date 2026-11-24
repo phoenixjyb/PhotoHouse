@@ -3193,7 +3193,8 @@
   function clearTransferSelection(){transferState.selected.clear();updateTransferUI();}
   async function loadLibraryCatalogue(epoch=state.generation){
     try{
-      const result=await request('/library-catalogue',{epoch});if(stale(epoch))return null;
+      const result=await request('/library-catalogue',{epoch,extraHeaders:{'X-PhotoHouse-Catalogue-View':'navigation'}});
+      if(stale(epoch))return null;
       state.catalogue=result;
       $('library-select').replaceChildren();
       for(const member of availableLibraries(state.profile)){

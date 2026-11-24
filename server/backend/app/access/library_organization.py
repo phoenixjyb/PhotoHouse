@@ -20,7 +20,7 @@ from .provisioning import PlanRejected, _library
 from .provisioning_apply import _identity, plan_digest
 from .runtime import ExistingDatabase
 from .service import AccessDenied, AccessService
-from .transport import TransportError, _body, _runtime, credentials_from_request
+from .transport import TransportError, _body, _runtime, _single, credentials_from_request
 
 router = APIRouter(route_class=LibraryRoute)
 PRESETS = {
@@ -78,7 +78,7 @@ class LibraryOrganization:
             raise AccessDenied('Access denied')
         return member['account_id']
 
-    def catalogue(self, token):
+    def catalogue(self, token, include_counts=True):
         with self.runtime.connection_factory() as db:
             deadline = time.monotonic() + 3
             db.set_progress_handler(lambda: int(time.monotonic() > deadline), 1000)
@@ -95,9 +95,12 @@ class LibraryOrganization:
                     raise TransportError(503, 'Library catalogue unavailable')
                 items = []
                 for library, role in rows:
-                    count = db.execute('''SELECT count(*) FROM access_asset_libraries s JOIN assets a ON a.id=s.asset_id
-                        WHERE s.library_id=? AND (a.status IS NULL OR a.status='active')''', (library,)).fetchone()[0]
-                    items.append(dict(**labels(library), role=role, asset_count=count, can_manage=operator and role == 'owner'))
+                    item = dict(**labels(library), role=role)
+                    if include_counts:
+                        item['asset_count'] = db.execute('''SELECT count(*) FROM access_asset_libraries s JOIN assets a ON a.id=s.asset_id
+                            WHERE s.library_id=? AND (a.status IS NULL OR a.status='active')''', (library,)).fetchone()[0]
+                    item['can_manage'] = operator and role == 'owner'
+                    items.append(item)
                 return dict(items=items, can_create=operator)
 
     def destinations(self, token, source):
@@ -193,7 +196,10 @@ def _call(runtime, action, *args):
 @router.get('/library-catalogue')
 async def catalogue(request: Request):
     token, _ = credentials_from_request(request)
-    return JSONResponse(await run_in_threadpool(_call, _runtime(request), 'catalogue', token))
+    view = _single(request, 'x-photohouse-catalogue-view')
+    if view not in (None, 'navigation'):
+        raise TransportError(400, 'Invalid request')
+    return JSONResponse(await run_in_threadpool(_call, _runtime(request), 'catalogue', token, view is None))
 
 
 @router.get('/admin/library-transfers')

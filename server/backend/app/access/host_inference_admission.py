@@ -19,6 +19,10 @@ import uuid
 
 from .private_storage import require_private_directory, require_private_file
 
+# Acquisition stays immediate. A proven exact release can wait briefly for a
+# concurrent ledger reader to finish its SQLite transaction.
+RELEASE_LOCK_SECONDS = 0.25
+
 
 class HostAdmissionError(RuntimeError):
     def __init__(self, reason='unavailable'):
@@ -129,13 +133,13 @@ class HostInferenceAdmission:
                 require_private_file(p)
 
     @contextmanager
-    def _transaction(self):
+    def _transaction(self, *, lock_timeout=0):
         if not self.enabled:
             raise HostAdmissionError('disabled')
         db = None
         try:
             self._storage()
-            db = sqlite3.connect(self.path.as_uri() + '?mode=rw', uri=True, timeout=0,
+            db = sqlite3.connect(self.path.as_uri() + '?mode=rw', uri=True, timeout=lock_timeout,
                                  isolation_level=None)
             db.execute('PRAGMA synchronous=FULL')
             db.execute('BEGIN IMMEDIATE')
@@ -208,7 +212,7 @@ class HostInferenceAdmission:
     def _release(self, permit):
         if type(permit) is not HostPermit or permit._coordinator is not self:
             raise HostAdmissionError()
-        with self._transaction() as db:
+        with self._transaction(lock_timeout=RELEASE_LOCK_SECONDS) as db:
             removed = db.execute('DELETE FROM claim WHERE id=1 AND operation=? AND owner=? AND resource=? AND launch=?',
                 (permit._operation, permit._owner, self.profile.resource_id, self.profile.launch_sha256)).rowcount
             if removed != 1:

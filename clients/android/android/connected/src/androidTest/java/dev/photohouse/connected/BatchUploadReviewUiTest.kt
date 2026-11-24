@@ -61,6 +61,7 @@ class BatchUploadReviewUiTest {
                             destinationLabel = if (zh) "合成测试相册" else "Synthetic test library",
                             issue = issue.value, needsNetworkConfirmation = false, zh = zh,
                             onStart = { starts++ }, onDiscard = { discards++ },
+                            folderScanLimited = issue.value == null,
                         )
                     }
                 }
@@ -70,8 +71,11 @@ class BatchUploadReviewUiTest {
             rule.runOnIdle { issue.value = value }
             if (value == null) {
                 rule.onNodeWithTag("batch-review-problem").assertDoesNotExist()
+                rule.onNodeWithTag("batch-folder-scan-limit").performScrollTo().assertIsDisplayed()
+                    .assertTextContains(if (zh) "本次检查已达到文件夹或批次上限" else "Choose a smaller folder", substring = true)
                 rule.onNodeWithTag("batch-start").performScrollTo().assertIsEnabled()
             } else {
+                rule.onNodeWithTag("batch-folder-scan-limit").assertDoesNotExist()
                 rule.onNodeWithTag("batch-review-problem").performScrollTo().assertIsDisplayed()
                 rule.onNodeWithTag("batch-start").performScrollTo().assertIsNotEnabled()
             }

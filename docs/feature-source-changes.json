@@ -37607,6 +37607,144 @@
         }
       ],
       "notes": "Author-only completed manifest timing and attributed review in generated Chromium. No audio reads for the timeline and no live configuration change."
+    },
+    {
+      "feature": "external-search-reader-20261125",
+      "source_commit": "05da510398f460d67c203e4ce67db1ca138a2de2",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "55c65d267fc1d51cc253546fe084b7c6a914c83a9db878cd8cf3fb66006268af",
+          "sha256": "3c5aab4d843b51fafc3130f5fc77310dfaa64399388da0c0dbb4cd92689c7d77"
+        },
+        {
+          "path": "docs/EXTERNAL_SEARCH_INTERFACE.md",
+          "before_sha256": "8c823fe099b5ad4c0fd1dd4c53bbaf5844cd781f6c1fda0547da7c1aa40e6d7e",
+          "sha256": "de26daf34092d9b4cd5f078c7943eccac2f9fbbdd47026fa0e2f5fc58f08d551"
+        },
+        {
+          "path": "server/backend/app/access/external_search.py",
+          "before_sha256": null,
+          "sha256": "87acee9d45bba683628ac4f4c251bd9fd6b810b2cd1550b3af560cddf3b04bbc"
+        },
+        {
+          "path": "server/tests/security/test_external_search.py",
+          "before_sha256": null,
+          "sha256": "0ddf51fcf7aa03705895f3d556801dafe076fb69c8e7c4532d1a77768598d13f"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "1daed7110ca8832f840f7a1c062a2bf807900f7cf3f15b17c905ecd668de329f",
+          "sha256": "165af7de1670557d7bb03ee52c6a097304534b057d3f4deb245aa48e9292949d"
+        }
+      ],
+      "notes": "Generated protected discovery validates metadata projection, source drift, scoped paging, current host access and reader revocation. Transport and grant issuance remain pending."
+    },
+    {
+      "feature": "story-worker-release-contention-20261125",
+      "source_commit": "069a82ce877f63d3ce4e059755a55ac99c1127e4",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "3c5aab4d843b51fafc3130f5fc77310dfaa64399388da0c0dbb4cd92689c7d77",
+          "sha256": "79137bd949706531e919f31ef610d9b34d88caa8bf832f5efeb5ddb772cac742"
+        },
+        {
+          "path": "server/backend/app/access/host_inference_admission.py",
+          "before_sha256": "1ecabaebd4c15d7c6685ef297662bc6468a2c48c3de0e96b5e506a06815f9c0e",
+          "sha256": "9ca47aaea82ee61160a5faeea0ec4d889bdeeee3909133fb5893f8c4734e3bd5"
+        },
+        {
+          "path": "server/tests/security/test_host_inference_admission.py",
+          "before_sha256": "9efade5c2d320f7607a4e681cd54074f112b62b72ebae18d7d0a312439190120",
+          "sha256": "462e520644036cb1da388a89f3f422a17f713f35db2c15c47d446fcc643dc8ff"
+        }
+      ],
+      "notes": "Generated integration reproduces exact owner release contention and verifies bounded settlement while maintenance remains blocked."
+    },
+    {
+      "feature": "android-folder-review-20261125",
+      "source_commit": "e50d8b803491c494842c6c6228a701fe950fbbbb",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/BatchUploadReviewUiTest.kt",
+          "before_sha256": "6b8f9b85022536b52a6a3513e973ef133c37fe30acc84f9ece44e089e2e7b00e",
+          "sha256": "e70f5e70234789a4b82f07da43eb5f1820413430bd742942f04731500e510827"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchTreeInventory.kt",
+          "before_sha256": null,
+          "sha256": "5893c5a9e58cc76610086f04e22aad51c35418fa27cf963eae77db6aa1614db7"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchUploadReviewCard.kt",
+          "before_sha256": "8c5b54113257716f825e880331ea4a7a4d11f38876bd8e74160f2fe6d481fed3",
+          "sha256": "b55da0b1748fe45eaf723a3a29cb5060db4ab36d7fee59c20724395d04b023f9"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "7c62e41a57f1cdf159458890d49b2a386b3d9129be62896e1e950b23e59c2479",
+          "sha256": "2cc5c765ac88ec0ba300214ef68c243b552867c4aa3ea05767fc37414d6b41ce"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/UploadSourceAndroid.kt",
+          "before_sha256": "5a41191af33a742321fa81abcd0bc3b95ecc977f19cf801f56904369fc8922aa",
+          "sha256": "e2b510cadb6bc86f1ef154ffcfd87868a39b1d0c6a1646c25f1d84c02ee7fea7"
+        },
+        {
+          "path": "clients/android/android/connected/src/test/java/dev/photohouse/connected/BatchTreeInventoryTest.kt",
+          "before_sha256": null,
+          "sha256": "4e449df8bf117d8cb8214a2403f6e61fc617290c5edf31d4b93be5f7f4a84f48"
+        },
+        {
+          "path": "docs/ANDROID_UPLOAD_RECOVERY.md",
+          "before_sha256": "09b15b416db433530458c9dbb5ce5f16ed210deaed8e027aa65bdb1155c120c0",
+          "sha256": "23977c5549c81216747d0064db6f0e61a9ab497a447063614388f8168b47c30a"
+        },
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "79137bd949706531e919f31ef610d9b34d88caa8bf832f5efeb5ddb772cac742",
+          "sha256": "7bbb01b5f2075c465c318145a7c36af2726a7a670ee9b81d721b7870fad52f61"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "ccdb3c9964763029a513f513c22aa60c8be303100312fa0e854c9c757a1b6458",
+          "sha256": "9cf17cd77439f4be5e0d48a4fd4c691354645bd8f741b9152573f696d5cf5341"
+        }
+      ],
+      "notes": "Five focused local unit checks and ten generated API 36 emulator tests. English and Chinese 150 percent views inspected. Physical installation remains separate."
+    },
+    {
+      "feature": "web-library-navigation-projection-20261125",
+      "source_commit": "8498e4c30c9631770ac5acd175de7f85da268f1c",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "7bbb01b5f2075c465c318145a7c36af2726a7a670ee9b81d721b7870fad52f61",
+          "sha256": "842e3b5d7b1d8cb9bd3c1e6a12d9c00ff6535e566d7397093ae1cac5b25813dc"
+        },
+        {
+          "path": "server/backend/app/access/library_organization.py",
+          "before_sha256": "215fb1c3bb4e04b8f28acbbc2b0ce8eedef1d5c8779eccc8e49f47a5f155ac98",
+          "sha256": "96aaed2949e745d2a8d2efc4325d226d2c292f4563c68ff7c126255da72a7250"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "b7dda9189990c90131ed563af8679791c9e271a2c34a75b3c27910146aaaedf5",
+          "sha256": "3ba3bba377d03ade4c92b6794086bbe0d8b456718f07db632f5590e36c6e2b67"
+        },
+        {
+          "path": "server/tests/security/test_library_organization.py",
+          "before_sha256": "1f10ecd69ca29cabeb67fb652dc0bb5481fbc00eba46b22ae8b853c60565a297",
+          "sha256": "8e97033b316ec933c524d8dec149a4016fd2edf35d2e8bbc6a5a32846b1fc9ab"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "f9b5683ec24bdc883f29babc9be26db7f6560286d354de9ddeec76a105edb29c",
+          "sha256": "f8d58678c4cc6a0e57c1f279f60960d4a6e6dffee6d25686e1e26cdff4a96958"
+        }
+      ],
+      "notes": "Verified matching authorized labels and management flags. Generated 100004-record service benchmark and 68 browser checkpoints."
     }
   ]
 }
