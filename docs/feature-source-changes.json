@@ -38114,6 +38114,109 @@
         }
       ],
       "notes": "Protected browser persists the deliberate photo/video order and carries it into an unsaved story. Keyboard focus and large tap targets checked."
+    },
+    {
+      "feature": "android_gradle_cache_detection_and_local_reuse",
+      "source_commit": "e8dde5f812e8c8d131eca5cd2cbf0697a649bd2d",
+      "files": [
+        {
+          "path": "docs/DEVELOPMENT_ENVIRONMENT.md",
+          "before_sha256": "041d49abc6708697fe6f704b8084df19506f9f477aedc6e2afa487755f627460",
+          "sha256": "342bcc78331c967bf821ec40e7d58088d7d27d19e74239eac7145c92758f036d"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "165af7de1670557d7bb03ee52c6a097304534b057d3f4deb245aa48e9292949d",
+          "sha256": "eb42be08b33e8d9cba702600160d7f1368b7ae8c40b57a50e668aec4a9d98ca1"
+        },
+        {
+          "path": "tools/doctor.py",
+          "before_sha256": "d34bd8f095712d641c2016da8ada9840dfb08d173db98e5662930e38736b0a70",
+          "sha256": "84d06c352f07c260d1cafa060203c7fd0e4b26570b8c4ac0fa98f373e41f1a2c"
+        },
+        {
+          "path": "tools/tests/test_doctor.py",
+          "before_sha256": "f32740236297beb5283f1b17fe96099870af37155f3a1a643048a3fbdf2fc0b5",
+          "sha256": "7d6f8643e004e3482eabebba2d240a1e8fef65d9d1d00ce6c532bd16c96d96c2"
+        }
+      ],
+      "notes": "Inspect the exact configured wrapper distribution and document reuse of an existing local wrapper. Include the existing private proofreading checks in the ordinary local API profile."
+    },
+    {
+      "feature": "gallery_description_on_demand",
+      "source_commit": "18fc4cb196afa76e9a64285be465ed9f71e3164e",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "f0d6282c4fe92d2e295e34640a7df7edaa55eb7031d9fa493be8e54b18cbb27e",
+          "sha256": "10ec46a791015ab28a1cdb627fb3a6a47b395277cfa9a10fb4334f051aa6c244"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "5c782e31e59813c8a11754f338b331cd7a09b36475ab5526ac3ed56c7013c70c",
+          "sha256": "c9abae6ce63a62305877c7c36ba95b0be57c35b55e57ecf74c3bb6a76dda0902"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "fc78b5dd4755fd72d1aea914d86b3274329c86c66f5434cdc8d9d289910de0d1",
+          "sha256": "5d57ca6fd4ea09a8c19d4f2008f8c3c19850dbaedbd42165a3dd5c67627b69a9"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "f47d7899293946e964e40f8ceb086b5805e7985f6f0b4b569077cada9fec3930",
+          "sha256": "cef385525c2f75eea038b7645c3a05d771c7fc196947b26859909dab04f4f7bf"
+        }
+      ],
+      "notes": "Load descriptions only when expanded. The generated browser verifies photo availability, an explicit retry, and stale viewer isolation."
+    },
+    {
+      "feature": "weekend_search_refinement",
+      "source_commit": "415e6835bce8ed5484c1b1b16c27e291527209a4",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "34088bb3e0dbcd827d264f4f298f2e2030acaa6dc69c8edb3907b04ac84f2ed2",
+          "sha256": "03622bda8111181dc8836c5f4988cafaca709c8c94a00cdea9ed4bd15458a312"
+        },
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "10ec46a791015ab28a1cdb627fb3a6a47b395277cfa9a10fb4334f051aa6c244",
+          "sha256": "79567dcd40f701749283bf3744cde15cdf801eecb2275105631141e1dda8cdef"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "05af5a9ee6ca4b98d7ac3c7875f3a13e8e66a9c2f2dd2df65ce5c6a9f4681b13",
+          "sha256": "c7b5601452d5275efc9eae815f9cec9ec54727741efd63a3e8ee9ad9b5aa329a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "6b7f53a39e586070820ac4dc0cee66595b720b18155d247b6ab1abb44128bc42",
+          "sha256": "81a82e56c49e33b9ade9ec44928c74cef0125aae2fd6cf3275e32dcefb68685b"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": "784cda0d76702e54b1c4efe24cfc8a03cc9f8c03ace7d5c7149c34a32b9b90e4",
+          "sha256": "51823986fedbcfcdccf207f267c3b169b675ffc5bf1acaf40c691300a0f573ab"
+        }
+      ],
+      "notes": "Resolve supported bilingual weekend phrases as two calendar days and retain all other verified filters during continuation."
+    },
+    {
+      "feature": "description_retry_keyboard_focus",
+      "source_commit": "2f5c952a4d9ce03942e46fe106aef03c07a304e5",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "c9abae6ce63a62305877c7c36ba95b0be57c35b55e57ecf74c3bb6a76dda0902",
+          "sha256": "3e30b551395d6c1fd19cc56de5e523974fc5f01adb46edfd7ff1afe8b5287ffc"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "cef385525c2f75eea038b7645c3a05d771c7fc196947b26859909dab04f4f7bf",
+          "sha256": "1bae21ca688c60c1b8908e72919971f402c5c0a2995dd582f90dae8677f34fdb"
+        }
+      ],
+      "notes": "Restore focus to the description summary before replacing the focused retry button."
     }
   ]
 }
