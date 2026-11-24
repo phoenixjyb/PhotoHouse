@@ -356,6 +356,43 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         self.assertEqual(unrelated.json()['result']['kind'], 'clarification')
         self.assertIsNone(unrelated.json()['result']['context'])
 
+    def test_bilingual_keep_people_followups_apply_other_slots_without_guessing(self):
+        headers = self.enable_search()
+        thread = self.thread()['thread_id']
+        first = self.turn(thread, text='find photos of Sample Child in September 2025', headers=headers)
+        self.assertEqual(first.status_code, 200, first.text)
+        initial = first.json()['result']
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.assertEqual(initial['filters']['people'], {'ids': ['301'], 'match': 'any'})
+        media = {**initial['filters'], 'media': ['video']}
+        october = {**media, 'date': {'from': '2025-10-01', 'to': '2025-10-31'}}
+        for revision, words, expected in (
+                (1, 'only videos and keep the same people', media),
+                (2, '改成十月份，保留人物条件', october),
+                (3, '保留人物条件。', october)):
+            with self.subTest(words=words):
+                response = self.turn(thread, revision=revision, text=words, headers=headers)
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()['result']
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual(result['filters'], expected)
+                self.assertEqual(result['context']['filters'], expected)
+                self.assertIsNone(result['effect'])
+
+        conflict = self.turn(thread, revision=4, text='keep the same people and Sample Adult',
+                             headers=headers).json()['result']
+        self.assertEqual(conflict['kind'], 'clarification', conflict)
+        self.assertEqual(conflict['filters'], october)
+
+        other_thread = self.thread()['thread_id']
+        without_people = self.turn(other_thread, text='find photos in September 2025',
+                                   headers=headers).json()['result']
+        no_person = self.turn(other_thread, revision=1, text='keep the same people',
+                              headers=headers).json()['result']
+        self.assertEqual(no_person['kind'], 'clarification', no_person)
+        self.assertEqual(no_person['filters'], without_people['filters'])
+        self.assertNotIn('people', no_person['filters'])
+
     def test_bilingual_corrections_keep_owned_scope_and_recover_exact_request(self):
         headers = self.enable_search()
         tid = self.thread()['thread_id']
