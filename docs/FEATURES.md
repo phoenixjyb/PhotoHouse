@@ -55,6 +55,11 @@ follows. Current installed-client and voice acceptance remain separate.
   reviewed intervals. The feature is off in the standard runtime.
 - Owners can copy a phone-bound registration link from Family settings.
   Registration still requires the invited phone number and an explicit submit.
+- Android can remember a user-selected upload folder in encrypted local
+  storage. Opening it again checks the current account, library and Android
+  read permission before the usual review and explicit upload.
+- A known recent preparation task has its own video status for the uploader.
+  Retry playback from the viewer after preparation finishes.
 - [Oral-history intake](ORAL_HISTORY_INTAKE_FOUNDATION.md) has a default-off
   Web recorder and protected API. Generated checks cover local preview, exact
   retry and resume after reload. Physical devices are pending.

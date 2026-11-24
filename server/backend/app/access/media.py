@@ -318,6 +318,11 @@ class AuthorizedMediaResponse(Response):
         provider.current()
         prepared = provider.entries.get(self.object_id)
         if prepared is None:
+            from .upload_preparation import approved_video_probe_state
+            state = await run_in_threadpool(approved_video_probe_state, access,
+                self.token, self.library, self.object_id)
+            if state in {'pending', 'running'}:
+                return Response(status_code=202, headers=PRIVACY_HEADERS)
             raise TransportError(404, 'Video not prepared')
         if (self.playback_revision is not None and
                 prepared['video']['sha256'] != self.playback_revision):

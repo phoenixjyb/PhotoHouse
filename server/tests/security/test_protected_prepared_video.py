@@ -118,6 +118,75 @@ class ProtectedPreparedVideoTests(unittest.TestCase):
         source.write_bytes(source.read_bytes() + b'changed')
         self.assertEqual(self.e.client.get(url, headers=self.e.headers()).status_code, 409)
 
+    def add_pending_probe(self, asset_id=101, *, account_id=None):
+        self.e.mutate('''CREATE TABLE IF NOT EXISTS access_uploads(
+            id INTEGER PRIMARY KEY, asset_id INTEGER NOT NULL, account_id TEXT NOT NULL, state TEXT NOT NULL)''')
+        self.e.mutate('''CREATE TABLE IF NOT EXISTS tasks(
+            id INTEGER PRIMARY KEY, type TEXT NOT NULL, payload_json TEXT NOT NULL, state TEXT NOT NULL)''')
+        self.e.mutate('INSERT INTO access_uploads(asset_id,account_id,state) VALUES (?,?,?)',
+                      (asset_id, account_id or self.e.member_id, 'assigned'))
+        self.e.mutate('INSERT INTO tasks(type,payload_json,state) VALUES (?,?,?)',
+                      ('video_probe', json.dumps({'asset_id': asset_id}), 'pending'))
+
+    def test_approved_pending_video_has_private_manual_retry_status(self):
+        self.add_pending_probe()
+        self.provider.entries = {}
+        url = '/assets/101/playback?library=family-a'
+        head = self.e.client.head(url, headers=self.e.headers())
+        self.assertEqual(head.status_code, 202)
+        self.assertEqual(head.content, b'')
+        self.e.assert_private(head)
+        self.assertNotIn('etag', head.headers)
+        self.assertNotIn('accept-ranges', head.headers)
+        self.e.mutate("UPDATE tasks SET state='running'")
+        self.assertEqual(self.e.client.head(url, headers=self.e.headers()).status_code, 202)
+        get = self.e.client.get(url, headers=self.e.headers())
+        self.assertEqual(get.status_code, 202)
+        self.assertEqual(get.content, b'')
+        self.e.assert_private(get)
+
+    def test_pending_hint_does_not_cross_scope_or_author(self):
+        self.add_pending_probe()
+        self.add_pending_probe(asset_id=201)
+        self.provider.entries = {}
+        wrong_scope = self.e.client.head('/assets/201/playback?library=family-a',
+                                         headers=self.e.headers())
+        self.assertEqual(wrong_scope.status_code, 401)
+        # This owner can read family-a, but has no upload receipt for this asset.
+        other_author = self.e.client.head('/assets/101/playback?library=family-a',
+                                          headers=self.e.headers(self.e.owner_token))
+        self.assertEqual(other_author.status_code, 404)
+
+    def test_pending_hint_is_bounded_to_recent_processing_evidence(self):
+        from app.access.upload_preparation import _PLAYBACK_TASK_WINDOW
+
+        self.add_pending_probe()
+        self.provider.entries = {}
+        self.e.mutate('''WITH RECURSIVE rows(n) AS (
+            VALUES(1) UNION ALL SELECT n+1 FROM rows WHERE n<?)
+            INSERT INTO tasks(type,payload_json,state)
+            SELECT 'thumb','{}','finished' FROM rows''', (_PLAYBACK_TASK_WINDOW,))
+        url = '/assets/101/playback?library=family-a'
+        self.assertEqual(self.e.client.head(url, headers=self.e.headers()).status_code, 404)
+        self.e.mutate("INSERT INTO tasks(type,payload_json,state) VALUES ('video_probe', ?, 'pending')",
+                      (json.dumps({'asset_id': 101}),))
+        self.assertEqual(self.e.client.head(url, headers=self.e.headers()).status_code, 202)
+
+    def test_finished_or_unreadable_task_evidence_is_not_reported_pending(self):
+        self.add_pending_probe()
+        self.provider.entries = {}
+        self.e.mutate("UPDATE tasks SET state='finished'")
+        url = '/assets/101/playback?library=family-a'
+        self.assertEqual(self.e.client.head(url, headers=self.e.headers()).status_code, 404)
+        self.e.mutate('DROP TABLE tasks')
+        missing_optional_journal = self.e.client.head(url, headers=self.e.headers())
+        self.assertEqual(missing_optional_journal.status_code, 404)
+        with patch('app.access.upload_preparation.approved_video_probe_state',
+                   side_effect=RuntimeError('synthetic storage failure')):
+            failure = self.e.client.head(url, headers=self.e.headers())
+        self.assertEqual(failure.status_code, 503)
+        self.assertNotIn('synthetic storage failure', failure.text.lower())
+
     def test_prepared_corruption_and_symlink_are_rejected(self):
         folder = self.prepared_root / 'asset-101'
         output = folder / 'video.mp4'

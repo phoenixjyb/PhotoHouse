@@ -1699,6 +1699,17 @@ let browser;
   await owner.locator('#viewer-media').getByRole('button',{name:'Retry video',exact:true}).waitFor();
   assert.equal(await owner.locator('#viewer-media video').count(),0);await owner.locator('#close-viewer').click();
   checkpoint('Native playback failure releases the video source and offers a fresh retry');
+  const pendingPlaybackStart=browserRequests.length;
+  playbackOverrides.push({status:202,headers:{'content-type':'application/json'}});
+  await owner.locator('.asset').filter({hasText:'105'}).click();
+  await owner.waitForFunction(()=>document.getElementById('view-quality').textContent.includes('still being prepared'));
+  assert.equal(await video.count(),0);
+  const pendingPlaybackPath='/assets/105/playback?library=family-a';
+  assert.deepEqual(browserRequests.slice(pendingPlaybackStart).filter(item=>item.path===pendingPlaybackPath).map(item=>item.method),['HEAD']);
+  await owner.locator('#viewer-media').getByRole('button',{name:'Retry video',exact:true}).click();
+  await owner.waitForFunction(()=>document.querySelector('#viewer-media video')?.readyState>=1);
+  await owner.locator('#close-viewer').click();
+  checkpoint('Pending preparation offers manual retry without fetching playback before the user acts');
   const expectPlaybackError=async(status,headers,text)=>{
     playbackOverrides.push({status,headers});
     await owner.locator('.asset').filter({hasText:'105'}).click();

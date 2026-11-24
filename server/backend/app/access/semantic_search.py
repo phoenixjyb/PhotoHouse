@@ -15,6 +15,7 @@ import struct
 from . import discovery as d
 from .assistant_search import AssistantSearchReads
 from .discovery_transport import DiscoveryRuntime
+from .library import _asset
 from .semantic_encoder import JointSpaceBinding, LocalSemanticEncoder, SemanticUnsupported, TextVector, rank_semantic
 from .service import AccessDenied, AccessService
 from .search_policy import EXCLUSION_POLICY_VERSION, requires_semantic_clarification
@@ -169,7 +170,7 @@ class SemanticSearchReads(AssistantSearchReads):
                 fields[1] = None
             if d.taken_day(fields[5]) is None:
                 fields[5] = None
-            assets[str(row[0])] = d._asset(fields, index.library_id)
+            assets[str(row[0])] = _asset(fields, index.library_id)
 
         faces = {str(row[0]): (str(row[1]), str(row[2]), row[3])
                  for row in source['faces']}

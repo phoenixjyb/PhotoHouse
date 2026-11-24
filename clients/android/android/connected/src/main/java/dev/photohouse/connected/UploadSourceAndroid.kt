@@ -49,7 +49,23 @@ internal fun batchUploadSource(context: Context, uri: Uri): BatchUploadSource? {
     return BatchUploadSource(safeName, bytes, kind, { resolver.openInputStream(uri) ?: error("SAF stream unavailable") }, uri.toString())
 }
 
-internal data class BatchTreeResult(val sources: List<BatchUploadSource>, val skipped: Int, val bytes: Long)
+internal data class BatchTreeResult(
+    val sources: List<BatchUploadSource>, val skipped: Int, val bytes: Long,
+    val persistedReadAccess: Boolean = true,
+)
+
+internal data class BatchTreeRequest(
+    val treeUri: Uri, val account: String, val destination: String?, val requirePersistedRead: Boolean,
+)
+
+internal fun hasPersistedTreeReadGrant(context: Context, tree: Uri): Boolean {
+    if (tree.scheme != "content" || !DocumentsContract.isTreeUri(tree)) return false
+    return runCatching {
+        context.applicationContext.contentResolver.persistedUriPermissions.any {
+            it.uri == tree && it.isReadPermission
+        }
+    }.getOrDefault(false)
+}
 
 /** Enumerates only the selected local SAF tree; provider paths and folder names never reach the API. */
 internal fun batchUploadTree(context: Context, tree: Uri, maxFiles: Int = 100, maxBytes: Long = 64L * 1024 * 1024 * 1024): BatchTreeResult {

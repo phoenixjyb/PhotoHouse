@@ -1,5 +1,6 @@
 """Read-only processing evidence for the current account's own upload receipts."""
 import json
+import sqlite3
 
 from .service import AccessDenied, AccessService
 from .transport import TransportError
@@ -10,6 +11,7 @@ PAGE_SIZE = 10
 MAX_PAGE = 100000
 _STATES = {'awaiting_review', 'pending', 'running', 'finished', 'failed', 'dead'}
 _TASK_TYPES = ('thumb', 'embed', 'face', 'caption', 'video_probe', 'video_embed')
+_PLAYBACK_TASK_WINDOW = 512
 
 
 def _stage(value):
@@ -48,6 +50,56 @@ def _task_state(latest, asset_id, task_type, *, required_payload=None):
     if required_payload is not None and set(payload) != required_payload:
         return 'unknown'
     return state
+
+
+def approved_video_probe_state(access, token, library, asset_id):
+    """Return pending/running only for the caller's currently assigned video.
+
+    This is a playback-status hint, not task data or an authorization grant.
+    Unknown, unavailable, finished or failed preparation never claims that work
+    is still in progress.
+    """
+    if type(asset_id) is not int or not 1 <= asset_id <= 2**63-1:
+        return None
+    try:
+        with access.connection_factory() as connection:
+            service = AccessService(connection, clock=access.clock)
+            with service._transaction():
+                member = service._require(token, library, 'library.read')
+                account = member['account_id']
+                if not service._may_submit(account):
+                    return None
+                receipt = connection.execute('''SELECT u.state,a.status,a.mime,scope.library_id
+                    FROM access_uploads u JOIN assets a ON a.id=u.asset_id
+                    JOIN access_asset_libraries scope ON scope.asset_id=a.id AND scope.library_id=?
+                    WHERE u.account_id=? AND u.asset_id=? ORDER BY u.id DESC LIMIT 1''',
+                    (library, account, asset_id)).fetchone()
+                if (receipt is None or receipt[0] != 'assigned' or receipt[1] not in (None, 'active')
+                        or receipt[2] not in {'video/mp4', 'video/quicktime'} or receipt[3] != library):
+                    return None
+                # A playback hint must not scan the processing history.
+                rows = connection.execute('''WITH recent AS (
+                        SELECT id,type,state,CASE WHEN length(CAST(payload_json AS BLOB))<=512
+                                                 THEN payload_json END AS payload_json
+                        FROM tasks ORDER BY id DESC LIMIT ?)
+                    SELECT id,type,payload_json,state,
+                        CASE WHEN json_valid(payload_json)
+                             THEN json_extract(payload_json,'$.asset_id') END AS asset_id
+                    FROM recent WHERE type='video_probe'
+                        AND CASE WHEN json_valid(payload_json)
+                                 THEN json_extract(payload_json,'$.asset_id') END=?
+                    ORDER BY id DESC LIMIT 1''', (_PLAYBACK_TASK_WINDOW, asset_id)).fetchall()
+                latest = _task_evidence(rows, {asset_id})
+                state = _task_state(latest, asset_id, 'video_probe', required_payload={'asset_id'})
+                return state if state in {'pending', 'running'} else None
+    except sqlite3.OperationalError as error:
+        # Older/minimal read-only application schemas may not have the optional
+        # upload journal yet. Its absence proves no pending state and retains the
+        # existing not-prepared response; other storage errors remain failures.
+        message = str(error).lower()
+        if any(f'no such table: {table}' in message for table in ('access_uploads', 'tasks')):
+            return None
+        raise
 
 
 class UploadPreparation:

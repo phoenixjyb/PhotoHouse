@@ -26,6 +26,24 @@ class BatchUploadReviewUiTest {
     @Test fun chineseEmptyFullAndReadyAt150Percent() = review(true)
     @Test fun englishEmptyFullAndReadyAt150Percent() = review(false)
 
+    @Test fun rememberingTheSelectedFolderRequiresAnExplicitReviewCardTap() {
+        var saves = 0
+        rule.setContent {
+            PhotoHouseTheme {
+                BatchUploadReviewCard(
+                    selectedCount = 1, selectedBytes = 512, skippedCount = 0, availableSlots = 100,
+                    destinationLabel = "Synthetic family", issue = null, needsNetworkConfirmation = false,
+                    canRememberFolder = true, zh = false, onRememberFolder = { saves++ },
+                    onStart = {}, onDiscard = {},
+                )
+            }
+        }
+        rule.onNodeWithTag("batch-remember-folder").assertTextEquals("Remember this folder")
+        rule.runOnIdle { assertEquals(0, saves) }
+        rule.onNodeWithTag("batch-remember-folder").performClick()
+        rule.runOnIdle { assertEquals(1, saves) }
+    }
+
     private fun review(zh: Boolean) {
         val issue = mutableStateOf<BatchUploadEnqueueIssue?>(BatchUploadEnqueueIssue.EMPTY_SELECTION)
         var starts = 0
