@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 _lean_run = None
 API_TESTS = (
     "test_inference_admission.py", "test_host_inference_admission.py", "test_windows_story_capacity.py",
-    "test_assistant_agent_tools.py", "test_assistant_agent_workspace.py",
+    "test_assistant_agent_tools.py", "test_assistant_agent_workspace.py", "test_external_search.py",
     "test_agent_decision.py", "test_local_tool_agent.py", "test_household_gguf_worker.py", "test_household_agent_factory.py",
     "test_discovery_text_validation.py", "test_discovery_chunk_accounting.py",
     "test_discovery_index_document.py", "test_assistant_caption_scope.py",
