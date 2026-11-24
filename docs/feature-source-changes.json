@@ -36548,6 +36548,126 @@
       "live_runtime_changed": false,
       "providers_activated": false,
       "scope": "Include the already reviewed video-moment module in the existing fixed staging allowlist."
+    },
+    {
+      "feature": "audit-family-invitations-recording-and-viewer-responsiveness",
+      "source_commit": "6a0afc7b0661ffa21ff41eced026a1b11c56260e",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "93da163355ccefc95395d553b1b5043c69d8eafe1384154ef446592f7f7995b1",
+          "sha256": "f6f6791014ce65e557b62fc273971f5dd92311dc347756908836bcd4b12c5855"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "1099b63bfcd4a87b11ff62c0abb42f55060dc23913e3ae782637a33e4b27ce1f",
+          "sha256": "4291f769c16f0a440f35e1e13b78e0308c7bb241e7efbedfe3bf79c680787b94"
+        },
+        {
+          "path": "docs/MODEL_PROVIDER_ARCHITECTURE.md",
+          "before_sha256": "003a9587948a9a42f1da8d253722afb7cbc5bfe0230720af627118c05f1f1cee",
+          "sha256": "9f6cdc3f81b7b5e1b6e8880163b8d412f5d3d69e58ee3ded8b5c7821b1c1b33a"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "1dcb47dedfbfdf178506dde4417eca298b87564e2d3a6b50d5405c207839fd4c",
+          "sha256": "8482a37aa6d0464bc4cfbe6c8c6eb60d1ed472e2319ecd8ec3da0afa41a15c44"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "65c31d502f457f8af658a074b15e8ac19f7fa9518771a6802f35e57f9f62863d",
+          "sha256": "083de4a89201d531ffa1b89ac22a662da76c9657770dc194186263656aa110d1"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "a9ae57a113199121b05b3773a7f424254608adeeb92e6f0fd1eb265f9ed075c1",
+          "sha256": "06ed8ec73157fe0fda906cc4f8bdda200ba22c6efb8d2646a7e9fefacc8f222b"
+        },
+        {
+          "path": "docs/SEARCH_QUALITY_SCORECARD.md",
+          "before_sha256": "3d0322a5a3e97663f1b93e0a3e177834df6819728a759d6200fd674e0b0255d2",
+          "sha256": "49004c5ed02ed4aa42ff6eb697398c47f4d097c64f26a9620be6830ff2bf8d7c"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "a22ec30ac5df1b9ee6ae46ebd08117a563d3c702755ad2e8b57fa913f05cb152",
+          "sha256": "61a0b09da0d718a29d4d5f5036c6511378d84933360bac32af615adae0b036d9"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "ccf9fd8d0c700586cbcd8b99c4934f1af541a7b2bc1b6a6195a0db78176b9189",
+          "sha256": "b1e54384eca60e1d1db9b8f6eb0fd7d69c2580c7a7a2eb9d377140b7e44f975e"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_transport.py",
+          "before_sha256": null,
+          "sha256": "9a9be9d1fd1701f23cae7ba0d60927b816680aa25ecf81c67419332392504ca7"
+        },
+        {
+          "path": "server/backend/app/access/search_evaluation.py",
+          "before_sha256": "1d12b4eca5537b172ec6d0cf394a995136ed5ccfde4e241e44bf41dcee5dbf38",
+          "sha256": "bb195783a5315f0bc9aaec0682d6107dd12ec557b8089f426c0af0d0cdc54555"
+        },
+        {
+          "path": "server/backend/app/access/windows_tts.py",
+          "before_sha256": "13336cf72293347cd8824a3db3d297b331f0c32bb6557d8787042877b230dc82",
+          "sha256": "a44e23e2c072cfa0447ff97f49aa0b195340a135cf94d54e25485afb0b43e061"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "429284ef70209cf34ea467e4bde6af219ff00c9a6926f544c8677235606bffd9",
+          "sha256": "a8f885d6bd690ff7bf5ce646b2785376d18db7144d5e8212728110d81ae87922"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "1bf7fedb87200125c14ef7de5fea85c479f1f03642d4620be85259d176c678e9",
+          "sha256": "cbd7a4beff103eb89d68a18f38286b5e78346c2718141fb655d0def162ba478a"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "9c99e896d96ebbd429febb1468e4fd8eb39fb56d2985f9f96bcbd19538a52ad6",
+          "sha256": "6eaa2ba85981f5861adaf855a8bedc47e82458422ffd26fb59a7d3d45c714378"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "09875768153f42d819d6b1095e39d2d7d64581e21f2f18f8f2f694b549f8b553",
+          "sha256": "01cdf3dcb6157f3230f4948bd76c8002954c892165a5884ea3f855b3833784e8"
+        },
+        {
+          "path": "server/scripts/serve_windows_tts.py",
+          "before_sha256": "1c9ea682f9d973fdb48d8a8bccc2a8beafb0b1dd228ae154f39d366e747c246f",
+          "sha256": "77c6a39bf0b3e1bd345a61bca6b26a75d1107c909e63076a506ef38ed0b8083c"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_transport.py",
+          "before_sha256": null,
+          "sha256": "cb064dc098ef85f088c31e4bcdfbfe8c8a3ab1c53457bab0584b6b8e6813b88a"
+        },
+        {
+          "path": "server/tests/security/test_search_quality_scorecard.py",
+          "before_sha256": "0d9b552ca618378a7c15b9853f4e9c5adce0082e6e91bf848c422676008ff148",
+          "sha256": "1ea607e6eaf1d39c2a3e190c547e9485d479d2e3c77a36197ac63d46636e8637"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "8445a43ae364d5669cd28f45493789ea2b925795e6fedc5ada85dbcf63fc3a22",
+          "sha256": "f82efa435795d575db44fb32b2c6fca3ee8900f8c5e43fb92341fc8fdb5e10df"
+        },
+        {
+          "path": "server/tests/security/test_windows_tts.py",
+          "before_sha256": "247d5e965b3281c8c83c3831ef2700832f6e13939684ba23f0442c275bbb7ef1",
+          "sha256": "a475bfad98b26572260e0feaabb8c8e6129358d4ef2a6aa5364ec3f479d22be7"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "1869792419ed8f9879510b20c801d59023847e3fc70ada85167034d6ef42f551",
+          "sha256": "1daed7110ca8832f840f7a1c062a2bf807900f7cf3f15b17c905ecd668de329f"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Reviewed Web invitations, responsive viewer, opt-in resumable fixture recording API, strict search scorecard and optional installed speech selection."
     }
   ]
 }
