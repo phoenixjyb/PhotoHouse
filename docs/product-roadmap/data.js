@@ -975,14 +975,14 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "Short contributions, editors and intake schema work provide foundations.",
-          "zh": "短篇贡献、编辑器与收集结构工作提供基础。"
+          "en": "The optional Web recorder saves short sections and resumes unfinished recordings after a reload. Generated browser checks covered a lost reply and duplicate-free retry.",
+          "zh": "可选的网页录音支持分段保存，刷新后可继续未完成的录音。合成浏览器测试验证了回复丢失与无重复重试。"
         }
       ],
       "gaps": [
         {
-          "en": "Long-session capture, worker integration and automatic stitching are incomplete.",
-          "zh": "长会话采集、工作进程集成与自动串联尚未完成。"
+          "en": "Physical capture, transcription, editorial review and production storage qualification remain open.",
+          "zh": "真机录音、转写、编辑审阅及生产存储验证仍待完成。"
         }
       ],
       "next_step": {
@@ -990,8 +990,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "先交付一个可恢复的录音到已审阅故事流程，再扩展自动化。"
       },
       "delivery_note": {
-        "en": "Foundation only; a complete memory hub is not delivered.",
-        "zh": "目前仅有基础；完整记忆中心尚未交付。"
+        "en": "Generated Web and API checks passed. The recorder remains off in the deployed configuration.",
+        "zh": "合成网页与 API 测试通过。已部署配置仍未启用录音。"
       },
       "acceptance_note": {
         "en": "Recording consent, attribution and author adoption remain explicit.",
@@ -1001,10 +1001,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "kind": "source",
           "label": {
-            "en": "FEATURES.md · ROADMAP.md",
-            "zh": "FEATURES.md · ROADMAP.md"
+            "en": "ORAL_HISTORY_INTAKE_FOUNDATION.md",
+            "zh": "ORAL_HISTORY_INTAKE_FOUNDATION.md"
           },
-          "at": "2026-11-24",
+          "at": "2026-11-25",
           "state": "partial"
         }
       ]

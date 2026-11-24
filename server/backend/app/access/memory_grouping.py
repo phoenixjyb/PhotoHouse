@@ -51,6 +51,8 @@ class GroupCandidate:
 class GroupProposal:
     status: Literal["ready", "unavailable"]
     candidates: tuple[GroupCandidate, ...]
+    coverage_available: bool = False
+    coverage_mode: Literal["default", "by_seed"] = "default"
 
 
 UNAVAILABLE = GroupProposal("unavailable", ())
@@ -145,6 +147,7 @@ def propose_memory_group(
     expected_identity,
     capture_times,
     excluded_ids=(),
+    coverage_mode="default",
     minimum_similarity=0.9,
     max_gap_seconds=21600,
 ) -> GroupProposal:
@@ -166,6 +169,7 @@ def propose_memory_group(
                 or type(candidate_vectors) not in (tuple, list)
                 or len(candidate_vectors) > MAX_CANDIDATES
                 or not _valid_identity(expected_identity)
+                or coverage_mode not in ("default", "by_seed")
                 or type(minimum_similarity) not in (int, float)
                 or not math.isfinite(float(minimum_similarity))
                 or not 0 < float(minimum_similarity) <= 1
@@ -250,8 +254,27 @@ def propose_memory_group(
                                            eligible, expected_identity.dimension, minimum_similarity)
         ranked.sort(key=lambda item: (-item[0], item[1]))
         limit = min(MAX_RESULTS, max(0, 24 - len(seeds)))
+        default_seed_count = len({item[3] for item in ranked[:limit]})
+        top_per_seed = {}
+        for item in ranked:
+            top_per_seed.setdefault(item[3], item)
+        coverage_ranked = []
+        coverage_ids = set()
+        for seed_id in seeds:
+            item = top_per_seed.get(seed_id)
+            if item is not None and item[2] not in coverage_ids:
+                coverage_ranked.append(item)
+                coverage_ids.add(item[2])
+            if len(coverage_ranked) >= limit:
+                break
+        coverage_ranked.extend(item for item in ranked if item[2] not in coverage_ids)
+        coverage_seed_count = len({item[3] for item in coverage_ranked[:limit]})
+        coverage_available = coverage_seed_count > default_seed_count
+        effective_mode = "by_seed" if coverage_mode == "by_seed" and coverage_available else "default"
+        if effective_mode == "by_seed":
+            ranked = coverage_ranked
         result = tuple(GroupCandidate(asset_id, seed_id, reason)
                        for _score_value, _numeric_id, asset_id, seed_id, reason in ranked[:limit])
-        return GroupProposal("ready", result)
+        return GroupProposal("ready", result, coverage_available, effective_mode)
     except (TypeError, ValueError, OverflowError, RecursionError, AttributeError, struct.error):
         return UNAVAILABLE

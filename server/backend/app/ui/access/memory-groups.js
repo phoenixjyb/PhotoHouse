@@ -15,7 +15,7 @@ window.PhotoHouseMemoryGroups = {
         startStory:'开始写故事', checkingStory:'正在核对回忆组…', storyChanged:'回忆组已变化或暂不可用，请刷新后重试。',
         theme:'主题', themes:{trip:'旅行',growing_up:'成长',birthday:'生日',grandparents:'祖辈',year_in_review:'年度回顾',everyday:'日常'},
         addMedia:'从当前相册选择画面', included:'组内画面', remove:'移出此组',
-        suggestions:'查找相似画面', suggestionsHelp:'建议会参考记录的拍摄时间和图片相似度。结果可以逐项修改；不会自动保存。',
+        suggestions:'查找相似画面', suggestionsHelp:'建议会参考记录的拍摄时间和图片相似度。结果可以逐项修改；不会自动保存。', coverMore:'覆盖更多已选画面',
         timeReason:{within_recorded_window:'拍摄时间接近',same_recorded_day:'记录在同一天'}, seed:'匹配画面', noSuggestions:'没有找到建议画面。',
         notes:'选择要关联的家人原话', noNotes:'没有可关联的家人原话。只会保存来源链接，不复制原文。',
         sources:'关联的家人原话', by:'作者', noSources:'尚未关联家人原话。',
@@ -35,7 +35,7 @@ window.PhotoHouseMemoryGroups = {
         startStory:'Start a story', checkingStory:'Checking this memory group…', storyChanged:'This memory group changed or is unavailable. Refresh and try again.',
         theme:'Theme', themes:{trip:'Trip',growing_up:'Growing up',birthday:'Birthday',grandparents:'Grandparents',year_in_review:'Year in review',everyday:'Everyday'},
         addMedia:'Choose from this gallery', included:'Group photos', remove:'Remove from group',
-        suggestions:'Find similar photos', suggestionsHelp:'Suggestions use recorded capture time and image similarity. Review and edit each result; nothing is saved automatically.',
+        suggestions:'Find similar photos', suggestionsHelp:'Suggestions use recorded capture time and image similarity. Review and edit each result; nothing is saved automatically.', coverMore:'Cover more selected moments',
         timeReason:{within_recorded_window:'Recorded times are close',same_recorded_day:'Recorded on the same day'}, seed:'Matched photo', noSuggestions:'No suggested photos found.',
         notes:'Link family originals', noNotes:'No family originals can be linked. Only source links are saved; original text is not copied.',
         sources:'Linked family originals', by:'By', noSources:'No family originals are linked yet.',
@@ -184,7 +184,7 @@ window.PhotoHouseMemoryGroups = {
       if(state.editor&&state.dirty){if(state.saving||!window.confirm(t('confirmLeave')))return;clearEditor(state);}
       clearEditor(state);state.editing=group||null;
       const baseIds=group?(group.asset_ids||[]).filter(idOk):[state.asset.id];
-      const selected=new Set(baseIds);const exclusions=new Set((group?.excluded_asset_ids||[]).filter(idOk));
+      const selected=new Set(baseIds);const autoSuggestedIds=new Set();const exclusions=new Set((group?.excluded_asset_ids||[]).filter(idOk));
       state.editorRevision++;
       const sourceChoices=new Map();for(const story of [...state.stories,...(group?.sources||[])])if(story&&uuidOk(story.id)&&typeof story.text==='string')sourceChoices.set(story.id,story);
       const sourceIds=new Set((group?.source_story_ids||[]).filter(uuidOk));
@@ -205,7 +205,7 @@ window.PhotoHouseMemoryGroups = {
       const available=new Map();for(const item of [state.asset,...state.manualItems])if(idOk(item?.id)&&!available.has(item.id))available.set(item.id,item);
       const renderMembers=()=>{
         memberRows.replaceChildren();for(const id of selected){const item=available.get(id)||group?.items?.find(v=>v.id===id)||{id};const wrap=node('div','', 'memory-group-member');wrap.append(image(item));
-          if(id!==state.asset.id||group){const remove=button(t('remove'),()=>{markEditorChanged(state);selected.delete(id);exclusions.add(id);for(const box of suggestionList.querySelectorAll('input'))if(box.value===id)box.checked=false;renderMembers();renderGallery();renderStoryChoices();},'memory-group-remove');wrap.append(remove);}memberRows.append(wrap);}
+          if(id!==state.asset.id||group){const remove=button(t('remove'),()=>{markEditorChanged(state);selected.delete(id);autoSuggestedIds.delete(id);exclusions.add(id);for(const box of suggestionList.querySelectorAll('input'))if(box.value===id)box.checked=false;renderMembers();renderGallery();renderStoryChoices();},'memory-group-remove');wrap.append(remove);}memberRows.append(wrap);}
         count.textContent=t('count')(selected.size,24);
         if(excludedList)excludedList.textContent=exclusions.size?`${t('excluded')}: ${exclusions.size}`:'';
       };
@@ -230,30 +230,37 @@ window.PhotoHouseMemoryGroups = {
       const suggestionSection=section(t('suggestions'),'memory-group-suggestion-section');
       suggestionSection.append(node('p',t('suggestionsHelp')));
       const suggestionList=node('div','', 'memory-group-suggestions');suggestionSection.append(suggestionList);
-      const suggestButton=button(t('suggestions'),async()=>{
+      const requestSuggestions=async coverageMode=>{
         if(!active(state)||state.pendingSave)return;
         const seeds=[...proposalSeeds].filter(id=>!exclusions.has(id));if(!seeds.length){setStatus(state,t('invalid'),true);return;}
-        suggestButton.disabled=true;setStatus(state,t('loading'));
+        suggestButton.disabled=true;coverageButton.disabled=true;setStatus(state,t('loading'));
         const ticket=++state.readSequence;const editorRevision=state.editorRevision;
-        try{const result=await request(state,'/memory-groups/proposals',{method:'POST',body:{asset_ids:seeds.join(','),excluded_asset_ids:[...exclusions].join(',')}});
+        try{const body={asset_ids:seeds.join(','),excluded_asset_ids:[...exclusions].join(',')};if(coverageMode==='by_seed')body.coverage_mode='by_seed';
+          const result=await request(state,'/memory-groups/proposals',{method:'POST',body});
           if(!active(state)||ticket!==state.readSequence||editorRevision!==state.editorRevision)return;
           suggestionList.replaceChildren();
-          if(!result||result.version!==1||result.library_id!==String(state.library)||result.needs_review!==true||!Array.isArray(result.seed_asset_ids)||result.seed_asset_ids.length!==seeds.length||result.seed_asset_ids.some((id,index)=>id!==seeds[index])||!Array.isArray(result.items)||result.items.length>20)throw Error('Invalid suggestions response');
-          if(result.status==='unavailable'){suggestionList.append(node('p',t('suggestionsError')));return;}
+          if(!result||result.version!==1||result.library_id!==String(state.library)||result.needs_review!==true||!Array.isArray(result.seed_asset_ids)||result.seed_asset_ids.length!==seeds.length||result.seed_asset_ids.some((id,index)=>id!==seeds[index])||!Array.isArray(result.items)||result.items.length>20||(result.cover_more_available!==undefined&&typeof result.cover_more_available!=='boolean')||(coverageMode==='by_seed'&&result.coverage_mode!=='by_seed'))throw Error('Invalid suggestions response');
+          if(result.status==='unavailable'){coverageButton.hidden=true;suggestionList.append(node('p',t('suggestionsError')));return;}
           if(result.status!=='ready')throw Error('Unavailable suggestions');
+          coverageButton.hidden=coverageMode==='by_seed'||seeds.length<2||result.cover_more_available!==true;
           if(!result.items.length)suggestionList.append(node('p',t('noSuggestions')));
           const returnedIds=new Set();
-          for(const candidate of result.items){if(!idOk(candidate?.id)||returnedIds.has(candidate.id)||seeds.includes(candidate.id)||exclusions.has(candidate.id)||!seeds.includes(candidate.matched_seed_asset_id)||candidate.kind!=='image'||!['within_recorded_window','same_recorded_day'].includes(candidate.time_reason)||!safeThumbnail(candidate))throw Error('Invalid suggestion item');returnedIds.add(candidate.id);if(selected.has(candidate.id))continue;
+          for(const candidate of result.items){if(!idOk(candidate?.id)||returnedIds.has(candidate.id)||seeds.includes(candidate.id)||exclusions.has(candidate.id)||!seeds.includes(candidate.matched_seed_asset_id)||candidate.kind!=='image'||!['within_recorded_window','same_recorded_day'].includes(candidate.time_reason)||!safeThumbnail(candidate))throw Error('Invalid suggestion item');returnedIds.add(candidate.id);}
+          for(const id of autoSuggestedIds)selected.delete(id);
+          autoSuggestedIds.clear();
+          for(const candidate of result.items){if(selected.has(candidate.id))continue;
             const label=node('label','', 'memory-group-suggestion');const box=document.createElement('input');box.type='checkbox';box.name='suggested_asset_ids';box.value=candidate.id;
-            if(selected.size<24){box.checked=true;selected.add(candidate.id);available.set(candidate.id,candidate);}else{box.checked=false;box.disabled=true;}
-            box.addEventListener('change',()=>{markEditorChanged(state);if(box.checked){if(selected.size>=24){box.checked=false;setStatus(state,t('invalid'),true);return;}selected.add(candidate.id);exclusions.delete(candidate.id);}else{selected.delete(candidate.id);exclusions.add(candidate.id);}renderMembers();renderGallery();renderStoryChoices();});
+            if(selected.size<24){box.checked=true;selected.add(candidate.id);autoSuggestedIds.add(candidate.id);available.set(candidate.id,candidate);}else{box.checked=false;box.disabled=true;}
+            box.addEventListener('change',()=>{autoSuggestedIds.delete(candidate.id);markEditorChanged(state);if(box.checked){if(selected.size>=24){box.checked=false;setStatus(state,t('invalid'),true);return;}selected.add(candidate.id);exclusions.delete(candidate.id);}else{selected.delete(candidate.id);exclusions.add(candidate.id);}renderMembers();renderGallery();renderStoryChoices();});
             const matchingSeed=available.get(candidate.matched_seed_asset_id);label.append(box,image(candidate));label.append(node('span',t('timeReason')[candidate.time_reason]));if(matchingSeed){const match=node('span',t('seed'),'memory-group-match-seed');match.append(image(matchingSeed));label.append(match);}suggestionList.append(label);
           }
           if(result.items.length)state.dirty=true;renderMembers();renderGallery();renderStoryChoices();setStatus(state,'');
-        }catch(_){if(active(state)&&ticket===state.readSequence){suggestionList.replaceChildren();setStatus(state,t('suggestionsError'),true);}}
-        finally{if(active(state))suggestButton.disabled=false;}
-      },'memory-group-suggest');
-      if(state.capabilities.suggestions)suggestionSection.append(suggestButton);else suggestionSection.append(node('p',t('suggestionsDisabled')));
+        }catch(_){if(active(state)&&ticket===state.readSequence){coverageButton.hidden=true;suggestionList.replaceChildren();setStatus(state,t('suggestionsError'),true);}}
+        finally{if(active(state)){suggestButton.disabled=false;coverageButton.disabled=false;}}
+      };
+      const suggestButton=button(t('suggestions'),()=>{void requestSuggestions('default');},'memory-group-suggest');
+      const coverageButton=button(t('coverMore'),()=>{void requestSuggestions('by_seed');},'memory-group-coverage');coverageButton.hidden=true;
+      if(state.capabilities.suggestions)suggestionSection.append(suggestButton,coverageButton);else suggestionSection.append(node('p',t('suggestionsDisabled')));
       editor.append(suggestionSection);
       const save=button(t('save'),()=>{},'memory-group-save');save.type='submit';editor.append(save);
       editor.append(button(t('cancel'),()=>{if(state.dirty&&!window.confirm(t('confirmLeave')))return;clearEditor(state);setStatus(state,'');},'memory-group-cancel'));

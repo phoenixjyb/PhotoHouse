@@ -111,13 +111,13 @@ using the same trusted HTTPS address on the home network.
 | PH-005 Web responsiveness | The generated browser shows a photo while the description response is held, and discards that description if you close or change photos. Thumbnail placeholders keep their shape and adjacent viewer steps retain the same authorized filmstrip images. | Matched scrolling and video-start measurements on representative devices. |
 | PH-006 Rust grouping | The qualified Rust grouping work is integrated, and the existing Windows grouping selection completed the fullscreen handoff. | Whole-refresh performance and dense-library quality. |
 | PH-007 family usability | Bilingual Home, Photos, Family, Stories, and Jude links reach existing destinations. Generated phone-width checks verify keyboard focus and enlarged text. | Usability sessions with family members. |
-| PH-008 identity and kinship | Authorized accounts can use their own reviewed perspective. A private draft tool validates explicit relationship edits and rejects a stale base. | Family-facing editing and activation review. |
-| PH-009 uploads and pairing | Android offers a cancellation retry after restart or a lost reply. Web owners can copy a phone-bound invitation link that prefills the code for a signed-out visitor and still requires explicit registration. | Automatic OS-managed backup, iOS, TV pairing, and device acceptance. |
+| PH-008 identity and kinship | Authorized accounts can use their own reviewed perspective. The private draft tool accepts reviewed relationships and aliases, verifies the exact base, and preserves catalog bindings and account scope. | Family-facing editing and activation review. |
+| PH-009 uploads and pairing | Android keeps interrupted cancellations out of upload retries. The remembered-folder shortcut rechecks the exact account, library and read grant before the user reviews that folder again. Web invitations remain phone-bound and require explicit registration. | Automatic OS-managed backup, iOS, TV pairing, and household device acceptance. |
 | PH-010 voice | Generated checks cover voice entry, recovery, half-duplex playback, and new-turn timing. The Windows bridge accepts and verifies optional exact names of installed voices without a cloud speech request. | Native listening quality, physical audio devices, and resource measurements with real local inference. |
-| PH-011 memory groups | A generated browser opens an unsaved story with a freshly verified saved group's ordered photos and theme. Review, exclusion, and exact-save retry are checked. | Automated multi-device event discovery and household review. |
-| PH-012 oral history | Default-off protected HTTP intake accepts retention consent separately from processing consent. The generated client reopens the session, retries a section without duplication, and continues at the next section. | Recording UI, consent and capture on devices, paired live recovery, and editorial review. |
-| PH-013 video | Generated tests seek to a reviewed moment through protected playback and refuse a stale prepared version. The worker extracts a frame from a 0.4-second clip. | Household catalog preparation, automatic segment labels, and Windows worker deployment. |
-| PH-014 installation and recovery | The fresh generated demo restores an older snapshot, replays a newer withdrawal, and reopens protected HTTP with the withdrawn source hidden. | Supported installers, service lifecycle, power-loss drills, and household restore approval. |
+| PH-011 memory groups | A generated browser opens an unsaved story in the saved group's order. The optional suggestion action covers more reviewed seed photos when the ordinary page is dominated by one seed. It keeps manual choices and exclusions. | Automated multi-device event discovery and household review. |
+| PH-012 oral history | A default-off Web recorder separates retention and processing consent. The generated browser previews audio locally, retries a lost response without duplication, and resumes the next section after reload. | Physical capture, consent on devices, paired live recovery, transcription, and editorial review. |
+| PH-013 video | Generated tests seek to a reviewed moment and refuse a stale prepared version. The worker extracts a frame from a 0.4-second clip. The uploader can distinguish recent proven preparation from missing playback, with a manual retry. | Automatic segment labels, household catalog preparation, and Windows deployment of the new worker and status changes. |
+| PH-014 installation and recovery | The extracted package provisions a generated owner, accepts and approves one generated JPEG, confirms one asset after replay, and serves its authorized gallery and thumbnail. The separate restore demo replays a withdrawal without restoring access to the source. | Supported installers, service lifecycle, power-loss drills, and household restore approval. |
 | PH-015 external search | The read-only search and detail boundary has a design and a generated authorization test matrix. | External transport and scoped grants. See the [external search design](EXTERNAL_SEARCH_INTERFACE.md). |
 
 Use the [source ledger](feature-source-changes.json) for the exact change
@@ -139,6 +139,26 @@ model or listener. It leaves native model timing and real library scale open.
 | Start a search | 9.710 / 11.703 ms | 9.366 / 11.298 ms |
 | Change media on the same thread | 10.115 / 10.459 ms | 9.589 / 10.677 ms |
 | Change month on the same thread | 9.787 / 10.368 ms | 9.476 / 9.804 ms |
+
+On a separate **25,000-asset generated library** at `2d41f0b`, six three-turn
+trials with the standard read caps returned the expected complete totals
+and paged results. The five warm runs had medians of **873 ms**, **987 ms**,
+and **998 ms** for the same three steps. The result is from the in-process
+protected API and does not measure a model or the home network. Five warm
+samples are too few for a representative p95.
+
+Two matched runs per source compared the later discovery read path at the same
+scale. Each run used one cold and five warm three-turn trials. Result totals
+and the page's asset IDs, kinds, recorded dates, and thumbnail fields matched.
+The change parses each recorded date once and builds the encoded library
+thumbnail query once per projection. Each call still authorizes the user and
+checks the current source.
+
+| Request | Range of baseline warm medians | Range after removing repeated work |
+| --- | ---: | ---: |
+| Start a search | 859–955 ms | 680–682 ms |
+| Change media on the same thread | 999–1,089 ms | 779–788 ms |
+| Change month on the same thread | 971–1,134 ms | 801–817 ms |
 
 ### Generated photo-viewer timing
 

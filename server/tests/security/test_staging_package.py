@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -18,6 +19,18 @@ def working_tree_package_files():
     repository = package.ROOT.parent
     return {name: (repository / package.SOURCE_BY_PACKAGE[name]).read_bytes()
             for name in package.FILES}
+
+
+def committed_package_builder(commit):
+    """Load the package allowlist that belongs to the exact source commit under test."""
+    source = package.git('show', f'{commit}:server/scripts/build_staging_package.py')
+    module = types.ModuleType('photohouse_committed_staging_package')
+    module.__file__ = str(package.ROOT / 'scripts' / 'build_staging_package.py')
+    exec(compile(source, module.__file__, 'exec'), module.__dict__)
+    # The checked-out test harness supplies Git access, while every selected source
+    # blob and its fixed allowlist come from the immutable committed builder above.
+    module.ROOT = package.ROOT
+    return module
 
 
 class StagingPackageTests(unittest.TestCase):
@@ -435,10 +448,11 @@ print('packaged-adapters-and-fallback-pass')
 
     def test_extracted_api_prepares_and_serves_synthetic_a0_without_migration_to_package_head(self):
         commit = package.git('rev-parse', 'HEAD').decode().strip()
-        files = package.source_files(commit)
+        selected_package = committed_package_builder(commit)
+        files = selected_package.source_files(commit)
         with tempfile.TemporaryDirectory() as selected:
             root = Path(selected).resolve()
-            with zipfile.ZipFile(io.BytesIO(package.package_bytes(commit, files))) as archive:
+            with zipfile.ZipFile(io.BytesIO(selected_package.package_bytes(commit, files))) as archive:
                 archive.extractall(root)
             fixture = Path(__file__).resolve().with_name('package_smoke.py')
             result = subprocess.run([sys.executable, '-I', '-B', str(fixture), str(root)],
@@ -448,9 +462,11 @@ print('packaged-adapters-and-fallback-pass')
             self.assertEqual(report['package_smoke'], 'pass')
             self.assertEqual(report['synthetic_migration_revision'], 'a0c9d2e4f817')
             self.assertFalse(report['application_listeners_opened'])
+            self.assertFalse(report['child_processes_started'])
             self.assertFalse(report['live_data_accessed'])
             self.assertEqual(report['database_preparation_commands'], 9)
             self.assertEqual(report['saved_story_checks'], 7)
+            self.assertEqual(report['owner_upload_checks'], 10)
 
     def test_archive_is_deterministic_complete_and_contains_no_private_discovery(self):
         files={name:('synthetic source '+name).encode() for name in package.FILES}

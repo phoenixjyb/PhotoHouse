@@ -61,6 +61,7 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIs(main.app.state.assistant_semantic_search_enabled, False)
                 self.assertIs(main.app.state.selected_story_drafts_enabled, False)
                 self.assertIs(main.app.state.selected_story_ui_enabled, False)
+                self.assertIs(main.app.state.oral_history_intake_enabled, False)
                 self.assertEqual(len(main.app.routes), 188)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])

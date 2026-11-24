@@ -30,6 +30,8 @@ const MEMBER='+12025550102';
 let hold=null,abortLogout=false,loseStorySave=false,loseStoryDelete=false;
 let loseFaceSave=false;
 let loseAlbumSave=false;
+let loseOralSection=false;
+const oralSections=[];
 let failNextPath=null,rejectNextDiscoverySearch=false;
 let failNextMoveRefreshPath=null;
 let failNextPlaybackGet=false;
@@ -82,6 +84,10 @@ async function context(browser){
     if(request.method()==='POST'&&url.pathname.endsWith('/assignment'))assignmentPosts++;
     if(loseFaceSave&&request.method()==='POST'&&(/\/(assignment|unassign|new-person)$/.test(url.pathname))){loseFaceSave=false;await route.abort();return;}
     if(loseAlbumSave&&request.method()==='POST'&&url.pathname==='/admin/albums'){loseAlbumSave=false;await route.abort();return;}
+    if(request.method()==='POST'&&url.pathname.startsWith('/oral-history/')&&url.pathname.endsWith('/sections')){
+      oralSections.push({id:headers['x-photohouse-request-id'],ordinal:headers['x-photohouse-ordinal'],status:response.status});
+      if(loseOralSection){loseOralSection=false;await route.abort();return;}
+    }
     if(hold&&hold.predicate(url,request)) {const delayed=hold;hold=null;delayed.arrived();await delayed.gate;}
     const outputHeaders={...response.headers};if(request.method()!=='HEAD')delete outputHeaders['content-length'];delete outputHeaders['content-encoding'];
     try {await route.fulfill({status:response.status,headers:outputHeaders,body:Buffer.from(response.body,'base64')});}
@@ -275,6 +281,108 @@ let browser;
     assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
     checkpoint('Malformed and signed-in invitation fragments are scrubbed without prefill; explicit phone-bound signup succeeds');
     await ownerContext.close();await joinedContext.close();return;
+  }
+  if(process.env.PH_BROWSER_ORAL_HISTORY==='1'){
+    const ctx=await context(browser);
+    await ctx.addInitScript(()=>{
+      let processor;
+      window.syntheticMic={opened:0,stopped:0,emit(){
+        const samples=new Float32Array(3200).fill(.03);
+        processor.onaudioprocess({inputBuffer:{getChannelData:()=>samples}});
+      }};
+      const media=navigator.mediaDevices||{};
+      Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:media});
+      Object.defineProperty(media,'getUserMedia',{configurable:true,value:async()=>{
+        window.syntheticMic.opened++;
+        return {getTracks:()=>[{stop(){window.syntheticMic.stopped++;}}]};
+      }});
+      class SyntheticAudioContext{
+        constructor(){this.sampleRate=16000;this.destination={};}
+        createMediaStreamSource(){return {connect(){},disconnect(){}};}
+        createScriptProcessor(){processor={onaudioprocess:null,connect(){},disconnect(){}};return processor;}
+        async resume(){}
+        async close(){}
+      }
+      Object.defineProperty(window,'AudioContext',{configurable:true,value:SyntheticAudioContext});
+    });
+    const page=await ctx.newPage();
+    const title='Synthetic interview';
+    const panel=page.locator('#oral-history-panel'), status=panel.locator('#oral-history-status');
+    const create=panel.locator('#oral-history-create'), active=panel.locator('#oral-history-active');
+    const start=panel.locator('#oral-history-record'), stop=panel.locator('#oral-history-stop');
+    const save=panel.locator('#oral-history-save'), sections=panel.locator('#oral-history-sections');
+    async function openInEnglish(){
+      await page.locator('.asset').first().waitFor();
+      if(await page.locator('html').getAttribute('lang')!=='en')await page.locator('#language').click();
+      await panel.locator('summary').click();
+      await create.waitFor({state:'visible'});
+    }
+    async function recordSection(){
+      await start.click();
+      await stop.waitFor({state:'visible'});
+      await page.evaluate(()=>window.syntheticMic.emit());
+      await stop.click();
+      await save.waitFor({state:'visible'});
+    }
+    await auth(page);
+    assert.equal(await panel.isHidden(),true);
+    assert(!browserRequests.some(request=>request.path.startsWith('/oral-history')||request.path.startsWith('/ui/oral-history.js')));
+    const optIn=await mutate('oral-history-enabled');assert.equal(optIn.ok,true);
+    await page.reload();await openInEnglish();
+    await create.locator('[name=title]').fill(title);
+    await create.locator('[name=subject]').fill('Synthetic subject');
+    const before=browserRequests.length;
+    await create.locator('button').click();
+    assert.equal(browserRequests.slice(before).filter(r=>r.method==='POST'&&r.path.startsWith('/oral-history')).length,0);
+    await create.locator('[name=retention]').check();
+    assert.equal(await create.locator('[name=processing]').isChecked(),false);
+    await create.locator('button').click();await active.waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>window.syntheticMic.opened),0);
+    await recordSection();
+    assert.equal(oralSections.length,0);
+    const preview=panel.locator('#oral-history-preview');
+    assert.match(await preview.getAttribute('src'),/^blob:https:\/\/photohouse\.test\//);
+    assert.equal(await preview.evaluate(audio=>audio.paused),true);
+    await page.setViewportSize({width:390,height:850});
+    await panel.screenshot({path:path.join(artifacts,'oral-history-section-review.png')});
+    loseOralSection=true;await save.click();
+    await status.getByText('The server did not confirm this action. Try the same action again.').waitFor();
+    await save.click();await sections.getByText('Saved sections · 1').waitFor();
+    assert.equal(await preview.getAttribute('src'),null);
+    assert.equal(oralSections.length,2);
+    assert.deepEqual(oralSections[0],oralSections[1]);
+    assert.equal(oralSections[1].status,200);
+    assert.equal(await page.evaluate(()=>window.syntheticMic.stopped),1);
+    checkpoint('Oral history requires retention consent, records only on click, and retries the exact section after a lost reply');
+    await page.reload();await openInEnglish();
+    await panel.getByRole('button',{name:title}).click();
+    await sections.getByText('Saved sections · 1').waitFor();
+    await start.click();await stop.waitFor({state:'visible'});
+    await page.evaluate(()=>{
+      window.syntheticMic.emit();
+      Object.defineProperty(document,'hidden',{configurable:true,value:true});
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.waitForFunction(()=>window.syntheticMic.stopped===1);
+    assert.equal(await active.isHidden(),true);
+    assert.equal(oralSections.length,2);
+    await page.evaluate(()=>{
+      Object.defineProperty(document,'hidden',{configurable:true,value:false});
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await openInEnglish();await panel.getByRole('button',{name:title}).click();
+    await sections.getByText('Saved sections · 1').waitFor();
+    await recordSection();await save.click();
+    await sections.getByText('Saved sections · 2').waitFor();
+    assert.equal(oralSections[2].ordinal,'1');
+    await panel.locator('#oral-history-finish').click();
+    await status.getByText('Recording finished. The saved audio stays private.').waitFor();
+    assert.equal(await active.isHidden(),true);
+    assert.equal(await panel.getByRole('button',{name:title}).count(),0);
+    assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),title),false);
+    assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
+    checkpoint('Reload discovers the author’s unfinished recording, resumes the next ordinal, and finishes without storing private browser data');
+    await ctx.close();return;
   }
   if(process.env.PH_BROWSER_VIDEO_MOMENTS==='1'){
     const ctx=await context(browser),page=await ctx.newPage();
@@ -1591,6 +1699,17 @@ let browser;
   await owner.locator('#viewer-media').getByRole('button',{name:'Retry video',exact:true}).waitFor();
   assert.equal(await owner.locator('#viewer-media video').count(),0);await owner.locator('#close-viewer').click();
   checkpoint('Native playback failure releases the video source and offers a fresh retry');
+  const pendingPlaybackStart=browserRequests.length;
+  playbackOverrides.push({status:202,headers:{'content-type':'application/json'}});
+  await owner.locator('.asset').filter({hasText:'105'}).click();
+  await owner.waitForFunction(()=>document.getElementById('view-quality').textContent.includes('still being prepared'));
+  assert.equal(await video.count(),0);
+  const pendingPlaybackPath='/assets/105/playback?library=family-a';
+  assert.deepEqual(browserRequests.slice(pendingPlaybackStart).filter(item=>item.path===pendingPlaybackPath).map(item=>item.method),['HEAD']);
+  await owner.locator('#viewer-media').getByRole('button',{name:'Retry video',exact:true}).click();
+  await owner.waitForFunction(()=>document.querySelector('#viewer-media video')?.readyState>=1);
+  await owner.locator('#close-viewer').click();
+  checkpoint('Pending preparation offers manual retry without fetching playback before the user acts');
   const expectPlaybackError=async(status,headers,text)=>{
     playbackOverrides.push({status,headers});
     await owner.locator('.asset').filter({hasText:'105'}).click();

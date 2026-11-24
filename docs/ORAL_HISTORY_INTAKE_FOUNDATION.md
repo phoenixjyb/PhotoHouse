@@ -37,6 +37,25 @@ accepts a bounded opaque library ID (up to 128 UTF-8 bytes).
 
 ## Protected resumable transport source
 
+When an app explicitly enables intake, **Family → Oral history** opens an
+author-private recorder. Starting a recording requires consent to keep original
+audio. Permission for future local transcription has a separate, initially
+unchecked control.
+
+Record a section of up to 20 seconds, stop, and choose **Save section**. You can
+listen to the unsaved audio locally before deciding.
+The server receipt binds the exact saved section. If the link drops during
+save, retry that same button while this tab is open. Reopen the recorder to
+find your unfinished recordings and continue at the next section saved by the
+server. Leaving the panel, signing out, or putting the browser in the
+background clears unsaved audio and stops the microphone. **Finish recording**
+closes an open session that has at least one saved section.
+
+The generated browser checks use synthetic audio and a temporary database.
+They exercise dropped replies, exact retry, foreground interruption and
+resume after reload. The supported runtime keeps intake off. Device capture,
+paired storage recovery and family consent have their own acceptance checks.
+
 The internal transport in
 [`oral_history_transport.py`](../server/backend/app/access/oral_history_transport.py)
 is mounted only by `create_app(..., oral_history_intake_enabled=True)` with an
@@ -156,8 +175,8 @@ Immutable recording source identity, authorized retained-source withdrawal and
 content-free V4 journal/replay behavior now have internal source implementations
 and a [versioned generated rehearsal](ORAL_HISTORY_QUALIFICATION.md). Next
 qualify the operator's journal/schema upgrade and paired restore, specify
-permanent erasure and backup retention, and build a local Web or phone recorder
-with explicit saved and retrying states. Later
+permanent erasure and backup retention, and qualify recording on physical
+devices. Later
 transcription/proposal workers must recheck consent, source/current membership
-and revision before accepting their output. No recorder or production admission
-is delivered by this foundation.
+and revision before accepting their output. The Web recorder and API stay
+default-off pending production admission.

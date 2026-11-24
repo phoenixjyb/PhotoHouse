@@ -51,6 +51,9 @@ def call(runtime, action, *args):
 
 
 def proposal(runtime, token, library, body, vectors):
+    coverage_mode = body.get('coverage_mode', 'default')
+    if coverage_mode not in ('default', 'by_seed'):
+        raise TransportError(400, 'Invalid group selection')
     seeds = tuple(str(value) for value in _csv(body['asset_ids'], 'asset_ids',
         maximum=24, required=True))
     excluded = tuple(str(value) for value in _csv(body['excluded_asset_ids'],
@@ -67,7 +70,8 @@ def proposal(runtime, token, library, body, vectors):
             result = None
         else:
             result = VisualVectorReads(access, vectors.vector_root, vectors.identity).memory_group_items(
-                token, library, seeds, excluded_ids=excluded)
+                token, library, seeds, excluded_ids=excluded,
+                coverage_mode=coverage_mode)
         if isinstance(result, dict):
             return result
         return {'version': 1, 'status': 'unavailable', 'library_id': library,
@@ -105,7 +109,8 @@ async def group_capabilities(request: Request):
 @router.post('/memory-groups/proposals')
 async def group_proposal(request: Request):
     runtime, token, library = await scope(request)
-    body = await _body(request, {'asset_ids', 'excluded_asset_ids'}, max_body=24576)
+    body = await _body(request, {'asset_ids', 'excluded_asset_ids'},
+        optional_fields={'coverage_mode'}, max_body=24576)
     return response(await run_in_threadpool(proposal, runtime, token, library, body,
         request.app.state.memory_group_vectors))
 

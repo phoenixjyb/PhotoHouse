@@ -1,4 +1,4 @@
-"""Private graph revision drafts change only explicit generated assertions."""
+"""Private graph revision drafts change only explicit generated assertions or aliases."""
 from contextlib import redirect_stdout, redirect_stderr
 import io
 import json
@@ -99,6 +99,44 @@ class PrepareKinshipRevisionTests(unittest.TestCase):
         self.assertNotIn('a-husband', assertions)
         self.assertEqual(assertions['a-sister-mother'],
                          self.assertion('a-sister-mother', 'older-sister', 'mother', 'mother'))
+
+    def test_reviewed_aliases_bind_to_one_person_without_changing_relationships(self):
+        base = graph_document()
+        self.write_private(self.graph_path, base)
+        original = self.graph_path.read_bytes()
+        self.write_private(self.patch_path, self.patch(base, [{
+            'op': 'replace_aliases', 'person_id': 'mother',
+            'aliases': ['Fictional Nickname', '示例小名'],
+        }]))
+
+        code, stdout, stderr = self.run_tool()
+
+        self.assertEqual((code, stderr), (0, ''))
+        self.assertNotIn('Fictional Nickname', stdout)
+        self.assertEqual(self.graph_path.read_bytes(), original)
+        draft = load_private_graph(self.output_path, SOURCE_ROOT)
+        self.assertEqual(draft.resolve('fictional nickname'), {'mother'})
+        self.assertEqual(draft.resolve('示例小名'), {'mother'})
+        self.assertEqual(KinshipGraph(base).resolve('fictional nickname'), set())
+        self.assertEqual(draft.document['assertions'], base['assertions'])
+        self.assertEqual(draft.document['scope'], base['scope'])
+        self.assertEqual(draft.document['people'][1]['name_en'], base['people'][1]['name_en'])
+
+    def test_unknown_repeated_or_ambiguous_alias_edit_refuses_without_output(self):
+        base = graph_document()
+        self.write_private(self.graph_path, base)
+        edit = {'op': 'replace_aliases', 'person_id': 'mother', 'aliases': ['Fictional Nickname']}
+        for changes in (
+            [dict(edit, person_id='absent')],
+            [edit, dict(edit, aliases=[])],
+            [dict(edit, aliases=['Fictional Nickname', 'fictional nickname'])],
+            [dict(edit, catalog_binding={'person_id': '8', 'label': 'Fictional Person'})],
+        ):
+            with self.subTest(changes=changes):
+                self.write_private(self.patch_path, self.patch(base, changes))
+                code, stdout, _stderr = self.run_tool()
+                self.assertEqual((code, stdout), (2, ''))
+                self.assertFalse(self.output_path.exists())
 
     def test_stale_digest_and_contradictory_relationship_refuse_without_output(self):
         base = graph_document()

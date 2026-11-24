@@ -16,10 +16,11 @@ import sqlite3
 import threading
 from time import monotonic
 import unicodedata
+from urllib.parse import urlencode
 
 from .credentials import session_digest
 from .discovery_provider import ProjectedIndex, RefreshingPlaceIndex, RefreshingPeopleIndex, RegionRule, ReviewedIndex, ReviewedPerson, ReviewedFace, ReviewedPlace, NamedPlace
-from .library import _asset
+from .library import _asset_projection
 from .service import AccessService, AccessDenied
 
 POLICY = 'protected-discovery-service-1'
@@ -546,14 +547,24 @@ class DiscoveryReads:
                 return result
 
     def _facts(self,index,source,people,places,check):
-        assets={}
-        for r in source['assets']:
-            check(); fields=list(r[:6])
-            try: text(fields[1],256)
-            except DiscoveryInvalid: fields[1]=None
+        assets = {}
+        captured_days = {}
+        library_query = urlencode({'library': index.library_id})
+        for row in source['assets']:
+            check()
+            fields = list(row[:6])
+            try:
+                text(fields[1], 256)
+            except DiscoveryInvalid:
+                fields[1] = None
             # Never expose a truncated/invalid recorded date as valid native metadata.
-            if taken_day(fields[5]) is None: fields[5]=None
-            assets[str(r[0])]=_asset(fields,index.library_id)
+            asset_id = str(row[0])
+            day = taken_day(fields[5])
+            if day is None:
+                fields[5] = None
+            else:
+                captured_days[asset_id] = day
+            assets[asset_id] = _asset_projection(fields, library_query)
         captions=defaultdict(list);person_links=defaultdict(set);regions=defaultdict(set)
         for row in source['captions']:captions[str(row[1])].append(row)
         faces={str(r[0]):(str(r[1]),str(r[2]),r[3]) for r in source['faces']}
@@ -577,7 +588,7 @@ class DiscoveryReads:
         rows={}
         for aid in index.indexed_ids:
             check();rows[aid]={'people':person_links[aid],'locations':regions[aid],'tags':tag_links[aid],
-                              'date':taken_day(assets[aid]['taken_at']),'caption':current_caption(captions[aid])}
+                              'date':captured_days.get(aid),'caption':current_caption(captions.get(aid,()))}
         counts={f:Counter() for f in ('people','locations','tags')}; provenance=defaultdict(Counter)
         for row in rows.values():
             check()

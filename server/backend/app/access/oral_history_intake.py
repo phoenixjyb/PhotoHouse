@@ -345,6 +345,25 @@ class OralHistoryIntake:
             actor = self._member(token, library)['account_id']
             return self._status(self._session(actor, library, ident))
 
+    def list_open(self, token, library):
+        """List only this author's bounded open-session status for one library."""
+        _text(library,128,required=True)
+        with self.access._transaction():
+            actor = self._member(token, library)['account_id']
+            rows = self.db.execute(
+                f'SELECT id FROM {SESSION} WHERE author_id=? AND library_id=? AND state=\'open\' '
+                'ORDER BY created_at DESC,id DESC LIMIT ?',
+                (actor, library, MAX_SESSIONS_PER_AUTHOR + 1)).fetchall()
+            if len(rows) > MAX_SESSIONS_PER_AUTHOR:
+                raise TransportError(503, 'Recording storage unavailable')
+            items = []
+            for (ident,) in rows:
+                row = self._session(actor, library, ident)
+                if row['state'] != 'open':
+                    raise TransportError(503, 'Recording storage unavailable')
+                items.append(self._status(row))
+            return {'version': 2, 'library_id': library, 'items': items}
+
     def audio(self, token, library, ident, ordinal):
         _text(library,128,required=True)
         ident = _uuid(ident)

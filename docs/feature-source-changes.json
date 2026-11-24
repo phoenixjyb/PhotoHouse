@@ -36688,6 +36688,331 @@
       "live_runtime_changed": false,
       "providers_activated": false,
       "scope": "Do not run further inference or synthetic recovery probes after the exact candidate index changes during warmup."
+    },
+    {
+      "feature": "audit-oral-history-recorder-group-coverage-and-recovery",
+      "source_commit": "1502029147056ffd3b14a52f0b947816f1b2a5c1",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "f6f6791014ce65e557b62fc273971f5dd92311dc347756908836bcd4b12c5855",
+          "sha256": "9397a5a971c11cf9a481b3f6d56ed0471a4f05ebe503c9e6618c0327ae7b688d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "4291f769c16f0a440f35e1e13b78e0308c7bb241e7efbedfe3bf79c680787b94",
+          "sha256": "4d2b10913f981b8dd48b6f86f628ab425cb326cbcb80648782dbd047df293c2b"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "8482a37aa6d0464bc4cfbe6c8c6eb60d1ed472e2319ecd8ec3da0afa41a15c44",
+          "sha256": "e505e3b9e2ae126288e9546d09c593c0a2777199e453fa665bc9a0afeb643e34"
+        },
+        {
+          "path": "docs/PRIVATE_KINSHIP_SEARCH.md",
+          "before_sha256": "4ba5e856e3f8814220c6e3c76f5c62b3c19c559334aa92b15341749a5cb98d58",
+          "sha256": "1056fedbb6e747785c1593b6fdc9b97707135c3b57bb36627c9ba8b0951752e4"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "e6eea1993eb02732a83ef28749b67f2d57dbc62d5679aeb7cd64eef73736743e",
+          "sha256": "aa2bda018ff948221c7e1e206668492e2ffdf7f2eafaf018a66776f3fcdfc1bc"
+        },
+        {
+          "path": "server/README.md",
+          "before_sha256": "556977246e081582028b265da66580b773f39a065e5ccd100948501de47078b9",
+          "sha256": "622fb25d274cf58bab9a788d08af9e45f7221233136feb53da350132a856f674"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "b1e54384eca60e1d1db9b8f6eb0fd7d69c2580c7a7a2eb9d377140b7e44f975e",
+          "sha256": "ecafc9ed9d3953e899b821e4a2cefc24d9dd75f79277e517df96bc2365891a1f"
+        },
+        {
+          "path": "server/backend/app/access/memory_group_transport.py",
+          "before_sha256": "17b59ed23c49ebdcbbea0c193936dd7340aabf589a91abadf4bf91aaf15af369",
+          "sha256": "7d3942355f96ad6e3f60aac61fe72f39316cf4b3d1f457a11b51cb35534cb9c8"
+        },
+        {
+          "path": "server/backend/app/access/memory_grouping.py",
+          "before_sha256": "8b41cf3b19fd6382534864635d7313f4367b6ab515c1fb1fbde66beca8582942",
+          "sha256": "62ac41e5511bd968452a27a43f5b61dc812418c0a231531ddb08415409997ca3"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_intake.py",
+          "before_sha256": "251f19c62469d9156376216f53f4cd35fb596a6e468a315c31737fa920d9a8e4",
+          "sha256": "e5edcf3f555337f37c12ee7f70a7c6c680788bc090c482dd584c15d3fd10e6f0"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_transport.py",
+          "before_sha256": "9a9be9d1fd1701f23cae7ba0d60927b816680aa25ecf81c67419332392504ca7",
+          "sha256": "5186cb50fb408573d30c11bc57233cff1632678be254d858f695db364943e55c"
+        },
+        {
+          "path": "server/backend/app/access/transport.py",
+          "before_sha256": "5cfcd821b896625762a86781b5f7054cc445b71bdf50fffe3f73ca3da7c2b67c",
+          "sha256": "927a691620f47c3c5eb2ded4e14c5723cc4963ff6c970d66c5e425e571ce91a3"
+        },
+        {
+          "path": "server/backend/app/access/visual_vector_loader.py",
+          "before_sha256": "6a8d95b6f65df51d9b73d5599c25137719afe3646caf5d3abbf2aa8290e81d1d",
+          "sha256": "12ddc21de1e4e6a913cfb294b0cecfe186c4864ea14b1484280b90ac69b6157d"
+        },
+        {
+          "path": "server/backend/app/routers/ui.py",
+          "before_sha256": "437099903d8b5c0558631eb119d5295dff8a28d4c25a6d6715c6c79e6681473d",
+          "sha256": "80574296a55b74b990142958d277e66ec55264d40e590dd2e6f1388dd002f940"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "cbd7a4beff103eb89d68a18f38286b5e78346c2718141fb655d0def162ba478a",
+          "sha256": "2e88fc5311d21967eaefec7186fa9bf1969edcac03ae3f7dc16b9de44d028c52"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "6eaa2ba85981f5861adaf855a8bedc47e82458422ffd26fb59a7d3d45c714378",
+          "sha256": "bb14d7860b7c85a1326229ddb774f8a4bb53459b2e0411dfb184c0a12d6de7f8"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "1fab42399db835ebbc6812103cde6046b4d291f0b4bcb7582c40dd54745e5ff0",
+          "sha256": "624dfe15f4ef152e1d9b57b4c94e9d63c1c7e94420ec5c2cf63d66e947c45e57"
+        },
+        {
+          "path": "server/backend/app/ui/access/oral-history.js",
+          "before_sha256": null,
+          "sha256": "778a628e7f67c23b386d6ed7fc67762b43a160a3d8b5bf0fcb38bc83d15b2cf2"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "75315000ce6b60285c1d401fe42bb3457493183749e2b1d9273c26d9fe1d240f",
+          "sha256": "9e5ee84f77b6c3590ee9cc84abac8e25114d1435ade1e2bf8b5353682c3dfcc9"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "01cdf3dcb6157f3230f4948bd76c8002954c892165a5884ea3f855b3833784e8",
+          "sha256": "117f7209dd64121a57f395a7adb5c98271e3bb201817f447f45e6ea1c560d255"
+        },
+        {
+          "path": "server/scripts/prepare_kinship_revision.py",
+          "before_sha256": "f2a7dec9bfc3f478c800bfb295ff4363a016321617be50664b6ebf9cba5e03a2",
+          "sha256": "4f0fa91fa558fe345d6917c3dbad4486353c5aabd44a459b16f62ea0d20f3d63"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "before_sha256": "221d37d60274db2783260fb4142eb855fb3b036f1eaa4a98be2575b8c4a66319",
+          "sha256": "73682ebaf73dc6403ffb10248f7c1cb1447d7fd4df90fc1ecaa4cb86aa5e8ac9"
+        },
+        {
+          "path": "server/tests/security/package_smoke.py",
+          "before_sha256": "2bdd68b51d702ab438f4c0ada340275a7c8babcf9f32078edb7395e3dfb08a24",
+          "sha256": "411f3243b10086d1bec8d089490d2faa0fdd38e06a9283600ccf4091f38dc22d"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "5ffb57f84c56c03aaf2d3b7eec95bd2c1d31ea3103b3cc69cfb97cc54eb1dca3",
+          "sha256": "f7ff58cfe56d43f195a32b228c533a921a9edb46f790bd48d3f1aa5d95e5c573"
+        },
+        {
+          "path": "server/tests/security/test_memory_group_routes.py",
+          "before_sha256": "f9826e15339ccf70c3c779185f9344581d0ad0ff25635a355e7b12736d6693bf",
+          "sha256": "4342ca5b5e0b900ca64fa411fce878e986fefc80e6eed35dc900a9b4b2760559"
+        },
+        {
+          "path": "server/tests/security/test_memory_grouping.py",
+          "before_sha256": "021cad83936d8e944daf36c59431178641aefe30b42afda508983830b21c50a5",
+          "sha256": "c25f3f356c29724eb3ab1be0bbe12f25950de5e7ab6b36728e7f1b8eef2b194f"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_dom.cjs",
+          "before_sha256": "abc21ce77661c6aba4a2ae5cdbe2e63a970593439c8b16892e22e0e9ce30d556",
+          "sha256": "9331ed7c5618f8a7bfe91f4c930293e8bf097d7c243f21f61a46c4acd70ed834"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_transport.py",
+          "before_sha256": "cb064dc098ef85f088c31e4bcdfbfe8c8a3ab1c53457bab0584b6b8e6813b88a",
+          "sha256": "f589fe2518fe789813eb93f50165a84a09f1e9a87eacc2c630b56d7f0e197784"
+        },
+        {
+          "path": "server/tests/security/test_prepare_kinship_revision.py",
+          "before_sha256": "aa3f747b93105afe2a72787e95d1b0b655c1213f296446b38de0da1d6c29f712",
+          "sha256": "fc50aa1817f52febd91aae2ea260d4187d76f2bd7e59c464c4fc9d5cd351955f"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "65bbab589538d35c65a76da4eb322d2e469eb5fac9201105313a26929a0da00f",
+          "sha256": "e5170b9b06828d8ce169b2f6721743c193d6474abdfc3e5509c6452f43760317"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "f82efa435795d575db44fb32b2c6fca3ee8900f8c5e43fb92341fc8fdb5e10df",
+          "sha256": "39328f4bf0d98dbdad7517aabf2814ecb885b0a9878310d965de6c5c2a128ef1"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Opt-in recorder with receipt retry, reviewable diverse seeds, private alias revisions, and generated install/import coverage."
+    },
+    {
+      "feature": "audit-structured-search-projection-efficiency",
+      "source_commit": "d9c1ca3ac5484d4400f4357f5ea458b22a6eeadf",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "9397a5a971c11cf9a481b3f6d56ed0471a4f05ebe503c9e6618c0327ae7b688d",
+          "sha256": "36bf240a7de32e3d1fcd4726286a5be650d5e4507003879ec9c893a43f9f4f8b"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "669a482e4fc94a272eb47b8d72c9dc7973992c6f5f7f9c968022a545a38164f8",
+          "sha256": "67444e5133b136d3313b65bb3d6487143835e32abad7221d931108540ac2bc48"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "259c8fb18312027c0862f7ffa5db71690bea2a3d06de24f075ffb69a0b23c2ff",
+          "sha256": "5d0318fbf8e941c19127f78af5702d00ec0bf13084ec452163ee4e0d431fb14a"
+        },
+        {
+          "path": "server/backend/app/access/library.py",
+          "before_sha256": "8ea2bc5f511d4c15b680206af753b0dd74099a9826dfd5f603fe09777123693c",
+          "sha256": "a44b80bbb326947fc049f38ba018507fea37450091e0d5f2fd1e0b30c8ade0b0"
+        },
+        {
+          "path": "server/tests/security/package_smoke.py",
+          "before_sha256": "411f3243b10086d1bec8d089490d2faa0fdd38e06a9283600ccf4091f38dc22d",
+          "sha256": "1f565ee2ef7c8070a8f37dca0ba3a38da63e6bf7cd526144de5d5b00a34774f2"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Remove repeated work from an authorized read projection and preserve exact generated intake replay cardinality."
+    },
+    {
+      "feature": "audit-oral-history-default-off-browser-route",
+      "source_commit": "93126c947e8fb3dd5ceaa2873b4979caf56803b8",
+      "files": [
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "ecafc9ed9d3953e899b821e4a2cefc24d9dd75f79277e517df96bc2365891a1f",
+          "sha256": "3e60e9e2c8ced75216f2e872eb0b54c5ca1f8c9bbc574d0b9f427a45eaa848b9"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "a8f885d6bd690ff7bf5ce646b2785376d18db7144d5e8212728110d81ae87922",
+          "sha256": "c6497047351f1414fa6c072e8cb94301f7621e1be9da5cdebc00fbbbb9cc8415"
+        },
+        {
+          "path": "server/backend/app/routers/ui.py",
+          "before_sha256": "80574296a55b74b990142958d277e66ec55264d40e590dd2e6f1388dd002f940",
+          "sha256": "044817cba9e31ca074fc345d0292b60bcea8c995a9ad9a8c97380ce5124d898d"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "f7ff58cfe56d43f195a32b228c533a921a9edb46f790bd48d3f1aa5d95e5c573",
+          "sha256": "acf6ee5188f9cb994c77f67e2d5832aa011a29e82aab3fd6d7deb87864701648"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Mount the recorder script and advertise it in the HTML only with the existing explicit intake opt-in."
+    },
+    {
+      "feature": "audit-android-folder-review-video-preparation-and-semantic-binding",
+      "source_commit": "b5572e832436a6e124d6c7bd61b37d615216a304",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/BatchUploadReviewUiTest.kt",
+          "before_sha256": "ae3fb6454b94cc9833e3a1288e2aa8dedf1aa72c02716b6849ca57025a86793c",
+          "sha256": "6b8f9b85022536b52a6a3513e973ef133c37fe30acc84f9ece44e089e2e7b00e"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/KeystoreBatchFolderPersistenceTest.kt",
+          "before_sha256": null,
+          "sha256": "31aa61eb42ad451f5c2115e256d731ba66d77b221b1433ed29eef9d9f6cf58c7"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchPickerSelectionEffect.kt",
+          "before_sha256": "9eb42c35cf6399e85403aade9225a4b1a5749e0b9e84ce44d9664bcc58c5e95d",
+          "sha256": "955da661b02ffe863547790736c7bba7280f2ce2970dc37ca122a69556f0abf0"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchUploadReviewCard.kt",
+          "before_sha256": "664fb94b0111fe389a22806a0e995856f5e2c8cef7311f6d9f094017ae06f039",
+          "sha256": "8c5b54113257716f825e880331ea4a7a4d11f38876bd8e74160f2fe6d481fed3"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "a3ca952eacd8022b3fa081ff0b3d6fbbacf39659afa5612b2dee3da007da0e27",
+          "sha256": "7c62e41a57f1cdf159458890d49b2a386b3d9129be62896e1e950b23e59c2479"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/KeystoreBatchFolderPersistence.kt",
+          "before_sha256": null,
+          "sha256": "d08c5fae815587ca9d3a9e7b6fdd0561c4992c6e709afd94c99b70be017b43fe"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/UploadSourceAndroid.kt",
+          "before_sha256": "ec424c486a85abc4fb3e1dd0e48f47c65053516387c507ec8b4d89305d9e91ab",
+          "sha256": "5a41191af33a742321fa81abcd0bc3b95ecc977f19cf801f56904369fc8922aa"
+        },
+        {
+          "path": "clients/android/android/connected/src/test/java/dev/photohouse/connected/RememberedBatchFolderEligibilityTest.kt",
+          "before_sha256": null,
+          "sha256": "f7708636f1e4b169da64a09170d6dcbe3cbe9a1e064794865d05a0736363a4fc"
+        },
+        {
+          "path": "clients/android/docs/DEVELOPMENT_PLAN.md",
+          "before_sha256": "ff28fe8cc55aa08fca36abba7656c877c3fab5bec808c70786288a0a0fe5994c",
+          "sha256": "6aa186fe48e471047552a28a68aad25f0abe14aa43844a08b014d90656766707"
+        },
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "36bf240a7de32e3d1fcd4726286a5be650d5e4507003879ec9c893a43f9f4f8b",
+          "sha256": "fd79943e9818ad0020ccd3198e067193ff4f2639b0b163ae745f879446dca517"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "4d2b10913f981b8dd48b6f86f628ab425cb326cbcb80648782dbd047df293c2b",
+          "sha256": "8ed1b8a7a399a97e01dec0d65aecd104125c94821ec4ae89840c3f100eff20c2"
+        },
+        {
+          "path": "server/backend/app/access/media.py",
+          "before_sha256": "021d8eac80b55993f632c69656f62d50aae5999004441e561711348011b0e33a",
+          "sha256": "ebecf6a52cafa3ebbde4eeba3e89496fd30eb7627a7ed051468de305c22d846b"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "73aba0407359478a6f3acb34502e8df1f7b0572b25e59773597bdaba105784e3",
+          "sha256": "ec0eb28d3c8ecbe5dcb420d0dd7e63109bc1c40bdd59b4c0a99cae1804e3fcf3"
+        },
+        {
+          "path": "server/backend/app/access/upload_preparation.py",
+          "before_sha256": "b21284f1d579c0fcf204aef6ad3b991c489f4dc5e7b4e46f4b063205e2a5b920",
+          "sha256": "36973718440bedd52b801df3fe8a801aaedd52dec59f92b6a76299a0e5060aee"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "2e88fc5311d21967eaefec7186fa9bf1969edcac03ae3f7dc16b9de44d028c52",
+          "sha256": "85e82eaf04d318e8fe5abc70032f420721e603510b27d717bd375565c1c6c2ed"
+        },
+        {
+          "path": "server/tests/security/test_protected_prepared_video.py",
+          "before_sha256": "d032a2ae49434068fe6e703f1ff75a1280ff39bf82129980e22975ae8136c7cb",
+          "sha256": "fddfbb13b26e17b630368d60b8355d7d123d0d4c37a0a6844f6fab8c7f273556"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "39328f4bf0d98dbdad7517aabf2814ecb885b0a9878310d965de6c5c2a128ef1",
+          "sha256": "1d372de18edaa2c9e4dc2ae04ddcd8eb18a7bb1e66c8a6fd17d05b2265837b5f"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Explicit Android folder review, bounded uploader video status, and direct semantic asset helper binding."
     }
   ]
 }

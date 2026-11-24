@@ -105,6 +105,64 @@ class MemoryGroupRouteTests(unittest.TestCase):
         self.f.mutate("UPDATE assets SET taken_at='2026-01-03T11:00:00+08:00' WHERE id=102")
         self.assertEqual(self.request('POST', '/memory-groups/proposals', body).json()['items'], [])
 
+    def test_seed_coverage_is_opt_in_bounded_and_requires_exact_request_shape(self):
+        self.install_vectors()
+        with self.f.connection() as db:
+            db.execute("UPDATE assets SET hash_sha256=?,taken_at=?,mime='image/jpeg' WHERE id=999",
+                       ('4' * 64, '2026-01-01T10:00:00+08:00'))
+            db.execute("INSERT INTO access_asset_libraries VALUES (999,'family-a')")
+            for asset_id in range(1101, 1123):
+                db.execute('''INSERT INTO assets(id,path,hash_sha256,mime,status,taken_at)
+                              VALUES (?,?,?,?,?,?)''',
+                           (asset_id, f'synthetic/coverage-{asset_id}.jpg', '4' * 64,
+                            'image/jpeg', 'active', '2026-01-01T10:00:00+08:00'))
+                db.execute('INSERT INTO access_asset_libraries VALUES (?,?)',
+                           (asset_id, 'family-a'))
+            db.commit()
+            helper = SimpleNamespace(db=db, root=self.root)
+            vectors.VisualVectorLoaderTests.add_vector(helper, 999, (0.0, 1.0))
+            for asset_id in range(1101, 1122):
+                vectors.VisualVectorLoaderTests.add_vector(helper, asset_id, (1.0, 0.0))
+            vectors.VisualVectorLoaderTests.add_vector(helper, 1122, (0.0, 1.0))
+
+        body = {'asset_ids': '101,999', 'excluded_asset_ids': ''}
+        self.f.trace.clear()
+        default = self.request('POST', '/memory-groups/proposals', body)
+        self.assertEqual(default.status_code, 200, default.text)
+        default_items = default.json()['items']
+        self.assertEqual([str(asset_id) for asset_id in range(1101, 1121)],
+                         [item['id'] for item in default_items])
+        self.assertTrue(default.json()['cover_more_available'])
+        self.assertNotIn('1122', [item['id'] for item in default_items])
+        self.assertTrue(all(item['matched_seed_asset_id'] == '101' for item in default_items))
+        self.assertNotIn(str(self.root), default.text)
+        self.assertNotIn('synthetic-space', default.text)
+        self.assertFalse(any(sql.lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE'))
+                             for sql in self.f.trace))
+
+        covered = self.request('POST', '/memory-groups/proposals',
+            dict(body, coverage_mode='by_seed'))
+        self.assertEqual(covered.status_code, 200, covered.text)
+        self.assertEqual('by_seed', covered.json()['coverage_mode'])
+        self.assertEqual([('1101', '101'), ('1122', '999')], [
+            (item['id'], item['matched_seed_asset_id']) for item in covered.json()['items'][:2]
+        ])
+        self.assertEqual(['1101', '1122', *map(str, range(1102, 1120))],
+                         [item['id'] for item in covered.json()['items']])
+        self.assertNotIn(str(self.root), covered.text)
+        self.assertNotIn('synthetic-space', covered.text)
+
+        excluded = self.request('POST', '/memory-groups/proposals',
+            {'asset_ids': '101,999', 'excluded_asset_ids': '1122', 'coverage_mode': 'by_seed'})
+        self.assertFalse(excluded.json()['cover_more_available'])
+        self.assertNotIn('1122', [item['id'] for item in excluded.json()['items']])
+        self.assertEqual(400, self.request('POST', '/memory-groups/proposals',
+            dict(body, coverage_mode='unknown')).status_code)
+        self.assertEqual(400, self.request('POST', '/memory-groups/proposals',
+            dict(body, unexpected='value')).status_code)
+        self.assertEqual(400, self.request('POST', '/memory-groups/proposals',
+            {'asset_ids': '101,999', 'coverage_mode': 'by_seed'}).status_code)
+
     def test_unavailable_still_checks_all_seeds_and_never_saves_a_group(self):
         self.f.trace.clear()
         body = {'asset_ids': '101', 'excluded_asset_ids': ''}

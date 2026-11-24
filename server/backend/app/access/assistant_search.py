@@ -164,10 +164,11 @@ class AssistantSearchReads(d.DiscoveryReads):
         for aid, row in rows.items():
             check()
             row['_asset_id'] = aid
-            row['text_sources'] = list(notes[aid])
-            caption = d.current_caption(captions[aid])
+            row['text_sources'] = list(notes.get(aid, ()))
+            asset_captions = captions.get(aid, ())
+            caption = d.current_caption(asset_captions)
             if caption is not None:
-                eligible = [r for r in captions[aid] if r[2] == caption and r[6] == 0 and r[5] in (0, 1)]
+                eligible = [r for r in asset_captions if r[2] == caption and r[6] == 0 and r[5] in (0, 1)]
                 chosen = max(eligible, key=lambda r: r[5])
                 row['text_sources'].append({'source': 'edited_caption' if chosen[5] == 1 else 'generated_caption',
                     'source_id': str(chosen[0]), 'revision': d.digest(chosen), 'content': caption})

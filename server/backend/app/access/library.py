@@ -38,11 +38,15 @@ CAPTION_RESPONSE_BYTES = 512 * 1024
 
 
 def _asset(row, library_id, *, hints=False):
+    return _asset_projection(row, urlencode({'library': library_id}), hints=hints)
+
+
+def _asset_projection(row, library_query, *, hints=False):
     asset_id, mime, width, height, duration, taken_at = row[:6]
     result = {'id': str(asset_id), 'kind': 'video' if (mime or '').startswith('video/') else
             'image' if (mime or '').startswith('image/') else 'other',
             'width': width, 'height': height, 'duration_sec': duration, 'taken_at': taken_at,
-            'thumbnail_url': f'/assets/{asset_id}/thumbnail?' + urlencode({'library': library_id})}
+            'thumbnail_url': f'/assets/{asset_id}/thumbnail?' + library_query}
     if hints:
         result['date_hint'] = date_hint(row[6], taken_at, row[7])
     return result

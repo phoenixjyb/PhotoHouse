@@ -10,6 +10,7 @@ import test_oral_history_intake as fixture
 from app.main import create_app
 from app.access.oral_history_schema import SESSION, SECTION, MUTATION
 from app.access.transport import AccessRuntime, COOKIE, csrf_token
+from app.access.oral_history_intake import STATUS_FIELDS
 
 
 class OralHistoryTransportTests(unittest.TestCase):
@@ -142,6 +143,56 @@ class OralHistoryTransportTests(unittest.TestCase):
             headers={'Content-Type':'application/json'})
         self.assertEqual(duplicate.status_code,400);self.assertEqual(self.counts(),before)
 
+    def test_open_session_collection_is_author_and_library_scoped_resume_status(self):
+        collection='/oral-history/v1/libraries/{}/sessions'
+        member_body=self.create_body()
+        created=self.request('POST',collection.format('family-a'),body=member_body).json()
+        self.append(created,request_id=str(uuid.uuid4()),audio=fixture.wav(800))
+
+        owner_created=self.request('POST',collection.format('family-a'),body=self.create_body(),
+            headers={'Authorization':'Bearer '+self.owner}).json()
+        cancelled_record=self.request('POST',collection.format('family-a'),body=self.create_body()).json()
+        cancelled=self.request('POST',self.session_path(cancelled_record['session_id'])+'/cancel',
+            body={'request_id':str(uuid.uuid4()),'expected_revision':1})
+        self.assertEqual(cancelled.status_code,200,cancelled.text)
+        other_library=self.request('POST',collection.format('family-b'),body=self.create_body())
+        self.assertEqual(other_library.status_code,201,other_library.text)
+        other_library_id=other_library.json()['session_id']
+
+        reopened=self.build();self.addCleanup(reopened.close)
+        listed_response=self.request('GET',collection.format('family-a'),client=reopened)
+        self.assertEqual(listed_response.status_code,200,listed_response.text);self.assert_private(listed_response)
+        listing=listed_response.json()
+        self.assertEqual((listing['version'],listing['library_id']),(2,'family-a'))
+        self.assertEqual([item['session_id'] for item in listing['items']],[created['session_id']],
+            'open-session collection hides another author, another library, and cancelled sessions')
+        status=listing['items'][0]
+        self.assertEqual(set(status),STATUS_FIELDS,'the collection returns only the established bounded status DTO')
+        self.assertEqual((status['section_count'],status['next_ordinal'],status['revision']),(1,1,2))
+        self.assertFalse({'audio','sources','transcript','original_text'} & set(status))
+
+        resumed=self.append(status,request_id=str(uuid.uuid4()),audio=fixture.wav(1200))
+        self.assertEqual(resumed.status_code,200,resumed.text)
+        self.assertEqual((resumed.json()['ordinal'],resumed.json()['revision']),(1,3))
+        self.assertEqual([item['session_id'] for item in self.request('GET',collection.format('family-b')).json()['items']],
+                         [other_library_id])
+
+        owner_listing=self.request('GET',collection.format('family-a'),
+            headers={'Authorization':'Bearer '+self.owner}).json()
+        self.assertEqual([item['session_id'] for item in owner_listing['items']],[owner_created['session_id']],
+            'library owners list only their own recordings')
+        with closing(self.connect()) as db:
+            db.execute("UPDATE access_memberships SET status='revoked' WHERE account_id=? AND library_id='family-a'",
+                       (self.base.actor,));db.commit()
+        revoked=self.request('GET',collection.format('family-a'))
+        self.assertEqual(revoked.status_code,401,'revoked authors cannot discover their sessions')
+        with closing(self.connect()) as db:
+            db.execute("UPDATE access_memberships SET status='approved' WHERE account_id=? AND library_id='family-a'",
+                       (self.base.actor,))
+            db.execute("UPDATE access_accounts SET state='disabled' WHERE id=?",(self.base.actor,));db.commit()
+        disabled=self.request('GET',collection.format('family-a'))
+        self.assertEqual(disabled.status_code,401,'disabled accounts cannot discover their sessions')
+
     def test_author_scope_revocation_and_default_route_remain_closed(self):
         created=self.request('POST','/oral-history/v1/libraries/family-a/sessions',body=self.create_body()).json()
         args={'request_id':str(uuid.uuid4()),'expected_revision':1,'ordinal':0,'audio':fixture.wav()}
@@ -166,5 +217,7 @@ class OralHistoryTransportTests(unittest.TestCase):
         self.addCleanup(off.close)
         response=self.request('POST','/oral-history/v1/libraries/family-a/sessions',body=self.create_body(),client=off)
         self.assertEqual(response.status_code,403,'default app does not mount the oral-history routes')
+        listing=self.request('GET','/oral-history/v1/libraries/family-a/sessions',client=off)
+        self.assertEqual(listing.status_code,403,'the open-session discovery method is also absent by default')
         with self.assertRaises(ValueError):
             create_app(oral_history_intake_enabled=True)

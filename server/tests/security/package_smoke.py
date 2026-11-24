@@ -274,8 +274,68 @@ with ExitStack() as guards:
             assert reopened.json()['chapters'][0]['narration']=='这是家人写下的一段回忆。'
             assert client.get('/ui/story-workspace.js').status_code==200
             assert client.get('/ui/story-draft-store.js').status_code==200
+        # Exercise the packaged native upload transport from the provisioned owner
+        # through owner-approved intake. Pillow generates a real, bounded JPEG in
+        # memory; the synthetic protected thumbnail is staged directly because this
+        # smoke intentionally forbids child processes and media-worker launches.
+        from io import BytesIO
+        from PIL import Image
+        from app.access.runtime import RuntimeConfiguration
+        image=Image.new('RGB',(160,120),(28,92,164))
+        encoded=BytesIO(); image.save(encoded,format='JPEG',quality=86,optimize=False)
+        jpeg=encoded.getvalue(); image.close()
+        assert 0 < len(jpeg) < 300*1024
+        for directory in (data/'originals',data/'incoming',data/'derived'):
+            directory.mkdir(parents=True,exist_ok=True)
+        upload_runtime=RuntimeConfiguration(database,'https://photohouse.test',
+            (data/'originals',),data/'derived',incoming_root=data/'incoming',
+            upload_review_enabled=True)
+        upload_app=upload_runtime.build_app()
+        with TestClient(upload_app,base_url='https://photohouse.test',
+                        client=('127.0.0.1',50124)) as client:
+            owner_login=client.post('/auth/login',json={'phone':'+12025550123',
+                'password':'synthetic original owner password','transport':'native'})
+            assert owner_login.status_code==200, owner_login.text
+            owner_headers={'Authorization':'Bearer '+owner_login.json()['access_token']}
+            owner_profile=client.get('/auth/session',headers=owner_headers)
+            assert owner_profile.status_code==200, owner_profile.text
+            assert owner_profile.json()['account_id']==applied['actor_account_id']
+            upload_headers={**owner_headers,'Content-Type':'application/octet-stream',
+                'X-Upload-Filename':'package-smoke.jpg','X-Upload-Batch':'d'*32,
+                'X-Upload-Destination-Library':'synthetic-family'}
+            first=client.post('/uploads',headers=upload_headers,content=jpeg)
+            assert first.status_code==201 and first.json()['approval_state']=='awaiting_review', first.text
+            asset_id=int(first.json()['asset_id'])
+            review=client.post(f'/admin/uploads/{asset_id}/review?library=synthetic-family',
+                               headers=owner_headers,json={})
+            assert review.status_code==200, review.text
+            approval=client.post(f'/admin/uploads/{asset_id}/approve?library=synthetic-family',
+                headers=owner_headers,json={'plan':review.json()['plan']})
+            assert approval.status_code==200 and approval.json()['state']=='assigned', approval.text
+            retry=client.post('/uploads',headers=upload_headers,content=jpeg)
+            assert retry.status_code==201 and retry.json()['asset_id']==first.json()['asset_id'], retry.text
+            assert retry.json()['tasks_enqueued']==0 and retry.json()['library_id']=='synthetic-family'
+            with ExistingDatabase(database)() as connection:
+                assert connection.execute('SELECT count(*) FROM access_uploads WHERE asset_id=?',
+                                          (asset_id,)).fetchone()==(1,)
+                assert connection.execute('SELECT count(*) FROM access_asset_libraries '
+                    'WHERE asset_id=? AND library_id=?',(asset_id,'synthetic-family')).fetchone()==(1,)
+            gallery=client.get('/assets?library=synthetic-family',headers=owner_headers)
+            assert gallery.status_code==200, gallery.text
+            gallery_asset_ids=[int(item['id']) for item in gallery.json()['items']]
+            assert gallery_asset_ids.count(asset_id)==1
+            thumbnail_path=data/'derived'/'thumbnails'/'256'/f'{asset_id}.jpg'
+            thumbnail_path.parent.mkdir(parents=True,exist_ok=True)
+            thumbnail_path.write_bytes(jpeg)
+            thumbnail=client.get(f'/assets/{asset_id}/thumbnail?library=synthetic-family',
+                                 headers=owner_headers)
+            assert thumbnail.status_code==200 and thumbnail.content==jpeg, thumbnail.text
+            assert thumbnail.headers.get('content-type','').startswith('image/jpeg')
+            assert client.get(f'/assets/{asset_id}/thumbnail?library=synthetic-family',
+                headers={'Authorization':'Bearer invalid'}).status_code in (401,403)
 print(json.dumps({'package_smoke':'pass','synthetic_migration_revision':REQUIRED_REVISION,
     'asgi_checks':7,'operator_commands':19,'database_preparation_commands':9,
     'saved_story_checks':7,'local_tts_plan_checks':1,'roadmap_checks':14,
-    'application_listeners_opened':False,'internal_loopback_socketpairs':internal_pairs,
+    'owner_upload_checks':10,'application_listeners_opened':False,
+    'child_processes_started':False,'internal_loopback_socketpairs':internal_pairs,
     'live_data_accessed':False}))

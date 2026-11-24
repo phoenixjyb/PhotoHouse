@@ -20,6 +20,9 @@ internal fun BatchUploadReviewCard(
     zh: Boolean,
     onStart: () -> Unit,
     onDiscard: () -> Unit,
+    canRememberFolder: Boolean = false,
+    folderRemembered: Boolean = false,
+    onRememberFolder: () -> Unit = {},
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val explanation = when (issue) {
@@ -59,6 +62,11 @@ internal fun BatchUploadReviewCard(
                 modifier = Modifier.testTag("batch-review-problem"))
             if (needsNetworkConfirmation) Text(t("This connection may incur data charges. Continue only after review.",
                 "当前网络可能产生流量费用，请确认后继续。"), modifier = Modifier.testTag("batch-network-review"))
+            if (canRememberFolder) TextButton(onClick = onRememberFolder,
+                modifier = Modifier.testTag("batch-remember-folder")) {
+                Text(if (folderRemembered) t("Folder remembered", "已保存此文件夹")
+                    else t("Remember this folder", "记住此文件夹"))
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onStart, enabled = selectedCount > 0 && issue == null,
                     modifier = Modifier.testTag("batch-start")) {

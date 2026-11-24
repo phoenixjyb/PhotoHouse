@@ -33,7 +33,7 @@ from .annotations import router as annotation_router
 from .duplicates import router as duplicate_router
 from .captions import router as caption_router
 from .library_organization import router as organization_router
-from ..routers.ui import UI_ASSET_PATHS, VERSIONED_UI_ASSET, router as ui_router
+from ..routers.ui import UI_ASSET_PATHS, VERSIONED_UI_ASSET, oral_history_ui_router, router as ui_router
 from ..updates import router as updates_router
 
 
@@ -48,7 +48,7 @@ class ClosedBoundary:
     UI = {'/ui', '/ui/search', '/ui/admin'} | UI_ASSET_PATHS
 
     REVIEWED = {(method, route.path, route.endpoint)
-                for router in (account_router, media_router, video_moments_router, library_router, photo_stack_router, member_router, story_router, people_router, people_review_router, tag_router, album_router, story_workspace_router, selected_story_router, memory_group_router, oral_history_router, memory_router, story_cloud_router, memory_community_router, memory_edition_router, ui_router, discovery_router, semantic_search_router, assistant_router, assistant_workspace_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
+                for router in (account_router, media_router, video_moments_router, library_router, photo_stack_router, member_router, story_router, people_router, people_review_router, tag_router, album_router, story_workspace_router, selected_story_router, memory_group_router, oral_history_router, memory_router, story_cloud_router, memory_community_router, memory_edition_router, ui_router, oral_history_ui_router, discovery_router, semantic_search_router, assistant_router, assistant_workspace_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
                 for route in router.routes for method in route.methods}
 
     def __init__(self, app, routes):
@@ -74,7 +74,7 @@ class ClosedBoundary:
         if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-groups/[0-9a-f-]{36}', path): return True
         if method == 'GET' and re.fullmatch(r'/assets/[0-9]+/memory-groups', path): return True
         oral = r'/oral-history/v1/libraries/[A-Za-z0-9_-]{1,128}/sessions'
-        if method == 'POST' and re.fullmatch(oral, path): return True
+        if method in {'GET', 'POST'} and re.fullmatch(oral, path): return True
         session = oral+r'/[0-9a-f-]{36}'
         if method == 'GET' and re.fullmatch(session, path): return True
         if method == 'POST' and re.fullmatch(session+r'/(?:sections|complete|cancel)', path): return True

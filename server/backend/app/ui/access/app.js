@@ -11,7 +11,7 @@
   }
   const state = {language:'zh', mode:'login', generation:0, controllers:new Set(), profile:null,
     csrf:null, library:null, catalogue:null, sessionCheckFailed:false, viewerGeneration:0, page:1, busy:false, locked:false, invite:null, memberPage:1, memberGeneration:0, memberTotal:0, total:0, videoRetryTimer:null, videoController:null,captionController:null};
-  let storyWorkspace, memoryCommunity, memoryGroups;
+  let storyWorkspace, memoryCommunity, memoryGroups, oralHistory;
   let privateAssistant=null,privateAssistantBusy=false,privateAssistantOperation=0,privateCreationRetryId=null,assistantMemoryActionTarget=null,privateSceneRenderedPage=null,privateResultRenderedPage=null;
   let privateMemorySpeechScope='',privateMemorySpeechEnabled=false;
   let galleryItems=[];
@@ -119,6 +119,24 @@
   Object.assign(words.en,{annotationIntakeClosed:'New family notes are not available yet.',annotationDelete:'Delete note',annotationDeleteConfirm:'Delete this original note or recording and its suggestions from the active library? Existing backups may still contain a copy.',annotationDeleted:'Note deleted.',annotationDeleteError:'Deletion could not be confirmed. Refresh this photo before trying again.'});
   Object.assign(words.zh,{annotationIntakeClosed:'暂时无法添加新的家庭留言。',annotationDelete:'删除留言',annotationDeleteConfirm:'从当前相册库删除这条原始留言或录音及其建议？现有备份中可能仍有副本。',annotationDeleted:'留言已删除。',annotationDeleteError:'暂时无法确认删除结果，请刷新此照片后重试。'});
   const annotationState={pending:new Map(),capture:null};
+  function canReserveRecording(){
+    return !annotationState.capture&&!assistantState.capture&&!assistantState.captureStarting&&
+      !assistantState.transcribing&&!memoryCommunity?.isCapturing?.();
+  }
+  function reserveRecording(){
+    if(!canReserveRecording())return null;
+    const token={dictationReservation:true,stop:async()=>null};
+    annotationState.capture=token;
+    return token;
+  }
+  function claimRecording(token,handle){
+    if(annotationState.capture!==token)return false;
+    annotationState.capture=handle;
+    return true;
+  }
+  function releaseRecording(token){
+    if(annotationState.capture===token)annotationState.capture=null;
+  }
   const viewerAnnotationState={page:1,total:0,load:0,batch:null};
   function annotationWav(chunks,total,rate){
     const outputRate=16000,frames=Math.min(60*outputRate,Math.floor(total*outputRate/rate));
@@ -495,8 +513,8 @@
     viewVideoFullscreen:'视频全屏',
     viewHelp:'双指捏合或滚轮缩放，拖动平移。键盘：+ / − 缩放，方向键平移，0 适合窗口。'
   });
-  Object.assign(words.en,{preparedPlayback:'Prepared video',videoChecking:'Checking protected video…',videoUnavailable:'This prepared video is unavailable.',videoNotPrepared:'This video is not prepared yet.',videoChanged:'This video changed. Close it and refresh the library.',videoBusy:'The prepared video is busy. Wait before retrying.',videoRetry:'Retry video',videoRetryLater:'Retry later',videoUnauthorized:'Your access changed. The video was closed.',videoInterrupted:'Playback was interrupted. Retry the video.'});
-  Object.assign(words.zh,{preparedPlayback:'已准备的视频',videoChecking:'正在检查受保护的视频…',videoUnavailable:'此准备好的视频暂不可用。',videoNotPrepared:'此视频尚未准备好。',videoChanged:'此视频已发生变化。请关闭后刷新相册库。',videoBusy:'准备好的视频当前繁忙，请稍后再试。',videoRetry:'重试视频',videoRetryLater:'稍后重试',videoUnauthorized:'访问权限已变化，视频已关闭。',videoInterrupted:'播放已中断，请重试视频。'});
+  Object.assign(words.en,{preparedPlayback:'Prepared video',videoChecking:'Checking protected video…',videoUnavailable:'This prepared video is unavailable.',videoNotPrepared:'This video is not prepared yet.',videoPreparing:'This approved video is still being prepared. Retry when it is ready.',videoChanged:'This video changed. Close it and refresh the library.',videoBusy:'The prepared video is busy. Wait before retrying.',videoRetry:'Retry video',videoRetryLater:'Retry later',videoUnauthorized:'Your access changed. The video was closed.',videoInterrupted:'Playback was interrupted. Retry the video.'});
+  Object.assign(words.zh,{preparedPlayback:'已准备的视频',videoChecking:'正在检查受保护的视频…',videoUnavailable:'此准备好的视频暂不可用。',videoNotPrepared:'此视频尚未准备好。',videoPreparing:'此已批准视频仍在准备中，准备完成后请重试。',videoChanged:'此视频已发生变化。请关闭后刷新相册库。',videoBusy:'准备好的视频当前繁忙，请稍后再试。',videoRetry:'重试视频',videoRetryLater:'稍后重试',videoUnauthorized:'访问权限已变化，视频已关闭。',videoInterrupted:'播放已中断，请重试视频。'});
   Object.assign(words.en,{newPerson:'Create a new person',createAssign:'Create and assign',unassignFace:'Remove this assignment',confirmUnassign:'Remove this face assignment? The saved person and photo will be kept.',albums:'Family albums',albumPrivacy:'Saved in this library, not automatically published to TV.',newAlbum:'Create album',editAlbum:'Edit album',albumTitle:'Album title',albumTitleZh:'Chinese title (optional)',albumDescription:'Description',albumTheme:'Theme',saveAlbum:'Save album',albumSaved:'Album saved.',noAlbums:'No library-owned albums yet. Earlier unowned albums need a reviewed import.',selectPhotos:'Choose photos/videos (up to 60)',selectedPhotos:'Selected order',moveUp:'Move earlier',moveDown:'Move later',remove:'Remove',setCover:'Use as cover',cover:'Cover',albumEmpty:'Empty album',albumChanged:'Album changed. Close this editor and reopen the current version before editing.',albumUncertain:'Save not confirmed. Retry this same save or close and review the saved albums.',discardAlbum:'Discard this unsaved album edit?',albumNeedsReview:'Some earlier selections are no longer available. Saving will remove unavailable entries.',newPersonHelp:'Use an existing saved person when possible. Creating a name does not merge duplicates.'});
   Object.assign(words.zh,{newPerson:'创建新人物',createAssign:'创建并分配',unassignFace:'取消此人脸归属',confirmUnassign:'取消此人脸归属？已保存的人物和照片将保留。',albums:'家庭主题相册',albumPrivacy:'保存在本家庭库，不会自动发布到电视。',newAlbum:'创建相册',editAlbum:'编辑相册',albumTitle:'相册标题',albumTitleZh:'中文标题（可选）',albumDescription:'描述',albumTheme:'主题',saveAlbum:'保存相册',albumSaved:'相册已保存。',noAlbums:'暂无属于本库的相册。旧的未归属相册需经确认后导入。',selectPhotos:'选择照片或视频（最多 60 项）',selectedPhotos:'已选顺序',moveUp:'向前移动',moveDown:'向后移动',remove:'移除',setCover:'设为封面',cover:'封面',albumEmpty:'空相册',albumChanged:'相册已更改，请关闭编辑器并打开最新版本后再编辑。',albumUncertain:'尚未确认保存成功。请重试同一次保存，或关闭并核对已保存相册。',discardAlbum:'放弃尚未保存的相册修改？',albumNeedsReview:'部分原选项已不可访问，保存将移除这些选项。',newPersonHelp:'请优先选择已有的人物。创建姓名不会自动合并重名人物。'});
   Object.assign(words.en,{moveMemories:'Move memories',moveMemoriesHelp:'Move up to 50 photos or videos to another family library. Stories move with them.',moveSelected:'Move selected',clearSelection:'Clear selection',moveThisMemory:'Move this memory',reviewMove:'Review move',confirmMove:'Confirm move',chooseDestination:'Choose a destination',sourceLibrary:'From',destinationLibrary:'To',moveSummary:'Move summary',moveStories:'Stories move with these memories.',moveAlbums:'Album links stay hidden in the source library.',moveFaces:'People names from the source library are not shared with the destination.',moveReaders:'Only members of the destination library can access the moved items. Existing TV publications are managed separately.',readersCount:'destination members',originalReadersCount:'with original downloads',moveSuccess:'Memories moved. This library has been refreshed.',moveRefreshFailed:'The move was completed. Refresh to see the latest library.',moveUncertain:'Move not confirmed. Retry this confirmation to check its result.',moveLimit:'Choose up to 50 memories.',moveNone:'Choose at least one memory.',moveUnavailable:'Moving is not available for this library.',moveFailed:'The move could not be completed. Refresh and try again.',assetsCount:'memories',storiesCount:'stories',albumsCount:'album links',facesCount:'saved faces'});
@@ -588,6 +606,8 @@
   Object.assign(words.en,{assistantPrivacyDetails:'Privacy and voice',assistantComposerPlaceholder:'Tell Jude what you’re looking for…',assistantWorkspaceKicker:'PHOTOHOUSE · PRIVATE ASSISTANT'});
   Object.assign(words.en,{copyInviteLink:'Copy registration link',inviteLinkCopied:'Registration link copied. It expires in 24 hours and works only for the invited phone number.',inviteLinkCopyFailed:'Could not copy the registration link. You can still send the invitation code privately.'});
   Object.assign(words.zh,{copyInviteLink:'复制注册链接',inviteLinkCopied:'注册链接已复制。有效期为 24 小时，且仅适用于受邀的手机号码。',inviteLinkCopyFailed:'无法复制注册链接。你仍可以私下发送邀请码。'});
+  Object.assign(words.en,{oralHistory:'Oral history',oralHistoryUnavailable:'Your recordings are unavailable. Reopen this panel to try again.'});
+  Object.assign(words.zh,{oralHistory:'口述历史',oralHistoryUnavailable:'暂时无法打开你的录音。请重新打开此面板重试。'});
   function translate() {
     document.documentElement.lang = state.language === 'zh' ? 'zh-CN' : 'en';
     document.querySelectorAll('[data-i18n]').forEach(node => {node.textContent=t(node.dataset.i18n);});
@@ -601,6 +621,7 @@
     $('grid').setAttribute('aria-label',t('memoryMediaRegion'));
     updatePhotoStackControls();
     storyWorkspace?.translate();
+    oralHistory?.translate();
     if(peopleReviewState.person)renderPeopleReview();
     if(peopleReviewState.statusKey)reviewStatus(peopleReviewState.statusKey,peopleReviewState.statusValues);
     renderAssistantTrail();
@@ -636,6 +657,8 @@
     resetVideoMoments();
     clearPeopleReview({hide:true});
     galleryItems=[];
+    oralHistory?.clear();
+    $('oral-history-panel').open=false;
     if(storyWorkspace)storyWorkspace.clear({cancelCommunityJobs:cancelMemoryJobs});
     else $('saved-memory-status').textContent='';
     transferState.selected.clear();transferState.review=null;transferState.source=null;transferState.destinations=[];transferState.busy=false;transferState.canMove=null;
@@ -2827,7 +2850,7 @@
         const error=new Error('Prepared playback denied');error.status=response.status;
         await failure(error,epoch);return;
       }
-      offerRetry(response.status===404?'videoNotPrepared':response.status===409?'videoChanged':response.status===429?'videoBusy':'videoUnavailable',response.headers.get('retry-after'),response.status);
+      offerRetry(response.status===202?'videoPreparing':response.status===404?'videoNotPrepared':response.status===409?'videoChanged':response.status===429?'videoBusy':'videoUnavailable',response.headers.get('retry-after'),response.status);
       return;
     }
     const video=document.createElement('video');video.controls=true;video.preload='metadata';video.playsInline=true;video.setAttribute('aria-label',assetLabel(item));
@@ -4933,10 +4956,10 @@
       voiceCapabilities:({signal}={})=>request(`/assistant/v1/capabilities?${new URLSearchParams({library_id:state.library||''})}`,{epoch:state.generation,signal}),
       transcribe:(file,{signal}={})=>request('/assistant/v1/transcribe',{method:'POST',rawBody:file,signal,
         extraHeaders:{'Content-Type':'audio/wav','X-PhotoHouse-Library-Id':state.library,'X-PhotoHouse-Request-Id':crypto.randomUUID()}}),
-      canCapture:()=>!annotationState.capture&&!assistantState.capture&&!assistantState.captureStarting&&!assistantState.transcribing&&!memoryCommunity?.isCapturing?.(),
-      reserveCapture:()=>{if(annotationState.capture||assistantState.capture||assistantState.captureStarting||assistantState.transcribing||memoryCommunity?.isCapturing?.())return null;const token={dictationReservation:true,stop:async()=>null};annotationState.capture=token;return token;},
-      claimCapture:(token,handle)=>{if(annotationState.capture!==token)return false;annotationState.capture=handle;return true;},
-      releaseCapture:token=>{if(annotationState.capture===token)annotationState.capture=null;},
+      canCapture:canReserveRecording,
+      reserveCapture:reserveRecording,
+      claimCapture:claimRecording,
+      releaseCapture:releaseRecording,
       stopAudioForCapture:()=>{stopAssistantSpeech();memoryCommunity?.stopPlayback?.();window.dispatchEvent(new CustomEvent('photohouse-memory-audio-start'));},
       request:body=>request(libraryPath('/story-workspace/preview'),{method:'POST',body,epoch:state.generation}),
       openFrameSearch:openAssistantFrameSearch,
@@ -5344,6 +5367,23 @@
   $('transfer-review').addEventListener('cancel',event=>{event.preventDefault();if(!transferState.busy)$('transfer-review').close();});
   $('invite-form').addEventListener('submit',event=>{void invite(event);});
   $('copy-invite-link').addEventListener('click',()=>{void copyInviteLink();});
+  $('oral-history-panel').addEventListener('toggle',async event=>{
+    const panel=event.currentTarget,epoch=state.generation;
+    if(!panel.open){oralHistory?.clear();return;}
+    const current=()=>panel.open&&!panel.hidden&&!stale(epoch)&&!state.locked&&state.profile?.account_id&&state.library;
+    if(!current())return;
+    try{
+      await loadPanelScript('oral-history');
+      if(!current())return;
+      oralHistory??=window.PhotoHouseOralHistory({panel,request,capture:annotationCapture,
+        scope:()=>({account:state.profile?.account_id,library:state.library,generation:state.generation,
+          language:state.language,locked:state.locked}),
+        reserveCapture:reserveRecording,claimCapture:claimRecording,releaseCapture:releaseRecording,onAuthorizationFailure:failure});
+      await oralHistory.open();
+    }catch{
+      if(current())$('oral-history-status').textContent=t('oralHistoryUnavailable');
+    }
+  });
   $('cancel-invite').addEventListener('click',()=>{void cancelInvite();});
   $('accept-form').addEventListener('submit',event=>{void accept(event);});
   $('language').addEventListener('click',()=>{
@@ -5368,7 +5408,9 @@
     closeAssistantWorkspace({restoreFocus:false,restoreScroll:false});
     if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();
     state.language=state.language==='en'?'zh':'en';translate();
-    const keepWork=assistantState.pendingTurn||assistantState.busy||assistantState.transcribing||assistantState.transcriptReviewPending||assistantState.capture||assistantState.captureStarting||memoryCommunity?.isBookEditing?.()||peopleReviewState.person;
+    const keepWork=assistantState.pendingTurn||assistantState.busy||assistantState.transcribing||
+      assistantState.transcriptReviewPending||assistantState.capture||assistantState.captureStarting||
+      memoryCommunity?.isBookEditing?.()||peopleReviewState.person||$('oral-history-panel').open;
     if(state.profile&&!state.locked&&!keepWork)void restore(true,intent);
     else if(intent)discardLocaleAssistantResume(intent,{clearDraft:true});
   });
