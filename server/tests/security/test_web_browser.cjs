@@ -1425,8 +1425,10 @@ let browser;
   await page.screenshot({path:path.join(artifacts,'unified-gallery-filter-phone-150.png'),fullPage:true});
   await page.evaluate(()=>{document.documentElement.style.fontSize='';});
   await page.setViewportSize({width:1200,height:900});
-  // Read-only by construction: one form, one select, and nothing that could write.
-  assert.equal(await page.locator('#discovery-panel form').count(),2);
+  // The ordinary filters expose two visible read-only forms. Moment search
+  // stays hidden until the app confirms an enabled video catalog.
+  assert.equal(await page.locator('#discovery-panel form:visible').count(),2);
+  assert.equal(await page.locator('#video-moments-panel').isHidden(),true);
   assert.equal(await page.locator('#discovery-panel select').count(),1);
   assert.equal(await page.locator('#discovery-panel input[type="file"]').count(),0);
   assert.equal(await page.locator('#people-panel').isVisible(),false);
