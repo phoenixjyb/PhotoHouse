@@ -37134,6 +37134,73 @@
         }
       ],
       "notes": "Compute coverage and facet totals in the existing projection, avoiding per-item empty containers. Matched generated protected API timing and full response checks."
+    },
+    {
+      "feature": "audit-jude-readiness-keyboard-and-joined-story",
+      "source_commit": "7670dce1cdd43b6af64ad13c45e194c849e3bd63",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "427916544c427576549e5ec6d0bd7836761462d86810da4140fdbfa9591781f9",
+          "sha256": "e063dc61a5efa21cf41bb3a19806fdad1d61463248393fee4cd7647ab26aa79f"
+        },
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "0737fe88f937570765248c8da8d42bc0d46999479fc5f9e2c4d3c1c0ba0a7960",
+          "sha256": "79f7dc362e7b52e81b2df56b5e2e975eed621404bf3ee423a7003b0b51690b05"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "39384ab16262e8c60e4aecce99451bac43157e1e58d2e5a3926f722e3c3986da",
+          "sha256": "425fe54328841a2ee8e85d895e8e468adad6117c13c9f1cb84a4922336db5ee4"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "bc7e2e3c892982a2e0699927d330102c4438442164ab34038c47cff4e3f7a10c",
+          "sha256": "093a744f630676ee94cf7eb9465a0bec1842610316379897d65ca0c7efe1c372"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "c946348befc73741572802eec773f089ddeab5daa2a3aac0d302ca390a8a5f05",
+          "sha256": "14761eba3ade08965d28686ef56440335c09ce91f84b8a74186b613c9f7681e8"
+        },
+        {
+          "path": "server/tests/security/assistant_story_selection_browser_bridge.py",
+          "before_sha256": "8ca617b5fe43a1f7a07ad0be432b6ad5b77bf633bfbebc105bd449d5f797b354",
+          "sha256": "d072c85ea090a87ebe2a8eeb6e2f5c83efbb9f529e3742cb34d996321546f9d6"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "5ae264d4b4451210caab0035fbe986affb1c84b6705ba0aa4befa916c084d73e",
+          "sha256": "ef39b135fe7de11d54f083b5ac65e6d28e5989ac62029732107096c2f508b31d"
+        },
+        {
+          "path": "server/tests/security/selected_story_browser_fixture.py",
+          "before_sha256": null,
+          "sha256": "345c1e8261879cb22c6200d3f3965d0c6c8343813dead5c9d8e4d4722f9edf82"
+        },
+        {
+          "path": "server/tests/security/story_draft_browser_bridge.py",
+          "before_sha256": "b936d8366d1bbb244e8243bbfe7421b681c36058032304cbe231922a1466cbd7",
+          "sha256": "d34c297312690f3c91f55c4255e976c4907b95a72b9f9179a524c6e8adfcacbe"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "97035064db691c0311f581b9c87ffe17ed3fda7894ab3f344422c73008f87395",
+          "sha256": "b9106da2f3c150572aed99b466f15420fa0c26f53fc9c775d4a63dd62ac00e74"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "e5170b9b06828d8ce169b2f6721743c193d6474abdfc3e5509c6452f43760317",
+          "sha256": "73b838f286d04b8bf0c6b8a1c96ef75ccdc6e60e5a9c09221810959105f686a1"
+        },
+        {
+          "path": "server/tests/test_product_roadmap.py",
+          "before_sha256": "7059203c564914fbe7d3648f564fef43cee1473d3e786d720674581326517a02",
+          "sha256": "3f0ff9cf8f1b0610c95e303a11dcbd0203d130143932f0e379b6d1e5d013d1a2"
+        }
+      ],
+      "notes": "Keep the composer ready after its ordinary scope is verified, restore the first keyboard action and voice target sizes, and exercise the complete generated Search-to-story path. Keep the exact roadmap export check in the normal staging checks."
     }
   ]
 }
