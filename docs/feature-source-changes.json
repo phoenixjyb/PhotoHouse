@@ -37910,6 +37910,60 @@
         }
       ],
       "notes": "The generated browser waits for the story inputs the UI enables after gallery paint."
+    },
+    {
+      "feature": "memory-group-same-day-choices",
+      "source_commit": "94f269626fcdeef2eca96649bb80ce105284ee4d",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "5fe3e14f179e53d2c7edea0c6159c37b4fa1099d64214ad3657b2908e9d1cb97",
+          "sha256": "25aac9f6d229473632d1b16c0e2c5180325f00c96e0fb55e937ad93ce2b8c8aa"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "ea0ed3d702fe401c8cfb83a63e8859fded051b4f051a4951dd8127895b0e2fed",
+          "sha256": "14c5de3e28273fd00c477e2f2a0d33219c5193e1b9029777747b800a7b7238aa"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "f25caf9cc96015a2d9c4af18766ba99f54a641c10a0e5502a80bf474ec8cd55d",
+          "sha256": "3e81c762f93b953701a26b9b02788880f3b41ce78119f8d51bb9676bc17e2c53"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "562a874efe15463dde4ef7c84e0e0d4590cac089758bb5fa97d04dd740820cc8",
+          "sha256": "2a07406ff2d3bdda0b2be8341154318298a7ad269dee174e367606c4ce54d3fc"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "before_sha256": "2071ba8cdd8686bbee9b7c44f2c8c62acf390abbcaf44e0db2062b5aaca86149",
+          "sha256": "606a95791c4de6106b6505fde4a3619340727768b206dae16aa1bce8c0a6916c"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "f0a2edcfbe77455dd6e434f976493917c572fa0752c782b1398528ef25163d83",
+          "sha256": "3cb803e8a8bf3f4f7d79a63e77a46d2f7a9d1132bb6b953d75d2dc43d0d9bcf9"
+        }
+      ],
+      "notes": "Generated Chromium found the authorized off-page same-day video and wrote membership only after explicit group save."
+    },
+    {
+      "feature": "story-browser-controller-readiness",
+      "source_commit": "ee7d5d72d002381554257b5e88ac3801d15e6a64",
+      "files": [
+        {
+          "path": "server/tests/security/test_story_reader_frames_browser.cjs",
+          "before_sha256": "695665c5f75bc779873970e0246f22a109d2aa3fc612f0dae71354f96459803a",
+          "sha256": "021003d52bcffd0c400483202d1024e014d6bdc48e26e6dfda99187446ccb8cc"
+        },
+        {
+          "path": "server/tests/security/test_story_related_media_browser.cjs",
+          "before_sha256": "df83daad3992962f2ecfdfd6f1dd8fb38ce4a43ea199c2669287e107244b300a",
+          "sha256": "5023f406558550f07c7e18ed028367fc443b81fe6ff13b9d477d98ebc8d72237"
+        }
+      ],
+      "notes": "The related-media and reader fixtures wait for the lazy story controller before calling it."
     }
   ]
 }
