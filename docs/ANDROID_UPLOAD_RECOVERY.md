@@ -84,6 +84,14 @@ not read source bytes, hash files or contact the server. The user explicitly
 resumes; the existing remote-offset/completion checks reconcile progress before
 sending further data. Other terminal/cancellation states retain their contracts.
 
+Resume and Retry ask for consent when the network is metered or unknown.
+Consent applies to that batch run and is kept only in memory. Starting a newly
+reviewed batch runs just that batch. A run started on an unmetered connection
+checks the network again before service dispatch and before further transfer
+requests. If it loses that connection, it pauses with its queue and confirmed
+offset intact. An already-started request may finish. The next Resume checks
+the connection again and reconciles the server's offset before sending data.
+
 ## Incident diagnosis and acceptance
 
 A received upload, library approval, background preparation and gallery

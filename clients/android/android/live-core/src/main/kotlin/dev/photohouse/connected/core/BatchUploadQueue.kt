@@ -62,6 +62,7 @@ class BatchUploadQueue(
     @Volatile private var epoch = 0L
     private var job: Job? = null
     private var cancelling: Pair<String, Long>? = null
+    private data class TransferRun(val epoch: Long, val connectionAllowed: () -> Boolean)
     /** Observed on the owner's dispatcher; a notification owner must stop when this becomes false. */
     val running: Boolean get() = job?.isActive == true
 
@@ -121,17 +122,17 @@ class BatchUploadQueue(
         persist(accountId, records)
         return ids
     }
-    fun resume(localId: String? = null) {
-        if (job?.isActive == true || account == null || !valid()) return
+    fun resume(localId: String? = null, connectionAllowed: () -> Boolean = { true }) {
+        if (job?.isActive == true || account == null || !valid() || !connectionAllowed()) return
         val target = localId ?: mutable.value.firstOrNull { it.record.status in READY }?.record?.localId ?: return
         val first = mutable.value.firstOrNull { it.record.localId == target }?.record ?: return
         if (first.status !in READY) return
-        epoch++; val run = epoch; var activeId = target
+        epoch++; val run = TransferRun(epoch, connectionAllowed); var activeId = target
         job = scope.launch {
             try { processQueue(first, run, if (localId == null) null else first.batch) { activeId = it } }
-            catch (_: CancellationException) { if (epoch == run) update(activeId) { it.copy(status = "paused") } }
-            catch (error: Exception) { if (epoch == run) update(activeId) { it.copy(status = "failed", error = uploadFailureCode(error)) } }
-            finally { if (epoch == run) { job = null; mutableActivity.value = null } }
+            catch (_: CancellationException) { if (epoch == run.epoch) update(activeId) { it.copy(status = "paused") } }
+            catch (error: Exception) { if (epoch == run.epoch) update(activeId) { it.copy(status = "failed", error = uploadFailureCode(error)) } }
+            finally { if (epoch == run.epoch) { job = null; mutableActivity.value = null } }
         }
     }
     fun pause() {
@@ -174,27 +175,27 @@ class BatchUploadQueue(
             }
         }
     }
-    fun retry(localId: String) {
-        if (job?.isActive == true || account == null || !valid()) return
+    fun retry(localId: String, connectionAllowed: () -> Boolean = { true }) {
+        if (job?.isActive == true || account == null || !valid() || !connectionAllowed()) return
         if (mutable.value.none { it.record.localId == localId && it.record.status == "failed" }) return
         update(localId) { it.copy(status = "queued", error = null) }
-        resume(localId)
+        resume(localId, connectionAllowed)
     }
 
     /** One explicit action retries interrupted members of this batch, retaining all identities. */
-    fun retryBatch(batch: String) {
+    fun retryBatch(batch: String, connectionAllowed: () -> Boolean = { true }) {
         val accountId = account ?: return
-        if (job?.isActive == true || !valid()) return
+        if (job?.isActive == true || !valid() || !connectionAllowed()) return
         val records = mutable.value.map { it.record }
         if (records.none { it.batch == batch && it.status == "failed" }) return
         persist(accountId, records.map {
             if (it.batch == batch && it.status == "failed") it.copy(status = "queued", error = null) else it
         })
         val target = mutable.value.firstOrNull { it.record.batch == batch && it.record.status in READY } ?: return
-        resume(target.record.localId)
+        resume(target.record.localId, connectionAllowed)
     }
 
-    private suspend fun processQueue(first: UploadQueueRecord, run: Long, batch: String?, onActive: (String) -> Unit) {
+    private suspend fun processQueue(first: UploadQueueRecord, run: TransferRun, batch: String?, onActive: (String) -> Unit) {
         var current: UploadQueueRecord? = first
         while (current != null) {
             ensure(run)
@@ -212,10 +213,10 @@ class BatchUploadQueue(
             current = mutable.value.map { it.record }.firstOrNull { it.status in READY && (batch == null || it.batch == batch) }
         }
     }
-    private suspend fun processWithRecovery(localId: String, run: Long) {
+    private suspend fun processWithRecovery(localId: String, run: TransferRun) {
         var retries = 0
         while (true) {
-            ensure(run)
+            ensureConnection(run)
             val record = mutable.value.first { it.record.localId == localId }.record.copy(status = "uploading", error = null)
             replace(record)
             try { process(record, run); return }
@@ -246,16 +247,19 @@ class BatchUploadQueue(
         is java.io.IOException, is SecurityException -> true
         else -> false
     }
-    private fun phase(record: UploadQueueRecord, run: Long, phase: UploadQueuePhase) {
+    private fun phase(record: UploadQueueRecord, run: TransferRun, phase: UploadQueuePhase) {
         ensure(run)
         mutableActivity.value = UploadQueueActivity(record.localId, phase)
     }
-    private suspend fun process(initial: UploadQueueRecord, run: Long) {
+    private suspend fun process(initial: UploadQueueRecord, run: TransferRun) {
         var record = initial
         val destinationLibraryId = record.destinationLibraryId
         if (destinationLibraryId != null && !destinationAllowed(destinationLibraryId)) throw ApiFailure(FailureKind.HTTP, 403)
         phase(record, run, UploadQueuePhase.CHECKING)
-        var session = record.uploadId?.let { api.uploadSession(token(), it) }
+        var session = record.uploadId?.let {
+            ensureConnection(run)
+            api.uploadSession(token(), it)
+        }
         ensure(run)
         if (session != null) {
             requireDestination(session, record)
@@ -281,8 +285,11 @@ class BatchUploadQueue(
             record = record.copy(sha256 = withContext(ioDispatcher) { digest(item, run) })
             ensure(run); replace(record)
         }
-        if (session == null) session = api.createUploadSession(token(), UploadSessionRequest(record.requestId, record.batch,
-            record.filename, record.bytes, record.sha256, record.kind, record.destinationLibraryId))
+        if (session == null) {
+            ensureConnection(run)
+            session = api.createUploadSession(token(), UploadSessionRequest(record.requestId, record.batch,
+                record.filename, record.bytes, record.sha256, record.kind, record.destinationLibraryId))
+        }
         ensure(run)
         requireDestination(session, record)
         require(session.uploadId == (record.uploadId ?: session.uploadId) && session.bytes == record.bytes)
@@ -295,15 +302,16 @@ class BatchUploadQueue(
         ensure(run)
         finish(record, session, run)
     }
-    private suspend fun finish(record: UploadQueueRecord, session: UploadSession, run: Long) {
+    private suspend fun finish(record: UploadQueueRecord, session: UploadSession, run: TransferRun) {
         phase(record, run, UploadQueuePhase.FINALIZING)
+        ensureConnection(run)
         val completed = api.completeUploadSession(token(), session.uploadId)
         ensure(run)
         requireDestination(completed, record)
         require(completed.uploadId == record.uploadId && completed.bytes == record.bytes && completed.offset == record.bytes && completed.state == "complete")
         replace(record.copy(offset = completed.bytes, status = "complete", error = null, assetId = completed.assetId))
     }
-    private suspend fun uploadChunks(item: BatchUploadSource, start: UploadSession, initial: UploadQueueRecord, bearer: Bearer, run: Long): UploadSession = withContext(ioDispatcher) {
+    private suspend fun uploadChunks(item: BatchUploadSource, start: UploadSession, initial: UploadQueueRecord, bearer: Bearer, run: TransferRun): UploadSession = withContext(ioDispatcher) {
         var session = start; var record = initial; var conflicts = 0
         var stream: InputStream = item.open()
         fun skipTo(offset: Long) {
@@ -329,9 +337,12 @@ class BatchUploadQueue(
                     if (count <= 0) throw ApiFailure(FailureKind.INVALID_INPUT)
                     read += count
                 }
-                session = try { api.uploadChunk(bearer, session.uploadId, offset, chunk, sha(chunk)) }
+                val digest = sha(chunk)
+                ensureConnection(run)
+                session = try { api.uploadChunk(bearer, session.uploadId, offset, chunk, digest) }
                 catch (failure: ApiFailure) {
                     if (failure.status != 409 || ++conflicts > 3) throw failure
+                    ensureConnection(run)
                     val confirmed = api.uploadSession(bearer, session.uploadId)
                     ensure(run)
                     requireDestination(confirmed, record)
@@ -351,7 +362,7 @@ class BatchUploadQueue(
         if (session.destinationLibraryId != record.destinationLibraryId)
             throw ApiFailure(FailureKind.INVALID_RESPONSE)
     }
-    private fun digest(item: BatchUploadSource, run: Long): String {
+    private fun digest(item: BatchUploadSource, run: TransferRun): String {
         val hash = MessageDigest.getInstance("SHA-256"); var total = 0L
         item.open().use { input ->
             val block = ByteArray(64 * 1024)
@@ -367,7 +378,13 @@ class BatchUploadQueue(
         ensure(run); if (total != item.bytes) throw ApiFailure(FailureKind.INVALID_INPUT)
         return hash.digest().joinToString("") { "%02x".format(it) }
     }
-    private fun ensure(run: Long) { if (run != epoch || !valid()) throw CancellationException("Upload no longer active") }
+    private fun ensure(run: TransferRun) {
+        if (run.epoch != epoch || !valid()) throw CancellationException("Upload no longer active")
+    }
+    private fun ensureConnection(run: TransferRun) {
+        ensure(run)
+        if (!run.connectionAllowed()) throw CancellationException("Upload connection requires approval")
+    }
     private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
     private fun replace(record: UploadQueueRecord) { mutable.value = mutable.value.map { if (it.record.localId == record.localId) UploadQueueItem(record) else it }; persistCurrent() }
     private fun update(id: String, f: (UploadQueueRecord) -> UploadQueueRecord) { mutable.value = mutable.value.map { if (it.record.localId == id) UploadQueueItem(f(it.record)) else it }; persistCurrent() }

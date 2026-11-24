@@ -119,6 +119,7 @@ internal fun pagePhotoStackNotice(scope: String?, groups: List<PhotoStackGroup>?
     ) else null
 
 private enum class UploadDestinationAction { DIRECT, BATCH }
+private data class BatchConnectionReview(val command: BatchUploadCommand, val target: String)
 private data class AnnotationWavSelection(
     val account: String, val generation: Long, val target: UploadAnnotationTarget,
     val language: String, val consent: String, val uri: Uri? = null,
@@ -147,7 +148,10 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun ConnectedApp(store: ConnectedStore?, initialLanguage: String = "zh") {
+@Composable internal fun ConnectedApp(
+    store: ConnectedStore?, initialLanguage: String = "zh",
+    readUploadNetwork: (Context) -> UploadNetwork = ::uploadNetwork,
+) {
     var language by remember { mutableStateOf(initialLanguage) }
     var settings by remember { mutableStateOf(false) }
     val config = LocalConfiguration.current
@@ -199,6 +203,9 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val batchItems = batchQueue?.state?.collectAsState()?.value ?: emptyList()
     val batchActivity = batchQueue?.activity?.collectAsState()?.value
     var batchBackgroundUnavailable by remember(state.generation) { mutableStateOf(false) }
+    var batchConnectionReview by remember(store, state.generation, state.session?.account_id, state.library, state.covered) {
+        mutableStateOf<BatchConnectionReview?>(null)
+    }
     var importProgressExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var batchQueueExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var uploadHistoryExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
@@ -224,9 +231,15 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val requestUploadNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         uploadNotificationsAllowed = it
     }
-    val runBatchInBackground: (BatchUploadCommand, String?) -> Unit = { command, target ->
-        batchBackgroundUnavailable = store == null ||
-            !BatchUploadForegroundRequests.start(context, store, command, target)
+    fun runBatchInBackground(command: BatchUploadCommand, target: String, connectionApproved: Boolean = false) {
+        val owner = store ?: return
+        val current = owner.state.value
+        if (current.covered || current.busy || current.generation != state.generation ||
+            current.session?.account_id != state.session?.account_id || current.library != state.library) return
+        val result = BatchUploadForegroundRequests.start(context, owner, command, connectionApproved, target, readUploadNetwork)
+        batchBackgroundUnavailable = result == BatchUploadLaunchResult.UNAVAILABLE
+        if (result == BatchUploadLaunchResult.NETWORK_REVIEW_REQUIRED)
+            batchConnectionReview = BatchConnectionReview(command, target)
     }
     val availableMemberships = state.session?.memberships?.filter { it.available }.orEmpty()
     LaunchedEffect(store, state.generation, state.library, state.covered) {
@@ -273,6 +286,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         batchReviewDestination = null
         batchSkipped = 0
         batchScanLimited = false
+        batchApproved = false
     }
 
     var batchEnqueueIssue by remember(state.generation, state.session?.account_id, batchReview, batchItems,
@@ -548,16 +562,14 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val enqueueReviewedBatch: (String) -> Unit = { destination ->
         val queue = batchQueue
         if (queue == null) batchEnqueueIssue = BatchUploadEnqueueIssue.ACCOUNT_UNAVAILABLE
-        else if (batchUploadStartDecision(uploadNetwork(context), batchApproved, confirmationVisible = false)
+        else if (batchUploadStartDecision(readUploadNetwork(context), batchApproved, confirmationVisible = false)
             != BatchUploadStartDecision.START) batchNetworkReviewRequired = true
         else try {
             val queued = queue.enqueue(batchReview, destination)
             if (queued.isNotEmpty()) {
-                runBatchInBackground(BatchUploadCommand.RESUME, null)
+                runBatchInBackground(BatchUploadCommand.RESUME, queued.first(), batchApproved)
                 importProgressExpanded = true
                 clearBatchReview()
-                batchApproved = false
-                batchReviewTree = null
             }
         } catch (rejected: BatchUploadEnqueueRejected) {
             // Keep the reviewed selection; a changed queue or membership must not crash or start work.
@@ -659,6 +671,26 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                 onPlayAudio = { store?.loadUploadAnnotationAudio(target.library, it) },
                 onRetryAudioPlayback = { store?.loadUploadAnnotationAudio(target.library, it) },
                 onRefresh = { if (target.readAssetId.isNotEmpty()) store?.loadUploadAnnotations(target.library, target.readAssetId) })
+        }
+        batchConnectionReview?.let { review ->
+            AlertDialog(
+                modifier = Modifier.testTag("batch-connection-review"),
+                onDismissRequest = { batchConnectionReview = null },
+                title = { Text(t("Use this connection?", "使用当前网络？")) },
+                text = { Text(t("This connection may use mobile data. Your choice applies to this upload run.",
+                    "当前网络可能使用移动流量。此选择仅对本次上传有效。")) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        batchConnectionReview = null
+                        runBatchInBackground(review.command, review.target, connectionApproved = true)
+                    }, modifier = Modifier.testTag("batch-connection-confirm")) { Text(t("Use this connection", "使用当前网络")) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { batchConnectionReview = null }, modifier = Modifier.testTag("batch-connection-cancel")) {
+                        Text(t("Cancel", "取消"))
+                    }
+                },
+            )
         }
         if (destinationDialogAction != null && state.session != null && !state.covered) AlertDialog(
             modifier = Modifier.testTag("upload-destination-dialog"),
@@ -1299,7 +1331,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     val issue = batchEnqueueIssue ?: batchQueue?.enqueueIssue(batchReview, destination)
                                         ?: if (batchQueue == null) BatchUploadEnqueueIssue.ACCOUNT_UNAVAILABLE else null
                                     val needsNetworkConfirmation = !batchApproved && (batchNetworkReviewRequired ||
-                                        uploadNetwork(context) != UploadNetwork.UNMETERED)
+                                            readUploadNetwork(context) != UploadNetwork.UNMETERED)
                                     BatchUploadReviewCard(
                                         selectedCount = batchReview.size, selectedBytes = batchReview.sumOf { it.bytes },
                                         skippedCount = batchSkipped,
@@ -1317,7 +1349,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                         zh = words.zh,
                                         onRememberFolder = rememberBatchFolder,
                                         onStart = {
-                                            when (batchUploadStartDecision(uploadNetwork(context), batchApproved, needsNetworkConfirmation)) {
+                                            when (batchUploadStartDecision(readUploadNetwork(context), batchApproved, needsNetworkConfirmation)) {
                                                 BatchUploadStartDecision.REQUIRE_NETWORK_REVIEW -> batchNetworkReviewRequired = true
                                                 BatchUploadStartDecision.ACKNOWLEDGE_NETWORK_REVIEW -> {
                                                     batchApproved = true; batchNetworkReviewRequired = false
@@ -1328,10 +1360,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                 }
                                             }
                                         },
-                                        onDiscard = {
-                                            clearBatchReview()
-                                            batchApproved = false
-                                        },
+                                        onDiscard = ::clearBatchReview,
                                     )
                                 }
                                 key(state.generation, state.session?.account_id) {

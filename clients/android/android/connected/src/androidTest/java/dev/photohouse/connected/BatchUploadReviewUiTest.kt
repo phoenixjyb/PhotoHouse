@@ -15,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.photohouse.connected.core.*
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -90,6 +91,64 @@ class BatchUploadReviewUiTest {
 
     @Test fun chineseNetworkChangeRequiresVisibleReview() = networkChange(true)
     @Test fun englishNetworkChangeRequiresVisibleReview() = networkChange(false)
+
+    @Test fun queuedResumeAndRetryRequireSeparateApproval() {
+        val account = GeneratedMemoirReaderApi.ACCOUNT
+        val library = GeneratedMemoirReaderApi.LIBRARY
+        val persisted = InMemoryUploadQueuePersistence()
+        val paused = UploadQueueRecord("resume", "1".repeat(32), "a".repeat(32), "resume.jpg", "generated:resume",
+            8, UploadKind.IMAGE, "", status = "paused", destinationLibraryId = library)
+        val failed = UploadQueueRecord("retry", "2".repeat(32), "b".repeat(32), "retry.jpg", "generated:retry",
+            8, UploadKind.IMAGE, "", status = "failed", destinationLibraryId = library)
+        persisted.save(account, listOf(paused, failed))
+        val sent = mutableListOf<String>()
+        val api = object : PhotoHouseApi by GeneratedMemoirReaderApi() {
+            override val uploadEnabled = true
+            override suspend fun createUploadSession(token: Bearer, request: UploadSessionRequest): UploadSession {
+                sent += request.requestId
+                return UploadSession("c".repeat(32), request.bytes, request.bytes, 4, "complete", "901", library)
+            }
+        }
+        val store = ConnectedStore(api, PhoneUploadRuntime.scope, batchPersistence = persisted, batchSource = { record ->
+            BatchUploadSource(record.filename, record.bytes, record.kind, { ByteArray(8).inputStream() }, record.locator)
+        })
+        var connection = UploadNetwork.UNKNOWN
+        rule.setContent { ConnectedApp(store, initialLanguage = "zh", readUploadNetwork = { connection }) }
+        try {
+            rule.runOnIdle { store.authenticate("+12025550123", "synthetic-password") }
+            rule.waitUntil(5_000) { store.state.value.library == library && !store.state.value.busy }
+            rule.onNodeWithTag("connected-screen").performScrollToNode(hasTestTag("import-workspace-toggle"))
+            rule.onNodeWithTag("import-workspace-toggle").performClick()
+            rule.onNodeWithTag("batch-queue-toggle").performScrollTo().performClick()
+            rule.onNodeWithTag("batch-resume").performScrollTo().performClick()
+            rule.onNodeWithTag("batch-connection-review").assertIsDisplayed()
+            rule.onNodeWithTag("batch-connection-confirm").assertTextEquals("使用当前网络")
+            rule.onNodeWithTag("batch-connection-cancel").performClick()
+            rule.runOnIdle {
+                assertFalse(store.backgroundBatchUploadsActive())
+                assertEquals(emptyList<String>(), sent)
+            }
+            rule.onNodeWithTag("batch-resume").performClick()
+            rule.onNodeWithTag("batch-connection-confirm").performClick()
+            rule.waitUntil(10_000) { store.batchUploads!!.state.value.first().record.status == "complete" && !store.backgroundBatchUploadsActive() }
+            rule.runOnIdle {
+                connection = UploadNetwork.METERED
+                assertEquals(listOf(paused.requestId), sent)
+                assertEquals("failed", store.batchUploads!!.state.value.last().record.status)
+            }
+            rule.onNodeWithTag("import-retry-batch-${failed.batch}").performScrollTo().performClick()
+            rule.onNodeWithTag("batch-connection-review").assertIsDisplayed()
+            rule.onNodeWithTag("batch-connection-cancel").performClick()
+            rule.onNodeWithTag("batch-retry").performScrollTo().performClick()
+            rule.onNodeWithTag("batch-connection-review").assertIsDisplayed()
+            rule.runOnIdle { assertEquals(listOf(paused.requestId), sent) }
+            rule.onNodeWithTag("batch-connection-confirm").performClick()
+            rule.waitUntil(10_000) { store.batchUploads!!.state.value.last().record.status == "complete" && !store.backgroundBatchUploadsActive() }
+            rule.runOnIdle { assertEquals(listOf(paused.requestId, failed.requestId), sent) }
+        } finally {
+            rule.runOnIdle { store.endBackgroundBatchUploads() }
+        }
+    }
 
     private fun networkChange(zh: Boolean) {
         // The network changes without recomposition, just as it can while a picker is open.
