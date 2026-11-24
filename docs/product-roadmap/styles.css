@@ -119,3 +119,5 @@ h1 span { color: var(--green); font-weight: 510; }
 .evidence-link, .evidence-label { max-width: 100%; overflow-wrap: anywhere; }
 .area-link, .button-primary, .clear-button { min-height: 44px; }
 @media (min-width: 761px) and (max-width: 1100px) { .priority-grid { grid-template-columns: 1fr; } }
+.language-switch button { min-height: 44px; min-width: 44px; }
+.brand, #source-link { display: inline-flex; align-items: center; min-height: 44px; }
