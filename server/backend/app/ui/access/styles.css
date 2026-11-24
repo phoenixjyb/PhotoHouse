@@ -393,9 +393,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .memory-navigation a{color:var(--ink);text-decoration:none;white-space:normal;font-size:.9rem;font-weight:600;display:flex;align-items:center;min-height:44px;padding:.35rem .4rem;border-radius:8px}
 .memory-navigation a[aria-current="location"]{color:var(--accent);box-shadow:inset 0 -2px var(--accent)}
 .memory-navigation a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-#saved-memory-panel,#memory-books,#grid,#albums-panel,#assistant-panel{scroll-margin-top:var(--memory-navigation-offset,140px)}
+#library-home-heading,#saved-memory-panel,#memory-books,#grid,#library-tools,#albums-panel,#assistant-panel{scroll-margin-top:var(--memory-navigation-offset,140px)}
 #people-review,#people-review-step{scroll-margin-top:var(--memory-navigation-offset,140px)}
-#saved-memory-panel :is(h2,h3):focus-visible,#memory-books :is(h2,h3):focus-visible,#grid:focus-visible{outline:2px solid var(--accent);outline-offset:6px}
+#library-home-heading:focus-visible,#library-tools:focus-visible,#saved-memory-panel :is(h2,h3):focus-visible,#memory-books :is(h2,h3):focus-visible,#grid:focus-visible{outline:2px solid var(--accent);outline-offset:6px}
 .memory-home{display:grid;grid-template-columns:1fr 1fr;min-height:340px;border-radius:24px;overflow:hidden;background:#eee6d9;margin-bottom:2.5rem}
 .memory-home-copy{padding:2.8rem;align-self:center}
 .memory-home-copy h2{font:400 clamp(1.9rem,3.2vw,3rem)/1.3 Georgia,"Songti SC",serif;letter-spacing:-.04em;max-width:none;margin:1rem 0}

@@ -98,6 +98,16 @@ class MemoryGroupingTests(unittest.TestCase):
         }, max_gap_seconds=1800)
         self.assertEqual("within_recorded_window", naive.candidates[0].time_reason)
 
+    def test_unrepresentable_utc_time_only_excludes_its_own_candidate(self):
+        result = propose([record("1")], [record("2"), record("3")], times={
+            "1": "2026-05-01T10:00:00Z",
+            "2": "9999-12-31T23:59:59-01:00",
+            "3": "2026-05-01T11:02:00+01:00",
+        })
+        self.assertEqual("ready", result.status)
+        self.assertEqual(["3"], [item.asset_id for item in result.candidates])
+        self.assertEqual("within_recorded_window", result.candidates[0].time_reason)
+
     def test_date_precision_means_written_day_not_exact_window(self):
         seed, candidate = record("1"), record("2")
         result = propose([seed], [candidate], times={

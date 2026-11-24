@@ -85,9 +85,9 @@ def names(person):
 
 
 class KinshipGraph:
-    def __init__(self, document):
+    def __init__(self, document, *, account_id=None):
         try:
-            self._initialize(document)
+            self._initialize(document, account_id=account_id)
         except (ValueError, TypeError, KeyError, UnicodeError, RecursionError, OverflowError):
             raise KinshipUnavailable() from None
 
@@ -96,10 +96,14 @@ class KinshipGraph:
         # A caller cannot mutate a loaded snapshot behind its digest.
         return deepcopy(self._document)
 
-    def _initialize(self, document):
-        require(type(document) is dict and set(document) == {
-            'schema', 'graph_id', 'revision', 'perspective_id', 'scope', 'people', 'assertions'})
-        require(type(document['schema']) is int and document['schema'] == 1)
+    def _initialize(self, document, *, account_id=None):
+        require(type(document) is dict and type(document.get('schema')) is int)
+        schema = document['schema']
+        fields = ({'schema', 'graph_id', 'revision', 'perspective_id', 'scope', 'people', 'assertions'}
+                  if schema == 1 else
+                  {'schema', 'graph_id', 'revision', 'perspectives', 'scope', 'people', 'assertions'}
+                  if schema == 2 else None)
+        require(fields is not None and set(document) == fields)
         label(document['graph_id'], 128)
         revision = document['revision']
         require((type(revision) is int and 1 <= revision < 2**63) or
@@ -115,6 +119,7 @@ class KinshipGraph:
         if scope['library_id'] is not None: label(scope['library_id'], 128)
         self._account_ids = frozenset(accounts)
         self._library_id = scope['library_id']
+        self.schema = schema
         people = document['people']
         require(type(people) is list and 1 <= len(people) <= 256)
         self.people = {}; self._names = defaultdict(set)
@@ -134,8 +139,21 @@ class KinshipGraph:
                 d.identifier(binding['person_id']); label(binding['label'])
             self.people[pid] = deepcopy(person)
             for name in names(person): self._names[folded(name)].add(pid)
-        self.perspective_id = document['perspective_id']
-        require(type(self.perspective_id) is str and self.perspective_id in self.people)
+        if schema == 1:
+            self.perspective_id = document['perspective_id']
+            require(type(self.perspective_id) is str and self.perspective_id in self.people)
+            self._perspectives = None
+        else:
+            perspectives = document['perspectives']
+            require(type(perspectives) is dict and set(perspectives) == set(accounts))
+            require(all(type(account) is str and type(person_id) is str and person_id in self.people
+                        for account, person_id in perspectives.items()))
+            self._perspectives = deepcopy(perspectives)
+            if account_id is None:
+                self.perspective_id = None
+            else:
+                require(account_id in self._perspectives)
+                self.perspective_id = self._perspectives[account_id]
         facts = document['assertions']
         require(type(facts) is list and len(facts) <= 2048)
         self._edges = defaultdict(lambda: defaultdict(set)); roles = defaultdict(set)
@@ -202,7 +220,8 @@ class KinshipGraph:
         for value in self._edges.values():
             require(len(value['mother']) <= 1 and len(value['father']) <= 1)
         self._document = deepcopy(document)
-        self.digest = d.digest(document)
+        self.digest = (d.digest(document) if schema == 1 or account_id is None else
+                       d.digest({'graph': document, 'account_id': account_id}))
 
     def _apply(self, base, paths):
         result = set()
@@ -223,6 +242,7 @@ class KinshipGraph:
             return set(self._names[phrase]), False, None
         parts = [part.strip() for part in re.split(r"'s\s*|的", phrase) if part.strip()]
         current = {self.perspective_id} if base is None else set(base)
+        current.discard(None)
         if parts and parts[0] in self._names and parts[0] not in SELECTORS:
             current = set(self._names[parts.pop(0)])
             if len(current) != 1: return current, False, None
@@ -239,6 +259,13 @@ class KinshipGraph:
 
     def allows(self, account_id, library_id):
         return account_id in self._account_ids and library_id == self._library_id
+
+    def for_account(self, account_id, library_id):
+        if not self.allows(account_id, library_id):
+            return None
+        if self.schema == 1:
+            return self
+        return KinshipGraph(self._document, account_id=account_id)
 
     def catalog_ids(self, targets, reviewed_people):
         reviewed_people = tuple(p for p in reviewed_people if p.library_id == self._library_id)
@@ -393,4 +420,4 @@ class PrivateKinshipProvider:
 
     def get(self, account_id, library_id):
         graph = load_private_graph(self.path, self.source_root)
-        return graph if graph.allows(account_id, library_id) else None
+        return graph.for_account(account_id, library_id)

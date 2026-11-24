@@ -130,7 +130,7 @@ internal fun ImportStatusPanel(
                                                 "uploading" -> t("Uploading", "上传中")
                                                 "paused" -> t("Paused", "已暂停")
                                                 "failed" -> t("Upload interrupted", "上传中断")
-                                                "cancelling" -> t("Cancelling", "正在取消")
+                                                "cancelling" -> t("Cancellation pending", "待确认取消")
                                                 "cancelled" -> t("Cancelled", "已取消")
                                                 "complete" -> importStatusLabel(received ?: UploadImportStatus.RECEIVED, zh)
                                                 else -> t("Status unknown", "状态未知")
@@ -139,7 +139,7 @@ internal fun ImportStatusPanel(
                                             Text(status, style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("batch-status-${record.localId}"))
                                             if (activity?.localId == record.localId) Text(uploadQueueActivityMessage(activity, zh),
                                                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("batch-stage-${record.localId}"))
-                                            if (record.status == "failed") Text(uploadFailureMessage(record.error, zh),
+                                            if (record.status == "failed" || (record.status == "cancelling" && record.error != null)) Text(uploadFailureMessage(record.error, zh),
                                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
                                                 modifier = Modifier.testTag("batch-error-${record.localId}"))
                                             if (record.status == "complete") Text(t("Preview and playback readiness not confirmed", "预览与播放准备状态未确认"),
@@ -153,7 +153,9 @@ internal fun ImportStatusPanel(
                                                 if (record.status == "uploading") OutlinedButton(onClick = onPause, enabled = actionsEnabled, modifier = Modifier.testTag("batch-pause")) { Text(t("Pause", "暂停")) }
                                                 if (record.status in setOf("paused", "queued", "needs_hash")) OutlinedButton(onClick = { onResume(record.localId) }, enabled = actionsEnabled && activity == null, modifier = Modifier.testTag("batch-resume")) { Text(t("Resume batch", "继续本批")) }
                                                 if (record.status == "failed") OutlinedButton(onClick = { onRetry(record.localId) }, enabled = actionsEnabled && activity == null, modifier = Modifier.testTag("batch-retry")) { Text(t("Retry and continue batch", "重试并继续本批")) }
-                                                if (record.status !in setOf("complete", "cancelled")) OutlinedButton(onClick = { onCancel(record.localId) }, enabled = actionsEnabled, modifier = Modifier.testTag("batch-cancel")) { Text(t("Cancel", "取消")) }
+                                                if (record.status !in setOf("complete", "cancelled")) OutlinedButton(onClick = { onCancel(record.localId) }, enabled = actionsEnabled, modifier = Modifier.testTag("batch-cancel")) {
+                                                    Text(if (record.status == "cancelling") t("Retry cancellation", "重试取消") else t("Cancel", "取消"))
+                                                }
                                             }
                                             HorizontalDivider()
                                         }

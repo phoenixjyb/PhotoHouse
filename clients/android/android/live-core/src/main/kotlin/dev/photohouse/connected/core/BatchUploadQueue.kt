@@ -61,6 +61,7 @@ class BatchUploadQueue(
     @Volatile private var account: String? = null
     @Volatile private var epoch = 0L
     private var job: Job? = null
+    private var cancelling: Pair<String, Long>? = null
     /** Observed on the owner's dispatcher; a notification owner must stop when this becomes false. */
     val running: Boolean get() = job?.isActive == true
 
@@ -68,7 +69,17 @@ class BatchUploadQueue(
         pause(); account = accountId
         val loaded = persistence.load(accountId).take(100)
         val restored = loaded.map { record ->
-            if (record.status == "uploading") record.copy(status = "paused") else record
+            when (record.status) {
+                "uploading" -> record.copy(status = "paused")
+                "failed" -> when (record.error) {
+                    "Cancellation needs a connection" ->
+                        record.copy(status = "cancelling", error = CANCEL_CONNECTION)
+                    "Cancellation could not be confirmed" ->
+                        record.copy(status = "cancelling", error = CANCEL_UNCONFIRMED)
+                    else -> record
+                }
+                else -> record
+            }
         }
         mutable.value = restored.map { UploadQueueItem(it) }
         if (restored != loaded) persistence.save(accountId, restored)
@@ -125,26 +136,41 @@ class BatchUploadQueue(
     }
     fun pause() {
         epoch++; job?.cancel(); job = null
+        cancelling = null
         mutableActivity.value = null
         mutable.value = mutable.value.map { if (it.record.status == "uploading") it.copy(record = it.record.copy(status = "paused")) else it }
         persistCurrent()
     }
     fun cancel(localId: String) {
         val record = mutable.value.firstOrNull { it.record.localId == localId }?.record ?: return
-        if (record.status in setOf("complete", "cancelled", "cancelling")) return
+        if (record.status in setOf("complete", "cancelled") || cancelling == (localId to epoch)) return
         pause(); val run = epoch
         val accountAtCancel = account ?: return
+        if (record.uploadId == null) {
+            update(localId) { it.copy(status = "cancelled", error = null) }
+            return
+        }
         val bearer = runCatching { token() }.getOrNull()
-        if (record.uploadId == null) { update(localId) { it.copy(status = "cancelled") }; return }
-        if (bearer == null || !valid()) { update(localId) { it.copy(status = "failed", error = "Cancellation needs a connection") }; return }
-        update(localId) { it.copy(status = "cancelling") }
+        if (bearer == null || !valid()) {
+            update(localId) { it.copy(status = "cancelling", error = CANCEL_CONNECTION) }
+            return
+        }
+        update(localId) { it.copy(status = "cancelling", error = null) }
+        // Persisted cancelling records can be retried after restart. Coalesce
+        // repeated taps while this queue still owns the request.
+        val pendingCancellation = localId to run
+        cancelling = pendingCancellation
         scope.launch {
-            val confirmed = runCatching { api.cancelUploadSession(bearer, record.uploadId) }.getOrNull()
-            if (epoch == run && account == accountAtCancel && bearer === runCatching { token() }.getOrNull()) {
-                if (confirmed?.state == "cancelled" && confirmed.uploadId == record.uploadId && confirmed.bytes == record.bytes &&
-                    confirmed.destinationLibraryId == record.destinationLibraryId)
-                    update(localId) { it.copy(status = "cancelled", error = null) }
-                else update(localId) { it.copy(status = "failed", error = "Cancellation could not be confirmed") }
+            try {
+                val confirmed = runCatching { api.cancelUploadSession(bearer, record.uploadId) }.getOrNull()
+                if (epoch == run && account == accountAtCancel && bearer === runCatching { token() }.getOrNull()) {
+                    if (confirmed?.state == "cancelled" && confirmed.uploadId == record.uploadId && confirmed.bytes == record.bytes &&
+                        confirmed.destinationLibraryId == record.destinationLibraryId)
+                        update(localId) { it.copy(status = "cancelled", error = null) }
+                    else update(localId) { it.copy(error = CANCEL_UNCONFIRMED) }
+                }
+            } finally {
+                if (cancelling == pendingCancellation) cancelling = null
             }
         }
     }
@@ -350,6 +376,8 @@ class BatchUploadQueue(
     private fun validName(value: String) = value.isNotEmpty() && value.length <= 200 && value != "." && value != ".." && value.none { it < ' ' || it == '\u007f' || it == '/' || it == '\\' }
     private fun hex() = UUID.randomUUID().toString().replace("-", "")
     private companion object {
+        const val CANCEL_CONNECTION = "upload:cancel-connection"
+        const val CANCEL_UNCONFIRMED = "upload:cancel-unconfirmed"
         const val MAX_IMAGE = 256L * 1024 * 1024
         const val MAX_VIDEO = 16L * 1024 * 1024 * 1024
         const val MAX_BATCH = 64L * 1024 * 1024 * 1024

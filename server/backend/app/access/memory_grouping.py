@@ -86,10 +86,10 @@ def _time_match(left, right, max_gap_seconds: int):
     right_aware = right_value.utcoffset() is not None
     if left_aware != right_aware:
         return None
-    if left_aware:
-        left_value = left_value.astimezone(timezone.utc)
-        right_value = right_value.astimezone(timezone.utc)
     try:
+        if left_aware:
+            left_value = left_value.astimezone(timezone.utc)
+            right_value = right_value.astimezone(timezone.utc)
         gap = abs((left_value - right_value).total_seconds())
     except (OverflowError, TypeError):
         return None

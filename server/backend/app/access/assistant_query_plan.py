@@ -69,6 +69,10 @@ _SEARCH_OPEN = re.compile(
 _REFINE_OPEN = re.compile(
     r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
     r'refine(?a:\b)|only(?a:\b)|filter(?a:\b)|just(?a:\b)|what about(?a:\b)|how about(?a:\b)|same but(?a:\b)|make it(?a:\b))', re.I)
+_KEEP_PEOPLE_DIRECTIVE = re.compile(
+    r'不要(?:改变|更改|变更)人物(?:条件|筛选)|'
+    r'(?<![a-z0-9_])keep\s+(?:(?:the\s+)?same\s+|the\s+)?'
+    r'(?:person|people)\s+filter(?![a-z0-9_])', re.I)
 _CONNECTORS = re.compile(r'(?a:\b)(and|or|both|together|with)(?a:\b)|和|跟|与|及|或者|或|一起|同时', re.I)
 _CONNECTORS_WITHOUT_NAMED_JOIN = re.compile(
     r'(?a:\b)(and|or|both|together)(?a:\b)|和|与|及|或者|或|一起|同时', re.I)
@@ -136,6 +140,8 @@ def query_mode(words):
         return None
     value = d.fold(words.strip())
     if _MEDIA_ONLY_REFINEMENT.fullmatch(value):
+        return 'refine'
+    if _KEEP_PEOPLE_DIRECTIVE.fullmatch(value):
         return 'refine'
     if _SEARCH_OPEN.match(value):
         return 'search'
@@ -592,12 +598,6 @@ def plan_query(words, *, now: datetime, entities: dict,
         return _clarify('invalid_previous_filters')
 
     query = words.strip()
-    media_only_mask = _media_only_refinement(query)
-    if media_only_mask is not None and not _consumed_label(query, media_only_mask, labels):
-        # Keep this as a positive media-slot replacement only. Other text,
-        # including quoted text and every exclusion/safety condition, retains
-        # the normal closed parser and clarification behavior.
-        query = media_only_mask
     quoted = list(_QUOTE.finditer(query))
     quote_removed = _QUOTE.sub(' ', query)
     # Any remaining quote glyph means an unmatched quote; multiple literals
@@ -609,6 +609,33 @@ def plan_query(words, *, now: datetime, entities: dict,
         return _clarify('empty_literal', previous_filters if refine else None)
     if literal is not None and len(literal.encode('utf-8')) > 512:
         return _clarify('text_too_long', previous_filters if refine else None)
+
+    # Interpret the directive only in the syntax surface. A quoted phrase or
+    # the tail of an explicit content search must retain the user's wording.
+    content_start = _CONTENT_INTRO.search(quote_removed)
+    syntax_end = content_start.start() if content_start else len(quote_removed)
+    directives = list(_KEEP_PEOPLE_DIRECTIVE.finditer(quote_removed, 0, syntax_end))
+    if len(directives) > 1:
+        return _clarify('unsupported_condition', previous_filters if refine else None)
+    keep_people = bool(directives)
+    if keep_people:
+        start, end = directives[0].span()
+        masked = quote_removed[:start] + ' ' * (end - start) + quote_removed[end:]
+        if _consumed_label(quote_removed, masked, labels):
+            return _clarify('ambiguous_entities', previous_filters if refine else None)
+        previous_people = previous_filters.get('people') if previous_filters is not None else None
+        if not refine or previous_people is None:
+            return _clarify('people_reference_unavailable', previous_filters if refine else None)
+        if groups['people'] and set(groups['people']) != set(previous_people['ids']):
+            return _clarify('conflicting_people_reference', previous_filters)
+        quote_removed = masked
+
+    if not quoted:
+        media_only_mask = _media_only_refinement(quote_removed)
+        if media_only_mask is not None and not _consumed_label(quote_removed, media_only_mask, labels):
+            # Keep this as a positive media-slot replacement only. Other
+            # phrases retain the ordinary grammar and exclusion checks.
+            quote_removed = media_only_mask
 
     # Bare "content" nouns remain legacy syntax (for example 不限内容).
     # They do not independently introduce a new unquoted literal.
@@ -798,7 +825,7 @@ def plan_query(words, *, now: datetime, entities: dict,
         return _clarify('missing_conditions')
     if dates:
         filters['date'] = _date_range(*dates[0])
-    if people:
+    if people and not keep_people:
         filters['people'] = {'ids': people, 'match': people_mode}
     if tags:
         filters['tags'] = {'ids': tags, 'match': 'any'}

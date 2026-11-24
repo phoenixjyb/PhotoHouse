@@ -459,6 +459,9 @@ class AssistantQueryPlanTests(unittest.TestCase):
              {'media': ['image'], 'text': '2032-09-03 videos Sample Child'}),
             ('找包含“不要海边”的照片', {'media': ['image'], 'text': '不要海边'}),
             ('find photos containing "妈妈"', {'media': ['image'], 'text': '妈妈'}),
+            ('找包含“不要改变人物条件”的照片', {'media': ['image'], 'text': '不要改变人物条件'}),
+            ('find photos containing "keep the person filter"',
+             {'media': ['image'], 'text': 'keep the person filter'}),
         )
         for words, expected in cases:
             with self.subTest(words=words):
@@ -524,6 +527,30 @@ class AssistantQueryPlanTests(unittest.TestCase):
         self.assert_clarifies('only videos', 'refine_without_context', refine=True)
         self.assert_clarifies('only videos', 'invalid_previous_filters',
                               previous={'people': {'ids': ['301'], 'match': 'unknown'}}, refine=True)
+
+    def test_keep_person_filter_directive_preserves_only_an_existing_reviewed_filter(self):
+        previous = {
+            'media': ['image'], 'people': {'ids': ['301'], 'match': 'all'},
+            'date': {'from': '2032-09-01', 'to': '2032-09-30'},
+        }
+        october = {**previous, 'date': {'from': '2032-10-01', 'to': '2032-10-31'}}
+        self.assertEqual(query_mode('不要改变人物条件'), 'refine')
+        self.assertEqual(query_mode('keep the person filter'), 'refine')
+        self.assert_ready('改成十月份，不要改变人物条件', october,
+                          previous=previous, refine=True)
+        self.assert_ready('make it October, keep the person filter', october,
+                          previous=previous, refine=True)
+        self.assert_ready('不要改变人物条件', previous, previous=previous, refine=True)
+        self.assert_clarifies('不要改变人物条件', 'refine_without_context', refine=True)
+        self.assert_clarifies('keep the person filter', 'people_reference_unavailable',
+                              previous={'media': ['image']}, refine=True)
+
+        other_person = {**ENTITIES, 'groups': {'people': ['302'], 'tags': [], 'locations': []},
+                        'labels': ['Sample Adult']}
+        self.assert_clarifies(
+            'make it October, keep the person filter for Sample Adult',
+            'conflicting_people_reference', entities=other_person,
+            previous=previous, refine=True)
 
     def test_previous_filters_accept_all_current_discovery_date_shapes(self):
         previous = {

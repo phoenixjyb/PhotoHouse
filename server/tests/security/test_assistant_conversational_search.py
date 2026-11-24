@@ -281,6 +281,38 @@ class AssistantConversationalSearchTests(unittest.TestCase):
         self.assertEqual(recovered['filters']['date'],
                          {'from': '2032-09-01', 'to': '2032-09-30'})
 
+    def test_keep_person_filter_directive_preserves_reviewed_person_in_same_session(self):
+        self.enable_v2_text_schema()
+        first_response = self.turn('find photos of Sample Child from September 2032', version=2)
+        self.assertEqual(first_response.status_code, 200, first_response.text)
+        first = first_response.json()
+        self.assertEqual(first['kind'], 'results', first)
+        self.assertEqual(first['filters']['people'], {'ids': ['301'], 'match': 'any'})
+
+        videos_response = self.turn('only videos', context=first['context'], version=2)
+        self.assertEqual(videos_response.status_code, 200, videos_response.text)
+        videos = videos_response.json()
+        self.assertEqual(videos['kind'], 'results', videos)
+        self.assertEqual(videos['filters']['people'], first['filters']['people'])
+        self.assertEqual(videos['filters']['media'], ['video'])
+
+        result_response = self.turn('make it October, keep the person filter',
+                                    context=videos['context'], version=2)
+        self.assertEqual(result_response.status_code, 200, result_response.text)
+        result = result_response.json()
+        self.assertEqual(result['kind'], 'results', result)
+        self.assertEqual(result['filters'], {
+            'media': ['video'], 'people': {'ids': ['301'], 'match': 'any'},
+            'date': {'from': '2032-10-01', 'to': '2032-10-31'},
+        })
+        self.assertEqual(result['context']['filters'], result['filters'])
+
+        conflict = self.turn('make it October, keep the person filter for Sample Adult',
+                             context=videos['context'], version=2).json()
+        self.assertEqual(conflict['kind'], 'clarification', conflict)
+        self.assertEqual(conflict['filters'], videos['filters'])
+        self.assertEqual(conflict['context'], videos['context'])
+
     def test_negation_unknown_constraints_and_unknown_names_never_broaden(self):
         phrases = (
             '帮我找一下不要示例儿童的照片',

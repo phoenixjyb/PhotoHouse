@@ -63,6 +63,27 @@ Consult [source packaging](SOURCE_PACKAGING.md), [native assistant qualification
 contracts before preparing a specific operation. Backups of one SQLite file do
 not establish recovery of the complete multi-store system.
 
+## Browser access on the home network
+
+Use the same HTTPS PhotoHouse URL on the home network and away from home. On a
+router or local DNS server you manage, point the existing PhotoHouse hostname at
+the Windows server's LAN address. Home devices that use that DNS server can
+then connect directly while keeping the same sign-in and certificate hostname.
+
+An operator can check the direct route before changing DNS. Replace the example
+values with the already configured hostname, HTTPS port and LAN address.
+
+```sh
+curl -q --noproxy '*' --fail --connect-timeout 5 --max-time 15 \
+  --resolve 'photos.example.net:8443:192.168.1.20' \
+  'https://photos.example.net:8443/ui'
+```
+
+Open the regular PhotoHouse URL on a phone or tablet after the local DNS change
+and confirm that it resolves to the LAN address on that network. Certificate
+validation should succeed throughout. Removing the local DNS record restores
+the normal hostname resolution for that network.
+
 ## Reboot, tasks and workers
 
 The October 29 rollout preserved existing task contracts and verified the new
