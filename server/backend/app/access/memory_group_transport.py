@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from .library import LibraryRoute, _integer, _query
-from .memory_groups import MemoryGroups, MEMORY_GROUP_FIELDS, _csv
+from .memory_groups import MemoryGroups, MEMORY_GROUP_FIELDS, MEMORY_GROUP_SPLIT_FIELDS, _csv
 from .memory_group_schema import GROUP_REVISIONS, verify_memory_group_schema
 from .service import AccessService
 from .stories import _uuid
@@ -39,8 +39,8 @@ def capabilities(runtime, token, library, enabled, vectors):
             versions=[tuple(row) for row in db.execute('SELECT version_num FROM alembic_version')]
             ready = (enabled and len(versions)==1 and versions[0][0] in GROUP_REVISIONS
                 and verify_memory_group_schema(db))
-            return {'version': 1, 'enabled': bool(ready),
-                    'manual': bool(ready and member['role'] in {'owner', 'contributor'}),
+            manual = bool(ready and member['role'] in {'owner', 'contributor'})
+            return {'version': 1, 'enabled': bool(ready), 'manual': manual, 'split': manual,
                     'suggestions': bool(ready and vectors is not None),
                     'max_members': 24, 'needs_review': True}
 
@@ -140,3 +140,10 @@ async def update_group(group_id: str, request: Request):
     runtime, token, library = await scope(request)
     body = await _body(request, MEMORY_GROUP_FIELDS, max_body=24576)
     return response(await run_in_threadpool(call, runtime, 'save', token, library, body, _uuid(group_id)))
+
+
+@router.post('/memory-groups/{group_id}/split')
+async def split_group(group_id: str, request: Request):
+    runtime, token, library = await scope(request)
+    body = await _body(request, MEMORY_GROUP_SPLIT_FIELDS, max_body=2048)
+    return response(await run_in_threadpool(call, runtime, 'split', token, library, body, _uuid(group_id)))

@@ -373,6 +373,21 @@ try:
                         'language':'zh','byline':'讲述人：家人','mutation_id':str(__import__('uuid').uuid4())},asset_id=101)
                 fixture.client.close()
                 fixture.client=build_client()
+            elif scenario=='memory-group-day-media':
+                samples = [(1100, 'video/mp4', '2026-01-01T23:45:00-08:00', 'family-a')]
+                samples.extend((aid, 'image/jpeg', '2026-01-01', 'family-a') for aid in range(1101, 1121))
+                samples.extend(((1160, 'video/mp4', '2026-01-02', 'family-a'),
+                                (1161, 'video/mp4', '2026-01-01', 'family-b')))
+                with fixture.connection() as db:
+                    for aid, mime, capture, library in samples:
+                        db.execute('''INSERT INTO assets(id,path,hash_sha256,status,mime,width,height,duration_sec,taken_at)
+                            VALUES(?,?,?,'active',?,240,135,?,?)''',
+                            (aid, f'synthetic/{aid}', f'fixture-{aid}', mime, 8 if mime.startswith('video/') else None, capture))
+                        db.execute('INSERT INTO access_asset_libraries VALUES (?,?)', (aid, library))
+                    db.commit()
+                for aid, mime, _, _ in samples:
+                    Image.new('RGB', (240,135), '#9cb5aa' if mime.startswith('video/') else '#d3bb97').save(
+                        derived/f'thumbnails/256/{aid}.jpg')
             elif scenario=='related-day-seed':
                 fixture.mutate("UPDATE assets SET taken_at='2025-06-01T23:30:00+08:00' WHERE id=101")
                 fixture.mutate("UPDATE assets SET taken_at=NULL,path='private-synthetic/微信图片_20250601.jpg' WHERE id=102")

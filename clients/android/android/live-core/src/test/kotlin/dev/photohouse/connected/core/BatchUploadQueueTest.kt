@@ -5,6 +5,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
@@ -61,6 +62,66 @@ class BatchUploadQueueTest {
         filename = "queued-$index.jpg", locator = "content://queued/$index", bytes = 8,
         kind = UploadKind.IMAGE, sha256 = "", status = status,
     )
+
+    @Test fun connectionChangePausesBeforeSendingAnotherChunkAndResumesAtConfirmedOffset() = runTest {
+        var connectionAllowed = true
+        val original = Api().apply { conflict = false }
+        val api = object : PhotoHouseApi by original {
+            override suspend fun createUploadSession(token: Bearer, request: UploadSessionRequest) =
+                original.createUploadSession(token, request).copy(chunkBytes = 4)
+            override suspend fun uploadSession(token: Bearer, uploadId: String) =
+                original.uploadSession(token, uploadId).copy(chunkBytes = 4)
+            override suspend fun uploadChunk(token: Bearer, uploadId: String, offset: Long, chunk: ByteArray, sha256: String): UploadSession {
+                val reply = original.uploadChunk(token, uploadId, offset, chunk, sha256)
+                if (offset == 0L) connectionAllowed = false
+                return reply.copy(chunkBytes = 4)
+            }
+        }
+        val queue = BatchUploadQueue(api, this, InMemoryUploadQueuePersistence(), { source() }, { true }, { token },
+            ioDispatcher = StandardTestDispatcher(testScheduler))
+        queue.attach("account-a")
+        val first = queue.enqueue(listOf(source())).single()
+        val other = queue.enqueue(listOf(source())).single()
+
+        queue.resume(first) { connectionAllowed }
+        advanceUntilIdle()
+        val stopped = queue.state.value.first().record
+        assertEquals("paused", stopped.status)
+        assertEquals(4L, stopped.offset)
+        assertEquals(1, original.chunks)
+        assertEquals(0, original.queried)
+        assertFalse(queue.running)
+
+        connectionAllowed = true
+        queue.resume(first) { connectionAllowed }
+        advanceUntilIdle()
+        val restored = queue.state.value.associateBy { it.record.localId }
+        assertEquals(stopped.requestId, restored.getValue(first).record.requestId)
+        assertEquals("complete", restored.getValue(first).record.status)
+        assertEquals("needs_hash", restored.getValue(other).record.status)
+        assertEquals(1, original.sessionRequests.size)
+        assertEquals(1, original.queried)
+        assertEquals(2, original.chunks)
+    }
+
+    @Test fun deniedConnectionKeepsResumeAndRetryRecordsUntouched() = runTest {
+        val persistence = InMemoryUploadQueuePersistence()
+        val initial = listOf(queuedRecord(1, "paused"), queuedRecord(2, "failed"))
+        persistence.save("account-a", initial)
+        val api = Api()
+        val queue = BatchUploadQueue(api, this, persistence, { error("Cannot open source") }, { true }, { token })
+        queue.attach("account-a")
+
+        queue.resume(initial.first().localId) { false }
+        queue.retry(initial.last().localId) { false }
+        queue.retryBatch(initial.last().batch) { false }
+        advanceUntilIdle()
+
+        assertEquals(initial, persistence.load("account-a"))
+        assertFalse(queue.running)
+        assertTrue(api.sessionRequests.isEmpty())
+        assertEquals(0, api.chunks)
+    }
 
     @Test fun enqueuePreflightReportsAndRejectsInvalidInputsWithoutMutation() {
         val persistence = InMemoryUploadQueuePersistence()

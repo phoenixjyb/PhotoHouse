@@ -12,9 +12,16 @@ window.PhotoHouseMemoryGroups = {
         title:'家庭回忆组', open:'家庭回忆组', loading:'正在载入…', unavailable:'家庭回忆组暂时不可用。',
         disabled:'此相册库尚未开启家庭回忆组。', failed:'暂时无法载入，请重试。', retry:'重试载入',
         create:'新建回忆组', edit:'编辑', save:'明确保存回忆组', cancel:'取消编辑',
+        split:'拆分回忆组', splitHelp:'选择要移入新组的画面。关联的家人原话随对应画面移动。',
+        splitCount:(moved, kept)=>`移入新组 ${moved} 张 · 原组保留 ${kept} 张`,
+        splitItem:n=>`移动画面 ${n}`, splitSaved:'已将选定画面移入新回忆组。',
         startStory:'开始写故事', checkingStory:'正在核对回忆组…', storyChanged:'回忆组已变化或暂不可用，请刷新后重试。',
         theme:'主题', themes:{trip:'旅行',growing_up:'成长',birthday:'生日',grandparents:'祖辈',year_in_review:'年度回顾',everyday:'日常'},
         addMedia:'从当前相册选择画面', included:'组内画面', remove:'移出此组',
+        sameDayHeading:date=>`${date}拍摄的画面`,
+        sameDay:'查看同日照片和视频', sameDayMore:'更多同日画面', sameDayAdd:'加入回忆组',
+        sameDayPhoto:'照片', sameDayVideo:'视频', sameDayEmpty:'本页没有可加入的同日画面。',
+        sameDayFailed:'暂时无法查看同日画面。请重试。',
         suggestions:'查找相似画面', suggestionsHelp:'建议会参考记录的拍摄时间和图片相似度。结果可以逐项修改；不会自动保存。', coverMore:'覆盖更多已选画面',
         timeReason:{within_recorded_window:'拍摄时间接近',same_recorded_day:'记录在同一天'}, seed:'匹配画面', noSuggestions:'没有找到建议画面。',
         notes:'选择要关联的家人原话', noNotes:'没有可关联的家人原话。只会保存来源链接，不复制原文。',
@@ -32,9 +39,16 @@ window.PhotoHouseMemoryGroups = {
         title:'Family memory groups', open:'Family memory groups', loading:'Loading…', unavailable:'Memory groups are temporarily unavailable.',
         disabled:'Memory groups are not enabled for this library.', failed:'Could not load this yet. Try again.', retry:'Retry loading',
         create:'Create a memory group', edit:'Edit', save:'Save this memory group', cancel:'Cancel editing',
+        split:'Split group', splitHelp:'Select photos or videos for the new group. Linked notes move with their items.',
+        splitCount:(moved, kept)=>`${moved} to the new group · ${kept} stay here`,
+        splitItem:n=>`Move item ${n}`, splitSaved:'The selected items moved to a new memory group.',
         startStory:'Start a story', checkingStory:'Checking this memory group…', storyChanged:'This memory group changed or is unavailable. Refresh and try again.',
         theme:'Theme', themes:{trip:'Trip',growing_up:'Growing up',birthday:'Birthday',grandparents:'Grandparents',year_in_review:'Year in review',everyday:'Everyday'},
         addMedia:'Choose from this gallery', included:'Group photos', remove:'Remove from group',
+        sameDayHeading:date=>`From ${date}`,
+        sameDay:'Find photos and videos from this day', sameDayMore:'More from this day', sameDayAdd:'Add to group',
+        sameDayPhoto:'Photo', sameDayVideo:'Video', sameDayEmpty:'There are no items to add on this page.',
+        sameDayFailed:'Could not load photos and videos from this day. Try again.',
         suggestions:'Find similar photos', suggestionsHelp:'Suggestions use recorded capture time and image similarity. Review and edit each result; nothing is saved automatically.', coverMore:'Cover more selected moments',
         timeReason:{within_recorded_window:'Recorded times are close',same_recorded_day:'Recorded on the same day'}, seed:'Matched photo', noSuggestions:'No suggested photos found.',
         notes:'Link family originals', noNotes:'No family originals can be linked. Only source links are saved; original text is not copied.',
@@ -70,21 +84,28 @@ window.PhotoHouseMemoryGroups = {
       if(safeThumbnail(item)){
         const img=node('img');img.src=item.thumbnail_url;img.alt='';img.loading='lazy';figure.append(img);
       }
-      const caption=node('figcaption',item?.taken_at?`${t('capture')}: ${formatCaptureTime(item.taken_at)}`:`${item?.kind==='video'?'Video':'Photo'}`);
+      const caption=node('figcaption',item?.taken_at?`${t('capture')}: ${formatCaptureTime(item.taken_at)}`:t(item?.kind==='video'?'sameDayVideo':'sameDayPhoto'));
       figure.append(caption);return figure;
     };
-    function formatCaptureTime(value) {
-      if(typeof value!=='string')return '';
+    function captureParts(value) {
+      if(typeof value!=='string'||value.length>128)return null;
       const match=/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(Z|[+-]\d{2}:?\d{2})?)?$/.exec(value);
-      if(!match)return value;
-      const [,year,month,day,hour,minute,,zone]=match;const y=Number(year),m=Number(month),d=Number(day);
-      const check=new Date(0);check.setUTCFullYear(y,m-1,d);check.setUTCHours(0,0,0,0);if(check.getUTCFullYear()!==y||check.getUTCMonth()!==m-1||check.getUTCDate()!==d)return value;
-      if(hour!==undefined&&(Number(hour)>23||Number(minute)>59))return value;
-      if(zone&&zone!=='Z'){const digits=zone.slice(1).replace(':','');if(Number(digits.slice(0,2))>23||Number(digits.slice(2))>59)return value;}
+      if(!match)return null;
+      const [,year,month,day,hour,minute,second,zone]=match;const y=Number(year),m=Number(month),d=Number(day);
+      const check=new Date(0);check.setUTCFullYear(y,m-1,d);check.setUTCHours(0,0,0,0);if(y===0||check.getUTCFullYear()!==y||check.getUTCMonth()!==m-1||check.getUTCDate()!==d)return null;
+      if(hour!==undefined&&(Number(hour)>23||Number(minute)>59||Number(second||0)>59))return null;
+      if(zone&&zone!=='Z'){const digits=zone.slice(1).replace(':','');if(Number(digits.slice(0,2))>23||Number(digits.slice(2))>59)return null;}
+      return match;
+    }
+    function formatCaptureTime(value) {
+      const parts=captureParts(value);
+      if(!parts)return typeof value==='string'?value:'';
+      const [,year,month,day,hour,minute,,zone]=parts;
       let timezone='';if(zone==='Z')timezone=' UTC';else if(zone){const digits=zone.slice(1).replace(':','');timezone=` UTC${zone[0]}${digits.slice(0,2)}:${digits.slice(2)}`;}
       const date=scopeNow()?.language==='en'?`${year}-${month}-${day}`:`${year}年${Number(month)}月${Number(day)}日`;
       return hour===undefined?date:`${date} · ${hour}:${minute}${timezone}`;
     }
+    const recordedDay = value => captureParts(value)?.slice(1,4).join('-')||null;
     function setStatus(state, text, bad=false) {
       if(!active(state)||!state.status)return;state.status.textContent=text;state.status.dataset.state=bad?'error':'ready';
     }
@@ -170,7 +191,12 @@ window.PhotoHouseMemoryGroups = {
         const items=node('div','', 'memory-group-items');for(const item of group.items||[])items.append(image(item));card.append(items);
         renderSources(card,group.sources||[]);
         if(typeof onStory==='function'){let start;start=button(t('startStory'),()=>startStory(state,group,start),'memory-group-start-story');card.append(start);}
-        if(group.can_edit&&state.capabilities.manual){const edit=button(t('edit'),()=>openEditor(state,group),'memory-group-edit');card.append(edit);}
+        if(group.can_edit&&state.capabilities.manual){
+          card.append(button(t('edit'),()=>openEditor(state,group),'memory-group-edit'));
+          if(state.capabilities.split&&group.asset_ids.length>1){
+            card.append(button(t('split'),()=>openSplitEditor(state,group),'memory-group-split'));
+          }
+        }
         state.groupsBox.append(card);
       }
       if(state.capabilities.manual)state.groupsBox.append(button(t('create'),()=>openEditor(state,null),'memory-group-create'));
@@ -179,10 +205,124 @@ window.PhotoHouseMemoryGroups = {
       const values=[story?.asset_id,story?.asset?.id,...(Array.isArray(story?.asset_ids)?story.asset_ids:[])].filter(idOk);
       return [...new Set(values)];
     }
-    function openEditor(state, group) {
-      if(!active(state)||state.pendingSave)return;
-      if(state.editor&&state.dirty){if(state.saving||!window.confirm(t('confirmLeave')))return;clearEditor(state);}
+    function beginEditor(state, group) {
+      if(!active(state)||state.pendingSave)return false;
+      if(state.editor&&state.dirty&&(state.saving||!window.confirm(t('confirmLeave'))))return false;
       clearEditor(state);state.editing=group||null;
+      return true;
+    }
+    function openSplitEditor(state,group) {
+      if(!state.capabilities.split||!group.can_edit||group.asset_ids.length<2||!beginEditor(state,group))return;
+      const editor=node('form','', 'memory-group-editor');
+      const heading=node('h3',t('split'));
+      heading.tabIndex=-1;
+      const help=node('p',t('splitHelp'));
+      const count=node('p','','memory-group-count');
+      count.setAttribute('aria-live','polite');
+      const selected=new Set();
+      const save=button(t('split'),()=>{},'memory-group-split-save');
+      save.type='submit';
+      function updateSelection(){
+        count.textContent=t('splitCount')(selected.size,group.asset_ids.length-selected.size);
+        save.disabled=selected.size<1||selected.size>=group.asset_ids.length;
+      }
+      editor.append(heading,help,count);
+      for(const [i,item] of group.items.entries()){
+        const choice=node('label','', 'memory-group-gallery-choice memory-group-split-choice');
+        const box=document.createElement('input');
+        box.type='checkbox';
+        box.setAttribute('aria-label',t('splitItem')(i+1));
+        box.addEventListener('change',()=>{
+          if(box.checked)selected.add(item.id);
+          else selected.delete(item.id);
+          state.dirty=selected.size>0;
+          updateSelection();
+        });
+        choice.append(box,image(item));
+        editor.append(choice);
+      }
+      editor.append(save,button(t('cancel'),()=>{
+        if(state.dirty&&!window.confirm(t('confirmLeave')))return;
+        clearEditor(state);setStatus(state,'');
+      },'memory-group-cancel'));
+      editor.addEventListener('submit',async event=>{
+        event.preventDefault();
+        if(!active(state)||state.pendingSave||save.disabled)return;
+        const mutation=window.crypto?.randomUUID?.();
+        if(!uuidOk(mutation)){setStatus(state,t('saveError'),true);return;}
+        const body={asset_ids:group.asset_ids.filter(id=>selected.has(id)).join(','),
+          revision:group.revision,mutation_id:mutation};
+        state.pendingSave={body,path:`/memory-groups/${encodeURIComponent(group.id)}/split`,splitFrom:group.id};
+        await sendPendingSave(state);
+      });
+      updateSelection();
+      state.editor=editor;
+      state.groupsBox.append(editor);
+      heading.focus();
+    }
+    function sameDayPicker(state,editor,availableToAdd,add) {
+      const day=recordedDay(state.asset.taken_at);
+      if(!day)return ()=>{};
+      const anchor=state.asset.id;
+      const panel=section(t('sameDayHeading')(formatCaptureTime(day)),'memory-group-same-day');
+      const heading=panel.querySelector('h4');heading.tabIndex=-1;
+      const status=node('p','', 'memory-group-day-status');status.setAttribute('role','status');
+      const rows=node('div','', 'memory-group-day-items');
+      let before=null,items=null;
+      const current=()=>active(state)&&state.editor===editor&&!state.pendingSave;
+      function render() {
+        if(items===null)return;
+        rows.replaceChildren();
+        for(const item of items.filter(availableToAdd)){
+          const card=node('div','', 'memory-group-day-item');
+          card.dataset.kind=item.kind;
+          const kind=t(item.kind==='video'?'sameDayVideo':'sameDayPhoto');
+          const action=button(t('sameDayAdd'),()=>{
+            if(!current()||!availableToAdd(item))return;
+            const index=[...rows.children].indexOf(card);
+            add(item);
+            if(!card.isConnected){
+              const neighbor=rows.children[Math.min(index,rows.childElementCount-1)]?.querySelector('button');
+              (neighbor||(!load.hidden?load:heading)).focus({preventScroll:true});
+            }
+          },'memory-group-day-add');
+          action.setAttribute('aria-label',`${t('sameDayAdd')} · ${kind} · ${formatCaptureTime(item.taken_at)}`);
+          const controls=node('div','', 'memory-group-day-controls');
+          controls.append(node('span',kind),action);card.append(image(item),controls);rows.append(card);
+        }
+        status.textContent=rows.childElementCount?'':t('sameDayEmpty');
+      }
+      const load=button(t('sameDay'),async()=>{
+        if(!current())return;
+        load.disabled=true;status.textContent=t('loading');
+        try{
+          const result=await request(state,'/story-workspace/related-media',{method:'POST',
+            body:{asset_ids:anchor,before_id:before||''}});
+          if(!current())return;
+          if(!result||result.version!==1||result.library_id!==String(state.library)||result.needs_review!==true||
+              JSON.stringify(result.seed_asset_ids)!==JSON.stringify([anchor])||
+              JSON.stringify(result.recorded_days)!==JSON.stringify([day])||typeof result.has_more!=='boolean'||
+              !Array.isArray(result.items)||result.items.length>20)throw Error('Invalid same-day media page');
+          let prior=before?BigInt(before):2n**63n;
+          for(const item of result.items){
+            if(!idOk(item?.id)||item.id===anchor||BigInt(item.id)>=prior||!['image','video'].includes(item.kind)||
+                item.match_reason!=='same_recorded_capture_day'||recordedDay(item.taken_at)!==day||!safeThumbnail(item))
+              throw Error('Invalid same-day media item');
+            prior=BigInt(item.id);
+          }
+          if(result.has_more?(!idOk(result.next_before_id)||BigInt(result.next_before_id)>prior||
+              BigInt(result.next_before_id)>=(before?BigInt(before):2n**63n)):result.next_before_id!==null)
+            throw Error('Invalid same-day media cursor');
+          before=result.next_before_id;items=result.items;
+          load.textContent=t('sameDayMore');load.hidden=!result.has_more;render();
+        }catch(_){if(current())status.textContent=t('sameDayFailed');}
+        finally{if(current())load.disabled=false;}
+      },'memory-group-day-load');
+      panel.append(load,status,rows);editor.append(panel);
+      return render;
+    }
+    function openEditor(state, group) {
+      if(!beginEditor(state,group))return;
       const baseIds=group?(group.asset_ids||[]).filter(idOk):[state.asset.id];
       const selected=new Set(baseIds);const autoSuggestedIds=new Set();const exclusions=new Set((group?.excluded_asset_ids||[]).filter(idOk));
       state.editorRevision++;
@@ -199,7 +339,7 @@ window.PhotoHouseMemoryGroups = {
       for(const key of ['trip','growing_up','birthday','grandparents','year_in_review','everyday']){const option=node('option',t('themes')[key]);option.value=key;option.selected=(group?.theme||'everyday')===key;theme.append(option);}
       themeLabel.append(theme);editor.append(themeLabel);
       const count=node('p',t('count')(selected.size,24),'memory-group-count');editor.append(count);
-      let excludedList=null;
+      let excludedList=null,refreshDayChoices=()=>{};
       const members=section(t('included'),'memory-group-members');const memberRows=node('div','', 'memory-group-items');members.append(memberRows);editor.append(members);
       const manualPicker=section(t('addMedia'),'memory-group-gallery');
       const available=new Map();for(const item of [state.asset,...state.manualItems])if(idOk(item?.id)&&!available.has(item.id))available.set(item.id,item);
@@ -208,6 +348,7 @@ window.PhotoHouseMemoryGroups = {
           if(id!==state.asset.id||group){const remove=button(t('remove'),()=>{markEditorChanged(state);selected.delete(id);autoSuggestedIds.delete(id);exclusions.add(id);for(const box of suggestionList.querySelectorAll('input'))if(box.value===id)box.checked=false;renderMembers();renderGallery();renderStoryChoices();},'memory-group-remove');wrap.append(remove);}memberRows.append(wrap);}
         count.textContent=t('count')(selected.size,24);
         if(excludedList)excludedList.textContent=exclusions.size?`${t('excluded')}: ${exclusions.size}`:'';
+        refreshDayChoices();
       };
       const renderGallery=()=>{
         manualPicker.replaceChildren(node('h4',t('addMedia')));
@@ -225,7 +366,13 @@ window.PhotoHouseMemoryGroups = {
         if(has)sec.querySelector('p')?.remove();if(previous)previous.replaceWith(sec);else editor.append(sec);
       };
       state.refreshStoryChoices=renderStoryChoices;
-      renderMembers();renderGallery();editor.append(manualPicker);renderStoryChoices();
+      renderMembers();renderGallery();editor.append(manualPicker);
+      refreshDayChoices=sameDayPicker(state,editor,item=>!selected.has(item.id)&&!exclusions.has(item.id),item=>{
+        if(selected.size>=24){setStatus(state,t('invalid'),true);return;}
+        markEditorChanged(state);available.set(item.id,item);selected.add(item.id);
+        renderMembers();renderGallery();renderStoryChoices();
+      });
+      renderStoryChoices();
       excludedList=node('p',exclusions.size?`${t('excluded')}: ${exclusions.size}`:'', 'memory-group-exclusions');editor.append(excludedList);
       const suggestionSection=section(t('suggestions'),'memory-group-suggestion-section');
       suggestionSection.append(node('p',t('suggestionsHelp')));
@@ -278,10 +425,17 @@ window.PhotoHouseMemoryGroups = {
     async function sendPendingSave(state) {
       const pending=state.pendingSave;if(!pending||!active(state))return;
       state.saving=true;lockEditor(state,true);setStatus(state,t('loading'));
-      try{const result=await request(state,pending.path,{method:pending.body.revision==='0'?'POST':'PUT',body:pending.body});
+      const isSplit=!!pending.splitFrom;
+      const method=isSplit||pending.body.revision==='0'?'POST':'PUT';
+      try{
+        const result=await request(state,pending.path,{method,body:pending.body});
         if(!active(state)||state.pendingSave!==pending)return;
-        if(!matchesSavedRequest(result,pending,state))throw Error('Invalid saved group response');
-        state.pendingSave=null;state.saving=false;setStatus(state,t('saved'));clearEditor(state);await loadGroups(state);
+        const matches=isSplit?result?.version===1&&result.library_id===String(state.library)&&
+          result.source_id===pending.splitFrom&&uuidOk(result.created_id)&&result.created_id!==result.source_id:
+          matchesSavedRequest(result,pending,state);
+        if(!matches)throw Error('Invalid saved group response');
+        state.pendingSave=null;state.saving=false;clearEditor(state);await loadGroups(state);
+        setStatus(state,t(isSplit?'splitSaved':'saved'));
       }catch(_){if(!active(state)||state.pendingSave!==pending)return;
         state.saving=false;setStatus(state,t('failedSave'),true);state.editor?.querySelector('.memory-group-save-recovery')?.remove();const actions=node('div','', 'memory-group-save-recovery');actions.append(button(t('retrySave'),()=>sendPendingSave(state),'memory-group-save-retry'),button(t('discard'),()=>{state.pendingSave=null;clearEditor(state);setStatus(state,'');},'memory-group-save-discard'));
         state.editor?.append(actions);
@@ -293,7 +447,8 @@ window.PhotoHouseMemoryGroups = {
       const ticket=++state.readSequence;
       try{const caps=await request(state,'/memory-groups/capabilities');if(!active(state)||ticket!==state.readSequence)return;
         if(!caps||caps.version!==1||typeof caps.enabled!=='boolean'||(caps.library_id!==undefined&&caps.library_id!==String(state.library)))throw Error('Invalid capabilities');
-        state.capabilities={enabled:caps.enabled,manual:Boolean(caps.manual),suggestions:Boolean(caps.suggestions)};
+        state.capabilities={enabled:caps.enabled,manual:Boolean(caps.manual),
+          split:caps.split===true,suggestions:Boolean(caps.suggestions)};
         if(!caps.enabled){state.groupsBox.replaceChildren(node('p',t('disabled')));return;}
         state.groupsBox.replaceChildren();if(!caps.manual)state.groupsBox.append(node('p',t('manualDisabled')));if(!caps.suggestions)state.groupsBox.append(node('p',t('suggestionsDisabled')));
         await loadGroups(state);

@@ -36,7 +36,11 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>{prompts++;d.accept();});
  await page.goto('https://photohouse.test/ui');await page.locator('#phone').fill('+12025550100');await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();
 
- const open=async()=>{await page.evaluate(()=>window.__relatedTest.open(['101'],'trip'));await page.locator('#story-workspace').waitFor();await page.locator('#story-related summary').click();};
+ const open=async()=>{
+  await page.locator('#memory-home').waitFor({state:'visible'});
+  await page.evaluate(()=>window.__relatedTest.open(['101'],'trip'));
+  await page.locator('#story-workspace').waitFor();await page.locator('#story-related summary').click();
+ };
  const find=page.locator('#story-related-find'),rows=page.locator('.story-related-card'),adds=rows.locator('button[data-related-id]');
  await open();assert.equal(requests.filter(r=>r.path==='/story-workspace/related-media').length,0);
  await find.click();await rows.first().waitFor();assert.equal(await rows.count(),20);

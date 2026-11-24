@@ -4634,6 +4634,20 @@
    "gap": "Windows migration/vector qualification and client acceptance remain separate"
   },
   {
+   "source": "backend/app/access/memory_group_transport.py",
+   "owner": "router",
+   "method": "POST",
+   "path": "/memory-groups/{group_id}/split",
+   "handler": "split_group",
+   "surface": "photohouse",
+   "scope": "The editable group, its exact revision and its active library members",
+   "capabilities": [
+    "story.write"
+   ],
+   "current_control": "Default-off e7 schema, current membership and edit authority, CSRF, a nonempty proper subset, atomic revision and audit writes, exact idempotent retry",
+   "gap": "Windows migration and installed-client acceptance remain separate"
+  },
+  {
    "source": "backend/app/routers/ui.py",
    "owner": "router",
    "method": "GET",
