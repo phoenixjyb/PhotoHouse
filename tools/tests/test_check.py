@@ -109,8 +109,10 @@ class CpuEnvironmentTests(unittest.TestCase):
 
     def test_indexed_photo_stack_checks_are_in_the_api_profile(self):
         self.assertIn("test_photo_stack_index.py", check.API_TESTS)
+        self.assertIn("test_photo_stack_rust.py", check.API_TESTS)
         self.assertIn("test_library_photo_stacks.py", check.API_TESTS)
         self.assertIn("test_photo_stack_index.py", check.WINDOWS_CPU_TESTS)
+        self.assertIn("test_photo_stack_rust.py", check.WINDOWS_CPU_TESTS)
         self.assertIn("test_library_photo_stacks.py", check.WINDOWS_CPU_TESTS)
         self.assertIn("test_library_photo_stacks_qualification.py", check.API_TESTS)
         self.assertIn("test_library_photo_stacks_qualification.py", check.WINDOWS_CPU_TESTS)
