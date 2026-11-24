@@ -5,9 +5,11 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
+import httpx
 
 import test_oral_history_intake as fixture
 from app.main import create_app
+from app.access.assistant_speech import LocalAssistantAsr
 from app.access.oral_history_schema import SESSION, SECTION, MUTATION, STATEMENTS
 from app.access.transport import AccessRuntime, COOKIE, csrf_token
 from app.access.oral_history_intake import STATUS_FIELDS
@@ -43,9 +45,10 @@ class OralHistoryTransportTests(unittest.TestCase):
         self.client = self.build()
         self.addCleanup(self.client.close)
 
-    def build(self, *, enabled=True):
-        return TestClient(create_app(access_runtime=self.runtime,
-            oral_history_intake_enabled=enabled), base_url='https://photohouse.test',
+    def build(self, *, enabled=True, asr=None):
+        return TestClient(create_app(access_runtime=self.runtime, assistant_asr=asr,
+            oral_history_intake_enabled=enabled, oral_history_transcription_enabled=asr is not None),
+            base_url='https://photohouse.test',
             client=('192.0.2.30', 24567))
 
     def request(self, method, path, *, body=None, content=None, headers=None, client=None):
@@ -54,7 +57,7 @@ class OralHistoryTransportTests(unittest.TestCase):
             json=body, content=content)
 
     def create_body(self, **changes):
-        return self.base.body(processing_consent=False, **changes)
+        return self.base.body(**({'processing_consent': False} | changes))
 
     @staticmethod
     def session_path(ident, library='family-a'):
@@ -68,10 +71,11 @@ class OralHistoryTransportTests(unittest.TestCase):
         return self.request('POST', self.session_path(record['session_id'])+'/sections',
             content=audio if audio is not None else fixture.wav(), headers=headers)
 
-    def completed_record(self, *, library='family-a', token=None, audio=None):
+    def completed_record(self, *, library='family-a', token=None, audio=None,
+                         processing_consent=False):
         headers={'Authorization':'Bearer '+token} if token else None
         created=self.request('POST',f'/oral-history/v1/libraries/{library}/sessions',
-            body=self.create_body(),headers=headers).json()
+            body=self.create_body(processing_consent=processing_consent),headers=headers).json()
         append_headers={'X-PhotoHouse-Request-Id':str(uuid.uuid4()),
             'X-PhotoHouse-Expected-Revision':str(created['revision']),
             'X-PhotoHouse-Ordinal':str(created['next_ordinal']),'Content-Type':'audio/wav'}
@@ -92,6 +96,93 @@ class OralHistoryTransportTests(unittest.TestCase):
     def assert_private(self, response):
         self.assertEqual(response.headers.get('cache-control'), 'no-store')
         self.assertEqual(response.headers.get('pragma'), 'no-cache')
+
+    def transcription_client(self, provider):
+        asr = LocalAssistantAsr(url='http://127.0.0.1:19001/transcribe', model='synthetic',
+                                transport=httpx.MockTransport(provider))
+        client = self.build(asr=asr)
+        self.addCleanup(client.close)
+        return client
+
+    def preview(self, record, *, client=None, token=None, revision=None):
+        path = self.session_path(record['session_id']) + '/sections/0/transcription'
+        return self.request('POST', path,
+                            body={'expected_revision': record['revision'] if revision is None else revision},
+                            headers={'Authorization': 'Bearer ' + token} if token else None,
+                            client=client)
+
+    def test_transcript_requires_author_consent_and_explicit_current_section(self):
+        calls = []
+
+        def speech(request):
+            calls.append(request.content)
+            return httpx.Response(200, json={'text': '公园 in the morning'})
+
+        audio = fixture.wav(800)
+        client = self.transcription_client(speech)
+        opted_in = self.completed_record(audio=audio, processing_consent=True)
+        opted_out = self.completed_record()
+        before = self.counts()
+        self.assertEqual(self.preview(opted_in).status_code, 503)
+        self.assertEqual(self.preview(opted_out, client=client).status_code, 403)
+        self.assertEqual(self.preview(opted_in, client=client, token=self.owner).status_code, 401)
+        self.assertEqual(self.preview(opted_in, client=client, revision=2).status_code, 409)
+        self.assertEqual(calls, [])
+
+        result = self.preview(opted_in, client=client)
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assert_private(result)
+        self.assertEqual(result.json(), {'version': 1, 'session_id': opted_in['session_id'],
+                         'revision': opted_in['revision'], 'ordinal': 0, 'language': 'mixed',
+                         'text': '公园 in the morning', 'saved': False})
+        self.assertEqual(calls, [audio])
+        self.assertEqual(self.counts(), before)
+        status = self.request('GET', self.session_path(opted_in['session_id']))
+        self.assertEqual(status.status_code, 200)
+        self.assertEqual(status.json(), {key: opted_in[key] for key in STATUS_FIELDS})
+
+    def test_transcript_is_withheld_when_the_source_withdraws_during_local_asr(self):
+        record = self.completed_record(processing_consent=True)
+        calls = []
+
+        def speech(request):
+            calls.append(request.content)
+            with closing(self.connect()) as db:
+                db.execute(f"UPDATE {SESSION} SET state='withdrawn',withdrawn_from='completed',"
+                           "withdrawal_request_id=?,withdrawal_request_digest=?,revision=revision+1 WHERE id=?",
+                           (str(uuid.uuid4()), 'a' * 64, record['session_id']))
+                db.commit()
+            return httpx.Response(200, json={'text': 'Generated private transcript'})
+
+        response = self.preview(record, client=self.transcription_client(speech))
+        self.assertEqual(response.status_code, 401)
+        self.assert_private(response)
+        self.assertNotIn('Generated private transcript', response.text)
+        self.assertEqual(len(calls), 1)
+
+    def test_transcription_busy_refuses_without_a_second_provider_call(self):
+        def unused(_request):
+            self.fail('busy recording preview must not call the provider')
+
+        client = self.transcription_client(unused)
+        record = self.completed_record(processing_consent=True)
+        lock = client.app.state.oral_history_transcription_lock
+        with lock:
+            response = self.preview(record, client=client)
+            self.assertEqual(response.status_code, 503)
+            self.assertEqual(response.json(), {'detail': 'Recording transcription is busy'})
+
+    def test_transcription_provider_failure_releases_the_slot_for_an_explicit_retry(self):
+        replies = iter((httpx.Response(200, json={'text': ''}),
+                        httpx.Response(200, json={'text': 'A later machine transcript'})))
+        client = self.transcription_client(lambda _request: next(replies))
+        record = self.completed_record(processing_consent=True)
+        failed = self.preview(record, client=client)
+        self.assertEqual(failed.status_code, 422)
+        self.assertEqual(failed.json(), {'detail': 'Recording transcription unavailable'})
+        retried = self.preview(record, client=client)
+        self.assertEqual(retried.status_code, 200)
+        self.assertEqual(retried.json()['text'], 'A later machine transcript')
 
     def test_create_append_restart_status_exact_retry_and_next_section(self):
         create_body=self.create_body()

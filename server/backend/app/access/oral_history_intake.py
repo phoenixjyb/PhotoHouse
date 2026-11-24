@@ -408,7 +408,8 @@ class OralHistoryIntake:
             self._session(actor, library, ident)
             return self._verified_section_audio(ident, ordinal)
 
-    def completed_audio(self, token, library, ident, ordinal, *, expected_revision):
+    def completed_audio(self, token, library, ident, ordinal, *, expected_revision,
+                        for_transcription=False):
         """Read one verified section only from this author's current completed snapshot."""
         _text(library,128,required=True)
         ident = _uuid(ident)
@@ -421,6 +422,8 @@ class OralHistoryIntake:
                 raise TransportError(409, 'Recording is not completed')
             if session['revision'] != revision:
                 raise TransportError(409, 'Recording changed; refresh before reading')
+            if for_transcription and not session['processing_consent']:
+                raise TransportError(403, 'Recording transcription was not authorized')
             return self._verified_section_audio(ident, ordinal)
 
     def close(self, token, library, ident, *, request_id, expected_revision, cancel=False):

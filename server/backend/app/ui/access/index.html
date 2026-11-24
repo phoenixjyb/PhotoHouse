@@ -338,8 +338,14 @@
             <div class="memory-home-actions oral-history-actions">
               <select id="oral-history-review-section"></select>
               <button id="oral-history-load-audio" class="primary" type="button" data-oral-word="loadAudio">Load audio</button>
+              <button id="oral-history-load-transcript" class="quiet" type="button" data-oral-word="loadTranscript" hidden>Transcribe locally</button>
             </div>
             <audio id="oral-history-playback" controls preload="none" hidden></audio>
+            <section id="oral-history-transcript" aria-labelledby="oral-history-transcript-heading" hidden>
+              <h4 id="oral-history-transcript-heading" data-oral-word="transcriptHeading">Machine transcript</h4>
+              <p id="oral-history-transcript-text" dir="auto"></p>
+              <p class="fine" data-oral-word="transcriptHelp">Review this draft against the audio. It has not been saved.</p>
+            </section>
           </div>
           <button id="oral-history-back" class="quiet" type="button" data-oral-word="back">Back</button>
         </section>

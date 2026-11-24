@@ -409,6 +409,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 #oral-history-review .oral-history-actions{margin-top:0}
 #oral-history-review-section{width:auto}
 #oral-history-playback{display:block;max-width:100%;margin-top:1rem}
+#oral-history-transcript-text{white-space:pre-wrap;overflow-wrap:anywhere}
 .memory-home-art{position:relative;background:#a0aa93;min-height:300px;overflow:hidden}
 .memory-home-art img{width:100%;height:100%;position:absolute;inset:0;object-fit:cover}
 .memory-home-art::after{content:"";position:absolute;inset:55% 0 0;background:linear-gradient(transparent,#242a24a6);pointer-events:none}

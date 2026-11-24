@@ -22,6 +22,11 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
       sectionNumber:'Section {number}', loadAudio:'Load audio', back:'Back',
       loadingAudio:'Loading this section…', audioReady:'Audio ready to play.',
       audioUnavailable:'This section is unavailable. Try loading it again.', playback:'Play the saved section',
+      loadTranscript:'Transcribe locally', transcriptHeading:'Machine transcript',
+      transcriptHelp:'Review this draft against the audio. It has not been saved.',
+      transcribing:'Transcribing this section on your PhotoHouse server…',
+      transcriptReady:'A draft transcript is ready to review.',
+      transcriptUnavailable:'Local transcription is unavailable for this section. Try again later.',
       uncertain:'The server did not confirm this action. Try the same action again.',
       changed:'This recording has changed. Reopen this panel to check the saved sections.',
       unavailable:'Your recordings are unavailable. Reopen this panel to try again.',
@@ -46,6 +51,11 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
       sectionNumber:'第 {number} 段', loadAudio:'加载音频', back:'返回',
       loadingAudio:'正在加载本段…', audioReady:'音频已就绪，可以播放。',
       audioUnavailable:'暂时无法打开本段，请重新加载。', playback:'播放已保存的本段录音',
+      loadTranscript:'在本机转写', transcriptHeading:'机器转写稿',
+      transcriptHelp:'请对照录音检查这份转写稿。它尚未保存。',
+      transcribing:'正在通过 PhotoHouse 服务器转写本段…',
+      transcriptReady:'转写稿已就绪，可以核对。',
+      transcriptUnavailable:'本段暂时无法在本机转写，请稍后重试。',
       uncertain:'服务器尚未确认。请重试同一操作。',
       changed:'录音已发生变化。请重新打开此面板，查看已保存的段落。',
       unavailable:'暂时无法打开你的录音。请重新打开此面板重试。',
@@ -59,6 +69,8 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
   const finished = element('finished'), completedPanel = element('completed');
   const completedList = element('completed-list'), review = element('review'), back = element('back');
   const reviewTitle = element('review-title'), reviewSection = element('review-section'), loadAudio = element('load-audio');
+  const loadTranscript = element('load-transcript'), transcript = element('transcript');
+  const transcriptText = element('transcript-text'), transcriptionEnabled = panel.dataset.transcription === 'enabled';
   const uuid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
   const digest = /^[0-9a-f]{64}$/;
   const maxSections = 180;
@@ -136,6 +148,8 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
     completedList.hidden = !!reviewed || !completedList.childElementCount;
     review.hidden = !reviewed;
     back.disabled = loadAudio.disabled = reviewSection.disabled = !!task;
+    loadTranscript.hidden = !transcriptionEnabled || reviewed?.processing_consent !== true;
+    loadTranscript.disabled = !!task;
     for (const button of completedList.querySelectorAll('button')) button.disabled = !!task;
     status.textContent = text(notice);
     for (const field of form.querySelectorAll('input,select')) field.disabled = !!task || !!pendingCreate;
@@ -185,6 +199,11 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
     playbackURL = null;
   }
 
+  function clearTranscript() {
+    transcriptText.textContent = '';
+    transcript.hidden = true;
+  }
+
   function clear() {
     owner = null;
     task?.abort();
@@ -195,6 +214,7 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
     }
     clearSection();
     clearPlayback();
+    clearTranscript();
     task = recording = pendingCreate = pendingFinish = session = null;
     completed = reviewed = null;
     loaded = false;
@@ -289,6 +309,7 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
   back.addEventListener('click', () => {
     if (!current(owner) || task) return;
     clearPlayback();
+    clearTranscript();
     const returnTo = reviewed ? completedList.querySelectorAll('button')[completed.indexOf(reviewed)] : finished;
     if (!reviewed) {
       completed = null;
@@ -304,6 +325,7 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
 
   reviewSection.addEventListener('change', () => {
     clearPlayback();
+    clearTranscript();
     notice = '';
     paint();
   });
@@ -324,6 +346,28 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
       playback.src = playbackURL;
       playback.hidden = false;
       notice = 'audioReady';
+    });
+  });
+
+  loadTranscript.addEventListener('click', () => {
+    const source = reviewed, ordinal = reviewSection.selectedIndex;
+    if (!current(owner) || task || !transcriptionEnabled || source?.processing_consent !== true ||
+        ordinal < 0 || ordinal >= source.section_count) return;
+    clearTranscript();
+    void run('transcribing', 'transcriptUnavailable', async (binding, call) => {
+      const result = await call('/' + source.session_id + '/sections/' + ordinal + '/transcription', {
+        method:'POST', body:{expected_revision:source.revision},
+      });
+      if (!current(binding) || reviewed !== source || reviewSection.selectedIndex !== ordinal) return;
+      if (result?.version !== 1 || result.session_id !== source.session_id ||
+          result.revision !== source.revision || result.ordinal !== ordinal || result.saved !== false ||
+          !['zh', 'en', 'mixed', 'unknown'].includes(result.language) ||
+          typeof result.text !== 'string' || !result.text.trim() || new TextEncoder().encode(result.text).length > 1024) {
+        throw new Error('Invalid recording transcript');
+      }
+      transcriptText.textContent = result.text;
+      transcript.hidden = false;
+      notice = 'transcriptReady';
     });
   });
 
