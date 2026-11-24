@@ -1111,13 +1111,17 @@
   async function loadAssistantCapabilities(epoch) {
     try {
       const result=await request(`/assistant/v1/capabilities?${new URLSearchParams({library_id:state.library||''})}`,{epoch});
-      if(stale(epoch))return;
-      if(!result||result.version!==1||result.enabled!==true||result.text!==true){$('assistant-status').textContent=t('assistantUnavailable');return;}
+      if(stale(epoch))return false;
+      if(!result||result.version!==1||result.enabled!==true||result.text!==true){$('assistant-status').textContent=t('assistantUnavailable');return false;}
       assistantState.transcribe=result.transcribe===true;assistantState.speech=result.speech===true;$('assistant-voice').hidden=!assistantState.transcribe;
       $('assistant-form').hidden=false;$('assistant-status').textContent='';syncAssistantControls();
+      return false;
     } catch(error) {
-      if(error.name==='AbortError'||stale(epoch))return;
-      $('assistant-form').hidden=true;$('assistant-status').textContent=t(assistantErrorKey(error));
+      if(error.name==='AbortError'||stale(epoch))return false;
+      const retryOnReopen=error instanceof TypeError||error.status>=500;
+      $('assistant-form').hidden=true;
+      $('assistant-status').textContent=t(retryOnReopen?'assistantCapabilitiesRetry':assistantErrorKey(error));
+      return retryOnReopen;
     }
   }
   function assistantWavValid(file) {
@@ -3291,6 +3295,7 @@
   }
   async function finishAssistantRestore(gate,available,recovery,focusRevision,scrollY){
     const epoch=state.generation;
+    let retryCapabilitiesOnReopen=false;
     try{
       if(assistantRestoreGate!==gate||state.locked||document.hidden)return;
       await loadPanelScript('assistant-private-workspace');
@@ -3298,11 +3303,11 @@
       initializePrivateAssistant();
       const binding=assistantState.binding;
       if(binding)assistantState.binding=Object.freeze({...binding,generation:epoch});
-      await loadAssistantCapabilities(epoch);
+      retryCapabilitiesOnReopen=await loadAssistantCapabilities(epoch);
       if(stale(epoch))return;
       await loadPrivateAssistant(epoch);
       if(stale(epoch))return;
-      assistantNeedsRestore=false;
+      assistantNeedsRestore=retryCapabilitiesOnReopen;
       presentAssistantRecovery(epoch,available,recovery,focusRevision,scrollY);
     }catch{
       if(!stale(epoch))$('assistant-status').textContent=t('assistantPanelLoadFailed');
@@ -3310,8 +3315,14 @@
       if(assistantRestoreGate===gate){
         assistantRestoreGate=null;
         syncAssistantControls();
-        if(!assistantNeedsRestore&&$('assistant-workspace-dialog').open&&document.activeElement===assistantPendingFocus)
-          focusAssistantWorkspace();
+        if(!stale(epoch)&&$('assistant-workspace-dialog').open&&
+           document.activeElement===assistantPendingFocus?.element&&assistantFocusRevision===assistantPendingFocus.revision){
+          if(retryCapabilitiesOnReopen){
+            const notice=$('assistant-status');
+            notice.tabIndex=-1;
+            notice.focus();
+          }else if(!assistantNeedsRestore)focusAssistantWorkspace();
+        }
         assistantPendingFocus=null;
       }
     }
@@ -4566,7 +4577,7 @@
     dialog.showModal();syncAssistantControls();
     if(setHash)history.replaceState(history.state,'','#assistant-panel');
     focusAssistantWorkspace();
-    if(assistantRestoreGate||assistantNeedsRestore)assistantPendingFocus=document.activeElement;
+    if(assistantRestoreGate||assistantNeedsRestore)assistantPendingFocus={element:document.activeElement,revision:assistantFocusRevision};
     restoreAssistantIfNeeded();
   }
   function closeAssistantWorkspace({restoreFocus=true,restoreScroll=true,stopVoice=true,preserveFrameSearch=false}={}){
@@ -4640,9 +4651,11 @@
   }
   Object.assign(words.en,{
     storyPanelLoading:'Loading stories…',storyPanelLoadFailed:'Stories could not load. Try refreshing this panel or reloading PhotoHouse.',
+    assistantCapabilitiesRetry:'Jude couldn’t load. Return and reopen Jude to try again.',
     assistantPanelLoadFailed:'The Assistant could not load. Reopen this panel or reload PhotoHouse.',memoryGroupsRetry:'Retry memory groups'});
   Object.assign(words.zh,{
     storyPanelLoading:'正在加载故事…',storyPanelLoadFailed:'故事暂时无法加载，请刷新此面板或重新加载 PhotoHouse。',
+    assistantCapabilitiesRetry:'暂时无法打开小贾。请返回，再打开小贾重试。',
     assistantPanelLoadFailed:'助手暂时无法加载，请重新打开此面板或重新加载 PhotoHouse。',memoryGroupsRetry:'重试回忆组'});
   async function loadStoryWorkspace(epoch){
     if(stale(epoch)||state.locked||!state.library)return null;
@@ -4693,7 +4706,10 @@
   Object.assign(words.en,{memoryNavigation:'Memory navigation',memoryNavStories:'Stories',memoryNavMemoirs:'Memoirs',memoryMediaRegion:'Photos and videos'});
   const memoryNavigation=$('memory-navigation'),memoryLinks=[...memoryNavigation.querySelectorAll('a')];
   $('assistant-workspace-close').addEventListener('click',()=>closeAssistantWorkspace());
-  $('assistant-panel').addEventListener('toggle',()=>{if($('assistant-panel').open)restoreAssistantIfNeeded();});
+  // Revealing a recovery receipt opens the inline panel programmatically.
+  $('assistant-panel').querySelector(':scope > summary').addEventListener('click',()=>{
+    if(!$('assistant-panel').open)restoreAssistantIfNeeded();
+  });
   $('assistant-workspace-lock').addEventListener('click',()=>{void signOut();});
   $('assistant-workspace-dialog').addEventListener('cancel',event=>{event.preventDefault();closeAssistantWorkspace();});
   let memoryNavigationFrame=0;

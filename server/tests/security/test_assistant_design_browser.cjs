@@ -15,14 +15,168 @@ bridge.on('exit',code=>{if(code){readyReject(new Error(`Fixture bridge exited ($
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 function pass(text){checkpoints.push(text);console.log('PASS '+text);}
 function writeShot(name){const target=path.join(artifacts,name);return page.screenshot({path:target,fullPage:false}).then(()=>fs.chmodSync(target,0o600)).then(()=>target);}
-let browser,context,page;
+let browser,context,page,overrideCapability,releaseCapability;
+let capabilityCaptureCalls=0;
+const capabilityPath='/assistant/v1/capabilities';
+
+async function exerciseCapabilityRecovery(){
+  const trigger=page.locator('#memory-assistant-link'),dialog=page.locator('#assistant-workspace-dialog');
+  const status=dialog.locator('#assistant-status'),composer=dialog.locator('#assistant-text');
+  const capabilityReads=()=>requests.filter(item=>item.path.startsWith(capabilityPath+'?'));
+  const scriptReads=()=>requests.filter(item=>item.path.startsWith('/ui/assistant-private-workspace.js?')).length;
+  const open=async()=>{await trigger.focus();await page.keyboard.press('Enter');await dialog.waitFor();};
+  const close=async()=>{
+    await page.keyboard.press('Escape');
+    await dialog.waitFor({state:'hidden'});
+    assert.equal(await trigger.evaluate(node=>node===document.activeElement),true);
+  };
+  const signIn=async(phone,asset)=>{
+    await page.locator('#phone').fill(phone);
+    await page.locator('#password').fill('Synthetic family passphrase!');
+    await page.locator('#auth-submit').click();
+    await page.locator(`#grid .asset[data-asset-id="${asset}"]`).waitFor();
+  };
+  const reloadGallery=async()=>{await page.goto('https://photohouse.test/ui');await page.locator('#grid .asset').first().waitFor();};
+  const afterRender=()=>page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  const waitForRetryNotice=async copy=>{
+    await page.waitForFunction(expected=>{
+      const notice=document.querySelector('#assistant-status'),pane=document.querySelector('#assistant-workspace-content');
+      const text=notice.getBoundingClientRect(),bounds=pane.getBoundingClientRect();
+      return notice.textContent===expected&&document.activeElement===notice&&
+        text.top>=bounds.top-1&&text.bottom<=bounds.bottom+1;
+    },copy);
+    assert.equal(await status.getAttribute('role'),'status');
+    assert.equal(await composer.isVisible(),false);
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'recovery notice fits the viewport');
+  };
+  const recover=async()=>{
+    const before=capabilityReads().length,modules=scriptReads(),start=performance.now();
+    await open();
+    await composer.waitFor();
+    await page.waitForFunction(()=>document.activeElement?.id==='assistant-private-new');
+    assert.equal(await status.textContent(),'');
+    await afterRender();
+    assert.equal(capabilityReads().length,before+1,'reopen issues one fresh capability GET');
+    assert.equal(capabilityReads().at(-1).status,200);
+    assert.equal(scriptReads(),modules,'reopen reuses the loaded Jude module');
+    return Math.round(performance.now()-start);
+  };
+
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  const zh='暂时无法打开小贾。请返回，再打开小贾重试。';
+  for(const attempt of [1,2]){
+    const before=capabilityReads().length;
+    overrideCapability=async()=>({status:503});
+    await open();
+    await waitForRetryNotice(zh);
+    await afterRender();
+    assert.equal(capabilityReads().length,before+1,`503 attempt ${attempt} makes one capability GET`);
+    if(attempt===1)await writeShot('assistant-capability-retry-zh-390-150.png');
+    await close();
+  }
+  const zhReopenToComposerMs=await recover();
+  await close();
+  pass('Chinese keyboard recovery at 390px/150% reveals the notice; two 503s each require explicit reopen');
+
+  await reloadGallery();
+  await page.locator('#language').click();
+  await page.waitForFunction(()=>document.documentElement.lang==='en'&&document.querySelector('#grid .asset'));
+  overrideCapability=async()=>({abort:true});
+  await open();
+  await waitForRetryNotice('Jude couldn’t load. Return and reopen Jude to try again.');
+  await writeShot('assistant-capability-retry-en-390.png');
+  await close();
+  const enReopenToComposerMs=await recover();
+  await close();
+  pass('English keyboard recovery retries a dropped capability request and clears the notice');
+
+  for(const {response,copy} of [
+    {response:{status:200,body:{version:1,enabled:false,text:false}},copy:/暂时不可用/},
+    {response:{status:403},copy:/无法确认你的访问权限/},
+  ]){
+    await reloadGallery();
+    const before=capabilityReads().length;
+    overrideCapability=async()=>response;
+    await open();
+    await page.waitForFunction(pattern=>new RegExp(pattern).test(document.querySelector('#assistant-status').textContent),copy.source);
+    await page.waitForFunction(()=>!document.querySelector('#assistant-voice-session-status').textContent.startsWith('正在检查'));
+    await close();
+    await open();
+    await afterRender();
+    assert.equal(capabilityReads().length,before+1,'a disabled or denied response is not retried on reopen');
+    assert.match(await status.textContent(),copy);
+    assert.equal(await composer.isVisible(),false);
+    await close();
+  }
+  pass('A successful disabled response and permission denial keep their status and do not retry');
+
+  await reloadGallery();
+  const held=page.waitForRequest(request=>new URL(request.url()).pathname===capabilityPath);
+  let finishOldResponse;
+  const oldResponseFinished=new Promise(resolve=>{finishOldResponse=resolve;});
+  const released=new Promise(resolve=>{releaseCapability=resolve;});
+  overrideCapability=async()=>{await released;return {status:503,finished:finishOldResponse};};
+  await open();
+  await held;
+  assert.match(capabilityReads().at(-1).path,/library_id=family-a$/);
+  await dialog.locator('#assistant-workspace-lock').click();
+  await page.locator('#auth').waitFor();
+  await signIn('+12025550101','201');
+  await open();
+  await composer.waitFor();
+  assert.match(capabilityReads().at(-1).path,/library_id=family-b$/);
+  releaseCapability();
+  releaseCapability=null;
+  await oldResponseFinished;
+  await afterRender();
+  assert.equal(await status.textContent(),'','old account failure cannot replace current status');
+  assert.equal(await composer.isVisible(),true);
+  const readsInCurrentScope=capabilityReads().length;
+  await close();
+  await open();
+  await afterRender();
+  assert.equal(capabilityReads().length,readsInCurrentScope,'the old failure cannot mark the current scope for retry');
+  await close();
+  assert(!requests.some(item=>item.method!=='GET'&&item.path.startsWith('/assistant/')),
+    'capability recovery does not create conversations, send turns, or start voice requests');
+  assert.equal(capabilityCaptureCalls,0,'recovery never requests the microphone');
+  pass('A delayed capability failure from the signed-out scope is discarded with no conversation, turn or capture');
+
+  await page.locator('#logout').click();
+  await page.locator('#auth').waitFor();
+  await signIn('+12025550100','101');
+  await page.setViewportSize({width:1280,height:900});
+  return {zhReopenToComposerMs,enReopenToComposerMs};
+}
 (async()=>{
   await ready;browser=await chromium.launch({headless:true,...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
   context=await browser.newContext({viewport:{width:1280,height:900},hasTouch:true,serviceWorkers:'block'});context.setDefaultTimeout(15000);
+  await context.exposeBinding('__capabilityCaptureAttempt',()=>{capabilityCaptureCalls++;});
+  await context.addInitScript(()=>{
+    if(navigator.mediaDevices)navigator.mediaDevices.getUserMedia=async()=>{
+      await window.__capabilityCaptureAttempt();
+      throw new Error('The generated browser fixture does not capture audio');
+    };
+  });
   await context.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());if(url.origin!=='https://photohouse.test'){blockedOrigins.push(url.origin);await route.abort();return;}
     const headers={...await request.allHeaders()};delete headers['content-length'];headers['sec-fetch-site']=headers['sec-fetch-site']||'same-origin';
     const entry={method:request.method(),path:url.pathname+url.search,body:request.postData()||''};requests.push(entry);
+    if(entry.method==='GET'&&url.pathname===capabilityPath&&overrideCapability){
+      const respond=overrideCapability;overrideCapability=null;
+      const fault=await respond();
+      entry.status=fault.abort?'transport error':fault.status;
+      try{
+        if(fault.abort)await route.abort('failed');
+        else await route.fulfill({status:fault.status,contentType:'application/json',headers:{'cache-control':'no-store'},body:JSON.stringify(fault.body||{})});
+      }catch(error){
+        if(!/closed|handled|canceled|cancelled|Invalid InterceptionId/.test(error.message))throw error;
+      }finally{
+        fault.finished?.();
+      }
+      return;
+    }
     const response=await rpc({method:entry.method,path:entry.path,headers,body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});entry.status=response.status;
     const responseHeaders={...response.headers};delete responseHeaders['content-length'];delete responseHeaders['content-encoding'];
     // The closed gallery fixture intentionally has metadata but no thumbnail files.
@@ -47,6 +201,7 @@ let browser,context,page;
   await writeShot('library-desktop-1280.png');await page.setViewportSize({width:390,height:844});await writeShot('library-phone-390.png');
   await page.setViewportSize({width:320,height:720});await page.evaluate(()=>document.documentElement.style.fontSize='200%');await checkPageReflow('signed-in library at 320 and 200% text');
   await page.evaluate(()=>document.documentElement.style.fontSize='');await page.setViewportSize({width:1280,height:900});pass('Signed-out and signed-in library pages reflow at 320px with 200% root text');
+  const capabilityRecovery=await exerciseCapabilityRecovery();
   const trigger=page.locator('#memory-assistant');await trigger.scrollIntoViewIfNeeded();await trigger.click();
   const dialog=page.locator('#assistant-workspace-dialog');await dialog.waitFor({state:'visible'});
   assert.equal(await dialog.evaluate(node=>node.open),true,'assistant opens as a native modal');
@@ -139,6 +294,8 @@ let browser,context,page;
   await writeShot('assistant-design-zh-phone-forced-colors.png');pass('Reduced-motion and forced-colors retain a visible keyboard focus indicator');
   assert.deepEqual(blockedOrigins,[],'every request stayed on the synthetic fixture origin');assert.deepEqual(pageErrors,[],'page has no uncaught errors');
   const evidence={checkpoints,desktop,phone390,phone320Text150:phone320,phone320Text200:phone200,pausedPaneHeight,pausedStateFixtureOnly:true,focusStyle,screenshots:['signed-out-phone-390.png','library-desktop-1280.png','library-phone-390.png','assistant-design-en-desktop-1280.png','assistant-design-zh-phone-390.png','assistant-design-zh-phone-320-text150.png','assistant-design-zh-phone-320-text200.png','assistant-design-zh-phone-forced-colors.png','assistant-design-paused-phone-text200.png'],syntheticBackend:true,syntheticMedia,blockedOrigins,pageErrors,requests:requests.map(({method,path,status})=>({method,path,status})),textResize:'root font-size 150% and 200%; no browser zoom or deviceScaleFactor',origin:'https://photohouse.test only'};
+  evidence.capabilityRecovery=capabilityRecovery;
+  evidence.screenshots.push('assistant-capability-retry-zh-390-150.png','assistant-capability-retry-en-390.png');
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify(evidence,null,2),{mode:0o600});fs.chmodSync(path.join(artifacts,'result.json'),0o600);
   console.log('Assistant design browser journey ready. Artifacts: '+artifacts);
-})().catch(async error=>{console.error(error.stack||error);process.exitCode=1;try{await writeShot('failure.png');}catch{}}).finally(async()=>{if(context)await context.unrouteAll({behavior:'ignoreErrors'});if(browser)await browser.close();try{bridge.stdin.end(JSON.stringify({command:'quit'})+'\n');await Promise.race([new Promise(resolve=>bridge.once('exit',resolve)),new Promise(resolve=>setTimeout(resolve,3000))]);if(bridge.exitCode===null)bridge.kill();}catch{bridge.kill();}});
+})().catch(async error=>{console.error(error.stack||error);process.exitCode=1;try{await writeShot('failure.png');}catch{}}).finally(async()=>{releaseCapability?.();if(context)await context.unrouteAll({behavior:'ignoreErrors'});if(browser)await browser.close();try{bridge.stdin.end(JSON.stringify({command:'quit'})+'\n');await Promise.race([new Promise(resolve=>bridge.once('exit',resolve)),new Promise(resolve=>setTimeout(resolve,3000))]);if(bridge.exitCode===null)bridge.kill();}catch{bridge.kill();}});
