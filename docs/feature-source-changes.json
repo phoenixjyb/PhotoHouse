@@ -36170,6 +36170,25 @@
       "live_runtime_changed": false,
       "schema_changed": false,
       "providers_activated": false
+    },
+    {
+      "feature": "audit-joined-bilingual-dates-and-exact-scorecard-redaction",
+      "source_commit": "488cc59d044f5827c53d06b40157f5d8ae299859",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "ded9e7eca3f84d63017d26cfe3c358ce338fa626a0eabc7b87c43a8fbe307036",
+          "sha256": "66da3e502672789f9d829ef67b37260bb98602adc64d577d42e77142d072f36b"
+        },
+        {
+          "path": "server/tests/security/test_search_quality_scorecard.py",
+          "before_sha256": "083a1d1bf374d324b6553075f0874a068ff49eca74b02dc85d818eefb9920a98",
+          "sha256": "0d9b552ca618378a7c15b9853f4e9c5adce0082e6e91bf848c422676008ff148"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false
     }
   ]
 }
