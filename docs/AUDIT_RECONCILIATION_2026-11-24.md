@@ -117,7 +117,7 @@ using the same trusted HTTPS address on the home network.
 | PH-002 Search reliability | Generated English, Chinese, and mixed-language turns retain the intended month and media. A follow-up can change the month while keeping a reviewed person filter. Ordinary Search stays available while the optional saved-memory prompt check is delayed. | Native multi-turn acceptance and representative cold and warm request timings. |
 | PH-003 relevance | The generated scorecard separates ranking, hard filters, confirmed empty results, and clarification. A returned total above the complete allowed set fails the filter even when the visible page passes. | Reviewed family labels, whole-library coverage, and native quality and latency. |
 | PH-004 story integration | One generated Web journey goes from a refined Jude search and ordered picks across result pages to chapter arrangement, explicit family evidence, proposal review, save and reopen. A separate journey checks current Jude selection recovery. Phone and TV debug checks ran offline. | Combined installed-client journeys and physical review. |
-| PH-005 Web responsiveness | The generated browser shows a photo while the description response is held, and discards that description if you close or change photos. Thumbnail placeholders keep their shape and adjacent viewer steps retain the same authorized filmstrip images. | Matched scrolling and video-start measurements on representative devices. |
+| PH-005 Web responsiveness | The generated browser shows a photo while the description response is held, and discards that description if you close or change photos. Thumbnail placeholders keep their shape and adjacent viewer steps retain the same authorized filmstrip images. The Web library selector requests labels and permissions without counting each library. | Matched scrolling and video-start measurements on representative devices. |
 | PH-006 Rust grouping | The qualified Rust grouping work is integrated, and the existing Windows grouping selection completed the fullscreen handoff. | Whole-refresh performance and dense-library quality. |
 | PH-007 family usability | Bilingual Home, Photos, Family, Stories, and Jude links reach existing destinations. Tab from a populated Jude composer reaches Send first. Focus returns to the composer if the focused Cancel control disappears when a request completes. Voice controls retain 48px targets with enlarged Chinese text. | Usability sessions with family members. |
 | PH-008 identity and kinship | Authorized accounts can use their own reviewed perspective. The private draft tool accepts reviewed relationships and aliases, verifies the exact base, and preserves catalog bindings and account scope. Story grounding reuses its public name index and checks reviewed household aliases separately for each request. | Family-facing editing and activation review. |
@@ -194,6 +194,19 @@ decode. The median was **295.2 ms** (288.2–300.1) at `0f1130b` and **38.0 ms**
 (32.2–47.4) at `2d41f0b`. The test uses an in-process generated service and
 measures the dependency on the description request. Home-network, phone and
 representative-library timing remain open.
+
+### Generated library-selector timing
+
+The Web library selector requests the navigation projection of the existing
+catalogue endpoint. It uses the same authorized labels and management flags.
+Requests for the ordinary catalogue still return asset counts.
+
+Across four generated libraries with 100,004 active media records, 24
+interleaved measurements of each projection gave median service times of
+9.07 ms for the ordinary catalogue and 0.21 ms for navigation. The p95 values
+were 9.64 ms and 0.35 ms. These measure the local catalogue service and SQLite.
+The generated browser separately passed sign-in, permitted library selection,
+gallery, and reviewed owner transfer with the navigation request.
 
 ### Local story name grounding
 

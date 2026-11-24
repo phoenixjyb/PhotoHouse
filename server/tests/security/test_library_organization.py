@@ -3,7 +3,8 @@
 The fixture is deliberately composed from the synthetic library-read database.  It exercises the
 same bearer/cookie transport used by the browser while keeping all media and SQL local.
 """
-from contextlib import closing
+from contextlib import closing, contextmanager
+from dataclasses import replace
 import json
 import sys
 import uuid
@@ -43,10 +44,10 @@ class LibraryOrganizationTests(unittest.TestCase):
         self.client = self._app_client()
         self.addCleanup(self.client.close)
 
-    def _app_client(self):
+    def _app_client(self, access_runtime=None):
         from fastapi.testclient import TestClient
         from app.main import create_app
-        return TestClient(create_app(access_runtime=self.fixture.access),
+        return TestClient(create_app(access_runtime=access_runtime or self.fixture.access),
                           base_url='https://photohouse.test', client=('192.0.2.41', 23457))
 
     def headers(self, token=None, **extra):
@@ -177,6 +178,44 @@ class LibraryOrganizationTests(unittest.TestCase):
         self.assertEqual(member.status_code, 200, member.text)
         self.assertFalse(member.json()['can_create'])
         self.assertEqual([item['id'] for item in member.json()['items']], ['family-a'])
+
+    def test_navigation_catalogue_preserves_scope_and_labels_without_counting_assets(self):
+        self.add_destination()
+        original = self.fixture.access.connection_factory
+        statements = []
+
+        @contextmanager
+        def trace_connection():
+            with original() as db:
+                db.set_trace_callback(statements.append)
+                yield db
+
+        runtime = replace(self.fixture.access, connection_factory=trace_connection)
+        field = 'X-PhotoHouse-Catalogue-View'
+        catalogue = '/library-catalogue'
+
+        def asset_counts():
+            return [sql for sql in statements if 'count(*) FROM access_asset_libraries' in sql]
+
+        with self._app_client(runtime) as client:
+            standard = client.get(catalogue, headers=self.headers())
+            self.assertEqual(standard.status_code, 200)
+            self.assertEqual(len(asset_counts()), 2)
+            statements.clear()
+            navigation = client.get(catalogue, headers=self.headers(**{field:'navigation'}))
+            self.assertEqual(navigation.status_code, 200)
+            expected = standard.json()
+            for item in expected['items']:
+                self.assertIsInstance(item.pop('asset_count'), int)
+            self.assertEqual(navigation.json(), expected)
+            self.assertEqual(asset_counts(), [])
+            self.assertEqual(navigation.headers['cache-control'], 'no-store')
+            member = client.get(catalogue, headers=self.headers(self.member_token, **{field:'navigation'}))
+            self.assertEqual([item['id'] for item in member.json()['items']], ['family-a'])
+            self.assertEqual(client.get(catalogue, headers={field:'navigation'}).status_code, 401)
+            self.assertEqual(client.get(catalogue, headers=self.headers(**{field:'unknown'})).status_code, 400)
+            all_headers = list(self.headers().items()) + [(field,'navigation'), (field,'navigation')]
+            self.assertEqual(client.get(catalogue, headers=all_headers).status_code, 400)
 
     def test_source_viewer_nonoperator_foreign_and_mixed_assets_are_rejected(self):
         self.add_destination()
