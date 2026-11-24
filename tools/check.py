@@ -63,7 +63,7 @@ API_TESTS = (
     "test_reviewed_semantic_provider_integration.py",
     "test_reviewed_scene_measurement.py", "test_qualify_reviewed_semantic_scenes.py",
     "test_semantic_refusal_protocol.py", "test_scene_query_refusal.py",
-    "test_kinship.py", "test_assistant_kinship.py",
+    "test_kinship.py", "test_assistant_kinship.py", "test_prepare_kinship_revision.py",
     "test_closed_application.py", "test_access_foundation.py", "test_access_transport.py", "test_library_reads.py", "test_photo_stacks.py",
     "test_photo_stack_index.py", "test_photo_stack_rust.py", "test_library_photo_stacks.py", "test_library_photo_stacks_qualification.py", "test_photo_stack_worker_host.py", "test_apply_library_photo_stack_schema.py",
     "test_library_albums.py", "test_library_organization.py", "test_android_updates.py",
@@ -108,7 +108,7 @@ API_TESTS = (
     "test_initialize_original_deletions.py",
     "test_staging_config.py", "test_staging_package.py",
     "test_database_preparation.py", "test_fullsize_preparation.py",
-    "test_bad_video_recovery.py",
+    "test_bad_video_recovery.py", "test_protected_prepared_video.py", "test_uploaded_video_tasks.py", "test_video_moments.py",
     "test_editorial_rehearsal_database_guard.py",
 )
 MEMORY_TESTS = (

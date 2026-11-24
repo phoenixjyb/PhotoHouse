@@ -788,9 +788,14 @@
     async function list(){const t=begin();const query=new URLSearchParams({library_id:t.base.library});const includeLabels=capabilities?.thread_labels===true;if(includeLabels)query.set('include_labels','true');const raw=await call(`${BASE}/threads?${query}`,'GET',undefined,t.base,t.token);if(!exactKeys(raw,['version','threads'])||raw.version!==1||!Array.isArray(raw.threads))fail('invalid_response');const values=raw.threads.map(x=>validateThread(x,t.base.library,includeLabels));threads=values;publish();return values;}
     const threadPath=id=>`${BASE}/threads/${encodeURIComponent(id)}`;
     function beginHistoryRead(id){historyNonce++;historyLoading=false;const sameThread=historyDetail?.thread.thread_id===id;historyDetail=sameThread?staleHistory(historyDetail):null;historyRefreshRequired=!!sameThread;}
-    async function read(id,{hydrate=true,sceneReloadGuard=false,sceneReturn=false}={}){
+    async function read(id,{hydrate=true,sceneReloadGuard=false,sceneReturn=false,preserveStorySelection=false}={}){
       if(!uuid(id))fail('invalid_input');
-      const t=begin();storyDirectionInput=null;const preservedStorySource=sceneReturn?storyResultSource:null,preservedStorySelection=sceneReturn?storySelection.slice():[],preservedStorySelectionNonce=storySelectionNonce;if(pendingTurn)fail('conflict');
+      const t=begin();if(pendingTurn)fail('conflict');storyDirectionInput=null;
+      const resumeStory=preserveStorySelection&&hydrate&&!sceneReloadGuard&&!sceneReturn&&
+        id===activeThread?.thread_id&&storyResultSource?.version!==4&&storySelection.length>0&&storySelectionEligible(t.base);
+      const preservedStorySource=(sceneReturn||resumeStory)?storyResultSource:null;
+      const preservedStorySelection=preservedStorySource?storySelection.slice():[];
+      const expectedStoryNonce=storySelectionNonce+(sceneReturn?1:2);
       if(sceneReturn){scenePageLoading=true;scenePageResult=null;sceneRankingDigest=null;publish();}
       else{invalidateStorySelection();clearScenePage();clearResultPage();sceneRankingDigest=null;sceneRequestId=null;}
       const reloadBase=sceneReloadGuard?{threadId:activeThread?.thread_id,revision}:null;
@@ -818,15 +823,23 @@
         }
       }
       historyDetail=ownHistory(detail);historyRefreshRequired=false;publish();
-      let latest=null,guardedResult=null;
+      let latest=null,guardedResult=null,checkedStoryResult=false;
       const suppressOldResult=!!(!reloadBase&&(rewordCue||(hadRewordHint&&!Object.hasOwn(detail,'scene_reword'))));
       if(sceneProjection&&!reloadBase&&Object.hasOwn(detail,'scene_reword')){
         sceneRewordRequired=!!rewordCue;
         if(rewordCue&&!sceneDraft)sceneDraft=rewordCue.query;
       }
       currentResult=null;contextState=suppressOldResult?'requires_search':detail.latest_request_id?'unloaded':'requires_search';
-      if(!suppressOldResult&&detail.latest_request_id&&hydrate&&capabilities?.server_owned_turns!==false){try{latest=await getRequest(id,detail.latest_request_id,{_ticket:{base:t.base,token:t.token,readTicket:ticket},hydrate:false,searchVersion:readVersion});
-          if(latest.status==='completed'&&latest.revision===detail.thread.revision){const hydrated=await hydrateResult(latest.result,t,{readTicket:ticket,threadId:id,revision:latest.revision});if(reloadBase)guardedResult=hydrated;else{currentResult=hydrated;contextState=resultContextState(currentResult);if(hydrated.version===4)sceneRequestId=latest.request_id;}}
+      if(!suppressOldResult&&detail.latest_request_id&&hydrate&&capabilities?.server_owned_turns!==false){try{
+          const sameStoryTurn=resumeStory&&detail.latest_request_id===preservedStorySource.request_id&&
+            detail.thread.revision===preservedStorySource.revision;
+          if(sameStoryTurn){
+            latest=await getCurrentResult(preservedStorySource,t,{readTicket:ticket});
+            checkedStoryResult=true;
+          }else{
+            latest=await getRequest(id,detail.latest_request_id,{_ticket:{base:t.base,token:t.token,readTicket:ticket},hydrate:false,searchVersion:readVersion});
+          }
+          if(latest.status==='completed'&&latest.revision===detail.thread.revision){const hydrated=checkedStoryResult?latest.result:await hydrateResult(latest.result,t,{readTicket:ticket,threadId:id,revision:latest.revision});if(reloadBase)guardedResult=hydrated;else{currentResult=hydrated;contextState=resultContextState(currentResult);if(hydrated.version===4)sceneRequestId=latest.request_id;}}
           else if(latest.status==='completed')contextState='stale';
           else if(latest.status==='pending')contextState='pending';
           else contextState='requires_search';
@@ -836,9 +849,16 @@
       assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');activeThread=latest?.status==='completed'?Object.freeze({...detail.thread,revision:latest.revision}):detail.thread;revision=latest?.status==='completed'?latest.revision:detail.thread.revision;if(reloadBase){currentResult=guardedResult;if(guardedResult)contextState=resultContextState(guardedResult);}
       if(!reloadBase&&currentResult&&latest?.status==='completed'&&latest.revision===revision){
         const nextSource=bindStoryResult(t,id,latest.request_id,latest.revision,currentResult);
-        if(sceneReturn&&preservedStorySource&&nextSource&&preservedStorySelectionNonce+1===storySelectionNonce&&preservedStorySource.thread_id===id&&preservedStorySource.request_id===latest.request_id&&preservedStorySource.revision===latest.revision&&preservedStorySource.binding===nextSource.binding&&preservedStorySource.fingerprint===nextSource.fingerprint&&preservedStorySource.total===nextSource.total){
-          storySelection=preservedStorySelection.map(entry=>({...entry,source:nextSource}));
-          storySelectionNonce++;
+        if((sceneReturn||checkedStoryResult)&&preservedStorySource&&nextSource&&expectedStoryNonce===storySelectionNonce&&
+            preservedStorySource.thread_id===id&&preservedStorySource.request_id===latest.request_id&&
+            preservedStorySource.revision===latest.revision&&preservedStorySource.version===nextSource.version&&
+            preservedStorySource.binding===nextSource.binding&&preservedStorySource.fingerprint===nextSource.fingerprint&&
+            preservedStorySource.total===nextSource.total){
+          const firstPage=new Map(currentResult.items.map(item=>[item.id,item]));
+          if(preservedStorySelection.every(entry=>entry.page>1||firstPage.get(entry.item.id)?.kind===entry.item.kind)){
+            storySelection=preservedStorySelection.map(entry=>({...entry,source:nextSource,item:entry.page===1?firstPage.get(entry.item.id):entry.item}));
+            storySelectionNonce++;
+          }
         }
       }else invalidateStorySelection();
       if(sceneAvailable&&activeThread.thread_id===id&&activeThread.revision===revision&&contextState==='ready'&&currentResult?.context)sceneRewordRequired=false;publish();

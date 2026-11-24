@@ -107,6 +107,57 @@ async function main(){
   await byClass(host,'memory-group-editor').dispatch('submit');await flush();
   assert.equal(editedBody.asset_ids,'102','editing may remove the current photo when another member remains');
   assert.equal(editedBody.source_story_ids,otherStory.id,'the other member note stays linked after removing the current photo');
-  console.log('PASS memory group stale reads, persistent exclusions, original-seed suggestions, source-ID writes, exact retry, and preserving edits');
+
+  const groupId='99999999-9999-4999-8999-999999999999';
+  const groupItem=(id,kind='image')=>({id,kind,width:320,height:240,duration_sec:null,taken_at:null,
+    thumbnail_url:`/assets/${id}/thumbnail?library=library-1`});
+  const listed={version:1,type:'memory_group',id:groupId,library_id:'library-1',revision:'4',theme:'trip',
+    asset_ids:['102','101'],excluded_asset_ids:[],source_story_ids:[story.id],
+    items:[groupItem('102','video'),groupItem('101')],sources:[story],can_edit:false};
+  const handoffHost=new Node('main');document.append(handoffHost);const handoffScope={...scope};const handoffCalls=[];
+  let finishExact;const handoffs=[];
+  const handoffUi=context.window.PhotoHouseMemoryGroups.create({scope:handoffScope,api:(path)=>{
+    handoffCalls.push(path);
+    if(path==='/memory-groups/capabilities')return Promise.resolve({version:1,enabled:true,manual:true,suggestions:false});
+    if(path==='/assets/101/memory-groups')return Promise.resolve({version:1,library_id:'library-1',asset_id:'101',items:[listed]});
+    if(path===`/memory-groups/${groupId}`)return new Promise(resolve=>finishExact=resolve);
+    throw new Error(`Unexpected handoff API call: ${path}`);
+  },onStory:(group,current)=>handoffs.push({group,current})});
+  handoffUi.mount(handoffHost,asset);const handoffDetails=handoffHost.querySelector('.memory-group-root');handoffDetails.open=true;await handoffDetails.dispatch('toggle');await flush();
+  const startButton=byClass(handoffHost,'memory-group-start-story');assert.ok(startButton);assert.equal(startButton.textContent,'开始写故事');
+  const firstClick=startButton.listeners.click[0]();const repeatedClick=startButton.listeners.click[0]();
+  assert.equal(handoffCalls.filter(path=>path===`/memory-groups/${groupId}`).length,1,'repeated handoffs share one exact group read');
+  finishExact({...listed});await Promise.all([firstClick,repeatedClick]);
+  assert.equal(handoffs.length,1,'one unchanged group opens one story handoff');
+  assert.deepEqual(JSON.parse(JSON.stringify(handoffs[0].group)),{
+    theme:'trip',assets:[groupItem('102','video'),groupItem('101')]
+  },'handoff preserves the saved member order and passes only theme and asset metadata');
+  assert.equal(JSON.stringify(handoffs[0].group).includes(story.text),false,'family original prose is not copied to the story handoff');
+  assert.equal(handoffs[0].current(),true,'callback can recheck that its originating scope remains current');
+  assert.equal(startButton.disabled,false,'successful handoff releases its in-flight guard');handoffUi.clear();handoffHost.remove();
+
+  async function refusesHandoff(label, exactResult, changeScopeAfterRead=false) {
+    const localScope={...scope};const localHost=new Node('main');document.append(localHost);const localCalls=[];let callbackCount=0;let resolveExact;
+    const ui=context.window.PhotoHouseMemoryGroups.create({scope:localScope,api:(path)=>{
+      localCalls.push(path);
+      if(path==='/memory-groups/capabilities')return Promise.resolve({version:1,enabled:true,manual:true,suggestions:false});
+      if(path==='/assets/101/memory-groups')return Promise.resolve({version:1,library_id:'library-1',asset_id:'101',items:[listed]});
+      if(path===`/memory-groups/${groupId}`)return new Promise(resolve=>resolveExact=resolve);
+      throw new Error(`Unexpected ${label} API call: ${path}`);
+    },onStory:()=>{callbackCount++;}});
+    ui.mount(localHost,asset);const details=localHost.querySelector('.memory-group-root');details.open=true;await details.dispatch('toggle');await flush();
+    const button=byClass(localHost,'memory-group-start-story');assert.ok(button,label+' shows story action only on the saved group');
+    const clickPromise=button.listeners.click[0]();
+    assert.equal(localCalls.filter(path=>path===`/memory-groups/${groupId}`).length,1,label+' reads the exact saved group');
+    if(changeScopeAfterRead)localScope.epoch++;
+    resolveExact(exactResult);await clickPromise;await flush();
+    assert.equal(callbackCount,0,label+' refuses callback');ui.clear();localHost.remove();
+  }
+  await refusesHandoff('stale revision',{...listed,revision:'5'});
+  await refusesHandoff('changed ordered member IDs',{...listed,asset_ids:['101','102'],items:[groupItem('101'),groupItem('102','video')]});
+  await refusesHandoff('late response after scope change',{...listed},true);
+
+  assert.equal(host.querySelector('.memory-group-start-story'),null,'the action is absent when the optional callback is not provided');
+  console.log('PASS memory group edits and retries; ordered, fresh story handoff; duplicate, stale revision, changed member, and late-scope refusal');
 }
 main().catch(error=>{console.error(error.stack);process.exitCode=1;});

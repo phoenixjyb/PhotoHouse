@@ -1,13 +1,31 @@
 # Current project status
 
-> **24 November 2026 update:** The bilingual product roadmap is live on Windows
-> and owner-confirmed. The current integration source reconciles qualified Rust
-> history and optional TV approval, and repairs conversational Search, authored
-> chapter preservation, Jude recovery and extracted-package closure. These later
-> fixes are now served on Windows through the qualified source overlay. They do
-> not imply a new installed phone/TV client or broad household-quality acceptance.
-> See [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md). The dated records
-> below remain historical evidence; GitHub CI is still cost-paused.
+> **25 November 2026 update:** The bilingual roadmap and fullscreen Web viewer
+> are live on Windows. The integration also includes the qualified Rust
+> components and the conversational Search, authored chapter, and Jude recovery
+> fixes described below. See the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md)
+> for source progress, installed-runtime evidence and open device checks.
+
+## November 25 fullscreen and local integration
+
+Windows serves the fullscreen Web viewer from `85eb866` with the existing
+`c7a28ef` API. Photos fill the available screen with touch-friendly Previous,
+Next and Exit controls, pinch zoom and panning. Prepared videos can fullscreen
+in the browser's player. HTTPS shell and asset checks passed, including a
+direct LAN request from a Mac using the trusted hostname. Physical phone and
+tablet checks remain open. [Fullscreen PR](https://github.com/phoenixjyb/PhotoHouse/pull/118)
+
+The next source integration includes bilingual date and media follow-ups,
+generated semantic hard-filter evaluation, stable thumbnail placeholders, and
+saved-story reopening checks. The local API profile passed 3,771 tests and
+4,544 subtests, with six skips. GitHub Actions remains cost-paused.
+[Audit PR](https://github.com/phoenixjyb/PhotoHouse/pull/119)
+
+Family navigation, Android cancel/retry, short-video preview processing and
+account-specific relationship perspectives are also merged. The local API
+profile at the reviewed head passed 3,776 tests and 4,553 subtests, with six
+skips. The generated recovery demo and Android phone debug build passed.
+[Family reliability PR](https://github.com/phoenixjyb/PhotoHouse/pull/120)
 
 ## November 24 current delivery
 

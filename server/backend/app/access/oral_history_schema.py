@@ -24,6 +24,7 @@ STATEMENTS = (
         subject_label TEXT NOT NULL CHECK(length(CAST(subject_label AS BLOB)) <= 512),
         narrator_label TEXT NOT NULL CHECK(length(CAST(narrator_label AS BLOB)) <= 256),
         language TEXT NOT NULL CHECK(language IN ('zh','en','mixed','und')),
+        retention_consent INTEGER NOT NULL CHECK(retention_consent=1),
         processing_consent INTEGER NOT NULL CHECK(processing_consent IN (0,1)),
         state TEXT NOT NULL CHECK(state IN ('open','completed','cancelled','withdrawn')),
         withdrawn_from TEXT,
@@ -72,7 +73,8 @@ STATEMENTS = (
         WHEN NEW.id IS NOT OLD.id OR NEW.library_id IS NOT OLD.library_id
         OR NEW.author_id IS NOT OLD.author_id OR NEW.title IS NOT OLD.title
         OR NEW.subject_label IS NOT OLD.subject_label OR NEW.narrator_label IS NOT OLD.narrator_label
-        OR NEW.language IS NOT OLD.language OR NEW.processing_consent IS NOT OLD.processing_consent
+        OR NEW.language IS NOT OLD.language OR NEW.retention_consent IS NOT OLD.retention_consent
+        OR NEW.processing_consent IS NOT OLD.processing_consent
         OR NEW.created_at IS NOT OLD.created_at
         BEGIN SELECT RAISE(ABORT,'oral_history_identity_immutable'); END''',
     f'''CREATE TRIGGER oral_history_session_transition BEFORE UPDATE ON {SESSION}

@@ -21,9 +21,10 @@ from .transport import TransportError
 
 LANGUAGES = {'zh', 'en', 'mixed', 'und'}
 CREATE_FIELDS = {'request_id', 'title', 'subject_label', 'narrator_label',
-                 'language', 'processing_consent'}
+                 'language', 'retention_consent', 'processing_consent'}
 STATUS_FIELDS = {'version', 'session_id', 'library_id', 'author_id', 'title',
-                 'subject_label', 'narrator_label', 'language', 'processing_consent',
+                 'subject_label', 'narrator_label', 'language', 'retention_consent',
+                 'processing_consent',
                  'state', 'revision', 'section_count', 'next_ordinal', 'total_bytes',
                  'total_frames', 'duration_ms', 'manifest_sha256'}
 
@@ -79,10 +80,12 @@ def wav_frames(audio):
 
 
 def _seed(row):
-    return _digest({'version': 1, 'id': row['id'], 'library': row['library_id'],
+    return _digest({'version': 2, 'id': row['id'], 'library': row['library_id'],
                     'author': row['author_id'], 'title': row['title'],
                     'subject': row['subject_label'], 'narrator': row['narrator_label'],
-                    'language': row['language'], 'consent': bool(row['processing_consent'])})
+                    'language': row['language'],
+                    'retention_consent': bool(row['retention_consent']),
+                    'processing_consent': bool(row['processing_consent'])})
 
 
 def _next(head, ordinal, start, frames, size, source):
@@ -108,7 +111,8 @@ def session_snapshot(db, actor, library, ident, *, allow_withdrawn=False):
         _text(row['title'],512,required=True)
         _text(row['subject_label'],512)
         _text(row['narrator_label'],256)
-        if (row['language'] not in LANGUAGES or row['processing_consent'] not in (0,1)
+        if (row['language'] not in LANGUAGES or row['retention_consent'] != 1
+                or row['processing_consent'] not in (0,1)
                 or row['state'] not in {'open','completed','cancelled','withdrawn'}):
             raise ValueError()
         for key, maximum in (('revision',MAX_SECTIONS+3),('section_count',MAX_SECTIONS),
@@ -182,10 +186,11 @@ class OralHistoryIntake:
 
     @staticmethod
     def _status(row):
-        return {'version': 1, 'session_id': row['id'], 'library_id': row['library_id'],
+        return {'version': 2, 'session_id': row['id'], 'library_id': row['library_id'],
                 'author_id': row['author_id'], 'title': row['title'],
                 'subject_label': row['subject_label'], 'narrator_label': row['narrator_label'],
-                'language': row['language'], 'processing_consent': bool(row['processing_consent']),
+                'language': row['language'], 'retention_consent': bool(row['retention_consent']),
+                'processing_consent': bool(row['processing_consent']),
                 'state': row['state'], 'revision': row['revision'],
                 'section_count': row['section_count'], 'next_ordinal': row['section_count'],
                 'total_bytes': row['total_bytes'], 'total_frames': row['total_frames'],
@@ -210,7 +215,7 @@ class OralHistoryIntake:
             keys = STATUS_FIELDS
             extra = {'ordinal', 'section_sha256'} if operation == 'append' else set()
             if (type(result) is not dict or set(result) != keys | {'request_id','operation'} | extra
-                    or result['version'] != 1 or result['session_id'] != prior['session_id']
+                    or result['version'] != 2 or result['session_id'] != prior['session_id']
                     or result['author_id'] != actor or result['request_id'] != request
                     or result['operation'] != operation):
                 raise ValueError()
@@ -222,7 +227,9 @@ class OralHistoryIntake:
             for key in ('library_id','title','subject_label','narrator_label','language'):
                 if type(result[key]) is not str or result[key] != parent[key]:
                     raise ValueError()
-            if (type(result['version']) is not int or type(result['processing_consent']) is not bool
+            if (type(result['version']) is not int or type(result['retention_consent']) is not bool
+                    or result['retention_consent'] != bool(parent['retention_consent'])
+                    or type(result['processing_consent']) is not bool
                     or result['processing_consent'] != bool(parent['processing_consent'])
                     or result['state'] != ('completed' if operation=='complete' else
                         'cancelled' if operation=='cancel' else 'open')):
@@ -275,6 +282,7 @@ class OralHistoryIntake:
         _text(body['subject_label'], 512)
         _text(body['narrator_label'], 256)
         if (type(body['language']) is not str or body['language'] not in LANGUAGES
+                or type(body['retention_consent']) is not bool
                 or type(body['processing_consent']) is not bool):
             raise TransportError(422, 'Invalid recording options')
         digest = _digest(['create', library, body])
@@ -284,16 +292,20 @@ class OralHistoryIntake:
             if prior is not None:
                 self._session(actor, library, prior['session_id'])
                 return prior
+            if not body['retention_consent']:
+                raise TransportError(422, 'Explicit source retention consent required')
             count = self.db.execute(f'SELECT count(*) FROM {SESSION} WHERE author_id=?', (actor,)).fetchone()[0]
             if count >= MAX_SESSIONS_PER_AUTHOR:
                 raise TransportError(409, 'Recording storage quota reached')
             row = {**body, 'id': str(uuid.uuid4()), 'author_id': actor, 'library_id': library}
             self.db.execute(f'''INSERT INTO {SESSION}
-                (id,library_id,author_id,title,subject_label,narrator_label,language,processing_consent,
+                (id,library_id,author_id,title,subject_label,narrator_label,language,retention_consent,
+                 processing_consent,
                  state,revision,section_count,total_bytes,total_frames,manifest_sha256,created_at)
-                VALUES (?,?,?,?,?,?,?,?,'open',1,0,0,0,?,?)''',
+                VALUES (?,?,?,?,?,?,?,?,?,'open',1,0,0,0,?,?)''',
                 (row['id'], library, actor, body['title'], body['subject_label'], body['narrator_label'],
-                 body['language'], int(body['processing_consent']), _seed(row), self.access._now()))
+                 body['language'], int(body['retention_consent']), int(body['processing_consent']),
+                 _seed(row), self.access._now()))
             return self._record(actor, request, 'create', digest, self._session(actor, library, row['id']))
 
     def append(self, token, library, ident, *, request_id, expected_revision, ordinal, audio):

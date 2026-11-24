@@ -1,7 +1,7 @@
 'use strict';
 /* Explicit, source-linked memory group editor. All state stays in this mount. */
 window.PhotoHouseMemoryGroups = {
-  create({scope, api}) {
+  create({scope, api, onStory}) {
     let generation = 0;
     let root = null;
     let mounted = null;
@@ -12,6 +12,7 @@ window.PhotoHouseMemoryGroups = {
         title:'家庭回忆组', open:'家庭回忆组', loading:'正在载入…', unavailable:'家庭回忆组暂时不可用。',
         disabled:'此相册库尚未开启家庭回忆组。', failed:'暂时无法载入，请重试。', retry:'重试载入',
         create:'新建回忆组', edit:'编辑', save:'明确保存回忆组', cancel:'取消编辑',
+        startStory:'开始写故事', checkingStory:'正在核对回忆组…', storyChanged:'回忆组已变化或暂不可用，请刷新后重试。',
         theme:'主题', themes:{trip:'旅行',growing_up:'成长',birthday:'生日',grandparents:'祖辈',year_in_review:'年度回顾',everyday:'日常'},
         addMedia:'从当前相册选择画面', included:'组内画面', remove:'移出此组',
         suggestions:'查找相似画面', suggestionsHelp:'建议会参考记录的拍摄时间和图片相似度。结果可以逐项修改；不会自动保存。',
@@ -31,6 +32,7 @@ window.PhotoHouseMemoryGroups = {
         title:'Family memory groups', open:'Family memory groups', loading:'Loading…', unavailable:'Memory groups are temporarily unavailable.',
         disabled:'Memory groups are not enabled for this library.', failed:'Could not load this yet. Try again.', retry:'Retry loading',
         create:'Create a memory group', edit:'Edit', save:'Save this memory group', cancel:'Cancel editing',
+        startStory:'Start a story', checkingStory:'Checking this memory group…', storyChanged:'This memory group changed or is unavailable. Refresh and try again.',
         theme:'Theme', themes:{trip:'Trip',growing_up:'Growing up',birthday:'Birthday',grandparents:'Grandparents',year_in_review:'Year in review',everyday:'Everyday'},
         addMedia:'Choose from this gallery', included:'Group photos', remove:'Remove from group',
         suggestions:'Find similar photos', suggestionsHelp:'Suggestions use recorded capture time and image similarity. Review and edit each result; nothing is saved automatically.',
@@ -105,6 +107,30 @@ window.PhotoHouseMemoryGroups = {
       if(!validGroup(group,state))return false;
       return pending.body.revision==='0'||group.id===pending.path.split('/').at(-1);
     }
+    function sameOrdered(left,right) {
+      return Array.isArray(left)&&Array.isArray(right)&&left.length===right.length&&left.every((value,index)=>value===right[index]);
+    }
+    async function startStory(state,listed,control) {
+      if(!active(state)||typeof onStory!=='function')return;
+      if(state.storyHandoffs.has(listed.id))return state.storyHandoffs.get(listed.id);
+      const handoff=(async()=>{
+        control.disabled=true;setStatus(state,t('checkingStory'));
+        try{
+          const current=await request(state,`/memory-groups/${encodeURIComponent(listed.id)}`);
+          if(!active(state)||!validGroup(current,state)||current.id!==listed.id||
+              current.revision!==listed.revision||!sameOrdered(current.asset_ids,listed.asset_ids)||
+              !sameOrdered(current.items.map(item=>item.id),current.asset_ids)||
+              !sameOrdered(current.items.map(item=>item.id),listed.asset_ids))throw Error('Changed group');
+          const assets=current.items.map(item=>({id:item.id,kind:item.kind,width:item.width,height:item.height,
+            duration_sec:item.duration_sec,taken_at:item.taken_at,thumbnail_url:item.thumbnail_url}));
+          const isCurrent=()=>active(state);
+          if(isCurrent())await onStory({theme:current.theme,assets},isCurrent);
+        }catch(_){if(active(state))setStatus(state,t('storyChanged'),true);}
+        finally{if(active(state)){control.disabled=false;state.storyHandoffs.delete(listed.id);}}
+      })();
+      state.storyHandoffs.set(listed.id,handoff);
+      return handoff;
+    }
     function section(title, cls='') { const s=node('section','',`memory-group-section${cls?` ${cls}`:''}`);const h=node('h4',title);s.append(h);return s; }
     function renderSources(parent, sources, label=t('sources')) {
       const sec=section(label,'memory-group-sources');
@@ -143,6 +169,7 @@ window.PhotoHouseMemoryGroups = {
         card.append(node('p',t(`themes`)?.[group.theme]||group.theme||''));
         const items=node('div','', 'memory-group-items');for(const item of group.items||[])items.append(image(item));card.append(items);
         renderSources(card,group.sources||[]);
+        if(typeof onStory==='function'){let start;start=button(t('startStory'),()=>startStory(state,group,start),'memory-group-start-story');card.append(start);}
         if(group.can_edit&&state.capabilities.manual){const edit=button(t('edit'),()=>openEditor(state,group),'memory-group-edit');card.append(edit);}
         state.groupsBox.append(card);
       }
@@ -278,7 +305,7 @@ window.PhotoHouseMemoryGroups = {
       }
       clear();if(!container||!asset||!idOk(String(asset.id)))return;
       const s=incomingScope;const state={generation,container,asset:{...asset,id:String(asset.id)},stories:Array.isArray(stories)?stories:[],manualItems:Array.isArray(manualItems)?manualItems:[],
-        scopeKey:scopeKey(s),library:String(s?.library||''),epoch:s?.epoch,readSequence:0,editorRevision:0,capabilities:null,capabilitiesLoading:false,groups:[],groupsBox:null,status:null,editor:null,editing:null,pendingSave:null,dirty:false};
+        scopeKey:scopeKey(s),library:String(s?.library||''),epoch:s?.epoch,readSequence:0,editorRevision:0,capabilities:null,capabilitiesLoading:false,groups:[],groupsBox:null,status:null,editor:null,editing:null,pendingSave:null,dirty:false,storyHandoffs:new Map()};
       mounted=state;root=node('details','', 'memory-group-root');
       const summary=node('summary',t('open'),'memory-group-summary');root.append(summary);
       const body=node('div','', 'memory-group-body');body.append(node('p',t('suggestionsHelp')));

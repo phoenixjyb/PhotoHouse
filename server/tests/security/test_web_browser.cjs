@@ -103,6 +103,96 @@ async function auth(page,phone=MEMBER,code){
   assert.equal(await page.locator('#library').isVisible(),true,await page.locator('#status').textContent());
   await page.locator('.asset').first().waitFor();
 }
+async function videoMomentJourney(page){
+  await mutate('prepared-video-moments');
+  const filters=page.locator('#discovery-panel');
+  if(!await filters.evaluate(element=>element.open))await filters.locator('summary').click();
+  await page.locator('#discovery-media').selectOption('video');
+  const form=page.locator('#video-moments-form');
+  await form.waitFor();
+  await form.locator('input').fill('Second half');
+  await form.locator('button').click();
+  const moment=page.locator('#video-moments-results button');
+  await moment.waitFor();
+  assert.match(await moment.textContent(),/Second half/);
+  let from=browserRequests.length;
+  await moment.click();
+  try{
+    await page.waitForFunction(()=>{
+      const video=document.querySelector('#viewer-media video');
+      return video?.readyState>=1&&!video.seeking&&video.paused&&Math.abs(video.currentTime-.25)<.04;
+    },null,{timeout:5000});
+  }catch(error){
+    const player=await page.evaluate(()=>{
+      const v=document.querySelector('#viewer-media video');
+      return v?{time:v.currentTime,duration:v.duration,ready:v.readyState,seeking:v.seeking,paused:v.paused,error:v.error?.code}:
+        {message:document.getElementById('view-quality').textContent};
+    });
+    throw new Error(JSON.stringify({player,responses:browserResponses.slice(-14)}),{cause:error});
+  }
+  const playback=browserRequests.slice(from).filter(item=>item.path.startsWith('/assets/105/playback?'));
+  assert(playback.some(item=>item.method==='HEAD'));
+  assert(playback.some(item=>item.method==='GET'));
+  assert(playback.every(item=>/^[0-9a-f]{64}$/.test(new URL(item.path,'https://photohouse.test').searchParams.get('playback_revision'))));
+  await page.locator('#close-viewer').click();
+
+  from=browserRequests.length;playbackOverrides.push({status:409,headers:{}});
+  await moment.click();
+  await page.waitForFunction(()=>document.getElementById('view-quality').textContent.includes('has changed'));
+  assert.equal(await page.locator('#viewer-media video').count(),0);
+  assert(browserRequests.slice(from).every(item=>item.method!=='GET'||!item.path.startsWith('/assets/105/playback?')));
+  await page.locator('#close-viewer').click();
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>document.documentElement.style.fontSize='150%');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await moment.screenshot({path:path.join(artifacts,'video-moment-phone.png')});
+  await page.evaluate(()=>document.documentElement.style.fontSize='');
+  await page.setViewportSize({width:1200,height:900});
+  await page.locator('#discovery-media').selectOption('all');
+  await page.locator('#video-moments-panel').waitFor({state:'hidden'});
+  checkpoint('A reviewed video moment seeks to the matched time and refuses stale prepared playback');
+}
+async function captionDecoupling(page,{staleCaptionText='caption-101'}={}){
+  const pixelsReady=async()=>page.waitForFunction(()=>{
+    const image=document.querySelector('#viewer-media .viewer-surface img');
+    return Boolean(image?.complete&&image.naturalWidth>0);
+  },null,{timeout:1500}).then(()=>true,()=>false);
+  const open=async id=>page.locator(`.asset[data-asset-id="${id}"]`).click();
+
+  let held=delayNext(url=>url.pathname==='/assets/102/captions');
+  await open('102');await held.seen;
+  const visibleWhileCaptionsHeld=await pixelsReady();
+  if(!visibleWhileCaptionsHeld){
+    held.release();
+    await page.locator('#viewer-media .viewer-surface img').waitFor({state:'attached'});
+    assert.fail('photo pixels must render while the synthetic caption response is held');
+  }
+  assert.deepEqual(await page.locator('#viewer-media .viewer-surface img').evaluate(img=>[img.naturalWidth,img.naturalHeight]),[400,300]);
+  assert.equal(await page.locator('#captions p').count(),0);
+  held.release();
+  await page.locator('#captions p').filter({hasText:'caption-102'}).waitFor({state:'attached'});
+  assert.equal((await page.locator('#captions').textContent()).includes('caption-102'),true);
+  await page.locator('#close-viewer').click();
+
+  held=delayNext(url=>url.pathname==='/assets/101/captions');
+  await open('101');await held.seen;
+  assert.equal(await pixelsReady(),true,'the next photo also renders while its captions are pending');
+  await page.locator('#close-viewer').click();await open('102');
+  await page.locator('#captions p').filter({hasText:'caption-102'}).waitFor({state:'attached'});
+  held.release();await pause(150);
+  assert.match(await page.locator('#viewer-title').textContent(),/102/);
+  assert.equal((await page.locator('#captions').textContent()).includes('caption-102'),true);
+  assert.equal((await page.locator('#captions').textContent()).includes(staleCaptionText),false);
+  await page.locator('#close-viewer').click();
+
+  held=delayNext(url=>url.pathname==='/assets/101/captions');
+  await open('101');await held.seen;await page.locator('#close-viewer').click();
+  held.release();await pause(150);
+  assert.equal(await page.locator('#viewer').isVisible(),false);
+  assert.equal(await page.locator('#captions').textContent(),'');
+  assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
+  checkpoint('Photo pixels render before captions; late captions stay bound to the open asset');
+}
 async function ids(page){return page.locator('.asset-label').allTextContents();}
 async function checkFullscreenPhotoLayout(page){
   await page.waitForFunction(()=>{
@@ -156,6 +246,19 @@ let browser;
   browser=await chromium.launch({headless:true,
     ...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),
     args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
+  if(process.env.PH_BROWSER_VIDEO_MOMENTS==='1'){
+    const ctx=await context(browser),page=await ctx.newPage();
+    await auth(page);await mutate('prepared-video-unavailable');
+    await videoMomentJourney(page);
+    assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
+    await ctx.close();return;
+  }
+  if(process.env.PH_BROWSER_CAPTION_DECOUPLE==='1'){
+    const ctx=await context(browser),page=await ctx.newPage();
+    await auth(page);
+    await captionDecoupling(page);
+    await ctx.close();return;
+  }
   if(process.env.PH_BROWSER_MEDIA_FULLSCREEN==='1'){
     const ctx=await context(browser),page=await ctx.newPage();
     await auth(page);
@@ -411,23 +514,12 @@ let browser;
   assert.equal(browserRequests.slice(importedNotesStart).some(item=>item.path.startsWith('/upload-annotations?')),false);
   assert.match(await page.locator('#captions').textContent(),/<img src=x/);
   assert.equal(await page.locator('#captions img').count(),0);assert.equal(await page.evaluate(()=>window.syntheticXSS),undefined);
+  assert.equal(await page.locator('#captions form').count(),0,'existing captions leave the one-time form unavailable');
   assert.equal(await page.locator('#original').isVisible(),false);
   assert.equal(await page.locator('#face-panel').isVisible(),false);
   await page.locator('#close-viewer').click();
   checkpoint('Captions render as text and viewer cannot download originals');
-  const oldViewer=delayNext(url=>url.pathname==='/assets/101/captions');
-  await page.locator('.asset').filter({hasText:'101'}).click();await oldViewer.seen;
-  await page.locator('#close-viewer').click();await page.locator('.asset').filter({hasText:'102'}).click();
-  await page.locator('#captions p').waitFor({state:'attached'});oldViewer.release();await pause(150);
-  assert.equal(await page.locator('#captions p').textContent(),'caption-102');
-  // The describe control is offered only where a photo has no description, and every fixture
-  // asset has one, so opening this photo must show its caption and no form. The write path
-  // itself is covered by the source tests; this only pins that the control is not offered
-  // where the route would refuse it.
-  assert.equal(await page.locator('#captions form').count(),0);
-  assert.equal(await page.locator('#captions input').count(),0);
-  await page.locator('#close-viewer').click();
-  checkpoint('Delayed closed viewer cannot overwrite a newer asset');
+  await captionDecoupling(page,{staleCaptionText:'<img src=x'});
   await page.setViewportSize({width:390,height:844});await page.locator('#language').click();
   await page.locator('.asset').first().waitFor();assert.equal(await page.locator('#logout').textContent(),'退出登录');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -1333,8 +1425,10 @@ let browser;
   await page.screenshot({path:path.join(artifacts,'unified-gallery-filter-phone-150.png'),fullPage:true});
   await page.evaluate(()=>{document.documentElement.style.fontSize='';});
   await page.setViewportSize({width:1200,height:900});
-  // Read-only by construction: one form, one select, and nothing that could write.
-  assert.equal(await page.locator('#discovery-panel form').count(),2);
+  // The ordinary filters expose two visible read-only forms. Moment search
+  // stays hidden until the app confirms an enabled video catalog.
+  assert.equal(await page.locator('#discovery-panel form:visible').count(),2);
+  assert.equal(await page.locator('#video-moments-panel').isHidden(),true);
   assert.equal(await page.locator('#discovery-panel select').count(),1);
   assert.equal(await page.locator('#discovery-panel input[type="file"]').count(),0);
   assert.equal(await page.locator('#people-panel').isVisible(),false);
@@ -1480,6 +1574,7 @@ let browser;
   playbackOverrides.push({status:200,headers:{'content-type':'text/plain'}});await owner.locator('.asset').filter({hasText:'105'}).click();await owner.waitForFunction(()=>document.getElementById('view-quality').textContent.includes('unavailable'));assert.equal(await owner.locator('#viewer-media video').count(),0);await owner.locator('#close-viewer').click();
   await expectPlaybackError(403,{},'');
   checkpoint('Prepared playback rejects 404, 409, 429 seconds/date waits, malformed success metadata, and 403 without fallback');
+  await videoMomentJourney(owner);
   await mutate('library-organization');
   await owner.locator('#refresh').click();await owner.locator('[data-transfer-id="9501"]').waitFor();
   assert.equal(await owner.locator('#library-select option[value="documents"]').textContent(),'Documents');

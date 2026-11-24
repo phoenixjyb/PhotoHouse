@@ -6,6 +6,7 @@ from starlette.routing import Match
 
 from .transport import PRIVACY_HEADERS, router as account_router
 from .media import router as media_router
+from .video_moments import router as video_moments_router
 from .library import router as library_router
 from .photo_stack_transport import router as photo_stack_router
 from .members import router as member_router
@@ -46,7 +47,7 @@ class ClosedBoundary:
     UI = {'/ui', '/ui/search', '/ui/admin'} | UI_ASSET_PATHS
 
     REVIEWED = {(method, route.path, route.endpoint)
-                for router in (account_router, media_router, library_router, photo_stack_router, member_router, story_router, people_router, people_review_router, tag_router, album_router, story_workspace_router, selected_story_router, memory_group_router, memory_router, story_cloud_router, memory_community_router, memory_edition_router, ui_router, discovery_router, semantic_search_router, assistant_router, assistant_workspace_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
+                for router in (account_router, media_router, video_moments_router, library_router, photo_stack_router, member_router, story_router, people_router, people_review_router, tag_router, album_router, story_workspace_router, selected_story_router, memory_group_router, memory_router, story_cloud_router, memory_community_router, memory_edition_router, ui_router, discovery_router, semantic_search_router, assistant_router, assistant_workspace_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
                 for route in router.routes for method in route.methods}
 
     def __init__(self, app, routes):
@@ -190,6 +191,10 @@ class ClosedBoundary:
         if method == 'POST' and re.fullmatch(r'/libraries/[^/]+/semantic-search/v1/query', path):
             return True
         if method == 'POST' and re.fullmatch(r'/libraries/[^/]+/discovery/v1/search', path):
+            return True
+        if method == 'POST' and re.fullmatch(r'/libraries/[^/]+/video-moments/v1/search', path):
+            return True
+        if method == 'GET' and re.fullmatch(r'/libraries/[^/]+/video-moments/v1/capabilities', path):
             return True
         if ((method == 'GET' and re.fullmatch(r'/assistant/v1/receipts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}', path))
                 or (method == 'POST' and re.fullmatch(r'/assistant/v1/receipts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/(?:outcome|playback)', path))):

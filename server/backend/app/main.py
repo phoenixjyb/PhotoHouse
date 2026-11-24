@@ -10,6 +10,8 @@ from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
 from .access.transport import router as account_router
 from .access.media import router as media_router
+from .access.video_moments import (VideoMomentCatalog,
+                                  router as video_moments_router)
 from .access.library import router as library_router
 from .access.photo_stack_transport import router as photo_stack_router
 from .access.members import router as member_router
@@ -44,6 +46,7 @@ from .updates import router as updates_router
 
 
 def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=None,
+               video_moment_catalog=None,
                upload_runtime=None, upload_review_runtime=None, semantic_search_runtime=None,
                annotation_intake_enabled=False, assistant_enabled=False,
                memory_collaboration_enabled=False, memory_originals_enabled=False,
@@ -69,6 +72,13 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
             semantic_search_runtime.access is not access_runtime or
             semantic_search_runtime.discovery is not discovery_runtime):
         raise ValueError('Explicit matching semantic search runtime required')
+    if video_moment_catalog is not None:
+        from .access.media import MediaRuntime
+        from .access.prepared_video import PreparedVideos
+        if (type(video_moment_catalog) is not VideoMomentCatalog or
+                access_runtime is None or type(media_runtime) is not MediaRuntime or
+                type(media_runtime.prepared_videos) is not PreparedVideos):
+            raise ValueError('Video moments require an explicit catalog and prepared playback runtime')
     if (type(assistant_semantic_search_enabled) is not bool or
             (assistant_semantic_search_enabled and
              (not assistant_enabled or semantic_search_runtime is None))):
@@ -297,6 +307,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.story_title_suggester = story_title_suggester
     app.state.story_title_lock = Lock()
     app.state.media_runtime = media_runtime
+    app.state.video_moment_catalog = video_moment_catalog
     app.state.discovery_runtime = discovery_runtime
     app.state.semantic_search_runtime = semantic_search_runtime
     app.state.assistant_semantic_search_enabled = assistant_semantic_search_enabled
@@ -330,6 +341,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.update_root = update_root
     app.include_router(account_router)
     app.include_router(media_router)
+    if video_moment_catalog is not None:
+        app.include_router(video_moments_router)
     app.include_router(library_router)
     app.include_router(photo_stack_router)
     app.include_router(member_router)
