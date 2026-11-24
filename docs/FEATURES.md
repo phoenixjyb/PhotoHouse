@@ -62,7 +62,8 @@ follows. Current installed-client and voice acceptance remain separate.
   Retry playback from the viewer after preparation finishes.
 - [Oral-history intake](ORAL_HISTORY_INTAKE_FOUNDATION.md) has a default-off
   Web recorder and protected API. Generated checks cover local preview, exact
-  retry and resume after reload. Physical devices are pending.
+  retry and resume after reload. Authors can also reopen completed recordings
+  and play selected sections. Physical devices are pending.
 - The Windows voice bridge accepts optional exact names of installed
   [System.Speech voices](MODEL_PROVIDER_ARCHITECTURE.md). The tested bridge
   behavior does not qualify a new live voice.

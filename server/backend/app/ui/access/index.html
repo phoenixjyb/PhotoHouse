@@ -323,6 +323,21 @@
             <button id="oral-history-finish" class="quiet" type="button" data-oral-word="finish">Finish recording</button>
           </div>
         </section>
+        <button id="oral-history-finished" class="quiet" type="button" data-oral-word="reviewFinished" hidden>Review finished recordings</button>
+        <section id="oral-history-completed" aria-labelledby="oral-history-completed-heading" hidden>
+          <h3 id="oral-history-completed-heading" data-oral-word="finishedRecordings">Finished recordings</h3>
+          <ul id="oral-history-completed-list" class="receipt-list" hidden></ul>
+          <div id="oral-history-review" hidden>
+            <h4 id="oral-history-review-title"></h4>
+            <label for="oral-history-review-section" data-oral-word="recordedSection">Recorded section</label>
+            <div class="memory-home-actions oral-history-actions">
+              <select id="oral-history-review-section"></select>
+              <button id="oral-history-load-audio" class="primary" type="button" data-oral-word="loadAudio">Load audio</button>
+            </div>
+            <audio id="oral-history-playback" controls preload="none" hidden></audio>
+          </div>
+          <button id="oral-history-back" class="quiet" type="button" data-oral-word="back">Back</button>
+        </section>
       </details>
       <details id="albums-panel" class="access-panel"><summary data-i18n="albums">Family albums</summary><p class="fine" data-i18n="albumPrivacy">Saved in this library, not automatically published to TV.</p><button id="album-create" class="primary" type="button" hidden data-i18n="newAlbum">Create album</button><p id="album-status" role="status"></p><div id="album-list"></div><nav id="album-pages" class="pagination" hidden><button id="album-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="album-page-label"></span><button id="album-next" class="quiet" type="button" data-i18n="next">Next</button></nav><details id="album-archived-panel" hidden><summary data-i18n="archivedAlbums">Albums put away</summary><p class="fine" data-i18n="archivedHelp">Albums this library has put away. Nothing was deleted, so any of them can be brought back.</p><p id="album-archived-status" role="status" aria-live="polite"></p><div id="album-archived-list"></div></details></details>
       <details id="my-uploads-panel" class="access-panel account-uploads-panel" hidden>

@@ -3,10 +3,10 @@
 **Status: internal source prototype, November 25, 2026.** The source implements
 ordered recording sections and durable SQLite mutation receipts using generated
 fixtures. A protected HTTP transport is available only when its explicit
-`oral_history_intake_enabled` app option is true; it does not initialize storage
-or install a migration. There is no client recorder, production runtime
-configuration, ASR queue, deployment or public recording feature. A new checkout
-and the current Windows installation do not activate this prototype.
+`oral_history_intake_enabled` app option is true. The optional Web recorder
+shares that setting and uses the existing generated-fixture schema. The default app
+and the current Windows runtime leave it off. Production storage admission,
+local transcription and editorial review are open.
 
 The October 15 source increment adds separate opt-in, author-only withdrawal
 and V4 journal replay. Withdrawal retains original bytes but denies ordinary
@@ -51,10 +51,16 @@ server. Leaving the panel, signing out, or putting the browser in the
 background clears unsaved audio and stops the microphone. **Finish recording**
 closes an open session that has at least one saved section.
 
+Choose **Review finished recordings** to see your completed sessions. Select
+one section and choose **Load audio** before playing it with the browser's audio
+controls. Sections remain in their recorded order. Closing the panel or leaving
+the foreground stops playback and clears the browser's in-memory copy.
+
 The generated browser checks use synthetic audio and a temporary database.
 They exercise dropped replies, exact retry, foreground interruption and
-resume after reload. The supported runtime keeps intake off. Device capture,
-paired storage recovery and family consent have their own acceptance checks.
+resume after reload. They also finish, reopen and play the exact saved section
+after reload. Device capture, paired storage recovery and family consent have
+their own acceptance checks.
 
 The internal transport in
 [`oral_history_transport.py`](../server/backend/app/access/oral_history_transport.py)
@@ -74,8 +80,13 @@ the request ID, expected revision and ordinal are explicit headers. The route
 checks current author access to that exact session before reading audio, then
 the intake rechecks it atomically with the append. Identical retries return
 the committed receipt without adding another section. Existing complete and
-cancel operations are also wired through protected routes. These routes do
-not invoke ASR, processing, workers, playback or story adoption.
+cancel operations are also wired through protected routes. `GET .../sessions/completed`
+lists completed sessions for the current author and library, up to the existing
+eight-session quota. `GET .../sessions/{session_id}/sections/{ordinal}` requires
+the selected completed revision in `X-PhotoHouse-Expected-Revision`. It verifies
+current author access, source state and the original WAV and hash before
+returning one no-store section. Transcription and story adoption remain separate
+actions.
 
 ## Section and quota contract
 

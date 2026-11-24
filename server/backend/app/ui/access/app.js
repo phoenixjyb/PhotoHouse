@@ -1180,7 +1180,7 @@
       return retryOnReopen;
     }
   }
-  function assistantWavValid(file) {
+  function canonicalSpeechWav(file) {
     if(!file||file.size<44||file.size>960044||file.type!=='audio/wav')return false;
     return file.slice(0,44).arrayBuffer().then(buffer=>{const view=new DataView(buffer),label=(at,value)=>Array.from({length:value.length},(_,index)=>String.fromCharCode(view.getUint8(at+index))).join('')===value;return label(0,'RIFF')&&label(8,'WAVE')&&label(12,'fmt ')&&view.getUint32(16,true)===16&&view.getUint16(20,true)===1&&view.getUint16(22,true)===1&&view.getUint32(24,true)===16000&&view.getUint32(28,true)===32000&&view.getUint16(32,true)===2&&view.getUint16(34,true)===16&&label(36,'data')&&view.getUint32(40,true)===file.size-44;});
   }
@@ -1203,7 +1203,7 @@
   }
   async function requestAssistantTranscription(file,binding,attempt) {
     if(assistantState.pendingTurn||assistantRecoveryPending()||assistantState.busy||!currentAssistantTranscription(attempt))throw new DOMException('Assistant turn is pending','AbortError');
-    if(!await assistantWavValid(file))throw new Error('Invalid assistant recording');
+    if(!await canonicalSpeechWav(file))throw new Error('Invalid assistant recording');
     if(assistantState.pendingTurn||assistantRecoveryPending()||assistantState.busy||!currentAssistantTranscription(attempt))throw new DOMException('Assistant turn is pending','AbortError');
     const requestId=assistantRequestId();const receipt={id:requestId,operation:'transcribe',tracking:'unknown',status:null,binding:{...binding}};assistantState.pendingTranscriptRequestId=null;assistantState.transcriptReviewBinding=null;assistantState.transcriptReviewPending=false;assistantState.transcriptLanguage=null;assistantState.receipt=receipt;attempt.receipt=receipt;showAssistantReceipt(receipt,'assistantAsrAwaitingReceipt');
     const controller=new AbortController();attempt.controller=controller;assistantState.transcriptionController=controller;state.controllers.add(controller);
@@ -5375,7 +5375,7 @@
     try{
       await loadPanelScript('oral-history');
       if(!current())return;
-      oralHistory??=window.PhotoHouseOralHistory({panel,request,capture:annotationCapture,
+      oralHistory??=window.PhotoHouseOralHistory({panel,request,capture:annotationCapture,validateWav:canonicalSpeechWav,
         scope:()=>({account:state.profile?.account_id,library:state.library,generation:state.generation,
           language:state.language,locked:state.locked}),
         reserveCapture:reserveRecording,claimCapture:claimRecording,releaseCapture:releaseRecording,onAuthorizationFailure:failure});

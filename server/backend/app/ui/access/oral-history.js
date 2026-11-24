@@ -1,6 +1,6 @@
 'use strict';
 
-window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture, claimCapture, releaseCapture, onAuthorizationFailure}) => {
+window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, reserveCapture, claimCapture, releaseCapture, onAuthorizationFailure}) => {
   const words = {
     en: {
       help:'Only you can open the saved recording. Record up to 20 seconds at a time. Save each section before leaving.',
@@ -17,6 +17,11 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
       review:'Save this section to keep it, or discard it and record again.',
       saving:'Saving…', saved:'Section saved.', closing:'Finishing the recording…',
       finished:'Recording finished. The saved audio stays private.',
+      reviewFinished:'Review finished recordings', finishedRecordings:'Finished recordings',
+      noFinished:'You have no finished recordings.', recordedSection:'Recorded section',
+      sectionNumber:'Section {number}', loadAudio:'Load audio', back:'Back',
+      loadingAudio:'Loading this section…', audioReady:'Audio ready to play.',
+      audioUnavailable:'This section is unavailable. Try loading it again.', playback:'Play the saved section',
       uncertain:'The server did not confirm this action. Try the same action again.',
       changed:'This recording has changed. Reopen this panel to check the saved sections.',
       unavailable:'Your recordings are unavailable. Reopen this panel to try again.',
@@ -36,6 +41,11 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
       review:'保存本段，或丢弃后重新录制。',
       saving:'正在保存…', saved:'本段已保存。', closing:'正在完成录音…',
       finished:'录音已完成。已保存的音频仍仅你可访问。',
+      reviewFinished:'查看已完成的录音', finishedRecordings:'已完成的录音',
+      noFinished:'没有已完成的录音。', recordedSection:'录音段落',
+      sectionNumber:'第 {number} 段', loadAudio:'加载音频', back:'返回',
+      loadingAudio:'正在加载本段…', audioReady:'音频已就绪，可以播放。',
+      audioUnavailable:'暂时无法打开本段，请重新加载。', playback:'播放已保存的本段录音',
       uncertain:'服务器尚未确认。请重试同一操作。',
       changed:'录音已发生变化。请重新打开此面板，查看已保存的段落。',
       unavailable:'暂时无法打开你的录音。请重新打开此面板重试。',
@@ -45,7 +55,10 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
   const form = element('create'), list = element('list'), status = element('status');
   const record = element('record'), stop = element('stop'), save = element('save');
   const discard = element('discard'), finish = element('finish'), active = element('active');
-  const preview = element('preview');
+  const preview = element('preview'), playback = element('playback');
+  const finished = element('finished'), completedPanel = element('completed');
+  const completedList = element('completed-list'), review = element('review'), back = element('back');
+  const reviewTitle = element('review-title'), reviewSection = element('review-section'), loadAudio = element('load-audio');
   const uuid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
   const digest = /^[0-9a-f]{64}$/;
   const maxSections = 180;
@@ -53,7 +66,7 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
   const maxSectionBytes = 44 + sectionSeconds * 16000 * 2;
   let owner = null, sessions = [], session = null, task = null, recording = null, section = null;
   let pendingCreate = null, pendingFinish = null, notice = '', loaded = false;
-  let previewURL = null;
+  let completed = null, reviewed = null, previewURL = null, playbackURL = null;
 
   const text = key => words[scope().language === 'zh' ? 'zh' : 'en'][key] || '';
   const path = binding => '/oral-history/v1/libraries/' + encodeURIComponent(binding.library) + '/sessions';
@@ -70,6 +83,7 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
         value.retention_consent !== true || typeof value.processing_consent !== 'boolean' ||
         !['open', 'completed'].includes(value.state) || !Number.isInteger(value.section_count) ||
         value.section_count < 0 || value.section_count > maxSections ||
+        (value.state === 'completed' && value.section_count === 0) ||
         value.next_ordinal !== value.section_count ||
         value.revision !== 1 + value.section_count + Number(value.state === 'completed') ||
         typeof value.manifest_sha256 !== 'string' || !digest.test(value.manifest_sha256)) {
@@ -78,30 +92,51 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
     return value;
   }
 
+  function checkedList(value, binding, state) {
+    if (value?.version !== 2 || value.library_id !== binding.library ||
+        !Array.isArray(value.items) || value.items.length > 8) throw new Error('Invalid recording list');
+    const items = value.items.map(item => checkedStatus(item, binding));
+    if (items.some(item => item.state !== state) ||
+        new Set(items.map(item => item.session_id)).size !== items.length) throw new Error('Invalid recording list');
+    return items;
+  }
+
   function remember(item) {
     sessions = sessions.filter(row => row.session_id !== item.session_id);
     if (item.state === 'open') sessions.unshift(item);
   }
 
-  function renderList() {
-    list.replaceChildren(...sessions.filter(item => item.session_id !== session?.session_id).map(item => {
+  function renderList(target, items, select) {
+    target.replaceChildren(...items.map(item => {
       const row = document.createElement('li');
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'quiet';
       button.textContent = item.title;
-      button.addEventListener('click', () => void resume(item.session_id));
+      button.addEventListener('click', () => void select(item));
       row.append(button);
       return row;
     }));
   }
 
+  function renderOpenList() {
+    renderList(list, sessions.filter(item => item.session_id !== session?.session_id), item => resume(item.session_id));
+  }
+
   function paint() {
     if (!current(owner)) return;
     const editing = !!session;
-    form.hidden = !loaded || editing;
-    list.hidden = !list.childElementCount;
+    const browsingFinished = completed !== null;
+    form.hidden = !loaded || editing || browsingFinished;
+    list.hidden = browsingFinished || !list.childElementCount;
     active.hidden = !editing;
+    finished.hidden = !loaded || editing || browsingFinished;
+    finished.disabled = !!(task || pendingCreate);
+    completedPanel.hidden = !browsingFinished;
+    completedList.hidden = !!reviewed || !completedList.childElementCount;
+    review.hidden = !reviewed;
+    back.disabled = loadAudio.disabled = reviewSection.disabled = !!task;
+    for (const button of completedList.querySelectorAll('button')) button.disabled = !!task;
     status.textContent = text(notice);
     for (const field of form.querySelectorAll('input,select')) field.disabled = !!task || !!pendingCreate;
     form.querySelector('button').disabled = !!task;
@@ -123,18 +158,31 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
   function translate() {
     for (const node of panel.querySelectorAll('[data-oral-word]')) node.textContent = text(node.dataset.oralWord);
     preview.setAttribute('aria-label', text('preview'));
+    playback.setAttribute('aria-label', text('playback'));
+    for (const option of reviewSection.options) {
+      option.textContent = text('sectionNumber').replace('{number}', Number(option.value) + 1);
+    }
     paint();
+  }
+
+  function removeAudio(player, url) {
+    player.hidden = true;
+    if (!url) return;
+    player.pause();
+    player.removeAttribute('src');
+    player.load();
+    URL.revokeObjectURL(url);
   }
 
   function clearSection() {
     section = null;
-    preview.hidden = true;
-    if (!previewURL) return;
-    preview.pause();
-    preview.removeAttribute('src');
-    preview.load();
-    URL.revokeObjectURL(previewURL);
+    removeAudio(preview, previewURL);
     previewURL = null;
+  }
+
+  function clearPlayback() {
+    removeAudio(playback, playbackURL);
+    playbackURL = null;
   }
 
   function clear() {
@@ -146,13 +194,17 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
       releaseCapture(recording.reservation);
     }
     clearSection();
+    clearPlayback();
     task = recording = pendingCreate = pendingFinish = session = null;
+    completed = reviewed = null;
     loaded = false;
     sessions = [];
     list.replaceChildren();
+    completedList.replaceChildren();
+    reviewSection.replaceChildren();
     form.reset();
-    form.hidden = list.hidden = active.hidden = true;
-    status.textContent = element('current').textContent = element('sections').textContent = '';
+    form.hidden = list.hidden = active.hidden = completedPanel.hidden = finished.hidden = true;
+    status.textContent = element('current').textContent = element('sections').textContent = reviewTitle.textContent = '';
   }
 
   async function run(waiting, failed, action) {
@@ -189,15 +241,10 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
     return run('loading', 'unavailable', async (binding, call) => {
       const result = await call();
       if (!current(binding)) return;
-      if (result?.version !== 2 || result.library_id !== binding.library ||
-          !Array.isArray(result.items) || result.items.length > 8) throw new Error('Invalid recording list');
-      const items = result.items.map(item => checkedStatus(item, binding));
-      if (items.some(item => item.state !== 'open') ||
-          new Set(items.map(item => item.session_id)).size !== items.length) throw new Error('Invalid recording list');
-      sessions = items;
+      sessions = checkedList(result, binding, 'open');
       loaded = true;
       notice = sessions.length ? '' : 'noRecordings';
-      renderList();
+      renderOpenList();
     });
   }
 
@@ -210,9 +257,75 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
       remember(restored);
       session = restored.state === 'open' ? restored : null;
       notice = session ? 'ready' : 'finished';
-      renderList();
+      renderOpenList();
     });
   }
+
+  function reviewRecording(item) {
+    if (!current(owner) || task || !completed?.includes(item)) return;
+    reviewed = item;
+    reviewTitle.textContent = item.title;
+    reviewSection.replaceChildren(...Array.from({length:item.section_count}, (_, ordinal) => {
+      return new Option(text('sectionNumber').replace('{number}', ordinal + 1), String(ordinal));
+    }));
+    notice = '';
+    paint();
+    reviewSection.focus();
+  }
+
+  finished.addEventListener('click', async () => {
+    if (!current(owner) || task || session || pendingCreate) return;
+    const binding = owner;
+    await run('loading', 'unavailable', async (scopeBinding, call) => {
+      const result = await call('/completed');
+      if (!current(scopeBinding)) return;
+      completed = checkedList(result, scopeBinding, 'completed');
+      notice = completed.length ? '' : 'noFinished';
+      renderList(completedList, completed, reviewRecording);
+    });
+    if (current(binding) && completed) (completedList.querySelector('button') || back).focus();
+  });
+
+  back.addEventListener('click', () => {
+    if (!current(owner) || task) return;
+    clearPlayback();
+    const returnTo = reviewed ? completedList.querySelectorAll('button')[completed.indexOf(reviewed)] : finished;
+    if (!reviewed) {
+      completed = null;
+      completedList.replaceChildren();
+    }
+    reviewed = null;
+    reviewTitle.textContent = '';
+    reviewSection.replaceChildren();
+    notice = '';
+    paint();
+    returnTo?.focus();
+  });
+
+  reviewSection.addEventListener('change', () => {
+    clearPlayback();
+    notice = '';
+    paint();
+  });
+
+  loadAudio.addEventListener('click', () => {
+    const source = reviewed, ordinal = reviewSection.selectedIndex;
+    if (!current(owner) || task || !source || ordinal < 0 || ordinal >= source.section_count) return;
+    clearPlayback();
+    void run('loadingAudio', 'audioUnavailable', async (binding, call) => {
+      const audio = await call('/' + source.session_id + '/sections/' + ordinal, {responseType:'blob',
+        extraHeaders:{'X-PhotoHouse-Expected-Revision':String(source.revision)}});
+      if (!current(binding) || reviewed !== source || reviewSection.selectedIndex !== ordinal) return;
+      if (audio.size <= 44 || audio.size > maxSectionBytes || !await validateWav(audio)) {
+        throw new Error('Invalid recording audio');
+      }
+      if (!current(binding) || reviewed !== source || reviewSection.selectedIndex !== ordinal) return;
+      playbackURL = URL.createObjectURL(audio);
+      playback.src = playbackURL;
+      playback.hidden = false;
+      notice = 'audioReady';
+    });
+  });
 
   form.addEventListener('submit', event => {
     event.preventDefault();
@@ -240,7 +353,7 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
       pendingCreate = null;
       form.reset();
       notice = 'ready';
-      renderList();
+      renderOpenList();
     });
   });
 
@@ -339,7 +452,7 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
       remember(accepted);
       clearSection();
       notice = 'saved';
-      renderList();
+      renderOpenList();
     });
   });
 
@@ -359,7 +472,7 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, reserveCapture,
       remember(closed);
       session = pendingFinish = null;
       notice = 'finished';
-      renderList();
+      renderOpenList();
     });
   });
 

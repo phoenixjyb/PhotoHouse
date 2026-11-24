@@ -975,8 +975,8 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "The optional Web recorder saves short sections and resumes unfinished recordings after a reload. Generated browser checks covered a lost reply and duplicate-free retry.",
-          "zh": "可选的网页录音支持分段保存，刷新后可继续未完成的录音。合成浏览器测试验证了回复丢失与无重复重试。"
+          "en": "The optional Web recorder saves short sections, resumes unfinished recordings, and lets authors play completed sections. Generated browser checks covered duplicate-free retry and playback after reload.",
+          "zh": "可选的网页录音支持分段保存、继续未完成的录音，以及由作者回听已完成的录音。合成浏览器测试验证了无重复重试和刷新后回听。"
         }
       ],
       "gaps": [
