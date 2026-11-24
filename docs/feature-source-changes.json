@@ -37352,6 +37352,23 @@
         }
       ],
       "notes": "The public roadmap and download describe generated Search refinement and consented transcript previews separately from live Windows. The browser scenario waits for the exact simulated fresh list or denial before starting the next signed-in case."
+    },
+    {
+      "feature": "audit-memoir-fixtures-20261125",
+      "source_commit": "201b93c45181454f1df15808e478031b163c3015",
+      "files": [
+        {
+          "path": "server/tests/security/test_memory_book_edition_shelf_browser.cjs",
+          "before_sha256": "d64093f6e8e0bee5a2c43dd7c5266627e53f09b192e639ca007cc44f66f6c39c",
+          "sha256": "4a48efec59c935e9b458107a69804bacc7155123eb390103b9598ec92ce3cecd"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "e74efc61675a8f44b21a0fa26a1da411929f0e6d9b00faca81074c5c8aa88573",
+          "sha256": "374057344cb3acc59c2f774159b47c3b640687281526607f47aeb33569717f7c"
+        }
+      ],
+      "notes": "The saved edition uses current markup while explicitly omitting the legacy optional controls. The memoir font test establishes a nonzero reading position and activates the focused control by keyboard. Both generated journeys passed without changing served code."
     }
   ]
 }
