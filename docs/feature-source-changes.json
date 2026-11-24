@@ -37117,6 +37117,23 @@
         }
       ],
       "notes": "Regenerate the bilingual public companion from the updated data and check the exact output on the local API profile."
+    },
+    {
+      "feature": "audit-discovery-coverage-in-one-pass",
+      "source_commit": "1123a3402086b3e82404bd55277c8297c369bf09",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "fa19b1c333e13427832bebe67274645e98b7fcc17a29453c8c0573265dbffb5f",
+          "sha256": "427916544c427576549e5ec6d0bd7836761462d86810da4140fdbfa9591781f9"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "5d0318fbf8e941c19127f78af5702d00ec0bf13084ec452163ee4e0d431fb14a",
+          "sha256": "7493abc6cb7b78cf1b3ac4d270ce93c069b2126d770b1af867b3aba0fc2c7e5b"
+        }
+      ],
+      "notes": "Compute coverage and facet totals in the existing projection, avoiding per-item empty containers. Matched generated protected API timing and full response checks."
     }
   ]
 }
