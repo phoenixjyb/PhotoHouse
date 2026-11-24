@@ -79,7 +79,7 @@ class ClosedBoundary:
         session = oral+r'/[0-9a-f-]{36}'
         if method == 'GET' and re.fullmatch(session, path): return True
         if method == 'GET' and re.fullmatch(session+r'/sections/[^/]{1,12}', path): return True
-        if method == 'POST' and re.fullmatch(session+r'/(?:sections|complete|cancel)', path): return True
+        if method == 'POST' and re.fullmatch(session+r'/(?:sections|complete|cancel|sections/[^/]{1,12}/transcription)', path): return True
         prefix = '/memory-community/v1'
         if method == 'GET' and path == prefix+'/capabilities': return True
         if method in {'GET','POST'} and path == prefix+'/books': return True

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
+from .assistant_speech import AssistantAsrFailure
 from .oral_history_intake import OralHistoryIntake, CREATE_FIELDS, _uuid
 from .oral_history_schema import MAX_SECTION_BYTES, MAX_SECTIONS
 from .service import AccessService
@@ -170,6 +171,45 @@ async def completed_section(library_id: str, session_id: str, ordinal: str, requ
     audio = await run_in_threadpool(_intake_call, runtime, 'completed_audio', token,
         library_id, session_id, int(ordinal), expected_revision=int(expected))
     return Response(audio, media_type='audio/wav')
+
+
+def _transcription_preview(runtime, token, library, session_id, ordinal, revision, asr, lock):
+    args = (runtime, 'completed_audio', token, library, session_id, ordinal)
+    options = {'expected_revision': revision, 'for_transcription': True}
+    audio = _intake_call(*args, **options)
+    if not lock.acquire(blocking=False):
+        raise TransportError(503, 'Recording transcription is busy')
+    try:
+        try:
+            transcript = asr.transcribe(audio)
+        except AssistantAsrFailure as error:
+            raise TransportError(error.status, 'Recording transcription unavailable') from None
+        if _intake_call(*args, **options) != audio:
+            raise TransportError(409, 'Recording changed; refresh before reading')
+    finally:
+        lock.release()
+    return {'version': 1, 'session_id': session_id, 'revision': revision, 'ordinal': ordinal,
+            'text': transcript['text'], 'language': transcript['language'], 'saved': False}
+
+
+@router.post('/oral-history/v1/libraries/{library_id}/sessions/{session_id}/sections/{ordinal}/transcription')
+async def transcribe_section(library_id: str, session_id: str, ordinal: str, request: Request):
+    runtime, token = _admitted(request)
+    await run_in_threadpool(_authorize, runtime, token, library_id)
+    state = request.app.state
+    if not state.oral_history_transcription_enabled:
+        raise TransportError(503, 'Recording transcription unavailable')
+    body = await _read_json(request, MAX_JSON_BYTES)
+    if (type(body) is not dict or set(body) != {'expected_revision'}
+            or type(body['expected_revision']) is not int
+            or not 1 <= body['expected_revision'] <= MAX_SECTIONS + 2
+            or not re.fullmatch(r'(?:0|[1-9][0-9]{0,2})', ordinal)
+            or int(ordinal) >= MAX_SECTIONS):
+        raise TransportError(400, 'Invalid recording section')
+    result = await run_in_threadpool(_transcription_preview, runtime, token, library_id,
+                                    session_id, int(ordinal), body['expected_revision'],
+                                    state.assistant_asr, state.oral_history_transcription_lock)
+    return _json_response(result)
 
 
 @router.post('/oral-history/v1/libraries/{library_id}/sessions/{session_id}/sections')

@@ -92,7 +92,10 @@ let browser,context,page;
   const turns=()=>requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns');
   const transcriptions=()=>requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/transcribe');
   const receiptChecks=()=>requests.filter(item=>item.method==='GET'&&/^\/assistant\/v1\/receipts\/[^/]+\?/.test(item.path));
-  const openAssistant=async()=>{await page.locator('#assistant-panel').evaluate(panel=>{panel.open=true;});await page.locator('#assistant-form').waitFor({state:'visible'});};
+  const openAssistant=async()=>{
+    if(!await page.locator('#assistant-panel').evaluate(panel=>panel.open))await page.locator('#assistant-panel > summary').click();
+    await page.locator('#assistant-form').waitFor({state:'visible'});
+  };
   const submitText=async text=>{const expected=Math.min(await page.locator('#assistant-turn-trail-list > li').count()+1,8),response=page.waitForResponse(value=>value.url().endsWith('/assistant/v1/turns'));await page.locator('#assistant-text').fill(text);await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);await page.locator('#assistant-form').evaluate(form=>form.requestSubmit());await response;await page.waitForFunction(count=>document.querySelectorAll('#assistant-turn-trail-list > li').length===count,expected);await page.waitForFunction(value=>document.querySelector('#assistant-reply')?.textContent===value,`Synthetic reply ${nextTurn}`);};
   const record=async()=>{const previous=transcriptions().length;await page.locator('#assistant-mic').evaluate(button=>button.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true})));await page.locator('#assistant-stop').waitFor({state:'visible',timeout:5000});await page.locator('#assistant-stop').click();return previous+1;};
   const keyboardRecord=async()=>{const previous=transcriptions().length;await page.locator('#assistant-mic').focus();await page.keyboard.press('Space');await page.locator('#assistant-stop').waitFor({state:'visible',timeout:5000});await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-stop','keyboard can reach the visible Stop control');await page.keyboard.press('Enter');return previous+1;};

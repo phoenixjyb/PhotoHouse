@@ -249,21 +249,21 @@ Refine a search across turns instead of repeatedly starting over. / 跨轮次细
 
 **Implemented / 已实现**
 
-- Conversation records and follow-up source paths exist. / 已有对话记录与追问处理源码。
+- Generated English, Chinese and mixed-language journeys retain the date and media filters. A follow-up can change the month and keep the reviewed person filter. / 合成的中英文及混合语言流程能保留日期和媒体类型条件。追问可以更改月份，同时保留已核实的人物筛选。
 
 **Gaps / 差距**
 
-- Ambiguity, exclusions and all retained filters need a coherent end-to-end experience. / 歧义、排除条件和保留的全部筛选条件仍需形成连贯完整体验。
+- Real household phrasing, ambiguous requests and exclusions still need native end-to-end evaluation. / 真实家庭用语、存在歧义的请求以及排除条件仍需本机端到端评估。
 
-**Next / 下一步:** Deliver a find → clarify → narrow → open journey with visible conditions. / 交付“查找 → 澄清 → 缩小范围 → 打开结果”的完整流程，条件始终可见。
+**Next / 下一步:** Qualify the find, clarify, narrow and open journey on approved household devices with visible filters. / 在获准的家庭设备上验证查找、澄清、缩小范围和打开结果的完整流程，保持筛选条件可见。
 
-**Delivery / 交付背景:** Partial implementation; no broad multi-turn family acceptance is claimed. / 目前为部分实现；尚未宣称广泛多轮家庭验收完成。
+**Delivery / 交付背景:** Local generated journeys passed. Native relevance and device acceptance remain open. / 本地合成流程已通过。本机搜索相关性和设备验收仍待完成。
 
 **Acceptance / 验收背景:** Test with real user phrasing without hardcoding a demonstration. / 使用真实用户表达进行验证，不硬编码演示答案。
 
 **Evidence record / 证据记录**
 
-- 2026-11-24 · ROADMAP.md · assistant Search contracts / ROADMAP.md · 助手搜索契约
+- 2026-11-25 · Audit reconciliation · generated Search journeys / 审计对照记录 · 合成搜索流程
 
 <a id="search-result-handoff"></a>
 
@@ -484,15 +484,15 @@ Collect longer family accounts and connect them to people and moments. / 收集�
 
 **Implemented / 已实现**
 
-- The optional Web recorder saves short sections, resumes unfinished recordings, and lets authors play completed sections. Generated browser checks covered duplicate-free retry and playback after reload. / 可选的网页录音支持分段保存、继续未完成的录音，以及由作者回听已完成的录音。合成浏览器测试验证了无重复重试和刷新后回听。
+- The optional Web recorder saves short sections, resumes unfinished recordings, and lets authors play completed sections. With processing consent, authors can request an unsaved local transcript of a selected section. / 可选的网页录音支持分段保存、继续未完成的录音，以及由作者回听已完成的录音。取得处理同意后，作者可对选定段落发起本机转写，查看未保存的转写稿。
 
 **Gaps / 差距**
 
-- Physical capture, transcription, editorial review and production storage qualification remain open. / 真机录音、转写、编辑审阅及生产存储验证仍待完成。
+- Physical capture, native transcription, transcript editing and production storage qualification remain open. / 真机录音、本机转写效果、转写稿编辑及生产存储验证仍待完成。
 
 **Next / 下一步:** Ship one resumable recording-to-reviewed-story journey before expanding automation. / 先交付一个可恢复的录音到已审阅故事流程，再扩展自动化。
 
-**Delivery / 交付背景:** Generated Web and API checks passed. The recorder remains off in the deployed configuration. / 合成网页与 API 测试通过。已部署配置仍未启用录音。
+**Delivery / 交付背景:** Generated Web and API checks covered exact retry, section playback and transcript preview. Both recording and transcription remain off in the deployed configuration. / 合成网页与 API 测试覆盖了无重复重试、分段回听和转写预览。已部署配置未启用录音和转写。
 
 **Acceptance / 验收背景:** Recording consent, attribution and author adoption remain explicit. / 录音同意、来源归属与作者采纳必须明确。
 

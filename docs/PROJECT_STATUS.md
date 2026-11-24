@@ -15,7 +15,7 @@ in the browser's player. HTTPS shell and asset checks passed, including a
 direct LAN request from a Mac using the trusted hostname. Physical phone and
 tablet checks remain open. [Fullscreen PR](https://github.com/phoenixjyb/PhotoHouse/pull/118)
 
-The next source integration includes bilingual date and media follow-ups,
+The merged Search integration includes bilingual date and media follow-ups,
 generated semantic hard-filter evaluation, stable thumbnail placeholders, and
 saved-story reopening checks. The local API profile passed 3,771 tests and
 4,544 subtests, with six skips. GitHub Actions remains cost-paused.
@@ -28,7 +28,7 @@ skips. The generated recovery demo and Android phone debug build passed.
 [Family reliability PR](https://github.com/phoenixjyb/PhotoHouse/pull/120)
 
 The source integration also includes ordered saved-group-to-story creation,
-reviewed video moments and same-page Jude selection recovery. The next PR adds
+reviewed video moments and same-page Jude selection recovery. PR #122 adds
 stable filmstrip thumbnails, phone-bound registration links and stronger Search
 scorecard checks. [Story PR](https://github.com/phoenixjyb/PhotoHouse/pull/121) ·
 [Family and relevance PR](https://github.com/phoenixjyb/PhotoHouse/pull/122)
@@ -41,8 +41,10 @@ checks and 14 Android 36 emulator tests. The debug build used no production
 origin. [Recording, mobile and Search PR](https://github.com/phoenixjyb/PhotoHouse/pull/123)
 
 The recorder can also reopen completed sessions and play individual sections
-on explicit author request. Generated Web and API checks use synthetic audio.
-Windows feature activation, signed client delivery, and household acceptance
+on explicit author request. The new optional local transcription preview
+requires separate processing consent and keeps the draft unsaved. Generated
+Web and API checks use synthetic audio and a simulated speech provider.
+Windows feature activation, signed client delivery and household acceptance
 are tracked in the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md).
 
 ## November 24 current delivery

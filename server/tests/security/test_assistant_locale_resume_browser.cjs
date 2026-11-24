@@ -116,8 +116,13 @@ let browser,context,page;
   console.log('PASS a newer draft typed during the fresh read wins');
 
   await closeWorkspace();omitNextThread=threadId;const missingThreadDetailCount=detailGets(threadId).length;
+  const missingThreadList=page.waitForResponse(response=>response.request().method()==='GET'&&
+    new URL(response.url()).pathname===privatePrefix+'/threads'&&response.status()===200);
   const missingSourceLang=await page.evaluate(()=>document.documentElement.lang);await page.locator('#language').click();await page.waitForFunction(source=>document.documentElement.lang!==source,missingSourceLang);
   await page.locator('#memory-assistant-link').click();await page.locator('#assistant-workspace-dialog[open]').waitFor();
+  const missingThreadPayload=await (await missingThreadList).json();
+  assert.equal(omitNextThread,null,'the fresh list carries the intentionally omitted thread');
+  assert(!missingThreadPayload.threads.some(thread=>thread.thread_id===threadId));
   await page.waitForFunction(()=>document.getElementById('assistant-private-select')?.value==='');
   assert.equal(detailGets(threadId).length,missingThreadDetailCount,'a thread absent from the freshly authorized list is never read');
   assert.equal(await page.locator('#assistant-text').inputValue(),'','missing thread discards the current draft');
@@ -128,8 +133,11 @@ let browser,context,page;
   await page.locator('#assistant-private-new').click();await page.waitForFunction(()=>!!document.getElementById('assistant-private-select')?.value);
   const deniedThread=await page.locator('#assistant-private-select').inputValue();await turn('查找照片',0);
   await closeWorkspace();await page.locator('#assistant-text').fill('permission scoped draft');denyNextCapabilities=true;
+  const deniedCapability=page.waitForResponse(response=>response.request().method()==='GET'&&
+    new URL(response.url()).pathname===privatePrefix+'/capabilities'&&response.status()===403);
   const deniedSourceLang=await page.evaluate(()=>document.documentElement.lang);await page.locator('#language').click();await page.waitForFunction(source=>document.documentElement.lang!==source,deniedSourceLang);
   await page.locator('#memory-assistant-link').click();await page.locator('#assistant-workspace-dialog[open]').waitFor();
+  await deniedCapability;
   await page.waitForFunction(()=>document.getElementById('assistant-private-select')?.value==='');
   assert.equal(await page.locator('#assistant-text').inputValue(),'','a denied capability refresh discards private draft');
   assert.equal(detailGets(deniedThread).length,0,'a denied capability refresh never reads the prior thread');

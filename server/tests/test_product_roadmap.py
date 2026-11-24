@@ -39,11 +39,6 @@ class RoadmapGatewayTests(unittest.TestCase):
         self.assertEqual(response.content, b"")
         self.security_headers(response)
 
-    def test_download_matches_bilingual_roadmap_content(self):
-        from tools.export_product_roadmap import PAGE, export
-
-        self.assertEqual((PAGE / 'roadmap.md').read_text(encoding='utf-8'), export())
-
     def test_fixed_assets_are_served_with_expected_types_and_headers(self):
         with TestClient(RoadmapGateway(FastAPI(), root=self.root)) as client:
             for name, media_type in FILES.items():

@@ -5,8 +5,9 @@ ordered recording sections and durable SQLite mutation receipts using generated
 fixtures. A protected HTTP transport is available only when its explicit
 `oral_history_intake_enabled` app option is true. The optional Web recorder
 shares that setting and uses the existing generated-fixture schema. The default app
-and the current Windows runtime leave it off. Production storage admission,
-local transcription and editorial review are open.
+and the current Windows runtime leave it off. Source now supports a separate
+local transcription preview. Production storage, native speech qualification
+and transcript editing remain open.
 
 The October 15 source increment adds separate opt-in, author-only withdrawal
 and V4 journal replay. Withdrawal retains original bytes but denies ordinary
@@ -88,6 +89,27 @@ current author access, source state and the original WAV and hash before
 returning one no-store section. Transcription and story adoption remain separate
 actions.
 
+### Review a local machine transcript
+
+An explicit `oral_history_transcription_enabled=True` app setting requires
+enabled intake and an injected `LocalAssistantAsr` provider. The setting defaults
+off. For a completed recording with local-processing consent, the author can
+select one section and choose **Transcribe locally**. Opening the recording or
+playing its audio starts no processing.
+
+`POST .../sessions/{session_id}/sections/{ordinal}/transcription` accepts only
+`{"expected_revision": ...}`. The route binds the current author, library,
+completed revision and consent before loading the verified original audio.
+It sends the exact section to the configured loopback ASR provider and checks
+the source and access again before returning a no-store result. Only one
+recording transcription can run in the app at a time. A busy or failed
+preview can be retried by the author.
+
+The preview is an unsaved machine transcript. The Web panel removes it on a
+section change, close, backgrounding or account/library change. The original
+audio remains playable in the same view. Transcript correction, persistence
+and adoption into a story require separate work.
+
 ## Section and quota contract
 
 - Canonical PCM WAV: mono, 16-bit, 16 kHz, exact 44-byte header, no hidden/trailing
@@ -129,8 +151,9 @@ The recording identity seeds a version 2 manifest that binds both consent facts;
 each ordered section binds its source hash, frame offset, frame count and
 preceding manifest. This supports
 future exact transcript/citation anchors without inventing current ASR output.
-No transcription, polish, title inference, story adoption or sharing occurs here,
-even with processing consent. Consent is permission metadata, not a worker claim.
+Recording intake creates no transcript, polish, title, story or sharing entry.
+The separate preview requires both prior processing consent and an explicit
+request for the completed section.
 
 The prior experimental session schema has no retention fact. Exact schema checks
 therefore fail closed on it; this source performs no automatic migration, does
@@ -187,7 +210,7 @@ content-free V4 journal/replay behavior now have internal source implementations
 and a [versioned generated rehearsal](ORAL_HISTORY_QUALIFICATION.md). Next
 qualify the operator's journal/schema upgrade and paired restore, specify
 permanent erasure and backup retention, and qualify recording on physical
-devices. Later
-transcription/proposal workers must recheck consent, source/current membership
-and revision before accepting their output. The Web recorder and API stay
-default-off pending production admission.
+devices. The generated transcript preview exercises current consent,
+authorization and revision, including a withdrawal during the provider
+request. No native ASR or household audio was used. The recorder and
+transcription preview stay default-off pending production admission.

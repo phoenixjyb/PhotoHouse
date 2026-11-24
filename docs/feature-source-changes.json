@@ -37117,6 +37117,258 @@
         }
       ],
       "notes": "Regenerate the bilingual public companion from the updated data and check the exact output on the local API profile."
+    },
+    {
+      "feature": "audit-discovery-coverage-in-one-pass",
+      "source_commit": "1123a3402086b3e82404bd55277c8297c369bf09",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "fa19b1c333e13427832bebe67274645e98b7fcc17a29453c8c0573265dbffb5f",
+          "sha256": "427916544c427576549e5ec6d0bd7836761462d86810da4140fdbfa9591781f9"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "5d0318fbf8e941c19127f78af5702d00ec0bf13084ec452163ee4e0d431fb14a",
+          "sha256": "7493abc6cb7b78cf1b3ac4d270ce93c069b2126d770b1af867b3aba0fc2c7e5b"
+        }
+      ],
+      "notes": "Compute coverage and facet totals in the existing projection, avoiding per-item empty containers. Matched generated protected API timing and full response checks."
+    },
+    {
+      "feature": "audit-jude-readiness-keyboard-and-joined-story",
+      "source_commit": "7670dce1cdd43b6af64ad13c45e194c849e3bd63",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "427916544c427576549e5ec6d0bd7836761462d86810da4140fdbfa9591781f9",
+          "sha256": "e063dc61a5efa21cf41bb3a19806fdad1d61463248393fee4cd7647ab26aa79f"
+        },
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "0737fe88f937570765248c8da8d42bc0d46999479fc5f9e2c4d3c1c0ba0a7960",
+          "sha256": "79f7dc362e7b52e81b2df56b5e2e975eed621404bf3ee423a7003b0b51690b05"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "39384ab16262e8c60e4aecce99451bac43157e1e58d2e5a3926f722e3c3986da",
+          "sha256": "425fe54328841a2ee8e85d895e8e468adad6117c13c9f1cb84a4922336db5ee4"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "bc7e2e3c892982a2e0699927d330102c4438442164ab34038c47cff4e3f7a10c",
+          "sha256": "093a744f630676ee94cf7eb9465a0bec1842610316379897d65ca0c7efe1c372"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "c946348befc73741572802eec773f089ddeab5daa2a3aac0d302ca390a8a5f05",
+          "sha256": "14761eba3ade08965d28686ef56440335c09ce91f84b8a74186b613c9f7681e8"
+        },
+        {
+          "path": "server/tests/security/assistant_story_selection_browser_bridge.py",
+          "before_sha256": "8ca617b5fe43a1f7a07ad0be432b6ad5b77bf633bfbebc105bd449d5f797b354",
+          "sha256": "d072c85ea090a87ebe2a8eeb6e2f5c83efbb9f529e3742cb34d996321546f9d6"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "5ae264d4b4451210caab0035fbe986affb1c84b6705ba0aa4befa916c084d73e",
+          "sha256": "ef39b135fe7de11d54f083b5ac65e6d28e5989ac62029732107096c2f508b31d"
+        },
+        {
+          "path": "server/tests/security/selected_story_browser_fixture.py",
+          "before_sha256": null,
+          "sha256": "345c1e8261879cb22c6200d3f3965d0c6c8343813dead5c9d8e4d4722f9edf82"
+        },
+        {
+          "path": "server/tests/security/story_draft_browser_bridge.py",
+          "before_sha256": "b936d8366d1bbb244e8243bbfe7421b681c36058032304cbe231922a1466cbd7",
+          "sha256": "d34c297312690f3c91f55c4255e976c4907b95a72b9f9179a524c6e8adfcacbe"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "97035064db691c0311f581b9c87ffe17ed3fda7894ab3f344422c73008f87395",
+          "sha256": "b9106da2f3c150572aed99b466f15420fa0c26f53fc9c775d4a63dd62ac00e74"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "e5170b9b06828d8ce169b2f6721743c193d6474abdfc3e5509c6452f43760317",
+          "sha256": "73b838f286d04b8bf0c6b8a1c96ef75ccdc6e60e5a9c09221810959105f686a1"
+        },
+        {
+          "path": "server/tests/test_product_roadmap.py",
+          "before_sha256": "7059203c564914fbe7d3648f564fef43cee1473d3e786d720674581326517a02",
+          "sha256": "3f0ff9cf8f1b0610c95e303a11dcbd0203d130143932f0e379b6d1e5d013d1a2"
+        }
+      ],
+      "notes": "Keep the composer ready after its ordinary scope is verified, restore the first keyboard action and voice target sizes, and exercise the complete generated Search-to-story path. Keep the exact roadmap export check in the normal staging checks."
+    },
+    {
+      "feature": "audit-jude-focus-and-grounding-20261125",
+      "source_commit": "1c6a396d03b71b0036eefca5006cf2e4c2add262",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "e063dc61a5efa21cf41bb3a19806fdad1d61463248393fee4cd7647ab26aa79f",
+          "sha256": "6f3b54aad329fdabbb5817609f8597b4ca44f030cacd503187dccbd6b9cf9baa"
+        },
+        {
+          "path": "docs/STORY_GROUNDING_AND_CLOUD_PROOFREADING.md",
+          "before_sha256": "05c85f6138dad289cb8d3afb56bcaa2f2d99e41378334d73b4af81ee0d6876c4",
+          "sha256": "4175a0d9dce32c59cc6d03e777b708ee6302259bdd8fd28aa03d9d78b17b462d"
+        },
+        {
+          "path": "server/backend/app/access/story_name_grounding.py",
+          "before_sha256": "e460d716893a4a63c9353f0c33aad0b95ea65b41bbae51bb788e5d7b004c7ed0",
+          "sha256": "e85bae4ea1d10475287f9cc7dfd326c2038794bcf7af037bd022adb78a28f01a"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "425fe54328841a2ee8e85d895e8e468adad6117c13c9f1cb84a4922336db5ee4",
+          "sha256": "d490fb40afe88c7dbd0e4384c779a04e3ce152f2a35ff5543819edc08e9a1d92"
+        },
+        {
+          "path": "server/tests/security/test_assistant_turn_trail_browser.cjs",
+          "before_sha256": "695c60e6888c11c0b08797aa87bd8f3bf58f017cd0f3780a88c71a55f1d9d791",
+          "sha256": "521f8167c37d422f50dc9c026446dfcece48e1eaedc88c059d5e185471a93acc"
+        },
+        {
+          "path": "server/tests/security/test_story_name_grounding.py",
+          "before_sha256": "4fee78968a698015cc674226f7e5366e096d590216902fac195a8a13959bddc1",
+          "sha256": "b8acf2a9c7bce91a70a6d4660009a16dcfb9ac9f653453e4c7349c005d524c68"
+        }
+      ],
+      "notes": "Generated Chromium uses the actual Jude restore control and verifies both cancel-focus recovery and preservation of existing focus. Only public reference data is indexed; a matched four-example grounding comparison preserves text, repairs and ambiguity with lower local lookup time."
+    },
+    {
+      "feature": "audit-oral-history-transcript-20261125",
+      "source_commit": "ad2fc9e31006b823611343e4cfab620265f62deb",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "6f3b54aad329fdabbb5817609f8597b4ca44f030cacd503187dccbd6b9cf9baa",
+          "sha256": "41ba73e625b3702998a28d7c1d5fc1c54e51e840bc13145d5f13dd4f68edb312"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "fb9634361e0457c5cbc21460221f50d4b4a1d3aa83f379bea443597911d744c3",
+          "sha256": "62e906f999cfe9325d3398dea18daab252942d657670032230eae7a8a6acc410"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "5bf0b29f0651914d74c3bd59e7bf234c98a034b56515ed0ca2305c1dd77dbd4b",
+          "sha256": "f2d4dbfb97e87defa995f79424903a9c20b4862a3d15d07906b868f8b76c001c"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "c0749d61f5a6ccb920ae19e29601815e4728fd09c9f691931f5ee11daf6e65ea",
+          "sha256": "cb0692500533ef752c8358a7e3120c2b7a1ea5573b250016b7608b05ab186d2e"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_intake.py",
+          "before_sha256": "5dc9540f68e435eed7ecb140bf4d13847c9843517eff4739da86f566e3905b86",
+          "sha256": "ec681c99b8f8a51c59959ec97f125d1d8d40b91b24e4c11d522dae775c705969"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_transport.py",
+          "before_sha256": "4e0ac09847ce2798c61a97da41bcf62e34cf6919abdfd606334dd00399607a8f",
+          "sha256": "cb9101e311e83aa9fe2912bfd5d7b6a34457ab47a59babd03881e28db715c800"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "c6497047351f1414fa6c072e8cb94301f7621e1be9da5cdebc00fbbbb9cc8415",
+          "sha256": "a17bbd55715e98bec57436dd3634ab9406d16cb0bc8291ab39625b3d4231d4de"
+        },
+        {
+          "path": "server/backend/app/routers/ui.py",
+          "before_sha256": "044817cba9e31ca074fc345d0292b60bcea8c995a9ad9a8c97380ce5124d898d",
+          "sha256": "31e7d40f4e6cda87e2800a8c2060520232663c43aea9514555d3bbde8cf6785a"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "093a744f630676ee94cf7eb9465a0bec1842610316379897d65ca0c7efe1c372",
+          "sha256": "62ae46d171a637c4ffd4cbae5d4a6fb166c255dd684dff0123adc51b6bbe24c6"
+        },
+        {
+          "path": "server/backend/app/ui/access/oral-history.js",
+          "before_sha256": "b16267abf49d37b353d9bd752a8a1303f770d70c8a3afe10ac41015f1f1ac56f",
+          "sha256": "3f5d219e8af3ee7e5fd23198b78cc2247101275aaae6001fe5dee59f031e028d"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "14761eba3ade08965d28686ef56440335c09ce91f84b8a74186b613c9f7681e8",
+          "sha256": "5575b83e30c36323e5943fbe12e77de91dd0ec5945ab5ee80375f46376a65015"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "before_sha256": "73682ebaf73dc6403ffb10248f7c1cb1447d7fd4df90fc1ecaa4cb86aa5e8ac9",
+          "sha256": "c760ab25408e3426b156a246421db121d00573eb00d065ea1d9d502ea7162ab6"
+        },
+        {
+          "path": "server/tests/security/test_assistant_capture_scope_browser.cjs",
+          "before_sha256": "3cd8b524d7a704fb367463d82bbde44a9bdc70d2dbac97d566da09d803df38fe",
+          "sha256": "2b6fc07bed2bb0ceaf13dceef8d711d039e4bf2b7908c89eefe3569171b66167"
+        },
+        {
+          "path": "server/tests/security/test_assistant_transcript_browser.cjs",
+          "before_sha256": "45c12a26e3c8b6d04456bad85721e79b3b4e73e26da3094907a25fb6a62cc2d9",
+          "sha256": "9191659ff0b3dd4ec807eba882d0896a016dd1e6419b754f2fc7bf88cea7e957"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_transport.py",
+          "before_sha256": "0d09be9774eaded291d78cdfe893b4d72f0ffb3122342a33e6f009d2a86db73e",
+          "sha256": "cee3875b9cb4623c0ef64e15af108380772dc3cf9683c1d68fce2fdc3b8ebb85"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "b21d9aff5fb0602fe5e51b3433834a73cfaefa1a3ef191e19f0c73a2e0e6b354",
+          "sha256": "57116a470c970a96c118e2d2e81a65fcf79e592310cf622776d2217b83ffb966"
+        }
+      ],
+      "notes": "The author explicitly requests one completed section with processing consent. The loopback speech preview rechecks the original section and current author access before returning unsaved text. Generated browser and API tests exercised exact audio, no automatic processing, denial, withdrawal and late close."
+    },
+    {
+      "feature": "audit-bilingual-status-and-locale-20261125",
+      "source_commit": "8ff18681f8a5c5141a9a089c9b5ee3ea4fd175c6",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "f506bde7c74ab9a07d8264fc29364b11e4e674d4038a93446c088a84f8978c2e",
+          "sha256": "bfc4829326261f6d2aeedaf2b28912d74ccecfa533a4cc707890d9a0292ab26b"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "23c0da6c4810399563eac3e7461fce8c33eaa8b99acad22480a0b9bc6ff93089",
+          "sha256": "992032ba74a113a5e3fa2ee10d6eb1f6c3d32dfeb5906671499ac5627214bc4e"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "8b243929b48403188523d5170cc579a0af10e1344af1f902870b00695fd217c1",
+          "sha256": "9afc28096fe7582996a70793a309caaa2e23b9322ca0a0979b665bd6c1c85651"
+        },
+        {
+          "path": "server/tests/security/test_assistant_locale_resume_browser.cjs",
+          "before_sha256": "f00f27544f40c7031ae09ea08b623a6adee28a33b99b14bacee33d0db311f747",
+          "sha256": "e4b480895fba01c76dadadece4a635f56fe86c13430f7a4aa03704cb40ef52f9"
+        }
+      ],
+      "notes": "The public roadmap and download describe generated Search refinement and consented transcript previews separately from live Windows. The browser scenario waits for the exact simulated fresh list or denial before starting the next signed-in case."
+    },
+    {
+      "feature": "audit-memoir-fixtures-20261125",
+      "source_commit": "201b93c45181454f1df15808e478031b163c3015",
+      "files": [
+        {
+          "path": "server/tests/security/test_memory_book_edition_shelf_browser.cjs",
+          "before_sha256": "d64093f6e8e0bee5a2c43dd7c5266627e53f09b192e639ca007cc44f66f6c39c",
+          "sha256": "4a48efec59c935e9b458107a69804bacc7155123eb390103b9598ec92ce3cecd"
+        },
+        {
+          "path": "server/tests/security/test_memory_community_browser.cjs",
+          "before_sha256": "e74efc61675a8f44b21a0fa26a1da411929f0e6d9b00faca81074c5c8aa88573",
+          "sha256": "374057344cb3acc59c2f774159b47c3b640687281526607f47aeb33569717f7c"
+        }
+      ],
+      "notes": "The saved edition uses current markup while explicitly omitting the legacy optional controls. The memoir font test establishes a nonzero reading position and activates the focused control by keyboard. Both generated journeys passed without changing served code."
     }
   ]
 }

@@ -319,6 +319,8 @@ try:
                 else:
                     fixture.client.app.state.media_runtime = media
             elif scenario=='oral-history-enabled':
+                import httpx
+                from app.access.assistant_speech import LocalAssistantAsr
                 from app.access.oral_history_schema import install_fixture_schema
                 from app.main import create_app
                 with fixture.connection() as db:
@@ -326,9 +328,13 @@ try:
                     install_fixture_schema(db)
                     db.commit()
                 state = fixture.client.app.state
+                asr = LocalAssistantAsr(url='http://127.0.0.1:19001/transcribe', model='synthetic',
+                    transport=httpx.MockTransport(lambda _request: httpx.Response(
+                        200, json={'text': 'We saw a heron by the lake. <private draft>'})))
                 app = create_app(access_runtime=state.access_runtime,
                     discovery_runtime=state.discovery_runtime, media_runtime=state.media_runtime,
-                    oral_history_intake_enabled=True)
+                    oral_history_intake_enabled=True, oral_history_transcription_enabled=True,
+                    assistant_asr=asr)
                 fixture.client.close()
                 fixture.client = TestClient(app, base_url='https://photohouse.test',
                     client=('192.0.2.20', 23456))

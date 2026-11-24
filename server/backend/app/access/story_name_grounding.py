@@ -12,7 +12,8 @@ import json
 from pathlib import Path
 import re
 import unicodedata
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Mapping
 
 
 MAX_TEXT_BYTES = 64 * 1024
@@ -23,7 +24,11 @@ MAX_REPAIRS = 32
 MAX_CONTEXT_SPANS = 256
 MAX_SYLLABLE_VARIANTS = 64
 _HAN = r'\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff'
+_HAN_CHARACTER = re.compile(rf'[{_HAN}]')
 _HAN_ONLY = re.compile(rf'\A[{_HAN}]+\Z')
+_SINGER_CUES = ('歌手', '去看', '看', '去听', '听')
+_MAX_CUED_NAME_CHARS = 5
+_CUE_LOOKBEHIND = _MAX_CUED_NAME_CHARS + max(map(len, _SINGER_CUES))
 _SYLLABLE = re.compile(r'\A[a-züv]{1,8}\Z', re.IGNORECASE | re.ASCII)
 _DATA_DIR = Path(__file__).resolve().parent / 'data'
 
@@ -125,7 +130,7 @@ def _people(value: Any) -> list[dict[str, Any]]:
     return clean
 
 
-def _name_syllables(name: str, readings: dict[str, tuple[str, ...]]) -> tuple[tuple[str, ...], ...]:
+def _name_syllables(name: str, readings: Mapping[str, tuple[str, ...]]) -> tuple[tuple[str, ...], ...]:
     choices = [readings.get(character, ()) for character in name]
     if not choices or any(not values for values in choices):
         return ()
@@ -134,14 +139,14 @@ def _name_syllables(name: str, readings: dict[str, tuple[str, ...]]) -> tuple[tu
 
 
 def _same_pronunciation(left: str, right: str,
-                        readings: dict[str, tuple[str, ...]]) -> bool:
+                        readings: Mapping[str, tuple[str, ...]]) -> bool:
     left_choices = _name_syllables(left, readings)
     right_choices = _name_syllables(right, readings)
     return (len(left_choices) == len(right_choices) and bool(left_choices)
             and all(set(a).intersection(b) for a, b in zip(left_choices, right_choices)))
 
 
-def _phonetic_variants(name: str, readings: dict[str, tuple[str, ...]]):
+def _phonetic_variants(name: str, readings: Mapping[str, tuple[str, ...]]):
     choices = _name_syllables(name, readings)
     if not choices:
         return ()
@@ -151,6 +156,26 @@ def _phonetic_variants(name: str, readings: dict[str, tuple[str, ...]]):
         if count > MAX_SYLLABLE_VARIANTS:
             return ()
     return itertools.product(*choices)
+
+
+def _public_name_index(catalog: Any, readings: Any):
+    if catalog is None:
+        catalog = {'version': 1, 'source': 'unavailable', 'entries': []}
+    entries = _validate_catalog(catalog)
+    clean_readings = MappingProxyType(_validate_readings({} if readings is None else readings))
+    signatures: dict[tuple[str, ...], list[tuple[str, str]]] = {}
+    for entry in entries:
+        reference = (entry['id'], entry['name'])
+        for signature in _phonetic_variants(entry['name'], clean_readings):
+            signatures.setdefault(signature, []).append(reference)
+    return (clean_readings, frozenset(entry['name'] for entry in entries),
+            MappingProxyType({signature: tuple(matches) for signature, matches in signatures.items()}))
+
+
+@lru_cache(maxsize=1)
+def _packaged_name_index():
+    """Reuse the validated public reference data without caching private inputs."""
+    return _public_name_index(*_packaged_data())
 
 
 def _alias_matches(text: str, alias: str) -> list[tuple[int, int]]:
@@ -169,22 +194,24 @@ def _alias_matches(text: str, alias: str) -> list[tuple[int, int]]:
 
 def _public_cue_spans(text: str) -> list[tuple[int, int, str]]:
     suffix = re.compile(r'(?:的演唱会|演唱会|的演出|演出|的歌曲|歌曲|的歌|歌)')
-    cues = ('歌手', '去看', '看', '去听', '听')
     found = set()
     for context in suffix.finditer(text):
         name_end = context.start()
         name_start = name_end
-        while name_start > 0 and re.fullmatch(rf'[{_HAN}]', text[name_start - 1]):
+        # A cue farther back cannot lead to a name of at most five characters.
+        # An uncued run that reaches the limit remains too long to qualify.
+        earliest = max(0, name_end - _CUE_LOOKBEHIND)
+        while name_start > earliest and _HAN_CHARACTER.fullmatch(text[name_start - 1]):
             name_start -= 1
         run = text[name_start:name_end]
-        cue_positions = [(run.rfind(cue), cue) for cue in cues if cue in run]
+        cue_positions = [(run.rfind(cue), cue) for cue in _SINGER_CUES if cue in run]
         if cue_positions:
             cue_at, cue = max(cue_positions)
             candidate_start = name_start + cue_at + len(cue)
             candidate = text[candidate_start:name_end]
         else:
             candidate_start, candidate = name_start, run
-        if 2 <= len(candidate) <= 5:
+        if 2 <= len(candidate) <= _MAX_CUED_NAME_CHARS:
             found.add((candidate_start, name_end, candidate))
 
     # An explicit role cue also stands on its own, as in "歌手X".
@@ -213,16 +240,14 @@ def ground_text(text: str, people: Any, *, catalog: Any = None,
             and character not in '\n\t' for character in text):
         raise ValueError('story text is invalid')
 
-    if catalog is None or readings is None:
-        package_catalog, package_readings = _packaged_data()
-        catalog = package_catalog if catalog is None else catalog
-        readings = package_readings if readings is None else readings
-    if catalog is None:
-        catalog = {'version': 1, 'source': 'unavailable', 'entries': []}
-    if readings is None:
-        readings = {}
-    clean_catalog = _validate_catalog(catalog)
-    clean_readings = _validate_readings(readings)
+    if catalog is None and readings is None:
+        clean_readings, public_names, phonetic_index = _packaged_name_index()
+    else:
+        if catalog is None or readings is None:
+            package_catalog, package_readings = _packaged_data()
+            catalog = package_catalog if catalog is None else catalog
+            readings = package_readings if readings is None else readings
+        clean_readings, public_names, phonetic_index = _public_name_index(catalog, readings)
     clean_people = _people(people)
 
     # Validate all person records before matching; ambiguity never guesses an owner.
@@ -302,14 +327,6 @@ def ground_text(text: str, people: Any, *, catalog: Any = None,
                 if len(candidates) > MAX_REPAIRS:
                     raise ValueError('story name grounding repair limit exceeded')
 
-    singer_entries = [entry for entry in clean_catalog if entry['kind'] == 'singer']
-    phonetic_index: dict[tuple[str, ...], list[dict[str, str]]] = {}
-    for entry in singer_entries:
-        for signature in _phonetic_variants(entry['name'], clean_readings):
-            phonetic_index.setdefault(tuple(signature), []).append(entry)
-
-    public_names = {entry['name'] for entry in clean_catalog}
-
     def overlaps_catalog_name(start: int, end: int) -> bool:
         # Check bounded windows containing the proposed span, so an inexact
         # shorter spelling inside a correct longer catalog name is protected.
@@ -327,12 +344,9 @@ def ground_text(text: str, people: Any, *, catalog: Any = None,
             continue
         if overlaps_catalog_name(start, end):
             continue
-        matches_by_id = {}
+        distinct = set()
         for signature in _phonetic_variants(source_name, clean_readings):
-            for entry in phonetic_index.get(tuple(signature), ()):
-                matches_by_id[entry['id']] = entry
-        matches = list(matches_by_id.values())
-        distinct = {(entry['id'], entry['name']) for entry in matches}
+            distinct.update(phonetic_index.get(signature, ()))
         if len(distinct) == 1:
             identifier, public_name = next(iter(distinct))
             if source_name != public_name:

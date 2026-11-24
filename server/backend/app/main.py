@@ -62,7 +62,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_agent_runtime=None, assistant_agent_budget=None,
                selected_story_provider=None, selected_story_drafts_enabled=False,
                selected_story_ui_enabled=False,
-               oral_history_intake_enabled=False,
+               oral_history_intake_enabled=False, oral_history_transcription_enabled=False,
                story_cloud_proofreading_enabled=False, story_cloud_proofreading_provider=None):
     from .access.story_cloud_proofreading import CloudProofreading
     cloud_proofreading = CloudProofreading(enabled=story_cloud_proofreading_enabled,
@@ -90,6 +90,12 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     if (type(oral_history_intake_enabled) is not bool or
             (oral_history_intake_enabled and not isinstance(access_runtime, AccessRuntime))):
         raise ValueError('Oral history intake requires explicit protected access opt-in')
+    if type(oral_history_transcription_enabled) is not bool:
+        raise ValueError('Explicit recording transcription opt-in required')
+    if oral_history_transcription_enabled:
+        from .access.assistant_speech import LocalAssistantAsr
+        if not oral_history_intake_enabled or not isinstance(assistant_asr, LocalAssistantAsr):
+            raise ValueError('Recording transcription requires recording intake and a local speech provider')
     if memory_group_vectors is not None and (not memory_groups_enabled or
             type(memory_group_vectors) is not GroupVectorConfiguration):
         raise ValueError('Explicit enabled memory group vector configuration required')
@@ -319,6 +325,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.assistant_enabled = assistant_enabled
     app.state.memory_groups_enabled = memory_groups_enabled
     app.state.oral_history_intake_enabled = oral_history_intake_enabled
+    app.state.oral_history_transcription_enabled = oral_history_transcription_enabled
+    app.state.oral_history_transcription_lock = Lock() if oral_history_transcription_enabled else None
     app.state.memory_group_vectors = memory_group_vectors
     app.state.memory_collaboration_enabled = memory_collaboration_enabled
     app.state.memory_originals_enabled = memory_originals_enabled
