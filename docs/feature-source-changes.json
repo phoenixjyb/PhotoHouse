@@ -37013,6 +37013,88 @@
       "live_runtime_changed": false,
       "providers_activated": false,
       "scope": "Explicit Android folder review, bounded uploader video status, and direct semantic asset helper binding."
+    },
+    {
+      "feature": "audit-completed-oral-recording-readback",
+      "source_commit": "f8146ae94dcb7cedc22496d167a95d50a8a40f25",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "fd79943e9818ad0020ccd3198e067193ff4f2639b0b163ae745f879446dca517",
+          "sha256": "fa19b1c333e13427832bebe67274645e98b7fcc17a29453c8c0573265dbffb5f"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "8ed1b8a7a399a97e01dec0d65aecd104125c94821ec4ae89840c3f100eff20c2",
+          "sha256": "fb9634361e0457c5cbc21460221f50d4b4a1d3aa83f379bea443597911d744c3"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "e505e3b9e2ae126288e9546d09c593c0a2777199e453fa665bc9a0afeb643e34",
+          "sha256": "5bf0b29f0651914d74c3bd59e7bf234c98a034b56515ed0ca2305c1dd77dbd4b"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "083de4a89201d531ffa1b89ac22a662da76c9657770dc194186263656aa110d1",
+          "sha256": "f506bde7c74ab9a07d8264fc29364b11e4e674d4038a93446c088a84f8978c2e"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "06ed8ec73157fe0fda906cc4f8bdda200ba22c6efb8d2646a7e9fefacc8f222b",
+          "sha256": "58d0048eb46d1442a330c54b5a449e0793bf07f013fcb88d6526bb95bb9cc10c"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "aa2bda018ff948221c7e1e206668492e2ffdf7f2eafaf018a66776f3fcdfc1bc",
+          "sha256": "0ed68c4a1970cb351bc8e88f8ff8ea4926f7ee8d0765aac808ac1e501dca6386"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "3e60e9e2c8ced75216f2e872eb0b54c5ca1f8c9bbc574d0b9f427a45eaa848b9",
+          "sha256": "c0749d61f5a6ccb920ae19e29601815e4728fd09c9f691931f5ee11daf6e65ea"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_intake.py",
+          "before_sha256": "e5edcf3f555337f37c12ee7f70a7c6c680788bc090c482dd584c15d3fd10e6f0",
+          "sha256": "5dc9540f68e435eed7ecb140bf4d13847c9843517eff4739da86f566e3905b86"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_transport.py",
+          "before_sha256": "5186cb50fb408573d30c11bc57233cff1632678be254d858f695db364943e55c",
+          "sha256": "4e0ac09847ce2798c61a97da41bcf62e34cf6919abdfd606334dd00399607a8f"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "85e82eaf04d318e8fe5abc70032f420721e603510b27d717bd375565c1c6c2ed",
+          "sha256": "39384ab16262e8c60e4aecce99451bac43157e1e58d2e5a3926f722e3c3986da"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "bb14d7860b7c85a1326229ddb774f8a4bb53459b2e0411dfb184c0a12d6de7f8",
+          "sha256": "bc7e2e3c892982a2e0699927d330102c4438442164ab34038c47cff4e3f7a10c"
+        },
+        {
+          "path": "server/backend/app/ui/access/oral-history.js",
+          "before_sha256": "778a628e7f67c23b386d6ed7fc67762b43a160a3d8b5bf0fcb38bc83d15b2cf2",
+          "sha256": "b16267abf49d37b353d9bd752a8a1303f770d70c8a3afe10ac41015f1f1ac56f"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "9e5ee84f77b6c3590ee9cc84abac8e25114d1435ade1e2bf8b5353682c3dfcc9",
+          "sha256": "c946348befc73741572802eec773f089ddeab5daa2a3aac0d302ca390a8a5f05"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_transport.py",
+          "before_sha256": "f589fe2518fe789813eb93f50165a84a09f1e9a87eacc2c630b56d7f0e197784",
+          "sha256": "0d09be9774eaded291d78cdfe893b4d72f0ffb3122342a33e6f009d2a86db73e"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "1d372de18edaa2c9e4dc2ae04ddcd8eb18a7bb1e66c8a6fd17d05b2265837b5f",
+          "sha256": "b21d9aff5fb0602fe5e51b3433834a73cfaefa1a3ef191e19f0c73a2e0e6b354"
+        }
+      ],
+      "notes": "Default-off author-private completed-session review, bounded checked WAV playback on explicit request, generated access/reload coverage and current audit status."
     }
   ]
 }
