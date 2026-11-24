@@ -36519,6 +36519,20 @@
       "live_runtime_changed": false,
       "providers_activated": false,
       "scope": "Web viewer, saved group stories, active conversation frame retention and generated video moment journey."
+    },
+    {
+      "feature": "audit-video-moment-default-off-browser-assertion",
+      "source_commit": "f00025b0eb313dc1f5d66f31be6e593b51a6977d",
+      "files": [
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "ca5acc74ce1bc1cc2fbad29c5ae7005a05c3d7511f11296ad737cf382c44d712",
+          "sha256": "8445a43ae364d5669cd28f45493789ea2b925795e6fedc5ada85dbcf63fc3a22"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false
     }
   ]
 }
