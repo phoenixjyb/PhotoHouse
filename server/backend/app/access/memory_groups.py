@@ -18,6 +18,8 @@ FIELDS = {'asset_ids', 'excluded_asset_ids', 'source_story_ids', 'theme',
           'revision', 'mutation_id'}
 MEMORY_GROUP_FIELDS = FIELDS
 MEMORY_GROUP_SPLIT_FIELDS = {'asset_ids', 'revision', 'mutation_id'}
+MEMORY_GROUP_COMBINE_FIELDS = {'group_ids', 'group_revisions', 'source_story_ids',
+                               'source_story_revisions', 'theme', 'mutation_id'}
 THEMES = {'trip', 'growing_up', 'birthday', 'grandparents',
           'year_in_review', 'everyday'}
 MAX_ASSETS = 24
@@ -81,15 +83,16 @@ def _body(body):
     return content, revision, mutation_id
 
 
-def _mutation_identity(body):
-    try:
-        mutation = _uuid(body['mutation_id'])
-    except (TypeError, AttributeError):
-        raise TransportError(400, 'Invalid memory group identifier') from None
-    revision = 0 if body['revision'] == '0' else _integer(body['revision'], 2**63 - 2)
-    if str(revision) != body['revision']:
+def _revision(value):
+    revision = 0 if value == '0' else _integer(value, 2**63 - 2)
+    if str(revision) != value:
         raise TransportError(400, 'Invalid memory group revision')
-    return revision, mutation
+    return revision
+
+
+def _mutation_identity(body):
+    mutation = _uuid(body['mutation_id'])
+    return _revision(body['revision']), mutation
 
 
 def _request_digest(value):
@@ -393,3 +396,65 @@ class MemoryGroups:
                     {'theme': content['theme'], 'asset_ids': transferred,
                      'excluded_asset_ids': exclusions + retained, 'source_story_ids': moved_sources})
             return {'version': 1, 'library_id': library, 'source_id': ident, 'created_id': created_id}
+
+    def combine(self, token, library, body):
+        """Create one group from two reviewed revisions, preserving both originals."""
+        if (type(body) is not dict or set(body) != MEMORY_GROUP_COMBINE_FIELDS
+                or any(type(value) is not str for value in body.values())):
+            raise TransportError(400, 'Invalid memory group request')
+        groups = _csv(body['group_ids'], 'group_ids', maximum=2, identifiers=True)
+        revision_fields = body['group_revisions'].split(',')
+        if len(groups) != 2 or len(revision_fields) != 2:
+            raise TransportError(422, 'Select exactly two memory groups')
+        revisions = [_revision(value) for value in revision_fields]
+        if 0 in revisions:
+            raise TransportError(400, 'Invalid memory group revision')
+        notes = _csv(body['source_story_ids'], 'source_story_ids',
+                     maximum=MAX_SOURCE_STORIES, identifiers=True)
+        note_revision_fields = body['source_story_revisions'].split(',') if body['source_story_revisions'] else []
+        if len(note_revision_fields) != len(notes):
+            raise TransportError(400, 'Invalid family note revisions')
+        note_revisions = [_revision(value) for value in note_revision_fields]
+        if 0 in note_revisions:
+            raise TransportError(400, 'Invalid family note revision')
+        theme = body['theme']
+        if theme not in THEMES:
+            raise TransportError(422, 'Unsupported memory group theme')
+        mutation = _uuid(body['mutation_id'])
+        digest = _request_digest(['combine-v1', library, groups, revisions,
+                                  notes, note_revisions, theme])
+
+        with self.access._transaction(write=True):
+            member = self.access._require(token, library, 'story.write')
+            self._ready()
+            rows = [self._row(ident, library) for ident in groups]
+            actor = member['account_id']
+            prior = self._mutation(actor, mutation)
+            if prior is not None:
+                if prior['request_digest'] != digest:
+                    raise TransportError(409, 'Memory group request identifier already used')
+                created_id = prior['group_id']
+                self._assets(token, library, _stored(self._row(created_id, library))['asset_ids'])
+            else:
+                if [row['revision'] for row in rows] != revisions:
+                    raise TransportError(409, 'Memory groups changed; review them before combining')
+                parts = [_stored(row) for row in rows]
+                assets = list(dict.fromkeys(asset for part in parts for asset in part['asset_ids']))
+                included = set(assets)
+                exclusions = list(dict.fromkeys(asset for part in parts for asset in part['excluded_asset_ids']
+                                                if asset not in included))
+                if len(assets) > MAX_ASSETS or len(exclusions) > MAX_EXCLUDED:
+                    raise TransportError(422, 'The combined group exceeds the media selection limits')
+                self._assets(token, library, assets)
+                current_notes = {note['id']: note['revision'] for part in parts
+                                 for note in self._sources(token, library, part)[1]}
+                if len(current_notes) > MAX_SOURCE_STORIES:
+                    raise TransportError(422, 'The combined group exceeds the family note limit')
+                if list(current_notes.items()) != list(zip(notes, note_revisions, strict=True)):
+                    raise TransportError(409, 'Review the current family notes before combining')
+                created_id = str(uuid.uuid4())
+                self._record(created_id, library, actor, 0, mutation, digest,
+                    {'theme': theme, 'asset_ids': assets, 'excluded_asset_ids': exclusions,
+                     'source_story_ids': notes})
+            return {'version': 1, 'library_id': library, 'source_group_ids': groups,
+                    'created_id': created_id}

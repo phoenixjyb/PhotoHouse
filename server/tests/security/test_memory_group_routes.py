@@ -69,6 +69,7 @@ class MemoryGroupRouteTests(unittest.TestCase):
         manual = self.request('GET', '/memory-groups/capabilities', client=self.build()).json()
         self.assertTrue(manual['manual'])
         self.assertTrue(manual['split'])
+        self.assertTrue(manual['combine'])
         self.assertFalse(manual['suggestions'])
 
     def test_recent_groups_are_bounded_and_check_every_asset_before_showing_a_cover(self):
@@ -272,6 +273,68 @@ class MemoryGroupRouteTests(unittest.TestCase):
         self.assertEqual(self.request('GET', parent).json(), retained)
         self.assertEqual(self.request('GET', '/assets/101/memory-groups').json()['items'][0]['id'],
                          moved['id'])
+
+    def test_combine_keeps_order_originals_and_current_note_links_on_exact_retry(self):
+        note = self.base.note(asset=101)
+        group_a = self.base.save(self.base.owner,
+            self.base.body(assets='102,101', excluded='504', sources=note['id']))
+        group_b = self.base.save(self.base.owner,
+            self.base.body(assets='101', excluded='102,504', sources=note['id']))
+        path = '/memory-groups/combine'
+        body = {'group_ids': group_a['id'] + ',' + group_b['id'], 'group_revisions': '1,1',
+                'source_story_ids': note['id'], 'source_story_revisions': str(note['revision']),
+                'theme': 'birthday', 'mutation_id': self.base.body()['mutation_id']}
+        viewer_caps = self.request('GET', '/memory-groups/capabilities', headers=self.member_headers)
+        self.assertFalse(viewer_caps.json()['combine'])
+        self.assertEqual(self.request('POST', path, body, headers=self.member_headers).status_code, 401)
+        self.assertEqual(self.request('POST', path, body, library='family-b').status_code, 401)
+        self.assertEqual(self.request('POST', path, body, client=self.build(enabled=False)).status_code, 503)
+        cookie = {'Cookie': COOKIE + '=' + self.base.owner}
+        self.assertEqual(self.request('POST', path, body, headers=cookie).status_code, 403)
+        cookie.update(Origin='https://photohouse.test', **{'X-CSRF-Token': csrf_token(self.base.owner)})
+        saved = self.request('POST', path, body, headers=cookie)
+        self.assertEqual(saved.status_code, 201, saved.text)
+        self.assertEqual(saved.headers['cache-control'], 'no-store')
+        receipt = saved.json()
+        self.assertEqual(set(receipt), {'version', 'library_id', 'source_group_ids', 'created_id'})
+        self.assertEqual(receipt['source_group_ids'], [group_a['id'], group_b['id']])
+        self.assertNotIn(receipt['created_id'], receipt['source_group_ids'])
+        self.assertNotIn(note['text'], saved.text)
+
+        result = self.request('GET', '/memory-groups/' + receipt['created_id']).json()
+        self.assertEqual(result['asset_ids'], ['102', '101'])
+        self.assertEqual(result['excluded_asset_ids'], ['504'])
+        self.assertEqual(result['source_story_ids'], [note['id']])
+        self.assertEqual(result['sources'][0]['text'], note['text'])
+        self.assertEqual(result['theme'], 'birthday')
+        self.assertEqual(self.request('POST', path, body).json(), receipt)
+        self.assertEqual(self.request('POST', path, body | {'theme': 'trip'}).status_code, 409)
+        for group in (group_a, group_b):
+            self.assertEqual(self.request('GET', '/memory-groups/' + group['id']).json(), group)
+        self.assertEqual(len(self.request('GET', '/memory-groups').json()['items']), 3)
+
+    def test_combine_refuses_changed_revisions_and_withdrawn_media_with_no_write(self):
+        note = self.base.note(asset=102)
+        group_a = self.base.save(self.base.owner, self.base.body(assets='101'))
+        group_b = self.base.save(self.base.owner, self.base.body(assets='102', sources=note['id']))
+        path = '/memory-groups/combine'
+        body = {'group_ids': group_a['id'] + ',' + group_b['id'], 'group_revisions': '1,1',
+                'source_story_ids': note['id'], 'source_story_revisions': str(note['revision']),
+                'theme': 'everyday', 'mutation_id': self.base.body()['mutation_id']}
+        bad = dict(body, group_ids=','.join([group_a['id']] * 2))
+        self.assertEqual(self.request('POST', path, bad).status_code, 422)
+        self.assertEqual(self.request('POST', path, body | {'group_revisions': '01,1'}).status_code, 400)
+        self.base.save(self.base.owner, self.base.body(assets='101', theme='trip', revision='1'), group_a['id'])
+        self.assertEqual(self.request('POST', path, body).status_code, 409)
+        body['group_revisions'] = '2,1'
+        revised = self.base.edit_note(note, revision=note['revision'], title='Revised', text='Current family words')
+        self.assertEqual(self.request('POST', path, body).status_code, 409)
+        body['source_story_revisions'] = str(revised['revision'])
+        self.f.mutate("DELETE FROM access_asset_libraries WHERE asset_id=102 AND library_id='family-a'")
+        self.assertEqual(self.request('POST', path, body).status_code, 401)
+        with self.f.connection() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM access_memory_groups').fetchone()[0], 2)
+            self.assertEqual(db.execute('SELECT count(*) FROM access_memory_group_revisions').fetchone()[0], 3)
 
     def test_csrf_revocation_and_whole_group_authorization(self):
         body = self.base.body()

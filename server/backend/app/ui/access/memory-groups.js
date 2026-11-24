@@ -4,6 +4,7 @@ window.PhotoHouseMemoryGroups = {
   create({scope, api, onStory}) {
     let generation = 0;
     let recentSequence = 0;
+    let recentPending = null;
     let root = null;
     let mounted = null;
     const scopeNow = () => typeof scope === 'function' ? scope() : scope;
@@ -16,6 +17,10 @@ window.PhotoHouseMemoryGroups = {
         recentCount:n=>`${n} 项照片或视频`, browse:'查看组内照片和视频',
         chooseForStory:'用于故事', storyGroupOrder:n=>`第 ${n} 组`,
         combineDraftHelp:'选一到两个回忆组，按选择顺序使用组内已保存的画面。',
+        chooseGroup:'选择回忆组', reviewCombine:'审阅合并回忆组', saveCombined:'保存合并后的回忆组',
+        combineCopy:'将按此顺序保存画面，并保留两个原回忆组。',
+        combineLimit:'合并后最多可保留 24 项画面、512 项排除记录和 12 条家人原话。',
+        combineSaved:'已保存合并后的回忆组。',
         create:'新建回忆组', edit:'编辑', save:'明确保存回忆组', cancel:'取消编辑',
         split:'拆分回忆组', splitHelp:'选择要移入新组的画面。关联的家人原话随对应画面移动。',
         splitCount:(moved, kept)=>`移入新组 ${moved} 张 · 原组保留 ${kept} 张`,
@@ -49,6 +54,10 @@ window.PhotoHouseMemoryGroups = {
         recentCount:n=>n===1?'1 item':`${n} items`, browse:'View photos and videos',
         chooseForStory:'Use in story', storyGroupOrder:n=>`Group ${n}`,
         combineDraftHelp:'Choose one or two groups. The draft uses their saved items in the order you choose.',
+        chooseGroup:'Select group', reviewCombine:'Review combined group', saveCombined:'Save combined group',
+        combineCopy:'The new group uses this order and keeps both original groups.',
+        combineLimit:'A combined group can hold up to 24 items, 512 exclusions and 12 linked family notes.',
+        combineSaved:'Combined group saved.',
         create:'Create a memory group', edit:'Edit', save:'Save this memory group', cancel:'Cancel editing',
         split:'Split group', splitHelp:'Select photos or videos for the new group. Linked notes move with their items.',
         splitCount:(moved, kept)=>`${moved} to the new group · ${kept} stay here`,
@@ -123,7 +132,15 @@ window.PhotoHouseMemoryGroups = {
       if(!active(state)||!state.status)return;state.status.textContent=text;state.status.dataset.state=bad?'error':'ready';
     }
     function request(state,path,options={}) { return api(path,{...options,epoch:state.epoch}); }
-    async function showRecent(panel,onOpen) {
+    function orderedItems(groups) {
+      const frames=new Map();
+      // Each group contributes its own reviewed membership, including when
+      // the selected groups were previously split from one another.
+      for(const group of groups)for(const item of group.items)
+        if(!frames.has(item.id))frames.set(item.id,item);
+      return frames;
+    }
+    async function showRecent(panel,onOpen,notice='') {
       const binding=scopeNow();
       const serial=++recentSequence;
       const current=()=>serial===recentSequence&&panel.open&&!scopeNow()?.locked&&
@@ -132,9 +149,45 @@ window.PhotoHouseMemoryGroups = {
       const list=panel.querySelector('#recent-group-list');
       const story=panel.querySelector('#recent-groups-story');
       const refresh=panel.querySelector('#recent-groups-refresh');
-      const selected=new Map(), choices=[];
-      let opening=false;
+      const selected=new Map(), choices=[], browseButtons=[];
+      let opening=false, reviewing=false, combine=null;
       list.replaceChildren();story.replaceChildren();status.textContent=t('loading');refresh.disabled=true;
+      if(recentPending&&recentPending.key!==scopeKey(binding))recentPending=null;
+      if(recentPending){
+        await finishCombinedSave(recentPending,false);
+        return;
+      }
+      async function finishCombinedSave(pending,send) {
+        if(!current()||recentPending!==pending)return;
+        list.replaceChildren();story.replaceChildren();refresh.disabled=true;
+        if(send&&!pending.attempt){
+          pending.attempt=request(binding,'/memory-groups/combine',{method:'POST',body:pending.body})
+            .then(value=>value?.version===1&&value.library_id===binding.library&&
+              sameOrdered(value.source_group_ids,pending.groupIds)&&uuidOk(value.created_id)&&
+              !pending.groupIds.includes(value.created_id)?'combineSaved':'',
+              error=>error?.status===409?'storyChanged':error?.status===422?'combineLimit':'');
+        }
+        if(pending.attempt){
+          status.textContent=t('loading');
+          const result=await pending.attempt;
+          if(!current()||recentPending!==pending)return;
+          pending.attempt=null;
+          if(result){
+            recentPending=null;
+            await showRecent(panel,onOpen,result);
+            return;
+          }
+        }
+        status.textContent=t('failedSave');
+        const retry=button(t('retrySave'),()=>void finishCombinedSave(pending,true),'primary recent-combine-retry');
+        const discard=button(t('discard'),()=>{
+          if(!current()||recentPending!==pending||pending.attempt)return;
+          recentPending=null;
+          void showRecent(panel,onOpen);
+        },'quiet');
+        const actions=node('div','','recent-group-actions');actions.append(retry,discard);story.append(actions);
+        retry.focus({preventScroll:true});
+      }
       async function recheck(group){
         const latest=await request(binding,`/memory-groups/${encodeURIComponent(group.id)}`);
         if(!current()||!validGroup(latest,binding)||latest.id!==group.id||
@@ -148,14 +201,8 @@ window.PhotoHouseMemoryGroups = {
         try{
           const latest=await Promise.all([...selected.values()].map(recheck));
           if(!current())return;
-          // Exclusions belong to each saved group. Follow its reviewed
-          // membership, including when separately selected groups were split.
-          const frames=new Map();
-          for(const group of latest)for(const item of group.items){
-            if(!frames.has(item.id))frames.set(item.id,item);
-          }
           const theme=latest.every(group=>group.theme===latest[0].theme)?latest[0].theme:'everyday';
-          const opened=await onStory({assets:[...frames.values()],theme},current);
+          const opened=await onStory({assets:[...orderedItems(latest).values()],theme},current);
           if(current()){
             if(opened)selected.clear();
             status.textContent='';
@@ -166,14 +213,76 @@ window.PhotoHouseMemoryGroups = {
           if(current()){opening=false;syncChoices();}
         }
       },'primary recent-group-draft');
+      async function reviewCombine() {
+        if(!current()||opening||reviewing||selected.size!==2)return;
+        opening=true;syncChoices();status.textContent=t('checkingStory');
+        try{
+          const groups=await Promise.all([...selected.values()].map(recheck));
+          if(!current())return;
+          const items=orderedItems(groups);
+          const sources=new Map();
+          for(const group of groups){
+            if(!sameOrdered(group.sources.map(source=>source.id),group.source_story_ids)||
+                group.sources.some(source=>!Number.isSafeInteger(source.revision)||source.revision<1))
+              throw Error('Memory group notes changed');
+            for(const source of group.sources)if(!sources.has(source.id))sources.set(source.id,source);
+          }
+          const exclusions=new Set(groups.flatMap(group=>group.excluded_asset_ids).filter(id=>!items.has(id)));
+          if(items.size>24||sources.size>12||exclusions.size>512){status.textContent=t('combineLimit');return;}
+          const groupIds=groups.map(group=>group.id);
+          const preview=section(t('reviewCombine'),'recent-combine-review memory-group-editor');
+          const heading=preview.querySelector('h4');heading.tabIndex=-1;
+          preview.append(node('p',t('combineCopy')));
+          const frames=node('div','','memory-group-items');
+          for(const item of items.values()){
+            const frame=image(item);
+            if(item.kind==='video'&&item.taken_at)
+              frame.querySelector('figcaption').prepend(node('strong',`${t('sameDayVideo')} · `));
+            frames.append(frame);
+          }
+          preview.append(frames);
+          if(sources.size)renderSources(preview,[...sources.values()]);
+          const label=node('label',t('theme'));
+          const theme=node('select');
+          theme.name='theme';
+          for(const [value,text] of Object.entries(t('themes'))){
+            const option=node('option',text);option.value=value;theme.append(option);
+          }
+          theme.value=groups[0].theme===groups[1].theme?groups[0].theme:'everyday';
+          label.append(theme);preview.append(label);
+          const save=button(t('saveCombined'),()=>{
+            if(!current()||!reviewing||!preview.isConnected||recentPending)return;
+            const mutation=window.crypto?.randomUUID?.();
+            if(!uuidOk(mutation)){status.textContent=t('saveError');return;}
+            const body={group_ids:groupIds.join(','),group_revisions:groups.map(group=>group.revision).join(','),
+              source_story_ids:[...sources.keys()].join(','),source_story_revisions:[...sources.values()].map(note=>note.revision).join(','),
+              theme:theme.value,mutation_id:mutation};
+            recentPending={key:scopeKey(binding),groupIds,body,attempt:null};
+            void finishCombinedSave(recentPending,true);
+          },'primary recent-combine-save');
+          const cancel=button(t('cancel'),()=>{
+            if(!current()||!preview.isConnected)return;
+            preview.remove();reviewing=false;syncChoices();combine.focus({preventScroll:true});
+          },'quiet');
+          const actions=node('div','','recent-group-actions');actions.append(save,cancel);preview.append(actions);
+          reviewing=true;story.append(preview);status.textContent='';
+          heading.focus({preventScroll:true});heading.scrollIntoView({block:'start'});
+        }catch{
+          if(current())status.textContent=t('storyChanged');
+        }finally{
+          if(current()){opening=false;syncChoices();}
+        }
+      }
       function syncChoices(){
         const order=[...selected.keys()];
-        draft.disabled=opening||!order.length;
-        for(const {group,box,text} of choices){
+        draft.disabled=opening||reviewing||!order.length;
+        if(combine)combine.disabled=opening||reviewing||order.length!==2;
+        for(const open of browseButtons)open.disabled=opening||reviewing;
+        for(const {group,box,text,idleLabel} of choices){
           const index=order.indexOf(group.id);
           box.checked=index!==-1;
-          box.disabled=opening||(!box.checked&&order.length===2);
-          text.textContent=box.checked?t('storyGroupOrder')(index+1):t('chooseForStory');
+          box.disabled=opening||reviewing||(!box.checked&&order.length===2);
+          text.textContent=box.checked?t('storyGroupOrder')(index+1):idleLabel;
         }
       }
       try{
@@ -182,6 +291,7 @@ window.PhotoHouseMemoryGroups = {
         if(caps?.version!==1||caps.enabled!==true||caps.recent!==true){
           status.textContent=t('recentUnavailable');refresh.hidden=true;return;
         }
+        if(caps.combine===true)combine=button(t('reviewCombine'),reviewCombine,'quiet recent-group-combine');
         const result=await request(binding,'/memory-groups');
         if(!current())return;
         const items=result?.items;
@@ -192,14 +302,14 @@ window.PhotoHouseMemoryGroups = {
               !Number.isInteger(group.count)||group.count<1||group.count>24||
               !safeThumbnail(group.cover)||!['image','video'].includes(group.cover.kind)))
           throw Error('Invalid recent memory groups');
-        status.textContent=items.length?'':t('recentEmpty');
+        status.textContent=notice?t(notice):items.length?'':t('recentEmpty');
         for(const group of items){
           const label=t('themes')[group.theme];
           const card=node('li','', 'recent-group-card');
           card.append(node('strong',label),image(group.cover),node('p',t('recentCount')(group.count),'fine'));
           const open=button(t('browse'),async()=>{
-            if(!current()||opening)return;
-            opening=true;open.disabled=true;syncChoices();status.textContent=t('checkingStory');
+            if(!current()||opening||reviewing)return;
+            opening=true;syncChoices();status.textContent=t('checkingStory');
             try{
               const latest=await recheck(group);
               if(!current())return;
@@ -208,27 +318,33 @@ window.PhotoHouseMemoryGroups = {
             }catch{
               if(current())status.textContent=t('storyChanged');
             }finally{
-              if(current()){opening=false;open.disabled=false;syncChoices();}
+              if(current()){opening=false;syncChoices();}
             }
           },'quiet recent-group-open');
           open.setAttribute('aria-label',`${t('browse')} · ${label}`);
-          card.append(open);
-          if(typeof onStory==='function'){
+          browseButtons.push(open);card.append(open);
+          if(typeof onStory==='function'||combine){
             const choice=node('label','', 'recent-group-choice');
             const box=document.createElement('input'), text=node('span');
             box.type='checkbox';
-            box.setAttribute('aria-label',`${t('chooseForStory')} · ${label}`);
+            const idleLabel=t(combine?'chooseGroup':'chooseForStory');
+            box.setAttribute('aria-label',`${idleLabel} · ${label}`);
             box.addEventListener('change',()=>{
-              if(!current()||opening)return;
+              if(!current()||opening||reviewing)return;
               if(box.checked&&selected.size<2)selected.set(group.id,group);
               if(!box.checked)selected.delete(group.id);
               syncChoices();
             });
-            choices.push({group,box,text});choice.append(box,text);card.append(choice);
+            choices.push({group,box,text,idleLabel});choice.append(box,text);card.append(choice);
           }
           list.append(card);
         }
-        if(choices.length)story.append(node('p',t('combineDraftHelp'),'fine'),draft);
+        if(choices.length){
+          const actions=node('div','','recent-group-actions');
+          if(typeof onStory==='function'){story.append(node('p',t('combineDraftHelp'),'fine'));actions.append(draft);}
+          if(combine)actions.append(combine);
+          story.append(actions);
+        }
         syncChoices();
         refresh.hidden=false;
       }catch{
@@ -636,6 +752,7 @@ window.PhotoHouseMemoryGroups = {
       if(state.saving)return false;
       if(!window.confirm(t('confirmLeave')))return false;clearEditor(state);return true;
     }
-    return {mount,clear,showRecent,isEditing:()=>Boolean(mounted?.editor),canLeave:()=>canLeave(mounted)};
+    return {mount,clear,showRecent,clearRecent:()=>{recentSequence++;recentPending=null;},
+      isEditing:()=>Boolean(mounted?.editor),canLeave:()=>canLeave(mounted)};
   }
 };

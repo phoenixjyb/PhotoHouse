@@ -6,7 +6,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const root=path.resolve(__dirname,'../..'),artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-groups-'));
 fs.mkdirSync(artifacts,{recursive:true});
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
-let serial=0,readyResolve,readyReject,browser,ctx,holdRecent=null,legacyGroups=false,fail=false,loseSplit=false;const pending=new Map(),errors=[],external=[],checks=[],requests=[];
+let serial=0,readyResolve,readyReject,browser,ctx,holdRecent=null,legacyGroups=false,hideCombine=false,fail=false,loseSplit=false,loseCombine=false;const pending=new Map(),errors=[],external=[],checks=[],requests=[];
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
 createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(line);if(value.ready)readyResolve();else{const item=pending.get(value.id);if(item){pending.delete(value.id);item.resolve(value);}}});
 bridge.stderr.on('data',v=>process.stderr.write(v));bridge.on('exit',code=>{if(code){readyReject(new Error('Bridge failed'));for(const item of pending.values())item.reject(new Error('Bridge failed'));}});
@@ -22,8 +22,10 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   const headers=await req.allHeaders();delete headers['content-length'];if(!headers['sec-fetch-site'])headers['sec-fetch-site']='same-origin';
   const result=await rpc({method:req.method(),path:url.pathname+url.search,headers,body:(req.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
   let status=result.status,body=Buffer.from(result.body,'base64');
-  if(legacyGroups&&req.method()==='GET'&&url.pathname==='/memory-groups/capabilities'&&status===200){
-    const value=JSON.parse(body.toString());delete value.recent;body=Buffer.from(JSON.stringify(value));
+  if((legacyGroups||hideCombine)&&req.method()==='GET'&&url.pathname==='/memory-groups/capabilities'&&status===200){
+    const value=JSON.parse(body.toString());
+    if(legacyGroups)delete value.recent;
+    delete value.combine;body=Buffer.from(JSON.stringify(value));
   }
   if(holdRecent&&req.method()==='GET'&&url.pathname==='/memory-groups'){
     const held=holdRecent;holdRecent=null;held.arrived();await held.wait;
@@ -31,6 +33,11 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   if(fail&&req.method()==='POST'&&url.pathname==='/memory-groups'){fail=false;status=503;body=Buffer.from('{"detail":"Synthetic uncertain response"}');}
   if(loseSplit&&req.method()==='POST'&&url.pathname.endsWith('/split')&&status===200){
     loseSplit=false;
+    await route.abort();
+    return;
+  }
+  if(loseCombine&&req.method()==='POST'&&url.pathname==='/memory-groups/combine'&&status===201){
+    loseCombine=false;
     await route.abort();
     return;
   }
@@ -171,10 +178,12 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  assert.equal(recentReads(),recentStart);
  await recentSummary.click();
  legacyGroups=false;
+ hideCombine=true;
  await recentSummary.click();
  const group=recent.locator('.recent-group-card').filter({has:page.locator('img[src^="/assets/1100/thumbnail"]')});
  const browse=group.locator('.recent-group-open');
  await browse.waitFor();
+ assert.equal(await recent.locator('.recent-group-combine').count(),0);
  assert.equal(await recent.locator('.recent-group-card').count(),2);
  assert(await recent.evaluate(el=>el.scrollWidth<=el.clientWidth));
  assert(await browse.evaluate(el=>el.getBoundingClientRect().height>=48));
@@ -230,6 +239,48 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  assert(combinedReads.every(r=>r.method==='GET'||r.method==='HEAD'));
  await page.locator('#story-workspace-close').click();
  pass('One group uses its saved members. Two split groups can join one unsaved story in the chosen order using only protected reads');
+
+ hideCombine=false;
+ await recent.locator('#recent-groups-refresh').click();
+ const combine=recent.locator('.recent-group-combine');
+ await combine.waitFor();
+ assert(await combine.isDisabled());
+ await group.getByRole('checkbox').check();await birthday.getByRole('checkbox').check();
+ const saveStart=requests.length;
+ await combine.press('Enter');
+ const review=recent.locator('.recent-combine-review');
+ await review.waitFor();
+ assert(await review.locator('h4').first().evaluate(heading=>heading===document.activeElement&&
+   heading.getBoundingClientRect().top>=document.getElementById('memory-navigation').getBoundingClientRect().bottom));
+ assert.deepEqual(await review.locator('.memory-group-items img').evaluateAll(images=>
+   images.map(img=>new URL(img.src).pathname.split('/')[2])),['1100','102','101']);
+ assert.match(await review.locator('.memory-group-source').textContent(),/讲述人：家人/);
+ assert(requests.slice(saveStart).every(r=>r.method==='GET'||r.method==='HEAD'),'review does not write');
+ await review.getByRole('button',{name:'Cancel editing'}).click();
+ assert(await combine.evaluate(el=>el===document.activeElement));
+ await combine.click();await review.waitFor();
+ await review.getByRole('combobox',{name:'Theme'}).selectOption('year_in_review');
+ const commit=review.getByRole('button',{name:'Save combined group'});
+ assert(await commit.evaluate(el=>el.getBoundingClientRect().height>=44));
+ assert(await recent.evaluate(el=>el.scrollWidth<=el.clientWidth));
+ await page.screenshot({path:path.join(artifacts,'combine-memory-groups-mobile-en.png')});
+ loseCombine=true;await commit.press('Enter');
+ const retry=recent.locator('.recent-combine-retry');
+ await retry.waitFor();
+ assert.equal(await recent.locator('.recent-group-card').count(),0);
+ await recentSummary.click();await recentSummary.click();await retry.waitFor();
+ await retry.press('Enter');
+ await recent.getByText('Combined group saved.',{exact:true}).waitFor();
+ const combineWrites=requests.slice(saveStart).filter(req=>req.method==='POST');
+ assert.deepEqual(combineWrites.map(req=>req.path),['/memory-groups/combine','/memory-groups/combine']);
+ assert.deepEqual(JSON.parse(combineWrites[0].body),JSON.parse(combineWrites[1].body));
+ assert.equal(JSON.parse(combineWrites[0].body).theme,'year_in_review');
+ assert(!combineWrites[0].body.includes('讲述人'));
+ assert.equal(await recent.locator('.recent-group-card').count(),3);
+ await recent.getByText('Year in review',{exact:true}).waitFor();
+ await recent.getByText('Trip',{exact:true}).waitFor();
+ await recent.getByText('Birthday',{exact:true}).waitFor();
+ pass('Reviewing a combined group writes nothing, and retrying a lost save after reopening creates a single new group');
 
  let release,arrived;
  const pendingRead=new Promise(resolve=>{arrived=resolve;});

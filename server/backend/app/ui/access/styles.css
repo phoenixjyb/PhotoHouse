@@ -906,6 +906,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .recent-group-choice input { width:auto; margin:0; }
 .recent-groups-story:empty { display:none; }
 .recent-groups-story { margin-block-end:.75rem; }
+.recent-group-actions { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+.recent-group-actions button,.recent-combine-review select { min-height:44px; }
+.recent-combine-review > h4 { scroll-margin-top:var(--memory-navigation-offset,140px); }
+.recent-combine-review .recent-group-actions { margin-block-start:.75rem; }
 .memory-group-editor label { display:block; min-width:0; }
 .memory-group-editor select { max-width:100%; }
 .memory-group-gallery-choice, .memory-group-suggestion, .memory-group-story-choice { padding:.65rem; border:1px solid var(--line,#ddd3c4); border-radius:.65rem; }
