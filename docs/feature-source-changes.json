@@ -37550,6 +37550,63 @@
         }
       ],
       "notes": "Generated migrated library proves protected pinned launch and catalog tamper refusal. Default runtime and Windows selection remain unchanged."
+    },
+    {
+      "feature": "verified-recording-timeline-20261125",
+      "source_commit": "487c4ee4fa7c6411031f7ab602e6c026d1d20b1d",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "a96a6a48af29ea8486c5aeb2aaf264106e4d2d13125a777337fb6938d9badb9d",
+          "sha256": "55c65d267fc1d51cc253546fe084b7c6a914c83a9db878cd8cf3fb66006268af"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "3d13f121df534edcbc7f2bea4f809d98a16c33c98069c3be9f62992b05c35a9e",
+          "sha256": "b2d6f7efe3ddc182f7612a24e69bbf8cbdd56ad7a5dc36999d8f501165680a6e"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "63297e6e4a6b582c3b8b007c5cc283b2f89fdc277fdf126f6da431ffdbd2c87a",
+          "sha256": "f92843dc749a120d3ed72e5c4a324d26e14580605882454f3890598b8883e8d7"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_intake.py",
+          "before_sha256": "1f12b89cf865982646ce2dcd21b61957b73c093ff1de3c190b70064bf543b939",
+          "sha256": "9f7352dc7734273a48eba06ab5e9d55da4d169a23ed9a09a4b1374b3260f7a57"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_transport.py",
+          "before_sha256": "e4cc782016609cef7f49931db89da3abd150d8cc0828408e9935c68cd511aac7",
+          "sha256": "1c4c926b65bf096ed87796ceabdbf05317f397a7d56a6974b018c2921ad29b66"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "eb575a14ca931dea6f3e1be52dca493be658ea807b6ba3339db32786548bd689",
+          "sha256": "0372c0d1d3fa784d94a93d01269266e27df0a9b225d1c6568878fd5ed61cb5ff"
+        },
+        {
+          "path": "server/backend/app/ui/access/oral-history.js",
+          "before_sha256": "b63eb2bb372b227f9115a329c9b02215b27c1cfdcbb72277b7560c6c721f6867",
+          "sha256": "cbfef0921775c9ef934d1080ebdd1fa071a1212b67b4658fabbe09b7f5e37ffe"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "6ed7317405097d5e46497b346a1a9a9a45d933a29104df16286bfc75fd7344bd",
+          "sha256": "d7c8f538fb7877da85ba5722ff5dd9d3a8f2dd0ff1c177571a213948dd7f5822"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_transport.py",
+          "before_sha256": "10e433e137af3456fd782ae036d3da8e56eb62f320befbabcaddb97453382a17",
+          "sha256": "0f1585f4d4477ecca68935db8d685b6430ab35b3803a4476745ed1388cd2c836"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "ba6af21a002f66931eeaf946edf2d489cb2eab06b781c0493d927067392fbfab",
+          "sha256": "f9b5683ec24bdc883f29babc9be26db7f6560286d354de9ddeec76a105edb29c"
+        }
+      ],
+      "notes": "Author-only completed manifest timing and attributed review in generated Chromium. No audio reads for the timeline and no live configuration change."
     }
   ]
 }
