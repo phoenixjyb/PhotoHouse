@@ -205,6 +205,12 @@ FILES = (
     'backend/app/home_feed.py',
     'backend/app/ingest.py',
     'backend/app/main.py',
+    'backend/app/product_roadmap.py',
+    'backend/app/product-roadmap/app.js',
+    'backend/app/product-roadmap/data.js',
+    'backend/app/product-roadmap/index.html',
+    'backend/app/product-roadmap/roadmap.md',
+    'backend/app/product-roadmap/styles.css',
     'backend/app/photo_delivery.py',
     'backend/app/routers/ui.py',
     'backend/app/scoped_face_worker.py',
@@ -344,6 +350,18 @@ FILES = (
     'scripts/rust_overlay_selection.py',
 )
 
+# Keep archive paths stable while sourcing the public roadmap from its one
+# maintained repository location. These five mappings are intentionally fixed.
+ROADMAP_ASSET_SOURCES = {
+    'backend/app/product-roadmap/app.js': 'docs/product-roadmap/app.js',
+    'backend/app/product-roadmap/data.js': 'docs/product-roadmap/data.js',
+    'backend/app/product-roadmap/index.html': 'docs/product-roadmap/index.html',
+    'backend/app/product-roadmap/roadmap.md': 'docs/product-roadmap/roadmap.md',
+    'backend/app/product-roadmap/styles.css': 'docs/product-roadmap/styles.css',
+}
+SOURCE_BY_PACKAGE = {name: GIT_PREFIX + name for name in FILES}
+SOURCE_BY_PACKAGE.update(ROADMAP_ASSET_SOURCES)
+
 
 def git(*args, input_data=None, output_limit=2_000_000):
     raw = subprocess.check_output(['git', *args], cwd=ROOT,
@@ -398,7 +416,10 @@ def _read_blobs(entries):
 def source_files(commit):
     if not re.fullmatch('[0-9a-f]{40}',commit) or git('cat-file','-t',commit).strip() != b'commit':
         raise ValueError('Explicit full commit required')
-    records = git('ls-tree','-r','-z','--full-tree',commit,'--',*(GIT_PREFIX+name for name in FILES)).split(b'\0')
+    source_to_package = {source: package for package, source in SOURCE_BY_PACKAGE.items()}
+    if len(source_to_package) != len(FILES) or set(SOURCE_BY_PACKAGE) != set(FILES):
+        raise ValueError('Fixed source mapping invalid')
+    records = git('ls-tree','-r','-z','--full-tree',commit,'--',*SOURCE_BY_PACKAGE.values()).split(b'\0')
     entries = {}
     for record in filter(None,records):
         identity,name = record.split(b'\t',1)
@@ -406,9 +427,10 @@ def source_files(commit):
         if mode not in ('100644','100755') or kind != 'blob' or not re.fullmatch('[0-9a-f]{40}', oid):
             raise ValueError('Only regular source blobs are allowed')
         path = name.decode('utf-8')
-        if not path.startswith(GIT_PREFIX):
-            raise ValueError('Selected source path escaped monorepo prefix')
-        entries[path[len(GIT_PREFIX):]] = oid
+        package_path = source_to_package.get(path)
+        if package_path is None:
+            raise ValueError('Selected source path escaped fixed mapping')
+        entries[package_path] = oid
     if set(entries) != set(FILES):
         raise ValueError('Selected commit lacks required source files')
     return _read_blobs(entries)

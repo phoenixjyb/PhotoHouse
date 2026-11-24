@@ -5,7 +5,6 @@ and media runtimes; no environment/database discovery or legacy fallback exists.
 """
 import asyncio
 import ntpath
-from pathlib import Path
 from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
@@ -39,7 +38,8 @@ from .access.duplicates import router as duplicate_router
 from .access.captions import router as caption_router
 from .access.library_organization import router as organization_router
 from .routers.ui import router as ui_router
-from .product_roadmap import attach_routes as attach_roadmap_routes
+from .product_roadmap import (attach_routes as attach_roadmap_routes,
+                              default_roadmap_root)
 from .updates import router as updates_router
 
 
@@ -361,7 +361,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.add_middleware(ClosedBoundary, routes=app.routes)
     # Public project metadata has its own fixed-file boundary. All household
     # routes continue through the unchanged, default-deny access boundary.
-    attach_roadmap_routes(app, Path(__file__).resolve().parents[3] / "docs" / "product-roadmap")
+    attach_roadmap_routes(app, default_roadmap_root())
     return app
 
 

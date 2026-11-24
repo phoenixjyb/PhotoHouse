@@ -31,6 +31,18 @@ ROUTE_PREFIX = "/roadmap"
 ROUTE_PREFIX_BYTES = b"/roadmap"
 
 
+def default_roadmap_root() -> Path:
+    """Resolve the supported source-checkout or bundled-package asset root.
+
+    The source tree keeps the canonical files in ``docs/product-roadmap``;
+    source-only packages place those same files beside this module.
+    """
+    bundled = Path(__file__).resolve().parent / "product-roadmap"
+    if bundled.is_dir():
+        return bundled
+    return Path(__file__).resolve().parents[3] / "docs" / "product-roadmap"
+
+
 def _safe_read(root: Path, name: str) -> bytes | None:
     """Read one allowlisted regular file, rejecting links and oversized assets."""
     path = root / name

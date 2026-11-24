@@ -14,11 +14,16 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'scripts'))
 import build_staging_package as package
 
 
+def working_tree_package_files():
+    repository = package.ROOT.parent
+    return {name: (repository / package.SOURCE_BY_PACKAGE[name]).read_bytes()
+            for name in package.FILES}
+
+
 class StagingPackageTests(unittest.TestCase):
     def test_packaged_optional_kernels_import_and_keep_python_fallback(self):
         """A release archive must contain transitive adapter/reference packages."""
-        root = Path(package.__file__).resolve().parents[1]
-        files = {name: (root / name).read_bytes() for name in package.FILES}
+        files = working_tree_package_files()
         raw = package.package_bytes('a' * 40, files)
         with tempfile.TemporaryDirectory() as temporary:
             destination = Path(temporary).resolve()
@@ -270,7 +275,18 @@ print('packaged-adapters-and-fallback-pass')
             'story_name_grounding.py', 'story_refinement_context.py',
             'data/PINYIN-DATA-LICENSE.txt', 'data/pinyin-readings.json',
             'data/story-grounding-provenance.json', 'data/story-public-names.json')})
+        required.update({
+            'backend/app/product_roadmap.py',
+            'backend/app/product-roadmap/index.html',
+            'backend/app/product-roadmap/styles.css',
+            'backend/app/product-roadmap/app.js',
+            'backend/app/product-roadmap/data.js',
+            'backend/app/product-roadmap/roadmap.md',
+        })
         self.assertTrue(required <= set(package.FILES), required - set(package.FILES))
+        self.assertEqual({name: package.SOURCE_BY_PACKAGE[name]
+                          for name in package.ROADMAP_ASSET_SOURCES},
+                         package.ROADMAP_ASSET_SOURCES)
 
     def test_extracted_actual_api_imports_without_checkout_fallback(self):
         commit = package.git('rev-parse', 'HEAD').decode().strip()
@@ -291,6 +307,7 @@ print('packaged-adapters-and-fallback-pass')
                 'from app.access.model_deployment import validate_deployment\n'
                 'from app.access.model_qualification import validate_qualification\n'
                 'from app.main import create_app\n'
+                'from app.product_roadmap import FILES as roadmap_files\n'
                 'from app.access.photo_stack_index import build_library_photo_stacks\n'
                 "rows=[(i,'image/jpeg','generated',1,1,'2026-10-22T08:00:00Z','0'*16,None,None) for i in (1,2)]\n"
                 "assert build_library_photo_stacks(rows)[0]['asset_ids']==['1','2']\n"
@@ -353,6 +370,8 @@ print('packaged-adapters-and-fallback-pass')
                 'assert len(sqlite_visual_vector_contract()) == 5\n'
                 'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
+                "assert set(roadmap_files)=={'index.html','styles.css','app.js','data.js','roadmap.md'}\n"
+                "assert (root/'backend/app/product-roadmap/index.html').is_file()\n"
                 "for name,module in tuple(sys.modules.items()):\n"
                 " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'selected_story_service_recipe', 'serve_library_semantic_text', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker', 'qualify_selected_story', 'selected_story_gguf_worker'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
