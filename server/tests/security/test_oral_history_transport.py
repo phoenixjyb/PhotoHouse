@@ -14,7 +14,7 @@ from app.access.oral_history_schema import (
     SESSION, SECTION, MUTATION, REVIEW, STATEMENTS, install_fixture_review_schema,
 )
 from app.access.transport import AccessRuntime, COOKIE, csrf_token
-from app.access.oral_history_intake import STATUS_FIELDS
+from app.access.oral_history_intake import OralHistoryIntake, STATUS_FIELDS
 from app.access.service import AccessService
 
 
@@ -425,6 +425,35 @@ class OralHistoryTransportTests(unittest.TestCase):
         owner=self.request('GET',collection.format('family-a'),
             headers={'Authorization':'Bearer '+self.owner}).json()
         self.assertEqual([item['session_id'] for item in owner['items']],[other_author['session_id']])
+
+    def test_completed_timeline_returns_current_author_offsets_without_loading_audio(self):
+        start = self.request('POST', '/oral-history/v1/libraries/family-a/sessions',
+                             body=self.create_body()).json()
+        first = self.append(start, request_id=str(uuid.uuid4()), audio=fixture.wav(16000)).json()
+        second = self.append(first, request_id=str(uuid.uuid4()), audio=fixture.wav(8000)).json()
+        path = self.session_path(start['session_id'])
+        timing = path + '/timeline'
+        expected = 'X-PhotoHouse-Expected-Revision'
+        self.assertEqual(self.request('GET', timing, headers={expected:str(second['revision'])}).status_code, 409)
+        completed = self.request('POST', path + '/complete', body={
+            'request_id':str(uuid.uuid4()), 'expected_revision':second['revision']}).json()
+        headers = {expected:str(completed['revision'])}
+        with patch.object(OralHistoryIntake, '_verified_section_audio',
+                          side_effect=AssertionError('Timeline must not read audio')):
+            response = self.request('GET', timing, headers=headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assert_private(response)
+        self.assertEqual(response.json(), {
+            'version':1, 'session_id':completed['session_id'], 'revision':completed['revision'],
+            'manifest_sha256':completed['manifest_sha256'], 'sample_rate':16000,
+            'sections':[{'ordinal':0, 'start_frame':0, 'frames':16000},
+                        {'ordinal':1, 'start_frame':16000, 'frames':8000}]})
+        self.assertEqual(self.request('GET', timing).status_code, 400)
+        self.assertEqual(self.request('GET', timing, headers={expected:str(second['revision'])}).status_code, 409)
+        self.assertEqual(self.request('GET', timing,
+                                      headers=headers | {'Authorization':'Bearer '+self.owner}).status_code, 401)
+        self.assertEqual(self.request('GET', timing.replace('family-a', 'family-b'),
+                                      headers=headers).status_code, 401)
 
     def test_completed_section_is_revision_pinned_author_only_and_verified(self):
         audio=fixture.wav(1600)

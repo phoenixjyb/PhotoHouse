@@ -19,7 +19,8 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
       finished:'Recording finished. The saved audio stays private.',
       reviewFinished:'Review finished recordings', finishedRecordings:'Finished recordings',
       noFinished:'You have no finished recordings.', recordedSection:'Recorded section',
-      sectionNumber:'Section {number}', loadAudio:'Load audio', back:'Back',
+      sectionAt:'Section {number} · {time}', toldBy:'Narrated by {name}', about:'About {name}',
+      loadAudio:'Load audio', back:'Back',
       loadingAudio:'Loading this section…', audioReady:'Audio ready to play.',
       audioUnavailable:'This section is unavailable. Try loading it again.', playback:'Play the saved section',
       loadTranscript:'Transcribe locally', transcriptHeading:'Machine transcript',
@@ -52,7 +53,8 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
       finished:'录音已完成。已保存的音频仍仅你可访问。',
       reviewFinished:'查看已完成的录音', finishedRecordings:'已完成的录音',
       noFinished:'没有已完成的录音。', recordedSection:'录音段落',
-      sectionNumber:'第 {number} 段', loadAudio:'加载音频', back:'返回',
+      sectionAt:'第 {number} 段 · {time}', toldBy:'讲述者：{name}', about:'主题：{name}',
+      loadAudio:'加载音频', back:'返回',
       loadingAudio:'正在加载本段…', audioReady:'音频已就绪，可以播放。',
       audioUnavailable:'暂时无法打开本段，请重新加载。', playback:'播放已保存的本段录音',
       loadTranscript:'在本机转写', transcriptHeading:'机器转写稿',
@@ -76,7 +78,8 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
   const preview = element('preview'), playback = element('playback');
   const finished = element('finished'), completedPanel = element('completed');
   const completedList = element('completed-list'), review = element('review'), back = element('back');
-  const reviewTitle = element('review-title'), reviewSection = element('review-section'), loadAudio = element('load-audio');
+  const reviewTitle = element('review-title'), reviewAttribution = element('review-attribution');
+  const reviewSection = element('review-section'), loadAudio = element('load-audio');
   const loadTranscript = element('load-transcript'), transcript = element('transcript');
   const transcriptText = element('transcript-text'), transcriptionEnabled = panel.dataset.transcription === 'enabled';
   const editText = element('edit-text'), reviewForm = element('review-form');
@@ -86,10 +89,11 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
   const digest = /^[0-9a-f]{64}$/;
   const maxSections = 180;
   const sectionSeconds = 20;
-  const maxSectionBytes = 44 + sectionSeconds * 16000 * 2;
+  const sampleRate = 16000;
+  const maxSectionBytes = 44 + sectionSeconds * sampleRate * 2;
   let owner = null, sessions = [], session = null, task = null, recording = null, section = null;
   let pendingCreate = null, pendingFinish = null, notice = '', loaded = false;
-  let completed = null, reviewed = null, previewURL = null, playbackURL = null;
+  let completed = null, reviewed = null, timeline = [], previewURL = null, playbackURL = null;
   let reviewDraft = null, reviewInitialText = '';
 
   const text = key => words[scope().language === 'zh' ? 'zh' : 'en'][key] || '';
@@ -104,6 +108,8 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
     if (value?.version !== 2 || typeof id !== 'string' || !uuid.test(id) || value.session_id !== id ||
         value.author_id !== binding.account || value.library_id !== binding.library ||
         typeof value.title !== 'string' || !value.title.trim() || value.title.length > 512 ||
+        typeof value.subject_label !== 'string' || value.subject_label.length > 512 ||
+        typeof value.narrator_label !== 'string' || value.narrator_label.length > 256 ||
         value.retention_consent !== true || typeof value.processing_consent !== 'boolean' ||
         !['open', 'completed'].includes(value.state) || !Number.isInteger(value.section_count) ||
         value.section_count < 0 || value.section_count > maxSections ||
@@ -187,13 +193,49 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
     finish.disabled = !!(task || recording || section) || session.section_count === 0;
   }
 
+  function checkedTimeline(value, item) {
+    if (value?.version !== 1 || value.session_id !== item.session_id ||
+        value.revision !== item.revision || value.manifest_sha256 !== item.manifest_sha256 ||
+        value.sample_rate !== sampleRate || !Array.isArray(value.sections) ||
+        value.sections.length !== item.section_count) throw new Error('Invalid recording timeline');
+    let next = 0;
+    value.sections.forEach((part, ordinal) => {
+      if (part?.ordinal !== ordinal || part.start_frame !== next ||
+          !Number.isInteger(part.frames) || part.frames < 1 || part.frames > sectionSeconds * sampleRate) {
+        throw new Error('Invalid recording section');
+      }
+      next += part.frames;
+    });
+    if (next !== item.total_frames) throw new Error('Invalid recording length');
+    return value.sections;
+  }
+
+  function formatElapsed(frames) {
+    const milliseconds = Math.floor(frames * 1000 / sampleRate);
+    const seconds = Math.floor(milliseconds / 1000);
+    const fraction = milliseconds % 1000;
+    const time = Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+    return fraction ? time + '.' + String(fraction).padStart(3, '0') : time;
+  }
+
+  function translateReview() {
+    if (!reviewed) return;
+    const attribution = [];
+    if (reviewed.narrator_label.trim()) attribution.push(text('toldBy').replace('{name}', () => reviewed.narrator_label));
+    if (reviewed.subject_label.trim()) attribution.push(text('about').replace('{name}', () => reviewed.subject_label));
+    reviewAttribution.textContent = attribution.join(' · ');
+    reviewAttribution.hidden = !attribution.length;
+    for (const [ordinal, option] of Array.from(reviewSection.options).entries()) {
+      option.textContent = text('sectionAt').replace('{number}', ordinal + 1)
+        .replace('{time}', formatElapsed(timeline[ordinal].start_frame));
+    }
+  }
+
   function translate() {
     for (const node of panel.querySelectorAll('[data-oral-word]')) node.textContent = text(node.dataset.oralWord);
     preview.setAttribute('aria-label', text('preview'));
     playback.setAttribute('aria-label', text('playback'));
-    for (const option of reviewSection.options) {
-      option.textContent = text('sectionNumber').replace('{number}', Number(option.value) + 1);
-    }
+    translateReview();
     paint();
   }
 
@@ -243,6 +285,9 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
     clearReviewedText();
     task = recording = pendingCreate = pendingFinish = session = null;
     completed = reviewed = null;
+    timeline = [];
+    reviewAttribution.hidden = true;
+    reviewAttribution.textContent = '';
     loaded = false;
     sessions = [];
     list.replaceChildren();
@@ -307,16 +352,22 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
     });
   }
 
-  function reviewRecording(item) {
+  async function reviewRecording(item) {
     if (!current(owner) || task || !completed?.includes(item)) return;
-    reviewed = item;
-    reviewTitle.textContent = item.title;
-    reviewSection.replaceChildren(...Array.from({length:item.section_count}, (_, ordinal) => {
-      return new Option(text('sectionNumber').replace('{number}', ordinal + 1), String(ordinal));
-    }));
-    notice = '';
-    paint();
-    reviewSection.focus();
+    const binding = owner;
+    await run('loading', 'unavailable', async (scopeBinding, call) => {
+      const result = await call('/' + item.session_id + '/timeline', {
+        extraHeaders:{'X-PhotoHouse-Expected-Revision':String(item.revision)},
+      });
+      if (!current(scopeBinding) || !completed?.includes(item)) return;
+      timeline = checkedTimeline(result, item);
+      reviewed = item;
+      reviewTitle.textContent = item.title;
+      reviewSection.replaceChildren(...timeline.map(part => new Option('', String(part.ordinal))));
+      translateReview();
+      notice = '';
+    });
+    if (current(binding) && reviewed === item) reviewSection.focus();
   }
 
   finished.addEventListener('click', async () => {
@@ -343,7 +394,9 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
       completedList.replaceChildren();
     }
     reviewed = null;
-    reviewTitle.textContent = '';
+    timeline = [];
+    reviewTitle.textContent = reviewAttribution.textContent = '';
+    reviewAttribution.hidden = true;
     reviewSection.replaceChildren();
     notice = '';
     paint();

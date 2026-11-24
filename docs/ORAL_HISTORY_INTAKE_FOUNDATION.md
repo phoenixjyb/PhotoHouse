@@ -52,9 +52,10 @@ server. Leaving the panel, signing out, or putting the browser in the
 background clears unsaved audio and stops the microphone. **Finish recording**
 closes an open session that has at least one saved section.
 
-Choose **Review finished recordings** to see your completed sessions. Select
-one section and choose **Load audio** before playing it with the browser's audio
-controls. Sections remain in their recorded order. Closing the panel or leaving
+Choose **Review finished recordings** to see your completed sessions. Each
+section shows its start time within that recording. The review displays the
+narrator and subject you entered, when present. Select a section and choose
+**Load audio** to play it with the browser's controls. Closing the panel or leaving
 the foreground stops playback and clears the browser's in-memory copy.
 
 The generated browser checks use synthetic audio and a temporary database.
@@ -83,8 +84,11 @@ the intake rechecks it atomically with the append. Identical retries return
 the committed receipt without adding another section. Existing complete and
 cancel operations are also wired through protected routes. `GET .../sessions/completed`
 lists completed sessions for the current author and library, up to the existing
-eight-session quota. `GET .../sessions/{session_id}/sections/{ordinal}` requires
-the selected completed revision in `X-PhotoHouse-Expected-Revision`. It verifies
+eight-session quota. `GET .../sessions/{session_id}/timeline` returns the verified
+ordered section offsets and lengths in samples at 16 kHz. It requires the
+current completed revision in `X-PhotoHouse-Expected-Revision` and reads only
+manifest metadata. `GET .../sessions/{session_id}/sections/{ordinal}` requires
+the same revision. It verifies
 current author access, source state and the original WAV and hash before
 returning one no-store section. Transcription and story adoption remain separate
 actions.

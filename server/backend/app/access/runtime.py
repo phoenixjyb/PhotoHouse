@@ -323,7 +323,7 @@ class RuntimeConfiguration:
             feature_enabled=self.story_title_suggestions_enabled, rollback=rollback)
         return replace(self, **projection.bind_fields(vars(self)))
 
-    def build_app(self, *, clock=time.time):
+    def build_app(self, *, clock=time.time, prepared_videos=None, video_moment_catalog=None):
         """Build only; catalog storage opens lazily in the request worker.
 
         An explicitly selected journal is validated here; no file is created.
@@ -408,7 +408,8 @@ class RuntimeConfiguration:
             original_deletions.require_family_format()
         database = ExistingDatabase(self.database, original_deletions=original_deletions)
         access = AccessRuntime(database, self.web_origin, clock=clock)
-        media = MediaRuntime(self.original_roots, self.derived_root, self.photo_cache)
+        media = MediaRuntime(self.original_roots, self.derived_root, self.photo_cache,
+                             prepared_videos=prepared_videos)
         discovery = None
         if self.discovery_indexes:
             from .discovery_index import runtime as discovery_runtime
@@ -543,6 +544,7 @@ class RuntimeConfiguration:
             review = UploadReviewRuntime(upload, self.photo_cache)
         from ..main import create_app
         return create_app(access_runtime=access, media_runtime=media, discovery_runtime=discovery,
+                          video_moment_catalog=video_moment_catalog,
                           upload_runtime=upload, upload_review_runtime=review,
                           annotation_intake_enabled=self.annotation_intake_enabled,
                           assistant_enabled=self.assistant_enabled,

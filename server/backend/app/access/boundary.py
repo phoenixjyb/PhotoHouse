@@ -77,7 +77,7 @@ class ClosedBoundary:
         if method in {'GET', 'POST'} and re.fullmatch(oral, path): return True
         if method == 'GET' and re.fullmatch(oral+r'/completed', path): return True
         session = oral+r'/[0-9a-f-]{36}'
-        if method == 'GET' and re.fullmatch(session, path): return True
+        if method == 'GET' and re.fullmatch(session+r'(?:/timeline)?', path): return True
         if method == 'GET' and re.fullmatch(session+r'/sections/[^/]{1,12}', path): return True
         if method in {'GET', 'PUT'} and re.fullmatch(session+r'/sections/[^/]{1,12}/reviewed-text', path): return True
         if method == 'POST' and re.fullmatch(session+r'/(?:sections|complete|cancel|sections/[^/]{1,12}/transcription)', path): return True

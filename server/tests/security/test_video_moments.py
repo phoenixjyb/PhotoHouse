@@ -1,4 +1,5 @@
 """Default-off protected moment lookup over one generated interval fixture."""
+from dataclasses import asdict
 import hashlib
 import json
 from pathlib import Path
@@ -12,16 +13,19 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
 sys.path.insert(0, str(ROOT / 'tests' / 'security'))
+sys.path.insert(0, str(ROOT / 'scripts'))
 
 from fastapi.testclient import TestClient
 from PIL import Image
 from app.access.media import MediaRuntime
 from app.access.prepared_video import PreparedVideos, pin
-from app.access.video_moments import VideoMoment, VideoMomentCatalog
+from app.access.video_moments import VideoMoment, VideoMomentCatalog, load_reviewed_catalog
 from app.home_catalog import CHUNK_BYTES
 from app.gps_utils import probe_video_metadata
 from app.main import create_app
+import staging_app
 import test_closed_application as closed
+import test_library_reads as library
 
 
 BASE = '/libraries/family-a/video-moments/v1/search'
@@ -173,6 +177,81 @@ class VideoMomentTests(unittest.TestCase):
         self.assertEqual(pinned_get.content, self.video_bytes)
         self.assertEqual(self.e.client.get('/assets/101/media?library=family-a',
                                            headers=self.e.headers()).status_code, 401)
+
+    def test_supported_launcher_serves_only_current_authorized_reviewed_moments(self):
+        library.LibraryReadTests.setUpClass()
+        self.addCleanup(library.LibraryReadTests.tearDownClass)
+        with self.e.connection() as database:
+            library.LibraryReadTests.template.backup(database)
+            database.executemany("UPDATE assets SET path=?, mime='video/mp4' WHERE id=?",
+                                 [(str(self.source), 101), (str(self.foreign_source), 201)])
+            database.commit()
+        config = staging_app.parse_configuration({
+            'format_version': 1,
+            'database': str(self.e.path),
+            'web_origin': 'https://photohouse.test:18443',
+            'original_roots': [str(self.e.originals)],
+            'derived_root': str(self.e.derived),
+            'bind_host': '127.0.0.1',
+            'port': 18443,
+            'tls_certificate': str(self.e.root / 'test-cert.pem'),
+            'tls_private_key': str(self.e.root / 'test-key.pem'),
+        })
+        catalog_path = self.e.root / 'reviewed-moments.json'
+        catalog_bytes = json.dumps({'version': 1,
+            'moments': [asdict(moment) for moment in self.catalog.moments]}).encode()
+        catalog_path.write_bytes(catalog_bytes)
+        choices = dict(prepared_index=self.index, prepared_root=self.prepared_root,
+                       prepared_sha256=hashlib.sha256(self.index.read_bytes()).hexdigest(),
+                       video_moment_catalog=catalog_path,
+                       video_moment_sha256=hashlib.sha256(catalog_bytes).hexdigest())
+        captured = []
+        staging_app.serve(config, server_run=lambda app, **options: captured.append(app),
+                          **choices)
+        with TestClient(captured[0], base_url=config.web_origin,
+                        client=('192.0.2.10', 23456)) as client:
+            client.headers['Sec-Fetch-Site'] = 'same-origin'
+            login = client.post('/auth/login', json={
+                'phone': closed.MEMBER, 'password': closed.PASSWORD, 'transport': 'native'})
+            self.assertEqual(login.status_code, 200)
+            headers = self.e.headers(login.json()['access_token'])
+            result = client.post(BASE, headers=headers, json={'query': 'green'})
+            self.e.assert_private(result)
+            self.assertEqual(result.status_code, 200)
+            self.assertEqual(result.json()['results'], [
+                {'asset_id': '101', 'label': 'green scene', 'start_sec': 1.0,
+                 'end_sec': 2.0, 'playback_revision': self.catalog.moments[0].playback_sha256}])
+            self.assertEqual(client.post(BASE, headers=headers, json={'query': 'blue'}).json(),
+                             {'version': 1, 'results': []})
+            outside_library = BASE.replace('family-a', 'family-b')
+            self.assertEqual(client.post(outside_library, headers=headers,
+                                         json={'query': 'blue'}).status_code, 401)
+        catalog_path.write_bytes(catalog_bytes + b' ')
+        with self.assertRaises(staging_app.InvalidConfiguration):
+            staging_app.serve(config, server_run=lambda app, **options: captured.append(app),
+                              **choices)
+        self.assertEqual(len(captured), 1)
+
+    def test_reviewed_catalog_refuses_invalid_or_unbound_rows(self):
+        path = self.e.root / 'reviewed-moments.json'
+        row = asdict(self.catalog.moments[0])
+        good = {'version': 1, 'moments': [row]}
+        invalid = (
+            good | {'version': True},
+            good | {'moments': [row, row]},
+            good | {'moments': [row | {'asset_id': 999}]},
+            good | {'moments': [row | {'source_identity': [1, 2, 3, 4]}]},
+            good | {'moments': [row | {'duration_ms': row['duration_ms'] + 1}]},
+            good | {'moments': [row | {'playback_sha256': 'a' * 64}]},
+            good | {'moments': [row | {'extra': 'unsupported'}]},
+        )
+        invalid_bytes = [json.dumps(value).encode() for value in invalid]
+        invalid_bytes.extend((b'{"version":1,"moments":[],"moments":[]}', b' ' * 65537))
+        for number, raw in enumerate(invalid_bytes):
+            path.write_bytes(raw)
+            with self.subTest(case=number), self.assertRaisesRegex(ValueError,
+                    '^Reviewed video moment catalog unavailable$'):
+                load_reviewed_catalog(path, hashlib.sha256(raw).hexdigest(), self.prepared)
 
     def test_capabilities_are_library_authenticated_and_read_only(self):
         capabilities = self.e.client.get(
