@@ -38075,6 +38075,45 @@
         }
       ],
       "notes": "Recognizable generated phone numbers masked and dates preserved. Exact preview and simulated reviewer checked without external calls."
+    },
+    {
+      "feature": "local-agent-capability-response-wait",
+      "source_commit": "a04a11bd944c72727254bf2bbc3a1efc8554e45a",
+      "files": [
+        {
+          "path": "server/tests/security/test_local_agent_browser.cjs",
+          "before_sha256": "de43b557aa374e55feaeabc48cd717839481a39159f55309c4f897bf84d9206c",
+          "sha256": "e16064b4cbd5dad8c8b3a0bcda065593e4aba9f0f6976734d046fa40f7abf4a0"
+        }
+      ],
+      "notes": "Generated Chromium reads the actual absence response after ordinary conversation creation."
+    },
+    {
+      "feature": "ordered-memory-group-media",
+      "source_commit": "765c7ad20bce3033a7e0b68b3dc0cfb3d761421b",
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "f9dd7a7c965ef4f393b2ddf31f0b3b45306f2eb2f1a06c7b5b1b5523ed73a107",
+          "sha256": "3660aa2748651be6cd32e282c80bd0ee9c0f83e2cdbdcb4c3d5c1006fb37384f"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "3e81c762f93b953701a26b9b02788880f3b41ce78119f8d51bb9676bc17e2c53",
+          "sha256": "db38ab7c0238a2c28f8b3d56f06c9a61cec62e8f0a282a05b759145f29364bb1"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "2a07406ff2d3bdda0b2be8341154318298a7ad269dee174e367606c4ce54d3fc",
+          "sha256": "5145a8d024bb513b6e08bf60c82b1f180db3a8d5ad6733e94bb6375d5c34590e"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "3cb803e8a8bf3f4f7d79a63e77a46d2f7a9d1132bb6b953d75d2dc43d0d9bcf9",
+          "sha256": "db78b3c3de836ebfc2f651cde0de5565767dd82deb3341c01fe71b1274438e84"
+        }
+      ],
+      "notes": "Protected browser persists the deliberate photo/video order and carries it into an unsaved story. Keyboard focus and large tap targets checked."
     }
   ]
 }
