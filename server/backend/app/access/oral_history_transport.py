@@ -4,7 +4,7 @@ import json
 import re
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
 from .oral_history_intake import OralHistoryIntake, CREATE_FIELDS, _uuid
@@ -144,11 +144,32 @@ async def list_open_sessions(library_id: str, request: Request):
     return _json_response(result)
 
 
+@router.get('/oral-history/v1/libraries/{library_id}/sessions/completed')
+async def list_completed_sessions(library_id: str, request: Request):
+    runtime, token = _admitted(request)
+    result = await run_in_threadpool(_intake_call, runtime, 'list_completed', token, library_id)
+    return _json_response(result)
+
+
 @router.get('/oral-history/v1/libraries/{library_id}/sessions/{session_id}')
 async def session_status(library_id: str, session_id: str, request: Request):
     runtime, token = _admitted(request)
     result = await run_in_threadpool(_intake_call, runtime, 'status', token, library_id, session_id)
     return _json_response(result)
+
+
+@router.get('/oral-history/v1/libraries/{library_id}/sessions/{session_id}/sections/{ordinal}')
+async def completed_section(library_id: str, session_id: str, ordinal: str, request: Request):
+    runtime, token = _admitted(request)
+    expected = _single(request, 'x-photohouse-expected-revision')
+    if (expected is None or not re.fullmatch(r'[1-9][0-9]{0,2}', expected)
+            or int(expected) > MAX_SECTIONS + 2
+            or not re.fullmatch(r'(?:0|[1-9][0-9]{0,2})', ordinal)
+            or int(ordinal) >= MAX_SECTIONS):
+        raise TransportError(400, 'Invalid recording section')
+    audio = await run_in_threadpool(_intake_call, runtime, 'completed_audio', token,
+        library_id, session_id, int(ordinal), expected_revision=int(expected))
+    return Response(audio, media_type='audio/wav')
 
 
 @router.post('/oral-history/v1/libraries/{library_id}/sessions/{session_id}/sections')

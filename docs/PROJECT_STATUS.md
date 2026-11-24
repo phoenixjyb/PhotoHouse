@@ -27,12 +27,23 @@ profile at the reviewed head passed 3,776 tests and 4,553 subtests, with six
 skips. The generated recovery demo and Android phone debug build passed.
 [Family reliability PR](https://github.com/phoenixjyb/PhotoHouse/pull/120)
 
-The next source changes keep the photo filmstrip stable while browsing, add a
-phone-bound family registration link, and improve the generated Search
-scorecard's empty-result and filter checks. Configurable installed Windows
-speech voices and a default-off resumable recording API are under local
-qualification. See the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md)
-for the exact test scope and remaining live checks.
+The source integration also includes ordered saved-group-to-story creation,
+reviewed video moments and same-page Jude selection recovery. The next PR adds
+stable filmstrip thumbnails, phone-bound registration links and stronger Search
+scorecard checks. [Story PR](https://github.com/phoenixjyb/PhotoHouse/pull/121) ·
+[Family and relevance PR](https://github.com/phoenixjyb/PhotoHouse/pull/122)
+
+The next reviewed source, `213ba28`, adds a default-off Web recorder,
+encrypted Android upload-folder review, clearer pending video preparation
+and faster structured Search on generated data. The exact candidate passed
+3,824 API tests and 4,566 subtests with six skips, 68 Chromium gallery
+checks and 14 Android 36 emulator tests. The debug build used no production
+origin. [Recording, mobile and Search PR](https://github.com/phoenixjyb/PhotoHouse/pull/123)
+
+The recorder can also reopen completed sessions and play individual sections
+on explicit author request. Generated Web and API checks use synthetic audio.
+Windows feature activation, signed client delivery, and household acceptance
+are tracked in the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md).
 
 ## November 24 current delivery
 

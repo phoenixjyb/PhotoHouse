@@ -345,24 +345,59 @@ class OralHistoryIntake:
             actor = self._member(token, library)['account_id']
             return self._status(self._session(actor, library, ident))
 
-    def list_open(self, token, library):
-        """List only this author's bounded open-session status for one library."""
+    def _list_state(self, token, library, state):
         _text(library,128,required=True)
+        if state not in {'open','completed'}:
+            raise ValueError('Unsupported recording list state')
         with self.access._transaction():
             actor = self._member(token, library)['account_id']
             rows = self.db.execute(
-                f'SELECT id FROM {SESSION} WHERE author_id=? AND library_id=? AND state=\'open\' '
+                f'SELECT id FROM {SESSION} WHERE author_id=? AND library_id=? AND state=? '
                 'ORDER BY created_at DESC,id DESC LIMIT ?',
-                (actor, library, MAX_SESSIONS_PER_AUTHOR + 1)).fetchall()
+                (actor, library, state, MAX_SESSIONS_PER_AUTHOR + 1)).fetchall()
             if len(rows) > MAX_SESSIONS_PER_AUTHOR:
                 raise TransportError(503, 'Recording storage unavailable')
             items = []
             for (ident,) in rows:
                 row = self._session(actor, library, ident)
-                if row['state'] != 'open':
+                if row['state'] != state:
                     raise TransportError(503, 'Recording storage unavailable')
                 items.append(self._status(row))
             return {'version': 2, 'library_id': library, 'items': items}
+
+    def list_open(self, token, library):
+        """List only this author's bounded open-session status for one library."""
+        return self._list_state(token, library, 'open')
+
+    def list_completed(self, token, library):
+        """List only this author's bounded completed-session status for one library."""
+        return self._list_state(token, library, 'completed')
+
+    def _verified_section_audio(self, ident, ordinal):
+        metadata = self.access._one(f'''SELECT byte_count,
+            CASE WHEN typeof(audio)='blob' THEN length(audio) END AS stored_bytes,sha256,frames
+            FROM {SECTION} WHERE session_id=? AND ordinal=?''', (ident, ordinal))
+        if metadata is None:
+            raise AccessDenied('Access denied')
+        # session_snapshot has already verified this immutable manifest row and
+        # aggregate bound in the same transaction. Check the actual SQLite blob
+        # length before asking the driver to materialize the raw audio bytes.
+        if (type(metadata['byte_count']) is not int or not 46 <= metadata['byte_count'] <= MAX_SECTION_BYTES
+                or type(metadata['stored_bytes']) is not int
+                or metadata['stored_bytes'] != metadata['byte_count']
+                or type(metadata['frames']) is not int
+                or metadata['byte_count'] != 44 + metadata['frames'] * 2):
+            raise TransportError(503, 'Recording source unavailable')
+        row = self.access._one(f'SELECT audio FROM {SECTION} WHERE session_id=? AND ordinal=?',
+                               (ident, ordinal))
+        try:
+            audio = bytes(row['audio'])
+            if (len(audio) != metadata['byte_count'] or wav_frames(audio) != metadata['frames']
+                    or hashlib.sha256(audio).hexdigest() != metadata['sha256']):
+                raise ValueError()
+        except (ValueError, TypeError, TransportError):
+            raise TransportError(503, 'Recording source unavailable') from None
+        return audio
 
     def audio(self, token, library, ident, ordinal):
         _text(library,128,required=True)
@@ -371,17 +406,22 @@ class OralHistoryIntake:
         with self.access._transaction():
             actor = self._member(token, library)['account_id']
             self._session(actor, library, ident)
-            row = self.access._one(f'SELECT audio,sha256,frames FROM {SECTION} WHERE session_id=? AND ordinal=?',
-                                   (ident, ordinal))
-            if row is None:
-                raise AccessDenied('Access denied')
-            try:
-                audio = bytes(row['audio'])
-                if wav_frames(audio) != row['frames'] or hashlib.sha256(audio).hexdigest() != row['sha256']:
-                    raise ValueError()
-            except (ValueError, TypeError, TransportError):
-                raise TransportError(503, 'Recording source unavailable') from None
-            return audio
+            return self._verified_section_audio(ident, ordinal)
+
+    def completed_audio(self, token, library, ident, ordinal, *, expected_revision):
+        """Read one verified section only from this author's current completed snapshot."""
+        _text(library,128,required=True)
+        ident = _uuid(ident)
+        ordinal = _integer(ordinal, MAX_SECTIONS - 1)
+        revision = _integer(expected_revision, MAX_SECTIONS + 2, minimum=1)
+        with self.access._transaction():
+            actor = self._member(token, library)['account_id']
+            session = self._session(actor, library, ident)
+            if session['state'] != 'completed':
+                raise TransportError(409, 'Recording is not completed')
+            if session['revision'] != revision:
+                raise TransportError(409, 'Recording changed; refresh before reading')
+            return self._verified_section_audio(ident, ordinal)
 
     def close(self, token, library, ident, *, request_id, expected_revision, cancel=False):
         _text(library,128,required=True)

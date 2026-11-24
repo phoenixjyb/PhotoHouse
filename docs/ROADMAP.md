@@ -555,11 +555,12 @@ introduction uses fictional examples/cartoon illustrations, never family media.
 
 **Source progress:** the [intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md)
 implements bounded ordered WAV sections and exact receipts with generated
-reopen/concurrency/rollback evidence. It stays internal and default-off; no
-transport, migration or recorder is delivered. Withdrawal, journal replay and the
-internal V3→V4 writer-fenced upgrade primitive are implemented and tested. The
-remaining sequence is operator/native upgrade qualification, production admission
-and erasure, then a client pilot that clearly distinguishes saved and retrying.
+reopen, concurrency and rollback evidence. The explicitly enabled Web
+recorder resumes unfinished sessions and plays author-owned completed sections
+on demand. Standard configuration leaves it off. Withdrawal, journal replay
+and the internal V3→V4 writer-fenced upgrade primitive have local tests.
+Operator and native upgrade qualification, production admission, erasure and
+the physical client pilot remain open.
 
 October 15 source work implements author-only retained-source withdrawal and
 V4 journal prefix replay with generated fixtures. Qualify an operator upgrade

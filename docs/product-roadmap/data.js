@@ -1,10 +1,10 @@
 /* Public product records only. No runtime polling or household data. */
 window.PHOTOHOUSE_ROADMAP = {
   "schema_version": 1,
-  "updated_at": "2026-11-24",
+  "updated_at": "2026-11-25",
   "snapshot_label": {
-    "en": "24 November 2026 · reviewed snapshot",
-    "zh": "2026 年 11 月 24 日 · 回顾快照"
+    "en": "25 November 2026 · reviewed snapshot",
+    "zh": "2026 年 11 月 25 日 · 回顾快照"
   },
   "runtime_notice": {
     "severity": "info",
@@ -13,8 +13,8 @@ window.PHOTOHOUSE_ROADMAP = {
       "zh": "部署与集成回顾记录"
     },
     "body": {
-      "en": "Windows API/UI startup and the scheduled grouping binding now have verified records. Household grouping quality and assistant workflows still have open work. This page separates dated delivery evidence from remaining gaps; it does not poll the server or certify current health.",
-      "zh": "Windows API／界面启动及定时分组任务的版本绑定已有验证记录。家庭分组质量与助手流程仍有待完善。本页区分有日期的交付证据与尚缺功能，不轮询服务器，也不代表实时健康状态。"
+      "en": "The bilingual roadmap and fullscreen viewer have Windows delivery records. Later audit improvements have local source checks. Household use, native Search relevance and installed-client acceptance remain open.",
+      "zh": "双语路线图与全屏浏览器已有 Windows 交付记录。之后的审计改进已完成本地源码检查。家庭实际使用、本机搜索相关性以及已安装客户端的验收仍待完成。"
     }
   },
   "areas": [
@@ -975,8 +975,8 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "The optional Web recorder saves short sections and resumes unfinished recordings after a reload. Generated browser checks covered a lost reply and duplicate-free retry.",
-          "zh": "可选的网页录音支持分段保存，刷新后可继续未完成的录音。合成浏览器测试验证了回复丢失与无重复重试。"
+          "en": "The optional Web recorder saves short sections, resumes unfinished recordings, and lets authors play completed sections. Generated browser checks covered duplicate-free retry and playback after reload.",
+          "zh": "可选的网页录音支持分段保存、继续未完成的录音，以及由作者回听已完成的录音。合成浏览器测试验证了无重复重试和刷新后回听。"
         }
       ],
       "gaps": [

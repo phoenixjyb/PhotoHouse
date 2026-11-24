@@ -379,9 +379,42 @@ let browser;
     await status.getByText('Recording finished. The saved audio stays private.').waitFor();
     assert.equal(await active.isHidden(),true);
     assert.equal(await panel.getByRole('button',{name:title}).count(),0);
+    checkpoint('Reload discovers the author’s unfinished recording and finishes on the correct next section');
+
+    await page.reload();await openInEnglish();
+    const readbackStart=browserRequests.length;
+    await panel.getByRole('button',{name:'Review finished recordings'}).click();
+    await panel.getByRole('button',{name:title}).click();
+    const review=panel.locator('#oral-history-review');
+    const sectionPicker=review.getByLabel('Recorded section');
+    const player=review.getByLabel('Play the saved section');
+    const loadAudio=review.getByRole('button',{name:'Load audio'});
+    assert.deepEqual(await sectionPicker.locator('option').allTextContents(),['Section 1','Section 2']);
+    const audioRead=entry=>entry.method==='GET'&&entry.path.startsWith('/oral-history/')&&/\/sections\/\d+$/.test(entry.path);
+    assert.equal(browserRequests.slice(readbackStart).filter(audioRead).length,0);
+    await sectionPicker.selectOption('1');await loadAudio.click();
+    await status.getByText('Audio ready to play.').waitFor();
+    assert.equal(browserRequests.slice(readbackStart).filter(audioRead).length,1);
+    assert.match(browserRequests.slice(readbackStart).find(audioRead).path,/\/sections\/1$/);
+    assert.equal(await player.evaluate(audio=>audio.paused),true);
+    assert.equal(await player.evaluate(async audio=>{audio.muted=true;await audio.play();audio.pause();return audio.duration;}),0.2);
+    await page.setViewportSize({width:390,height:850});
+    await panel.screenshot({path:path.join(artifacts,'oral-history-completed-review.png')});
+    await sectionPicker.selectOption('0');
+    assert.equal(await player.getAttribute('src'),null);
+    const held=delayNext((url,req)=>req.method()==='GET'&&url.pathname.startsWith('/oral-history/')&&url.pathname.endsWith('/sections/0'));
+    try{
+      await loadAudio.click();await held.seen;
+      await panel.locator('summary').click();
+      await page.waitForFunction(()=>document.getElementById('oral-history-playback').getAttribute('src')===null&&
+        document.getElementById('oral-history-review-title').textContent==='');
+    }finally{held.release();}
+    await openInEnglish();
+    assert.equal(await player.getAttribute('src'),null);
+    assert.equal(await review.isHidden(),true);
     assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),title),false);
     assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
-    checkpoint('Reload discovers the author’s unfinished recording, resumes the next ordinal, and finishes without storing private browser data');
+    checkpoint('Finished sections survive reload, load only on click, decode without autoplay, and are cleared when review closes');
     await ctx.close();return;
   }
   if(process.env.PH_BROWSER_VIDEO_MOMENTS==='1'){
