@@ -36324,6 +36324,201 @@
       "live_runtime_changed": false,
       "providers_activated": false,
       "scope": "Follow-up people filters, family navigation and kinship perspectives, upload cancellation, generated recovery, and media processing."
+    },
+    {
+      "feature": "audit-oral-history-retention-consent",
+      "source_commit": "77d23cb32437edc03400f2f6e48221f9bc8751fd",
+      "files": [
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "6ed59a5e220fd94834d7be784c54fd91cda2315f63bf24c8839cd6fef386810c",
+          "sha256": "1dcb47dedfbfdf178506dde4417eca298b87564e2d3a6b50d5405c207839fd4c"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_intake.py",
+          "before_sha256": "312a96af3c5448dcfa67d495c1c2eb94c0f14ba386e82fd26c719ec39345e728",
+          "sha256": "251f19c62469d9156376216f53f4cd35fb596a6e468a315c31737fa920d9a8e4"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_schema.py",
+          "before_sha256": "7ab06381b25d862c77bdf910323ff1919a6496caf2816fe440e056e024d55c5d",
+          "sha256": "221b967ddd7876cd84b5f97a349de809507e027d1adcaef7a56cc2ea3d1dcd02"
+        },
+        {
+          "path": "server/scripts/qualify_oral_history.py",
+          "before_sha256": "f5f1b6fe55f36bd6bacc5ae09b7be19b2132012297a3419bdb00578a5d087ed3",
+          "sha256": "19fc355e86257fb28852925b4cd1e78f4569146bbe3659ff6697d91b0c88a649"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_intake.py",
+          "before_sha256": "35acd5a36b640f989b0d2a1c002e4077ebf39278dfecf5f7192345d932af691e",
+          "sha256": "546874f34cd3a40070135baf4c16b6192e62b3451f52f7c28bbfa66cd27b06c9"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_withdrawal.py",
+          "before_sha256": "23fe0ad667638199153ddc2242076478025c599c419a4773a8daa01faa3c915f",
+          "sha256": "fb1dcd3da80ae8ea3a6eaefe869a94100fb7537f91da96e0f230aff79bd0e6ad"
+        }
+      ],
+      "schema_changed": true,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Consent-bound version 2 generated intake schema, manifest and receipts. No production migration."
+    },
+    {
+      "feature": "audit-private-relationship-drafting",
+      "source_commit": "77d23cb32437edc03400f2f6e48221f9bc8751fd",
+      "files": [
+        {
+          "path": "docs/PRIVATE_KINSHIP_SEARCH.md",
+          "before_sha256": "72aa0865c83488efeb923e7f7baa24759bec4d6e332e32f6bddd3909b4efa6ab",
+          "sha256": "4ba5e856e3f8814220c6e3c76f5c62b3c19c559334aa92b15341749a5cb98d58"
+        },
+        {
+          "path": "server/scripts/prepare_kinship_revision.py",
+          "before_sha256": null,
+          "sha256": "f2a7dec9bfc3f478c800bfb295ff4363a016321617be50664b6ebf9cba5e03a2"
+        },
+        {
+          "path": "server/tests/security/test_prepare_kinship_revision.py",
+          "before_sha256": null,
+          "sha256": "aa3f747b93105afe2a72787e95d1b0b655c1213f296446b38de0da1d6c29f712"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Private exclusive draft output for reviewed relationship edits against an exact base."
+    },
+    {
+      "feature": "audit-video-moment-lookup-and-source-pinned-playback",
+      "source_commit": "77d23cb32437edc03400f2f6e48221f9bc8751fd",
+      "files": [
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "0def1008ddfc8279bfd6d10a5ba96c6e4f2efe9f0b5d3d9acc9f0ed01a598bab",
+          "sha256": "ccf9fd8d0c700586cbcd8b99c4934f1af541a7b2bc1b6a6195a0db78176b9189"
+        },
+        {
+          "path": "server/backend/app/access/media.py",
+          "before_sha256": "985a4d32c43609403891138e1954e3f5eee13a3802d2276f288c5e3bebf50f4c",
+          "sha256": "021d8eac80b55993f632c69656f62d50aae5999004441e561711348011b0e33a"
+        },
+        {
+          "path": "server/backend/app/access/video_moments.py",
+          "before_sha256": null,
+          "sha256": "3faca7254152f99a5920a23a250bcbe8157485ab7b02d3aa4ba14b85209dd9a4"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "c40a34000c2333308017075fe3a9cddd35be314f0052bd40718af78682fad073",
+          "sha256": "429284ef70209cf34ea467e4bde6af219ff00c9a6926f544c8677235606bffd9"
+        },
+        {
+          "path": "server/tests/security/test_video_moments.py",
+          "before_sha256": null,
+          "sha256": "c03ce55eaf54cccaf6a58956dde4f5fe6b329a1299dbb18eb6bd299340480782"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Default-off reviewed video lookup and exact prepared-revision playback."
+    },
+    {
+      "feature": "audit-viewer-caption-decoupling-and-reviewed-story-actions",
+      "source_commit": "77d23cb32437edc03400f2f6e48221f9bc8751fd",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "db8aa18595d0502dde6e77ed299354258189438ea8c61354adce37ea6dd5c77a",
+          "sha256": "93da163355ccefc95395d553b1b5043c69d8eafe1384154ef446592f7f7995b1"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "ea0242c3e07455f141407483d69d3ad955f38ad3d53dade7c236f80ed7946489",
+          "sha256": "1099b63bfcd4a87b11ff62c0abb42f55060dc23913e3ae782637a33e4b27ce1f"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "a0d50cc2e8284d8d90fb19a576c8d5d4391c690040806812b0bf20f906377320",
+          "sha256": "65c31d502f457f8af658a074b15e8ac19f7fa9518771a6802f35e57f9f62863d"
+        },
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "464f347346125e70676d4196aa2f5f8a086c4d14924ca4c4d28678d42abdbd96",
+          "sha256": "0737fe88f937570765248c8da8d42bc0d46999479fc5f9e2c4d3c1c0ba0a7960"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "633d3f639c12780a189aecfa7e0b677c16d55906f98eea066a75faf6ac27cf2b",
+          "sha256": "1bf7fedb87200125c14ef7de5fea85c479f1f03642d4620be85259d176c678e9"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "7f509ee4f1e5a88acb9b5dc9563d3c180a910b4b93be85cc9f52398f180e561a",
+          "sha256": "39f9440a1648f60f1d7f76fc5035414d78f118cc4ab37e012182be652dfc8c9e"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "efdf59bf2ecc8c0b3726624525c9408014947c0c696da83c880ef8c375f3713e",
+          "sha256": "9c99e896d96ebbd429febb1468e4fd8eb39fb56d2985f9f96bcbd19538a52ad6"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "d52b11c57d1b1c4e0b537deebfe0bffa027d296db8ecdf4d79107da2f50f2155",
+          "sha256": "1fab42399db835ebbc6812103cde6046b4d291f0b4bcb7582c40dd54745e5ff0"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "75937dae83b4ae1bfe525adca9c2fdc55f12ff9780d34e997a1f12ad3eb7b63b",
+          "sha256": "b3ab40f6b5169fab9388ce3dd67e4f3eda679c0bfcdcc0886f40757c73d5d994"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "8f46988a3fc3bccf0dbec361e124ef941738cbb4f4901dcef96ae886fb384261",
+          "sha256": "75315000ce6b60285c1d401fe42bb3457493183749e2b1d9273c26d9fe1d240f"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "before_sha256": "621c2219251baceb7bf61f2c0c78713d52082d8d69fd5b8951a7595b30850e2b",
+          "sha256": "221d37d60274db2783260fb4142eb855fb3b036f1eaa4a98be2575b8c4a66319"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection.cjs",
+          "before_sha256": "4a3b9f5f6ad3958ba6f9780c2572fa8c0e01ae67e33187f7104099825888277b",
+          "sha256": "44febec63ca7b3bd3b165aca04cf914443864396619503062fc3523e57bb594c"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "b6a66dbe72753d5961d4cf06eb39ce69e8e33cc1c9cfc73d48501b3284cd9ece",
+          "sha256": "97035064db691c0311f581b9c87ffe17ed3fda7894ab3f344422c73008f87395"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "a218562203c6bc8c7d38a90a0e2c7a0eade48c008044044a4981cedd81080778",
+          "sha256": "57e2de3e8d776f76e6985db890c77919378c9b4686aa8c70ef717cbb9fdde481"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_dom.cjs",
+          "before_sha256": "3d01933f6e0e1cfb02035a8eb6792afb3af2d5cc2bb87830ac36b8981f975eb6",
+          "sha256": "abc21ce77661c6aba4a2ae5cdbe2e63a970593439c8b16892e22e0e9ce30d556"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "b1e6e141409438277cf1b09724f15d7575a7f6db3f40ed5c71ae9da5dda364ef",
+          "sha256": "ca5acc74ce1bc1cc2fbad29c5ae7005a05c3d7511f11296ad737cf382c44d712"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "9365a38b64c03fd89b7a9643f7485d2b012045bdb2cfe27cfdf088ecc6e7cbd8",
+          "sha256": "1869792419ed8f9879510b20c801d59023847e3fc70ada85167034d6ef42f551"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Web viewer, saved group stories, active conversation frame retention and generated video moment journey."
     }
   ]
 }
