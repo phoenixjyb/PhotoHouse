@@ -16,7 +16,9 @@ from fastapi.testclient import TestClient
 import test_semantic_bulk_search as bulk
 import test_semantic_streaming_search as fixture
 from app.main import create_app
+from app.access.assistant_search import SearchRuntime
 from app.access.assistant_workspace_store import initialize_v2
+from app.access.search_evaluation import evaluate_cases
 from app.access.semantic_eligibility import SemanticEligibilityStore
 from phone_discovery_fixture import TOKEN, OTHER, SECOND, NOW
 
@@ -536,8 +538,8 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
         self.addCleanup(client.close)
         auth = {'Authorization': 'Bearer ' + SECOND}
         base = '/assistant/workspace/v1'
-        for words, scene, expected in (('find photos in 2034', 'a kite', 'No matches in the searchable'),
-                                       ('找2034年的照片', '风筝', '在可语义检索的照片中未找到')):
+        for language, words, scene, expected in (('en', 'find photos in 2034', 'a kite', 'No matches in the searchable'),
+                                                 ('zh', '找2034年的照片', '风筝', '在可语义检索的照片中未找到')):
             thread = client.post(base + '/threads', headers=auth,
                                  json={'library_id': 'family-a'}).json()['thread']['thread_id']
             path = f'{base}/threads/{thread}/turns'
@@ -560,4 +562,15 @@ class SemanticEligibilityEndpointTests(unittest.TestCase):
                                       headers=headers)
             self.assertEqual(restored.status_code, 200, restored.text)
             self.assertEqual(restored.json()['result'], result)
+            self.assertEqual(result['semantic']['coverage_details']['matched_omitted_images'], 65)
+            labels = {'version': 2, 'cases': [{'id': 'absence', 'text': scene, 'language': language,
+                'category': 'no_match', 'expect': {'kind': 'results', 'total': 0, 'absent_ids': ['1000']}}]}
+            with patch('app.access.assistant._turn', return_value=result):
+                report = evaluate_cases(SearchRuntime(self.fixture.discovery_runtime), SECOND, 'family-a',
+                                        labels, clock=lambda: NOW)
+            cohort = report['scorecard']['cohorts'][language]
+            self.assertEqual(cohort['confirmed_no_match_count'], 0)
+            self.assertEqual(cohort['no_match_inconclusive_count'], 1)
+            self.assertEqual(cohort['no_match_false_positive_count'], 0)
+            self.assertEqual(cohort['absence_failed_count'], 1)
         self.assertEqual(self.calls, [])

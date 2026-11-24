@@ -41,13 +41,15 @@ category cohort, including empty cohorts, so missing or failing coverage stays
 visible. The legacy aggregate is descriptive; it does not establish a pooled
 qualification grade. Category values use a fixed vocabulary; only those fixed
 bucket names are exposed, never free-form category labels. A `no_match` case
-expects a successful `results` response with `total: 0` and a complete empty
-page. Clarifications count separately.
+expects a successful `results` response with `total: 0`, a complete empty
+page and coverage of the requested scope. An empty semantic result with
+unindexed images that match the active filters counts as inconclusive.
+Clarifications count separately.
 
 The v2 report keeps the existing case counts and relevance summary, then adds
 `scorecard.cohorts` and `scorecard.categories`. Each language cohort includes
 its case denominator and pass/fail counts, annotated and confirmed no-match
-counts, false positives on no-match cases, clarifications, failed dependencies,
+counts, false positives and inconclusive no-match cases, clarifications, failed dependencies,
 hard-filter and absence check counts and failures, relevance
 denominator, hit@5 count and rate, labeled recall@5, MRR@20, executed count,
 latency sample count, and median/p95 local elapsed milliseconds. Category
@@ -77,8 +79,9 @@ qualification, activation, or access authority.
 
 Version 1 continues to emit its prior report version and keys, including its
 existing hit@20 and MRR@20 relevance summary. For both versions, `absent_ids`
-checks pass only against a complete page; a page with more results does not
-prove absence.
+checks require a complete result page and coverage of the active filters. A
+partial index can support a narrower absence check when its verified policy
+records zero unindexed images matching those filters.
 
 The current private CLI constructs the deterministic v2 search runtime. Its
 language cohorts measure those supplied queries only; they do not exercise

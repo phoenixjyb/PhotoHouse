@@ -102,6 +102,16 @@ class SearchQualityScorecardTests(unittest.TestCase):
         self.assertEqual(len(scenario.pilot.calls), 3)
         self.assertNotIn('"101"', json.dumps(report, ensure_ascii=False))
 
+    def test_partial_catalog_can_confirm_absence_inside_a_fully_ranked_scope(self):
+        document = {'version': 2, 'cases': [case('none', 'en', 'no_match')]}
+        result = {'version': 4, 'kind': 'results', 'items': [], 'total': 0, 'has_more': False,
+                  'semantic': {'coverage': 'complete_eligible_images',
+                               'coverage_details': {'state': 'partial', 'matched_omitted_images': 0}}}
+        with patch('app.access.assistant._turn', return_value=result):
+            report = evaluate_cases(FakeEngine(), TOKEN, 'family-a', document, clock=lambda: NOW)
+        self.assertEqual(report['scorecard']['cohorts']['en']['confirmed_no_match_count'], 1)
+        self.assertEqual(report['scorecard']['cohorts']['en']['no_match_inconclusive_count'], 0)
+
     def test_v2_cohort_denominators_misses_latency_and_privacy(self):
         engine = FakeEngine()
         document = {'version': 2, 'cases': [

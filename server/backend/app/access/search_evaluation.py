@@ -187,6 +187,8 @@ def _cohort_metrics(pairs):
         'confirmed_no_match_count': sum(report['passed'] for report in no_match),
         'no_match_false_positive_count': sum(report.get('no_match_false_positive', False)
                                              for report in no_match),
+        'no_match_inconclusive_count': sum(report.get('no_match_inconclusive', False)
+                                           for report in no_match),
         'clarification_count': sum(report.get('clarified', False) for _, report in pairs),
         'failed_dependency_count': sum(report.get('dependency_failed', False) for _, report in pairs),
         'hard_filter_checked_count': len(filter_checks),
@@ -247,11 +249,28 @@ def _readiness_binding(engine, token, library):
     return state['binding']
 
 
+def _scope_covers_query(result):
+    # Current v4 strict ranking verifies every eligible image. With an omission
+    # policy, the count is scoped to the same hard filters as this response.
+    if 'semantic' not in result:
+        return result.get('version') != 4
+    semantic = result['semantic']
+    if type(semantic) is not dict or semantic.get('coverage') != 'complete_eligible_images':
+        return False
+    if 'coverage_details' not in semantic:
+        return True
+    coverage = semantic['coverage_details']
+    if type(coverage) is not dict or coverage.get('state') not in ('complete', 'partial'):
+        return False
+    omitted = coverage.get('matched_omitted_images')
+    return type(omitted) is int and omitted == 0
+
+
 def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.monotonic):
     """Run validated cases through ``assistant._turn`` and emit private-safe metrics.
 
     A relevance request on a clarification or empty page is a measured miss.
-    ``absent_ids`` is proven only when the result page has no continuation.
+    ``absent_ids`` needs a complete result page and coverage of the query scope.
     Access denial and discovery change/unavailability/busy exceptions intentionally
     pass through unchanged. In those cases no report is returned.
     """
@@ -332,6 +351,10 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
         contexts[case['id']] = context
 
         expected = case['expect']
+        no_match_case = case.get('category') == 'no_match'
+        complete_page = (result['kind'] == 'results' and result.get('has_more') is False
+                         and total == len(items) == len(set(item_ids)))
+        scope_covered = _scope_covers_query(result) if no_match_case or 'absent_ids' in expected else True
         checks = {}
         checks['kind'] = result['kind'] == expected['kind']
         for field in _REPORT_FIELDS[1:]:
@@ -361,18 +384,16 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
                 eligible = set(expected[field])
                 checks[field] = total <= len(eligible) and eligible.issuperset(item_ids)
             elif field == 'absent_ids':
-                # Absence is proven only when the returned page is complete.
-                # With has_more, an ID beyond the page may still be present.
-                checks[field] = (result.get('has_more') is False and
+                checks[field] = (complete_page and scope_covered and
                                  all(ident not in item_ids for ident in expected[field]))
             elif field == 'total':
                 checks[field] = total == expected[field]
             else:
                 checks[field] = result.get('effect') == expected[field]
 
-        no_match_case = case.get('category') == 'no_match'
         if no_match_case:
-            checks['complete_empty_page'] = not item_ids and result.get('has_more') is False
+            checks['complete_empty_page'] = complete_page and total == 0
+            checks['complete_search_scope'] = scope_covered
         elapsed_ms = (ended - started) * 1000.0
         if not math.isfinite(elapsed_ms):
             _invalid()
@@ -393,6 +414,8 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
             report_case['clarified'] = result['kind'] == 'clarification'
             if no_match_case:
                 report_case['no_match_false_positive'] = total > 0 or bool(item_ids)
+                report_case['no_match_inconclusive'] = (result['kind'] == 'results' and total == 0
+                    and not items and not (complete_page and scope_covered))
         reports.append(report_case)
 
     passed = sum(case['passed'] for case in reports)
