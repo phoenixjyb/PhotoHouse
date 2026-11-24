@@ -40,7 +40,7 @@ from .access.annotations import router as annotation_router
 from .access.duplicates import router as duplicate_router
 from .access.captions import router as caption_router
 from .access.library_organization import router as organization_router
-from .routers.ui import router as ui_router
+from .routers.ui import oral_history_ui_router, router as ui_router
 from .product_roadmap import (attach_routes as attach_roadmap_routes,
                               default_roadmap_root)
 from .updates import router as updates_router
@@ -358,6 +358,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(memory_group_router)
     if oral_history_intake_enabled:
         app.include_router(oral_history_router)
+        app.include_router(oral_history_ui_router)
     app.include_router(memory_router)
     app.include_router(story_cloud_router)
     app.include_router(memory_edition_router)

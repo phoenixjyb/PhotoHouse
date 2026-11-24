@@ -8,10 +8,12 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse, Response
 
 router = APIRouter()
+oral_history_ui_router = APIRouter()
 
 UI_DIR = Path(__file__).resolve().parents[1] / "ui" / "access"
 INDEX_FILE = UI_DIR / "index.html"
 _ORAL_HISTORY_PANEL = '<details id="oral-history-panel" class="access-panel" hidden>'
+_ORAL_HISTORY_SCRIPT = '    <script data-module="oral-history" src="/ui/oral-history.js"></script>\n'
 APP_FILE = UI_DIR / "app.js"
 STYLE_FILE = UI_DIR / "styles.css"
 ICON_FILE = UI_DIR.parent / "photohouse-icon.svg"
@@ -146,6 +148,8 @@ def ui_home(request: Request):
     html = _read_asset(INDEX_FILE)[0].decode("utf-8")
     if getattr(request.app.state, 'oral_history_intake_enabled', False):
         html = html.replace(_ORAL_HISTORY_PANEL, _ORAL_HISTORY_PANEL.removesuffix(" hidden>") + ">", 1)
+    else:
+        html = html.replace(_ORAL_HISTORY_SCRIPT, "", 1)
     versions = tuple((name, _read_asset(_asset_path(name))[1]) for name in _referenced_assets(html))
     return _static_response(request, _versioned_shell(html, versions), "text/html", NO_CACHE_HEADERS)
 
@@ -175,7 +179,7 @@ def ui_memory_community(request: Request, v: str | None = None):
     return _asset_response(request, "memory-community.js", v)
 
 
-@router.get("/ui/oral-history.js")
+@oral_history_ui_router.get("/ui/oral-history.js")
 def ui_oral_history(request: Request, v: str | None = None):
     return _asset_response(request, "oral-history.js", v)
 
