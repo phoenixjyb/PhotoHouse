@@ -12,6 +12,9 @@ window.PhotoHouseMemoryGroups = {
         title:'家庭回忆组', open:'家庭回忆组', loading:'正在载入…', unavailable:'家庭回忆组暂时不可用。',
         disabled:'此相册库尚未开启家庭回忆组。', failed:'暂时无法载入，请重试。', retry:'重试载入',
         create:'新建回忆组', edit:'编辑', save:'明确保存回忆组', cancel:'取消编辑',
+        split:'拆分回忆组', splitHelp:'选择要移入新组的画面。关联的家人原话随对应画面移动。',
+        splitCount:(moved, kept)=>`移入新组 ${moved} 张 · 原组保留 ${kept} 张`,
+        splitItem:n=>`移动画面 ${n}`, splitSaved:'已将选定画面移入新回忆组。',
         startStory:'开始写故事', checkingStory:'正在核对回忆组…', storyChanged:'回忆组已变化或暂不可用，请刷新后重试。',
         theme:'主题', themes:{trip:'旅行',growing_up:'成长',birthday:'生日',grandparents:'祖辈',year_in_review:'年度回顾',everyday:'日常'},
         addMedia:'从当前相册选择画面', included:'组内画面', remove:'移出此组',
@@ -32,6 +35,9 @@ window.PhotoHouseMemoryGroups = {
         title:'Family memory groups', open:'Family memory groups', loading:'Loading…', unavailable:'Memory groups are temporarily unavailable.',
         disabled:'Memory groups are not enabled for this library.', failed:'Could not load this yet. Try again.', retry:'Retry loading',
         create:'Create a memory group', edit:'Edit', save:'Save this memory group', cancel:'Cancel editing',
+        split:'Split group', splitHelp:'Select photos or videos for the new group. Linked notes move with their items.',
+        splitCount:(moved, kept)=>`${moved} to the new group · ${kept} stay here`,
+        splitItem:n=>`Move item ${n}`, splitSaved:'The selected items moved to a new memory group.',
         startStory:'Start a story', checkingStory:'Checking this memory group…', storyChanged:'This memory group changed or is unavailable. Refresh and try again.',
         theme:'Theme', themes:{trip:'Trip',growing_up:'Growing up',birthday:'Birthday',grandparents:'Grandparents',year_in_review:'Year in review',everyday:'Everyday'},
         addMedia:'Choose from this gallery', included:'Group photos', remove:'Remove from group',
@@ -170,7 +176,12 @@ window.PhotoHouseMemoryGroups = {
         const items=node('div','', 'memory-group-items');for(const item of group.items||[])items.append(image(item));card.append(items);
         renderSources(card,group.sources||[]);
         if(typeof onStory==='function'){let start;start=button(t('startStory'),()=>startStory(state,group,start),'memory-group-start-story');card.append(start);}
-        if(group.can_edit&&state.capabilities.manual){const edit=button(t('edit'),()=>openEditor(state,group),'memory-group-edit');card.append(edit);}
+        if(group.can_edit&&state.capabilities.manual){
+          card.append(button(t('edit'),()=>openEditor(state,group),'memory-group-edit'));
+          if(state.capabilities.split&&group.asset_ids.length>1){
+            card.append(button(t('split'),()=>openSplitEditor(state,group),'memory-group-split'));
+          }
+        }
         state.groupsBox.append(card);
       }
       if(state.capabilities.manual)state.groupsBox.append(button(t('create'),()=>openEditor(state,null),'memory-group-create'));
@@ -179,10 +190,63 @@ window.PhotoHouseMemoryGroups = {
       const values=[story?.asset_id,story?.asset?.id,...(Array.isArray(story?.asset_ids)?story.asset_ids:[])].filter(idOk);
       return [...new Set(values)];
     }
-    function openEditor(state, group) {
-      if(!active(state)||state.pendingSave)return;
-      if(state.editor&&state.dirty){if(state.saving||!window.confirm(t('confirmLeave')))return;clearEditor(state);}
+    function beginEditor(state, group) {
+      if(!active(state)||state.pendingSave)return false;
+      if(state.editor&&state.dirty&&(state.saving||!window.confirm(t('confirmLeave'))))return false;
       clearEditor(state);state.editing=group||null;
+      return true;
+    }
+    function openSplitEditor(state,group) {
+      if(!state.capabilities.split||!group.can_edit||group.asset_ids.length<2||!beginEditor(state,group))return;
+      const editor=node('form','', 'memory-group-editor');
+      const heading=node('h3',t('split'));
+      heading.tabIndex=-1;
+      const help=node('p',t('splitHelp'));
+      const count=node('p','','memory-group-count');
+      count.setAttribute('aria-live','polite');
+      const selected=new Set();
+      const save=button(t('split'),()=>{},'memory-group-split-save');
+      save.type='submit';
+      function updateSelection(){
+        count.textContent=t('splitCount')(selected.size,group.asset_ids.length-selected.size);
+        save.disabled=selected.size<1||selected.size>=group.asset_ids.length;
+      }
+      editor.append(heading,help,count);
+      for(const [i,item] of group.items.entries()){
+        const choice=node('label','', 'memory-group-gallery-choice memory-group-split-choice');
+        const box=document.createElement('input');
+        box.type='checkbox';
+        box.setAttribute('aria-label',t('splitItem')(i+1));
+        box.addEventListener('change',()=>{
+          if(box.checked)selected.add(item.id);
+          else selected.delete(item.id);
+          state.dirty=selected.size>0;
+          updateSelection();
+        });
+        choice.append(box,image(item));
+        editor.append(choice);
+      }
+      editor.append(save,button(t('cancel'),()=>{
+        if(state.dirty&&!window.confirm(t('confirmLeave')))return;
+        clearEditor(state);setStatus(state,'');
+      },'memory-group-cancel'));
+      editor.addEventListener('submit',async event=>{
+        event.preventDefault();
+        if(!active(state)||state.pendingSave||save.disabled)return;
+        const mutation=window.crypto?.randomUUID?.();
+        if(!uuidOk(mutation)){setStatus(state,t('saveError'),true);return;}
+        const body={asset_ids:group.asset_ids.filter(id=>selected.has(id)).join(','),
+          revision:group.revision,mutation_id:mutation};
+        state.pendingSave={body,path:`/memory-groups/${encodeURIComponent(group.id)}/split`,splitFrom:group.id};
+        await sendPendingSave(state);
+      });
+      updateSelection();
+      state.editor=editor;
+      state.groupsBox.append(editor);
+      heading.focus();
+    }
+    function openEditor(state, group) {
+      if(!beginEditor(state,group))return;
       const baseIds=group?(group.asset_ids||[]).filter(idOk):[state.asset.id];
       const selected=new Set(baseIds);const autoSuggestedIds=new Set();const exclusions=new Set((group?.excluded_asset_ids||[]).filter(idOk));
       state.editorRevision++;
@@ -278,10 +342,17 @@ window.PhotoHouseMemoryGroups = {
     async function sendPendingSave(state) {
       const pending=state.pendingSave;if(!pending||!active(state))return;
       state.saving=true;lockEditor(state,true);setStatus(state,t('loading'));
-      try{const result=await request(state,pending.path,{method:pending.body.revision==='0'?'POST':'PUT',body:pending.body});
+      const isSplit=!!pending.splitFrom;
+      const method=isSplit||pending.body.revision==='0'?'POST':'PUT';
+      try{
+        const result=await request(state,pending.path,{method,body:pending.body});
         if(!active(state)||state.pendingSave!==pending)return;
-        if(!matchesSavedRequest(result,pending,state))throw Error('Invalid saved group response');
-        state.pendingSave=null;state.saving=false;setStatus(state,t('saved'));clearEditor(state);await loadGroups(state);
+        const matches=isSplit?result?.version===1&&result.library_id===String(state.library)&&
+          result.source_id===pending.splitFrom&&uuidOk(result.created_id)&&result.created_id!==result.source_id:
+          matchesSavedRequest(result,pending,state);
+        if(!matches)throw Error('Invalid saved group response');
+        state.pendingSave=null;state.saving=false;clearEditor(state);await loadGroups(state);
+        setStatus(state,t(isSplit?'splitSaved':'saved'));
       }catch(_){if(!active(state)||state.pendingSave!==pending)return;
         state.saving=false;setStatus(state,t('failedSave'),true);state.editor?.querySelector('.memory-group-save-recovery')?.remove();const actions=node('div','', 'memory-group-save-recovery');actions.append(button(t('retrySave'),()=>sendPendingSave(state),'memory-group-save-retry'),button(t('discard'),()=>{state.pendingSave=null;clearEditor(state);setStatus(state,'');},'memory-group-save-discard'));
         state.editor?.append(actions);
@@ -293,7 +364,8 @@ window.PhotoHouseMemoryGroups = {
       const ticket=++state.readSequence;
       try{const caps=await request(state,'/memory-groups/capabilities');if(!active(state)||ticket!==state.readSequence)return;
         if(!caps||caps.version!==1||typeof caps.enabled!=='boolean'||(caps.library_id!==undefined&&caps.library_id!==String(state.library)))throw Error('Invalid capabilities');
-        state.capabilities={enabled:caps.enabled,manual:Boolean(caps.manual),suggestions:Boolean(caps.suggestions)};
+        state.capabilities={enabled:caps.enabled,manual:Boolean(caps.manual),
+          split:caps.split===true,suggestions:Boolean(caps.suggestions)};
         if(!caps.enabled){state.groupsBox.replaceChildren(node('p',t('disabled')));return;}
         state.groupsBox.replaceChildren();if(!caps.manual)state.groupsBox.append(node('p',t('manualDisabled')));if(!caps.suggestions)state.groupsBox.append(node('p',t('suggestionsDisabled')));
         await loadGroups(state);
