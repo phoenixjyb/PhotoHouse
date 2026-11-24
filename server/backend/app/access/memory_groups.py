@@ -24,6 +24,8 @@ MAX_ASSETS = 24
 MAX_EXCLUDED = 512
 MAX_SOURCE_STORIES = 12
 MAX_GROUPS_PER_ASSET = 8
+MAX_RECENT_GROUPS = 8
+MAX_RECENT_GROUP_CANDIDATES = 64
 MAX_RESPONSE_BYTES = 1024 * 1024
 
 
@@ -202,6 +204,30 @@ class MemoryGroups:
             member = self.access._require(token, library, 'library.read')
             self._ready()
             return self._present(token, self._row(ident, library), library, member)
+
+    def list_recent(self, token, library):
+        with self.access._transaction():
+            self.access._require(token, library, 'library.read')
+            self._ready()
+            rows = self.db.execute(f'''SELECT * FROM {TABLE} WHERE library_id=?
+                ORDER BY updated_at DESC,id DESC LIMIT ?''',
+                (library, MAX_RECENT_GROUP_CANDIDATES))
+            names = tuple(column[0] for column in rows.description)
+            items = []
+            for values in rows:
+                row = dict(zip(names, values))
+                content = _stored(row)
+                try:
+                    members = self._assets(token, library, content['asset_ids'])
+                except AccessDenied:
+                    continue
+                # Verify the whole group even though only its cover is shown.
+                items.append({'id': row['id'], 'revision': str(row['revision']),
+                              'theme': content['theme'], 'count': len(members),
+                              'cover': members[0]})
+                if len(items) == MAX_RECENT_GROUPS:
+                    break
+            return {'version': 1, 'library_id': library, 'items': items}
 
     def list_for_asset(self, token, library, asset_id):
         if type(asset_id) is not int or asset_id < 1:

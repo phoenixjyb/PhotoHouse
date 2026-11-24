@@ -3,6 +3,7 @@
 window.PhotoHouseMemoryGroups = {
   create({scope, api, onStory}) {
     let generation = 0;
+    let recentSequence = 0;
     let root = null;
     let mounted = null;
     const scopeNow = () => typeof scope === 'function' ? scope() : scope;
@@ -11,6 +12,8 @@ window.PhotoHouseMemoryGroups = {
       zh: {
         title:'家庭回忆组', open:'家庭回忆组', loading:'正在载入…', unavailable:'家庭回忆组暂时不可用。',
         disabled:'此相册库尚未开启家庭回忆组。', failed:'暂时无法载入，请重试。', retry:'重试载入',
+        recentEmpty:'暂无可查看的近期回忆组。', recentUnavailable:'此相册库暂时无法查看近期回忆组。',
+        recentCount:n=>`${n} 项照片或视频`, browse:'查看组内照片和视频',
         create:'新建回忆组', edit:'编辑', save:'明确保存回忆组', cancel:'取消编辑',
         split:'拆分回忆组', splitHelp:'选择要移入新组的画面。关联的家人原话随对应画面移动。',
         splitCount:(moved, kept)=>`移入新组 ${moved} 张 · 原组保留 ${kept} 张`,
@@ -40,6 +43,8 @@ window.PhotoHouseMemoryGroups = {
       en: {
         title:'Family memory groups', open:'Family memory groups', loading:'Loading…', unavailable:'Memory groups are temporarily unavailable.',
         disabled:'Memory groups are not enabled for this library.', failed:'Could not load this yet. Try again.', retry:'Retry loading',
+        recentEmpty:'No recent memory groups are available.', recentUnavailable:'Recent groups are unavailable in this library.',
+        recentCount:n=>n===1?'1 item':`${n} items`, browse:'View photos and videos',
         create:'Create a memory group', edit:'Edit', save:'Save this memory group', cancel:'Cancel editing',
         split:'Split group', splitHelp:'Select photos or videos for the new group. Linked notes move with their items.',
         splitCount:(moved, kept)=>`${moved} to the new group · ${kept} stay here`,
@@ -114,6 +119,63 @@ window.PhotoHouseMemoryGroups = {
       if(!active(state)||!state.status)return;state.status.textContent=text;state.status.dataset.state=bad?'error':'ready';
     }
     function request(state,path,options={}) { return api(path,{...options,epoch:state.epoch}); }
+    async function showRecent(panel,onOpen) {
+      const binding=scopeNow();
+      const serial=++recentSequence;
+      const current=()=>serial===recentSequence&&panel.open&&!scopeNow()?.locked&&
+        scopeKey(scopeNow())===scopeKey(binding);
+      const status=panel.querySelector('#recent-groups-status');
+      const list=panel.querySelector('#recent-group-list');
+      const refresh=panel.querySelector('#recent-groups-refresh');
+      let opening=false;
+      list.replaceChildren();status.textContent=t('loading');refresh.disabled=true;
+      try{
+        const caps=await request(binding,'/memory-groups/capabilities');
+        if(!current())return;
+        if(caps?.version!==1||caps.enabled!==true||caps.recent!==true){
+          status.textContent=t('recentUnavailable');refresh.hidden=true;return;
+        }
+        const result=await request(binding,'/memory-groups');
+        if(!current())return;
+        const items=result?.items;
+        if(result?.version!==1||result.library_id!==binding.library||!Array.isArray(items)||items.length>8||
+            new Set(items.map(group=>group?.id)).size!==items.length||
+            items.some(group=>!uuidOk(group?.id)||typeof group.revision!=='string'||
+              !/^[1-9][0-9]{0,18}$/.test(group.revision)||!Object.hasOwn(t('themes'),group.theme)||
+              !Number.isInteger(group.count)||group.count<1||group.count>24||
+              !safeThumbnail(group.cover)||!['image','video'].includes(group.cover.kind)))
+          throw Error('Invalid recent memory groups');
+        status.textContent=items.length?'':t('recentEmpty');
+        for(const group of items){
+          const label=t('themes')[group.theme];
+          const card=node('li','', 'recent-group-card');
+          card.append(node('strong',label),image(group.cover),node('p',t('recentCount')(group.count),'fine'));
+          const open=button(t('browse'),async()=>{
+            if(!current()||opening)return;
+            opening=true;open.disabled=true;status.textContent=t('checkingStory');
+            try{
+              const latest=await request(binding,`/memory-groups/${encodeURIComponent(group.id)}`);
+              if(!current())return;
+              if(!validGroup(latest,binding)||latest.id!==group.id||latest.revision!==group.revision)
+                throw Error('Memory group changed');
+              status.textContent='';
+              onOpen(latest.items);
+            }catch{
+              if(current())status.textContent=t('storyChanged');
+            }finally{
+              if(current()){opening=false;open.disabled=false;}
+            }
+          },'quiet recent-group-open');
+          open.setAttribute('aria-label',`${t('browse')} · ${label}`);
+          card.append(open);list.append(card);
+        }
+        refresh.hidden=false;
+      }catch{
+        if(current()){status.textContent=t('failed');refresh.hidden=false;}
+      }finally{
+        if(current())refresh.disabled=false;
+      }
+    }
     function validGroup(group,state) {
       const unique=(values,validate)=>Array.isArray(values)&&new Set(values).size===values.length&&values.every(validate);
       if(!group||group.version!==1||group.library_id!==String(state.library)||!uuidOk(group.id)||!/^([1-9][0-9]*)$/.test(String(group.revision))||
@@ -513,6 +575,6 @@ window.PhotoHouseMemoryGroups = {
       if(state.saving)return false;
       if(!window.confirm(t('confirmLeave')))return false;clearEditor(state);return true;
     }
-    return {mount,clear,isEditing:()=>Boolean(mounted?.editor),canLeave:()=>canLeave(mounted)};
+    return {mount,clear,showRecent,isEditing:()=>Boolean(mounted?.editor),canLeave:()=>canLeave(mounted)};
   }
 };
