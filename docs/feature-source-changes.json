@@ -32088,7 +32088,7 @@
           "sha256": "7584b50ffb7a3dbe3cdf997506a6702dbd0574bef4a437700834be8764314eb0"
         }
       ],
-      "description": "Name the assistant Jude in English and \u5c0f\u8d3e in Chinese, including its explicit agent action. Behavior unchanged.",
+      "description": "Name the assistant Jude in English and 小贾 in Chinese, including its explicit agent action. Behavior unchanged.",
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
@@ -33587,7 +33587,7 @@
         }
       ],
       "notes": [
-        "Apply only the local grounder\u2019s original-chapter-bound exact spelling repairs to copied generated prose before final grounding, so moving a name away from its concert cue cannot reintroduce its original ASR spelling. Title uses the same original-source-backed names. No model suggestion supplies repair authority; originals and canonical validation remain unchanged.",
+        "Apply only the local grounder’s original-chapter-bound exact spelling repairs to copied generated prose before final grounding, so moving a name away from its concert cue cannot reintroduce its original ASR spelling. Title uses the same original-source-backed names. No model suggestion supplies repair authority; originals and canonical validation remain unchanged.",
         "The actual worker fixture covers a copied misspelling in both title and prose after the concert cue is removed, with one completion, reviewed alias preservation, unchanged originals and owned engine closure."
       ]
     },
@@ -33705,7 +33705,7 @@
         }
       ],
       "notes": [
-        "The deterministic planner accepts an anchored media-only \u201cRefine [my/the] last search to [show] videos only\u201d form. Existing accepted media-only English and Chinese forms remain unchanged; unknown clauses, exclusions, and added conditions still clarify.",
+        "The deterministic planner accepts an anchored media-only “Refine [my/the] last search to [show] videos only” form. Existing accepted media-only English and Chinese forms remain unchanged; unknown clauses, exclusions, and added conditions still clarify.",
         "Focused planner tests cover the requested wording, bounded scaffold variants, fail-closed residue, and preservation of the full prior filter set. The in-process assistant API regression changes only media while preserving person, date, and literal-text constraints.",
         "No routes, schema, provider, model, runtime configuration, or deployment state changed. Local source and tests only."
       ]
@@ -35977,6 +35977,42 @@
       "alembic_head_changed": false,
       "generation_enabled": false,
       "providers_activated": false
+    },
+    {
+      "feature": "windows-functional-delivery-documentation-20261124",
+      "source_commit": "6e5b6439bad00cdbf7ae0d35b1e30e1792ff449c",
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "2758f96d13db9374cad372e879448d2f37b48646b8f709d007dbbdcf4cce7504",
+          "sha256": "e389ea56a1b2b7a3f9a9fa9c36f7754b7fdbd23c6519b75ea984477816fd5c10"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "77bb1153da0305b2436f893b3be27b42f9572401bbc5a4515e4b1aacfe4e4ccb",
+          "sha256": "ea0242c3e07455f141407483d69d3ad955f38ad3d53dade7c236f80ed7946489"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "be0c8a035d628ab4dfa32c82c6765f7a98bc8b4bfa6a8234df9231826614fac8",
+          "sha256": "a0d50cc2e8284d8d90fb19a576c8d5d4391c690040806812b0bf20f906377320"
+        },
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "10d1c561a446c15db65dd48c6f77dac2f4402e93464ec3fb6dffccb363b10eec",
+          "sha256": "97931253353e3f40fccd44a5f6dbb444649a08d0c2ca6b7752bbd860acec9953"
+        },
+        {
+          "path": "docs/RELEASE_2026-11-24_FUNCTIONAL_FIXES.md",
+          "before_sha256": null,
+          "sha256": "d2c3ff3aed30be4817b9ae7fc236bf301184d14df515f85681a82c679f975057"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false,
+      "scope": "Documentation of the separately completed Windows functional rollout; original historical results retained."
     }
   ]
 }
