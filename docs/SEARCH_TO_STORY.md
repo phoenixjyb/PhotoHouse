@@ -161,3 +161,21 @@ logout during readback, and explicit story revision saving. Reordering itself
 made zero API requests. Desktop, 390px at 150% text and 320px at 200% text renders
 were checked; ordering controls retain at least 44px touch targets. This is local
 source/browser evidence; Windows delivery and household acceptance are separate.
+
+## November 25 generated Search-to-story journey
+
+The generated browser starts a private Jude search, narrows the reviewed person
+query by date, and picks two frames across ordinary result pages. The editor
+keeps their click order. An explicit source choice adds a family-authored note
+to one chapter. The local test provider returns a proposal for review, and the
+author edits and saves it. Reopening verifies the frame order, chapters, adopted
+wording and original note through the protected source-review response.
+
+The journey uses disposable data and the existing in-memory provider fixture.
+It checks that searching, paging and arranging frames neither generate prose
+nor save a story. Household prose quality, installed clients and native provider
+timings remain open. Run this path with the installed Web tools:
+
+```sh
+PH_JOIN_SELECTED_STORY=1 node server/tests/security/test_assistant_story_selection_browser.cjs
+```

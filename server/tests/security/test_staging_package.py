@@ -3,6 +3,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import runpy
 import subprocess
 import sys
 import tempfile
@@ -34,6 +35,12 @@ def committed_package_builder(commit):
 
 
 class StagingPackageTests(unittest.TestCase):
+    def test_packaged_roadmap_download_matches_bilingual_source(self):
+        repository = package.ROOT.parent
+        exporter = runpy.run_path(str(repository / 'tools/export_product_roadmap.py'))
+        download = repository / package.SOURCE_BY_PACKAGE['backend/app/product-roadmap/roadmap.md']
+        self.assertEqual(download.read_bytes(), exporter['export']().encode('utf-8'))
+
     def test_packaged_optional_kernels_import_and_keep_python_fallback(self):
         """A release archive must contain transitive adapter/reference packages."""
         files = working_tree_package_files()

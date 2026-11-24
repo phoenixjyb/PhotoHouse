@@ -1124,7 +1124,7 @@ dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
 .assistant-workspace-voice .assistant-voice-presence-copy strong{color:#294333;font-size:.875rem;font-weight:600;letter-spacing:0}
 .assistant-workspace-voice .assistant-voice-mic-state{color:#4d6254;font-size:.8125rem;font-weight:450;letter-spacing:0}
 .assistant-workspace-voice #assistant-voice-session-status{flex:1 1 100%;margin:0;max-inline-size:none;max-width:none;color:#4d6254;font-size:.8125rem;line-height:1.5;text-align:start}
-.assistant-workspace-voice .assistant-voice-session>button,.assistant-workspace-voice .assistant-voice-session>button#assistant-voice-start{grid-column:auto;justify-self:auto;inline-size:auto;min-inline-size:44px;min-block-size:44px;width:auto;min-width:44px;padding:.6rem .85rem;border-radius:10px;font-size:.8125rem}
+.assistant-workspace-voice .assistant-voice-session>button,.assistant-workspace-voice .assistant-voice-session>button#assistant-voice-start{grid-column:auto;justify-self:auto;inline-size:auto;min-inline-size:48px;min-block-size:48px;width:auto;min-width:48px;padding:.6rem .85rem;border-radius:10px;font-size:.8125rem}
 .assistant-workspace-voice #assistant-voice-pause,.assistant-workspace-voice #assistant-voice-resume,.assistant-workspace-voice #assistant-voice-end{justify-self:auto;color:var(--jude-ink)}
 .assistant-workspace-voice .assistant-voice-session>details{grid-column:auto;justify-self:auto;font-size:.8125rem;color:var(--jude-muted)}
 .assistant-workspace-voice .assistant-voice-session>details>summary{display:flex;align-items:center;min-block-size:44px}
@@ -1184,7 +1184,7 @@ dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
 .assistant-workspace-footer .assistant-actions button{min-block-size:44px;padding:.55rem .85rem;border-radius:10px;font-size:.875rem}
 .assistant-workspace-footer #assistant-send{min-inline-size:5rem;background:#265c43;border-color:#265c43;color:#fff}
 .assistant-workspace-footer #assistant-send:hover{background:#1e4935}
-.assistant-workspace-footer #assistant-clear{margin-inline-end:auto;margin-right:auto;border-color:transparent;color:var(--jude-muted)}
+.assistant-workspace-footer #assistant-clear{border-color:transparent;color:var(--jude-muted)}
 .assistant-workspace-footer .assistant-voice{padding:0;gap:.5rem}
 .assistant-workspace-footer .assistant-voice>button{min-block-size:44px;padding:.4rem .6rem;border-color:transparent;font-size:.8125rem}
 @container assistant-shell (inline-size < 38rem){

@@ -34,6 +34,15 @@ continue to be reported separately.
 Family LAN importing also has prior delivery evidence. This does not establish
 native Android/iOS background backup or secure pairing as completed products.
 
+## Earlier pull requests
+
+| Pull request | November 25 disposition |
+| --- | --- |
+| [#114 Rust photo stacks](https://github.com/phoenixjyb/PhotoHouse/pull/114) | Merged. The opt-in native selection, reference Python path and historical Windows benchmark are in the integration. |
+| [#92 Reviewed identity](https://github.com/phoenixjyb/PhotoHouse/pull/92) | Open draft against an intermediate branch. The exact reviewed head `120cf17` is already an ancestor of `main` at `1599ea6`. Current generated identity and Search tests cover the relevant behavior. |
+| [#109 Native story qualification](https://github.com/phoenixjyb/PhotoHouse/pull/109) | Open draft with conflicts. Its historical browser and story-quality evidence remains available alongside the newer integration checks. |
+| [#46 Event and spatial intent](https://github.com/phoenixjyb/PhotoHouse/pull/46) | Open draft with conflicts. The audit's failed fictional benchmark remains associated with that experiment. Current retrieval work uses the reviewed Search contracts and carries its own evidence. |
+
 ## Concrete defects closed in the integration source
 
 - A bare exact reviewed place answer could be rejected by Search v2 instead of
@@ -105,12 +114,12 @@ using the same trusted HTTPS address on the home network.
 | Audit item | Verified work | Remaining product or release work |
 | --- | --- | --- |
 | PH-001 source integration | The November integration, Search-to-story ordering, and fullscreen viewer are on main. | Preserve the historical qualification and failed-scene drafts as separate evidence. |
-| PH-002 Search reliability | Generated English, Chinese, and mixed-language turns retain the intended month and media. A follow-up can change the month while keeping a reviewed person filter. | Native multi-turn acceptance and representative cold and warm request timings. |
+| PH-002 Search reliability | Generated English, Chinese, and mixed-language turns retain the intended month and media. A follow-up can change the month while keeping a reviewed person filter. Ordinary Search stays available while the optional saved-memory prompt check is delayed. | Native multi-turn acceptance and representative cold and warm request timings. |
 | PH-003 relevance | The generated scorecard separates ranking, hard filters, confirmed empty results, and clarification. A returned total above the complete allowed set fails the filter even when the visible page passes. | Reviewed family labels, whole-library coverage, and native quality and latency. |
-| PH-004 story integration | Generated Web journeys reopen a saved story and reload the current Jude conversation with its ordered, freshly verified frame choice. Phone and TV debug checks ran offline. | Combined installed-client journeys and physical review. |
+| PH-004 story integration | One generated Web journey goes from a refined Jude search and ordered picks across result pages to chapter arrangement, explicit family evidence, proposal review, save and reopen. A separate journey checks current Jude selection recovery. Phone and TV debug checks ran offline. | Combined installed-client journeys and physical review. |
 | PH-005 Web responsiveness | The generated browser shows a photo while the description response is held, and discards that description if you close or change photos. Thumbnail placeholders keep their shape and adjacent viewer steps retain the same authorized filmstrip images. | Matched scrolling and video-start measurements on representative devices. |
 | PH-006 Rust grouping | The qualified Rust grouping work is integrated, and the existing Windows grouping selection completed the fullscreen handoff. | Whole-refresh performance and dense-library quality. |
-| PH-007 family usability | Bilingual Home, Photos, Family, Stories, and Jude links reach existing destinations. Generated phone-width checks verify keyboard focus and enlarged text. | Usability sessions with family members. |
+| PH-007 family usability | Bilingual Home, Photos, Family, Stories, and Jude links reach existing destinations. Tab from a populated Jude composer reaches Send first. Voice controls retain 48px targets with enlarged Chinese text. | Usability sessions with family members. |
 | PH-008 identity and kinship | Authorized accounts can use their own reviewed perspective. The private draft tool accepts reviewed relationships and aliases, verifies the exact base, and preserves catalog bindings and account scope. | Family-facing editing and activation review. |
 | PH-009 uploads and pairing | Android keeps interrupted cancellations out of upload retries. The remembered-folder shortcut rechecks the exact account, library and read grant before the user reviews that folder again. Web invitations remain phone-bound and require explicit registration. | Automatic OS-managed backup, iOS, TV pairing, and household device acceptance. |
 | PH-010 voice | Generated checks cover voice entry, recovery, half-duplex playback, and new-turn timing. The Windows bridge accepts and verifies optional exact names of installed voices without a cloud speech request. | Native listening quality, physical audio devices, and resource measurements with real local inference. |
@@ -185,6 +194,26 @@ decode. The median was **295.2 ms** (288.2–300.1) at `0f1130b` and **38.0 ms**
 (32.2–47.4) at `2d41f0b`. The test uses an in-process generated service and
 measures the dependency on the description request. Home-network, phone and
 representative-library timing remain open.
+
+## Household walkthrough
+
+Have a family member try each task through the interface they normally use.
+Record the browser or installed app version, the library label, elapsed time,
+whether they completed the task on their own, and where they needed help. Use
+generated media for an import or a new story in an evaluation library. Keep
+any private feedback with the household's acceptance record.
+
+| Task | What to look for |
+| --- | --- |
+| Import and review | Find where a photo and short video went. Read the receipt, distinguish preparation from a playback failure, and retry when ready. |
+| Find a person or event in Jude | Find a reviewed person by name, then narrow the same conversation by date and media type. Confirm the displayed filters and open a matching result. |
+| Inspect media | Open a photo fullscreen, pinch to see detail, go to the next photo, and exit. Open a prepared video and use its fullscreen player. |
+| Arrange and reopen a story | Select frames in the intended order, compare the family wording with any proposed edits, explicitly save, then reopen and check the order and wording. |
+| Browse on TV | Open authorized media through the intended installed TV mode. In guest mode, verify that private story review remains unavailable. |
+| Pause or recover | Pause voice, resume the conversation, and recover a completed request without sending it again. Verify that leaving the panel stops microphone capture and reply playback. |
+
+The generated checks cover parts of these tasks. Record the physical-device
+outcomes separately, including keyboard or enlarged text use where relevant.
 
 ## Parallel work with one release owner
 

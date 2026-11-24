@@ -2466,7 +2466,12 @@
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryReadingCapabilities==='function')await privateAssistant.savedMemoryReadingCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemorySegmentReadingCapabilities==='function')await privateAssistant.savedMemorySegmentReadingCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryReaderCapabilities==='function')await privateAssistant.savedMemoryReaderCapabilities();
-      if(!stale(epoch)&&typeof privateAssistant.savedMemoryFollowupCapabilities==='function')await privateAssistant.savedMemoryFollowupCapabilities();}
+      if(!stale(epoch)&&typeof privateAssistant.savedMemoryFollowupCapabilities==='function'){
+        // The optional follow-up buttons can appear after ordinary Search is ready.
+        void privateAssistant.savedMemoryFollowupCapabilities().catch(error=>{
+          if(!stale(epoch)&&error.code!=='scope_changed')$('assistant-private-status').textContent=t('assistantUnavailable');
+        });
+      }}
     catch(error){if(intent)discardLocaleAssistantResume(intent,{clearDraft:true});if(!stale(epoch)&&error.code!=='scope_changed')$('assistant-private-status').textContent=t('assistantUnavailable');}
   }
 

@@ -1,7 +1,9 @@
 """Synthetic assistant bridge for mixed-media selections and story saves."""
+import os
 import runpy
 import sqlite3
 import sys
+from dataclasses import replace
 from contextlib import closing
 from pathlib import Path
 from PIL import Image, ImageDraw
@@ -29,6 +31,11 @@ LibraryReadTests.setUp = set_up_story_selection
 sys.path.insert(0, str(ROOT / 'backend'))
 from app.access.runtime import RuntimeConfiguration
 
+joined_story_fixture = os.environ.get('PH_JOIN_SELECTED_STORY') == '1'
+if joined_story_fixture:
+    from selected_story_browser_fixture import SyntheticLocalEngine, local_provider
+    provider = local_provider(SyntheticLocalEngine())
+
 original_build_app = RuntimeConfiguration.build_app
 
 
@@ -45,6 +52,11 @@ def build_app_with_generated_media(self, **kwargs):
         if asset_id == 102:
             frame=self.derived_root / 'video_frames' / str(asset_id);frame.mkdir(parents=True, exist_ok=True)
             image.save(frame / 'frame_00001.jpg', format='JPEG', quality=82)
+    if joined_story_fixture:
+        self = replace(self, memory_collaboration_enabled=True,
+                       selected_story_provider=provider,
+                       selected_story_drafts_enabled=True,
+                       selected_story_ui_enabled=True)
     return original_build_app(self, **kwargs)
 
 

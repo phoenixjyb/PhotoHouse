@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import time
 import uuid
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
@@ -143,11 +144,17 @@ producer.write_new(index_path, json.dumps(asdict(index), sort_keys=True, ensure_
 # Initialization is confined to this disposable synthetic test directory.
 workspace_path = root / 'assistant-workspace-v2.sqlite'
 initialize_v2(workspace_path, clock=lambda: fixture.now)
-client = TestClient(RuntimeConfiguration(fixture.path.resolve(), 'https://photohouse.test',
+application = RuntimeConfiguration(fixture.path.resolve(), 'https://photohouse.test',
     (originals,), derived, discovery_indexes=(index_path,), assistant_enabled=True,
-    assistant_workspace_path=workspace_path).build_app(clock=lambda: fixture.now),
+    assistant_workspace_path=workspace_path).build_app(clock=lambda: fixture.now)
+client = TestClient(application,
     base_url='https://photohouse.test', client=('192.0.2.25', 23462))
 fixture.addCleanup(client.close)
+if application.state.selected_story_ui_enabled:
+    # The opt-in story fixture needs its in-memory operation owner started.
+    with patch('app.access.memory_jobs.maintenance', lambda _runtime: None):
+        client.__enter__()
+    fixture.addCleanup(client.__exit__, None, None, None)
 fixture.client = client
 fixture.client.headers['Sec-Fetch-Site'] = 'same-origin'
 discovery = client.app.state.discovery_runtime
@@ -296,6 +303,5 @@ try:
         print(json.dumps({'id': message['id'], 'status': response.status_code,
             'headers': dict(response.headers), 'body': base64.b64encode(response.content).decode()}), flush=True)
 finally:
-    client.close()
     fixture.doCleanups()
     LibraryReadTests.tearDownClass()

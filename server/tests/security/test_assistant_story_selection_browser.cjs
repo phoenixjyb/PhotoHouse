@@ -9,7 +9,9 @@ const root=path.resolve(__dirname,'../..');
 const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-story-selection-'));
 fs.mkdirSync(artifacts,{recursive:true});console.log('ARTIFACTS_DIR '+artifacts);
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'../.venv/bin/python'),[path.join(__dirname,'assistant_story_selection_browser_bridge.py')],{
-  cwd:root,env:{...process.env,PH_SCENE_FIXTURE:'1',PH_SCENE_PAGES:'1'},stdio:['pipe','pipe','pipe']});
+  cwd:root,env:{...process.env,PH_SCENE_FIXTURE:'1',PH_SCENE_PAGES:'1',PH_JOIN_SELECTED_STORY:process.env.PH_JOIN_SELECTED_STORY||'0'},stdio:['pipe','pipe','pipe']});
+const joinedStory=process.env.PH_JOIN_SELECTED_STORY==='1';
+const bridgeClosed=new Promise(resolve=>bridge.once('close',resolve));
 let serial=0,readyResolve,readyReject;const pending=new Map();
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
 bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
@@ -73,6 +75,143 @@ let browser,context,page;
   const resultCards=page.locator('#assistant-results .assistant-result');
   const hideExisting=page.locator('#assistant-story-hide-existing');
   const keepSearching=page.locator('#assistant-add-keep-searching');
+  if(joinedStory){
+    const storyTheme=page.locator('#story-workspace-theme');
+    const resultPagePath=/^\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/result-pages$/;
+    const waitForCards=ids=>page.waitForFunction(expected=>{
+      const cards=[...document.querySelectorAll('#assistant-results .assistant-result')];
+      return cards.length===expected.length&&cards.every((card,index)=>card.dataset.assetId===expected[index]);
+    },ids);
+    const advanceResultPage=async(pageNumber)=>{
+      const resultResponse=page.waitForResponse(response=>
+        response.request().method()==='POST'&&resultPagePath.test(new URL(response.url()).pathname));
+      await page.locator('#assistant-result-page-next').click();
+      const response=await resultResponse;
+      assert.equal(response.status(),200);
+      const result=await response.json();
+      assert.equal(result.version,1);
+      assert.equal(result.page,pageNumber);
+      const ids=result.items.map(item=>item.id);
+      assert(ids.length>0&&ids.length<=20,'ordinary next page returns a bounded result page');
+      await waitForCards(ids);
+      return ids;
+    };
+    const prepareRows=()=>requests.filter(item=>item.method==='POST'&&item.path.startsWith('/story-workspace/drafts/prepare'));
+    const saves=()=>requests.filter(item=>item.method==='POST'&&memoryStoryPath(item.path));
+    const beforeJoinedStart={prepares:prepareRows().length,saves:saves().length,outlines:requests.filter(item=>item.method==='POST'&&storyPreviewPath(item.path)).length};
+    await search('找示例儿童的照片');
+    const initial=turnPosts().at(-1).response.result;
+    assert.deepEqual(initial.filters.people,{ids:['301'],match:'any'});
+    assert.deepEqual(initial.filters.media,['image']);
+    await search('只看2026年的');
+    const refined=turnPosts().at(-1).response.result;
+    assert.deepEqual(refined.filters.people,{ids:['301'],match:'any'});
+    assert.deepEqual(refined.filters.date,{from:'2026-01-01',to:'2026-12-31'});
+    assert.equal(refined.total,45);
+    const firstPage=await pickIds();
+    assert.equal(firstPage.length,20);
+    const firstPick=firstPage.includes('101')?'101':firstPage[0];
+    await page.locator(`.assistant-story-pick[value="${firstPick}"]`).check();
+    let laterPick;
+    for(let pageNumber=2;pageNumber<=3&&!laterPick;pageNumber++){
+      const ids=await advanceResultPage(pageNumber);
+      laterPick=firstPick==='101'?ids[0]:ids.find(id=>id==='101');
+    }
+    assert(laterPick,'a later page provides the second pick, including the family-note photo');
+    await page.locator(`.assistant-story-pick[value="${laterPick}"]`).check();
+    await page.locator('#assistant-result-page-return').click();
+    await waitForCards(firstPage);
+    const joinedOrder=[firstPick,laterPick];
+    assert.deepEqual(await selectedIds(),joinedOrder);
+    assert.equal(prepareRows().length,beforeJoinedStart.prepares);assert.equal(saves().length,beforeJoinedStart.saves);
+    assert.equal(requests.filter(item=>item.method==='POST'&&storyPreviewPath(item.path)).length,beforeJoinedStart.outlines,
+      'search, refinement, paging and selecting do not generate a story before the editor action');
+    const handoffStart=requests.length;
+    await page.locator('#assistant-shape-story').click();
+    await page.locator('#story-workspace').waitFor({state:'visible'});
+    const freshCheck=requests.slice(handoffStart).find(item=>item.method==='GET'&&freshReadPath(item.path));
+    assert(freshCheck,'the ordinary handoff rereads the exact current result');
+    assert.deepEqual(await page.locator('#story-selection input:checked').evaluateAll(nodes=>nodes.map(node=>node.value)),joinedOrder);
+    assert.equal(prepareRows().length,beforeJoinedStart.prepares);assert.equal(saves().length,beforeJoinedStart.saves);
+    assert.equal(requests.filter(item=>item.method==='POST'&&storyPreviewPath(item.path)).length,beforeJoinedStart.outlines,
+      'opening the editor performs neither outline generation nor proposal generation');
+    const joinedTitle='家人的海边片段';await page.locator('#story-workspace-title').fill(joinedTitle);await storyTheme.selectOption('trip');
+    const capabilitiesResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/story-workspace/drafts/capabilities');
+    await page.locator('#story-build').click();
+    const capabilities=await capabilitiesResponse.then(response=>response.json());
+    assert.equal(capabilities.enabled,true,`synthetic provider capability enabled: ${JSON.stringify(capabilities)}`);
+    assert.equal(capabilities.can_prepare,true,`joined member may prepare: ${JSON.stringify(capabilities)}`);
+    await page.locator('.story-chapter-card textarea[maxlength="6000"]').first().waitFor();
+    const chapters=page.locator('.story-chapter-card');
+    await chapters.first().locator('.story-source-opt-in').click();
+    await chapters.first().locator('.story-chapter-split').click();assert.equal(await chapters.count(),2);
+    const expectedChapters=joinedOrder.map(id=>[id]),familyChapterIndex=joinedOrder.indexOf('101');
+    assert.deepEqual(await chapters.evaluateAll(cards=>cards.map(card=>[...card.querySelectorAll('.story-chapter-strip img')].map(img=>img.alt))),expectedChapters);
+    const familyNoteId='family-11111111-1111-4111-8111-111111111111';
+    const familyChapter=chapters.nth(familyChapterIndex);
+    const selectedSource=familyChapter.locator(`.story-source-choice input[value="${familyNoteId}"]`);
+    await selectedSource.waitFor({state:'visible'});
+    const familyChapterSources=familyChapter.locator('.story-source-choice input[type="checkbox"]');
+    for(let index=0;index<await familyChapterSources.count();index++)await familyChapterSources.nth(index).uncheck();
+    await selectedSource.check();
+    assert.deepEqual(await familyChapter.locator('.story-source-choice input:checked').evaluateAll(nodes=>nodes.map(node=>node.value)),[familyNoteId]);
+    assert.equal(await chapters.nth(1-familyChapterIndex).locator('.story-source-choice input:checked').count(),0);
+    assert.equal(prepareRows().length,beforeJoinedStart.prepares);assert.equal(saves().length,beforeJoinedStart.saves,
+      'chapter arrangement and explicit family-source selection do not generate or save');
+    const prepareBefore=prepareRows().length;
+    const proposalResponse=page.waitForResponse(response=>response.request().method()==='POST'&&new URL(response.url()).pathname==='/story-workspace/drafts/prepare');
+    await page.locator('.story-draft-prepare').click();await proposalResponse;
+    assert.equal(prepareRows().length,prepareBefore+1);assert.equal(saves().length,beforeJoinedStart.saves);
+    const proposalCall=prepareRows().at(-1);assert.equal(proposalCall.status,200);
+    const generated=proposalCall.response;assert.equal(generated.state,'needs_review');
+    assert.equal(generated.chapters[familyChapterIndex].narration,'合成整理文字，仅供家人核对。');
+    assert.deepEqual(generated.chapters[familyChapterIndex].citations.map(citation=>citation.source_id),[familyNoteId]);
+    const proposal=JSON.parse(proposalCall.body);
+    assert.deepEqual(proposal.selection.asset_ids,joinedOrder);
+    assert.deepEqual(proposal.selection.chapters.map(chapter=>chapter.asset_ids),expectedChapters);
+    assert.deepEqual(proposal.selection.chapters.map(chapter=>chapter.evidence_ids),expectedChapters.map((_chapter,index)=>index===familyChapterIndex?[familyNoteId]:[]));
+    await page.waitForFunction(({chapter,narration})=>
+      document.querySelectorAll('.story-chapter-card textarea[maxlength="6000"]')[chapter]?.value===narration,
+      {chapter:familyChapterIndex,narration:generated.chapters[familyChapterIndex].narration});
+    const reviewedNarration='家人核对后的海边回忆。';
+    await familyChapter.locator('textarea[maxlength="6000"]').fill(reviewedNarration);
+    await page.locator('.story-draft-reviewed').check();
+    assert.equal(await page.locator('#story-save-memory').isDisabled(),false);
+    assert.equal(saves().length,beforeJoinedStart.saves,'a prepared and reviewed proposal is still unsaved');
+    const saveStart=requests.length;await page.locator('#story-save-memory').click();
+    await page.waitForFunction(()=>/Saved in this library|已保存/.test(document.querySelector('#story-workspace-status')?.textContent||''));
+    const saved=saves().at(-1);assert(saved&&requests.indexOf(saved)>=saveStart);
+    const savedBody=JSON.parse(saved.body),savedChapters=JSON.parse(savedBody.chapters);
+    assert.equal(savedBody.title,joinedTitle);assert.equal(savedBody.theme,'trip');assert.equal(savedBody.asset_ids,joinedOrder.join(','));
+    assert.deepEqual(savedChapters.map(chapter=>chapter.asset_ids),expectedChapters);
+    assert.deepEqual(savedChapters.map(chapter=>chapter.evidence_ids),expectedChapters.map((_chapter,index)=>index===familyChapterIndex?[familyNoteId]:[]));
+    const storyId=saved.response.id;assert(storyId);
+    const saveCount=saves().length,prepareCount=prepareRows().length;
+    await page.locator('#story-workspace-close').click();
+    const shelfCard=page.locator('#saved-memory-list .saved-memory-card').filter({hasText:joinedTitle});
+    const reopenStart=requests.length;
+    await shelfCard.locator('button').first().click();await page.locator('#story-reader').waitFor({state:'visible'});
+    const reopenedCall=requests.slice(reopenStart).find(item=>{
+      const url=new URL(item.path,'https://photohouse.test');
+      return item.method==='GET'&&url.pathname===`/memory-stories/${storyId}`&&url.searchParams.get('source_review')==='1';
+    });
+    assert(reopenedCall,'reopening uses the current authorized source-review projection');
+    const reopened=reopenedCall.response;
+    assert.equal(reopened.saved,true);assert.equal(reopened.id,storyId);assert.equal(reopened.title,joinedTitle);
+    assert.deepEqual(reopened.items.map(item=>item.id),joinedOrder);
+    assert.deepEqual(reopened.chapters.map(chapter=>chapter.asset_ids),expectedChapters);
+    assert.deepEqual(reopened.chapters.map(chapter=>chapter.evidence_ids),expectedChapters.map((_chapter,index)=>index===familyChapterIndex?[familyNoteId]:[]));
+    assert.equal(reopened.chapters[familyChapterIndex].narration,reviewedNarration);
+    const reopenedFamilyNote=reopened.items.find(item=>item.id==='101')?.evidence.find(evidence=>evidence.id===familyNoteId);
+    assert.equal(reopenedFamilyNote?.source,'family');assert.equal(reopenedFamilyNote?.text,'Synthetic original wording kept private');
+    assert.equal(saves().length,saveCount);assert.equal(prepareRows().length,prepareCount);
+    pass('Joined Jude Search/refinement, paged ordered selection, chapters, explicit family evidence, reviewed proposal, save and reopen uses one ordinary UI/API journey');
+    assert.deepEqual(blocked,[]);assert.deepEqual(errors,[]);
+    const pageCalls=requests.filter(item=>resultPagePath.test(item.path));
+    const receiptCalls=requests.filter(item=>item.method==='GET'&&freshReadPath(item.path));
+    const summary={checks,elapsed_ms:Date.now()-startedAt,assistant_turn_posts:turnPosts().length,result_page_posts:pageCalls.filter(item=>item.method==='POST').length,fresh_current_result_gets:receiptCalls.length,story_outline_posts:requests.filter(item=>item.method==='POST'&&storyPreviewPath(item.path)).length,story_saves:requests.filter(item=>item.method==='POST'&&memoryStoryPath(item.path)).length,requests:requests.length,blockedOrigins:blocked,pageErrors:errors,syntheticBackend:true};
+    fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify(summary,null,2));console.log('RESULT '+JSON.stringify({...summary,artifacts}));return;
+  }
   await search('找示例儿童的视频');
   assert.deepEqual(turnPosts().at(-1).response.result.items.map(item=>item.kind),['video']);
   assert.equal(await picks().count(),1,'a video result also has an asset-bound selection control');
@@ -662,4 +801,25 @@ let browser,context,page;
     blockedOrigins:blocked,pageErrors:errors,syntheticBackend:true};
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify(summary,null,2));
   console.log('RESULT '+JSON.stringify({...summary,artifacts}));
-})().catch(error=>{console.error(error.stack||error);process.exitCode=1;}).finally(async()=>{try{if(holdFreshCheck)releaseFreshCheck();if(holdStoryPreview)releaseStoryPreview();if(browser)await browser.close();}finally{try{bridge.stdin.write('{"command":"quit"}\n');bridge.kill();}catch{}}});
+})().catch(error=>{console.error(error.stack||error);process.exitCode=1;}).finally(async()=>{
+  try{
+    if(holdFreshCheck)releaseFreshCheck();
+    if(holdStoryPreview)releaseStoryPreview();
+    if(browser)await browser.close();
+  }finally{
+    if(!joinedStory){
+      try{bridge.stdin.write('{"command":"quit"}\n');bridge.kill();}catch{}
+    }else{
+      if(bridge.exitCode===null&&!bridge.stdin.destroyed)bridge.stdin.end('{"command":"quit"}\n');
+      let timer;
+      const timeout=new Promise(resolve=>{timer=setTimeout(()=>resolve(null),5000);});
+      const exitCode=await Promise.race([bridgeClosed,timeout]);
+      clearTimeout(timer);
+      if(exitCode!==0){
+        bridge.kill();
+        console.error('The generated story fixture did not close cleanly');
+        process.exitCode=1;
+      }
+    }
+  }
+});
