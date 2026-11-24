@@ -15,6 +15,7 @@ import re
 import sqlite3
 import threading
 from time import monotonic
+from types import MappingProxyType
 import unicodedata
 from urllib.parse import urlencode
 
@@ -585,17 +586,29 @@ class DiscoveryReads:
                 try: text(tag_defs[tid]['label'],256)
                 except DiscoveryInvalid: continue
                 tag_links[aid][tid]=SOURCES.get(rows[0][3],'unknown')
-        rows={}
+        rows = {}
+        counts = {field: Counter() for field in ('people', 'locations', 'tags')}
+        provenance = defaultdict(Counter)
+        covered = dict.fromkeys((field for field in index.enabled if field != 'media'), 0)
+        no_links = frozenset()
+        no_tags = MappingProxyType({})
         for aid in index.indexed_ids:
-            check();rows[aid]={'people':person_links[aid],'locations':regions[aid],'tags':tag_links[aid],
-                              'date':captured_days.get(aid),'caption':current_caption(captions.get(aid,()))}
-        counts={f:Counter() for f in ('people','locations','tags')}; provenance=defaultdict(Counter)
-        for row in rows.values():
             check()
-            for f in counts:counts[f].update(row[f].keys() if f=='tags' else row[f])
-            for tid,kind in row['tags'].items():provenance[tid][kind]+=1
-        total=len(assets)
-        coverage={f:{'with_values':sum(bool(row[f]) for row in rows.values()) if f in index.enabled else 0} for f in FIELDS if f!='media'}
+            row = {'people': person_links.get(aid, no_links), 'locations': regions.get(aid, no_links),
+                   'tags': tag_links.get(aid, no_tags), 'date': captured_days.get(aid),
+                   'caption': current_caption(captions.get(aid, ()))}
+            rows[aid] = row
+            for field, count in counts.items():
+                values = row[field]
+                if values:
+                    count.update(values.keys() if field == 'tags' else values)
+            for tag, source_kind in row['tags'].items():
+                provenance[tag][source_kind] += 1
+            for field in covered:
+                if row[field]:
+                    covered[field] += 1
+        total = len(assets)
+        coverage = {field: {'with_values': covered.get(field, 0)} for field in FIELDS if field != 'media'}
         coverage['media']={'with_values':total}
         for value in coverage.values():value['without_values']=total-value['with_values']
         used_tags=set(counts['tags'])

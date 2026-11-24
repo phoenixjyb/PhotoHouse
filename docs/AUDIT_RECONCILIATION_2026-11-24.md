@@ -160,6 +160,23 @@ checks the current source.
 | Change media on the same thread | 999–1,089 ms | 779–788 ms |
 | Change month on the same thread | 971–1,134 ms | 801–817 ms |
 
+The next matched run started at `04ac7bb`. It used the same generated library,
+two fresh processes per variant, and 22 warm samples per request. The change
+computes facet counts and coverage while building the searchable rows and
+reuses immutable empty fields. Every trial matched the complete totals and the
+checked filters, interpretation, item order, dates, thumbnails and match reasons.
+
+| Request | Baseline warm p50 / p95 | Candidate warm p50 / p95 |
+| --- | ---: | ---: |
+| Start a search | 628 / 683 ms | 516 / 527 ms |
+| Change media on the same thread | 731 / 764 ms | 629 / 643 ms |
+| Change month on the same thread | 749 / 784 ms | 637 / 758 ms |
+
+Two cold samples per variant ranged from 665–668 ms before the change to
+546–547 ms afterward for an initial search. The current data, authorization and
+source checks ran in every request. These are generated local timings and the
+native breadth and latency goals remain open.
+
 ### Generated photo-viewer timing
 
 Eight runs per source alternated the same generated photo and a fixed 250 ms
