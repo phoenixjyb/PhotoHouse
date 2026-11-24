@@ -153,6 +153,7 @@ FILES = (
     'backend/app/access/people.py',
     'backend/app/access/people_review.py',
     'backend/app/access/prepared_video.py',
+    'backend/app/access/video_moments.py',
     'backend/app/access/private_storage.py',
     'backend/app/access/model_deployment.py',
     'backend/app/access/model_binding.py',
