@@ -51,32 +51,40 @@ _API_KEY = re.compile(
     r"AKIA[A-Z0-9]{16}|xox[baprs]-[A-Z0-9-]{16,}|"
     r"Bearer\s+[A-Z0-9._~+/-]{16,})\b"
 )
+_PHONE = re.compile(
+    r"(?<![A-Za-z0-9_+])(?:"
+    r"\+1[ -]?(?:\([2-9][0-9]{2}\)|[2-9][0-9]{2})[ -]?[2-9][0-9]{2}[ -]?[0-9]{4}|"
+    r"(?:\+86[ -]?)?1[3-9][0-9][ -]?[0-9]{4}[ -]?[0-9]{4}|"
+    r"\+[1-9][0-9]{7,14})(?![A-Za-z0-9_])"
+)
+_PHONE_ASCII = str.maketrans("０１２３４５６７８９＋（）－\u00a0\u202f", "0123456789+()-  ")
 _REDACTION = {
     "url": "[URL_REMOVED]",
     "email": "[EMAIL_REMOVED]",
     "path": "[LOCAL_PATH_REMOVED]",
     "secret": "[KEY_REMOVED]",
+    "phone": "[PHONE_REMOVED]",
 }
 _CHINESE_PROMPT = (
     "你是谨慎的家庭故事校对助手。只改进表达与可读性，保留所有事实、时间、事件、"
     "语气和章节边界；空章节必须保持为空，不得添加、猜测、总结或删减事实，"
     "不得提出新姓名或替换内容。"
-    "⟦PH_PERSON_0001⟧ 形式的占位符必须逐字保留。只输出 JSON 对象 "
+    "⟦PH_PERSON_0001⟧ 和 [PHONE_REMOVED] 等占位符必须逐字保留。只输出 JSON 对象 "
     "{\"paragraphs\":[\"每章一段修改后的正文，顺序与输入相同\"]}，不得增加其他字段。"
 )
 _ENGLISH_PROMPT = (
     "You are a careful family-story proofreader. Improve wording and readability only; "
     "preserve every fact, date, event, tone, and chapter boundary. Do not add, infer, "
     "summarize, or remove facts; keep empty chapters empty; do not suggest or replace names. Preserve tokens "
-    "such as ⟦PH_PERSON_0001⟧ exactly. Return only this exact JSON shape: "
+    "such as ⟦PH_PERSON_0001⟧ and [PHONE_REMOVED] exactly. Return only this exact JSON shape: "
     "{\"paragraphs\":[\"one revised paragraph per input chapter in the same order\"]}; "
     "include exactly one paragraph for each input chapter and no other fields."
 )
 _WARNING = (
     "Review the complete request body before confirming. If confirmed, the story text "
     "shown here will be sent to the configured cloud proofreading provider. Reviewed "
-    "names are replaced locally, and common URLs, email addresses, local paths, and "
-    "obvious API keys are removed, but other private content may remain. The result "
+    "names are replaced locally, and common URLs, email addresses, phone numbers, local paths, "
+    "and obvious API keys are removed. Other private content may remain. The result "
     "is an unsaved draft that still needs review."
 )
 
@@ -205,7 +213,16 @@ def _scrub(text: str) -> str:
     text = _EMAIL.sub(_REDACTION["email"], text)
     text = _LOCAL_PATH.sub(_REDACTION["path"], text)
     text = _API_KEY.sub(_REDACTION["secret"], text)
-    return text
+    # The one-character translations preserve offsets in the original wording.
+    spans = list(_PHONE.finditer(text.translate(_PHONE_ASCII)))
+    if not spans:
+        return text
+    parts, start = [], 0
+    for span in spans:
+        parts.extend((text[start:span.start()], _REDACTION["phone"]))
+        start = span.end()
+    parts.append(text[start:])
+    return ''.join(parts)
 
 
 def _redact(text: str, rules: list[tuple[str, int]]) -> tuple[str, set[str]]:
@@ -460,7 +477,8 @@ class CloudProofreading:
             if (all_reserved != _PLACEHOLDER.findall(paragraph)
                     or found - required or not required.issubset(found)):
                 raise CloudProofreadingError("invalid_provider_response")
-            if any(pattern.search(paragraph) for pattern in (_URL, _EMAIL, _LOCAL_PATH, _API_KEY)):
+            if (_PHONE.search(paragraph.translate(_PHONE_ASCII)) or
+                    any(pattern.search(paragraph) for pattern in (_URL, _EMAIL, _LOCAL_PATH, _API_KEY))):
                 raise CloudProofreadingError("invalid_provider_response")
             restored.append(_PLACEHOLDER.sub(
                 lambda match: record.reverse_map[match.group(0)], paragraph))
