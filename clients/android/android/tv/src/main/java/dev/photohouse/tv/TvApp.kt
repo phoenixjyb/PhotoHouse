@@ -51,7 +51,8 @@ internal val Edge = Color(0xFF496258)
             contentColor = if (focused) Ink else Cream)) { Text(label, maxLines = 1, style = MaterialTheme.typography.labelMedium) }
 }
 
-@Composable fun TvApp(browseStore: HomeStore?, discovery: DiscoveryController? = null, initialLanguage: String = "zh") {
+@Composable fun TvApp(browseStore: HomeStore?, discovery: DiscoveryController? = null, initialLanguage: String = "zh",
+    protectedStories: TvProtectedStories? = null) {
     val discoveryState = discovery?.state?.collectAsState()?.value ?: DiscoveryState()
     val store = discoveryState.results ?: browseStore
     var language by remember { mutableStateOf(initialLanguage) }
@@ -97,6 +98,9 @@ internal val Edge = Color(0xFF496258)
     var playbackFailure by remember(store, state.selected, state.feed?.revision, state.covered) { mutableStateOf<TvPlaybackFailure?>(null) }
     var hintTick by remember { mutableStateOf(0) }
     var showHint by remember { mutableStateOf(true) }
+    var storyReviewOpen by remember(protectedStories) { mutableStateOf(false) }
+    var restoreStoryReviewFocus by remember { mutableStateOf(false) }
+    val storyReviewReturnFocus = remember { FocusRequester() }
     LaunchedEffect(immersive, hintTick) { showHint = true; if (immersive) { delay(4000); showHint = false } }
     var pages by remember(state.feed?.id, state.feed?.revision) { mutableStateOf(false) }
     var captions by remember { mutableStateOf(false) }
@@ -124,13 +128,25 @@ internal val Edge = Color(0xFF496258)
         ?: state.feed?.items?.firstOrNull { it.canOpen() }
     val view = LocalView.current
     val focusedWindow = LocalWindowInfo.current.isWindowFocused
+    fun closeStoryReview() {
+        storyReviewOpen = false
+        restoreStoryReviewFocus = true
+    }
+    BackHandler(storyReviewOpen && protectedStories != null) { closeStoryReview() }
+    LaunchedEffect(restoreStoryReviewFocus, focusedWindow, storyReviewOpen) {
+        if (restoreStoryReviewFocus && !storyReviewOpen && focusedWindow) {
+            withFrameNanos { }
+            runCatching { storyReviewReturnFocus.requestFocus() }
+            restoreStoryReviewFocus = false
+        }
+    }
     DisposableEffect(playing, state.covered, view) {
         view.keepScreenOn = playing && !state.covered
         onDispose { view.keepScreenOn = false }
     }
     LaunchedEffect(route, state.feed?.page, state.busy, state.collectionsProblem, state.problem,
-        state.covered, state.disconnected, store, focusedWindow, restoreExplore) {
-        if (!focusedWindow) return@LaunchedEffect
+        state.covered, state.disconnected, store, focusedWindow, restoreExplore, storyReviewOpen) {
+        if (!focusedWindow || storyReviewOpen) return@LaunchedEffect
         // Re-request after a remote navigation transition, but not on every thumbnail update.
         // An empty gallery has no LazyVerticalGrid layout; scrolling its state would
         // suspend forever and leave the remote without focus after Explore closes.
@@ -260,6 +276,23 @@ internal val Edge = Color(0xFF496258)
         restoreExplore = true; discovery?.clearResults()
     }
     MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Ink, surface = Ink, onBackground = Cream, onSurface = Cream)) {
+        if (storyReviewOpen && protectedStories != null) {
+            Surface(Modifier.fillMaxSize().background(Ink).testTag("tv-story-review-shell"), color = Ink) {
+                Column(Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Text(t("Family story review", "家庭故事审核"), Modifier.weight(1f),
+                            style = MaterialTheme.typography.headlineSmall)
+                        TvButton(t("Close", "关闭"), Modifier.testTag("tv-story-review-close"), onClick = ::closeStoryReview)
+                    }
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        protectedStories.Content(zh, ::closeStoryReview)
+                    }
+                }
+            }
+            return@MaterialTheme
+        }
         if (pages && state.feed != null && !state.covered && !viewer) {
             PageJump(state.feed!!.page, state.feed!!.total, zh, { pages = false }, { pages = false; store?.loadPage(it) })
         }
@@ -379,6 +412,9 @@ internal val Edge = Color(0xFF496258)
                         Spacer(Modifier.height(16.dp))
                         Text(t("Server setup needed. Ask for a TV build configured for your home photo feed.", "需要配置服务器。请获取已配置家庭照片源的电视版本。"), Modifier.testTag("setup"))
                         TvButton(if (zh) "English" else "简体中文") { language = if (zh) "en" else "zh" }
+                        if (protectedStories != null) TvButton(t("Family story review", "家庭故事审核"), Modifier.testTag("story-review-entry-setup")) {
+                            storyReviewOpen = true; restoreStoryReviewFocus = false
+                        }
                     }
                     state.covered -> Column {
                         Text(t("Private content is covered.", "私人内容已隐藏。"), Modifier.testTag("covered"))
@@ -403,6 +439,9 @@ internal val Edge = Color(0xFF496258)
                         if (discoveryState.query != null) {
                             TvButton(t("Edit filters", "修改条件"), Modifier.testTag("edit-search")) { exploring = true; discovery?.open() }
                             TvButton(t("Clear search", "清除搜索"), Modifier.testTag("clear-results")) { discovery?.clearResults() }
+                        }
+                        if (protectedStories != null) TvButton(t("Family story review", "家庭故事审核"), Modifier.testTag("story-review-entry-connection")) {
+                            storyReviewOpen = true; restoreStoryReviewFocus = false
                         }
                     }
                     viewer -> {
@@ -745,7 +784,7 @@ internal val Edge = Color(0xFF496258)
                             if (gallery != null && gallery.total > 50) TvButton(t("Page ${gallery.page}…", "第 ${gallery.page} 页…"), Modifier.testTag("page-jump"), !state.busy) { pages = true }
                             Box {
                                 TvButton(t("More", "更多"), Modifier.testTag("gallery-more")
-                                    .focusRequester(if (focusAsset == null) first else exploreFocus)) { menu = true }
+                                    .focusRequester(if (protectedStories != null) storyReviewReturnFocus else if (focusAsset == null) first else exploreFocus)) { menu = true }
                                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                     DropdownMenuItem(text = { Text(t("Explore", "探索")) }, modifier = Modifier.testTag("explore"), onClick = { menu = false; exploring = true; discovery?.open() })
                                     DropdownMenuItem(text = { Text(t("Refresh", "刷新")) }, enabled = !state.busy, onClick = { menu = false; store.loadPage(gallery?.page ?: 1) })
@@ -755,6 +794,10 @@ internal val Edge = Color(0xFF496258)
                                     }
                                     if (previewRetry) DropdownMenuItem(text = { Text(t("Retry missing previews", "重试未加载的预览")) }, modifier = Modifier.testTag("retry-previews"), onClick = { menu = false; store.retryPreviews() })
                                     DropdownMenuItem(text = { Text(t("App updates", "应用更新")) }, modifier = Modifier.testTag("updates"), onClick = { menu = false; updates = true })
+                                    if (protectedStories != null) DropdownMenuItem(text = { Text(t("Family story review", "家庭故事审核")) },
+                                        modifier = Modifier.testTag("story-review-entry"), onClick = {
+                                            menu = false; storyReviewOpen = true; restoreStoryReviewFocus = true
+                                        })
                                     DropdownMenuItem(text = { Text(if (zh) "English" else "简体中文") }, modifier = Modifier.testTag("language"), onClick = { menu = false; language = if (zh) "en" else "zh" })
                                     DropdownMenuItem(text = { Text(t("Disconnect", "断开连接")) }, modifier = Modifier.testTag("disconnect"), onClick = { menu = false; playing = false; discovery?.background(); browseStore?.disconnect() })
                                 }
