@@ -403,6 +403,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .memory-home-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1.5rem}
 .memory-home-actions button{border-radius:999px;padding:.8rem 1.2rem;min-height:48px}
 #oral-history-list,#oral-history-completed-list{list-style:none;padding:0}
+.invite-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.625rem}
+.access-panel .invite-actions button{min-height:44px;margin:0}
 .oral-history-actions{margin-top:1rem}
 .access-panel .oral-history-actions button{margin:0;padding:.65rem 1.05rem}
 #oral-history-preview{max-width:100%}
