@@ -35,6 +35,7 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   const page=await ctx.newPage();page.on('pageerror',error=>errors.push(error.message));
   async function login(){await page.goto('https://photohouse.test/ui');await page.locator('#auth').waitFor({state:'visible'});await page.locator('#phone').fill('+12025550102');await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();}
   async function buildAndRead(ids){
+    await page.waitForFunction(()=>typeof window.__storyWorkspaceTest?.open==='function');
     await page.evaluate(values=>window.__storyWorkspaceTest.open(values,'trip'),ids);
     await page.locator('#story-build').click();await page.locator('.story-chapter-card').first().waitFor();
     await page.locator('#story-preview').click();await page.locator('#story-reader').waitFor({state:'visible'});
