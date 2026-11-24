@@ -203,6 +203,34 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  await group.getByText('Trip',{exact:true}).waitFor();
  pass('Older runtimes keep their existing route and a changed group must be refreshed before opening');
 
+ const birthday=recent.locator('.recent-group-card').filter({
+   has:page.locator('img[src^="/assets/101/thumbnail"]')});
+ const createDraft=recent.locator('.recent-group-draft');
+ assert.equal(await createDraft.isDisabled(),true);
+ await group.getByRole('checkbox').check();
+ await createDraft.click();
+ await page.locator('#story-workspace').waitFor({state:'visible'});
+ assert.deepEqual(await page.locator('#story-selection input:checked').evaluateAll(nodes=>nodes.map(node=>node.value)),
+   ['1100','102']);
+ await page.locator('#story-workspace-close').click();
+ await page.locator('#story-workspace').waitFor({state:'hidden'});
+ assert.equal(await createDraft.isDisabled(),true);
+ await group.getByRole('checkbox').check();
+ await birthday.getByRole('checkbox').check();
+ assert.equal(await group.locator('.recent-group-choice span').textContent(),'Group 1');
+ assert.equal(await birthday.locator('.recent-group-choice span').textContent(),'Group 2');
+ const combinedStart=requests.length;
+ await createDraft.press('Enter');
+ await page.locator('#story-workspace').waitFor({state:'visible'});
+ assert.deepEqual(await page.locator('#story-selection input:checked').evaluateAll(nodes=>nodes.map(node=>node.value)),
+   ['1100','102','101']);
+ assert.equal(await page.locator('#story-workspace-theme').inputValue(),'everyday');
+ const combinedReads=requests.slice(combinedStart);
+ assert.equal(combinedReads.filter(r=>r.method==='GET'&&/^\/memory-groups\/[0-9a-f-]+$/.test(r.path)).length,2);
+ assert(combinedReads.every(r=>r.method==='GET'||r.method==='HEAD'));
+ await page.locator('#story-workspace-close').click();
+ pass('One group uses its saved members. Two split groups can join one unsaved story in the chosen order using only protected reads');
+
  let release,arrived;
  const pendingRead=new Promise(resolve=>{arrived=resolve;});
  holdRecent={arrived,wait:new Promise(resolve=>{release=resolve;})};

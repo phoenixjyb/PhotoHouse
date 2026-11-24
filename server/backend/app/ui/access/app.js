@@ -670,6 +670,7 @@
     galleryItems=[];
     $('recent-memory-groups').open=false;
     $('recent-group-list').replaceChildren();
+    $('recent-groups-story').replaceChildren();
     $('recent-groups-status').textContent='';
     $('recent-groups-refresh').hidden=true;
     oralHistory?.clear();
