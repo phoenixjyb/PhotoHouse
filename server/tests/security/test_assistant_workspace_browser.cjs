@@ -631,6 +631,7 @@ async function installSyntheticTransport(targetContext){
   assert.equal(refinementResult.kind,'results');assert(refinementResult.context,'refinement controls require a current search context');
   const refinementControls=page.locator('#assistant-search-refinements');await refinementControls.waitFor({state:'visible'});
   for(const label of ['只看照片','只看视频','更改月份'])assert.equal(await refinementControls.getByRole('button',{name:label}).isVisible(),true,`${label} appears after a completed private search`);
+  assert.equal(await refinementControls.getByRole('button',{name:'不限日期',exact:true}).count(),0);
   const completedTurnCount=turns().length;assert.equal(completedTurnCount,turnsBeforeRefinements+1,'the base query adds one result turn');
   await refinementControls.getByRole('button',{name:'更改月份'}).click();
   const monthInput=page.locator('#assistant-refine-month');assert.equal(await monthInput.isVisible(),true,'Change month opens the month picker');
@@ -661,9 +662,24 @@ async function installSyntheticTransport(targetContext){
   assert.equal(turns().length,completedTurnCount+1,'only the explicit Send submits the prepared refinement');
   assert.equal(JSON.parse(turns().at(-1).body).text,'只看2025年9月');
   const finalRefinements=page.locator('#assistant-search-refinements');await finalRefinements.waitFor({state:'visible'});
+  const dated=turns().at(-1).response.result;
+  assert.deepEqual(dated.filters.date,{from:'2025-09-01',to:'2025-09-30'});
+  await finalRefinements.getByRole('button',{name:'不限日期',exact:true}).press('Enter');
+  assert.equal(await page.locator('#assistant-text').inputValue(),'不限日期');
+  assert.equal(turns().length,completedTurnCount+1);
+  const clearDateResponse=page.waitForResponse(response=>response.request().method()==='POST'&&
+    response.url().includes(`/threads/${refinementThreadId}/turns`)&&response.status()===200);
+  await page.locator('#assistant-send').click();await clearDateResponse;
+  await page.waitForFunction(()=>document.getElementById('assistant-text').value==='');
+  assert.equal(turns().length,completedTurnCount+2);
+  const {date,...otherFilters}=dated.filters;
+  assert.deepEqual(turns().at(-1).response.result.filters,otherFilters);
+  await finalRefinements.waitFor({state:'visible'});
+  await finalRefinements.getByRole('button',{name:'不限日期',exact:true}).waitFor({state:'detached'});
+  assert.equal(await finalRefinements.getByRole('button',{name:'不限日期',exact:true}).count(),0);
   await page.locator('#assistant-workspace-lock').click();await page.locator('#auth').waitFor({state:'visible'});
   assert.equal(await page.locator('#assistant-search-refinements').count(),0,'logout removes account-scoped refinement controls');
-  checkpoint('Private v2 search refinements preserve drafts, fit desktop/mobile, require explicit Send, and disappear on logout');
+  checkpoint('Private Search date changes and removal preserve other filters, require explicit Send, and disappear on logout');
   console.log('REFINEMENT_SCREENSHOTS '+refinementDesktop+' '+refinementPhone);
 
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,requests:browserRequests.map(x=>({method:x.method,path:x.path})),pageErrors,syntheticBackend:true,transport:'Chromium requests intercepted and fulfilled through an in-process ASGI TestClient; only photohouse.test is allowed; no external network'},null,2));

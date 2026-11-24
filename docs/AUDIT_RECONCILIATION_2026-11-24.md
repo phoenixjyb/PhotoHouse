@@ -123,7 +123,7 @@ using the same trusted HTTPS address on the home network.
 | PH-008 identity and kinship | Authorized accounts can use their own reviewed perspective. The private draft tool accepts reviewed relationships and aliases, verifies the exact base, and preserves catalog bindings and account scope. Story grounding reuses its public name index and checks reviewed household aliases separately for each request. | Family-facing editing and activation review. |
 | PH-009 uploads and pairing | Android keeps interrupted cancellations out of upload retries. The remembered-folder shortcut rechecks the account, library and read grant before review. A bounded scan uses the selected records for its byte total and reports partial review. Resuming or retrying on metered or unknown networks asks about that run. Transfers started without metered-data consent pause before sending another chunk when they lose the unmetered connection. Owners can copy, share or revoke an unused phone-bound Web invitation after returning to the page. Registration remains a separate member action. | Automatic OS-managed backup, iOS, TV pairing, and household device acceptance. |
 | PH-010 voice | Generated checks cover voice entry, recovery, half-duplex playback, and new-turn timing. The Windows bridge accepts and verifies optional exact names of installed voices without a cloud speech request. A generated cancellation now releases its proven worker reservation after brief SQLite read contention while retaining active maintenance. | Native listening quality, physical audio devices, and resource measurements with real local inference. |
-| PH-011 memory groups | A generated browser opens an unsaved story in the saved group's order. Optional suggestions can represent more reviewed seed photos. A separate same-day picker finds photos and videos in the current library while retaining explicit exclusions. An editor can split a saved group. The generated journey verifies both groups and linked notes, with no duplicate after a lost response. | Automated multi-device event discovery, merge and household review. |
+| PH-011 memory groups | A generated browser opens an unsaved story in the saved group's order. Optional suggestions can represent more reviewed seed photos. The same-day picker retains explicit exclusions. An editor can split a group without duplication after a lost response. Stories lists up to eight recent groups from the selected library and rechecks the exact saved revision before opening its ordered media. A group with a withdrawn member is omitted. | Automated multi-device event discovery, merge and household review. |
 | PH-012 oral history | A default-off Web recorder separates retention and processing consent. The generated browser resumes after reload, shows verified section times and separate narrator and subject labels, plays a completed section and requests its unsaved local transcript. An author can separately edit, save and reopen reviewed wording. The API refuses stale changes and withholds results for withdrawn recordings. | Physical capture and consent, production migration and paired recovery, native speech qualification, and source-linked story adoption. |
 | PH-013 video | The staging launcher accepts a pinned, reviewed catalog. Generated tests reach the protected library search, seek to the exact prepared version, and refuse a changed catalog or stale prepared revision. The worker extracts a frame from a 0.4-second clip. The uploader can distinguish recent proven preparation from missing playback, with a manual retry. | Automatic segment labels, household catalog preparation, and Windows deployment of the new worker and status changes. |
 | PH-014 installation and recovery | The extracted package provisions a generated owner, accepts and approves one generated JPEG, confirms one asset after replay, and serves its authorized gallery and thumbnail. The separate restore demo replays a withdrawal without restoring access to the source. | Supported installers, service lifecycle, power-loss drills, and household restore approval. |
@@ -194,6 +194,19 @@ decode. The median was **295.2 ms** (288.2–300.1) at `0f1130b` and **38.0 ms**
 (32.2–47.4) at `2d41f0b`. The test uses an in-process generated service and
 measures the dependency on the description request. Home-network, phone and
 representative-library timing remain open.
+
+For prepared videos, the viewer now checks readiness alongside the authorized
+asset detail request. It creates the player after both checks pass. A held
+detail response let the generated readiness request finish without a playback
+GET. Prepared video and exact-moment playback still passed.
+
+Four alternating Chromium runs used the same generated clip and service, with
+120 ms added to each detail and readiness response. Across 12 warm opens per
+version, the median click-to-first-presented-frame time fell from **326 ms**
+(310–328 ms) to **177 ms** (176–193 ms). The two first opens per version took
+418 ms each before, and 269 and 286 ms afterward. These are generated
+measurements with controlled delays. Physical player, scrolling and network
+performance remain open.
 
 ### Generated library-selector timing
 

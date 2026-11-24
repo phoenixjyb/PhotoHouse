@@ -69,7 +69,7 @@ class ClosedBoundary:
     def allowed(cls, method, path):
         if method == 'GET' and path == '/photo-stacks/gallery': return True
         if method == 'POST' and path == '/photo-stacks/preferences': return True
-        if method == 'GET' and path == '/memory-groups/capabilities': return True
+        if method == 'GET' and path in {'/memory-groups', '/memory-groups/capabilities'}: return True
         if method == 'POST' and path in {'/memory-groups', '/memory-groups/proposals'}: return True
         if method == 'POST' and re.fullmatch(r'/memory-groups/[0-9a-f-]{36}/split', path): return True
         if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-groups/[0-9a-f-]{36}', path): return True

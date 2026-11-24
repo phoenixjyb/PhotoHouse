@@ -668,6 +668,10 @@
     resetVideoMoments();
     clearPeopleReview({hide:true});
     galleryItems=[];
+    $('recent-memory-groups').open=false;
+    $('recent-group-list').replaceChildren();
+    $('recent-groups-status').textContent='';
+    $('recent-groups-refresh').hidden=true;
     oralHistory?.clear();
     $('oral-history-panel').open=false;
     if(storyWorkspace)storyWorkspace.clear({cancelCommunityJobs:cancelMemoryJobs});
@@ -1686,8 +1690,8 @@
     }
   }
 
-  Object.assign(words.zh,{assistantRefineHint:'继续补充条件，我会保留当前查找的其他条件。',assistantRefinePhotos:'只看照片',assistantRefineVideos:'只看视频',assistantRefineMonth:'更改月份',assistantRefineUseMonth:'使用这个月份',assistantRefineMonthLabel:'拍摄月份',assistantRefineDraftFirst:'输入框里已有草稿，请先发送或保留它，再调整条件。',assistantRefineReady:'条件已放入输入框，请检查后发送。'});
-  Object.assign(words.en,{assistantRefineHint:'Keep refining this search. Your other conditions stay in place.',assistantRefinePhotos:'Photos only',assistantRefineVideos:'Videos only',assistantRefineMonth:'Change month',assistantRefineUseMonth:'Use this month',assistantRefineMonthLabel:'Capture month',assistantRefineDraftFirst:'Your composer already has a draft. Send or keep it before changing conditions.',assistantRefineReady:'The condition is in the composer. Review it, then send.'});
+  Object.assign(words.zh,{assistantRefineHint:'继续补充条件，我会保留当前查找的其他条件。',assistantRefinePhotos:'只看照片',assistantRefineVideos:'只看视频',assistantRefineMonth:'更改月份',assistantRefineAnyDate:'不限日期',assistantRefineUseMonth:'使用这个月份',assistantRefineMonthLabel:'拍摄月份',assistantRefineDraftFirst:'输入框里已有草稿，请先发送或保留它，再调整条件。',assistantRefineReady:'条件已放入输入框，请检查后发送。'});
+  Object.assign(words.en,{assistantRefineHint:'Keep refining this search. Your other conditions stay in place.',assistantRefinePhotos:'Photos only',assistantRefineVideos:'Videos only',assistantRefineMonth:'Change month',assistantRefineAnyDate:'Any date',assistantRefineUseMonth:'Use this month',assistantRefineMonthLabel:'Capture month',assistantRefineDraftFirst:'Your composer already has a draft. Send or keep it before changing conditions.',assistantRefineReady:'The condition is in the composer. Review it, then send.'});
   function renderAssistantRefinements(turn,epoch){
     $('assistant-search-refinements')?.remove();
     const summary=$('assistant-search-summary');
@@ -1707,6 +1711,7 @@
     button('assistantRefineVideos',()=>fill(state.language==='zh'?'只看视频':'only videos'));
     const monthRow=document.createElement('div');monthRow.className='assistant-actions';monthRow.hidden=true;
     button('assistantRefineMonth',()=>{if(!current())return;monthRow.hidden=!monthRow.hidden;if(!monthRow.hidden)month.focus();});
+    if(turn.filters?.date)button('assistantRefineAnyDate',()=>fill(state.language==='zh'?'不限日期':'any date'));
     const month=document.createElement('input');month.type='month';month.id='assistant-refine-month';month.min='1900-01';month.max='2099-12';month.setAttribute('aria-label',t('assistantRefineMonthLabel'));
     const from=turn.filters?.date?.from;if(typeof from==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(from))month.value=from.slice(0,7);
     const use=document.createElement('button');use.type='button';use.className='quiet';use.dataset.i18n='assistantRefineUseMonth';use.textContent=t('assistantRefineUseMonth');use.addEventListener('click',()=>{const value=month.value;if(!/^(?:19|20)\d{2}-(?:0[1-9]|1[0-2])$/.test(value))return;const [year,m]=value.split('-');fill(state.language==='zh'?`只看${year}年${Number(m)}月`:`only ${year}-${m}`);});monthRow.append(month,use);box.append(monthRow);summary.append(box);
@@ -2803,7 +2808,24 @@
     });
     image.src=url;surface.append(image);$('viewer-media').append(surface);
   }
-  async function showPreparedVideo(item,epoch,viewerGeneration,moment=null){
+  function probePreparedVideo(assetId,moment){
+    const path=safeMediaURL(assetId,'playback',moment?{playback_revision:moment.playback_revision}:{});
+    const controller=new AbortController();
+    state.controllers.add(controller);state.videoController=controller;
+    async function read(){
+      try{
+        return {response:await fetch(path,{method:'HEAD',credentials:'same-origin',cache:'no-store',
+          redirect:'error',signal:controller.signal})};
+      }catch(error){
+        return {error};
+      }finally{
+        state.controllers.delete(controller);
+        if(state.videoController===controller)state.videoController=null;
+      }
+    }
+    return {path,result:read(),cancel:()=>controller.abort()};
+  }
+  async function showPreparedVideo(item,epoch,viewerGeneration,moment=null,pendingProbe=null){
     const current=()=>!stale(epoch)&&viewerGeneration===state.viewerGeneration&&$('viewer').open;
     if(!current())return;
     const media=$('viewer-media');
@@ -2844,16 +2866,14 @@
       retry.addEventListener('click',()=>{if(retry.disabled||!current())return;retry.disabled=true;retry.remove();void showPreparedVideo(item,epoch,viewerGeneration,moment);});
       media.replaceChildren(retry);
     }
-    const controller=new AbortController();state.controllers.add(controller);state.videoController=controller;
-    const path=safeMediaURL(item.id,'playback',moment?{playback_revision:moment.playback_revision}:{});
-    let response;
-    try{
-      response=await fetch(path,{method:'HEAD',credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal});
-    }catch(error){
-      if(error.name!=='AbortError')offerRetry('videoUnavailable');
+    const probe=pendingProbe??probePreparedVideo(item.id,moment);
+    const {response,error}=await probe.result;
+    if(!response){
+      if(error?.name!=='AbortError')offerRetry('videoUnavailable');
       return;
-    }finally{state.controllers.delete(controller);if(state.videoController===controller)state.videoController=null;}
+    }
     if(!current())return;
+    const path=probe.path;
     const contentType=(response.headers.get('content-type')||'').split(';',1)[0].trim().toLowerCase();
     const lengthText=response.headers.get('content-length')||'';
     const length=Number(lengthText);
@@ -2927,7 +2947,8 @@
   function updateSequence(){
     const s=sequenceState;
     $('viewer-sequence').hidden=s.items.length<2;
-    $('view-position').textContent=s.items.length?`${t(s.origin==='album'?'viewAlbum':'viewPage')} · ${s.index+1} / ${s.items.length}`:'';
+    const label={album:'viewAlbum',memoryGroup:'viewMemoryGroup'}[s.origin]||'viewPage';
+    $('view-position').textContent=s.items.length?`${t(label)} · ${s.index+1} / ${s.items.length}`:'';
     $('view-previous').disabled=s.busy||s.index<=0;$('view-next').disabled=s.busy||s.index>=s.items.length-1;
     $('viewer-fullscreen-controls').setAttribute('aria-label',t('viewFullscreenControls'));
     for(const [direction,word] of [['previous','viewPrevious'],['next','viewNext']]){
@@ -2974,9 +2995,15 @@
     void loadStories();
     $('face-panel').hidden=state.profile?.memberships.find(member=>member.library_id===state.library&&member.available)?.role!=='owner';
     $('viewer-move').hidden=!transferCanManage();
+    let videoProbe=null;
     try {
-      const detail=await request(libraryPath(`/assets/detail/${item.id}`,{upload_notes:'1'}),{epoch});
+      const details=request(libraryPath(`/assets/detail/${item.id}`,{upload_notes:'1'}),{epoch});
+      // Both endpoints authorize the selected video. Start the readiness read
+      // alongside details and attach the player only after both checks pass.
+      if(item.kind==='video')videoProbe=probePreparedVideo(item.id,moment);
+      const detail=await details;
       if(stale(epoch)||viewerGeneration!==state.viewerGeneration||!$('viewer').open)return;
+      if(String(detail.asset.id)!==String(item.id))throw Error('Viewer asset changed');
       storyState.asset=detail.asset;
       if(detail.asset.upload_notes_available===true)void loadViewerAnnotations();
       $('viewer-title').textContent=assetLabel(detail.asset);syncViewerStoryChoice();
@@ -2989,7 +3016,7 @@
       descriptions.ontoggle=requestOpenDescriptions;
       requestOpenDescriptions();
       if(detail.asset.kind==='video') {
-        await showPreparedVideo(detail.asset,epoch,viewerGeneration,moment);
+        await showPreparedVideo(detail.asset,epoch,viewerGeneration,moment,videoProbe);
         if(stale(epoch)||viewerGeneration!==state.viewerGeneration||!$('viewer').open)return;
       }
       else {
@@ -3005,7 +3032,12 @@
       }
       await failure(error,epoch);return false;
     }
-    finally{if(!stale(epoch)&&viewerGeneration===state.viewerGeneration){sequenceState.busy=false;updateSequence();scheduleSlideshow();}}
+    finally{
+      videoProbe?.cancel();
+      if(!stale(epoch)&&viewerGeneration===state.viewerGeneration){
+        sequenceState.busy=false;updateSequence();scheduleSlideshow();
+      }
+    }
   }
   async function loadViewerCaptions(item,epoch,viewerGeneration){
     const controller=new AbortController();
@@ -5060,11 +5092,13 @@
   Object.assign(words.en,{
     storyPanelLoading:'Loading stories…',storyPanelLoadFailed:'Stories could not load. Try refreshing this panel or reloading PhotoHouse.',
     assistantCapabilitiesRetry:'Jude couldn’t load. Return and reopen Jude to try again.',
-    assistantPanelLoadFailed:'The Assistant could not load. Reopen this panel or reload PhotoHouse.',memoryGroupsRetry:'Retry memory groups'});
+    assistantPanelLoadFailed:'The Assistant could not load. Reopen this panel or reload PhotoHouse.',
+    memoryGroupsRetry:'Retry memory groups',recentMemoryGroups:'Recent memory groups',viewMemoryGroup:'Memory group'});
   Object.assign(words.zh,{
     storyPanelLoading:'正在加载故事…',storyPanelLoadFailed:'故事暂时无法加载，请刷新此面板或重新加载 PhotoHouse。',
     assistantCapabilitiesRetry:'暂时无法打开小贾。请返回，再打开小贾重试。',
-    assistantPanelLoadFailed:'助手暂时无法加载，请重新打开此面板或重新加载 PhotoHouse。',memoryGroupsRetry:'重试回忆组'});
+    assistantPanelLoadFailed:'助手暂时无法加载，请重新打开此面板或重新加载 PhotoHouse。',
+    memoryGroupsRetry:'重试回忆组',recentMemoryGroups:'最近的回忆组',viewMemoryGroup:'回忆组'});
   async function loadStoryWorkspace(epoch){
     if(stale(epoch)||state.locked||!state.library)return null;
     if(storyWorkspace)return storyWorkspace;
@@ -5085,29 +5119,33 @@
   $('saved-memory-refresh').addEventListener('click',()=>{
     if(!storyWorkspace)void loadStoryWorkspace(state.generation);
   });
+  async function loadMemoryGroupControls(epoch){
+    if(!memoryGroups){
+      await loadPanelScript('memory-groups');
+      if(stale(epoch)||state.locked)return null;
+      memoryGroups??=window.PhotoHouseMemoryGroups.create({
+        scope:()=>({account:state.profile?.account_id,library:state.library,language:state.language,
+          epoch:state.generation,locked:state.locked}),
+        onStory:async({assets,theme},groupCurrent)=>{
+          const epoch=state.generation;
+          const workspace=await loadStoryWorkspace(epoch);
+          if(!workspace||!groupCurrent()||stale(epoch)||storyState.busy||
+              storyState.dirty&&!window.confirm(t('unsavedStory'))||!memoryGroups.canLeave())return false;
+          if(workspace.fromMemoryGroup(assets,theme)!==true)return false;
+          closeViewer();return true;
+        },
+        api:async(path,options={})=>{try{return await request(libraryPath(path),options);}
+          catch(error){if(error.status===401||error.status===403)await failure(error,options.epoch);throw error;}}});
+    }
+    return memoryGroups;
+  }
   async function mountViewerMemoryGroups(asset,current){
     try{
-      if(!memoryGroups){
-        await loadPanelScript('memory-groups');
-        if(!current())return;
-        memoryGroups??=window.PhotoHouseMemoryGroups.create({
-          scope:()=>({account:state.profile?.account_id,library:state.library,language:state.language,
-            epoch:state.generation,locked:state.locked}),
-          onStory:async({assets,theme},groupCurrent)=>{
-            const epoch=state.generation;
-            const workspace=await loadStoryWorkspace(epoch);
-            if(!workspace||!groupCurrent()||stale(epoch)||storyState.busy||
-                storyState.dirty&&!window.confirm(t('unsavedStory'))||!memoryGroups.canLeave())return false;
-            if(workspace.fromMemoryGroup(assets,theme)!==true)return false;
-            closeViewer();return true;
-          },
-          api:async(path,options={})=>{try{return await request(libraryPath(path),options);}
-            catch(error){if(error.status===401||error.status===403)await failure(error,options.epoch);throw error;}}});
-      }
-      if(current()){
+      const groups=await loadMemoryGroupControls(state.generation);
+      if(groups&&current()){
         const container=$('memory-groups');
         if(container.firstChild?.dataset.memoryGroupsRetry==='true')container.replaceChildren();
-        memoryGroups.mount(container,asset,storyState.notes,galleryItems.slice(0,100));
+        groups.mount(container,asset,storyState.notes,galleryItems.slice(0,100));
       }
     }catch{
       if(current()){
@@ -5117,6 +5155,32 @@
       }
     }
   }
+  async function showRecentMemoryGroups(){
+    const panel=$('recent-memory-groups');
+    const epoch=state.generation,library=state.library;
+    const current=()=>panel.open&&library===state.library&&!stale(epoch)&&!state.locked&&Boolean(library);
+    if(!current())return;
+    const refresh=$('recent-groups-refresh');
+    $('recent-groups-status').textContent=t('loading');
+    refresh.disabled=true;
+    try{
+      const groups=await loadMemoryGroupControls(epoch);
+      if(!current()||!groups)return;
+      await groups.showRecent(panel,items=>{
+        if(current()&&!state.busy&&abandonStory())
+          void openAsset(items[0],{sequence:items,origin:'memoryGroup'});
+      });
+    }catch{
+      if(current()){
+        $('recent-groups-status').textContent=t('memoryGroupsRetry');
+        refresh.hidden=false;refresh.disabled=false;
+      }
+    }
+  }
+  $('recent-memory-groups').addEventListener('toggle',event=>{
+    if(event.currentTarget.open)void showRecentMemoryGroups();
+  });
+  $('recent-groups-refresh').addEventListener('click',()=>void showRecentMemoryGroups());
   $('assistant-prompts').addEventListener('click',event=>{const kind=event.target.dataset.assistantPrompt;if(!kind||state.locked||assistantState.busy)return;$('assistant-text').value=t({photos:'assistantFindPhotos',videos:'assistantFindVideos',open:'assistantOpenFirst'}[kind]);focusAssistant();});
   Object.assign(words.zh,{memoryNavigation:'回忆导航',memoryNavHome:'首页',memoryNavPhotos:'照片',memoryNavFamily:'家庭',memoryFamilyHeading:'家庭相册库',memoryNavStories:'故事',memoryNavMemoirs:'回忆集',memoryNavJude:'小贾',memoryMediaRegion:'照片与视频'});
   Object.assign(words.en,{memoryNavigation:'Memory navigation',memoryNavHome:'Home',memoryNavPhotos:'Photos',memoryNavFamily:'Family',memoryFamilyHeading:'Family library',memoryNavStories:'Stories',memoryNavMemoirs:'Memoirs',memoryNavJude:'Jude',memoryMediaRegion:'Photos and videos'});

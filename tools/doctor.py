@@ -17,15 +17,13 @@ import threading
 from typing import Callable
 from urllib.parse import urlsplit
 
+if __package__:
+    from .check import WEB_TESTS as WEB_SUITES
+else:
+    from check import WEB_TESTS as WEB_SUITES
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK_PATH = Path("config/requirements-dev.lock")
-WEB_SUITES = (
-    "server/tests/security/test_assistant_pending_recovery_browser.cjs",
-    "server/tests/security/test_memory_book_editorial_browser.cjs",
-    "server/tests/security/test_memory_book_editorial_reader_browser.cjs",
-    "server/tests/security/test_memory_community_browser.cjs",
-)
 MAX_LOCK_BYTES = 1024 * 1024
 MAX_PROBE_SECONDS = 3
 MAX_PROBE_OUTPUT = 4096

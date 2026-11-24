@@ -41,6 +41,7 @@ def capabilities(runtime, token, library, enabled, vectors):
                 and verify_memory_group_schema(db))
             manual = bool(ready and member['role'] in {'owner', 'contributor'})
             return {'version': 1, 'enabled': bool(ready), 'manual': manual, 'split': manual,
+                    'recent': bool(ready),
                     'suggestions': bool(ready and vectors is not None),
                     'max_members': 24, 'needs_review': True}
 
@@ -120,6 +121,11 @@ async def asset_groups(asset_id: str, request: Request):
     runtime, token, library = await scope(request)
     return response(await run_in_threadpool(call, runtime, 'list_for_asset', token,
         library, _integer(asset_id, 2**63 - 1)))
+
+@router.get('/memory-groups')
+async def recent_groups(request: Request):
+    runtime, token, library = await scope(request)
+    return response(await run_in_threadpool(call, runtime, 'list_recent', token, library))
 
 
 @router.get('/memory-groups/{group_id}')

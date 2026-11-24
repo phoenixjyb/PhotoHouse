@@ -62,12 +62,50 @@ class MemoryGroupRouteTests(unittest.TestCase):
         self.assertEqual(caps.status_code, 200, caps.text)
         self.assertFalse(caps.json()['enabled'])
         self.assertEqual(self.request('GET', '/assets/101/memory-groups', client=off).status_code, 503)
+        self.assertEqual(self.request('GET', '/memory-groups', client=off).status_code, 503)
+        self.assertEqual(self.request('GET', '/memory-groups', headers={}).status_code, 401)
         self.assertEqual(self.request('GET', '/memory-groups/capabilities', headers={}).status_code, 401)
         self.assertEqual(self.request('GET', '/memory-groups/capabilities', library='family-b').status_code, 401)
         manual = self.request('GET', '/memory-groups/capabilities', client=self.build()).json()
         self.assertTrue(manual['manual'])
         self.assertTrue(manual['split'])
         self.assertFalse(manual['suggestions'])
+
+    def test_recent_groups_are_bounded_and_check_every_asset_before_showing_a_cover(self):
+        note = self.base.note()
+        groups = [self.base.save(self.base.owner, self.base.body(assets='102'))
+                  for _ in range(9)]
+        newest = self.base.save(self.base.owner, self.base.body(sources=note['id'], theme='birthday'))
+        groups.append(newest)
+        with self.f.connection() as db:
+            db.executemany('UPDATE access_memory_groups SET updated_at=? WHERE id=?',
+                           [(ordinal, group['id']) for ordinal, group in enumerate(groups, 1)])
+            db.commit()
+
+        self.f.trace.clear()
+        response = self.request('GET', '/memory-groups', headers=self.member_headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+        document = response.json()
+        self.assertEqual(set(document), {'version', 'library_id', 'items'})
+        self.assertEqual(document['library_id'], 'family-a')
+        self.assertEqual([item['id'] for item in document['items']],
+                         [group['id'] for group in reversed(groups[-8:])])
+        first = document['items'][0]
+        self.assertEqual(set(first), {'id', 'revision', 'theme', 'count', 'cover'})
+        self.assertEqual(first['count'], 2)
+        self.assertEqual(first['cover']['id'], '101')
+        self.assertEqual(first['cover']['thumbnail_url'], '/assets/101/thumbnail?library=family-a')
+        self.assertNotIn(note['id'], response.text)
+        self.assertFalse(any(sql.lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE'))
+                             for sql in self.f.trace))
+        self.assertEqual(self.request('GET', '/memory-groups', library='family-b').status_code, 401)
+
+        # The cover can still be read, but the other member is no longer visible.
+        self.f.mutate("DELETE FROM access_asset_libraries WHERE asset_id=102 AND library_id='family-a'")
+        after = self.request('GET', '/memory-groups', headers=self.member_headers)
+        self.assertEqual(after.status_code, 200, after.text)
+        self.assertEqual(after.json()['items'], [])
 
     def test_group_opt_in_uses_request_local_runtime_copies(self):
         enabled = create_app(access_runtime=self.runtime, memory_groups_enabled=True)

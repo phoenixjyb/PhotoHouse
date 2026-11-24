@@ -6,7 +6,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const root=path.resolve(__dirname,'../..'),artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-groups-'));
 fs.mkdirSync(artifacts,{recursive:true});
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
-let serial=0,readyResolve,readyReject,browser,ctx,hold=null,corrupt=false,fail=false,loseSplit=false;const pending=new Map(),errors=[],external=[],checks=[],requests=[];
+let serial=0,readyResolve,readyReject,browser,ctx,holdRecent=null,legacyGroups=false,fail=false,loseSplit=false;const pending=new Map(),errors=[],external=[],checks=[],requests=[];
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
 createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(line);if(value.ready)readyResolve();else{const item=pending.get(value.id);if(item){pending.delete(value.id);item.resolve(value);}}});
 bridge.stderr.on('data',v=>process.stderr.write(v));bridge.on('exit',code=>{if(code){readyReject(new Error('Bridge failed'));for(const item of pending.values())item.reject(new Error('Bridge failed'));}});
@@ -22,6 +22,12 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   const headers=await req.allHeaders();delete headers['content-length'];if(!headers['sec-fetch-site'])headers['sec-fetch-site']='same-origin';
   const result=await rpc({method:req.method(),path:url.pathname+url.search,headers,body:(req.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
   let status=result.status,body=Buffer.from(result.body,'base64');
+  if(legacyGroups&&req.method()==='GET'&&url.pathname==='/memory-groups/capabilities'&&status===200){
+    const value=JSON.parse(body.toString());delete value.recent;body=Buffer.from(JSON.stringify(value));
+  }
+  if(holdRecent&&req.method()==='GET'&&url.pathname==='/memory-groups'){
+    const held=holdRecent;holdRecent=null;held.arrived();await held.wait;
+  }
   if(fail&&req.method()==='POST'&&url.pathname==='/memory-groups'){fail=false;status=503;body=Buffer.from('{"detail":"Synthetic uncertain response"}');}
   if(loseSplit&&req.method()==='POST'&&url.pathname.endsWith('/split')&&status===200){
     loseSplit=false;
@@ -154,7 +160,59 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  assert(requests.slice(startOrderedStory).every(r=>r.method!=='POST'||!['/memory-stories','/story-workspace/preview'].includes(r.path)));
  await page.locator('#story-workspace-close').click();
  pass('Pages through eligible same-day media, keeps exclusions, and carries the keyboard-edited order into an unsaved story');
- await page.locator('#logout').click();await page.locator('#auth').waitFor();assert.equal(await page.locator('.memory-group-source').count(),0);assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
+ const recent=page.locator('#recent-memory-groups');
+ const recentSummary=recent.locator('summary');
+ const recentReads=()=>requests.filter(r=>r.method==='GET'&&r.path==='/memory-groups').length;
+ const recentStart=recentReads();
+ assert.equal(recentStart,0,'the private group list is never queried from the collapsed panel');
+ legacyGroups=true;
+ await recentSummary.click();
+ await page.waitForFunction(()=>document.getElementById('recent-groups-status').textContent.includes('unavailable'));
+ assert.equal(recentReads(),recentStart);
+ await recentSummary.click();
+ legacyGroups=false;
+ await recentSummary.click();
+ const group=recent.locator('.recent-group-card').filter({has:page.locator('img[src^="/assets/1100/thumbnail"]')});
+ const browse=group.locator('.recent-group-open');
+ await browse.waitFor();
+ assert.equal(await recent.locator('.recent-group-card').count(),2);
+ assert(await recent.evaluate(el=>el.scrollWidth<=el.clientWidth));
+ assert(await browse.evaluate(el=>el.getBoundingClientRect().height>=48));
+ await recent.screenshot({path:path.join(artifacts,'recent-memory-groups-mobile-en.png')});
+
+ const browseStart=requests.length;
+ await browse.press('Enter');
+ await page.locator('#viewer').waitFor({state:'visible'});
+ await page.waitForFunction(()=>document.getElementById('view-position').textContent==='Memory group · 1 / 2');
+ assert.match(await page.locator('#viewer-title').textContent(),/1100/);
+ await page.locator('#view-next').click();
+ assert.match(await page.locator('#viewer-title').textContent(),/102/);
+ assert(requests.slice(browseStart).every(r=>r.method==='GET'||r.method==='HEAD'));
+ pass('Stories opens the exact saved group in order without writing or assuming that the prepared video is available');
+
+ await page.locator('#memory-groups summary').click();
+ await page.locator('.memory-group-edit').click();
+ await page.locator('.memory-group-editor select[name="theme"]').selectOption('trip');
+ await page.locator('.memory-group-save').click();
+ await page.locator('.memory-group-editor').waitFor({state:'hidden'});
+ await page.locator('#close-viewer').click();
+ await browse.click();
+ await page.waitForFunction(()=>document.getElementById('recent-groups-status').textContent.includes('changed'));
+ assert.equal(await page.locator('#viewer').isVisible(),false);
+ await recent.locator('#recent-groups-refresh').click();
+ await group.getByText('Trip',{exact:true}).waitFor();
+ pass('Older runtimes keep their existing route and a changed group must be refreshed before opening');
+
+ let release,arrived;
+ const pendingRead=new Promise(resolve=>{arrived=resolve;});
+ holdRecent={arrived,wait:new Promise(resolve=>{release=resolve;})};
+ await recent.locator('#recent-groups-refresh').click();
+ await pendingRead;
+ try{
+   await page.locator('#logout').click();await page.locator('#auth').waitFor();
+ }finally{release();}
+ assert.equal(await recent.locator('.recent-group-card').count(),0);
+ assert.equal(await page.locator('.memory-group-source').count(),0);assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);
  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);pass('English UI and logout clear private group text without browser storage or external requests');
  fs.writeFileSync(path.join(artifacts,'checks.json'),JSON.stringify({checks,errors,external,fixture:'Actual ASGI with generated vectors, thumbnails and family note; no inference'},null,2));console.log('ARTIFACTS '+artifacts);
 })().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{if(ctx)await ctx.close();if(browser)await browser.close();bridge.stdin.end();});
