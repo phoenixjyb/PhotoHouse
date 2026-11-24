@@ -34243,6 +34243,92 @@
         "Owner explicitly authorized relaxing the five-second read guard and deferring performance optimization. Default Search-v2 allowance is thirty seconds; explicit budgets, data/concurrency/cancellation controls and model/native Job deadlines remain unchanged.",
         "Eleven affected tests and seven subtests passed, including beyond-five-second reads, thirty-second refusal, cancellation, shared admission, explicit budgets and exact caption parity. No deployment or native acceptance is inferred."
       ]
+    },
+    {
+      "feature": "bilingual-product-roadmap-20261124",
+      "source_commit": "97552e3d2f4d12b40e6bc2468d05444e1728b0eb",
+      "authored_diff_base": "771fd9df584fd16249c2d51e1c1e7d68288142da",
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "3aec5af9ec02c2d1ead716457eea468fe71e6c812b75189c2d74f12577373719",
+          "sha256": "43be2826c71dc1dfb9c2e5c408a252a4da51e87f3b136e872a31592c8c3a63ff"
+        },
+        {
+          "path": "docs/product-roadmap/README.md",
+          "before_sha256": null,
+          "sha256": "b32930435bf6c1f618aecec12d682af8702c64ca4fd5b2f17c110005354f4b68"
+        },
+        {
+          "path": "docs/product-roadmap/app.js",
+          "before_sha256": null,
+          "sha256": "05160862759c9dc6f95271e5a52ec7675adcf1b301471666b4643d864b1fc2fe"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": null,
+          "sha256": "d540d55b922225a782c9dde371c2e844b5425273702758c014967c533d3790bf"
+        },
+        {
+          "path": "docs/product-roadmap/index.html",
+          "before_sha256": null,
+          "sha256": "160357fd2f58e48d397bdf43e2def19b06747c5d108f6813cfb155d272d11f52"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": null,
+          "sha256": "135ea00a4c8e089202f949ae1e7e326abce4211392d9df3a34fa8a8e6bdab107"
+        },
+        {
+          "path": "docs/product-roadmap/styles.css",
+          "before_sha256": null,
+          "sha256": "85fb076326ef25cb30225d555a83d1e14ab6b2ae700bb9c6745bba174239769b"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "c4522c60d55357f4ad0e04d4742e1240d8ddba4df8caeee8d95ca5f36d4e54bb",
+          "sha256": "67033cbe4ef049d21ed720464bc6c755e02a3b815734d416c6368102f6e36094"
+        },
+        {
+          "path": "server/backend/app/product_roadmap.py",
+          "before_sha256": null,
+          "sha256": "e100e74d3dc14b9212bdeff7ac1cd8fc583049f282ae6fb4c22631084968304d"
+        },
+        {
+          "path": "server/tests/test_product_roadmap.py",
+          "before_sha256": null,
+          "sha256": "3f0ff9cf8f1b0610c95e303a11dcbd0203d130143932f0e379b6d1e5d013d1a2"
+        },
+        {
+          "path": "tools/export_product_roadmap.py",
+          "before_sha256": null,
+          "sha256": "2f4c385fec6781b978999586b320a826813018c04bbaba085b254f8234d5c01f"
+        },
+        {
+          "path": "tools/test_product_roadmap_browser.cjs",
+          "before_sha256": null,
+          "sha256": "757e9cdcc43be4f47258345cde6b2b4af3111da522fc214e9de6ac4917503ac8"
+        }
+      ],
+      "routes_added": true,
+      "route_paths": [
+        "/roadmap",
+        "/roadmap/",
+        "/roadmap/<fixed assets>"
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "GitHub_CI": "OFF",
+      "documentation_with_preexisting_ledger_drift": [
+        "README.md",
+        "docs/ARCHITECTURE.md",
+        "docs/README.md",
+        "docs/ROADMAP.md"
+      ],
+      "notes": [
+        "Public project metadata only: full EN/zh feature records, gaps and next steps, fixed five-file ASGI boundary, no household or model requests. Eleven focused server cases and bilingual/responsive/keyboard browser checks passed. Windows deployment is pending.",
+        "Existing documentation drift is listed rather than silently rebased by this feature. The unchanged whole-tree source checker still refuses the pre-existing Android TV build.gradle.kts digest mismatch. No whole-tree source verification or hosted CI pass is claimed."
+      ]
     }
   ]
 }
