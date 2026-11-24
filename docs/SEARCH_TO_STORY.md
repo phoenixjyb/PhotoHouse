@@ -8,9 +8,12 @@ an Android build. GitHub Actions remain paused.
 
 1. Submit a typed or explicitly authorized voice search in the private assistant.
 2. Select individual photos and videos. The count shows the 24-frame limit.
-   Selections keep click order across pages of the same result set. Removing and
-   selecting an item again moves it to the end; duplicate IDs never add a frame.
-3. Use **Review selection order** to remove a choice from an earlier page, or
+   Selections initially keep click order across pages of the same result set;
+   duplicate IDs never add a frame.
+3. Open **Review selection order** to move a frame earlier or later, or remove
+   it, including choices from earlier result pages. These buttons work with
+   keyboard Enter/Space and have English/Chinese accessible labels. Reordering
+   keeps all selected frames and creates no search or model request. Use
    **Clear selection** to start over. Unselected controls are disabled at 24.
 4. Choose **Shape a story with selected frames**. A fresh current-result
    read must confirm the source and access before the editor opens with exactly
@@ -138,3 +141,21 @@ fixture samples describe UI behavior only, not model speed or real relevance.
 No full repository/API/Android regression, Windows delivery, native provider
 benchmark, or household acceptance was performed. The existing birthday story
 is left for the owner's review.
+
+## November 24 selection-order increment
+
+The selection toolbar now has move-earlier, move-later and remove buttons for
+each selected frame. The same controls work for a choice from a previous result
+page, at the 24-frame cap, and when adding frames to an existing story. The fresh
+current-result check still runs before opening or appending to the editor; an
+account/library change or pending handoff prevents reordering. The original
+media metadata stays attached to the selected frame.
+
+Focused local checks passed for boundary moves, invalid/unselected IDs, the
+24-frame cap, pending readback, generation changes, and the exact reordered
+handoff. The generated browser journey passed 20 checkpoints, including keyboard
+Space/Enter, focus at the first/last boundary, cross-page photo/video ordering,
+logout during readback, and explicit story revision saving. Reordering itself
+made zero API requests. Desktop, 390px at 150% text and 320px at 200% text renders
+were checked; ordering controls retain at least 44px touch targets. This is local
+source/browser evidence; Windows delivery and household acceptance are separate.

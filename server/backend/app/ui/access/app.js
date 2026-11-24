@@ -1742,7 +1742,7 @@
     if(reason.source==='capture_date')return t('assistantReasonDate').replace('{date}',reason.value);
     return '';
   }
-  Object.assign(words.en,{assistantStoryTitle:'Choose frames for your story',assistantStoryHelp:'Choose up to 24 photos or videos, in the order you want. Page changes keep your choices; a new search clears them.',assistantStoryOpen:'Shape a story with selected frames',assistantStoryClear:'Clear selection',assistantStoryReview:'Review selection order',assistantStoryPick:'Select for story',assistantStoryPicked:'Selected · {order}',assistantStoryCount:'{count} / 24 selected',assistantStoryRemove:'Remove {label}',assistantStoryViewerRemove:'Remove {label} from selection',assistantStoryChecking:'Checking these results and your access…',assistantStoryUnavailable:'These results could not be confirmed. Refresh the search and select again.',assistantStoryLimit:'24 frames selected. Remove a frame to choose another.',assistantStoryNotOpened:'Your existing story needs attention before opening another selection.'});
+  Object.assign(words.en,{assistantStoryTitle:'Choose frames for your story',assistantStoryHelp:'Choose up to 24 photos or videos. Review selection order to move or remove frames. Page changes keep your choices; a new search clears them.',assistantStoryOpen:'Shape a story with selected frames',assistantStoryClear:'Clear selection',assistantStoryReview:'Review selection order',assistantStoryPick:'Select for story',assistantStoryPicked:'Selected · {order}',assistantStoryCount:'{count} / 24 selected',assistantStoryRemove:'Remove {label}',assistantStoryViewerRemove:'Remove {label} from selection',assistantStoryChecking:'Checking these results and your access…',assistantStoryUnavailable:'These results could not be confirmed. Refresh the search and select again.',assistantStoryLimit:'24 frames selected. Remove a frame to choose another.',assistantStoryNotOpened:'Your existing story needs attention before opening another selection.'});
   Object.assign(words.en,{
     assistantStoryAddTitle:'Add frames to this story',
     assistantStoryAddChapterTitle:'Add frames to chapter {number}',
@@ -1760,7 +1760,7 @@
     assistantStoryTargetChanged:'This story changed. Return to it and try again.',
     assistantStoryAddFailed:'These frames could not be added. Your story remains open.'
   });
-  Object.assign(words.zh,{assistantStoryTitle:'挑选故事里的画面',assistantStoryHelp:'按你选择的顺序编排，最多 24 张照片或视频。翻页保留选择；重新查找会清空。',assistantStoryOpen:'用所选画面编排故事',assistantStoryClear:'清空选择',assistantStoryReview:'查看选择顺序',assistantStoryPick:'选入故事',assistantStoryPicked:'已选 · 第 {order} 项',assistantStoryCount:'已选 {count} / 24 项',assistantStoryRemove:'移除{label}',assistantStoryViewerRemove:'从选择中移除{label}',assistantStoryChecking:'正在核对这些结果和访问权限…',assistantStoryUnavailable:'暂时无法确认这些结果。请重新查找后选择。',assistantStoryLimit:'已选满 24 项，请先移除一项再选。',assistantStoryNotOpened:'请先处理现有故事，再打开新的选择。'});
+  Object.assign(words.zh,{assistantStoryTitle:'挑选故事里的画面',assistantStoryHelp:'最多选择 24 张照片或视频，可在“查看选择顺序”中调整或移除。翻页保留选择；重新查找会清空。',assistantStoryOpen:'用所选画面编排故事',assistantStoryClear:'清空选择',assistantStoryReview:'查看选择顺序',assistantStoryPick:'选入故事',assistantStoryPicked:'已选 · 第 {order} 项',assistantStoryCount:'已选 {count} / 24 项',assistantStoryRemove:'移除{label}',assistantStoryViewerRemove:'从选择中移除{label}',assistantStoryChecking:'正在核对这些结果和访问权限…',assistantStoryUnavailable:'暂时无法确认这些结果。请重新查找后选择。',assistantStoryLimit:'已选满 24 项，请先移除一项再选。',assistantStoryNotOpened:'请先处理现有故事，再打开新的选择。'});
   Object.assign(words.zh,{
     assistantStoryAddTitle:'为这个故事添加画面',
     assistantStoryAddChapterTitle:'为第 {number} 章添加画面',
@@ -1863,6 +1863,8 @@
     return {privateRoute,selected,ready,blocked,visible:!!selected.length||!!turn&&turn.kind==='results'&&turn.items.some(item=>['image','video'].includes(item.kind))&&
       (privateRoute?!!snapshot?.currentResult:ready),addMode,targetCurrent,existingIds:assistantStoryTarget?.existingIds,limit:assistantStoryTarget?.limit??24};
   }
+  Object.assign(words.en,{assistantStoryEarlier:'Move {label} earlier',assistantStoryLater:'Move {label} later',assistantStoryReordered:'Frame order updated.'});
+  Object.assign(words.zh,{assistantStoryEarlier:'将{label}提前',assistantStoryLater:'将{label}后移',assistantStoryReordered:'画面顺序已更新。'});
   function renderAssistantStoryControls(snapshot=privateAssistant?.state()){
     const panel=$('assistant-story-selection');if(!panel)return;
     const view=assistantStoryView(snapshot),order=new Map(view.selected.map((item,index)=>[item.id,index+1]));
@@ -1876,13 +1878,34 @@
     $('assistant-story-selected').hidden=!view.selected.length;
     const list=$('assistant-story-selected-list');
     const key=JSON.stringify([state.language,view.selected.map(item=>[item.id,item.kind,item.taken_at])]);
+    let restoreSelectionFocus=null;
     if(list.dataset.selection!==key){
-      const focused=Array.from(list.querySelectorAll('button')).indexOf(document.activeElement);
+      const active=document.activeElement,oldButtons=Array.from(list.querySelectorAll('button'));
+      if(oldButtons.includes(active))restoreSelectionFocus={id:active.dataset.selectionId,action:active.dataset.selectionAction,index:oldButtons.indexOf(active)};
       list.dataset.selection=key;list.replaceChildren();
-      for(const item of view.selected){const li=document.createElement('li'),remove=document.createElement('button');remove.type='button';remove.className='quiet';remove.dataset.assetId=item.id;remove.textContent=t('assistantStoryRemove').replace('{label}',assetLabel(item));remove.addEventListener('click',()=>{if(remove.isConnected&&list.dataset.selection===key)toggleAssistantStoryItem(item.id);});li.append(remove);list.append(li);}
-      if(focused>=0){const buttons=list.querySelectorAll('button'),target=buttons[Math.min(focused,buttons.length-1)]||$('assistant-results').querySelector('.assistant-story-pick');target?.focus({preventScroll:true});}
+      view.selected.forEach(item=>{
+        const li=document.createElement('li'),row=document.createElement('div'),label=document.createElement('span'),actions=document.createElement('div');
+        row.className='assistant-story-selected-row';label.className='assistant-story-selected-label';label.textContent=assetLabel(item);actions.className='assistant-story-selected-actions';
+        for(const [action,icon,keyName] of [['earlier','↑','assistantStoryEarlier'],['later','↓','assistantStoryLater'],['remove','×','assistantStoryRemove']]){
+          const button=document.createElement('button');button.type='button';button.className='quiet';button.dataset.selectionId=item.id;button.dataset.selectionAction=action;
+          if(action==='remove')button.dataset.assetId=item.id;
+          const name=t(keyName).replace('{label}',assetLabel(item));button.textContent=icon;button.setAttribute('aria-label',name);button.title=name;
+          button.addEventListener('click',()=>{if(!button.isConnected||list.dataset.selection!==key)return;if(action==='remove')toggleAssistantStoryItem(item.id);else moveAssistantStoryItem(item.id,action==='earlier'?-1:1);});
+          actions.append(button);
+        }
+        row.append(label,actions);li.append(row);list.append(li);
+      });
     }
-    for(const button of list.querySelectorAll('button'))button.disabled=view.blocked||!view.ready;
+    for(const button of list.querySelectorAll('button')){
+      const index=view.selected.findIndex(item=>item.id===button.dataset.selectionId),action=button.dataset.selectionAction;
+      button.disabled=view.blocked||!view.ready||action==='earlier'&&index===0||action==='later'&&index===view.selected.length-1;
+    }
+    if(restoreSelectionFocus&&!view.blocked){
+      const buttons=Array.from(list.querySelectorAll('button')),same=buttons.filter(button=>button.dataset.selectionId===restoreSelectionFocus.id&&!button.disabled);
+      const nearby=buttons.slice(restoreSelectionFocus.index).find(button=>!button.disabled)||buttons.slice(0,restoreSelectionFocus.index).reverse().find(button=>!button.disabled);
+      const target=same.find(button=>button.dataset.selectionAction===restoreSelectionFocus.action)||same[0]||nearby||$('assistant-results').querySelector('.assistant-story-pick:not(:disabled)');
+      target?.focus({preventScroll:true});
+    }
     const filter=$('assistant-story-hide-existing'),hideExisting=assistantStoryTarget?.hideExisting===true;
     $('assistant-story-filter').hidden=!view.existingIds?.size;
     filter.checked=hideExisting;filter.disabled=view.blocked||!view.ready;
@@ -1898,6 +1921,19 @@
     syncViewerStoryChoice();
     syncAssistantStoryModeLabels();
     $('assistant-story-selection-status').textContent=!view.targetCurrent?t('assistantStoryTargetChanged'):assistantStoryHandoff?t('assistantStoryChecking'):assistantStoryNotice?t(assistantStoryNotice):view.limit>0&&view.selected.length>=view.limit?(view.addMode?t('assistantStoryAddLimit'):t('assistantStoryLimit')):'';
+  }
+  function moveAssistantStoryItem(id,direction){
+    const view=assistantStoryView();if(!view.ready||view.blocked||![-1,1].includes(direction))return;
+    const index=view.selected.findIndex(item=>item.id===id),next=index+direction;
+    if(index<0||next<0||next>=view.selected.length)return;
+    try{
+      if(view.privateRoute)privateAssistant.moveStoryItem(id,direction);
+      else{
+        const entries=Array.from(assistantStoryLegacy.selected.entries()),[entry]=entries.splice(index,1);
+        entries.splice(next,0,entry);assistantStoryLegacy.selected=new Map(entries);
+      }
+      assistantStorySerial++;assistantStoryNotice='assistantStoryReordered';renderAssistantStoryControls();
+    }catch{clearAssistantStorySelection();$('assistant-story-selection-status').textContent=t('assistantStoryUnavailable');}
   }
   function toggleAssistantStoryItem(id){
     const view=assistantStoryView();if(!view.ready||view.blocked)return;
