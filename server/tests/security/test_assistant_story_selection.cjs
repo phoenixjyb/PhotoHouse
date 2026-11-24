@@ -105,6 +105,31 @@ function makeController({holdResult=false,denyResult=false,latestMismatch=false,
     controller.close();
   }
   {
+    const {controller,calls}=makeController();await controller.capabilities();await controller.resultPageCapabilities();await controller.create();await controller.send('Choose story frames');
+    controller.toggleStoryItem('101');controller.toggleStoryItem('102');await controller.resultPage(2);controller.toggleStoryItem('121');
+    const before=controller.state().storySelection.slice(),callCount=calls.length;
+    const moved=controller.moveStoryItem('121',-1);assert.equal(Object.isFrozen(moved),true);
+    assert.deepEqual(moved.map(item=>item.id),['101','121','102']);
+    controller.moveStoryItem('121',-1);controller.moveStoryItem('101',1);
+    assert.deepEqual(controller.state().storySelection.map(item=>item.id),['121','102','101'],'off-page frames can move in both directions');
+    for(const item of before)assert.strictEqual(controller.state().storySelection.find(frame=>frame.id===item.id),item,'movement preserves authorized media metadata');
+    controller.moveStoryItem('121',-1);controller.moveStoryItem('101',1);
+    assert.deepEqual(controller.state().storySelection.map(item=>item.id),['121','102','101'],'first and last boundaries are no-ops');
+    assert.throws(()=>controller.moveStoryItem('126',-1),error=>error.code==='invalid_input','unselected media cannot be introduced by moving');
+    for(const direction of [0,2,'1',null])assert.throws(()=>controller.moveStoryItem('121',direction),error=>error.code==='invalid_input');
+    assert.equal(calls.length,callCount,'movement does not read, search, generate, or save');
+    await controller.returnResults();
+    assert.deepEqual((await controller.prepareStorySelection()).map(item=>item.id),['121','102','101'],'fresh handoff retains the deliberate cross-page order');
+    controller.close();
+  }
+  {
+    const fixture=makeController({holdResult:true}),{controller}=fixture;
+    await controller.capabilities();await controller.create();await controller.send('Choose frames');controller.toggleStoryItem('101');controller.toggleStoryItem('102');
+    const pending=controller.prepareStorySelection();await new Promise(resolve=>setImmediate(resolve));
+    assert.throws(()=>controller.moveStoryItem('102',-1),error=>error.code==='conflict','movement cannot race the fresh editor handoff');
+    fixture.release();assert.deepEqual((await pending).map(item=>item.id),['101','102']);controller.close();
+  }
+  {
     const {controller,calls}=makeController();await controller.capabilities();await controller.resultPageCapabilities();await controller.create();await controller.send('Find a long result set');
     for(const id of ids.slice(0,20))if(id!=='103')controller.toggleStoryItem(id);
     assert.equal(controller.state().storySelection.length,19);
@@ -112,6 +137,9 @@ function makeController({holdResult=false,denyResult=false,latestMismatch=false,
     for(const item of page.items.slice(0,5))controller.toggleStoryItem(item.id);
     assert.equal(controller.state().storySelection.length,24);
     assert.throws(()=>controller.toggleStoryItem(page.items[5].id),error=>error.code==='invalid_input','the handoff remains capped at 24 unique media');
+    controller.moveStoryItem(page.items[4].id,-1);
+    assert.equal(controller.state().storySelection.length,24,'reordering does not change the selection cap');
+    assert.throws(()=>controller.toggleStoryItem(page.items[5].id),error=>error.code==='invalid_input');
     controller.clearStorySelection();await controller.returnResults();
     for(const id of ids.slice(0,20))if(id!=='103')controller.toggleStoryItem(id);
     await controller.resultPage(2);for(const item of media.slice(20,25))controller.toggleStoryItem(item.id);
@@ -228,6 +256,12 @@ function makeController({holdResult=false,denyResult=false,latestMismatch=false,
       'a direct deselection synchronizes scope before returning any older-library selection');
     assert.deepEqual(controller.state().storySelection,[]);
     controller.close();
+  }
+  {
+    const {controller,scope}=makeController();await controller.capabilities();await controller.create();await controller.send('Choose frames');controller.toggleStoryItem('101');controller.toggleStoryItem('102');
+    scope.generation++;
+    assert.throws(()=>controller.moveStoryItem('102',-1),error=>error.code==='conflict','movement rechecks account/library generation');
+    assert.deepEqual(controller.state().storySelection,[]);controller.close();
   }
   console.log('Private assistant story selection checks: ordered items, eligibility, de-duplication, refinement, fresh latest-request readback, conflict, permission revocation and stale selection passed.');
 })().catch(error=>{console.error(error.stack||error);process.exitCode=1;});
