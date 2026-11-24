@@ -2807,7 +2807,24 @@
     });
     image.src=url;surface.append(image);$('viewer-media').append(surface);
   }
-  async function showPreparedVideo(item,epoch,viewerGeneration,moment=null){
+  function probePreparedVideo(assetId,moment){
+    const path=safeMediaURL(assetId,'playback',moment?{playback_revision:moment.playback_revision}:{});
+    const controller=new AbortController();
+    state.controllers.add(controller);state.videoController=controller;
+    async function read(){
+      try{
+        return {response:await fetch(path,{method:'HEAD',credentials:'same-origin',cache:'no-store',
+          redirect:'error',signal:controller.signal})};
+      }catch(error){
+        return {error};
+      }finally{
+        state.controllers.delete(controller);
+        if(state.videoController===controller)state.videoController=null;
+      }
+    }
+    return {path,result:read(),cancel:()=>controller.abort()};
+  }
+  async function showPreparedVideo(item,epoch,viewerGeneration,moment=null,pendingProbe=null){
     const current=()=>!stale(epoch)&&viewerGeneration===state.viewerGeneration&&$('viewer').open;
     if(!current())return;
     const media=$('viewer-media');
@@ -2848,16 +2865,14 @@
       retry.addEventListener('click',()=>{if(retry.disabled||!current())return;retry.disabled=true;retry.remove();void showPreparedVideo(item,epoch,viewerGeneration,moment);});
       media.replaceChildren(retry);
     }
-    const controller=new AbortController();state.controllers.add(controller);state.videoController=controller;
-    const path=safeMediaURL(item.id,'playback',moment?{playback_revision:moment.playback_revision}:{});
-    let response;
-    try{
-      response=await fetch(path,{method:'HEAD',credentials:'same-origin',cache:'no-store',redirect:'error',signal:controller.signal});
-    }catch(error){
-      if(error.name!=='AbortError')offerRetry('videoUnavailable');
+    const probe=pendingProbe??probePreparedVideo(item.id,moment);
+    const {response,error}=await probe.result;
+    if(!response){
+      if(error?.name!=='AbortError')offerRetry('videoUnavailable');
       return;
-    }finally{state.controllers.delete(controller);if(state.videoController===controller)state.videoController=null;}
+    }
     if(!current())return;
+    const path=probe.path;
     const contentType=(response.headers.get('content-type')||'').split(';',1)[0].trim().toLowerCase();
     const lengthText=response.headers.get('content-length')||'';
     const length=Number(lengthText);
@@ -2979,9 +2994,15 @@
     void loadStories();
     $('face-panel').hidden=state.profile?.memberships.find(member=>member.library_id===state.library&&member.available)?.role!=='owner';
     $('viewer-move').hidden=!transferCanManage();
+    let videoProbe=null;
     try {
-      const detail=await request(libraryPath(`/assets/detail/${item.id}`,{upload_notes:'1'}),{epoch});
+      const details=request(libraryPath(`/assets/detail/${item.id}`,{upload_notes:'1'}),{epoch});
+      // Both endpoints authorize the selected video. Start the readiness read
+      // alongside details and attach the player only after both checks pass.
+      if(item.kind==='video')videoProbe=probePreparedVideo(item.id,moment);
+      const detail=await details;
       if(stale(epoch)||viewerGeneration!==state.viewerGeneration||!$('viewer').open)return;
+      if(String(detail.asset.id)!==String(item.id))throw Error('Viewer asset changed');
       storyState.asset=detail.asset;
       if(detail.asset.upload_notes_available===true)void loadViewerAnnotations();
       $('viewer-title').textContent=assetLabel(detail.asset);syncViewerStoryChoice();
@@ -2994,7 +3015,7 @@
       descriptions.ontoggle=requestOpenDescriptions;
       requestOpenDescriptions();
       if(detail.asset.kind==='video') {
-        await showPreparedVideo(detail.asset,epoch,viewerGeneration,moment);
+        await showPreparedVideo(detail.asset,epoch,viewerGeneration,moment,videoProbe);
         if(stale(epoch)||viewerGeneration!==state.viewerGeneration||!$('viewer').open)return;
       }
       else {
@@ -3010,7 +3031,12 @@
       }
       await failure(error,epoch);return false;
     }
-    finally{if(!stale(epoch)&&viewerGeneration===state.viewerGeneration){sequenceState.busy=false;updateSequence();scheduleSlideshow();}}
+    finally{
+      videoProbe?.cancel();
+      if(!stale(epoch)&&viewerGeneration===state.viewerGeneration){
+        sequenceState.busy=false;updateSequence();scheduleSlideshow();
+      }
+    }
   }
   async function loadViewerCaptions(item,epoch,viewerGeneration){
     const controller=new AbortController();

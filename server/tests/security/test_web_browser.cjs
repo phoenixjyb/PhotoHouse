@@ -628,7 +628,20 @@ let browser;
     assert.equal(await page.locator('#view-video-fullscreen').isHidden(),true);
     await page.locator('#close-viewer').click();
     await mutate('prepared-video-ready');
-    await openAsset('105');
+    const playbackPath='/assets/105/playback';
+    const detailPath='/assets/detail/105';
+    const preparedFrom=browserRequests.length;
+    const heldDetail=delayNext(url=>url.pathname===detailPath);
+    const readiness=page.waitForResponse(response=>response.request().method()==='HEAD'&&
+      new URL(response.url()).pathname===playbackPath,{timeout:2500}).then(response=>response.status(),()=>null);
+    try{
+      await openAsset('105');await heldDetail.seen;
+      assert.equal(await readiness,200,'the protected readiness request should complete while asset detail is held');
+      assert.equal(await page.locator('#viewer-media video').count(),0);
+      assert(!browserRequests.slice(preparedFrom).some(request=>request.method==='GET'&&request.path.startsWith(playbackPath)));
+    }finally{
+      heldDetail.release();
+    }
     const video=page.locator('#viewer-media video');
     await page.locator('#view-video-fullscreen').click();
     await page.waitForFunction(()=>document.fullscreenElement===document.querySelector('#viewer-media video'));
@@ -642,6 +655,7 @@ let browser;
     assert(!browserRequests.some(request=>request.method==='GET'&&/^\/assets\/(101|102|105)\/(media|original)\b/.test(request.path)));
     assert.deepEqual(external,[]);
     assert.deepEqual(errors,[]);
+    checkpoint('Prepared video readiness overlaps the exact detail read; playback waits for both checks');
     checkpoint('Prepared video plays in native fullscreen; unavailable video offers retry through the protected route');
     await ctx.close();
     return;

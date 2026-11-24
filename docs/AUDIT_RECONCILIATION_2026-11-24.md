@@ -195,6 +195,19 @@ decode. The median was **295.2 ms** (288.2–300.1) at `0f1130b` and **38.0 ms**
 measures the dependency on the description request. Home-network, phone and
 representative-library timing remain open.
 
+For prepared videos, the viewer now checks readiness alongside the authorized
+asset detail request. It creates the player after both checks pass. A held
+detail response let the generated readiness request finish without a playback
+GET. Prepared video and exact-moment playback still passed.
+
+Four alternating Chromium runs used the same generated clip and service, with
+120 ms added to each detail and readiness response. Across 12 warm opens per
+version, the median click-to-first-presented-frame time fell from **326 ms**
+(310–328 ms) to **177 ms** (176–193 ms). The two first opens per version took
+418 ms each before, and 269 and 286 ms afterward. These are generated
+measurements with controlled delays. Physical player, scrolling and network
+performance remain open.
+
 ### Generated library-selector timing
 
 The Web library selector requests the navigation projection of the existing
