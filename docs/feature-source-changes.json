@@ -38355,6 +38355,102 @@
         }
       ],
       "notes": "Offer a reviewable Any date instruction for a dated current Search. The user sends it and existing nondate filters remain bound."
+    },
+    {
+      "feature": "windows_android_development_storage",
+      "source_commit": "c8477dd1a295404bf3fb9cf899b62007921336cb",
+      "files": [
+        {
+          "path": "docs/STORAGE_POLICY.md",
+          "before_sha256": "77006bb2d352b5f5784d322c1891c8dba7eb9d9f632287e83b963105cf502fe2",
+          "sha256": "141a3718c7b83f840f591d304454da9ccfa9c1abda7e440ef58330827391775c"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "eb42be08b33e8d9cba702600160d7f1368b7ae8c40b57a50e668aec4a9d98ca1",
+          "sha256": "e55b73b0ba78ecf5fca3f796f340f7303928f3bcfa144d58982ac3732cbcba7c"
+        },
+        {
+          "path": "tools/check_windows_storage.py",
+          "before_sha256": "4e4cd8dcf4549e692385f9ef517222af1e50e65de171272b8527ad6ae3750b03",
+          "sha256": "cc069e8d07f6c1ace2e781befcd1dd31cdc05d7384c5f4c554566e34fded0c4b"
+        },
+        {
+          "path": "tools/tests/test_check.py",
+          "before_sha256": "980775dfc84218b5be236a19e627bb6205631189c4249f51a7fb187e766d2f31",
+          "sha256": "253ab783a44bcd86145617d58e442fe80b7431802da2c06493f5275675521823"
+        }
+      ],
+      "notes": "Route the native Android check cache and temporary files to reviewed data storage. Local tests cover cache reuse, temporary cleanup and early refusal of the system volume."
+    },
+    {
+      "feature": "story_drafts_from_recent_groups",
+      "source_commit": "8a798ab3e11cbb983c8429c7e6b1ee4bffc746c4",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "f87d68172bad05b5b01d0515da72e27eca27f17e782decff1b68dd1583a5ac56",
+          "sha256": "79fd96e9de108ed3d7376a768315442fdc6740f88d3d794918997c5296534fe5"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "6f4c0156f53e2e948287ba04336cc521ba7b27b6a99e8ef0a8f5956e3ff3a469",
+          "sha256": "67596c572e671f85a86dc97a39ccafde2ffccc8e62e4b2b35efdbe1a6afa9f1a"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "af183dceb26e5d9308d0fd6b592da92d57041de9be1f777c73df5ba9a104e36f",
+          "sha256": "9493ea14340a23ce1beb7989b5a866fc85c5f8f8c1bc028eefd6112766043c49"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "96c51eca9a0feed6861ba8171b5b7cdea5ed0c1542187257c22d0fb801b11ccd",
+          "sha256": "e1d2b1daa4fe9a00a675c36a31aedac2ec111d9af5ccae1132f2e89049958411"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "bd01670d777ab9b06449ea003a0cb583a898d93102d3496e21e88c87e2106616",
+          "sha256": "031f9b1dc53763fe8f63101f8e04fbea7868e2c76ee1ca4613e82287917792e8"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "e3d478676ed6a7bfee4d624a69d3f653c292d2274399d3c3991ddf411d92ec0f",
+          "sha256": "e07ac9497e815fa609e8c8826bd3d121127663b63ea2b61039f255d68a5eee08"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "edb65237c1396d995b475c9d51c694722701fec140b662230036308f3bd0d3fc",
+          "sha256": "00732fd535250d86627e583045d1ccb530b4e7f0aa6350479f5bc57d3b4d42bd"
+        }
+      ],
+      "notes": "The generated browser opens an unsaved story from separately revalidated group revisions and preserves the chosen order, including previously split groups."
+    },
+    {
+      "feature": "bilingual_roadmap_and_release_status",
+      "source_commit": "cc620627b8d50018f2279c1acf574a9fe0e7e854",
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "310f129ba683c5874de0f42a585885144da02c3beaf3980ad5040b38b4f6e1ab",
+          "sha256": "97ff833cd86461b0f92b669d465369855b60e1ad199f56955b94db6973476e9a"
+        },
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "dd21244fe8d08f4a6ecc36ea68913e0fc23d33c8afc1ba74ef16850523bb576f",
+          "sha256": "71c77f754c05da4d3a6343ee89f23effaae4bab9e80901a2fb2923b118c4b80e"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "5066f529c56d78b9be1f6d8992ecbb1c8f1cac49f6002acb32d693d29e0ea5d0",
+          "sha256": "1a6daeb9ce2e7d24866fb7970caf3bdc693a5a506e833af653ec6779dbbd7024"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "7f20f5097dd3997a093c62f721cb6c9d593a3d4f2cf9f8cec243403979530842",
+          "sha256": "3203bd7047a77d9844630abcd93292948ec4e56226972d6d1f372f27bbe2f8f0"
+        }
+      ],
+      "notes": "Reconcile the public bilingual roadmap, current local proof and earlier Windows delivery."
     }
   ]
 }
