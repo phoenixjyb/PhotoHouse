@@ -254,6 +254,13 @@ let browser;
     args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
   if(process.env.PH_BROWSER_INVITE_LINK==='1'){
     const ownerContext=await context(browser);await ownerContext.grantPermissions(['clipboard-read','clipboard-write'],{origin:'https://photohouse.test'});
+    await ownerContext.addInitScript(()=>{
+      window.inviteShareCalls=[];
+      Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{
+        window.inviteShareCalls.push({data,activated:navigator.userActivation.isActive});
+        if(window.inviteShareError)throw new DOMException('Generated share refusal',window.inviteShareError);
+      }});
+    });
     const owner=await ownerContext.newPage();await auth(owner,'+12025550100');
     await owner.locator('#owner-panel summary').click();await owner.locator('#invite-phone').fill('+12025550103');await owner.locator('#invite-form button').click();
     await owner.locator('#created-code').waitFor({state:'visible'});
@@ -262,6 +269,32 @@ let browser;
     const link=await owner.evaluate(()=>navigator.clipboard.readText());
     assert.equal(link,`https://photohouse.test/ui#invite=${code}`);
     assert(browserRequests.slice(beforeCopy).length===0,'copy action must not send a request');
+    assert.equal(await owner.evaluate(()=>window.inviteShareCalls.length),0);
+    await owner.setViewportSize({width:390,height:850});
+    const share=owner.locator('#share-invite-link'),beforeShare=browserRequests.length;
+    await share.click();
+    const payloads=await owner.evaluate(()=>window.inviteShareCalls);
+    assert.equal(payloads.length,1);
+    assert.equal(payloads[0].activated,true);
+    assert.deepEqual(Object.keys(payloads[0].data).sort(),['title','url']);
+    assert.equal(payloads[0].data.url,link);
+    await owner.evaluate(()=>{window.inviteShareError='AbortError';});
+    const noticeBeforeCancel=await owner.locator('#status').textContent();
+    await share.click();
+    assert.equal(await owner.locator('#status').textContent(),noticeBeforeCancel);
+    await owner.evaluate(()=>{window.inviteShareError='NotAllowedError';});
+    await share.click();
+    await owner.locator('#status').filter({hasText:/share menu is unavailable|暂时无法打开分享菜单/}).waitFor();
+    assert.equal(await owner.locator('#copy-invite-link').isVisible(),true);
+    assert.equal(await owner.evaluate(()=>navigator.clipboard.readText()),link);
+    assert.equal(browserRequests.slice(beforeShare).length,0,'sharing does not contact PhotoHouse or a third-party service');
+    await owner.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+    assert.equal(await owner.locator('.invite-actions').evaluate(actions=>
+      actions.scrollWidth<=actions.clientWidth&&[...actions.querySelectorAll('button')].every(
+        button=>button.getBoundingClientRect().height>=44)),true);
+    await owner.locator('#invitation-result').screenshot({path:path.join(artifacts,'family-invitation-mobile.png'),
+      mask:[owner.locator('#created-code')],maskColor:'#e9ece9'});
+    checkpoint('Supported browsers offer an explicit native share action, preserving copy after cancellation and unavailability');
     const joinedContext=await context(browser),joined=await joinedContext.newPage();
     const beforeOpen=browserRequests.length;await joined.goto(link);await joined.locator('#auth').waitFor({state:'visible'});
     assert.equal(await joined.evaluate(()=>location.hash),'');assert.equal(await joined.evaluate(()=>location.search),'');
@@ -278,6 +311,14 @@ let browser;
     await joined.locator('#phone').fill('+12025550103');await joined.locator('#password').fill(PASSWORD);await joined.locator('#name').fill('Synthetic invited member');
     await joined.locator('#auth-submit').click();await joined.locator('.asset').first().waitFor();
     assert.equal(await joined.locator('#owner-panel').isVisible(),false);assert.equal(await joined.locator('.asset').count(),2);
+    await owner.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:undefined}));
+    await owner.locator('#invite-phone').fill('+12025550104');
+    const laterInvitation=owner.waitForResponse(response=>response.request().method()==='POST'&&
+      new URL(response.url()).pathname.endsWith('/invitations'));
+    await owner.locator('#invite-form button').click();
+    assert.equal((await laterInvitation).status(),201);
+    await share.waitFor({state:'hidden'});
+    assert.equal(await owner.locator('#copy-invite-link').isVisible(),true);
     assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
     checkpoint('Malformed and signed-in invitation fragments are scrubbed without prefill; explicit phone-bound signup succeeds');
     await ownerContext.close();await joinedContext.close();return;

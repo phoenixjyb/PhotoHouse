@@ -37369,6 +37369,43 @@
         }
       ],
       "notes": "The saved edition uses current markup while explicitly omitting the legacy optional controls. The memoir font test establishes a nonzero reading position and activates the focused control by keyboard. Both generated journeys passed without changing served code."
+    },
+    {
+      "feature": "audit-family-invite-sharing-20261125",
+      "source_commit": "c4f107be5948c0a65e4b0fde61e5246e847090d7",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "41ba73e625b3702998a28d7c1d5fc1c54e51e840bc13145d5f13dd4f68edb312",
+          "sha256": "507b4f15ee4973f4b1c747679a27427ed8ad292ebe94031abd174c0625e1bde9"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "62e906f999cfe9325d3398dea18daab252942d657670032230eae7a8a6acc410",
+          "sha256": "8a76083ea5e0750cebc2e27790b1606339ceba9a5d651e709614ea7f39923d45"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "d490fb40afe88c7dbd0e4384c779a04e3ce152f2a35ff5543819edc08e9a1d92",
+          "sha256": "b7dda9189990c90131ed563af8679791c9e271a2c34a75b3c27910146aaaedf5"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "62ae46d171a637c4ffd4cbae5d4a6fb166c255dd684dff0123adc51b6bbe24c6",
+          "sha256": "97a82a179cb872a0727d8fe8e22cdab0dca9d0f65ad2b69e6113fc326a384729"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "5575b83e30c36323e5943fbe12e77de91dd0ec5945ab5ee80375f46376a65015",
+          "sha256": "8aff241eccd02e595a17d8ef690e8bfdf14fdc6ca93bb16a75f21ece90194c1a"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "57116a470c970a96c118e2d2e81a65fcf79e592310cf622776d2217b83ffb966",
+          "sha256": "de86d4ea0c9c4697d7302cff1795c0c341bddabcce6d6a8c2da6f9bb32083971"
+        }
+      ],
+      "notes": "Explicit user activation shares only the same-origin registration link through a supported device menu. Generated Chromium verified fallback copy, cancellation, large-text mobile controls, no network use and explicit phone-bound registration."
     }
   ]
 }

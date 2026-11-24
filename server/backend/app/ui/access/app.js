@@ -606,6 +606,14 @@
   Object.assign(words.en,{assistantPrivacyDetails:'Privacy and voice',assistantComposerPlaceholder:'Tell Jude what you’re looking for…',assistantWorkspaceKicker:'PHOTOHOUSE · PRIVATE ASSISTANT'});
   Object.assign(words.en,{copyInviteLink:'Copy registration link',inviteLinkCopied:'Registration link copied. It expires in 24 hours and works only for the invited phone number.',inviteLinkCopyFailed:'Could not copy the registration link. You can still send the invitation code privately.'});
   Object.assign(words.zh,{copyInviteLink:'复制注册链接',inviteLinkCopied:'注册链接已复制。有效期为 24 小时，且仅适用于受邀的手机号码。',inviteLinkCopyFailed:'无法复制注册链接。你仍可以私下发送邀请码。'});
+  Object.assign(words.en,{
+    shareInviteLink:'Share invitation', inviteShareTitle:'PhotoHouse library invitation',
+    inviteShareFailed:'The share menu is unavailable. You can copy the registration link.',
+  });
+  Object.assign(words.zh,{
+    shareInviteLink:'分享邀请', inviteShareTitle:'PhotoHouse 相册库邀请',
+    inviteShareFailed:'暂时无法打开分享菜单。你可以复制注册链接。',
+  });
   Object.assign(words.en,{oralHistory:'Oral history',oralHistoryUnavailable:'Your recordings are unavailable. Reopen this panel to try again.'});
   Object.assign(words.zh,{oralHistory:'口述历史',oralHistoryUnavailable:'暂时无法打开你的录音。请重新打开此面板重试。'});
   function translate() {
@@ -3794,17 +3802,38 @@
     try {
       const result=await request(`/libraries/${encodeURIComponent(library)}/invitations`,{method:'POST',body:{phone},epoch});
       state.invite={code:result.code,library};$('created-code').value=result.code;$('invitation-result').hidden=false;status('');
+      const share=$('share-invite-link');
+      if(share)share.hidden=typeof navigator.share!=='function'||!registrationLink(state.invite);
     } catch(error){await failure(error,epoch);}finally{state.busy=false;}
+  }
+  function registrationLink(invite) {
+    if(!invite||invite.library!==state.library||typeof invite.code!=='string'||
+        !/^[a-f0-9]{8}(?:-[a-f0-9]{8}){3}$/.test(invite.code))return null;
+    return `${location.origin}${location.pathname}#invite=${invite.code}`;
   }
   async function copyInviteLink() {
     const invite=state.invite,epoch=state.generation;
-    if(state.busy||state.locked||!invite||!/^[a-f0-9]{8}(?:-[a-f0-9]{8}){3}$/.test(invite.code))return;
+    const link=registrationLink(invite);
+    if(state.busy||state.locked||!link)return;
     try {
       if(!navigator.clipboard?.writeText)throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(`${location.origin}${location.pathname}#invite=${invite.code}`);
+      await navigator.clipboard.writeText(link);
       if(!stale(epoch)&&state.invite===invite)status('inviteLinkCopied');
     } catch {
       if(!stale(epoch)&&state.invite===invite)status('inviteLinkCopyFailed');
+    }
+  }
+  async function shareInviteLink() {
+    const invite=state.invite,epoch=state.generation,button=$('share-invite-link');
+    const link=registrationLink(invite);
+    if(state.busy||state.locked||button.disabled||!link||typeof navigator.share!=='function')return;
+    button.disabled=true;
+    try {
+      await navigator.share({title:t('inviteShareTitle'),url:link});
+    } catch(error) {
+      if(error?.name!=='AbortError'&&!stale(epoch)&&state.invite===invite)status('inviteShareFailed');
+    } finally {
+      button.disabled=false;
     }
   }
   async function cancelInvite() {
@@ -5376,6 +5405,7 @@
   $('transfer-review').addEventListener('cancel',event=>{event.preventDefault();if(!transferState.busy)$('transfer-review').close();});
   $('invite-form').addEventListener('submit',event=>{void invite(event);});
   $('copy-invite-link').addEventListener('click',()=>{void copyInviteLink();});
+  $('share-invite-link')?.addEventListener('click',()=>{void shareInviteLink();});
   $('oral-history-panel').addEventListener('toggle',async event=>{
     const panel=event.currentTarget,epoch=state.generation;
     if(!panel.open){oralHistory?.clear();return;}
