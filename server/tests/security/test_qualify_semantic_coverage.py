@@ -204,6 +204,8 @@ def test_changed_pinned_input_never_publishes_measurement(full_catalog, tmp_path
             omission_review_path=review_path,
             queries=[{'id': 'en', 'language': 'en', 'text': 'a garden scene'}])
     assert not (output / 'measurement.json').exists()
+    if target == 'index':
+        assert model.encode_count == 1
 
 
 def test_oversized_review_is_refused_before_payload_read(full_catalog, tmp_path, monkeypatch):

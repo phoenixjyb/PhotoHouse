@@ -845,6 +845,9 @@ def _run_canary(resources, network_enabled, loopback, provider_context, provider
         protected.append("three_language_exclusions_clarified_before_provider_and_vectors")
 
         warm, elapsed = request(queries[0]["text"])
+        # Refuse source drift before recording samples or changing the synthetic
+        # fixture. A later restore probe cannot repair a changed candidate index.
+        _require(_record_digest(index_path) == index_hash, "candidate_files_changed_during_canary")
         _require(warm.status_code == 200, "warmup_failed")
         coverage(warm.json(), len(omitted))
         warmup_profile_ordinal = last_profile_ordinal[0]
