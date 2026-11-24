@@ -36688,6 +36688,171 @@
       "live_runtime_changed": false,
       "providers_activated": false,
       "scope": "Do not run further inference or synthetic recovery probes after the exact candidate index changes during warmup."
+    },
+    {
+      "feature": "audit-oral-history-recorder-group-coverage-and-recovery",
+      "source_commit": "1502029147056ffd3b14a52f0b947816f1b2a5c1",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "f6f6791014ce65e557b62fc273971f5dd92311dc347756908836bcd4b12c5855",
+          "sha256": "9397a5a971c11cf9a481b3f6d56ed0471a4f05ebe503c9e6618c0327ae7b688d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "4291f769c16f0a440f35e1e13b78e0308c7bb241e7efbedfe3bf79c680787b94",
+          "sha256": "4d2b10913f981b8dd48b6f86f628ab425cb326cbcb80648782dbd047df293c2b"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "8482a37aa6d0464bc4cfbe6c8c6eb60d1ed472e2319ecd8ec3da0afa41a15c44",
+          "sha256": "e505e3b9e2ae126288e9546d09c593c0a2777199e453fa665bc9a0afeb643e34"
+        },
+        {
+          "path": "docs/PRIVATE_KINSHIP_SEARCH.md",
+          "before_sha256": "4ba5e856e3f8814220c6e3c76f5c62b3c19c559334aa92b15341749a5cb98d58",
+          "sha256": "1056fedbb6e747785c1593b6fdc9b97707135c3b57bb36627c9ba8b0951752e4"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "e6eea1993eb02732a83ef28749b67f2d57dbc62d5679aeb7cd64eef73736743e",
+          "sha256": "aa2bda018ff948221c7e1e206668492e2ffdf7f2eafaf018a66776f3fcdfc1bc"
+        },
+        {
+          "path": "server/README.md",
+          "before_sha256": "556977246e081582028b265da66580b773f39a065e5ccd100948501de47078b9",
+          "sha256": "622fb25d274cf58bab9a788d08af9e45f7221233136feb53da350132a856f674"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "b1e54384eca60e1d1db9b8f6eb0fd7d69c2580c7a7a2eb9d377140b7e44f975e",
+          "sha256": "ecafc9ed9d3953e899b821e4a2cefc24d9dd75f79277e517df96bc2365891a1f"
+        },
+        {
+          "path": "server/backend/app/access/memory_group_transport.py",
+          "before_sha256": "17b59ed23c49ebdcbbea0c193936dd7340aabf589a91abadf4bf91aaf15af369",
+          "sha256": "7d3942355f96ad6e3f60aac61fe72f39316cf4b3d1f457a11b51cb35534cb9c8"
+        },
+        {
+          "path": "server/backend/app/access/memory_grouping.py",
+          "before_sha256": "8b41cf3b19fd6382534864635d7313f4367b6ab515c1fb1fbde66beca8582942",
+          "sha256": "62ac41e5511bd968452a27a43f5b61dc812418c0a231531ddb08415409997ca3"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_intake.py",
+          "before_sha256": "251f19c62469d9156376216f53f4cd35fb596a6e468a315c31737fa920d9a8e4",
+          "sha256": "e5edcf3f555337f37c12ee7f70a7c6c680788bc090c482dd584c15d3fd10e6f0"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_transport.py",
+          "before_sha256": "9a9be9d1fd1701f23cae7ba0d60927b816680aa25ecf81c67419332392504ca7",
+          "sha256": "5186cb50fb408573d30c11bc57233cff1632678be254d858f695db364943e55c"
+        },
+        {
+          "path": "server/backend/app/access/transport.py",
+          "before_sha256": "5cfcd821b896625762a86781b5f7054cc445b71bdf50fffe3f73ca3da7c2b67c",
+          "sha256": "927a691620f47c3c5eb2ded4e14c5723cc4963ff6c970d66c5e425e571ce91a3"
+        },
+        {
+          "path": "server/backend/app/access/visual_vector_loader.py",
+          "before_sha256": "6a8d95b6f65df51d9b73d5599c25137719afe3646caf5d3abbf2aa8290e81d1d",
+          "sha256": "12ddc21de1e4e6a913cfb294b0cecfe186c4864ea14b1484280b90ac69b6157d"
+        },
+        {
+          "path": "server/backend/app/routers/ui.py",
+          "before_sha256": "437099903d8b5c0558631eb119d5295dff8a28d4c25a6d6715c6c79e6681473d",
+          "sha256": "80574296a55b74b990142958d277e66ec55264d40e590dd2e6f1388dd002f940"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "cbd7a4beff103eb89d68a18f38286b5e78346c2718141fb655d0def162ba478a",
+          "sha256": "2e88fc5311d21967eaefec7186fa9bf1969edcac03ae3f7dc16b9de44d028c52"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "6eaa2ba85981f5861adaf855a8bedc47e82458422ffd26fb59a7d3d45c714378",
+          "sha256": "bb14d7860b7c85a1326229ddb774f8a4bb53459b2e0411dfb184c0a12d6de7f8"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "1fab42399db835ebbc6812103cde6046b4d291f0b4bcb7582c40dd54745e5ff0",
+          "sha256": "624dfe15f4ef152e1d9b57b4c94e9d63c1c7e94420ec5c2cf63d66e947c45e57"
+        },
+        {
+          "path": "server/backend/app/ui/access/oral-history.js",
+          "before_sha256": null,
+          "sha256": "778a628e7f67c23b386d6ed7fc67762b43a160a3d8b5bf0fcb38bc83d15b2cf2"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "75315000ce6b60285c1d401fe42bb3457493183749e2b1d9273c26d9fe1d240f",
+          "sha256": "9e5ee84f77b6c3590ee9cc84abac8e25114d1435ade1e2bf8b5353682c3dfcc9"
+        },
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "01cdf3dcb6157f3230f4948bd76c8002954c892165a5884ea3f855b3833784e8",
+          "sha256": "117f7209dd64121a57f395a7adb5c98271e3bb201817f447f45e6ea1c560d255"
+        },
+        {
+          "path": "server/scripts/prepare_kinship_revision.py",
+          "before_sha256": "f2a7dec9bfc3f478c800bfb295ff4363a016321617be50664b6ebf9cba5e03a2",
+          "sha256": "4f0fa91fa558fe345d6917c3dbad4486353c5aabd44a459b16f62ea0d20f3d63"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "before_sha256": "221d37d60274db2783260fb4142eb855fb3b036f1eaa4a98be2575b8c4a66319",
+          "sha256": "73682ebaf73dc6403ffb10248f7c1cb1447d7fd4df90fc1ecaa4cb86aa5e8ac9"
+        },
+        {
+          "path": "server/tests/security/package_smoke.py",
+          "before_sha256": "2bdd68b51d702ab438f4c0ada340275a7c8babcf9f32078edb7395e3dfb08a24",
+          "sha256": "411f3243b10086d1bec8d089490d2faa0fdd38e06a9283600ccf4091f38dc22d"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "5ffb57f84c56c03aaf2d3b7eec95bd2c1d31ea3103b3cc69cfb97cc54eb1dca3",
+          "sha256": "f7ff58cfe56d43f195a32b228c533a921a9edb46f790bd48d3f1aa5d95e5c573"
+        },
+        {
+          "path": "server/tests/security/test_memory_group_routes.py",
+          "before_sha256": "f9826e15339ccf70c3c779185f9344581d0ad0ff25635a355e7b12736d6693bf",
+          "sha256": "4342ca5b5e0b900ca64fa411fce878e986fefc80e6eed35dc900a9b4b2760559"
+        },
+        {
+          "path": "server/tests/security/test_memory_grouping.py",
+          "before_sha256": "021cad83936d8e944daf36c59431178641aefe30b42afda508983830b21c50a5",
+          "sha256": "c25f3f356c29724eb3ab1be0bbe12f25950de5e7ab6b36728e7f1b8eef2b194f"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_dom.cjs",
+          "before_sha256": "abc21ce77661c6aba4a2ae5cdbe2e63a970593439c8b16892e22e0e9ce30d556",
+          "sha256": "9331ed7c5618f8a7bfe91f4c930293e8bf097d7c243f21f61a46c4acd70ed834"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_transport.py",
+          "before_sha256": "cb064dc098ef85f088c31e4bcdfbfe8c8a3ab1c53457bab0584b6b8e6813b88a",
+          "sha256": "f589fe2518fe789813eb93f50165a84a09f1e9a87eacc2c630b56d7f0e197784"
+        },
+        {
+          "path": "server/tests/security/test_prepare_kinship_revision.py",
+          "before_sha256": "aa3f747b93105afe2a72787e95d1b0b655c1213f296446b38de0da1d6c29f712",
+          "sha256": "fc50aa1817f52febd91aae2ea260d4187d76f2bd7e59c464c4fc9d5cd351955f"
+        },
+        {
+          "path": "server/tests/security/test_staging_package.py",
+          "before_sha256": "65bbab589538d35c65a76da4eb322d2e469eb5fac9201105313a26929a0da00f",
+          "sha256": "e5170b9b06828d8ce169b2f6721743c193d6474abdfc3e5509c6452f43760317"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "f82efa435795d575db44fb32b2c6fca3ee8900f8c5e43fb92341fc8fdb5e10df",
+          "sha256": "39328f4bf0d98dbdad7517aabf2814ecb885b0a9878310d965de6c5c2a128ef1"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Opt-in recorder with receipt retry, reviewable diverse seeds, private alias revisions, and generated install/import coverage."
     }
   ]
 }
