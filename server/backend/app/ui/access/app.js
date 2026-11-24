@@ -1,6 +1,14 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
+  let registrationInvite = readRegistrationInvite();
+  function readRegistrationInvite() {
+    const fragment=location.hash;
+    if(!fragment.startsWith('#invite'))return null;
+    history.replaceState(history.state,'',location.pathname+location.search);
+    const match=/^#invite=([a-f0-9]{8}(?:-[a-f0-9]{8}){3})$/.exec(fragment);
+    return match?match[1]:null;
+  }
   const state = {language:'zh', mode:'login', generation:0, controllers:new Set(), profile:null,
     csrf:null, library:null, catalogue:null, sessionCheckFailed:false, viewerGeneration:0, page:1, busy:false, locked:false, invite:null, memberPage:1, memberGeneration:0, memberTotal:0, total:0, videoRetryTimer:null, videoController:null,captionController:null};
   let storyWorkspace, memoryCommunity, memoryGroups;
@@ -578,6 +586,8 @@
   }
   Object.assign(words.zh,{assistantPrivacyDetails:'隐私与使用说明',assistantComposerPlaceholder:'告诉小贾，你想找什么…',assistantWorkspaceKicker:'PHOTOHOUSE · 私密助手'});
   Object.assign(words.en,{assistantPrivacyDetails:'Privacy and voice',assistantComposerPlaceholder:'Tell Jude what you’re looking for…',assistantWorkspaceKicker:'PHOTOHOUSE · PRIVATE ASSISTANT'});
+  Object.assign(words.en,{copyInviteLink:'Copy registration link',inviteLinkCopied:'Registration link copied. It expires in 24 hours and works only for the invited phone number.',inviteLinkCopyFailed:'Could not copy the registration link. You can still send the invitation code privately.'});
+  Object.assign(words.zh,{copyInviteLink:'复制注册链接',inviteLinkCopied:'注册链接已复制。有效期为 24 小时，且仅适用于受邀的手机号码。',inviteLinkCopyFailed:'无法复制注册链接。你仍可以私下发送邀请码。'});
   function translate() {
     document.documentElement.lang = state.language === 'zh' ? 'zh-CN' : 'en';
     document.querySelectorAll('[data-i18n]').forEach(node => {node.textContent=t(node.dataset.i18n);});
@@ -603,9 +613,11 @@
     if(state.videoRetryTimer){clearTimeout(state.videoRetryTimer);state.videoRetryTimer=null;}
     if(state.videoController){state.videoController.abort();state.videoController=null;}
     if(state.captionController){state.captionController.abort();state.captionController=null;}
-    stopSlideshow();sequenceState.items=[];sequenceState.index=0;sequenceState.busy=false;
-    if(!keepFrame){sequenceState.frameSearch=null;sequenceState.relatedPreview=null;}
-    updateSequence();
+    clearTimeout(sequenceState.timer);sequenceState.timer=null;sequenceState.playing=false;
+    if(!keepFrame){
+      sequenceState.items=[];sequenceState.index=0;sequenceState.busy=false;
+      sequenceState.frameSearch=null;sequenceState.relatedPreview=null;updateSequence();
+    }
     resetPhotoView(keepFrame);
     faceState.load++;faceState.page=1;$('face-list').replaceChildren();$('face-panel').hidden=true;$('face-panel').open=false;$('face-status').textContent='';$('face-pages').hidden=true;
     storyState.asset=null;storyState.load++;storyState.history++;storyState.loading=false;storyState.deletes.clear();resetStoryEditor();
@@ -2848,16 +2860,25 @@
     // width at the tail of the list instead of shrinking to as few as 6.
     const start=Math.max(0,Math.min(s.index-5,s.items.length-11));
     const end=Math.min(s.items.length,start+11);
-    strip.replaceChildren(...s.items.slice(start,end).map((item,offset)=>{
-      const index=start+offset,button=document.createElement('button');
-      button.type='button';button.className='quiet';button.dataset.viewerIndex=String(index);button.disabled=s.busy;
+    const sources=s.items.slice(start,end).map(item=>safeMediaURL(item.id,'thumbnail'));
+    // Retain the same authorized thumbnail across loading and adjacent steps.
+    for(const button of Array.from(strip.children)){
+      const offset=Number(button.dataset.viewerIndex)-start;
+      if(offset<0||offset>=sources.length||button.firstElementChild?.getAttribute('src')!==sources[offset])button.remove();
+    }
+    for(const [offset,src] of sources.entries()){
+      const index=start+offset,current=strip.children[offset];
+      let button=current;
+      if(current?.dataset.viewerIndex!==String(index)){
+        button=document.createElement('button');
+        button.type='button';button.className='quiet';button.dataset.viewerIndex=String(index);
+        const image=document.createElement('img');image.alt='';image.loading='lazy';image.src=src;
+        button.append(image);strip.insertBefore(button,current??null);
+      }
+      button.disabled=s.busy;
       button.setAttribute('aria-label',`${t('viewFilmstripItem')} ${index+1} / ${s.items.length}`);
       button.setAttribute('aria-current',String(index===s.index));
-      const image=document.createElement('img');image.alt='';image.loading='lazy';
-      // Same URL the gallery grid already requested, so the HTTP cache serves it.
-      image.src=safeMediaURL(item.id,'thumbnail');
-      button.append(image);return button;
-    }));
+    }
     if(!s.busy)strip.querySelector('[aria-current="true"]')?.scrollIntoView({block:'nearest',inline:'nearest'});
   }
   function updateSequence(){
@@ -3616,6 +3637,7 @@
     try {
       const profile=await request('/auth/session',{epoch});
       if(stale(epoch))return;
+      registrationInvite=null;
       state.sessionCheckFailed=false;
       const previousAccount=state.profile?.account_id;
       if(previousAccount&&previousAccount!==profile.account_id)clearAssistantRecoveryPointer();
@@ -3662,7 +3684,11 @@
       if(error.name==='AbortError'||stale(epoch))return;
       state.sessionCheckFailed=error.status!==401;
       if(ownsLocaleIntent)discardLocaleAssistantResume(localeIntent,{clearDraft:true});
-      if(error.status===401) {showAuth();status('');}
+      if(error.status===401) {
+        showAuth();
+        if(registrationInvite){setMode('register');$('code').value=registrationInvite;registrationInvite=null;}
+        status('');
+      }
       else {showAuth();status(errorStatus(error));}
     } finally {
       if(!assistantDeferred&&assistantRestoreGate===restoreGate){
@@ -3737,6 +3763,17 @@
       const result=await request(`/libraries/${encodeURIComponent(library)}/invitations`,{method:'POST',body:{phone},epoch});
       state.invite={code:result.code,library};$('created-code').value=result.code;$('invitation-result').hidden=false;status('');
     } catch(error){await failure(error,epoch);}finally{state.busy=false;}
+  }
+  async function copyInviteLink() {
+    const invite=state.invite,epoch=state.generation;
+    if(state.busy||state.locked||!invite||!/^[a-f0-9]{8}(?:-[a-f0-9]{8}){3}$/.test(invite.code))return;
+    try {
+      if(!navigator.clipboard?.writeText)throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(`${location.origin}${location.pathname}#invite=${invite.code}`);
+      if(!stale(epoch)&&state.invite===invite)status('inviteLinkCopied');
+    } catch {
+      if(!stale(epoch)&&state.invite===invite)status('inviteLinkCopyFailed');
+    }
   }
   async function cancelInvite() {
     if(state.busy||state.locked||!state.invite)return;state.busy=true;const epoch=state.generation;
@@ -5306,6 +5343,7 @@
   $('transfer-review').addEventListener('close',()=>{transferState.load++;transferState.review=null;});
   $('transfer-review').addEventListener('cancel',event=>{event.preventDefault();if(!transferState.busy)$('transfer-review').close();});
   $('invite-form').addEventListener('submit',event=>{void invite(event);});
+  $('copy-invite-link').addEventListener('click',()=>{void copyInviteLink();});
   $('cancel-invite').addEventListener('click',()=>{void cancelInvite();});
   $('accept-form').addEventListener('submit',event=>{void accept(event);});
   $('language').addEventListener('click',()=>{

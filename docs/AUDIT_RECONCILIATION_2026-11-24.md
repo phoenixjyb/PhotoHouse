@@ -106,16 +106,16 @@ using the same trusted HTTPS address on the home network.
 | --- | --- | --- |
 | PH-001 source integration | The November integration, Search-to-story ordering, and fullscreen viewer are on main. | Preserve the historical qualification and failed-scene drafts as separate evidence. |
 | PH-002 Search reliability | Generated English, Chinese, and mixed-language turns retain the intended month and media. A follow-up can change the month while keeping a reviewed person filter. | Native multi-turn acceptance and representative cold and warm request timings. |
-| PH-003 relevance | The scorecard counts hard-filter violations by language. Generated tests exercise the negotiated semantic turn route. | Reviewed family labels, whole-library coverage, and native quality and latency. |
+| PH-003 relevance | The generated scorecard separates ranking, hard filters, confirmed empty results, and clarification. A returned total above the complete allowed set fails the filter even when the visible page passes. | Reviewed family labels, whole-library coverage, and native quality and latency. |
 | PH-004 story integration | Generated Web journeys reopen a saved story and reload the current Jude conversation with its ordered, freshly verified frame choice. Phone and TV debug checks ran offline. | Combined installed-client journeys and physical review. |
-| PH-005 Web responsiveness | The generated browser shows a photo while the description response is held, and discards the description if you close or change photos. Thumbnail placeholders keep the same shape as loaded thumbnails. | Matched first-paint, scrolling, and video-start measurements on representative devices. |
+| PH-005 Web responsiveness | The generated browser shows a photo while the description response is held, and discards that description if you close or change photos. Thumbnail placeholders keep their shape and adjacent viewer steps retain the same authorized filmstrip images. | Matched scrolling and video-start measurements on representative devices. |
 | PH-006 Rust grouping | The qualified Rust grouping work is integrated, and the existing Windows grouping selection completed the fullscreen handoff. | Whole-refresh performance and dense-library quality. |
 | PH-007 family usability | Bilingual Home, Photos, Family, Stories, and Jude links reach existing destinations. Generated phone-width checks verify keyboard focus and enlarged text. | Usability sessions with family members. |
 | PH-008 identity and kinship | Authorized accounts can use their own reviewed perspective. A private draft tool validates explicit relationship edits and rejects a stale base. | Family-facing editing and activation review. |
-| PH-009 uploads and pairing | Android offers a cancellation retry after restart or a lost reply. The pending file stays out of upload retries. | Automatic OS-managed backup, secure pairing, iOS, and device acceptance. |
-| PH-010 voice | Generated browser and unit tests cover voice entry, recovery, half-duplex playback, and new-turn timing. | Natural speech, physical audio devices, and resource measurements with real local inference. |
+| PH-009 uploads and pairing | Android offers a cancellation retry after restart or a lost reply. Web owners can copy a phone-bound invitation link that prefills the code for a signed-out visitor and still requires explicit registration. | Automatic OS-managed backup, iOS, TV pairing, and device acceptance. |
+| PH-010 voice | Generated checks cover voice entry, recovery, half-duplex playback, and new-turn timing. The Windows bridge accepts and verifies optional exact names of installed voices without a cloud speech request. | Native listening quality, physical audio devices, and resource measurements with real local inference. |
 | PH-011 memory groups | A generated browser opens an unsaved story with a freshly verified saved group's ordered photos and theme. Review, exclusion, and exact-save retry are checked. | Automated multi-device event discovery and household review. |
-| PH-012 oral history | The generated intake checks explicit retention consent separately from processing consent. The recording resumes at its next section and a retry keeps one copy. | Protected recording transport, family consent and recording on devices, and editorial review. |
+| PH-012 oral history | Default-off protected HTTP intake accepts retention consent separately from processing consent. The generated client reopens the session, retries a section without duplication, and continues at the next section. | Recording UI, consent and capture on devices, paired live recovery, and editorial review. |
 | PH-013 video | Generated tests seek to a reviewed moment through protected playback and refuse a stale prepared version. The worker extracts a frame from a 0.4-second clip. | Household catalog preparation, automatic segment labels, and Windows worker deployment. |
 | PH-014 installation and recovery | The fresh generated demo restores an older snapshot, replays a newer withdrawal, and reopens protected HTTP with the withdrawn source hidden. | Supported installers, service lifecycle, power-loss drills, and household restore approval. |
 | PH-015 external search | The read-only search and detail boundary has a design and a generated authorization test matrix. | External transport and scoped grants. See the [external search design](EXTERNAL_SEARCH_INTERFACE.md). |
@@ -139,6 +139,15 @@ model or listener. It leaves native model timing and real library scale open.
 | Start a search | 9.710 / 11.703 ms | 9.366 / 11.298 ms |
 | Change media on the same thread | 10.115 / 10.459 ms | 9.589 / 10.677 ms |
 | Change month on the same thread | 9.787 / 10.368 ms | 9.476 / 9.804 ms |
+
+### Generated photo-viewer timing
+
+Eight runs per source alternated the same generated photo and a fixed 250 ms
+description response delay. Chromium's page clock measured from click to photo
+decode. The median was **295.2 ms** (288.2–300.1) at `0f1130b` and **38.0 ms**
+(32.2–47.4) at `2d41f0b`. The test uses an in-process generated service and
+measures the dependency on the description request. Home-network, phone and
+representative-library timing remain open.
 
 ## Parallel work with one release owner
 

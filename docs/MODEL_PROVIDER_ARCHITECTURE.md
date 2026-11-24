@@ -191,6 +191,16 @@ Their own URL/model fields and at most 30-second timeout cannot inherit memory
 worker settings. These feature flags are
 independent and the bridge never changes them.
 
+The optional Windows speech bridge flags `--zh-voice` and `--en-voice` select an
+exact installed `zh-CN` or `en-US` System.Speech voice. The bridge checks the
+selected voice on startup and selects it again for each request. An unavailable
+selection refuses synthesis rather than trying a different voice. Omit both
+flags to keep the operating system's default choices. Run `--qualify` to render
+the fixed synthetic phrases in memory, without an HTTP listener. `--check`
+checks the token file only. The local tests exercise child-process request and
+response handling. Windows listening quality and the choice of a live voice
+still need a separate native check.
+
 The source API requires the intended application-host platform explicitly and
 refuses a selected runtime on another host. Schema-1 and native schema-2 runtimes
 use their execution `platform` as the host; WSL2 uses

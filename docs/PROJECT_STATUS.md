@@ -27,6 +27,13 @@ profile at the reviewed head passed 3,776 tests and 4,553 subtests, with six
 skips. The generated recovery demo and Android phone debug build passed.
 [Family reliability PR](https://github.com/phoenixjyb/PhotoHouse/pull/120)
 
+The next source changes keep the photo filmstrip stable while browsing, add a
+phone-bound family registration link, and improve the generated Search
+scorecard's empty-result and filter checks. Configurable installed Windows
+speech voices and a default-off resumable recording API are under local
+qualification. See the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md)
+for the exact test scope and remaining live checks.
+
 ## November 24 current delivery
 
 PR #115 merged as `c7a28ef`, including Rust PR #114. The bilingual roadmap is

@@ -138,10 +138,13 @@ class SearchQualityScorecardTests(unittest.TestCase):
         self.assertEqual((score['en']['relevance_denominator'], score['en']['hit_at_5_count']), (1, 1))
         self.assertEqual(score['en']['labeled_recall_at_5'], .5)
         self.assertEqual(score['zh']['failed_dependency_count'], 1)
+        self.assertEqual(score['zh']['clarification_count'], 1)
         self.assertEqual(score['zh']['no_match_count'], 0)
         self.assertEqual(score['zh']['relevance_denominator'], 2)
         self.assertEqual(score['zh']['hit_at_5'], 0)
         self.assertEqual(score['mixed']['no_match_count'], 1)
+        self.assertEqual(score['mixed']['confirmed_no_match_count'], 1)
+        self.assertEqual(score['mixed']['no_match_false_positive_count'], 0)
         self.assertEqual(score['unassigned']['denominator'], 1)
         self.assertEqual(score['unassigned']['passed_count'], 1)
         self.assertAlmostEqual(score['zh']['elapsed_ms_median'], 20.0)
@@ -221,6 +224,10 @@ class SearchQualityScorecardTests(unittest.TestCase):
         with self.assertRaises(d.DiscoveryInvalid):
             evaluate_cases(FakeEngine(), TOKEN, 'family-private',
                            {'version': 2, 'cases': [invalid]}, clock=lambda: NOW)
+        invalid['expect'].update(kind='clarification', total=0)
+        with self.assertRaises(d.DiscoveryInvalid):
+            evaluate_cases(FakeEngine(), TOKEN, 'family-private',
+                           {'version': 2, 'cases': [invalid]}, clock=lambda: NOW)
 
         document = {'version': 2, 'cases': [case('wrong_no_match', 'en', 'no_match')]}
         with patch('app.access.assistant._turn', return_value={
@@ -230,6 +237,19 @@ class SearchQualityScorecardTests(unittest.TestCase):
         self.assertFalse(report['cases'][0]['passed'])
         self.assertFalse(report['cases'][0]['checks']['total'])
         self.assertEqual(report['scorecard']['categories']['no_match']['failed_count'], 1)
+        score = report['scorecard']['cohorts']['en']
+        self.assertEqual(score['confirmed_no_match_count'], 0)
+        self.assertEqual(score['no_match_false_positive_count'], 1)
+
+    def test_total_above_complete_eligibility_set_is_a_violation_even_with_an_allowed_page(self):
+        document = {'version': 2, 'cases': [
+            case('allowed_page_impossible_total', 'en', 'date', eligible=['101', '102'])]}
+        with patch('app.access.assistant._turn', return_value={
+                'kind': 'results', 'context': {}, 'items': [{'id': '101'}],
+                'total': 3, 'filters': {}, 'has_more': True}):
+            report = evaluate_cases(FakeEngine(), TOKEN, 'family-private', document, clock=lambda: NOW)
+        self.assertFalse(report['cases'][0]['checks']['eligible_ids'])
+        self.assertEqual(report['scorecard']['cohorts']['en']['hard_filter_violation_count'], 1)
 
 
 if __name__ == '__main__':
