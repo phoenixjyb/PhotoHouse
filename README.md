@@ -5,7 +5,19 @@
 [English / 中文 dashboard](docs/product-roadmap/index.html) · [Maintenance / 维护](docs/product-roadmap/README.md).
 
 The bilingual snapshot separates recorded delivery, source-ready work, gaps and next steps.
-双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows route: `/roadmap/` (deployment is tracked separately).
+双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows 的 `/roadmap/` 已上线并经用户确认。
+
+## 当前交付：2026-11-24
+
+[PR #115](https://github.com/phoenixjyb/PhotoHouse/pull/115) 已合并到 main（`c7a28ef`），包含 Rust PR #114。
+Windows 已通过受保护的源码覆盖方式上线四项修复：地点追问、月份纠正保留原年份、
+空白 AI 建议保留作者原章节，以及小贾临时故障后的明确重开恢复。
+现有基础运行环境、Rust 内核、模型与自动导入定时设置保留。
+
+16 项既有 HTTPS 检查与 9 项路线图检查通过；分组的自然 SYSTEM 运行正常关闭，
+但返回 `REFRESH_DEFERRED`、更新数为 0，不能称为全库扫描或家庭质量验收。
+实际清理、离线等待与所有权检查完成后才确认交付。GitHub CI 继续暂停。
+详见[本次交付与边界](docs/RELEASE_2026-11-24_FUNCTIONAL_FIXES.md)。下方较早记录保留各自日期与范围。
 
 
 PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家庭自己的设备或服务器，
@@ -13,20 +25,21 @@ PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家
 后端、Web、Android 手机与 TV 在 [PhotoHouse 主仓库](https://github.com/phoenixjyb/PhotoHouse)
 共同维护；旧应用仓库按[整合规则](docs/REPOSITORY_TRANSITION.md)保留为历史与私有运行参考。
 
-## 11 月 24 日 Web 设计改进（本地源码）
+## 11 月 24 日 Web 设计与 Windows 交付
 
 参考 Google Modern Web Guidance，统一了小贾对话界面、控件与配色，改用独立滚动的对话区，
 并检查键盘访问、小屏和放大文字、对比度及减少动画设置。切换语言时，空闲私密对话会在
 重新确认权限后恢复文字与未发送草稿，不会自动提交或开启麦克风。搜索细化、语音状态与故事选择的
-生成数据浏览器检查通过；这不代表新版已部署到 Windows，也不替代家庭实际试用。
+生成数据浏览器检查通过；新版界面及上述四项修复现已部署到 Windows，家庭实际试用仍单独记录。
 详见[设计审查与交付边界](docs/WEB_DESIGN_REVIEW_2026-11-24.md)。GitHub CI 继续暂停。
 
-两次新版界面部署被现有启动校验的 PowerShell 查询超时阻断，均已回滚。
+早期两次新版界面部署曾被启动校验的 PowerShell 查询超时阻断，均已回滚并保留失败记录。
 [查询预算修复](docs/WINDOWS_PLAYBACK_QUERY_BUDGET.md)通过 19 项本地测试与 8 次 Windows 只读查询，
 其中一次实际耗时 35 秒；新上限为 45 秒，仍受原有 900 秒总预算约束。
-该修复尚未安装到 SYSTEM 启动链，新界面尚未上线。回滚后的分组定时任务已自然运行并返回结果 0。
+该修复后来已安装到 SYSTEM 启动链，新界面与双语路线图已交付；
+本次后续功能修复及另一处计划任务快照超时的处理见上述交付记录。
 
-## 当前交付：2026-10-29
+## 历史交付：2026-10-29
 
 [PR #111](https://github.com/phoenixjyb/PhotoHouse/pull/111) 已合并到 main
 （`e808e3083af61bdbc4beae366d24da35340c5ad6`）。对应 API/Web 和新版
@@ -44,7 +57,9 @@ PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家
 - **故事草稿**：选定来源生成了结构有效、来源 ID 合法、非空且标记 `needs_review` 的未保存草稿。
   文笔质量暂缓评估；生成结果不会自动保存或发布。
 
-## 故事润色与助手模型角色
+## 故事润色与助手模型角色（早期资格记录）
+
+本节保留当时的资格与部署边界，不作为当前启用角色的自动探测；11 月 24 日交付没有更换模型或云服务。
 
 当前源码将故事润色和 Search/小贾助手配置为两个本地模型角色：故事润色使用
 Qwen3-4B-Instruct-2507，Search/小贾保留现有 qwen2.5-1.5b-instruct-q4-k-m-trial。
@@ -69,7 +84,9 @@ rollout 在产生效果前被拦截。Search 与照片分组仍走现有路径�
 **GitHub Actions 因成本暂停。** 不启用、触发、重跑工作流，或推送会触发它们的修改，
 直到维护者明确恢复。继续使用本地检查；GitLab CI 是独立配置，不能假设已接通。
 
-## 10 月 30 日改进交付
+## 10 月 30 日改进交付（历史记录）
+
+以下“尚未合并／部署”描述当时状态；后续主仓库整合及本次交付以上方 11 月 24 日记录为准。
 
 更紧凑的聊天界面和有界对话上下文已在 Windows 部署（源码 `daa7e14`；
 这一增量尚未合并到 main）。实际 HTTPS 验证了两轮搜索、历史读取、同请求恢复，

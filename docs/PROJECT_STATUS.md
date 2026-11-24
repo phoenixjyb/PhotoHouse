@@ -4,9 +4,29 @@
 > and owner-confirmed. The current integration source reconciles qualified Rust
 > history and optional TV approval, and repairs conversational Search, authored
 > chapter preservation, Jude recovery and extracted-package closure. These later
-> source fixes do not imply a new installed client or Windows feature activation.
+> fixes are now served on Windows through the qualified source overlay. They do
+> not imply a new installed phone/TV client or broad household-quality acceptance.
 > See [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md). The dated records
 > below remain historical evidence; GitHub CI is still cost-paused.
+
+## November 24 current delivery
+
+PR #115 merged as `c7a28ef`, including Rust PR #114. The bilingual roadmap is
+live and owner-confirmed. Windows also serves the four reviewed application-file
+fixes: exact-place follow-up, month correction retaining the active year,
+preservation of authored text under empty suggestions, and explicit Jude reopen
+after transient capability failures. Existing base runtime, Rust binaries,
+model/provider settings and Family importing are retained.
+
+The corrected deployment passed the actual bounded preflight, four synthetic
+Search assertions, 16 trusted HTTPS checks and nine roadmap checks. The natural
+SYSTEM grouping run drained its native Job and closed handles, returning
+`REFRESH_DEFERRED`, zero updates. This is continuity evidence, not a full sweep.
+Cleanup, source/ownership audits and 180 seconds offline completed before the
+operation was explicitly released. The earlier timeout and verified rollback
+remain preserved. See [the delivery record](RELEASE_2026-11-24_FUNCTIONAL_FIXES.md).
+
+## Historical October 29–30 snapshot
 
 
 Maintained **2026-10-30** against merged source `e808e30` and the accepted

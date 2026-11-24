@@ -2,8 +2,9 @@
 
 > **Integration note · 24 November 2026:** The [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md)
 > distinguishes current source, local checks, Windows delivery and remaining
-> device/family acceptance. The bilingual roadmap is live; the later source fixes
-> and optional TV review are tracked separately from installed capability.
+> device/family acceptance. The bilingual roadmap and four application fixes are
+> now live on Windows; optional TV review remains separate from installed capability.
+> See the [November 24 delivery](RELEASE_2026-11-24_FUNCTIONAL_FIXES.md).
 
 
 Maintained summary. PR #111 merged at `e808e30`.
@@ -18,14 +19,23 @@ requires the relevant real-world use.
 The [EN/中文 dashboard](product-roadmap/index.html) has 24 reviewed feature
 records, area/stage/priority filters and a dated evidence boundary. Both
 languages cover implementation, missing work, next increments and acceptance.
-The `/roadmap/` source route passed focused local checks; Windows deployment
-remains separate and pending the current rollout reconciliation.
+The `/roadmap/` route passed local, Windows HTTPS and browser checks; the owner
+confirmed it works. The page is a dated product record, not a live host monitor.
 
 [英／中文看板](product-roadmap/index.html)包含 24 项回顾记录，支持按区域、阶段和
 优先级筛选，并明确有日期的证据边界。两种语言均覆盖实现情况、尚缺工作、下一增量与验收。
-`/roadmap/` 源码入口已通过本地专项检查；Windows 部署单独记录，目前仍待当前部署衔接完成。
+`/roadmap/` 已通过本地、Windows HTTPS 与浏览器检查，并经用户确认；页面是有日期的产品记录，不是在线主机监控。
 
-## Current capabilities
+## Current November 24 increment
+
+Main now includes PR #115 and Rust PR #114. Windows serves the reviewed-place
+follow-up, month-year correction, authored-chapter preservation and explicit
+Jude recovery fixes. Existing base runtime, native kernels and model/provider
+settings are retained. The natural SYSTEM grouping handoff closed successfully
+with `REFRESH_DEFERRED` and zero updates; no full sweep or family quality claim
+follows. Current installed-client and voice acceptance remain separate.
+
+## Earlier capability snapshot (historical)
 
 | Area | Current state | Acceptance boundary / next gate |
 | --- | --- | --- |
@@ -42,6 +52,9 @@ See [Project Status](PROJECT_STATUS.md) and the [October 29 release record](RELE
 rollout evidence.
 
 ## October 30 delivery and candidates
+
+This section retains the October 30 evidence boundary. Later main integration
+and Windows fixes are recorded in the November 24 increment above.
 
 The October 30 Windows rollout from `daa7e14` delivered compact chat and bounded
 conversation projection; it is not yet merged into main. It does not establish

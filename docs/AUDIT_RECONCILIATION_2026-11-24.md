@@ -54,10 +54,14 @@ native Android/iOS background backup or secure pairing as completed products.
   close that dependency. Extracted smoke requests both language pages and all
   five actual asset bytes, with checkout fallback denied.
 
-These are source and generated local evidence. The later Search/Web/story fixes
-are not labelled as a new Windows deployment or a real-model relevance result.
-See the integration PR's source-bound checks; overlapping cohorts must not be
-summed into a larger claimed test total.
+These fixes were subsequently [delivered on Windows](RELEASE_2026-11-24_FUNCTIONAL_FIXES.md)
+from merged main `c7a28ef`, retaining the original base runtime and qualified
+native kernels. The first transaction rolled back after a pre-worker scheduler
+snapshot timeout; the corrected no-console launch passed, followed by actual
+HTTPS and natural SYSTEM grouping handoff checks and explicit owned release.
+Grouping deferred work with zero updates, so this is not a full index sweep or
+real-model relevance result. Overlapping local cohorts must not be summed into
+a larger claimed test total. Optional TV approval remains uninstalled here.
 
 ## Where the audit needs qualification
 
