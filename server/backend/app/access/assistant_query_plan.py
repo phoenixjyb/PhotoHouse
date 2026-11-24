@@ -68,7 +68,7 @@ _SEARCH_OPEN = re.compile(
     r')', re.I)
 _REFINE_OPEN = re.compile(
     r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
-    r'refine(?a:\b)|only(?a:\b)|filter(?a:\b)|just(?a:\b)|what about(?a:\b)|how about(?a:\b)|same but(?a:\b))', re.I)
+    r'refine(?a:\b)|only(?a:\b)|filter(?a:\b)|just(?a:\b)|what about(?a:\b)|how about(?a:\b)|same but(?a:\b)|make it(?a:\b))', re.I)
 _CONNECTORS = re.compile(r'(?a:\b)(and|or|both|together|with)(?a:\b)|和|跟|与|及|或者|或|一起|同时', re.I)
 _CONNECTORS_WITHOUT_NAMED_JOIN = re.compile(
     r'(?a:\b)(and|or|both|together)(?a:\b)|和|与|及|或者|或|一起|同时', re.I)
@@ -329,13 +329,15 @@ def _extract_dates(text, today, *, month_year=None):
         add(match, day, day)
 
     relative_month = re.compile(
-        rf'(?P<year>去年|今年|last\s+year|this\s+year)\s*'
+        rf'(?:(?P<year_zh>去年|今年)[ \t]*|'
+        rf'(?P<year_en>(?a:\blast(?:[ \t]+year)?\b|\bthis[ \t]+year\b))[ \t]+)'
         rf'(?:(?P<month_num>1[0-2]|0?[1-9]|十一|十二|十|[一二三四五六七八九])月(?:份)?|'
         rf'(?P<month_name>(?:{_MONTH_PATTERN})))', re.I)
     for match in relative_month.finditer(text):
         if overlaps(match):
             continue
-        year = today.year - (1 if match.group('year').casefold() in {'去年', 'last year'} else 0)
+        relative_year = match.group('year_zh') or match.group('year_en')
+        year = today.year - (1 if relative_year.casefold().split()[0] in {'去年', 'last'} else 0)
         raw_month = match.group('month_num')
         month = (_ZH_MONTHS.get(raw_month, int(raw_month) if raw_month and raw_month.isdecimal() else None)
                  if raw_month else _MONTHS[match.group('month_name').casefold()])

@@ -26,6 +26,36 @@ test('only a complete successful turn returns client-observed durations without 
   assert.equal(tracker.summary().requestMillis,400);
   assert.equal(JSON.stringify(tracker.summary()).includes('synthetic'),false);
 });
+test('a later completed turn replaces the prior summary and late observations cannot restore it', () => {
+  const clock={value:0},tracker=factory(()=>clock.value);
+  const observe=(phase,time,operationGeneration,changes={})=>{
+    clock.value=time;
+    return tracker.observe(state(phase,{operationGeneration,...changes}));
+  };
+  observe('listening',0,1);
+  observe('listening',10,1,{captureStarted:true});
+  observe('transcribing',100,2);
+  observe('requesting',300,3);
+  observe('speaking',400,4);
+  observe('speaking',500,4,{playbackStarted:true});
+  assert.deepEqual(plain(observe('listening',900,5)),{
+    transcriptionMillis:200,requestMillis:100,speechPreparationMillis:100,playbackMillis:400,
+  });
+  observe('listening',910,5,{captureStarted:true});
+
+  observe('transcribing',1000,6);
+  assert.equal(tracker.summary(),null,'the next recognized turn clears the previous summary');
+  observe('requesting',1050,7);
+  observe('speaking',1080,8);
+  observe('speaking',1100,8,{playbackStarted:true});
+  const latest=plain(observe('listening',1200,9));
+  assert.deepEqual(latest,{
+    transcriptionMillis:50,requestMillis:30,speechPreparationMillis:20,playbackMillis:100,
+  });
+  assert.deepEqual(plain(tracker.observe(state('speaking',{
+    operationGeneration:4,playbackStarted:true,
+  }))),latest,'a delayed callback from turn one cannot replace the latest measurements');
+});
 test('pause, end, idle and session changes clear timings', () => {
   for (const phase of ['paused','ended','idle']) {
     const clock={value:0},tracker=factory(()=>clock.value);journey(tracker,clock);

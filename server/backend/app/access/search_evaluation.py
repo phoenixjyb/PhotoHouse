@@ -15,9 +15,10 @@ from . import discovery as d
 
 _CASE_ID = re.compile(r'[A-Za-z0-9_-]{1,64}', re.ASCII)
 _EXPECT_FIELDS = frozenset(('kind', 'filters', 'top_ids', 'relevant_ids',
-                            'absent_ids', 'total', 'effect'))
+                            'eligible_ids', 'absent_ids', 'total', 'effect'))
 _KINDS = frozenset(('results', 'open', 'clarification', 'unsupported'))
-_REPORT_FIELDS = ('kind', 'filters', 'top_ids', 'relevant_ids', 'absent_ids', 'total', 'effect')
+_REPORT_FIELDS = ('kind', 'filters', 'top_ids', 'relevant_ids', 'eligible_ids',
+                  'absent_ids', 'total', 'effect')
 _LANGUAGES = frozenset(('en', 'zh', 'mixed', 'unassigned'))
 _CATEGORIES = frozenset(('person', 'date', 'text', 'scene', 'followup', 'no_match'))
 
@@ -128,6 +129,8 @@ def _validate_envelope(document):
                 _invalid()
         if 'relevant_ids' in expected:
             _expected_ids(expected['relevant_ids'], required=True, maximum=20)
+        if 'eligible_ids' in expected:
+            _expected_ids(expected['eligible_ids'], maximum=100)
         if 'absent_ids' in expected:
             _expected_ids(expected['absent_ids'], maximum=100)
         if 'total' in expected:
@@ -173,6 +176,8 @@ def _cohort_metrics(pairs):
                      if 'filters' in report['checks']]
     absence_checks = [report['checks']['absent_ids'] for _, report in pairs
                       if 'absent_ids' in report['checks']]
+    eligibility_checks = [report['checks']['eligible_ids'] for _, report in pairs
+                          if 'eligible_ids' in report['checks']]
     return {
         'denominator': len(pairs),
         'passed_count': sum(report['passed'] for _, report in pairs),
@@ -183,6 +188,8 @@ def _cohort_metrics(pairs):
         'hard_filter_failed_count': sum(not passed for passed in filter_checks),
         'absence_checked_count': len(absence_checks),
         'absence_failed_count': sum(not passed for passed in absence_checks),
+        'hard_filter_eligibility_checked_count': len(eligibility_checks),
+        'hard_filter_violation_count': sum(not passed for passed in eligibility_checks),
         'relevance_denominator': denominator,
         'hit_at_5_count': hits,
         'hit_at_5': hits / denominator if denominator else None,
@@ -343,6 +350,10 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
                 reciprocal = (1.0 / first_rank) if first_rank is not None else 0.0
                 reciprocal_ranks.append(reciprocal)
                 checks[field] = hit
+            elif field == 'eligible_ids':
+                # Similarity ranking must not add an ID outside the supplied
+                # complete set permitted by this case's hard constraints.
+                checks[field] = all(ident in expected[field] for ident in item_ids)
             elif field == 'absent_ids':
                 # Absence is proven only when the returned page is complete.
                 # With has_more, an ID beyond the page may still be present.

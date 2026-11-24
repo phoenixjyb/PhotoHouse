@@ -140,6 +140,37 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
             self.assertEqual(recovered.status_code, 200, recovered.text)
             self.assertEqual(recovered.json()['result'], value['result'])
 
+    def test_english_and_mixed_last_month_journeys_keep_refinements_in_owned_turns(self):
+        from datetime import datetime, timezone
+        self.now[0] = datetime(2026, 10, 30, 12, tzinfo=timezone.utc).timestamp()
+        headers = self.enable_search()
+        journeys = (
+            ('Find photos from last September', 'only videos', 'make it October'),
+            ('Find photos from last  year September', 'only videos', 'make it October'),
+            ('find去年September的photos', '只看 videos', 'October'),
+        )
+        expected = (
+            {'media': ['image'], 'date': {'from': '2025-09-01', 'to': '2025-09-30'}},
+            {'media': ['video'], 'date': {'from': '2025-09-01', 'to': '2025-09-30'}},
+            {'media': ['video'], 'date': {'from': '2025-10-01', 'to': '2025-10-31'}},
+        )
+        for journey in journeys:
+            with self.subTest(journey=journey):
+                tid = self.thread()['thread_id']
+                for revision, (words, filters) in enumerate(zip(journey, expected)):
+                    response = self.turn(tid, revision=revision, text=words, headers=headers)
+                    self.assertEqual(response.status_code, 200, response.text)
+                    result = response.json()
+                    self.assertEqual(result['revision'], revision + 1)
+                    self.assertEqual(result['result']['kind'], 'results')
+                    self.assertEqual(result['result']['filters'], filters)
+
+        for words in ('Find photos from lastSeptember', 'Find photos from last九月'):
+            with self.subTest(words=words):
+                malformed = self.turn(self.thread()['thread_id'], text=words, headers=headers)
+                self.assertEqual(malformed.status_code, 200, malformed.text)
+                self.assertEqual(malformed.json()['result']['kind'], 'clarification')
+
     def test_bilingual_year_ranges_use_capture_dates_in_owned_recoverable_turns(self):
         self.enable_search()
         self.update("UPDATE assets SET mime='video/mp4',taken_at='2019-01-01 00:00:00.000000' WHERE id=101")
