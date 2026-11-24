@@ -37095,6 +37095,28 @@
         }
       ],
       "notes": "Default-off author-private completed-session review, bounded checked WAV playback on explicit request, generated access/reload coverage and current audit status."
+    },
+    {
+      "feature": "audit-roadmap-companion-and-export-consistency",
+      "source_commit": "af5ab8b63d17898cce36e15daa05e8ef719d0306",
+      "files": [
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "0ed68c4a1970cb351bc8e88f8ff8ea4926f7ee8d0765aac808ac1e501dca6386",
+          "sha256": "23c0da6c4810399563eac3e7461fce8c33eaa8b99acad22480a0b9bc6ff93089"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "93dd6fd03bbbfad059a39d540a519f18860b61bbf44949e385e6c72fad4ca5b4",
+          "sha256": "8b243929b48403188523d5170cc579a0af10e1344af1f902870b00695fd217c1"
+        },
+        {
+          "path": "server/tests/test_product_roadmap.py",
+          "before_sha256": "3f0ff9cf8f1b0610c95e303a11dcbd0203d130143932f0e379b6d1e5d013d1a2",
+          "sha256": "7059203c564914fbe7d3648f564fef43cee1473d3e786d720674581326517a02"
+        }
+      ],
+      "notes": "Regenerate the bilingual public companion from the updated data and check the exact output on the local API profile."
     }
   ]
 }
