@@ -34329,6 +34329,33 @@
         "Public project metadata only: full EN/zh feature records, gaps and next steps, fixed five-file ASGI boundary, no household or model requests. Eleven focused server cases and bilingual/responsive/keyboard browser checks passed. Windows deployment is pending.",
         "Existing documentation drift is listed rather than silently rebased by this feature. The unchanged whole-tree source checker still refuses the pre-existing Android TV build.gradle.kts digest mismatch. No whole-tree source verification or hosted CI pass is claimed."
       ]
+    },
+    {
+      "feature": "bilingual-roadmap-current-integration-evidence",
+      "source_commit": "0a4ff3d5e2209d42fea2d7070a4162207e64b54b",
+      "authored_diff_base": "4d6cc6e22cdc9d9ddd9f66bc9a67a877b1db5031",
+      "files": [
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "d540d55b922225a782c9dde371c2e844b5425273702758c014967c533d3790bf",
+          "sha256": "e6eea1993eb02732a83ef28749b67f2d57dbc62d5679aeb7cd64eef73736743e"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "135ea00a4c8e089202f949ae1e7e326abce4211392d9df3a34fa8a8e6bdab107",
+          "sha256": "93dd6fd03bbbfad059a39d540a519f18860b61bbf44949e385e6c72fad4ca5b4"
+        }
+      ],
+      "routes_added": false,
+      "route_paths": [],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "GitHub_CI": "OFF",
+      "notes": [
+        "English and Chinese records now distinguish repaired API/group binding from an actual deferred sweep with zero updates.",
+        "Web UI component delivery remains separate from household/device taste acceptance.",
+        "This source update does not claim Windows publication of the roadmap route."
+      ]
     }
   ]
 }
