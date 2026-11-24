@@ -37503,6 +37503,53 @@
         }
       ],
       "notes": "Generated author UI and API cover keyboard review, scoped edit preservation, one revision after lost acknowledgement, guarded reopen, original audio preservation, and hiding reviewed text after replaying withdrawal against an older generated backup. Review is opted in only with a separate fixture schema."
+    },
+    {
+      "feature": "reviewed-video-moment-launcher-20261125",
+      "source_commit": "6b3cc40c66cbe51328d0a23f7510ba86f231f5ba",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "eeb20e3b076cd667e584f67efe7357dbd1ff98e2ffea14ffb9e25938a125ec04",
+          "sha256": "a96a6a48af29ea8486c5aeb2aaf264106e4d2d13125a777337fb6938d9badb9d"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "8a0b1291ef629e9646165f65f5183721d7893956e1ce71a9c4b6626efc96aa5b",
+          "sha256": "ccdb3c9964763029a513f513c22aa60c8be303100312fa0e854c9c757a1b6458"
+        },
+        {
+          "path": "docs/OPERATIONS.md",
+          "before_sha256": "b8f12a15e6008db2c40f9ac47169309700d8d55167a9b6f8f5180d83c8e78db0",
+          "sha256": "b085aff0a9751f5ba947ccbf4a33dc6661a7acc91279ffc039a989670e63f2f5"
+        },
+        {
+          "path": "server/backend/app/access/runtime.py",
+          "before_sha256": "645d7bb9f656e5c5e048f5c5911db55a3ab8e66da7e672e5a81a2f39cbf8d7d9",
+          "sha256": "1b35031539555bb656ba65ae5f33c54ec74fd9d59a4e1d6fef0a4efc8ca2d390"
+        },
+        {
+          "path": "server/backend/app/access/video_moments.py",
+          "before_sha256": "3faca7254152f99a5920a23a250bcbe8157485ab7b02d3aa4ba14b85209dd9a4",
+          "sha256": "bd144daff9e7c075616ef99b027cff07714e97bbe663021e2a8876d46a2eb3f9"
+        },
+        {
+          "path": "server/scripts/staging_app.py",
+          "before_sha256": "7f667f3b82f3cfb5a56ad0cfe5f706b62877578602847c9ae4fa52390111d5f5",
+          "sha256": "c61c53170493968114eab4979707f6fc596e7ff090c50bf339644869985ed669"
+        },
+        {
+          "path": "server/tests/security/test_staging_launcher.py",
+          "before_sha256": "f8d5af32049fc3e70d532b1400bc746f10eaec2b2020aa63fcec9daf17a7a138",
+          "sha256": "b431100b6ac4e583b05ee4b787a1d354dbd56623d5bc45199353694d762d4ca5"
+        },
+        {
+          "path": "server/tests/security/test_video_moments.py",
+          "before_sha256": "c03ce55eaf54cccaf6a58956dde4f5fe6b329a1299dbb18eb6bd299340480782",
+          "sha256": "11fbbef450e14b72f19900bd8498f9f56923343eb63d0fc1d08ad9342135458f"
+        }
+      ],
+      "notes": "Generated migrated library proves protected pinned launch and catalog tamper refusal. Default runtime and Windows selection remain unchanged."
     }
   ]
 }
