@@ -38545,6 +38545,58 @@
         }
       ],
       "notes": "Add a closed default-off group combine route, review exact ordered group and linked-note revisions with a generated Web fixture, and save one new group on identical retry."
+    },
+    {
+      "feature": "explicit-people-retention-search",
+      "source_commit": "cc9c12604860353b919341667d1e7cd1fdec0f9e",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "8657216eb8724fad2e9825af3539081c8f15f650ad2f91f357d4774dcbaf4345",
+          "sha256": "fe8eff16976ec45db537e43d8c3f504e9acf5bef2bd6d1ae24c0829723d3f5e1"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "134d85a7e049dc70623f1df5b9e4ea286d3f8f0d5da6b2fdd44ae8b68893f4c7",
+          "sha256": "41b00f9a30842f58f738d22196a29a45860d04960b951f71b13c92b625032719"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "3e0253ef3dae9ef71bb5d7bb18a2ab1d8e86e02f015aacb0126c9fd4df38c3a4",
+          "sha256": "c7416a700838cd0f0838c47076fcfe9e875fa5e0b3a7ad143d9d0dd3d9aa8941"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "c7b5601452d5275efc9eae815f9cec9ec54727741efd63a3e8ee9ad9b5aa329a",
+          "sha256": "c4624bc6b184f0458134a06ecddb4f7ab02def44496d5ce5ef08acc79ce62cee"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "92ad4a988da03df5bd61992bad802b2798fe21100ff070d6ef3c44b6b93dca58",
+          "sha256": "c95b3215c3bbf7f74039a2eb17e1b77fe40ac0c86b3857de7c34b3b329861215"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "736d1c51db0a8aaa2f561b85b2b59694037096e681dc609efbbb0cfbb79dad2a",
+          "sha256": "89da7b9e8da2df1b496b80be1b9583c939caf7a0aaa9553be30619944bf72e0e"
+        },
+        {
+          "path": "server/tests/security/test_assistant_conversational_search.py",
+          "before_sha256": "c4203c4b0fbc60bee9fce724d0a19fede30353ed34c4b053dc7b020edc67ac24",
+          "sha256": "29cb0ba5386b0a9ace4da4fd094eb3928a6c03394a2d2d058909afcada98f1ed"
+        },
+        {
+          "path": "server/tests/security/test_assistant_search_browser.cjs",
+          "before_sha256": "0434342e94673b7e5383e77fa1b97c4332ef45dee598d2cc1713426cb2e00668",
+          "sha256": "4202aeb80bb0507866092a7c0776798eefa9461bde30cd40070563d8bb690ea5"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "e477d20f2a41502376951b63f1d202c2ef167bc3fabb4de5737fe6cf56b36782",
+          "sha256": "23bd43725d4ab2727203e0365265edcd2d7e59041bb00cf5506d4d3f7df12280"
+        }
+      ],
+      "notes": "Accept supported keep-people refinements with the current reviewed filters, preserve literal content and prepare explicit people-filter removal from the Web."
     }
   ]
 }
