@@ -173,27 +173,37 @@ async function captionDecoupling(page,{staleCaptionText='caption-101'}={}){
     return Boolean(image?.complete&&image.naturalWidth>0);
   },null,{timeout:1500}).then(()=>true,()=>false);
   const open=async id=>page.locator(`.asset[data-asset-id="${id}"]`).click();
+  const descriptions=page.locator('.ai-descriptions > summary');
+  const captionReads=id=>browserRequests.filter(request=>request.method==='GET'&&
+    request.path.startsWith(`/assets/${id}/captions?`)).length;
 
+  const readsBeforeOpen=captionReads('102');
+  await open('102');
+  assert.equal(await pixelsReady(),true,'photo pixels are available with the description panel collapsed');
+  assert.equal(captionReads('102'),readsBeforeOpen,'a collapsed panel must not request descriptions');
   let held=delayNext(url=>url.pathname==='/assets/102/captions');
-  await open('102');await held.seen;
-  const visibleWhileCaptionsHeld=await pixelsReady();
-  if(!visibleWhileCaptionsHeld){
+  try{
+    await descriptions.click();await held.seen;
+    assert.equal(await pixelsReady(),true);
+    assert.deepEqual(await page.locator('#viewer-media .viewer-surface img').evaluate(img=>[img.naturalWidth,img.naturalHeight]),[400,300]);
+    assert.equal(await page.locator('#captions [role="status"]').isVisible(),true);
+  }finally{
     held.release();
-    await page.locator('#viewer-media .viewer-surface img').waitFor({state:'attached'});
-    assert.fail('photo pixels must render while the synthetic caption response is held');
   }
-  assert.deepEqual(await page.locator('#viewer-media .viewer-surface img').evaluate(img=>[img.naturalWidth,img.naturalHeight]),[400,300]);
-  assert.equal(await page.locator('#captions p').count(),0);
-  held.release();
-  await page.locator('#captions p').filter({hasText:'caption-102'}).waitFor({state:'attached'});
-  assert.equal((await page.locator('#captions').textContent()).includes('caption-102'),true);
+  const description102=page.locator('#captions p').filter({hasText:'caption-102'});
+  await description102.waitFor();
+  await descriptions.click();
+  await description102.waitFor({state:'hidden'});
+  await descriptions.click();
+  await description102.waitFor();
+  assert.equal(captionReads('102'),readsBeforeOpen+1,'reopening the same panel reuses the visible description');
   await page.locator('#close-viewer').click();
 
   held=delayNext(url=>url.pathname==='/assets/101/captions');
-  await open('101');await held.seen;
+  await open('101');await descriptions.click();await held.seen;
   assert.equal(await pixelsReady(),true,'the next photo also renders while its captions are pending');
   await page.locator('#close-viewer').click();await open('102');
-  await page.locator('#captions p').filter({hasText:'caption-102'}).waitFor({state:'attached'});
+  await descriptions.click();await description102.waitFor();
   held.release();await pause(150);
   assert.match(await page.locator('#viewer-title').textContent(),/102/);
   assert.equal((await page.locator('#captions').textContent()).includes('caption-102'),true);
@@ -201,12 +211,24 @@ async function captionDecoupling(page,{staleCaptionText='caption-101'}={}){
   await page.locator('#close-viewer').click();
 
   held=delayNext(url=>url.pathname==='/assets/101/captions');
-  await open('101');await held.seen;await page.locator('#close-viewer').click();
+  await open('101');await descriptions.click();await held.seen;await page.locator('#close-viewer').click();
   held.release();await pause(150);
   assert.equal(await page.locator('#viewer').isVisible(),false);
   assert.equal(await page.locator('#captions').textContent(),'');
+
+  const readsBeforeRetry=captionReads('102');
+  failNextPath='/assets/102/captions';
+  await open('102');await descriptions.click();
+  const retry=page.getByRole('button',{name:'Retry description',exact:true});
+  await retry.waitFor();
+  assert.equal(await pixelsReady(),true,'an unavailable description must not hide the photo');
+  assert.equal(captionReads('102'),readsBeforeRetry+1);
+  await page.locator('#captions').screenshot({path:path.join(artifacts,'description-retry.png')});
+  await retry.click();await description102.waitFor();
+  assert.equal(captionReads('102'),readsBeforeRetry+2);
+  await page.locator('#close-viewer').click();
   assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
-  checkpoint('Photo pixels render before captions; late captions stay bound to the open asset');
+  checkpoint('Descriptions load on demand, retry explicitly, and stay bound to the open photo');
 }
 async function ids(page){return page.locator('.asset-label').allTextContents();}
 async function checkFullscreenPhotoLayout(page){
