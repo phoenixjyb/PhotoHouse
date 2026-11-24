@@ -36189,6 +36189,141 @@
       "schema_changed": false,
       "live_runtime_changed": false,
       "providers_activated": false
+    },
+    {
+      "feature": "audit-family-navigation-upload-cancellation-and-media-reliability",
+      "source_commit": "7e57c8ac87cb7a474528514ec55e98c2b72e9521",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ImportStatusPanel.kt",
+          "before_sha256": "363428462ca9479ccd29b5c16e438c064ee0b6678083e71da070a681c1b005e8",
+          "sha256": "1146be39c65590bf10c0ff2a629fb4c7fdabeee16682a7b1f50bb926afd490b1"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/BatchUploadQueue.kt",
+          "before_sha256": "ea92ead9a0caa3087b84612b6a8d235f713b2e7d04081f61d290aa3a70bfd5fe",
+          "sha256": "d244fee87bf79aa444913ff36e28a7096aa31529c94d246f5e0789292a5710d6"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/UploadFailure.kt",
+          "before_sha256": "461646d1bbc02514122f88f38e2ccd6a28da30bd4e1fb925656af6cfe96d1a31",
+          "sha256": "0f4064dbeec81122d3e8c8d0617ec64e4bfa3a8b3791f8d621cc60b69bc4be05"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/BatchUploadQueueTest.kt",
+          "before_sha256": "5e58350ec6d2c8de90864cb1d8b6bfb0385abe23dd1dc16a64b777392a09b63b",
+          "sha256": "88a0f41806ab6e6734a595cb7dd41e2ca92e57d502c7b5cf920c5859477bd81d"
+        },
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "97931253353e3f40fccd44a5f6dbb444649a08d0c2ca6b7752bbd860acec9953",
+          "sha256": "db8aa18595d0502dde6e77ed299354258189438ea8c61354adce37ea6dd5c77a"
+        },
+        {
+          "path": "docs/EXTERNAL_SEARCH_INTERFACE.md",
+          "before_sha256": null,
+          "sha256": "8c823fe099b5ad4c0fd1dd4c53bbaf5844cd781f6c1fda0547da7c1aa40e6d7e"
+        },
+        {
+          "path": "docs/OPERATIONS.md",
+          "before_sha256": "8441c1de3970b65abc22ba46cd4420c151fb98bba2ab5ffd14c124b08fb09f03",
+          "sha256": "b8f12a15e6008db2c40f9ac47169309700d8d55167a9b6f8f5180d83c8e78db0"
+        },
+        {
+          "path": "docs/PRIVATE_KINSHIP_SEARCH.md",
+          "before_sha256": "d9345f401b1c0fe58ccc070164ce4093e1c5fef39bbdef41c57854a43752e2ba",
+          "sha256": "72aa0865c83488efeb923e7f7baa24759bec4d6e332e32f6bddd3909b4efa6ab"
+        },
+        {
+          "path": "examples/generated-demo/README.md",
+          "before_sha256": "744c34f0f3db00416f2197488538f89874c694c28885d0c67d846784ae7cc989",
+          "sha256": "021024af4dca3cad26f98e06bef7479a785e91ebfe966f13bd3eec9667f8594a"
+        },
+        {
+          "path": "examples/generated-demo/check_demo.py",
+          "before_sha256": "96f8227c2b4f98b9de91fc0d574fdce98e1110b81c6349f0c5b84caf9af9ee73",
+          "sha256": "d8bb85290f13d8a3df3b5d50452d96da32aa5b1a8e8c9818c7e3516d12a5fb0a"
+        },
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "66da3e502672789f9d829ef67b37260bb98602adc64d577d42e77142d072f36b",
+          "sha256": "05af5a9ee6ca4b98d7ac3c7875f3a13e8e66a9c2f2dd2df65ce5c6a9f4681b13"
+        },
+        {
+          "path": "server/backend/app/access/kinship.py",
+          "before_sha256": "2d5371c7feb0eab3dfb9df5bd77d91a013c9a18b773bf5faed60e8e0ff1030ce",
+          "sha256": "c8f406dc587ef18d7072270eab2bd79a97d51d3448c3b8d476c6ebb5d5df8f7f"
+        },
+        {
+          "path": "server/backend/app/access/memory_grouping.py",
+          "before_sha256": "2c79abbdfd356b0d2748833be3c095292f2e6245993af51b99b444bbf2987782",
+          "sha256": "8b41cf3b19fd6382534864635d7313f4367b6ab515c1fb1fbde66beca8582942"
+        },
+        {
+          "path": "server/backend/app/tasks.py",
+          "before_sha256": "53937380b5f7ea88b8510e7bed1d1dabae32fa9859450e0415bda7c1d117f726",
+          "sha256": "2934fe120bb6b4e65d1351d9c4c2494063b820f3ecb21076c9114a670472dbe8"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "559ce233a2e79cef6b6eb767d45004c9231bde0ec95df68fa83dac8c88bb7ccb",
+          "sha256": "633d3f639c12780a189aecfa7e0b677c16d55906f98eea066a75faf6ac27cf2b"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "5834cb0fd04d16b534e73b98466f94b7c287136a3205b7b0828c653cbeb571d4",
+          "sha256": "efdf59bf2ecc8c0b3726624525c9408014947c0c696da83c880ef8c375f3713e"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "5a9ad69166e7fd5cd769ac92477c4aa1c5973fd668f31fe6476926310ead9ff4",
+          "sha256": "8f46988a3fc3bccf0dbec361e124ef941738cbb4f4901dcef96ae886fb384261"
+        },
+        {
+          "path": "server/tests/security/test_assistant_conversational_search.py",
+          "before_sha256": "25d3c1a5e84ff6976f00d345ffd968be38c12128fdcae0a94169b0e20c4eb7f0",
+          "sha256": "c4203c4b0fbc60bee9fce724d0a19fede30353ed34c4b053dc7b020edc67ac24"
+        },
+        {
+          "path": "server/tests/security/test_assistant_query_plan.py",
+          "before_sha256": "b8706326c9ac65186d9cf4f543864ce948859f4806cd91dd02c0cdb286f64932",
+          "sha256": "6b7f53a39e586070820ac4dc0cee66595b720b18155d247b6ab1abb44128bc42"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "f9061694282d7d78ed8f12d1474a1eaba42de9cca923e72fcb1ffee99cc35990",
+          "sha256": "33d79a649f632554caf3309f212c8caced7694d84f6e213054f8eab04d9ec863"
+        },
+        {
+          "path": "server/tests/security/test_kinship.py",
+          "before_sha256": "e505f5fd9785f334473f4d295fbea9bbe4d10dea3d680886633ecb0070203038",
+          "sha256": "24e30de06b8570cb192527eba19e73a33d3b1921f21fa404a539c87f5a249a2e"
+        },
+        {
+          "path": "server/tests/security/test_memory_grouping.py",
+          "before_sha256": "1378cf95645c9c7ebe421f16b345fbbf4bde6b012350637c5ca2e4df3527d33e",
+          "sha256": "021cad83936d8e944daf36c59431178641aefe30b42afda508983830b21c50a5"
+        },
+        {
+          "path": "server/tests/security/test_memory_home_navigation_browser.cjs",
+          "before_sha256": "097d76f90121f00771c3504897901737b64693b238aa6fcc529bdfb0859020b5",
+          "sha256": "b65cf17f4532f0f8cbddb5ef70a575a61769b64d2995efd0c57fb6aebffdde1d"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_intake.py",
+          "before_sha256": "78c140b6af3469a0c2e4cf677e90bee315ec512e66a813dad7b8c832a883078a",
+          "sha256": "35acd5a36b640f989b0d2a1c002e4077ebf39278dfecf5f7192345d932af691e"
+        },
+        {
+          "path": "server/tests/security/test_uploaded_video_tasks.py",
+          "before_sha256": "7f75841c2a570d72cee8003be4300eff9b85f501f264a90e771d4b36af816d95",
+          "sha256": "6f429d6e75ffc25b76ab783bb1aca708437f87d15a1faaf291f96e539e281008"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Follow-up people filters, family navigation and kinship perspectives, upload cancellation, generated recovery, and media processing."
     }
   ]
 }
