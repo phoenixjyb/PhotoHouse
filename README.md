@@ -7,7 +7,18 @@
 The bilingual snapshot separates recorded delivery, source-ready work, gaps and next steps.
 双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows 的 `/roadmap/` 已上线并经用户确认。
 
-## 当前交付：2026-11-24
+## 11 月 25 日源码整合 / November 25 source integration
+
+`main` includes protected memory-group splitting, same-day photo and video review,
+metered-network consent for Android upload retries, and Search coverage checks.
+See the [audit reconciliation](docs/AUDIT_RECONCILIATION_2026-11-24.md) for the
+local evidence and remaining product work. The Windows release is recorded below.
+
+`main` 已合并受保护的回忆组拆分、同日照片和视频挑选、Android 上传重试的计费网络确认，
+以及搜索覆盖检查。[审计对照表](docs/AUDIT_RECONCILIATION_2026-11-24.md)记录本地验证与待完成工作，
+Windows 交付记录见下方。
+
+## Windows 交付：2026-11-24
 
 [PR #115](https://github.com/phoenixjyb/PhotoHouse/pull/115) 已合并到 main（`c7a28ef`），包含 Rust PR #114。
 Windows 已通过受保护的源码覆盖方式上线四项修复：地点追问、月份纠正保留原年份、

@@ -14,7 +14,11 @@ const screenshot=async(page,name)=>{ if(screenshots) await page.screenshot({path
  page.on('pageerror',e=>errors.push(e.message));
  let url=pathToFileURL(root+'/index.html').href;
  await page.goto(url+'?lang=en');
- await page.waitForSelector('.feature-card'); assert.equal(await page.locator('.feature-card').count(),24);
+ await page.waitForSelector('.feature-card'); assert.equal(await page.locator('.feature-card').count(),26);
+ await page.locator('#area-nav button[data-area=operations]').click();
+ assert.equal(await page.locator('.feature-card').count(),1);
+ assert.match(await page.locator('#installation-and-recovery').innerText(),/Installation and recovery/);
+ await page.locator('#clear-filters').click();
  await page.locator('#literal-search details').evaluate(e=>e.open=true);
  await page.locator('[data-language=zh]').click();
  assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN');
@@ -39,7 +43,7 @@ const screenshot=async(page,name)=>{ if(screenshots) await page.screenshot({path
  assert.equal(await page.locator('#automatic-intake details').getAttribute('open'),'');
  assert.equal(await page.locator('html').getAttribute('lang'),'en');
  await page.locator('#search-input').fill('no-such-feature-qx');assert.equal(await page.locator('.feature-card').count(),0);assert.ok(await page.locator('#empty-state').isVisible());
- await page.locator('#empty-state button').click();assert.equal(await page.locator('.feature-card').count(),24);
+ await page.locator('#empty-state button').click();assert.equal(await page.locator('.feature-card').count(),26);
  await page.goto(url+'?lang=zh');await page.keyboard.press('Tab');assert.equal(await page.evaluate(()=>document.activeElement.className),'skip-link');
  assert.deepEqual(errors,[]);
  console.log('PASS bilingual content, URL override, filter/search/detail preservation, empty state, deep link, keyboard, 320/390/1440 and 200% layout');
