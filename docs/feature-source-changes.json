@@ -36888,6 +36888,36 @@
       "live_runtime_changed": false,
       "providers_activated": false,
       "scope": "Remove repeated work from an authorized read projection and preserve exact generated intake replay cardinality."
+    },
+    {
+      "feature": "audit-oral-history-default-off-browser-route",
+      "source_commit": "93126c947e8fb3dd5ceaa2873b4979caf56803b8",
+      "files": [
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "ecafc9ed9d3953e899b821e4a2cefc24d9dd75f79277e517df96bc2365891a1f",
+          "sha256": "3e60e9e2c8ced75216f2e872eb0b54c5ca1f8c9bbc574d0b9f427a45eaa848b9"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "a8f885d6bd690ff7bf5ce646b2785376d18db7144d5e8212728110d81ae87922",
+          "sha256": "c6497047351f1414fa6c072e8cb94301f7621e1be9da5cdebc00fbbbb9cc8415"
+        },
+        {
+          "path": "server/backend/app/routers/ui.py",
+          "before_sha256": "80574296a55b74b990142958d277e66ec55264d40e590dd2e6f1388dd002f940",
+          "sha256": "044817cba9e31ca074fc345d0292b60bcea8c995a9ad9a8c97380ce5124d898d"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "f7ff58cfe56d43f195a32b228c533a921a9edb46f790bd48d3f1aa5d95e5c573",
+          "sha256": "acf6ee5188f9cb994c77f67e2d5832aa011a29e82aab3fd6d7deb87864701648"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Mount the recorder script and advertise it in the HTML only with the existing explicit intake opt-in."
     }
   ]
 }
