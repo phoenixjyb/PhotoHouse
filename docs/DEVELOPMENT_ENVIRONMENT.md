@@ -36,10 +36,21 @@ Windows executable names on Windows). The wrapper check requires the current
 platform script, `gradle-wrapper.jar`, a pinned distribution URL and a
 well-formed `distributionSha256Sum` in
 `clients/android/android/gradle/wrapper/gradle-wrapper.properties`. It checks
-the checksum's shape, not the downloaded distribution's bytes. The Gradle
-wrapper cache is reported as an optional warm cache; without a cached
-distribution its first build may need to obtain that distribution. The doctor
-itself never starts the wrapper.
+the checksum's shape. The cache check follows the configured distribution
+and archive locations, including this project's `.gradle/distributions`.
+A warm result requires the pinned URL's exact directory, its launcher and
+Gradle's completed-install marker. The doctor never starts Gradle.
+
+A cold wrapper can download its distribution before Gradle applies `--offline`
+to dependency resolution. To reuse a warm PhotoHouse wrapper in another
+checkout, first compare their wrapper URL and SHA-256 pins. From the warm
+checkout's Android project, run the desired target task with `--project-dir`.
+See [Gradle Wrapper configuration](https://docs.gradle.org/current/userguide/gradle_wrapper.html)
+and [offline dependencies](https://docs.gradle.org/current/userguide/dependency_caching.html#sec:dependency_cache).
+
+```sh
+sh ./gradlew --offline --project-dir /path/to/other/PhotoHouse/clients/android/android :live-core:help
+```
 
 The Web module selection follows `tools/check.py`: `PLAYWRIGHT_MODULE` or
 `PLAYWRIGHT_MODULE_PATH` may select an existing module, and conflicting values

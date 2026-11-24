@@ -88,8 +88,11 @@ _CONTENT_ACTION = re.compile(
 
 _CONTENT_MEDIA_TAIL = re.compile(
     r'(?:(?:\s+of)?\s+|\s*的\s*)(?P<media>videos?|movies?|photos?|photographs?|pictures?|images?|影片|视频|照片|图片|相片)\s*$', re.I)
+_THIS_WEEKEND = r'(?:(?a:\b)this\s+weekend(?a:\b)|本周末|这周末|这个周末|本週末|這週末|這個週末)'
+_LAST_WEEKEND = r'(?:(?a:\b)last\s+weekend(?a:\b)|上周末|上个周末|上週末|上個週末)'
 _DATE_ONLY_WORD = re.compile(
-    r'^(?:today|yesterday|this\s+week|last\s+week|this\s+month|last\s+month|'
+    rf'^(?:today|yesterday|this\s+week|last\s+week|{_THIS_WEEKEND}|{_LAST_WEEKEND}|'
+    r'this\s+month|last\s+month|'
     r'this\s+year|last\s+year|今天|昨天|本周|这周|上周|本月|这个月|這個月|上个月|上個月|今年|去年)$', re.I)
 _DATE_ONLY_SHAPE = re.compile(
     rf'^(?:(?:19|20)\d{{2}}(?:年?|[-/.](?:\d{{1,2}}(?:[-/.]\d{{1,2}})?))'
@@ -387,6 +390,8 @@ def _extract_dates(text, today, *, month_year=None):
     relatives = (
         (r'(?<![a-z0-9_])today(?![a-z0-9_])|今天', lambda: (today, today)),
         (r'(?<![a-z0-9_])yesterday(?![a-z0-9_])|昨天', lambda: (today - timedelta(days=1), today - timedelta(days=1))),
+        (_THIS_WEEKEND, lambda: _weekend(today)),
+        (_LAST_WEEKEND, lambda: _weekend(today - timedelta(days=7))),
         (r'(?a:\b)this\s+week(?a:\b)|本周|这周', lambda: _week(today)),
         (r'(?a:\b)last\s+week(?a:\b)|上周', lambda: _week(today - timedelta(days=7))),
         (r'(?a:\b)this\s+month(?a:\b)|本月|这个月|這個月', lambda: _month_bounds(today.year, today.month)),
@@ -423,6 +428,11 @@ def _extract_dates(text, today, *, month_year=None):
 def _week(day):
     start = day - timedelta(days=day.weekday())
     return start, start + timedelta(days=6)
+
+
+def _weekend(day):
+    _, sunday = _week(day)
+    return sunday - timedelta(days=1), sunday
 
 
 def _previous_month(day):

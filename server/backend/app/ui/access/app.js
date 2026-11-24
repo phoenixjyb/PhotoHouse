@@ -540,11 +540,11 @@
   Object.assign(words.zh,{personPhotos:'此人的照片',noPersonPhotos:'本家庭库中还没有标记为此人的照片。',clearPerson:'关闭',personPhotosHelp:'只读。人脸标记是系统自动判断的结果，可能不准确。'});
   Object.assign(words.zh,{peopleInLibrary:'本家庭库的人物',peopleDirectoryHelp:'本家庭库中已保存的人名，每位配一张人脸照片。只有主人可以修改姓名。',findPersonInLibrary:'查找人物',noPeopleInLibrary:'本家庭库还没有保存的人名。'});
   Object.assign(words.en,{archivedAlbums:'Albums put away',archivedHelp:'Albums this library has put away. Nothing was deleted, so any of them can be brought back.',noArchivedAlbums:'No album has been put away.',archiveAlbum:'Put away',restoreAlbum:'Bring back',confirmArchive:'Put this album away? Nothing is deleted and you can bring it back.'});
-  Object.assign(words.en,{describePhoto:'Describe this photo',saveCaption:'Save description',captionSaved:'Saved. Thank you.',captionConflict:'This photo already has a description.',captionsUnavailable:'Description unavailable.'});
+  Object.assign(words.en,{describePhoto:'Describe this photo',saveCaption:'Save description',captionSaved:'Saved. Thank you.',captionConflict:'This photo already has a description.',captionsUnavailable:'Description unavailable.',captionsRetry:'Retry description'});
   Object.assign(words.en,{duplicatesInLibrary:'Photos saved twice',duplicatesHelp:'Photos this library holds more than once, because the same picture was imported twice. Read-only: nothing here deletes, hides or merges a copy.',savedTimes:'Saved',noDuplicatesInLibrary:'No photo in this library is saved twice.'});
   Object.assign(words.en,{tagsInLibrary:'Tags in this library',tagsHelp:'Tags already attached to photos in this library. Read-only: no tag can be added or removed here.',findTag:'Find a tag',noTagsInLibrary:'No tags in this library yet.',assetsCount:'photos',tagAssets:'Photos with this tag',noTaggedAssets:'No photo in this library carries this tag.',clearTag:'Close'});
   Object.assign(words.zh,{archivedAlbums:'已收起的相册',archivedHelp:'本家庭库收起的相册。照片和相册都没有删除，随时可以恢复。',noArchivedAlbums:'还没有收起任何相册。',archiveAlbum:'收起',restoreAlbum:'恢复',confirmArchive:'确定收起这个相册吗？不会删除任何内容，之后可以恢复。'});
-  Object.assign(words.zh,{describePhoto:'为这张照片写一句描述',saveCaption:'保存描述',captionSaved:'已保存，谢谢。',captionConflict:'这张照片已经有描述了。',captionsUnavailable:'暂时无法读取描述。'});
+  Object.assign(words.zh,{describePhoto:'为这张照片写一句描述',saveCaption:'保存描述',captionSaved:'已保存，谢谢。',captionConflict:'这张照片已经有描述了。',captionsUnavailable:'暂时无法读取描述。',captionsRetry:'重试读取描述'});
   Object.assign(words.en,{videoMomentsHeading:'Find a moment in a video',videoMomentsLabel:'Moment label',
     videoMomentsEmpty:'No matching moments.',videoMomentsUnavailable:'Moment search is unavailable.',
     videoMomentChanged:'This moment has changed. Search for it again.'});
@@ -642,6 +642,9 @@
     if(state.videoRetryTimer){clearTimeout(state.videoRetryTimer);state.videoRetryTimer=null;}
     if(state.videoController){state.videoController.abort();state.videoController=null;}
     if(state.captionController){state.captionController.abort();state.captionController=null;}
+    const descriptions=$('viewer-descriptions');
+    descriptions.ontoggle=null;
+    descriptions.open=false;
     clearTimeout(sequenceState.timer);sequenceState.timer=null;sequenceState.playing=false;
     if(!keepFrame){
       sequenceState.items=[];sequenceState.index=0;sequenceState.busy=false;
@@ -2977,7 +2980,14 @@
       storyState.asset=detail.asset;
       if(detail.asset.upload_notes_available===true)void loadViewerAnnotations();
       $('viewer-title').textContent=assetLabel(detail.asset);syncViewerStoryChoice();
-      void loadViewerCaptions(detail.asset,epoch,viewerGeneration);
+      const descriptions=$('viewer-descriptions');
+      function requestOpenDescriptions(){
+        if(!descriptions.open)return;
+        descriptions.ontoggle=null;
+        void loadViewerCaptions(detail.asset,epoch,viewerGeneration);
+      }
+      descriptions.ontoggle=requestOpenDescriptions;
+      requestOpenDescriptions();
       if(detail.asset.kind==='video') {
         await showPreparedVideo(detail.asset,epoch,viewerGeneration,moment);
         if(stale(epoch)||viewerGeneration!==state.viewerGeneration||!$('viewer').open)return;
@@ -3002,9 +3012,14 @@
     state.captionController=controller;
     const current=()=>!stale(epoch)&&viewerGeneration===state.viewerGeneration&&$('viewer').open;
     const container=$('captions');
+    const status=document.createElement('p');
+    status.setAttribute('role','status');
+    status.textContent=t('loading');
+    container.replaceChildren(status);
     try{
       const captions=await request(libraryPath(`/assets/${item.id}/captions`),{epoch,signal:controller.signal});
       if(!current())return;
+      container.replaceChildren();
       if(!captions.items.length) {
         const p=document.createElement('p');p.textContent=t('noCaptions');container.append(p);
         // A member may describe a photo that has none. The route refuses an asset that already
@@ -3045,8 +3060,18 @@
     }catch(error){
       if(!current()||error.name==='AbortError')return;
       if(error.status===401||error.status===403){await failure(error,epoch);return;}
-      const notice=document.createElement('p');notice.setAttribute('role','status');
-      notice.textContent=t('captionsUnavailable');container.replaceChildren(notice);
+      status.textContent=t('captionsUnavailable');
+      const retry=document.createElement('button');
+      retry.type='button';
+      retry.className='quiet';
+      retry.textContent=t('captionsRetry');
+      retry.addEventListener('click',()=>{
+        if(!current())return;
+        if(document.activeElement===retry)
+          $('viewer-descriptions').querySelector('summary').focus({preventScroll:true});
+        void loadViewerCaptions(item,epoch,viewerGeneration);
+      },{once:true});
+      container.replaceChildren(status,retry);
     }finally{
       if(state.captionController===controller)state.captionController=null;
     }

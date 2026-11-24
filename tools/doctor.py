@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass
+import hashlib
 import importlib.metadata
 import json
 import os
@@ -13,6 +15,7 @@ import subprocess
 import sys
 import threading
 from typing import Callable
+from urllib.parse import urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -385,7 +388,18 @@ def _sdk_check(env: dict[str, str], platform: str, home: Path) -> dict[str, obje
     )
 
 
-def _wrapper_check(root: Path, platform: str) -> tuple[dict[str, object], str | None]:
+@dataclass(frozen=True)
+class GradleWrapperCache:
+    url: str
+    archive: str
+    version: str
+    distribution_base: str
+    distribution_path: str
+    zip_base: str
+    zip_path: str
+
+
+def _wrapper_check(root: Path, platform: str) -> tuple[dict[str, object], GradleWrapperCache | None]:
     android = root / "clients/android/android"
     wrapper = "gradlew.bat" if platform == "win32" else "gradlew"
     properties = android / "gradle/wrapper/gradle-wrapper.properties"
@@ -394,13 +408,19 @@ def _wrapper_check(root: Path, platform: str) -> tuple[dict[str, object], str | 
         return _status("missing", "platform_wrapper_missing", expected_wrapper=wrapper), None
     try:
         text = properties.read_text(encoding="utf-8")
-    except OSError:
+    except (OSError, UnicodeError):
         return _status("unverified", "wrapper_properties_unavailable", expected_wrapper=wrapper), None
-    match = re.search(r"distributionUrl=.*?/gradle-([0-9]+(?:\.[0-9]+)+)-(?:bin|all)\.zip", text)
+    values = dict(re.findall(r"^[ \t]*([A-Za-z][A-Za-z0-9]*)[ \t]*=[ \t]*([^\r\n]*)", text, re.M))
+    url = values.get("distributionUrl", "").strip().replace("\\:", ":")
+    try:
+        archive = urlsplit(url).path.rsplit("/", 1)[-1]
+    except ValueError:
+        archive = ""
+    match = _GRADLE_VERSION.fullmatch(archive)
     if not match:
         return _status("unverified", "wrapper_version_unreadable", expected_wrapper=wrapper), None
-    digest = re.search(r"^\s*distributionSha256Sum\s*=\s*([^\s#]+)\s*$", text, re.M)
-    if not digest or not _SHA256.fullmatch(digest.group(1)):
+    digest = values.get("distributionSha256Sum", "").strip()
+    if not _SHA256.fullmatch(digest):
         return _status("unverified", "wrapper_distribution_sha256_unreadable",
                        expected_wrapper=wrapper), None
     version = match.group(1)
@@ -409,25 +429,51 @@ def _wrapper_check(root: Path, platform: str) -> tuple[dict[str, object], str | 
         "pinned_wrapper_detected",
         expected_wrapper=wrapper,
         gradle_version=version,
-    ), version
+    ), GradleWrapperCache(
+        url=url,
+        archive=archive,
+        version=version,
+        distribution_base=values.get("distributionBase", "GRADLE_USER_HOME").strip(),
+        distribution_path=values.get("distributionPath", "wrapper/dists").strip(),
+        zip_base=values.get("zipStoreBase", "GRADLE_USER_HOME").strip(),
+        zip_path=values.get("zipStorePath", "wrapper/dists").strip(),
+    )
 
 
-def _gradle_cache_check(env: dict[str, str], home: Path, platform: str, version: str | None) -> dict[str, object]:
-    if not version:
+def _gradle_cache_key(url: str) -> str:
+    # Gradle's directory name is the unsigned URL hash written in base 36.
+    value = int(hashlib.md5(url.encode("utf-8"), usedforsecurity=False).hexdigest(), 16)
+    digits = []
+    while value:
+        value, remainder = divmod(value, 36)
+        digits.append("0123456789abcdefghijklmnopqrstuvwxyz"[remainder])
+    return "".join(reversed(digits)) or "0"
+
+
+def _gradle_cache_check(root: Path, env: dict[str, str], home: Path, platform: str,
+                        wrapper: GradleWrapperCache | None) -> dict[str, object]:
+    if wrapper is None:
         return _status("unverified", "wrapper_version_unavailable", optional=True)
     gradle_home = Path(env["GRADLE_USER_HOME"]).expanduser() if env.get("GRADLE_USER_HOME") else home / ".gradle"
-    cache = gradle_home / "wrapper" / "dists" / f"gradle-{version}-bin"
-    if not cache.is_dir():
-        return _status("missing", "warm_wrapper_cache_not_found", optional=True, gradle_version=version)
+    bases = {"PROJECT": root / "clients/android/android", "GRADLE_USER_HOME": gradle_home}
+    locations = ((wrapper.distribution_base, wrapper.distribution_path), (wrapper.zip_base, wrapper.zip_path))
+    cache_dirs = []
+    for base, relative in locations:
+        path = Path(relative)
+        if base not in bases or not path.parts or path.is_absolute() or path.drive or ".." in path.parts:
+            return _status("unverified", "wrapper_cache_layout_unverified", optional=True, gradle_version=wrapper.version)
+        cache_dirs.append(bases[base] / path)
+    if not urlsplit(wrapper.url).scheme:
+        return _status("unverified", "wrapper_cache_layout_unverified", optional=True, gradle_version=wrapper.version)
+    slot = Path(wrapper.archive.removesuffix(".zip")) / _gradle_cache_key(wrapper.url)
+    distribution, zip_store = (directory / slot for directory in cache_dirs)
+    if not distribution.is_dir():
+        return _status("missing", "warm_wrapper_cache_not_found", optional=True, gradle_version=wrapper.version)
     executable = "gradle.bat" if platform == "win32" else "gradle"
-    try:
-        candidates = list(cache.iterdir())[:64]
-    except OSError:
-        return _status("unverified", "wrapper_cache_unreadable", optional=True, gradle_version=version)
-    for candidate in candidates:
-        if (candidate / f"gradle-{version}" / "bin" / executable).is_file():
-            return _status("available", "warm_wrapper_cache_found", optional=True, gradle_version=version)
-    return _status("unverified", "wrapper_cache_distribution_unverified", optional=True, gradle_version=version)
+    if ((distribution / f"gradle-{wrapper.version}" / "bin" / executable).is_file()
+            and (zip_store / (wrapper.archive + ".ok")).is_file()):
+        return _status("available", "warm_wrapper_cache_found", optional=True, gradle_version=wrapper.version)
+    return _status("unverified", "wrapper_cache_distribution_unverified", optional=True, gradle_version=wrapper.version)
 
 
 def _playwright_check(
@@ -554,8 +600,8 @@ def build_report(
     node_check, node = _node_check(env, which, probe)
     java_check = _java_check(env, which, probe, platform)
     sdk_check = _sdk_check(env, platform, home)
-    wrapper_check, gradle_version = _wrapper_check(root, platform)
-    gradle_cache = _gradle_cache_check(env, home, platform, gradle_version)
+    wrapper_check, gradle_wrapper = _wrapper_check(root, platform)
+    gradle_cache = _gradle_cache_check(root, env, home, platform, gradle_wrapper)
     playwright = _playwright_check(root / "server/tests/security", env, node, node_check, probe)
     chromium = _chromium_check(env, platform, home)
     web_suites = _suite_check(root)
