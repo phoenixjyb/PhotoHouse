@@ -4,12 +4,16 @@ This is a bounded read adapter only. It does not create labels, inspect worker
 frames, or expose the historical unprotected video-segment routes.
 """
 from dataclasses import dataclass
+import hashlib
+import json
 import re
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
+from ..home_catalog import digest, identity
+from ..home_feed import Refused, bounded_read, unique
 from .media import MediaRuntime, verified_prepared_video_provider
 from .prepared_video import PreparedVideos, pin
 from .service import AccessDenied, AccessService
@@ -19,6 +23,7 @@ from .transport import (AccessRoute, PRIVACY_HEADERS, TransportError,
 
 MAX_MOMENTS = 32
 MAX_QUERY_CHARS = 128
+MAX_CATALOG_BYTES = 64 * 1024
 
 
 @dataclass(frozen=True)
@@ -57,6 +62,41 @@ class VideoMomentCatalog:
         if (type(self.moments) is not tuple or len(self.moments) > MAX_MOMENTS
                 or any(type(item) is not VideoMoment for item in self.moments)):
             raise ValueError('Invalid video moment catalog')
+
+
+def load_reviewed_catalog(path, expected_sha256, prepared: PreparedVideos) -> VideoMomentCatalog:
+    """Load an explicitly pinned operator-reviewed catalog alongside prepared playback."""
+    fields = {'asset_id', 'label', 'start_sec', 'end_sec', 'source_identity',
+              'duration_ms', 'playback_sha256'}
+    try:
+        if type(prepared) is not PreparedVideos or not digest(expected_sha256):
+            raise ValueError()
+        before = identity(path)
+        raw = bounded_read(path, MAX_CATALOG_BYTES)
+        if hashlib.sha256(raw).hexdigest() != expected_sha256 or identity(path) != before:
+            raise ValueError()
+        value = json.loads(raw.decode('utf-8'), object_pairs_hook=unique)
+        if (type(value) is not dict or set(value) != {'version', 'moments'}
+                or type(value['version']) is not int or value['version'] != 1
+                or type(value['moments']) is not list or len(value['moments']) > MAX_MOMENTS):
+            raise ValueError()
+        moments = []
+        for row in value['moments']:
+            if type(row) is not dict or set(row) != fields or type(row['source_identity']) is not list:
+                raise ValueError()
+            moment = VideoMoment(**(row | {'source_identity': tuple(row['source_identity'])}))
+            asset = prepared.entries.get(moment.asset_id)
+            if (asset is None or tuple(asset['source_identity']) != moment.source_identity
+                    or asset['video']['duration_ms'] != moment.duration_ms
+                    or asset['video']['sha256'] != moment.playback_sha256):
+                raise ValueError()
+            moments.append(moment)
+        if len(set(moments)) != len(moments):
+            raise ValueError()
+        prepared.current()
+        return VideoMomentCatalog(tuple(moments))
+    except (OSError, Refused, ValueError, RecursionError, TransportError):
+        raise ValueError('Reviewed video moment catalog unavailable') from None
 
 
 def configured_runtime(request):

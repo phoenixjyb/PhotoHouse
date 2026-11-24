@@ -52,7 +52,8 @@ follows. Current installed-client and voice acceptance remain separate.
 - An optional video-moment catalog can match reviewed labels in the videos-only
   filter. Selecting a moment seeks the protected player to its start and binds
   playback to the prepared version used for that result. Operators supply the
-  reviewed intervals. The feature is off in the standard runtime.
+  reviewed intervals through the [staging launcher](OPERATIONS.md#reviewed-video-moments).
+  The feature is off in the standard runtime.
 - Owners can copy a phone-bound registration link from Family settings, or
   open their device's share menu in a browser that supports Web Share.
   Registration still requires the invited phone number and an explicit submit.

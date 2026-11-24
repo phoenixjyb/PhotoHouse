@@ -84,6 +84,25 @@ and confirm that it resolves to the LAN address on that network. Certificate
 validation should succeed throughout. Removing the local DNS record restores
 the normal hostname resolution for that network.
 
+## Reviewed video moments
+
+The protected staging launcher can load an operator-reviewed video-moment
+catalog alongside prepared playback. Leave the catalog flags unset to keep
+moment search off. Set both `--video-moment-catalog` and
+`--video-moment-sha256` alongside the existing `--prepared-index`,
+`--prepared-root` and `--prepared-sha256` flags to select an exact catalog.
+
+Use a direct private file outside the application config, prepared media,
+originals and database. The UTF-8 JSON object has `version` set to `1` and a
+`moments` array with up to 32 reviewed rows. Each row contains the numeric
+`asset_id`, `label`, `start_sec` and `end_sec` in playback seconds, and the
+matching prepared entry's `source_identity`, `duration_ms` and
+`playback_sha256`. The catalog may occupy up to 64 KiB. `--check-config`
+validates flag syntax and path separation. `--serve` verifies the catalog
+hash and prepared-entry bindings before opening the listener. Only current
+library members with playback access can retrieve an interval. Treat catalog
+replacement as a new reviewed configuration.
+
 ## Reboot, tasks and workers
 
 The October 29 rollout preserved existing task contracts and verified the new
