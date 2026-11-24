@@ -107,6 +107,35 @@ graph invalidates previous contexts; current catalog/membership checks still app
 The graph is never included in media text retrieval, result cards, public
 capabilities, private chat transcripts or an automatically generated story.
 
+## Preparing a reviewed relationship revision
+
+`server/scripts/prepare_kinship_revision.py` creates a separate private draft
+from an existing owner-only graph and an owner-only, duplicate-free patch. Supply
+the base graph's canonical SHA-256 in the patch so stale edits refuse before a
+draft is created. The closed patch supports only explicit assertion `add`,
+`replace` (retaining the assertion ID) and `remove` operations; each assertion
+must name existing logical people and use `source: "user"`. It also supplies a
+new revision value. A positive integer revision must increase; a string revision
+must differ from the existing string revision.
+
+```sh
+python server/scripts/prepare_kinship_revision.py \
+  --graph "$PRIVATE_GRAPH" \
+  --patch "$PRIVATE_RELATIONSHIP_PATCH" \
+  --out "$NEW_PRIVATE_DRAFT"
+```
+
+All paths must be absolute and outside the checkout; keep the inputs and new
+draft under owner-only private storage. The output must be absent. The tool
+validates the resulting graph with the runtime
+`KinshipGraph` rules, verifies the source bytes are unchanged, and writes the
+new draft exclusively with owner-only permissions. It never edits, activates,
+or selects the source graph. Relationship edits cannot change people, labels,
+account scope or perspectives; contradictory links and cycles are refused.
+Review and separately select a draft through the existing supported runtime
+configuration workflow. This helper does not activate a graph or qualify any
+real-family relationship.
+
 ## Checks and delivery
 
 Run the generated graph/provider and protected HTTP suites:

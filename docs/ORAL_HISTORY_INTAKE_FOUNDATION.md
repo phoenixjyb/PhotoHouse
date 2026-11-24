@@ -22,10 +22,16 @@ author; a library owner has no override. Subject and narrator labels are authore
 text, distinct from the account that submitted the source; they do not establish
 person, face or consent identities.
 
-A recording's title, labels, language and explicit local-processing consent are
-immutable. Changing these requires a future reviewed metadata/version contract;
-this prototype cannot silently reinterpret previously accepted sections. Session
-creation accepts a bounded opaque library ID (up to 128 UTF-8 bytes).
+A recording's title, labels, language, retention consent and local-processing
+consent are immutable and separate. Creation requires an affirmative
+`retention_consent`; declining creates no session, section or mutation receipt.
+That consent permits the prototype to keep the original source in its private
+store. It has no expiry: withdrawal hides a recording but retains its bytes, and
+permanent erasure remains unqualified. This is not ready for family admission.
+`processing_consent` separately controls whether later local processing may use
+the source. A retained recording with processing declined can still be reopened,
+read by its author and resumed, but does not authorize a worker. Session creation
+accepts a bounded opaque library ID (up to 128 UTF-8 bytes).
 
 ## Section and quota contract
 
@@ -64,11 +70,18 @@ foreign keys and supported account/library parent keys. It validates the exact
 owned tables/index/triggers and refuses partial/drifted installations. Opening
 an intake object never creates, alters, backfills or repairs a database.
 
-The recording identity seeds a versioned manifest; each ordered section binds
-its source hash, frame offset, frame count and preceding manifest. This supports
+The recording identity seeds a version 2 manifest that binds both consent facts;
+each ordered section binds its source hash, frame offset, frame count and
+preceding manifest. This supports
 future exact transcript/citation anchors without inventing current ASR output.
 No transcription, polish, title inference, story adoption or sharing occurs here,
 even with processing consent. Consent is permission metadata, not a worker claim.
+
+The prior experimental session schema has no retention fact. Exact schema checks
+therefore fail closed on it; this source performs no automatic migration, does
+not presume old recordings were retention-consented, and does not rewrite their
+manifest or receipt hashes. A separately reviewed migration would need an
+affirmative source and a compatible identity/journal plan.
 
 Existing deletion-journal transaction guards refuse a stale primary marker.
 The subsequent [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md) adds a separate
@@ -81,7 +94,8 @@ No indefinite raw retention is silently replaced by assistant expiry.
 
 ## Initial verification and current next slice
 
-The generated tests exercise reopened connections/exact retries, concurrent same
+The generated tests exercise declined-retention refusal, separate retention and
+processing consent, reopened connections/exact retries, concurrent same
 request and competing requests, rollback on receipt/commit failure, WAV limits,
 short/resumed sections, original bytes/hashes, owner isolation, revocation/session
 expiry, schema/receipt/source corruption, quotas and default-closed routes.

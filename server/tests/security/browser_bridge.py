@@ -285,7 +285,7 @@ try:
                 (originals/'105.mp4').write_bytes(b'ftyp synthetic protected-video fixture')
                 fixture.mutate('UPDATE assets SET path=? WHERE id=105',(str(originals/'105.mp4'),))
                 Image.open(derived/'thumbnails/256/101.jpg').save(derived/'thumbnails/256/105.jpg')
-            elif scenario=='prepared-video-ready':
+            elif scenario in {'prepared-video-ready', 'prepared-video-moments'}:
                 from app.access.media import MediaRuntime
                 from app.access.prepared_video import PreparedVideos
                 raw=Path(__file__).resolve().parent/'fixtures'/'home-video.mp4'
@@ -297,12 +297,27 @@ try:
                 digest=hashlib.sha256(output.read_bytes()).hexdigest();chunks=[digest]
                 chunk_file=folder/'video.chunks.json';chunk_raw=json.dumps(chunks,separators=(',',':')).encode();chunk_file.write_bytes(chunk_raw)
                 info=source.stat();video_raw=output.read_bytes()
-                metadata={'state':'ready','mime':'video/mp4','video_codec':'h264','audio_codec':'aac','width':320,'height':180,'duration_ms':1000,'bytes':len(video_raw),'sha256':digest,'chunks_sha256':hashlib.sha256(chunk_raw).hexdigest()}
+                metadata={'state':'ready','mime':'video/mp4','video_codec':'h264','audio_codec':'aac','width':320,'height':180,'duration_ms':500,'bytes':len(video_raw),'sha256':digest,'chunks_sha256':hashlib.sha256(chunk_raw).hexdigest()}
                 index_value={'version':1,'assets':[{'id':105,'source_identity':[info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns],'directory':folder.name,'video':metadata}]}
                 index_raw=json.dumps(index_value,separators=(',',':')).encode();index=(derived.parent/'prepared-video-index.json').resolve();index.write_bytes(index_raw)
                 fixture.client.close();fixture.client=build_client()
                 provider=PreparedVideos(index,hashlib.sha256(index_raw).hexdigest(),prepared_root)
-                fixture.client.app.state.media_runtime=MediaRuntime((originals,),derived,prepared_videos=provider)
+                media = MediaRuntime((originals,), derived, prepared_videos=provider)
+                if scenario == 'prepared-video-moments':
+                    from app.access.video_moments import VideoMoment, VideoMomentCatalog
+                    from app.main import create_app
+                    state = fixture.client.app.state
+                    catalog = VideoMomentCatalog((VideoMoment(
+                        105, 'Second half', .25, .45, tuple(index_value['assets'][0]['source_identity']),
+                        metadata['duration_ms'], digest),))
+                    app = create_app(access_runtime=state.access_runtime,
+                                     discovery_runtime=state.discovery_runtime,
+                                     media_runtime=media, video_moment_catalog=catalog)
+                    fixture.client.close()
+                    fixture.client = TestClient(app, base_url='https://photohouse.test',
+                                                client=('192.0.2.20', 23456))
+                else:
+                    fixture.client.app.state.media_runtime = media
             elif scenario=='memory-concurrent-edit':
                 fixture.mutate("UPDATE access_memory_stories SET revision=revision+1 WHERE library_id='family-a'")
             elif scenario=='memory-concurrent-reorder':

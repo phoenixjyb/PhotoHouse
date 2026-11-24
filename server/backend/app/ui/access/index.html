@@ -267,6 +267,16 @@
         </form>
         <p id="discovery-status" role="status" aria-live="polite"></p>
         <button id="discovery-facets-retry" class="quiet" type="button" data-i18n="discoveryRetry" hidden>Retry filters</button>
+        <section id="video-moments-panel" class="video-moments" hidden aria-labelledby="video-moments-heading">
+          <h3 id="video-moments-heading" data-i18n="videoMomentsHeading">Find a moment in a video</h3>
+          <form id="video-moments-form" class="people-search">
+            <label for="video-moments-query" data-i18n="videoMomentsLabel">Moment label</label>
+            <input id="video-moments-query" type="search" maxlength="128" autocomplete="off" required>
+            <button id="video-moments-search" class="quiet" type="submit" data-i18n="placeSearch">Search</button>
+          </form>
+          <p id="video-moments-status" role="status" aria-live="polite"></p>
+          <ul id="video-moments-results" class="video-moments-results"></ul>
+        </section>
       </details>
       <div id="gallery-filter-summary" class="gallery-filter-summary" hidden>
         <div id="gallery-filter-chips" class="gallery-filter-chips" role="group" aria-label="Active filters"></div>

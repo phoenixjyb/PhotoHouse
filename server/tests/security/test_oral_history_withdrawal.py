@@ -284,9 +284,9 @@ class RecordingWithdrawalTests(unittest.TestCase):
                     if mutation=='marker':db.execute('UPDATE access_original_deletion_state SET applied_seq=1,applied_digest=?',('a'*64,))
                     elif mutation=='schema':db.execute('ALTER TABLE '+SESSION+' ADD COLUMN unexpected TEXT')
                     elif mutation=='recording':db.execute(f'''INSERT INTO {SESSION}
-                        (id,library_id,author_id,title,subject_label,narrator_label,language,processing_consent,
+                        (id,library_id,author_id,title,subject_label,narrator_label,language,retention_consent,processing_consent,
                          state,revision,section_count,total_bytes,total_frames,manifest_sha256,created_at)
-                        VALUES (?,'family-a',?,'Generated guard row','','','zh',0,'open',1,0,0,0,?,1)''',
+                        VALUES (?,'family-a',?,'Generated guard row','','','zh',1,0,'open',1,0,0,0,?,1)''',
                         (str(uuid.uuid4()),self.f.actor,'a'*64))
                     else:db.commit()
                 self.db.execute('BEGIN IMMEDIATE')

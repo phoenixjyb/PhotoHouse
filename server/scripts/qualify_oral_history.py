@@ -357,8 +357,17 @@ def run(output):
         intake = OralHistoryIntake(access, enabled=True, withdrawal_enabled=True, journal=journal)
         create_body = {'request_id': str(uuid.uuid4()), 'title': 'Synthetic interview',
             'subject_label': 'Generated subject', 'narrator_label': 'Generated speaker',
-            'language': 'en', 'processing_consent': True}
+            'language': 'en', 'retention_consent': True, 'processing_consent': False}
+        declined_body = {**create_body, 'request_id': str(uuid.uuid4()),
+                         'retention_consent': False}
+        _expect_status(422, lambda: intake.create(AUTHOR_TOKEN, LIBRARY, declined_body),
+                       'retention_decline_accepted')
+        empty_counts = tuple(db.execute(f'SELECT count(*) FROM {table}').fetchone()[0]
+                             for table in (SESSION, SECTION, MUTATION))
+        _assert(empty_counts == (0, 0, 0), 'retention_decline_saved_source_or_receipt')
         created = intake.create(AUTHOR_TOKEN, LIBRARY, create_body)
+        _assert(created['retention_consent'] is True and created['processing_consent'] is False,
+                'retention_and_processing_consent_not_separate')
         _assert(intake.create(AUTHOR_TOKEN, LIBRARY, create_body) == created, 'create_retry_changed_receipt')
         _expect_status(409,
             lambda: intake.create(AUTHOR_TOKEN, LIBRARY, {**create_body, 'title': 'Changed title'}),
@@ -379,6 +388,12 @@ def run(output):
         access = AccessService(db, clock=lambda: NOW)
         access.original_deletions = journal
         intake = OralHistoryIntake(access, enabled=True, withdrawal_enabled=True, journal=journal)
+        resumed = intake.status(AUTHOR_TOKEN, LIBRARY, created['session_id'])
+        _assert(resumed['state'] == 'open' and resumed['retention_consent'] is True
+                and resumed['processing_consent'] is False and resumed['revision'] == short['revision']
+                and resumed['section_count'] == 1 and resumed['next_ordinal'] == 1
+                and resumed['total_frames'] == 3200,
+                'retention_consented_processing_opt_out_resume_changed')
         _assert(intake.create(AUTHOR_TOKEN, LIBRARY, create_body) == created,
                 'create_receipt_changed_after_reopen')
         _assert(intake.append(AUTHOR_TOKEN, LIBRARY, created['session_id'], **short_args) == short,

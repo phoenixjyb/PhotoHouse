@@ -105,6 +105,23 @@ function makeController({holdResult=false,denyResult=false,latestMismatch=false,
     controller.close();
   }
   {
+    const fixture=makeController(),{controller,calls}=fixture;
+    await controller.capabilities();await controller.resultPageCapabilities();await controller.create();
+    await controller.send('Choose frames for a story');
+    controller.toggleStoryItem('102');await controller.resultPage(2);controller.toggleStoryItem('121');
+    controller.moveStoryItem('121',-1);
+    const started=calls.length;
+    await controller.read(threadId,{preserveStorySelection:true});
+    assert.deepEqual(controller.state().storySelection.map(item=>item.id),['121','102'],
+      'reloading the same current conversation retains the exact ordered selection');
+    assert.equal(calls.slice(started).filter(call=>call.path.includes('/current-result?')).length,1);
+    assert(calls.slice(started).every(call=>call.method==='GET'),'restoring the selection only reads the existing result');
+    fixture.deny();
+    await controller.read(threadId,{preserveStorySelection:true});
+    assert.deepEqual(controller.state().storySelection,[],'unconfirmed result authority clears the old selection');
+    controller.close();
+  }
+  {
     const {controller,calls}=makeController();await controller.capabilities();await controller.resultPageCapabilities();await controller.create();await controller.send('Choose story frames');
     controller.toggleStoryItem('101');controller.toggleStoryItem('102');await controller.resultPage(2);controller.toggleStoryItem('121');
     const before=controller.state().storySelection.slice(),callCount=calls.length;

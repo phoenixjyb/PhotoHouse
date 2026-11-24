@@ -22,10 +22,12 @@ an Android build. GitHub Actions remain paused.
    opening frames does not build, generate, save, publish, or play a story.
 
 A new or refined search clears the selection, including one that needs
-clarification. Account/library changes, loss of access, stale results and logout
-also clear it. The selection is held only in memory in this page; reopening a
-conversation does not restore old choices. An uncertain search uses the existing
-GET-only recovery flow; it does not resubmit the search automatically.
+clarification. Switching conversations or accounts, changing libraries, losing
+access, and signing out also clear it. When you reload the history of the same
+active conversation, PhotoHouse can keep the selected frames and their order
+after the server confirms the exact current ordinary search. Choices live in
+the current page's memory and reset on a full page reload. An uncertain search
+uses the existing GET-only recovery flow.
 
 ## Ordinary result pages
 

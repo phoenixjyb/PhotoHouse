@@ -35,6 +35,23 @@ settings are retained. The natural SYSTEM grouping handoff closed successfully
 with `REFRESH_DEFERRED` and zero updates; no full sweep or family quality claim
 follows. Current installed-client and voice acceptance remain separate.
 
+## November 25 audit work
+
+- The viewer starts loading the photo as soon as the authorized preview is
+  ready. Descriptions load in the background and are scoped to the open item.
+- Reloading the current Jude conversation can keep an ordered frame selection
+  after the server confirms the same authorized search result.
+- From a saved memory group, choose **Start a story** to open its current theme
+  and ordered media in the story editor. Building, reviewing and saving remain
+  explicit actions.
+- An optional video-moment catalog can match reviewed labels in the videos-only
+  filter. Selecting a moment seeks the protected player to its start and binds
+  playback to the prepared version used for that result. Operators supply the
+  reviewed intervals. The feature is off in the standard runtime.
+
+See the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md) for generated
+checks and Windows delivery evidence.
+
 ## Earlier capability snapshot (historical)
 
 | Area | Current state | Acceptance boundary / next gate |
