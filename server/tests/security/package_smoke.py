@@ -322,7 +322,8 @@ with ExitStack() as guards:
                     'WHERE asset_id=? AND library_id=?',(asset_id,'synthetic-family')).fetchone()==(1,)
             gallery=client.get('/assets?library=synthetic-family',headers=owner_headers)
             assert gallery.status_code==200, gallery.text
-            assert asset_id in [int(item['id']) for item in gallery.json()['items']]
+            gallery_asset_ids=[int(item['id']) for item in gallery.json()['items']]
+            assert gallery_asset_ids.count(asset_id)==1
             thumbnail_path=data/'derived'/'thumbnails'/'256'/f'{asset_id}.jpg'
             thumbnail_path.parent.mkdir(parents=True,exist_ok=True)
             thumbnail_path.write_bytes(jpeg)

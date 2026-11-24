@@ -147,6 +147,19 @@ and **998 ms** for the same three steps. The result is from the in-process
 protected API and does not measure a model or the home network. Five warm
 samples are too few for a representative p95.
 
+Two matched runs per source compared the later discovery read path at the same
+scale. Each run used one cold and five warm three-turn trials. Result totals
+and the page's asset IDs, kinds, recorded dates, and thumbnail fields matched.
+The change parses each recorded date once and builds the encoded library
+thumbnail query once per projection. Each call still authorizes the user and
+checks the current source.
+
+| Request | Range of baseline warm medians | Range after removing repeated work |
+| --- | ---: | ---: |
+| Start a search | 859–955 ms | 680–682 ms |
+| Change media on the same thread | 999–1,089 ms | 779–788 ms |
+| Change month on the same thread | 971–1,134 ms | 801–817 ms |
+
 ### Generated photo-viewer timing
 
 Eight runs per source alternated the same generated photo and a fixed 250 ms
