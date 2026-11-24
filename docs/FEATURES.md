@@ -7,6 +7,18 @@ is the dated record for source, local checks and the October 29 API/Web rollout;
 source, “deployed” describes a specific installed surface, and family acceptance
 requires the relevant real-world use.
 
+## Bilingual roadmap / 双语路线图
+
+The [EN/中文 dashboard](product-roadmap/index.html) has 24 reviewed feature
+records, area/stage/priority filters and a dated evidence boundary. Both
+languages cover implementation, missing work, next increments and acceptance.
+The `/roadmap/` source route passed focused local checks; Windows deployment
+remains separate and pending the current rollout reconciliation.
+
+[英／中文看板](product-roadmap/index.html)包含 24 项回顾记录，支持按区域、阶段和
+优先级筛选，并明确有日期的证据边界。两种语言均覆盖实现情况、尚缺工作、下一增量与验收。
+`/roadmap/` 源码入口已通过本地专项检查；Windows 部署单独记录，目前仍待当前部署衔接完成。
+
 ## Current capabilities
 
 | Area | Current state | Acceptance boundary / next gate |

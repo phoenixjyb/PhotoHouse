@@ -10,6 +10,22 @@ and isolated inference runtimes. The offline catalog is descriptive; it does not
 load weights or select a live deployment. New embedding spaces require versioned
 artifacts and explicit comparison/reindex qualification.
 
+## Product roadmap boundary / 产品路线图边界
+
+`app.product_roadmap.RoadmapGateway` serves `/roadmap/` and five fixed public
+files. `/roadmap` redirects while preserving `?lang=en|zh`. The standalone
+EN/中文 dashboard reads a single checked-in data source; the Markdown companion
+is generated from that same source. It makes no runtime, model or household
+API requests. All other paths continue into the unchanged default-deny
+household boundary. Windows delivery has its own pinned asset/code identity;
+source registration alone is not deployment.
+
+`app.product_roadmap.RoadmapGateway` 提供 `/roadmap/` 与五个固定公共文件。
+`/roadmap` 跳转时保留 `?lang=en|zh`。独立的英／中文看板读取唯一的仓库内容源，
+Markdown 配套说明由同一来源生成。它不请求运行状态、模型或家庭 API。
+其他路径仍进入保持不变、默认拒绝的家庭访问边界。Windows 交付具有独立的资源／代码标识；
+源码注册本身不代表部署完成。维护方式见[双语路线图说明](product-roadmap/README.md)。
+
 ## Web presentation and delivery identities
 
 The browser uses native HTML controls and a native assistant dialog. Header,
