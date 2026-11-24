@@ -50,6 +50,118 @@ class AssistantPendingIntentTests(unittest.TestCase):
         self.assertEqual(self.planner.calls, [])
         return response.json()
 
+    def month_correction_fixture(self):
+        self.mutate("UPDATE assets SET taken_at='2032-08-21' WHERE id=101")
+        self.mutate("UPDATE captions SET text=text || ' Example day' WHERE id IN (1, 2)")
+        with self.connection() as db:
+            index = intent_fixture.reviewed(intent_fixture.AccessService(db, clock=lambda: NOW))
+        self.install(index)
+        self.app.state.assistant_workspace_store = self.store
+        self.app.state.assistant_workspace_healthy = True
+
+    def saved_search_result(self, words, revision, *, thread, headers, rid=None):
+        response = self.send(words, revision, thread=thread, headers=headers, rid=rid)
+        self.assertEqual(response.status_code, 200, response.text)
+        value = response.json()
+        self.assertEqual(value['revision'], revision + 1)
+        return value['result']
+
+    def test_month_only_correction_keeps_search_year_and_opens_expected_photo(self):
+        self.month_correction_fixture()
+        find_en = 'find photos of Sample Child in Example region in 2032 containing "Example day"'
+        find_zh = '找示例儿童2032年在示例地区的照片，包含“Example day”'
+        journeys = (
+            (find_en, 'earlier', 'no, I meant August', 'open the first result'),
+            (find_zh, '再早一点', '我说的是八月份', '打开第一个'),
+            (find_zh, 'earlier一点', 'I meant八月份', 'open the first result'),
+        )
+        for version in (2, 3):
+            headers = {**self.headers, 'X-PhotoHouse-Search-Version': str(version)}
+            for find, unclear, correct, open_photo in journeys:
+                with self.subTest(version=version, correction=correct):
+                    thread = self.new_thread()
+                    found = self.saved_search_result(find, 0, thread=thread, headers=headers)
+                    self.assertEqual((found['version'], found['kind']), (version, 'results'))
+                    self.assertEqual(found['filters'], {
+                        'date': {'from': '2032-01-01', 'to': '2032-12-31'}, 'media': ['image'],
+                        'people': {'ids': ['301'], 'match': 'any'}, 'locations': ['601'], 'text': 'Example day',
+                    })
+                    self.assertCountEqual([item['id'] for item in found['items']], ['101', '103'])
+                    question = self.saved_search_result(unclear, 1, thread=thread, headers=headers)
+                    self.assertEqual((question['kind'], question['context'], question['items'], question['effect']),
+                                     ('clarification', found['context'], found['items'], None))
+
+                    changed = self.saved_search_result(correct, 2, thread=thread, headers=headers)
+                    self.assertEqual(changed['kind'], 'results', changed)
+                    self.assertEqual(changed['filters'], {**found['filters'],
+                        'date': {'from': '2032-08-01', 'to': '2032-08-31'}})
+                    self.assertEqual([item['id'] for item in changed['items']], ['101'])
+                    self.assertIsNone(changed['effect'])
+                    request_id = str(uuid.uuid4())
+                    opened = self.saved_search_result(open_photo, 3, thread=thread, headers=headers, rid=request_id)
+                    self.assertEqual((opened['kind'], opened['effect']),
+                                     ('open', {'type': 'open_asset', 'asset_id': '101'}))
+                    recovered = self.client.get(f'{self.base}/threads/{thread}/requests/{request_id}',
+                        params={'library_id': 'family-a'}, headers=headers)
+                    self.assertEqual(recovered.status_code, 200, recovered.text)
+                    self.assertTrue(recovered.json()['recovered'])
+                    self.assertEqual(recovered.json()['result']['items'], changed['items'])
+                    self.assertIsNone(recovered.json()['result']['effect'])
+                    self.assertEqual(self.planner.calls, [])
+
+    def test_paired_month_correction_checks_old_year_and_keeps_caption_clue(self):
+        self.month_correction_fixture()
+        options = {'thread': self.new_thread(), 'headers': self.headers}
+        found = self.saved_search_result(
+            'find photos of Sample Child playing in snow in Example region in September 2032', 0, **options)
+        self.assertEqual(found['filters']['descriptive']['concepts'][0]['surface'], 'playing in snow')
+        self.assertEqual([item['id'] for item in found['items']], ['103'])
+        mismatch = self.saved_search_result('not September 2031, but August', 1, **options)
+        self.assertEqual((mismatch['kind'], mismatch['context'], mismatch['items']),
+                         ('clarification', found['context'], found['items']))
+        changed = self.saved_search_result('不是九月，是八月', 2, **options)
+        self.assertEqual(changed['kind'], 'results', changed)
+        self.assertEqual(changed['filters'], {**found['filters'],
+            'date': {'from': '2032-08-01', 'to': '2032-08-31'}})
+        self.assertEqual([item['id'] for item in changed['items']], ['101'])
+        self.assertEqual(len(self.planner.calls), 1)
+
+    def test_month_correction_requires_clear_year_and_current_access(self):
+        self.month_correction_fixture()
+        searches = []
+        for version in (2, 3):
+            with self.subTest(version=version):
+                headers = {**self.headers, 'X-PhotoHouse-Search-Version': str(version)}
+                options = {'thread': self.new_thread(), 'headers': headers}
+                found = self.saved_search_result(
+                    'find photos of Sample Child in Example region from 2031 to 2032', 0, **options)
+                self.assertEqual(found['filters']['date'], {'from': '2031-01-01', 'to': '2032-12-31'})
+                for revision, words in enumerate(('I meant August', 'I meant August 2032 videos'), 1):
+                    unclear = self.saved_search_result(words, revision, **options)
+                    self.assertEqual((unclear['kind'], unclear['context'], unclear['items'], unclear['effect']),
+                                     ('clarification', found['context'], found['items'], None))
+                explicit = self.saved_search_result('I meant September 2032', 3, **options)
+                self.assertEqual(explicit['filters'], {**found['filters'],
+                    'date': {'from': '2032-09-01', 'to': '2032-09-30'}})
+                self.assertEqual([item['id'] for item in explicit['items']], ['103'])
+                other_year = self.saved_search_result('I meant August 2031', 4, **options)
+                self.assertEqual(other_year['filters'], {**found['filters'],
+                    'date': {'from': '2031-08-01', 'to': '2031-08-31'}})
+                self.assertEqual(other_year['items'], [])
+                searches.append(options)
+
+        self.mutate("UPDATE captions SET text='new generated evidence' WHERE id=1")
+        for options in searches:
+            stale = self.send('I meant August', 5, **options)
+            self.assertEqual(stale.status_code, 409, stale.text)
+            self.assertNotIn('items', stale.json())
+        self.mutate("UPDATE access_memberships SET status='revoked' WHERE account_id='one'")
+        for options in searches:
+            denied = self.send('I meant August', 5, **options)
+            self.assertIn(denied.status_code, (401, 403), denied.text)
+            self.assertNotIn('items', denied.json())
+        self.assertEqual(self.planner.calls, [])
+
     def test_short_date_answer_retains_bilingual_request_and_original_inputs(self):
         queries = ('find photos of Sample Child from childhood playing in snow red coat',
                    '找示例儿童小时候玩雪红外套的照片',

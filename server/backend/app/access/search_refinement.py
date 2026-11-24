@@ -106,6 +106,7 @@ def _plan_correction(words, parts, *, now, entities, previous_filters, refine):
     surface, masked, old, new = parts
     if _consumed_label(surface, masked, entities.get('labels', [])):
         return clarify('ambiguous_entities')
+    previous_date = previous_filters.get('date')
     replacements = []
     for condition in (new,) if old is None else (old, new):
         operations = _operations(condition)
@@ -119,6 +120,13 @@ def _plan_correction(words, parts, *, now, entities, previous_filters, refine):
         # change, removal, scene rewrite or a multi-slot conversation reset.
         if len(planned.filters) != 1 or not set(planned.filters) <= {'media', 'date'}:
             return clarify('unsupported_correction')
+        if 'date' in planned.filters and previous_date is not None:
+            # The empty context proves the date was supplied. Reuse the active
+            # date to give bare months the same year as ordinary refinements.
+            planned = _plan_query(condition, now=now, entities=entities,
+                                  previous_filters={'date': previous_date}, refine=True)
+            if planned.status != 'ready':
+                return clarify(planned.reason)
         replacements.append(planned.filters)
     update = replacements[-1]
     slot = next(iter(update))
