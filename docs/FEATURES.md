@@ -1,5 +1,11 @@
 # Feature and acceptance matrix
 
+> **Integration note · 24 November 2026:** The [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md)
+> distinguishes current source, local checks, Windows delivery and remaining
+> device/family acceptance. The bilingual roadmap is live; the later source fixes
+> and optional TV review are tracked separately from installed capability.
+
+
 Maintained summary. PR #111 merged at `e808e30`.
 [Project Status](PROJECT_STATUS.md)
 is the dated record for source, local checks and the October 29 API/Web rollout;

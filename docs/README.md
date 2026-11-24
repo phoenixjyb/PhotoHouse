@@ -115,3 +115,5 @@ Search quality and runtime preparation:
 - [Private quality scorecard](SEARCH_QUALITY_SCORECARD.md): language cohorts, relevance labels and measurement limits.
 - [Description clarification continuations](SEARCH_DESCRIPTION_CONTINUATIONS.md): retained search conditions and bounded answers.
 - [Semantic runtime configuration](SEMANTIC_RUNTIME_CONFIGURATION.md): explicit opt-in, private credentials and qualification boundaries.
+
+- [November 24 audit reconciliation and delivery plan](AUDIT_RECONCILIATION_2026-11-24.md)
