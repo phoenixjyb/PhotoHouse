@@ -37802,6 +37802,114 @@
         }
       ],
       "notes": "Generated protected write proves atomic split, exact lost-response retry, permissions and source-note binding. Bilingual compact review panels passed local Chromium checks."
+    },
+    {
+      "feature": "memory-group-split-route-contract",
+      "source_commit": "0cd66b39983e6cf30135f13dda79c8e9ccec3822",
+      "files": [
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "0dfac8f42cdb185ac17843690b4b26ee0266da5d75f04ed30022683d1ca3cccd",
+          "sha256": "b2366ac15fda75536ac7e8c2ea663fd1e860e685a2b14b7380935e4155f3c35b"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "acf6ee5188f9cb994c77f67e2d5832aa011a29e82aab3fd6d7deb87864701648",
+          "sha256": "1e1367ac8389f793f86a9c180c07ce666a740000d71e32a40b9aaf3de2213fec"
+        }
+      ],
+      "notes": "Exact protected route inventory and cold import count. Related access and group checks passed."
+    },
+    {
+      "feature": "android-batch-connection-consent",
+      "source_commit": "09f6bed67488918128293850b95990c96c37ce8f",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/BackgroundUploadForegroundTest.kt",
+          "before_sha256": "4bdff6b34a08fb5455e91b2a8c4f070b43eabf5893c24c9e5a342760c12a646e",
+          "sha256": "1fc5b12fe6e60918c7d24fc05e9746d19189d7694e45fd1cc32f50bbdb29b644"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/BatchUploadReviewUiTest.kt",
+          "before_sha256": "e70f5e70234789a4b82f07da43eb5f1820413430bd742942f04731500e510827",
+          "sha256": "f1e5fd7d2e78499121877e825978a48998fecdcecc78edf49cbd66addd839194"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchUploadForegroundService.kt",
+          "before_sha256": "5b515d46bd2ee22938a713ac1a5a39c994a7778a0fff16ddcf24fb78a8cbeb41",
+          "sha256": "4fad2ab8d702bfd1fc1674bac7b5b9f248fc230c2fd1f778d084f68ac14d6f57"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "2cc5c765ac88ec0ba300214ef68c243b552867c4aa3ea05767fc37414d6b41ce",
+          "sha256": "ee1e2721e3a9d0d24f88b079d5a6a3e7152e3fef0dfb3083f22f409e9acf7d28"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/BatchUploadQueue.kt",
+          "before_sha256": "d244fee87bf79aa444913ff36e28a7096aa31529c94d246f5e0789292a5710d6",
+          "sha256": "776c70d89f71680d95c25706a5b0d7cc00ff27a7950cbc6e3540cc01febe7a9d"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/BatchUploadQueueTest.kt",
+          "before_sha256": "88a0f41806ab6e6734a595cb7dd41e2ca92e57d502c7b5cf920c5859477bd81d",
+          "sha256": "ffe9cdd8371d0b7f773c79dd8f190afd2bc308936167f23770e7f79c0763e144"
+        },
+        {
+          "path": "docs/ANDROID_UPLOAD_RECOVERY.md",
+          "before_sha256": "23977c5549c81216747d0064db6f0e61a9ab497a447063614388f8168b47c30a",
+          "sha256": "9519e281dd45686d38cb2df8ec657369fc6c79c1be75aaa62bd94fa20a36abe7"
+        },
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "6ff39bb20fb21eca6aa73b221ee9b2137c7e1f9a2acd1c999e6e106d7051ae83",
+          "sha256": "249fa38f11ccedcc0d79076d7b2b083d25f0cc402752aeeaf9313fedf8d84bfc"
+        }
+      ],
+      "notes": "Review on unmetered loss or explicit metered/unknown consent for a single run. 21 JVM and five API 36 emulator checks passed."
+    },
+    {
+      "feature": "search-scorecard-inconclusive-absence",
+      "source_commit": "8dc51bc7eae349d841dc8ca09520853bfb91111f",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "249fa38f11ccedcc0d79076d7b2b083d25f0cc402752aeeaf9313fedf8d84bfc",
+          "sha256": "5fe3e14f179e53d2c7edea0c6159c37b4fa1099d64214ad3657b2908e9d1cb97"
+        },
+        {
+          "path": "docs/SEARCH_QUALITY_SCORECARD.md",
+          "before_sha256": "49004c5ed02ed4aa42ff6eb697398c47f4d097c64f26a9620be6830ff2bf8d7c",
+          "sha256": "8a10fcd8bab26548b7b4bad5ee8e328aba695e69fb998b96ae6377a95c73bf4f"
+        },
+        {
+          "path": "server/backend/app/access/search_evaluation.py",
+          "before_sha256": "bb195783a5315f0bc9aaec0682d6107dd12ec557b8089f426c0af0d0cdc54555",
+          "sha256": "86f73bbe9950f6a099eac26367be1151a3da25adab7e626e43f71e83d3889b5c"
+        },
+        {
+          "path": "server/tests/security/test_search_quality_scorecard.py",
+          "before_sha256": "1ea607e6eaf1d39c2a3e190c547e9485d479d2e3c77a36197ac63d46636e8637",
+          "sha256": "b500d8ad858db0445259134aabb56bf2b0895216ef7262e7c196654170c86f3b"
+        },
+        {
+          "path": "server/tests/security/test_semantic_eligibility_search.py",
+          "before_sha256": "b5e17e00ff314aa7fd1d537c8898ef2e70819a5c638b1f8401da365b3171f366",
+          "sha256": "87f0afb2427a2a02043780582daecce6b415b48720651a7b2eb13b80c66f9af7"
+        }
+      ],
+      "notes": "Generated v4 workspace results with 65 matching omissions no longer confirm absence. Complete narrower scope remains eligible."
+    },
+    {
+      "feature": "story-browser-gallery-readiness",
+      "source_commit": "725191e8a24cd96ff8ad5840c869d6e5d537ed0d",
+      "files": [
+        {
+          "path": "server/tests/security/test_story_workspace_browser.cjs",
+          "before_sha256": "1ed09d4aa3a09cf0df134db2ef3febacf8c63fcd794bc72b5a966b167cb8f2f7",
+          "sha256": "5bc4637528ea5134a6222f4fda8da94cc23345f82d5250a63b018ef786d1fb02"
+        }
+      ],
+      "notes": "The generated browser waits for the story inputs the UI enables after gallery paint."
     }
   ]
 }
