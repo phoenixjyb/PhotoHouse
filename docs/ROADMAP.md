@@ -48,15 +48,20 @@ this file retain the date and scope of their original evidence.
   broader rollout, installed phone/TV clients and family review are separate
   evidence. The October 29 release and October 30 API/Web status remain dated
   records, not claims about current service state. No new Android/TV delivery or
-  broad household acceptance is claimed here. The November 24 Web UI rollout
-  failed native playback startup and was safely rolled back; the new UI is not
-  live while that issue is being resolved.
+  broad household acceptance is claimed here. The November 24 startup failure
+  and rollback remain historical failures. The qualified task-query revision is
+  now used by the recovered Windows API/UI, and the bilingual `/roadmap/` is
+  externally browser-verified and confirmed by the owner. The final Windows
+  result passed 16 existing HTTPS checks and nine roadmap checks; native Jobs,
+  controller cleanup, offline audit and explicit release completed after recovery
+  of a lost transport response. No service replay was needed to recover that result.
 
-The [playback task-query budget repair](WINDOWS_PLAYBACK_QUERY_BUDGET.md) passed
-19 focused local cases and eight exact Windows queries, including one 35-second
-query. It remains separate from live SYSTEM startup adoption and UI delivery.
-A post-rollback grouping task observation found the expected binding and a
-natural completed run with result 0; its bounded status-file scan was incomplete.
+The scheduled grouping binding also passed a natural SYSTEM run. Its actual
+status was `REFRESH_DEFERRED`, with zero updates: this verifies the source/owner
+binding and native closure, not a complete grouping sweep or household quality.
+Current API/UI recovery does not establish new Android/TV delivery. GitHub
+Actions remains cost-paused; all new checks are local or separately recorded
+Windows operations.
 
 Search relevance on real household material, story quality, and in-home
 interaction need family review. Generated fixtures establish software behavior,

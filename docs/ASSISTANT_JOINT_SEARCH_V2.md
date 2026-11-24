@@ -299,3 +299,20 @@ the project status. Next are real-library identity/index admission and relevance
 measurement, explicit video date-basis handling, and local understanding/ranking.
 No real date backfill, reviewed-index preparation, deployment, signing or
 publication is part of this source increment.
+
+
+## Reviewed-place answers in an ongoing search — 24 November 2026
+
+A v2 follow-up containing only one exact reviewed place name or alias can add or
+replace the place filter while retaining the current person, capture date,
+media type and literal text filters. For example, search for photos of a reviewed
+person, then answer with a reviewed region name. This is a scoped resolver/planner
+path, not a new model inference or location guessed from captions.
+
+Unknown, mixed-condition, quoted, action-bearing and ambiguous answers retain
+the existing unsupported/clarification behavior. Existing scope revalidation
+still runs: a changed source or revoked access cannot reuse stale results.
+Generated English/Chinese API cases demonstrate real result narrowing, text
+retention and stale-context refusal. This change is v2 source/test evidence;
+v3 remains on its separate intent planner and Windows activation is tracked
+separately. No schema, access policy, model/provider or save behavior changes.

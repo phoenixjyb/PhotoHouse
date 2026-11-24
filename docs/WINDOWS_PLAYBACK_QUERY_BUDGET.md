@@ -52,17 +52,37 @@ transport streams joined, and the 180-second offline/local-owned audit completed
 This qualifies the changed query component under the approved SSH principal.
 It does not establish SYSTEM startup or UI rollout acceptance.
 
-## Remaining integration
+## Startup revision integration
 
-The running API still uses the previous worker. Adoption needs a new private
-worker/control/guard binding through the current pinned bootstrap, gateway and
-incumbent loader chain. Preserve the old files and rollback references; prepare
-new identities rather than editing a live pinned file in place. The worker pin
-and corresponding child-template code binding must refer to the prepared bytes.
-The API control and loader references must also agree with that revision.
+The original work window closed with source and component evidence only. The
+owner then authorized continuation. A create-only Windows operation has prepared
+and verified the complete new startup chain; its Job and transport closure and
+180-second offline audit passed. This staging result is not SYSTEM startup or
+UI delivery acceptance.
 
-The next guarded rollout must actually pass startup, HTTPS asset checks and the
-natural grouping transition before the new UI is called live. The complete
-rollout budget did not fit the remaining November 24 work window, so it was not
-shortened to force an activation. See the [Web review](WEB_DESIGN_REVIEW_2026-11-24.md)
-and [roadmap](ROADMAP.md) for the separate source, runtime and family-review states.
+The revision preserves both actual guard layers: the pinned loader wrapper and
+its playback-check implementation. New worker and child-template code pins refer
+to the qualified bytes. New controls, wrapper, delegate, anchor and gateway
+references are immutable revisions; the previous files remain available for
+rollback. The existing stop marker, runtime owner, model settings, data paths,
+schema, native binaries and sharing configuration remain unchanged.
+
+The existing ingress policy continues to validate its original control and
+release. An explicit adapter first checks that the active candidate control and
+gateway configuration differ only in the declared startup source references.
+The original release is not relabelled as acceptance of the new startup chain.
+The matching grouping adapter updates source path, hash and byte count together.
+
+The HTTPS checker now obtains its stage, launcher hash and plan hash from the
+same sealed operation record. Pin, import, plan-load and HTTPS failures publish
+an atomic closed receipt. Six isolated local cases cover the three controller
+labels and deliberate launcher-pin, plan-pin and verification failures.
+
+The later November 24 recovery and delivery passed actual SYSTEM startup and
+closed playback checks using this revision. Existing UI/private-denial HTTPS
+checks and the new bilingual roadmap route passed; the owner confirmed the
+roadmap in their browser. The original failed attempts and transport-output
+loss remain recorded separately. The scheduled grouping binding passed its
+natural SYSTEM run but returned `REFRESH_DEFERRED`, zero updates; this is not a
+complete grouping sweep or household-quality acceptance. See the [Web review](WEB_DESIGN_REVIEW_2026-11-24.md)
+and [roadmap](ROADMAP.md) for source, runtime and family-review boundaries.

@@ -67,3 +67,17 @@ Use `PH_BROWSER_EXECUTABLE` to select an existing browser; optional
 `PH_ROADMAP_SCREENSHOTS` writes previews outside the repository.
 使用 `PH_BROWSER_EXECUTABLE` 选择已有浏览器；可通过 `PH_ROADMAP_SCREENSHOTS`
 将预览图写到仓库之外。
+
+
+## Windows delivery record / Windows 部署记录
+
+On 24 November 2026 the route was served on Windows and confirmed in the owner's
+browser. English/中文, 24 records, retained expanded details, desktop and a
+320-pixel browser layout passed. Nine route checks and 16 existing HTTPS checks
+passed; owned deployment cleanup and release completed. The page is still a dated
+product snapshot, not live monitoring. GitHub CI remained off.
+
+2026 年 11 月 24 日，该入口已在 Windows 上部署，并由用户在浏览器确认可用。
+英文／中文、24 条功能记录、展开状态保持以及桌面和 320 像素浏览器布局均通过检查。
+9 项路线图检查和 16 项原有 HTTPS 检查通过，部署进程清理与资源释放已完成。
+本页仍是有日期的产品快照，不代表实时健康监控；GitHub CI 保持关闭。

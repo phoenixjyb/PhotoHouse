@@ -61,3 +61,17 @@ The reviewed UI artifact at source `68d6baba` has not been accepted live. Two gu
 The environment and atomic grouping-receipt source corrections were retained, but those later phases were not reached by these two attempts. No model inference, model replacement, database backup or schema change was needed for the redesign. The existing backend and grouping configuration remain the restored deployment. Physical microphone/speaker and household review remain separate.
 
 The resulting [task-query budget repair](WINDOWS_PLAYBACK_QUERY_BUDGET.md) passed 19 focused local tests and all eight exact Windows query checks, including one 35-second query. That component is qualified; adoption in the pinned SYSTEM startup chain and a new UI rollout remain pending.
+
+
+## November 24 delivery follow-up
+
+The earlier startup refusal and rollback above remain valid historical results.
+The repaired task-query revision subsequently passed SYSTEM API/UI startup.
+Windows served the existing assistant UI and the additive bilingual `/roadmap/`
+route; 16 existing HTTPS checks and nine roadmap checks passed. An external
+browser verified English/中文 switching, all 24 records, desktop and 320-pixel
+layout, with no JavaScript or CSP errors. The owner confirmed the roadmap works.
+Native closure, exact temporary controller removal, offline/local-owned audit
+and explicit release completed after recovery of a lost transport response.
+The natural grouping binding check returned `REFRESH_DEFERRED`, zero updates;
+no full sweep or broader family/device acceptance is inferred. GitHub CI stayed off.
