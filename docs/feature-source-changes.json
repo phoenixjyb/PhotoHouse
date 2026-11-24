@@ -37201,6 +37201,43 @@
         }
       ],
       "notes": "Keep the composer ready after its ordinary scope is verified, restore the first keyboard action and voice target sizes, and exercise the complete generated Search-to-story path. Keep the exact roadmap export check in the normal staging checks."
+    },
+    {
+      "feature": "audit-jude-focus-and-grounding-20261125",
+      "source_commit": "1c6a396d03b71b0036eefca5006cf2e4c2add262",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "e063dc61a5efa21cf41bb3a19806fdad1d61463248393fee4cd7647ab26aa79f",
+          "sha256": "6f3b54aad329fdabbb5817609f8597b4ca44f030cacd503187dccbd6b9cf9baa"
+        },
+        {
+          "path": "docs/STORY_GROUNDING_AND_CLOUD_PROOFREADING.md",
+          "before_sha256": "05c85f6138dad289cb8d3afb56bcaa2f2d99e41378334d73b4af81ee0d6876c4",
+          "sha256": "4175a0d9dce32c59cc6d03e777b708ee6302259bdd8fd28aa03d9d78b17b462d"
+        },
+        {
+          "path": "server/backend/app/access/story_name_grounding.py",
+          "before_sha256": "e460d716893a4a63c9353f0c33aad0b95ea65b41bbae51bb788e5d7b004c7ed0",
+          "sha256": "e85bae4ea1d10475287f9cc7dfd326c2038794bcf7af037bd022adb78a28f01a"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "425fe54328841a2ee8e85d895e8e468adad6117c13c9f1cb84a4922336db5ee4",
+          "sha256": "d490fb40afe88c7dbd0e4384c779a04e3ce152f2a35ff5543819edc08e9a1d92"
+        },
+        {
+          "path": "server/tests/security/test_assistant_turn_trail_browser.cjs",
+          "before_sha256": "695c60e6888c11c0b08797aa87bd8f3bf58f017cd0f3780a88c71a55f1d9d791",
+          "sha256": "521f8167c37d422f50dc9c026446dfcece48e1eaedc88c059d5e185471a93acc"
+        },
+        {
+          "path": "server/tests/security/test_story_name_grounding.py",
+          "before_sha256": "4fee78968a698015cc674226f7e5366e096d590216902fac195a8a13959bddc1",
+          "sha256": "b8acf2a9c7bce91a70a6d4660009a16dcfb9ac9f653453e4c7349c005d524c68"
+        }
+      ],
+      "notes": "Generated Chromium uses the actual Jude restore control and verifies both cancel-focus recovery and preservation of existing focus. Only public reference data is indexed; a matched four-example grounding comparison preserves text, repairs and ambiguity with lower local lookup time."
     }
   ]
 }
