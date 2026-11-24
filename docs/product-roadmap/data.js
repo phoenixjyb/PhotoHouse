@@ -184,6 +184,15 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "kind": "source",
           "label": {
+            "en": "Audit reconciliation · generated viewer checks",
+            "zh": "审计对照记录 · 合成查看器测试"
+          },
+          "at": "2026-11-25",
+          "state": "verified"
+        },
+        {
+          "kind": "source",
+          "label": {
             "en": "AUDIT_RECONCILIATION_2026-11-24.md",
             "zh": "AUDIT_RECONCILIATION_2026-11-24.md"
           },
@@ -369,6 +378,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Gallery, detail and protected playback routes are implemented.",
           "zh": "已实现相册、详情和受保护播放入口。"
+        },
+        {
+          "en": "Local Web checks verified on-demand descriptions and faster prepared-video startup under fixed response delays.",
+          "zh": "本地网页测试验证了按需加载照片描述，并在固定响应延迟下缩短了已准备视频的启动时间。"
         }
       ],
       "gaps": [
@@ -382,8 +395,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "统一不同屏幕上的导航、加载与播放错误体验。"
       },
       "delivery_note": {
-        "en": "Existing browsing delivery remains distinct from the pending new-UI grouping handoff.",
-        "zh": "已有浏览交付与新版界面待完成的分组衔接分别记录。"
+        "en": "Fullscreen browsing is live on Windows. The newer loading improvements have local evidence and await release.",
+        "zh": "Windows 已上线全屏浏览。较新的加载改进已完成本地验证，仍待交付。"
       },
       "acceptance_note": {
         "en": "No physical device result is inferred from an API check.",
@@ -625,8 +638,8 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "Generated English, Chinese and mixed-language journeys retain the date and media filters. A follow-up can change the month and keep the reviewed person filter.",
-          "zh": "合成的中英文及混合语言流程能保留日期和媒体类型条件。追问可以更改月份，同时保留已核实的人物筛选。"
+          "en": "Generated English, Chinese and mixed-language turns can change the month or weekend while retaining the other filters. The Web assistant offers Any date for review and Send.",
+          "zh": "合成的中英文及混合语言流程可更改月份或周末，同时保留其他筛选条件。网页助手可将「不限日期」填入输入框，供用户确认后发送。"
         }
       ],
       "gaps": [
@@ -825,8 +838,8 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "A Web editor can add same-day photos or videos from the current library, split a saved group and open an ordered story draft.",
-          "zh": "网页编辑器可从当前相册库添加同日照片或视频、拆分已保存的回忆组，并按顺序打开故事草稿。"
+          "en": "A Web editor can add same-day photos or videos and split a saved group. Stories can reopen a recent group or start an unsaved draft from one or two groups in the selected order.",
+          "zh": "网页编辑器可添加同日照片或视频并拆分已保存的回忆组。「故事」可打开近期回忆组，也可按所选顺序从一到两个回忆组生成未保存的草稿。"
         }
       ],
       "gaps": [
@@ -840,8 +853,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "用一小组可审阅的家庭活动试用可编辑的回忆组。"
       },
       "delivery_note": {
-        "en": "Generated browser checks covered explicit addition, save, split and retry. The optional activity group editor awaits Windows release.",
-        "zh": "合成浏览器测试覆盖主动添加、保存、拆分和重试。可选的活动回忆组编辑器仍待 Windows 交付。"
+        "en": "Generated browser checks covered addition, split, retry and opening a draft from two verified revisions. Windows release remains open for the optional activity group editor.",
+        "zh": "合成浏览器测试覆盖添加、拆分、重试，以及按两个已核对版本打开故事草稿。可选的活动回忆组编辑器仍待 Windows 交付。"
       },
       "acceptance_note": {
         "en": "Family usefulness must be evaluated directly.",
@@ -1437,6 +1450,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "An extracted source package can provision a synthetic owner, import a photo and recover without restoring withdrawn access.",
           "zh": "解包后的源码可创建合成测试所有者、导入照片，并在恢复时保留已撤销的访问限制。"
+        },
+        {
+          "en": "Native Windows Android checks now select a reusable Gradle cache and temporary files on a fixed data volume. Local tests cover the storage selection.",
+          "zh": "Windows 本机 Android 检查会在本地固定数据盘复用 Gradle 缓存并放置临时文件。存储位置的选择已通过本地测试。"
         }
       ],
       "gaps": [

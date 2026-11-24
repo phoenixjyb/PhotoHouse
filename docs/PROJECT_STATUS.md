@@ -8,6 +8,18 @@
 
 ## November 25 merged source
 
+The recent-group viewer, prepared-video startup and the Web assistant's **Any
+date** control are on main at `79bcc94`. The exact candidate passed 3,885 API
+tests and 4,594 subtests with six skips, plus all 47 Web suites. The generated
+video comparison used fixed delays, with the median first frame going from 326
+ms to 177 ms. [PR #133](https://github.com/phoenixjyb/PhotoHouse/pull/133)
+
+The next source update adds an unsaved story draft from one or two saved
+groups and verifies their selected order in Chromium. Native Windows Android
+checks select a reusable cache on a fixed data volume. Storage placement is
+covered by local tests, with a native Windows run pending.
+[Storage policy](STORAGE_POLICY.md)
+
 [PR #130](https://github.com/phoenixjyb/PhotoHouse/pull/130) added explicit
 same-day photo and video choices and memory-group splitting, Android consent
 before metered or unknown-network retries, and coverage-aware Search negatives.
