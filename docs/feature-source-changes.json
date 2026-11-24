@@ -37325,6 +37325,33 @@
         }
       ],
       "notes": "The author explicitly requests one completed section with processing consent. The loopback speech preview rechecks the original section and current author access before returning unsaved text. Generated browser and API tests exercised exact audio, no automatic processing, denial, withdrawal and late close."
+    },
+    {
+      "feature": "audit-bilingual-status-and-locale-20261125",
+      "source_commit": "8ff18681f8a5c5141a9a089c9b5ee3ea4fd175c6",
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "f506bde7c74ab9a07d8264fc29364b11e4e674d4038a93446c088a84f8978c2e",
+          "sha256": "bfc4829326261f6d2aeedaf2b28912d74ccecfa533a4cc707890d9a0292ab26b"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "23c0da6c4810399563eac3e7461fce8c33eaa8b99acad22480a0b9bc6ff93089",
+          "sha256": "992032ba74a113a5e3fa2ee10d6eb1f6c3d32dfeb5906671499ac5627214bc4e"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "8b243929b48403188523d5170cc579a0af10e1344af1f902870b00695fd217c1",
+          "sha256": "9afc28096fe7582996a70793a309caaa2e23b9322ca0a0979b665bd6c1c85651"
+        },
+        {
+          "path": "server/tests/security/test_assistant_locale_resume_browser.cjs",
+          "before_sha256": "f00f27544f40c7031ae09ea08b623a6adee28a33b99b14bacee33d0db311f747",
+          "sha256": "e4b480895fba01c76dadadece4a635f56fe86c13430f7a4aa03704cb40ef52f9"
+        }
+      ],
+      "notes": "The public roadmap and download describe generated Search refinement and consented transcript previews separately from live Windows. The browser scenario waits for the exact simulated fresh list or denial before starting the next signed-in case."
     }
   ]
 }
