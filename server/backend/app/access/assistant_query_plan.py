@@ -330,13 +330,14 @@ def _extract_dates(text, today, *, month_year=None):
 
     relative_month = re.compile(
         rf'(?:(?P<year_zh>去年|今年)[ \t]*|'
-        rf'(?P<year_en>(?a:\blast(?:[ \t]+year)?\b|\bthis[ \t]+year\b))[ \t]+)'
+        rf'(?P<year_en>(?a:\b(?:last|this)[ \t]+year\b))[ \t]*|'
+        rf'(?a:\blast\b)[ \t]+)'
         rf'(?:(?P<month_num>1[0-2]|0?[1-9]|十一|十二|十|[一二三四五六七八九])月(?:份)?|'
-        rf'(?P<month_name>(?:{_MONTH_PATTERN})))', re.I)
+        rf'(?P<month_name>(?:{_MONTH_PATTERN}))(?a:\b))', re.I)
     for match in relative_month.finditer(text):
         if overlaps(match):
             continue
-        relative_year = match.group('year_zh') or match.group('year_en')
+        relative_year = match.group('year_zh') or match.group('year_en') or 'last'
         year = today.year - (1 if relative_year.casefold().split()[0] in {'去年', 'last'} else 0)
         raw_month = match.group('month_num')
         month = (_ZH_MONTHS.get(raw_month, int(raw_month) if raw_month and raw_month.isdecimal() else None)

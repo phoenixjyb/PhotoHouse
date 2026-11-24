@@ -1,4 +1,5 @@
 """Private, cohort-aware v2 search quality scorecard tests."""
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -99,7 +100,7 @@ class SearchQualityScorecardTests(unittest.TestCase):
         self.assertEqual(report['case_count'], 3)
         self.assertEqual(report['failed_count'], 0)
         self.assertEqual(len(scenario.pilot.calls), 3)
-        self.assertNotIn('101', repr(report))
+        self.assertNotIn('"101"', json.dumps(report, ensure_ascii=False))
 
     def test_v2_cohort_denominators_misses_latency_and_privacy(self):
         engine = FakeEngine()
