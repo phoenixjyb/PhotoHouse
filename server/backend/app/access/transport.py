@@ -57,7 +57,8 @@ class AccessRuntime:
             if action in {'login', 'register'}:
                 with Admission(service).attempt(source, args[0]):
                     return getattr(service, action)(*args, **kwargs)
-            if action not in {'profile', 'logout', 'accept_invitation', 'invite', 'cancel_invitation', 'list_memberships', 'revoke_membership'}:
+            if action not in {'profile', 'logout', 'accept_invitation', 'invite', 'cancel_invitation',
+                              'cancel_pending_invitations', 'list_memberships', 'revoke_membership'}:
                 raise AccessDenied('Access denied')
             return getattr(service, action)(*args, **kwargs)
 
@@ -276,6 +277,7 @@ async def session(request: Request):
     result = await run_in_threadpool(_runtime(request).call, 'profile', token)
     if mode == 'web':
         result['csrf_token'] = csrf_token(token)
+        return JSONResponse(result, headers={'X-PhotoHouse-Pending-Invite-Cancel': '1'})
     return JSONResponse(result)
 
 
@@ -314,6 +316,12 @@ async def invite(library_id: str, request: Request):
 @router.post('/libraries/{library_id}/invitations/cancel')
 async def cancel_invitation(library_id: str, request: Request):
     token, _ = credentials_from_request(request)
-    body = await _body(request, {'code'})
-    await run_in_threadpool(_runtime(request).call, 'cancel_invitation', token, library_id, body['code'])
+    body = await _body(request, set(), optional_fields={'code', 'phone'})
+    if set(body) == {'code'}:
+        action, target = 'cancel_invitation', body['code']
+    elif set(body) == {'phone'}:
+        action, target = 'cancel_pending_invitations', body['phone']
+    else:
+        raise TransportError(400, 'Invalid request')
+    await run_in_threadpool(_runtime(request).call, action, token, library_id, target)
     return JSONResponse({'ok': True})

@@ -64,6 +64,8 @@ follows. Current installed-client and voice acceptance remain separate.
 - Owners can copy a phone-bound registration link from Family settings, or
   open their device's share menu in a browser that supports Web Share.
   Registration still requires the invited phone number and an explicit submit.
+  Enter the same number and choose **Cancel unused links for this number** to
+  withdraw a pending invitation after leaving the page or signing back in.
 - Android can remember a user-selected upload folder in encrypted local
   storage. Opening it again checks the current account, library and Android
   read permission before the usual review and explicit upload. The folder
