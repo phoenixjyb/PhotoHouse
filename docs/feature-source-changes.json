@@ -37607,6 +37607,38 @@
         }
       ],
       "notes": "Author-only completed manifest timing and attributed review in generated Chromium. No audio reads for the timeline and no live configuration change."
+    },
+    {
+      "feature": "external-search-reader-20261125",
+      "source_commit": "05da510398f460d67c203e4ce67db1ca138a2de2",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "55c65d267fc1d51cc253546fe084b7c6a914c83a9db878cd8cf3fb66006268af",
+          "sha256": "3c5aab4d843b51fafc3130f5fc77310dfaa64399388da0c0dbb4cd92689c7d77"
+        },
+        {
+          "path": "docs/EXTERNAL_SEARCH_INTERFACE.md",
+          "before_sha256": "8c823fe099b5ad4c0fd1dd4c53bbaf5844cd781f6c1fda0547da7c1aa40e6d7e",
+          "sha256": "de26daf34092d9b4cd5f078c7943eccac2f9fbbdd47026fa0e2f5fc58f08d551"
+        },
+        {
+          "path": "server/backend/app/access/external_search.py",
+          "before_sha256": null,
+          "sha256": "87acee9d45bba683628ac4f4c251bd9fd6b810b2cd1550b3af560cddf3b04bbc"
+        },
+        {
+          "path": "server/tests/security/test_external_search.py",
+          "before_sha256": null,
+          "sha256": "0ddf51fcf7aa03705895f3d556801dafe076fb69c8e7c4532d1a77768598d13f"
+        },
+        {
+          "path": "tools/check.py",
+          "before_sha256": "1daed7110ca8832f840f7a1c062a2bf807900f7cf3f15b17c905ecd668de329f",
+          "sha256": "165af7de1670557d7bb03ee52c6a097304534b057d3f4deb245aa48e9292949d"
+        }
+      ],
+      "notes": "Generated protected discovery validates metadata projection, source drift, scoped paging, current host access and reader revocation. Transport and grant issuance remain pending."
     }
   ]
 }
