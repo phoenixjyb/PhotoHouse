@@ -36853,6 +36853,41 @@
       "live_runtime_changed": false,
       "providers_activated": false,
       "scope": "Opt-in recorder with receipt retry, reviewable diverse seeds, private alias revisions, and generated install/import coverage."
+    },
+    {
+      "feature": "audit-structured-search-projection-efficiency",
+      "source_commit": "d9c1ca3ac5484d4400f4357f5ea458b22a6eeadf",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "9397a5a971c11cf9a481b3f6d56ed0471a4f05ebe503c9e6618c0327ae7b688d",
+          "sha256": "36bf240a7de32e3d1fcd4726286a5be650d5e4507003879ec9c893a43f9f4f8b"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "669a482e4fc94a272eb47b8d72c9dc7973992c6f5f7f9c968022a545a38164f8",
+          "sha256": "67444e5133b136d3313b65bb3d6487143835e32abad7221d931108540ac2bc48"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "259c8fb18312027c0862f7ffa5db71690bea2a3d06de24f075ffb69a0b23c2ff",
+          "sha256": "5d0318fbf8e941c19127f78af5702d00ec0bf13084ec452163ee4e0d431fb14a"
+        },
+        {
+          "path": "server/backend/app/access/library.py",
+          "before_sha256": "8ea2bc5f511d4c15b680206af753b0dd74099a9826dfd5f603fe09777123693c",
+          "sha256": "a44b80bbb326947fc049f38ba018507fea37450091e0d5f2fd1e0b30c8ade0b0"
+        },
+        {
+          "path": "server/tests/security/package_smoke.py",
+          "before_sha256": "411f3243b10086d1bec8d089490d2faa0fdd38e06a9283600ccf4091f38dc22d",
+          "sha256": "1f565ee2ef7c8070a8f37dca0ba3a38da63e6bf7cd526144de5d5b00a34774f2"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Remove repeated work from an authorized read projection and preserve exact generated intake replay cardinality."
     }
   ]
 }
