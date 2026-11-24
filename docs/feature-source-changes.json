@@ -36668,6 +36668,26 @@
       "live_runtime_changed": false,
       "providers_activated": false,
       "scope": "Reviewed Web invitations, responsive viewer, opt-in resumable fixture recording API, strict search scorecard and optional installed speech selection."
+    },
+    {
+      "feature": "audit-semantic-qualification-index-drift",
+      "source_commit": "cac707cb97cc6f1a1df57ca2d16337ec709217be",
+      "files": [
+        {
+          "path": "server/scripts/qualify_library_semantic.py",
+          "before_sha256": "2c38378f908c2ec56ac2adad2b009b3af383a8530a0eb2b64fdd808a5a2c4ad9",
+          "sha256": "cebacb27d0de140f48ca15b9b4d5aff96c2516952b3945b2faa3264bdb117edf"
+        },
+        {
+          "path": "server/tests/security/test_qualify_semantic_coverage.py",
+          "before_sha256": "f6bb76cfeec65516c6de0a75eafd0e39881ce38f4bf23d9ec964785f1384b830",
+          "sha256": "0646c0ca0194c234bfa726e46c178db99dc30032d0da672cb921442614cfe62f"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Do not run further inference or synthetic recovery probes after the exact candidate index changes during warmup."
     }
   ]
 }
