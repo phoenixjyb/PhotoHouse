@@ -87,7 +87,7 @@ let browser,context,page;
   });
   page=await context.newPage();page.on('pageerror',error=>errors.push(error.stack||error.message));await page.goto('https://photohouse.test/ui');await page.locator('#auth').waitFor({state:'visible'});
   await page.locator('#phone').fill('+12025550100');await page.locator('#password').fill('Synthetic family passphrase!');await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();
-  await page.locator('#assistant-panel').evaluate(node=>{node.open=true;});await page.locator('#assistant-voice-start').waitFor({state:'visible'});
+  await page.locator('#assistant-panel > summary').click();await page.locator('#assistant-voice-start').waitFor({state:'visible'});
   assert.equal(await page.locator('#assistant-panel > summary').textContent(),'小贾 · 拾光助手','the current Jude assistant label is visible');
   let desktopLayout=await page.evaluate(()=>({width:innerWidth,pageWidth:document.documentElement.scrollWidth,controls:document.querySelector('#assistant-voice-session').getBoundingClientRect().toJSON()}));assert(desktopLayout.pageWidth<=desktopLayout.width,'desktop voice controls do not cause horizontal overflow');
   await page.locator('#assistant-voice-session').scrollIntoViewIfNeeded();const desktopCapture=path.join(artifacts,'assistant-voice-session-desktop.png');await page.screenshot({path:desktopCapture,fullPage:false});fs.chmodSync(desktopCapture,0o600);

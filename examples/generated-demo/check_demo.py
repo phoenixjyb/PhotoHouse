@@ -6,11 +6,12 @@ This is an in-process development check, not a production server entry point.
 from contextlib import contextmanager
 import hashlib
 import json
-from pathlib import Path
 import secrets
+import shutil
 import sqlite3
 import sys
 import tempfile
+from pathlib import Path
 from unittest.mock import patch
 import uuid
 
@@ -30,6 +31,8 @@ def check():
     from app.access.service import AccessService
     from app.access.transport import AccessRuntime
     from app.access.media import MediaRuntime
+    from app.access.original_deletions import OriginalDeletionJournal
+    from app.access.runtime import ExistingDatabase
 
     # Reserved fictional numbers are used only inside the temporary database.
     owner, member = '+12025550100', '+12025550102'
@@ -37,7 +40,8 @@ def check():
     origin = 'https://photohouse.test'
     library = 'generated-family'
     with tempfile.TemporaryDirectory(prefix='photohouse-generated-demo-') as temp:
-        root = Path(temp)
+        root = Path(temp).resolve()
+        root.chmod(0o700)
         path = root / 'demo.sqlite'
         originals, derived = root / 'originals', root / 'derived'
         originals.mkdir()
@@ -87,7 +91,13 @@ def check():
                 db.execute('INSERT INTO access_asset_libraries VALUES (?,?)', (ident, library))
             db.commit()
 
-        app = create_app(access_runtime=AccessRuntime(database, origin),
+        journal = OriginalDeletionJournal.initialize(
+            root / 'deletions.sqlite', str(uuid.uuid4()), format_version=4)
+        with database() as db:
+            journal.bind(db)
+
+        app = create_app(access_runtime=AccessRuntime(
+            ExistingDatabase(path.resolve(), original_deletions=journal), origin),
             media_runtime=MediaRuntime((originals,), derived),
             memory_collaboration_enabled=True, memory_originals_enabled=True,
             memory_generation_enabled=False, memory_editorial_enabled=True)
@@ -285,17 +295,59 @@ def check():
                 headers=member_headers)).json()
             if retained_original['text'] != '演示家人记得回家时窗边亮着暖色的灯。':
                 raise RuntimeError('Child revision changed the original family contribution')
-
             capabilities = require(client.get('/memory-community/v1/capabilities?library=' + library,
                 headers=member_headers)).json()
             if capabilities['generation_enabled']:
                 raise RuntimeError('Generated demo unexpectedly enabled a model')
+
+            # Keep an older generated snapshot, then withdraw one original in
+            # the current primary. Restore the old copy and replay the newer
+            # sidecar before starting a fresh protected API runtime.
+            snapshot = root / 'before-withdrawal.sqlite'
+            with database() as source, sqlite3.connect(snapshot) as target:
+                source.backup(target)
+            snapshot.chmod(0o600)
+            first_original_path = (first_path + '/contributions/' + first_contribution
+                                   + '?library=' + library)
+            require(client.get(first_original_path, headers=member_headers))
+            deleted = require(client.delete(first_original_path, headers=owner_headers)).json()
+            if deleted != {'deleted': True, 'id': first_contribution}:
+                raise RuntimeError('Generated original withdrawal was not recorded')
+            require(client.get(first_original_path, headers=member_headers), 401)
+            client.close()
+
+            shutil.copyfile(snapshot, path)
+            path.chmod(0o600)
+            with database() as restored:
+                replay = journal.replay(restored, expected_head=journal.head())
+                if replay[3] != 1:
+                    raise RuntimeError('Generated older snapshot did not replay one withdrawal')
+
+            reopened = create_app(access_runtime=AccessRuntime(
+                ExistingDatabase(path.resolve(), original_deletions=journal), origin),
+                media_runtime=MediaRuntime((originals,), derived),
+                memory_collaboration_enabled=True, memory_originals_enabled=True,
+                memory_generation_enabled=False, memory_editorial_enabled=True)
+            with TestClient(reopened, base_url=origin, client=('192.0.2.21', 23000)) as restored_client:
+                restored_client.headers['Sec-Fetch-Site'] = 'same-origin'
+                gallery = require(restored_client.get('/assets?library=' + library,
+                    headers=member_headers)).json()
+                if gallery['total'] != 2:
+                    raise RuntimeError('Generated restore changed the protected gallery')
+                require(restored_client.get(first_original_path, headers=member_headers), 401)
+                restored_list = require(restored_client.get(
+                    '/memory-community/v1/stories/' + first_story['id']
+                    + '/contributions?library=' + library, headers=owner_headers)).json()
+                if first_contribution in {item['id'] for item in restored_list['items']}:
+                    raise RuntimeError('Reopened API exposed the withdrawn original')
         return {'profile': 'generated-no-listener', 'photos': 2, 'stories': 2,
             'reviewed_contributions': 2, 'ordered_memoir_created': True,
             'editorial_saved_and_reopened': True,
             'story_reference_removal_preserved_original': True,
             'removed_reference_withheld_stale_editorial': True,
             'changed_child_revision_withheld_old_prose': True,
+            'withdrawal_replayed_from_older_snapshot': True,
+            'withdrawn_original_hidden_after_reopen': True,
             'anonymous_reads_denied': True, 'generation_enabled': False,
             'models_loaded': False, 'production_connections': False,
             'listening_socket': False, 'child_processes': False}

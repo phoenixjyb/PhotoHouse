@@ -1,10 +1,13 @@
 import os
 from contextlib import contextmanager
 from pathlib import Path
+import shutil
+import subprocess
 from types import SimpleNamespace
-from unittest import TestCase
+from unittest import TestCase, skipUnless
 from unittest.mock import patch
 import tempfile
+from PIL import Image
 
 os.environ.setdefault('DERIVED_PATH', tempfile.mkdtemp(prefix='photohouse-video-task-'))
 
@@ -49,6 +52,37 @@ class _Session:
 
 
 class UploadedVideoTaskTests(TestCase):
+    @skipUnless(shutil.which('ffmpeg') and shutil.which('ffprobe'), 'FFmpeg and FFprobe required')
+    def test_keyframe_worker_extracts_a_frame_from_a_real_subsecond_mp4(self):
+        with tempfile.TemporaryDirectory(prefix='photohouse-subsecond-video-') as root, \
+                patch.object(tasks, 'DERIVED_DIR', Path(root) / 'derived'):
+            source = Path(root) / 'short.mp4'
+            subprocess.run([
+                'ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
+                '-f', 'lavfi', '-i', 'color=c=blue:s=64x48:r=10:d=0.4',
+                '-an', '-c:v', 'mpeg4', '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
+                str(source),
+            ], check=True, timeout=15, capture_output=True)
+
+            asset = SimpleNamespace(id=70, path=str(source), mime='video/mp4',
+                                    duration_sec=None, fps=None, width=None, height=None,
+                                    gps_lat=None, gps_lon=None, taken_at=None)
+            session = _Session(asset)
+            executor = object.__new__(tasks.TaskExecutor)
+            executor.session_factory = lambda: _Session(asset)
+            executor.settings = SimpleNamespace(video_keyframe_interval_sec=2.0)
+            executor._handle_video_probe(session, SimpleNamespace(payload_json={'asset_id': 70}))
+            self.assertEqual(session.added[0].type, 'video_keyframes')
+            self.assertAlmostEqual(asset.duration_sec, 0.4)
+            executor._handle_video_keyframes(session, session.added[0])
+
+            frames = sorted((Path(root) / 'derived' / 'video_frames' / '70').glob('frame_*.jpg'))
+            self.assertEqual(len(frames), 1)
+            with Image.open(frames[0]) as frame:
+                frame.verify()
+            self.assertEqual([item.type for item in session.added],
+                             ['video_keyframes', 'video_embed', 'caption'])
+
     def test_strict_probe_rejects_extra_stream_and_unbounded_layout(self):
         info = {
             'streams': [

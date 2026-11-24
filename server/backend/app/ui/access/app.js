@@ -4857,8 +4857,8 @@
     }
   }
   $('assistant-prompts').addEventListener('click',event=>{const kind=event.target.dataset.assistantPrompt;if(!kind||state.locked||assistantState.busy)return;$('assistant-text').value=t({photos:'assistantFindPhotos',videos:'assistantFindVideos',open:'assistantOpenFirst'}[kind]);focusAssistant();});
-  Object.assign(words.zh,{memoryNavigation:'回忆导航',memoryNavStories:'故事',memoryNavMemoirs:'回忆集',memoryMediaRegion:'照片与视频'});
-  Object.assign(words.en,{memoryNavigation:'Memory navigation',memoryNavStories:'Stories',memoryNavMemoirs:'Memoirs',memoryMediaRegion:'Photos and videos'});
+  Object.assign(words.zh,{memoryNavigation:'回忆导航',memoryNavHome:'首页',memoryNavPhotos:'照片',memoryNavFamily:'家庭',memoryFamilyHeading:'家庭相册库',memoryNavStories:'故事',memoryNavMemoirs:'回忆集',memoryNavJude:'小贾',memoryMediaRegion:'照片与视频'});
+  Object.assign(words.en,{memoryNavigation:'Memory navigation',memoryNavHome:'Home',memoryNavPhotos:'Photos',memoryNavFamily:'Family',memoryFamilyHeading:'Family library',memoryNavStories:'Stories',memoryNavMemoirs:'Memoirs',memoryNavJude:'Jude',memoryMediaRegion:'Photos and videos'});
   const memoryNavigation=$('memory-navigation'),memoryLinks=[...memoryNavigation.querySelectorAll('a')];
   $('assistant-workspace-close').addEventListener('click',()=>closeAssistantWorkspace());
   // Revealing a recovery receipt opens the inline panel programmatically.
@@ -4875,7 +4875,9 @@
     for(const link of memoryLinks)link.removeAttribute('aria-current');
     if($('library').hidden||state.locked)return;
     const targets=visibleMemoryTargets().sort((a,b)=>a.target.getBoundingClientRect().top-b.target.getBoundingClientRect().top);
-    const edge=memoryNavigation.getBoundingClientRect().bottom+24;
+    // Scroll-margin offsets can land fractional-pixel headings just below the
+    // sticky-nav edge; include a pixel of layout rounding in the active marker.
+    const edge=memoryNavigation.getBoundingClientRect().bottom+25;
     const preceding=targets.filter(item=>item.target.getBoundingClientRect().top<=edge);
     const active=preceding.at(-1)||targets[0];active?.link.setAttribute('aria-current','location');
   };

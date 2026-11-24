@@ -82,6 +82,64 @@ comparison. A family knowledge graph, event understanding, iOS backup and a
 permission-aware external interface remain staged opportunities, rather than
 reasons to replace the current backend or database.
 
+## Fullscreen and home-network delivery
+
+The fullscreen viewer merged in [PR #118](https://github.com/phoenixjyb/PhotoHouse/pull/118).
+Windows serves Web source `85eb866` with the existing `c7a28ef` backend.
+Photos use the available viewport with Previous, Next and Exit controls, pinch
+zoom and panning. Prepared videos can open in the browser's fullscreen player.
+
+The deployment verified the live shell and versioned assets over HTTPS. A Mac
+also retrieved the expected shell through the regular URL and directly over the
+home LAN with normal certificate validation. The scheduled SYSTEM grouping
+worker completed with `REFRESH_DEFERRED` and zero updates. The prior release
+remains available for rollback. Local Chromium exercised fullscreen, pinch
+zoom and prepared playback using generated media. Physical phone, tablet and
+browser acceptance is open.
+
+The [operations guide](OPERATIONS.md#browser-access-on-the-home-network) covers
+using the same trusted HTTPS address on the home network.
+
+## November 24–25 audit work
+
+| Audit item | Verified work | Remaining product or release work |
+| --- | --- | --- |
+| PH-001 source integration | The November integration, Search-to-story ordering, and fullscreen viewer are on main. | Preserve the historical qualification and failed-scene drafts as separate evidence. |
+| PH-002 Search reliability | Generated English, Chinese, and mixed-language turns retain the intended month and media. A follow-up can change the month while keeping a reviewed person filter. | Native multi-turn acceptance and representative cold and warm request timings. |
+| PH-003 relevance | The scorecard counts hard-filter violations by language. Generated tests exercise the negotiated semantic turn route. | Reviewed family labels, whole-library coverage, and native quality and latency. |
+| PH-004 story integration | The generated Web journey reopens an explicitly saved story and checks the reviewed wording and persisted frame order. Phone and TV debug checks ran offline. | Combined installed-client journeys and physical review. |
+| PH-005 Web responsiveness | Failed gallery previews use the same shape as loaded thumbnails. The browser check covers Chinese at narrow width and enlarged text. | Matched first-paint, scrolling, and video-start measurements on representative devices. |
+| PH-006 Rust grouping | The qualified Rust grouping work is integrated, and the existing Windows grouping selection completed the fullscreen handoff. | Whole-refresh performance and dense-library quality. |
+| PH-007 family usability | Bilingual Home, Photos, Family, Stories, and Jude links reach existing destinations. Generated phone-width checks verify keyboard focus and enlarged text. | Usability sessions with family members. |
+| PH-008 identity and kinship | Opt-in private graph schema 2 maps authorized accounts to their own reviewed perspectives. Generated tests resolve each account's relatives separately. | An editable family graph with review and correction. |
+| PH-009 uploads and pairing | Android offers a cancellation retry after restart or a lost reply. The pending file stays out of upload retries. | Automatic OS-managed backup, secure pairing, iOS, and device acceptance. |
+| PH-010 voice | Generated browser and unit tests cover voice entry, recovery, half-duplex playback, and new-turn timing. | Natural speech, physical audio devices, and resource measurements with real local inference. |
+| PH-011 memory groups | The review, exclusion, and exact-save retry flow ran in a generated browser. An unrepresentable capture timestamp now excludes that candidate while other suggestions remain available. | Multi-device event discovery, event correction, and grounded event-to-story proposals. |
+| PH-012 oral history | The generated SQLite recording reopens after one section, replays the lost response without a duplicate, and accepts the next section. | Protected recording transport, real consent and recording on devices, and editorial review. |
+| PH-013 video | The worker extracts a keyframe from a generated 0.4-second clip. Prepared playback continues to require its own validated catalog entry. | Deployment of the worker change, pending import processing, and timestamped video retrieval. |
+| PH-014 installation and recovery | The fresh generated demo restores an older snapshot, replays a newer withdrawal, and reopens protected HTTP with the withdrawn source hidden. | Supported installers, service lifecycle, power-loss drills, and household restore approval. |
+| PH-015 external search | The read-only search and detail boundary has a design and a generated authorization test matrix. | External transport and scoped grants. See the [external search design](EXTERNAL_SEARCH_INTERFACE.md). |
+
+Use the [source ledger](feature-source-changes.json) for the exact change
+identities and the [operations guide](OPERATIONS.md) for release gates.
+GitHub Actions remains cost-paused. Family and physical-device acceptance remains
+separate from the generated source checks.
+
+### Generated Search request timing
+
+Twenty runs per source used the same three-turn Chinese journey and a fresh
+generated SQLite fixture per run. The first turn selected September photos,
+the second requested videos, and the third shifted the same video filter to
+October. The baseline and candidate returned identical filter and result
+shapes. This measures the in-process API with a reviewed fixture index and no
+model or listener. It leaves native model timing and real library scale open.
+
+| Request | Baseline `1867686` median / p95 | Candidate `c9ad331` median / p95 |
+| --- | ---: | ---: |
+| Start a search | 9.710 / 11.703 ms | 9.366 / 11.298 ms |
+| Change media on the same thread | 10.115 / 10.459 ms | 9.589 / 10.677 ms |
+| Change month on the same thread | 9.787 / 10.368 ms | 9.476 / 9.804 ms |
+
 ## Parallel work with one release owner
 
 The owner requested separate work chats for Search reliability/relevance,

@@ -109,15 +109,26 @@ class OralHistoryIntakeTests(unittest.TestCase):
     def test_saved_sections_and_original_receipts_survive_reopen_and_completion(self):
         body = self.body(); created = self.create(body); args = self.append_args(created)
         first = self.append(created, args)
+        # Model a committed append whose response was lost: resume from a new
+        # SQLite connection before the recorder sends its next section.
+        self.db.close(); self.db = self.connect()
+        self.intake = OralHistoryIntake(AccessService(self.db, clock=lambda: foundation.NOW), enabled=True)
+        status = self.intake.status(self.member, 'family-a', created['session_id'])
+        self.assertEqual((status['state'], status['revision'], status['section_count'],
+                          status['next_ordinal'], status['total_bytes'], status['total_frames'],
+                          status['manifest_sha256']),
+                         ('open', first['revision'], 1, 1, len(args['audio']), 1600,
+                          first['manifest_sha256']))
+        self.assertEqual(self.intake.audio(self.member, 'family-a', created['session_id'], 0), args['audio'])
+        self.assertEqual(self.counts(), (1, 1, 2))
+        self.assertEqual(self.create(body), created)
+        self.assertEqual(self.append(created, args), first)
+        self.assertEqual(self.counts(), (1, 1, 2))
         second = self.append(first, self.append_args(first, audio=wav(320000)))
         self.db.close(); self.db = self.connect()
         self.intake = OralHistoryIntake(AccessService(self.db, clock=lambda: foundation.NOW), enabled=True)
-        self.assertEqual(self.create(body), created)
-        self.assertEqual(self.append(created, args), first)
-        status = self.intake.status(self.member, 'family-a', created['session_id'])
-        self.assertEqual(status['next_ordinal'], 2)
-        self.assertEqual(status['total_frames'], 321600)
-        self.assertEqual(self.intake.audio(self.member, 'family-a', created['session_id'], 0), args['audio'])
+        self.assertEqual(self.intake.status(self.member, 'family-a', created['session_id'])['next_ordinal'], 2)
+        self.assertEqual(self.counts(), (1, 2, 3))
         self.assertNotIn('audio', status)
         close = {'request_id': str(uuid.uuid4()), 'expected_revision': second['revision']}
         ended = self.intake.close(self.member, 'family-a', created['session_id'], **close)
