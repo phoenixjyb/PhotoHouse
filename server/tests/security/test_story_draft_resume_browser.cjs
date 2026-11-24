@@ -153,6 +153,12 @@ const testRun=(async()=>{
   await page.locator('#story-workspace-close').click();
   await page.reload();await page.locator('#saved-memory-list .saved-memory-card').first().waitFor();
   assert.equal(await page.locator('#story-local-resume').isVisible(),false,'confirmed publication clears matching recovery');
+  await page.locator('.saved-memory-cover').click();await page.locator('#story-reader').waitFor({state:'visible'});
+  assert.equal(await page.locator('#story-reader-memory-title').textContent(),title,'the published story reopens from the saved shelf');
+  assert.equal(await page.locator('#story-reader-title').textContent(),saveResponses[0].chapters[0].title,'reopened chapter keeps its saved chapter title');
+  assert.equal(await page.locator('#story-reader-text').textContent(),latestWords,'reopened chapter keeps the exact reviewed wording');
+  assert.deepEqual(await page.locator('#story-reader-frames .story-reader-frame').evaluateAll(nodes=>nodes.map(node=>node.dataset.assetId)),saveResponses[0].chapters[0].asset_ids.map(String),'reopened story keeps its saved frame order');
+  await page.locator('#story-reader-close').click();
   pass('Lost publication response survives reload and retries the exact save without duplication');
 
   // New unrelated draft: explicit deletion only removes the local slot.

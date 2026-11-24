@@ -23,7 +23,11 @@ Version 2 adds two optional fields to each case:
       "text": "private query text",
       "language": "en",
       "category": "person",
-      "expect": {"kind": "results", "relevant_ids": ["101"]}
+      "expect": {
+        "kind": "results",
+        "relevant_ids": ["101"],
+        "eligible_ids": ["101"]
+      }
     }
   ]
 }
@@ -48,8 +52,13 @@ denominator, hit@5 count and rate, labeled recall@5, MRR@20, executed count,
 latency sample count, and median/p95 local elapsed milliseconds. Category
 cohorts expose fixed-category denominators and pass/fail counts. These
 hard-filter and absence counts cover only cases that supplied those checks; they
-do not measure all possible mistakes. A relevance case is a case with supplied
-`relevant_ids`.
+do not measure all possible mistakes. `eligible_ids` is an optional complete
+case label for the IDs allowed by its hard constraints. When supplied, the
+evaluator checks every returned first-page ID against it and reports
+`hard_filter_eligibility_checked_count` and `hard_filter_violation_count` per
+language cohort. This checks observed results against supplied labels; it does
+not establish that the labels cover the full library. A relevance case is a
+case with supplied `relevant_ids`.
 Clarifications, empty pages, and failed dependencies with relevance labels are
 misses. Failed dependencies remain in the case denominator. The no-match count
 is based on the explicit `no_match` category annotation. Dependency cases that
@@ -75,3 +84,11 @@ the v3 intent model, workspace-owned pending conversations, or v4 semantic
 ranking. Those paths require separate authenticated journey and model-pair
 qualification evidence. No score from this runner qualifies a multilingual
 encoder or proves dialect recognition.
+
+The generated scorecard regression test also sends English, Chinese, and mixed
+scene queries through the authenticated workspace's negotiated v4 turn route,
+using generated SQLite/vector fixtures and the existing synthetic encoder. It
+records one labeled positive per language and verifies that inherited
+date/person/text filters remain unchanged and no returned ID falls outside the
+fixture's eligible label. This is a source test of that generated fixture path;
+it makes no claim about model quality, production coverage, or family relevance.

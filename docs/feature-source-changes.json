@@ -36085,6 +36085,110 @@
       "generation_enabled": false,
       "providers_activated": false,
       "scope": "Viewport-filling photos with touch navigation, pinch and pan, and native fullscreen for authorized prepared videos. No media route changes."
+    },
+    {
+      "feature": "audit-search-bilingual-date-refinement",
+      "source_commit": "9fccd7727e286aad6f4a7efbd2d3f395125434a3",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "273aa89f23453eb1b6a39366925280fe32cd677f616c4577eb13a7d3d80bef92",
+          "sha256": "ded9e7eca3f84d63017d26cfe3c358ce338fa626a0eabc7b87c43a8fbe307036"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "9904ee315ddbbfc13ca4801d6e63716e64b5cffd0d1f720cc87b619027cbb7c7",
+          "sha256": "e477d20f2a41502376951b63f1d202c2ef167bc3fabb4de5737fe6cf56b36782"
+        }
+      ],
+      "live_runtime_changed": false,
+      "schema_changed": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "audit-generated-semantic-hard-filter-scorecard",
+      "source_commit": "9fccd7727e286aad6f4a7efbd2d3f395125434a3",
+      "files": [
+        {
+          "path": "server/backend/app/access/search_evaluation.py",
+          "before_sha256": "ccfb4ed3e5d3dbd7bdc6ff224df2606481f92e1b93fb33224643898af8b2d2fc",
+          "sha256": "1d12b4eca5537b172ec6d0cf394a995136ed5ccfde4e241e44bf41dcee5dbf38"
+        },
+        {
+          "path": "server/tests/security/test_search_quality_scorecard.py",
+          "before_sha256": "7fd6b6be5a6a7f18d6b0c7526d613de2753e54f0e3df6ac2ebfa5de7a067e20d",
+          "sha256": "083a1d1bf374d324b6553075f0874a068ff49eca74b02dc85d818eefb9920a98"
+        },
+        {
+          "path": "docs/SEARCH_QUALITY_SCORECARD.md",
+          "before_sha256": "f822489861231f6474f4a357f662211114fcecfe7e65827b62da1fd0ac871de7",
+          "sha256": "3d0322a5a3e97663f1b93e0a3e177834df6819728a759d6200fd674e0b0255d2"
+        }
+      ],
+      "live_runtime_changed": false,
+      "schema_changed": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "audit-story-saved-reader-reopen",
+      "source_commit": "9fccd7727e286aad6f4a7efbd2d3f395125434a3",
+      "files": [
+        {
+          "path": "server/tests/security/test_story_draft_resume_browser.cjs",
+          "before_sha256": "4d780f0ce6285e8edd76cb051563b8797d9974a3aebb31954077dd99d532bbef",
+          "sha256": "2c83ce9500c8355f85c818aeccb4705b6776bd224d27a526c350d1ba4787ebde"
+        }
+      ],
+      "live_runtime_changed": false,
+      "schema_changed": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "audit-mobile-preview-fallback-layout",
+      "source_commit": "9fccd7727e286aad6f4a7efbd2d3f395125434a3",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "7a697fa44c35494805ed7e5cee4996dbd75ee2c451c32d9778b46af5f0c0a6d5",
+          "sha256": "5a9ad69166e7fd5cd769ac92477c4aa1c5973fd668f31fe6476926310ead9ff4"
+        }
+      ],
+      "live_runtime_changed": false,
+      "schema_changed": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "audit-voice-timing-next-turn-isolation",
+      "source_commit": "9fccd7727e286aad6f4a7efbd2d3f395125434a3",
+      "files": [
+        {
+          "path": "server/tests/ui/voice-turn-timing.test.mjs",
+          "before_sha256": "5d7d79ba188b36945c0059262d843b6bee5035049a653f9bbbaee9e60dfde928",
+          "sha256": "69dc09ef6ad1d7f78e9436bd22efbb7c9e40b3ea4710c8be8fad1419675f4cc4"
+        }
+      ],
+      "live_runtime_changed": false,
+      "schema_changed": false,
+      "providers_activated": false
+    },
+    {
+      "feature": "audit-joined-bilingual-dates-and-exact-scorecard-redaction",
+      "source_commit": "488cc59d044f5827c53d06b40157f5d8ae299859",
+      "files": [
+        {
+          "path": "server/backend/app/access/assistant_query_plan.py",
+          "before_sha256": "ded9e7eca3f84d63017d26cfe3c358ce338fa626a0eabc7b87c43a8fbe307036",
+          "sha256": "66da3e502672789f9d829ef67b37260bb98602adc64d577d42e77142d072f36b"
+        },
+        {
+          "path": "server/tests/security/test_search_quality_scorecard.py",
+          "before_sha256": "083a1d1bf374d324b6553075f0874a068ff49eca74b02dc85d818eefb9920a98",
+          "sha256": "0d9b552ca618378a7c15b9853f4e9c5adce0082e6e91bf848c422676008ff148"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false
     }
   ]
 }
