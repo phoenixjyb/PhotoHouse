@@ -22,7 +22,7 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  await ready;
  browser=await chromium.launch({headless:true,...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
  context=await browser.newContext({viewport:{width:1280,height:960},serviceWorkers:'block'});
- await context.addInitScript(()=>{let factory;Object.defineProperty(window,'PhotoHouseStoryWorkspace',{configurable:true,get:()=>factory,set:value=>{factory=config=>{let language=null;const scope=config.scope;const instance=value({...config,scope:()=>({...scope(),...(language?{language}:{})})});window.__draftTestLanguage=next=>{language=next;instance.translate();};window.__draftTestFromResults=candidate=>instance.fromResults([{id:'101',kind:'image'}],candidate);window.__draftTestCandidate=(overrides={})=>({version:1,text:'写成温和的回忆，提到 Jane 第一次看见河边。',account:scope().account,library:scope().library,generation:scope().generation??null,thread_id:'00000000-0000-4000-8000-000000000001',revision:1,...overrides});return instance;};}});});
+ await context.addInitScript(()=>{let factory;Object.defineProperty(window,'PhotoHouseStoryWorkspace',{configurable:true,get:()=>factory,set:value=>{factory=config=>{let language=null;const scope=config.scope;const instance=value({...config,scope:()=>({...scope(),...(language?{language}:{})})});window.__draftTestLanguage=next=>{language=next;instance.translate();};window.__draftTestFromResults=(candidate,assetIds=['101'])=>instance.fromResults(assetIds.map(id=>({id,kind:'image'})),candidate);window.__draftTestCandidate=(overrides={})=>({version:1,text:'写成温和的回忆，提到 Jane 第一次看见河边。',account:scope().account,library:scope().library,generation:scope().generation??null,thread_id:'00000000-0000-4000-8000-000000000001',revision:1,...overrides});return instance;};}});});
  await context.route('**/*',async route=>{
   const request=route.request(),url=new URL(request.url());
   if(url.origin!=='https://photohouse.test'){external.push(url.origin);await route.abort();return;}
@@ -77,13 +77,23 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  await directionField.fill('');await useRecentDirection.click();assert.equal(await directionField.inputValue(),'写成温和的回忆，提到 Jane 第一次看见河边。');
  assert.equal(prepareRows().length,0);assert.equal((await rpc({command:'provider-status'})).generation_calls,0);pass('Selected-source handoff offers only the scoped user message by explicit choice; blank and mismatched scopes stay blank');
  await page.locator('#story-workspace-close').click();
- const capabilityGate={arrived:delay(),release:delay()};heldCapability=capabilityGate;await page.evaluate(()=>window.__draftTestFromResults(window.__draftTestCandidate()));await page.locator('#story-build').click();await capabilityGate.arrived.promise;
+ const capabilityGate={arrived:delay(),release:delay()};heldCapability=capabilityGate;await page.evaluate(()=>window.__draftTestFromResults(window.__draftTestCandidate(),['101','102']));await page.locator('#story-build').click();await capabilityGate.arrived.promise;
  await words().fill('能力检查期间的家人文字。');await words().focus();const chapterField=await words().elementHandle();capabilityGate.release.done();await panel().waitFor();
  assert.equal(await chapterField.evaluate(node=>node===document.activeElement&&node.isConnected&&node.value==='能力检查期间的家人文字。'),true);
  pass('Delayed capability negotiation preserves focused chapter wording');await chooseSources();
+ const chapterCards=page.locator('.story-chapter-card');
+ if(await chapterCards.count()===1)await chapterCards.first().locator('.story-chapter-split').click();
+ assert.equal(await chapterCards.count(),2);
+ const unselectedChapter=chapterCards.nth(1),unselectedWords=unselectedChapter.locator('textarea[maxlength="6000"]');
+ const unselectedNarration='我们沿着河边慢慢走，等大家都跟上。';
+ await unselectedWords.fill(unselectedNarration);
  await words().fill('家人自己写下的原话。');assert.equal(await page.locator('.story-draft-direction').inputValue(),'');await page.locator('.story-draft-use-direction').click();assert.equal(await page.locator('.story-draft-direction').inputValue(),'写成温和的回忆，提到 Jane 第一次看见河边。');
  const before=writes().length;await prepare();assert.equal(writes().length,before);assert.equal(await page.locator('#story-save-memory').isDisabled(),true);
  const sent=JSON.parse(prepareRows().at(-1).body);assert.equal(sent.selection.source_policy,'chapter_sources_v1');assert.equal(sent.selection.chapters[0].evidence_ids.length,1);assert(sent.selection.chapters[0].evidence_ids[0].startsWith('family-'));assert.equal('sources' in sent,false);assert.equal(sent.author_direction,'写成温和的回忆，提到 Jane 第一次看见河边。');
+ assert.deepEqual(sent.selection.chapters.map(chapter=>chapter.asset_ids),[['101'],['102']]);
+ assert.deepEqual(sent.selection.chapters[1].evidence_ids,[]);
+ assert.equal(await unselectedWords.inputValue(),unselectedNarration);
+ assert.equal(await unselectedChapter.locator('.story-draft-prose-origin, .story-draft-original').count(),0);
  assert.equal(await page.locator('.story-draft-direction').inputValue(),sent.author_direction);assert.equal(await page.locator('.story-draft-direction').isDisabled(),true);
  pass('Explicit photo/memory choices prepare a review-only draft through protected ASGI');
  const comparison=page.locator('.story-draft-original').first(),comparisonSummary=comparison.locator('summary');
@@ -101,9 +111,18 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  await page.screenshot({path:path.join(artifacts,'draft-original-comparison-phone-zh-150.png')});
  await page.setViewportSize({width:1280,height:960});await page.evaluate(()=>document.documentElement.style.fontSize='');
  assert.equal(await requests.length,requestsBeforeComparison,'opening the comparison is local-only');await page.keyboard.press('Space');assert.equal(await comparison.evaluate(node=>node.open),false,'Space closes the original wording');
+ await page.locator('#story-preview').click();
+ const previewOrigin=page.locator('#story-reader .story-draft-prose-origin');
+ assert.equal(await previewOrigin.count(),1);
+ await page.locator('#story-reader-next').click();
+ assert.equal(await page.locator('#story-reader-text').textContent(),unselectedNarration);
+ assert.equal(await previewOrigin.count(),0);
+ await page.locator('#story-reader-close').click();
+ await page.locator('#story-reader').waitFor({state:'hidden'});
  const savesBeforeCancel=saveBodies.length,preparesBeforeCancel=prepareRows().length,generationsBeforeCancel=(await rpc({command:'provider-status'})).generation_calls;
  await page.locator('.story-draft-cancel').click();await page.waitForFunction(()=>document.querySelectorAll('.story-draft-original').length===0);
  assert.equal(await words().inputValue(),'家人自己写下的原话。');assert.equal(saveBodies.length,savesBeforeCancel);assert.equal(prepareRows().length,preparesBeforeCancel);
+ assert.equal(await unselectedWords.inputValue(),unselectedNarration);
  assert.equal((await rpc({command:'provider-status'})).generation_calls,generationsBeforeCancel,'clearing a proposal does not generate another draft');
  await prepare();assert.equal(await page.locator('.story-draft-original').count(),1,'a new proposal receives only its own chapter comparison');
  pass('Original wording compares locally with the editable proposal and clears on cancel without saving or generating');
@@ -124,6 +143,8 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  await page.evaluate(()=>window.__draftTestLanguage('en'));assert.equal(await words().inputValue(),'家人核对并再次修改后的故事。');await page.evaluate(()=>window.__draftTestLanguage('zh'));assert.equal(await words().inputValue(),'家人核对并再次修改后的故事。');
  await page.locator('#story-save-memory').click();await page.waitForFunction(()=>document.getElementById('story-workspace-status').textContent.includes('已保存'));
  assert.equal(saveBodies.length,2);assert.equal(saveBodies[0],saveBodies[1]);const saved=JSON.parse(saveBodies[0]);assert.equal(saved.source_policy,'chapter_sources_v1');assert.equal(JSON.parse(saved.chapters)[0].narration,'家人核对并再次修改后的故事。');assert.equal('citations' in JSON.parse(saved.chapters)[0],false);
+ assert.equal(saved.asset_ids,'101,102');
+ assert.equal(JSON.parse(saved.chapters)[1].narration,unselectedNarration);
  pass('Only explicit Save writes; a lost save response retries the identical mutation');
  const createResult=JSON.parse(writes().at(-1).responseBody);assert.equal(createResult.saved,true);assert.match(createResult.id,/^[0-9a-f-]{36}$/);assert.equal(createResult.source_policy,'chapter_sources_v1');
  const chosenSourceId=sent.selection.chapters[0].evidence_ids[0];assert(createResult.items.some(item=>item.evidence.some(evidence=>evidence.id===chosenSourceId&&evidence.source==='family')));
@@ -135,8 +156,12 @@ const prepareRows=()=>requests.filter(row=>row.method==='POST'&&row.path.startsW
  assert.equal(reopened.saved,true);assert.equal(reopened.source_policy,'chapter_sources_v1');assert.equal(reopened.chapters[0].narration,'家人核对并再次修改后的故事。');
  assert(reopened.chapters[0].evidence_ids.includes(chosenSourceId));assert(reopened.items.some(item=>item.evidence.some(evidence=>evidence.id===chosenSourceId&&evidence.source==='family')));
  const reopenedSources=page.locator('#story-reader .story-reader-sources');await reopenedSources.locator('summary').click();assert.match(await reopenedSources.textContent(),/合成家人原话/);
+ assert.deepEqual(reopened.chapters.map(chapter=>chapter.asset_ids),[['101'],['102']]);
+ await page.locator('#story-reader-next').click();
+ assert.equal(await page.locator('#story-reader-text').textContent(),unselectedNarration);
+ assert.equal(await previewOrigin.count(),0);
  assert.equal(saveBodies.length,savesBeforeReopen);assert.equal(prepareRows().length,preparesBeforeReopen);
- pass('The exact saved story reopens with edited wording and current authorized evidence, without another prepare or save');
+ pass('The saved story reopens with both edited proposal and untouched family wording in frame order');
  await page.locator('#story-reader-close').click();await open();await chooseSources();await words().fill('取消前保留的家人文字。');
  const gate={arrived:delay(),release:delay(),finished:delay()};held=gate;await page.locator('.story-draft-prepare').click();await gate.arrived.promise;await page.locator('.story-draft-cancel').click();gate.release.done();await gate.finished.promise;await page.waitForTimeout(100);
  assert.equal(await words().inputValue(),'取消前保留的家人文字。');assert.equal(await page.locator('.story-draft-reviewed').isChecked(),false);assert.equal(await page.locator('.story-draft-reviewed').isDisabled(),true);pass('Cancel fences late replies and preserves prior family wording');

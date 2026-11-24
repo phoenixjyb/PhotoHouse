@@ -183,6 +183,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   const text = key => labels[scope().language==='en'?'en':'zh'][key] || key;
   Object.assign(labels.zh,{storyDraftHeading:'用已选择的资料准备故事',storyDraftHelp:'只使用已选择的画面和逐章勾选的资料。AI 文字会放入章节正文；故事标题和章节标题仍由你决定。核对后再另行保存。',storyDraftDirection:'写作方向（可选）',storyDraftUseDirection:'将我在助手中的最近消息用作起点',storyDraftDirectionKept:'已复制到写作方向，可继续编辑。',storyDraftDirectionNoOverwrite:'先清空写作方向，再使用助手消息；已有文字未改动。',storyDraftPrepare:'准备故事草稿',storyDraftCancel:'取消并清除生成内容',storyDraftRetry:'用同一请求重试',storyDraftReview:'我已核对 AI 草稿、章节和引用来源',storyDraftAIProse:'AI 生成文字 · 待核对',storyDraftOriginal:'查看原始文字',storyDraftOriginalEmpty:'原始章节没有文字。',storyDraftQuestions:'AI 提出的回忆问题 · 请核对',sourceFamilyNote:'家人留言',sourceAICaption:'AI 画面说明',sourceFamilyEditedCaption:'家人修改的画面说明',storyDraftNeedSources:'请先启用来源核对，并逐章选择资料；可以留空。',storyDraftWorking:'正在准备故事草稿…',storyDraftReady:'AI 草稿已加入章节正文，请核对内容与引用。',storyDraftReviewRequired:'请先勾选已核对，再明确保存。',storyDraftExpired:'AI 草稿已过期并清除；原有手写内容已恢复。',storyDraftCancelled:'生成草稿已清除；原有手写内容已恢复。',storyDraftFailed:'暂时无法准备草稿。原有章节内容已保留。',storyDraftConflict:'所选资料或故事版本已变化。请刷新并重新核对来源后再准备。',storyDraftCitation:'引用来源',storyDraftExpiry:'草稿有效至',storyDraftUnavailable:'故事草稿准备当前不可用。',storyDraftNoFallback:'不会自动切换服务或重试。'});
   Object.assign(labels.en,{storyDraftHeading:'Prepare a story from selected sources',storyDraftHelp:'Uses only selected frames and sources checked for each chapter. AI wording goes into chapter bodies; you keep control of the story and chapter titles. Review it before saving.',storyDraftDirection:'Writing direction (optional)',storyDraftUseDirection:'Use my latest assistant-chat message as a starting point',storyDraftDirectionKept:'Copied into writing direction; you can edit it.',storyDraftDirectionNoOverwrite:'Clear the writing direction before using your assistant-chat message. Existing text was kept.',storyDraftPrepare:'Prepare story draft',storyDraftCancel:'Cancel and clear generated wording',storyDraftRetry:'Retry the same request',storyDraftReview:'I reviewed the AI draft, chapters and citations',storyDraftAIProse:'AI-generated wording · pending review',storyDraftOriginal:'View original wording',storyDraftOriginalEmpty:'The original chapter has no wording.',storyDraftQuestions:'AI questions to help recall · review these',sourceFamilyNote:'Family note',sourceAICaption:'AI caption',sourceFamilyEditedCaption:'Family-edited caption',storyDraftNeedSources:'Opt in to source review first, then choose sources per chapter. Choices may be empty.',storyDraftWorking:'Preparing the story draft…',storyDraftReady:'The AI draft is in the chapter fields. Review the wording and citations.',storyDraftReviewRequired:'Check the review box before explicitly saving.',storyDraftExpired:'The AI draft expired and was cleared; your earlier wording was restored.',storyDraftCancelled:'The generated draft was cleared; your earlier wording was restored.',storyDraftFailed:'The draft could not be prepared. Existing chapter wording is preserved.',storyDraftConflict:'Selected sources or story revision changed. Refresh and review sources before preparing again.',storyDraftCitation:'Cited source',storyDraftExpiry:'Draft expires',storyDraftUnavailable:'Story draft preparation is unavailable.',storyDraftNoFallback:'No automatic provider switch or retry will occur.'});
+  labels.zh.storyDraftWordsKept='各章保留了原有文字。';
+  labels.en.storyDraftWordsKept='Your chapters kept their original wording.';
   function clearDraftExpiry(){if(draftPreparation.expiresTimer){clearTimeout(draftPreparation.expiresTimer);draftPreparation.expiresTimer=null;}}
   function draftProposalFingerprint(){
     if(!draftPreparation.proposal||!draft)return null;
@@ -1579,13 +1581,11 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         const find=button(text('findFramesForChapter'),event=>findMoreFrames(event,c),'quiet story-chapter-find-frames');
         find.dataset.chapterId=c.id;find.setAttribute('aria-haspopup','dialog');section.append(find);
       }
-      if(draftPreparation.proposal?.chapters.some(proposed=>proposed.id===c.id)){
+      const original=draftPreparation.proposal?.original.get(c.id);
+      if(original!==undefined){
         const origin=node('p',text('storyDraftAIProse'),'story-draft-prose-origin');origin.dataset.storyWord='storyDraftAIProse';section.append(origin);
-        const original=draftPreparation.proposal.original.get(c.id);
-        if(original!==undefined){
-          const comparison=node('details',undefined,'story-draft-original'),summary=node('summary',text('storyDraftOriginal'));
-          comparison.append(summary,node('p',original||text('storyDraftOriginalEmpty'),'story-draft-original-text'));section.append(comparison);
-        }
+        const comparison=node('details',undefined,'story-draft-original'),summary=node('summary',text('storyDraftOriginal'));
+        comparison.append(summary,node('p',original||text('storyDraftOriginalEmpty'),'story-draft-original-text'));section.append(comparison);
       }
       const bodyLabel=node('label',text('narration')),body=node('textarea');body.value=c.narration;body.maxLength=6000;body.rows=5;
       if(guideCurrent())body.placeholder=text('guideNarrativePlaceholder');
@@ -1662,7 +1662,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
           const article=node('article',undefined,'story-draft-citation');article.append(node('strong',`${text(cite.source_kind==='family_note'?'sourceFamilyNote':cite.source_kind==='ai_caption'?'sourceAICaption':'sourceFamilyEditedCaption')} · ${item.id}`));
           if(cite.byline&&cite.byline!==evidence.byline)article.append(node('p',`${text('sourceByline')}: ${cite.byline}`));article.append(node('p',evidence.text));appendEvidenceAttribution(article,evidence,item.id);group.append(article);
         }citations.append(group);
-      }panel.append(citations);status.textContent=text('storyDraftReady');
+      }panel.append(citations);
+      status.textContent=text(draftPreparation.proposal.original.size?'storyDraftReady':'storyDraftWordsKept');
     }else if(draftPreparation.notice)status.textContent=text(draftPreparation.notice);
     else if(!sourceReviewOptedIn)status.textContent=text('storyDraftNeedSources');
     else if(!status.textContent)status.textContent=text('storyDraftNoFallback');
@@ -1704,9 +1705,15 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       if(pending.cancelled){void sendPrepareCancel(pending.owner,pending.body.request_id);return;}
       if(draftPreparation.pending!==pending||!current(pending.ticket,pending.owner)||draft!==pending.story||!$('story-workspace').open)return;
       if(!validPreparedDraft(value,pending.body,pending.story))throw new Error('Invalid selected-source draft');
-      const original=new Map(pending.story.chapters.map(c=>[c.id,c.narration]));
+      const original=new Map();
+      for(const proposed of value.chapters){
+        if(!proposed.narration.trim())continue;
+        const chapterRecord=pending.story.chapters.find(c=>c.id===proposed.id);
+        if(proposed.narration===chapterRecord.narration)continue;
+        original.set(chapterRecord.id,chapterRecord.narration);
+        chapterRecord.narration=proposed.narration;
+      }
       draftPreparation.proposal={...value,original,request:pending.body,account:pending.owner.account,library:pending.owner.library};
-      for(const proposed of value.chapters){const chapterRecord=pending.story.chapters.find(c=>c.id===proposed.id);chapterRecord.narration=proposed.narration;}
       dirty=true;downloaded=false;draftPreparation.reviewedFingerprint=null;busy=false;draftPreparation.pending=null;renderEditor();
       const seconds=Math.max(1,Date.parse(value.expires_at)-Date.now()),expire=()=>{if(draftPreparation.proposal?.draft_id!==value.draft_id)return;if(pendingSave){draftPreparation.expiresTimer=setTimeout(expire,1000);return;}clearDraftProposal('storyDraftExpired',true);};clearDraftExpiry();draftPreparation.expiresTimer=setTimeout(expire,seconds);
     }catch(error){
@@ -1876,7 +1883,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     $('story-reader-eyebrow').textContent=`${text(draft.saved?'savedDraft':'draft')} · ${chapter+1} / ${draft.chapters.length}`;
     $('story-reader-title').textContent=c.title;$('story-reader-text').textContent=c.narration;
     const prose=$('story-reader-title').parentElement;prose.querySelectorAll(':scope > .story-reader-sources').forEach(node=>node.remove());appendChapterSources(prose,draft,c);
-    prose.querySelector(':scope > .story-draft-prose-origin')?.remove();if(draftPreparation.proposal)prose.append(node('p',text('storyDraftAIProse'),'story-draft-prose-origin'));
+    prose.querySelector(':scope > .story-draft-prose-origin')?.remove();
+    if(draftPreparation.proposal?.original.has(c.id))prose.append(node('p',text('storyDraftAIProse'),'story-draft-prose-origin'));
     mountNarration($('story-reader-title').parentElement,c.title,c.narration,draft.language,()=>Boolean(draft&&!scope().locked&&$('story-reader').open&&draft.chapters[chapter]===c&&draft.items.includes(item)));
     $('story-reader-date').textContent=dateLabel(item);
     frameHost.replaceChildren();
