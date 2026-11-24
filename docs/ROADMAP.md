@@ -27,10 +27,11 @@ this file retain the date and scope of their original evidence.
   user message as optional writing direction. The focused local generated journey
   passed 18 checkpoints; save remains explicit
   ([editor contract](SELECTED_SOURCE_STORY_UI.md)).
-- **Source:** the November 14 local increment adds ordinary result paging,
-  fresh current-result validation, and selected-frame handoff to the existing
-  story editor ([details](SEARCH_TO_STORY.md)). The selection lasts only in the
-  current page. It does not restore after reopening a conversation.
+- **Source:** ordinary result paging and selected-frame handoff are integrated.
+  The latest generated-browser increment can keep the selected frames when
+  reloading the active conversation on the same page after exact current-result
+  validation. The selection clears on a full reload or scope change
+  ([details](SEARCH_TO_STORY.md)).
 - **Conversation and tools:** account/library-scoped assistant threads, bounded
   history and request recovery are implemented. The PH-A1 v1 media-search tool
   profile is a versioned regression fixture, not a permanent three-tool product

@@ -40,21 +40,23 @@ the `unassigned` cohort. The report always includes every named language and
 category cohort, including empty cohorts, so missing or failing coverage stays
 visible. The legacy aggregate is descriptive; it does not establish a pooled
 qualification grade. Category values use a fixed vocabulary; only those fixed
-bucket names are exposed, never free-form category labels. A `no_match` case must
-expect `total: 0`; its ordinary expected checks must also pass for the case to
-pass.
+bucket names are exposed, never free-form category labels. A `no_match` case
+expects a successful `results` response with `total: 0` and a complete empty
+page. Clarifications count separately.
 
 The v2 report keeps the existing case counts and relevance summary, then adds
 `scorecard.cohorts` and `scorecard.categories`. Each language cohort includes
-its case denominator and pass/fail counts, annotated no-match and failed
-dependency counts, hard-filter and absence check counts and failures, relevance
+its case denominator and pass/fail counts, annotated and confirmed no-match
+counts, false positives on no-match cases, clarifications, failed dependencies,
+hard-filter and absence check counts and failures, relevance
 denominator, hit@5 count and rate, labeled recall@5, MRR@20, executed count,
 latency sample count, and median/p95 local elapsed milliseconds. Category
 cohorts expose fixed-category denominators and pass/fail counts. These
 hard-filter and absence counts cover only cases that supplied those checks; they
 do not measure all possible mistakes. `eligible_ids` is an optional complete
 case label for the IDs allowed by its hard constraints. When supplied, the
-evaluator checks every returned first-page ID against it and reports
+evaluator checks every returned first-page ID and verifies that the total
+fits inside the complete eligible set. It reports
 `hard_filter_eligibility_checked_count` and `hard_filter_violation_count` per
 language cohort. This checks observed results against supplied labels; it does
 not establish that the labels cover the full library. A relevance case is a

@@ -147,6 +147,7 @@ FILES = (
     'backend/app/access/original_deletions.py',
     'backend/app/access/oral_history_schema.py',
     'backend/app/access/oral_history_intake.py',
+    'backend/app/access/oral_history_transport.py',
     'backend/app/access/oral_history_withdrawal.py',
     'backend/app/access/owner_recovery.py',
     'backend/app/access/ownership_repair.py',

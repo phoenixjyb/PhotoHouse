@@ -22,6 +22,7 @@ from .private_storage import require_private_file, stable_stat_identity
 MAX_TEXT_BYTES = 600
 MAX_FORM_BYTES = 2048
 MAX_TOKEN_BYTES = 512
+MAX_VOICE_NAME_BYTES = 256
 MAX_CHILD_SECONDS = 30.0
 MAX_CHILD_STDOUT = (MAX_WAV_BYTES * 4 // 3) + 1024
 _TOKEN = re.compile(r'\A[A-Za-z0-9_-]{32,256}\Z', re.ASCII)
@@ -65,18 +66,62 @@ try {
     if ([Text.Encoding]::UTF8.GetByteCount($raw) -gt 4096) { Emit '{"success":false,"error":"invalid_request"}' 2 }
     $r = ConvertFrom-Json -InputObject $raw -ErrorAction Stop
     if ($r.operation -ceq 'voices') {
+        $keys = @($r.PSObject.Properties.Name)
+        $allowed = @('operation','zh_voice','en_voice')
+        if (@($keys | Where-Object { $_ -cnotin $allowed }).Count -ne 0) {
+            Emit '{"success":false,"error":"invalid_request"}' 2
+        }
+        $hasZh = $null -ne $r.PSObject.Properties['zh_voice']
+        $hasEn = $null -ne $r.PSObject.Properties['en_voice']
+        if ($hasZh -and ($r.zh_voice -isnot [string] -or !$r.zh_voice -or
+            $r.zh_voice -cne $r.zh_voice.Trim() -or
+            [Text.Encoding]::UTF8.GetByteCount($r.zh_voice) -gt 256 -or
+            $r.zh_voice -match '[\x00-\x1f\x7f-\x9f]')) {
+            Emit '{"success":false,"error":"invalid_request"}' 2
+        }
+        if ($hasEn -and ($r.en_voice -isnot [string] -or !$r.en_voice -or
+            $r.en_voice -cne $r.en_voice.Trim() -or
+            [Text.Encoding]::UTF8.GetByteCount($r.en_voice) -gt 256 -or
+            $r.en_voice -match '[\x00-\x1f\x7f-\x9f]')) {
+                Emit '{"success":false,"error":"invalid_request"}' 2
+        }
         $s = New-Object System.Speech.Synthesis.SpeechSynthesizer
         try {
-            $found = @($s.GetInstalledVoices() | Where-Object { $_.Enabled })
-            $zh = @($found | Where-Object { $_.VoiceInfo.Culture.Name -ceq 'zh-CN' }).Count -gt 0
-            $en = @($found | Where-Object { $_.VoiceInfo.Culture.Name -ceq 'en-US' }).Count -gt 0
+            $found = @($s.GetInstalledVoices() | Where-Object {
+                $_.Enabled -and $_.VoiceInfo.Culture.Name -cin @('zh-CN','en-US')
+            } | Sort-Object { $_.VoiceInfo.Culture.Name }, { $_.VoiceInfo.Name })
+            $zhVoices = @($found | Where-Object { $_.VoiceInfo.Culture.Name -ceq 'zh-CN' })
+            $enVoices = @($found | Where-Object { $_.VoiceInfo.Culture.Name -ceq 'en-US' })
+            if ($hasZh) {
+                $selectedZh = @($zhVoices | Where-Object { $_.VoiceInfo.Name -ceq $r.zh_voice })
+                if ($selectedZh.Count -ne 1) { Emit '{"success":false,"error":"voice_unavailable"}' 3 }
+            }
+            if ($hasEn) {
+                $selectedEn = @($enVoices | Where-Object { $_.VoiceInfo.Name -ceq $r.en_voice })
+                if ($selectedEn.Count -ne 1) { Emit '{"success":false,"error":"voice_unavailable"}' 3 }
+            }
+            $zh = if ($hasZh) { $true } else { $zhVoices.Count -gt 0 }
+            $en = if ($hasEn) { $true } else { $enVoices.Count -gt 0 }
             Emit ('{{"success":true,"languages":[{0}{1}]}}' -f $(if($zh){'"zh"'}else{''}), $(if($en){if($zh){',"en"'}else{'"en"'}}else{''})) 0
         } finally { $s.Dispose() }
     }
-    if ($r.operation -cne 'synthesize' -or $r.language -cnotin @('zh','en') -or
+    $keys = @($r.PSObject.Properties.Name)
+    $hasVoiceName = $null -ne $r.PSObject.Properties['voice_name']
+    $expected = @('operation','text','language','voice_speed','output_format')
+    if ($hasVoiceName) { $expected += 'voice_name' }
+    if ($keys.Count -ne $expected.Count -or
+        @($keys | Where-Object { $_ -cnotin $expected }).Count -ne 0 -or
+        @($expected | Where-Object { $_ -cnotin $keys }).Count -ne 0 -or
+        $r.operation -cne 'synthesize' -or $r.language -cnotin @('zh','en') -or
         $r.voice_speed -cne '1.0' -or $r.output_format -cne 'wav' -or
         $r.text -isnot [string] -or !$r.text.Trim() -or
         [Text.Encoding]::UTF8.GetByteCount($r.text) -gt 600) {
+        Emit '{"success":false,"error":"invalid_request"}' 2
+    }
+    if ($hasVoiceName -and ($r.voice_name -isnot [string] -or !$r.voice_name -or
+        $r.voice_name -cne $r.voice_name.Trim() -or
+        [Text.Encoding]::UTF8.GetByteCount($r.voice_name) -gt 256 -or
+        $r.voice_name -match '[\x00-\x1f\x7f-\x9f]')) {
         Emit '{"success":false,"error":"invalid_request"}' 2
     }
     $culture = if ($r.language -ceq 'zh') { 'zh-CN' } else { 'en-US' }
@@ -87,7 +132,14 @@ try {
             $_.Enabled -and $_.VoiceInfo.Culture.Name -ceq $culture
         } | Sort-Object { $_.VoiceInfo.Name })
         if ($voices.Count -eq 0) { Emit '{"success":false,"error":"voice_unavailable"}' 3 }
-        $s.SelectVoice($voices[0].VoiceInfo.Name)
+        if ($hasVoiceName) {
+            $selected = @($voices | Where-Object { $_.VoiceInfo.Name -ceq $r.voice_name })
+            if ($selected.Count -eq 0) { Emit '{"success":false,"error":"voice_unavailable"}' 3 }
+            if ($selected.Count -ne 1) { Emit '{"success":false,"error":"voice_ambiguous"}' 3 }
+            $s.SelectVoice($selected[0].VoiceInfo.Name)
+        } else {
+            $s.SelectVoice($voices[0].VoiceInfo.Name)
+        }
         $s.Rate = 0
         $s.SetOutputToWaveStream($stream)
         $s.Speak($r.text)
@@ -101,6 +153,14 @@ try {
 }
 '''
 _ENCODED_COMMAND = base64.b64encode(_POWERSHELL.encode('utf-16le')).decode('ascii')
+
+
+def validate_voice_name(value):
+    if (type(value) is not str or not value or value != value.strip() or
+            len(value.encode('utf-8', errors='strict')) > MAX_VOICE_NAME_BYTES or
+            any(ord(char) < 32 or 0x7f <= ord(char) < 0xa0 for char in value)):
+        raise ValueError('Invalid Windows voice name')
+    return value
 
 
 def validate_request(fields):
@@ -188,11 +248,16 @@ def _powershell_path():
 class WindowsSystemSpeech:
     """One isolated PowerShell/System.Speech child per synthesis request."""
 
-    def __init__(self, *, executable=None, timeout=24.0, popen=subprocess.Popen,
+    def __init__(self, *, executable=None, timeout=24.0, zh_voice=None, en_voice=None,
+                 popen=subprocess.Popen,
                  monotonic=time.monotonic, sleep=time.sleep):
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 0 < timeout <= MAX_CHILD_SECONDS:
             raise ValueError('Invalid local speech timeout')
         self.executable = Path(executable) if executable is not None else None
+        self.voices = {
+            'zh': validate_voice_name(zh_voice) if zh_voice is not None else None,
+            'en': validate_voice_name(en_voice) if en_voice is not None else None,
+        }
         self.timeout, self._popen = float(timeout), popen
         self._monotonic, self._sleep = monotonic, sleep
         self._busy = threading.Lock()
@@ -344,6 +409,9 @@ class WindowsSystemSpeech:
 
     def synthesize(self, fields):
         request = validate_request(fields)
+        selected = self.voices[request['language']]
+        if selected is not None:
+            request['voice_name'] = selected
         self._require_healthy()
         if not self._busy.acquire(blocking=False):
             raise TtsBusy('Local speech busy')
@@ -361,13 +429,23 @@ class WindowsSystemSpeech:
         if not self._busy.acquire(blocking=False):
             raise TtsBusy('Local speech busy')
         try:
-            raw = self._run({'operation': 'voices'})
+            request = {'operation': 'voices'}
+            if self.voices['zh'] is not None:
+                request['zh_voice'] = self.voices['zh']
+            if self.voices['en'] is not None:
+                request['en_voice'] = self.voices['en']
+            raw = self._run(request)
             value = _strict_json(raw)
             if (type(value) is not dict or set(value) != {'success', 'languages'} or
                     value['success'] is not True or type(value['languages']) is not list or
-                    any(language not in {'zh', 'en'} for language in value['languages'])):
+                    any(language not in {'zh', 'en'} for language in value['languages']) or
+                    len(set(value['languages'])) != len(value['languages'])):
                 raise TtsFailure('Local speech unavailable')
-            return set(value['languages'])
+            languages = set(value['languages'])
+            if any(name is not None and language not in languages
+                   for language, name in self.voices.items()):
+                raise TtsFailure('Local speech unavailable')
+            return languages
         finally:
             self._busy.release()
 

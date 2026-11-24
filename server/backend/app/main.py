@@ -8,7 +8,7 @@ import ntpath
 from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
-from .access.transport import router as account_router
+from .access.transport import AccessRuntime, router as account_router
 from .access.media import router as media_router
 from .access.video_moments import (VideoMomentCatalog,
                                   router as video_moments_router)
@@ -19,6 +19,7 @@ from .access.stories import router as story_router
 from .access.story_workspace import router as story_workspace_router
 from .access.selected_story_transport import router as selected_story_router
 from .access.memory_group_transport import router as memory_group_router, GroupVectorConfiguration
+from .access.oral_history_transport import router as oral_history_router
 from .access.memory_stories import router as memory_router
 from .access.story_cloud_transport import router as story_cloud_router
 from .access.memory_transport import router as memory_community_router
@@ -61,6 +62,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_agent_runtime=None, assistant_agent_budget=None,
                selected_story_provider=None, selected_story_drafts_enabled=False,
                selected_story_ui_enabled=False,
+               oral_history_intake_enabled=False,
                story_cloud_proofreading_enabled=False, story_cloud_proofreading_provider=None):
     from .access.story_cloud_proofreading import CloudProofreading
     cloud_proofreading = CloudProofreading(enabled=story_cloud_proofreading_enabled,
@@ -85,6 +87,9 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
         raise ValueError('Explicit assistant and semantic runtime opt-in required')
     if type(memory_groups_enabled) is not bool:
         raise ValueError('Explicit memory group opt-in required')
+    if (type(oral_history_intake_enabled) is not bool or
+            (oral_history_intake_enabled and not isinstance(access_runtime, AccessRuntime))):
+        raise ValueError('Oral history intake requires explicit protected access opt-in')
     if memory_group_vectors is not None and (not memory_groups_enabled or
             type(memory_group_vectors) is not GroupVectorConfiguration):
         raise ValueError('Explicit enabled memory group vector configuration required')
@@ -313,6 +318,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.assistant_semantic_search_enabled = assistant_semantic_search_enabled
     app.state.assistant_enabled = assistant_enabled
     app.state.memory_groups_enabled = memory_groups_enabled
+    app.state.oral_history_intake_enabled = oral_history_intake_enabled
     app.state.memory_group_vectors = memory_group_vectors
     app.state.memory_collaboration_enabled = memory_collaboration_enabled
     app.state.memory_originals_enabled = memory_originals_enabled
@@ -350,6 +356,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(story_workspace_router)
     app.include_router(selected_story_router)
     app.include_router(memory_group_router)
+    if oral_history_intake_enabled:
+        app.include_router(oral_history_router)
     app.include_router(memory_router)
     app.include_router(story_cloud_router)
     app.include_router(memory_edition_router)

@@ -137,7 +137,7 @@ def _validate_envelope(document):
             if type(expected['total']) is not int or not 0 <= expected['total'] <= d.MAX_ID:
                 _invalid()
         if version == 2 and raw.get('category') == 'no_match':
-            if expected.get('total') != 0:
+            if expected['kind'] != 'results' or expected.get('total') != 0:
                 _invalid()
         after = raw.get('after')
         if 'after' in raw:
@@ -178,11 +178,16 @@ def _cohort_metrics(pairs):
                       if 'absent_ids' in report['checks']]
     eligibility_checks = [report['checks']['eligible_ids'] for _, report in pairs
                           if 'eligible_ids' in report['checks']]
+    no_match = [report for case, report in pairs if case.get('category') == 'no_match']
     return {
         'denominator': len(pairs),
         'passed_count': sum(report['passed'] for _, report in pairs),
         'failed_count': sum(not report['passed'] for _, report in pairs),
-        'no_match_count': sum(case.get('category') == 'no_match' for case, _ in pairs),
+        'no_match_count': len(no_match),
+        'confirmed_no_match_count': sum(report['passed'] for report in no_match),
+        'no_match_false_positive_count': sum(report.get('no_match_false_positive', False)
+                                             for report in no_match),
+        'clarification_count': sum(report.get('clarified', False) for _, report in pairs),
         'failed_dependency_count': sum(report.get('dependency_failed', False) for _, report in pairs),
         'hard_filter_checked_count': len(filter_checks),
         'hard_filter_failed_count': sum(not passed for passed in filter_checks),
@@ -353,7 +358,8 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
             elif field == 'eligible_ids':
                 # Similarity ranking must not add an ID outside the supplied
                 # complete set permitted by this case's hard constraints.
-                checks[field] = all(ident in expected[field] for ident in item_ids)
+                eligible = set(expected[field])
+                checks[field] = total <= len(eligible) and eligible.issuperset(item_ids)
             elif field == 'absent_ids':
                 # Absence is proven only when the returned page is complete.
                 # With has_more, an ID beyond the page may still be present.
@@ -364,6 +370,9 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
             else:
                 checks[field] = result.get('effect') == expected[field]
 
+        no_match_case = case.get('category') == 'no_match'
+        if no_match_case:
+            checks['complete_empty_page'] = not item_ids and result.get('has_more') is False
         elapsed_ms = (ended - started) * 1000.0
         if not math.isfinite(elapsed_ms):
             _invalid()
@@ -381,6 +390,9 @@ def evaluate_cases(engine, token, library, document, *, clock, monotonic=time.mo
                     if result['kind'] in ('results', 'open') else 0.0)
         if version == 2:
             report_case['dependency_failed'] = False
+            report_case['clarified'] = result['kind'] == 'clarification'
+            if no_match_case:
+                report_case['no_match_false_positive'] = total > 0 or bool(item_ids)
         reports.append(report_case)
 
     passed = sum(case['passed'] for case in reports)

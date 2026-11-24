@@ -246,6 +246,36 @@ let browser;
   browser=await chromium.launch({headless:true,
     ...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),
     args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
+  if(process.env.PH_BROWSER_INVITE_LINK==='1'){
+    const ownerContext=await context(browser);await ownerContext.grantPermissions(['clipboard-read','clipboard-write'],{origin:'https://photohouse.test'});
+    const owner=await ownerContext.newPage();await auth(owner,'+12025550100');
+    await owner.locator('#owner-panel summary').click();await owner.locator('#invite-phone').fill('+12025550103');await owner.locator('#invite-form button').click();
+    await owner.locator('#created-code').waitFor({state:'visible'});
+    const code=await owner.locator('#created-code').inputValue();assert.match(code,/^[a-f0-9]{8}(-[a-f0-9]{8}){3}$/);
+    const beforeCopy=browserRequests.length;await owner.locator('#copy-invite-link').click();
+    const link=await owner.evaluate(()=>navigator.clipboard.readText());
+    assert.equal(link,`https://photohouse.test/ui#invite=${code}`);
+    assert(browserRequests.slice(beforeCopy).length===0,'copy action must not send a request');
+    const joinedContext=await context(browser),joined=await joinedContext.newPage();
+    const beforeOpen=browserRequests.length;await joined.goto(link);await joined.locator('#auth').waitFor({state:'visible'});
+    assert.equal(await joined.evaluate(()=>location.hash),'');assert.equal(await joined.evaluate(()=>location.search),'');
+    assert.equal(await joined.locator('#register-tab').getAttribute('aria-pressed'),'true');
+    assert.equal(await joined.locator('#code').inputValue(),code);assert.equal(await joined.locator('#password').inputValue(),'');
+    assert(!browserRequests.slice(beforeOpen).some(request=>request.method==='POST'&&request.path==='/auth/register'));
+    assert.deepEqual(external,[]);
+    checkpoint('Owner copies a same-origin invitation link only on click; signed-out registration prefill is fragment-scoped and never automatic');
+    const malformed=await joinedContext.newPage();await malformed.goto('https://photohouse.test/ui#invite=not-a-token');await malformed.locator('#auth').waitFor({state:'visible'});
+    await malformed.waitForFunction(()=>location.hash==='');assert.equal(await malformed.locator('#register-tab').getAttribute('aria-pressed'),'false');assert.equal(await malformed.locator('#code').inputValue(),'');
+    const signedIn=await ownerContext.newPage(),signedInStart=browserRequests.length;await signedIn.goto(link);await signedIn.locator('.asset').first().waitFor();
+    assert.equal(await signedIn.evaluate(()=>location.hash),'');assert.equal(await signedIn.locator('#registration-fields').isHidden(),true);assert.equal(await signedIn.locator('#code').inputValue(),'');
+    assert(!browserRequests.slice(signedInStart).some(request=>request.method==='POST'&&request.path==='/auth/register'));
+    await joined.locator('#phone').fill('+12025550103');await joined.locator('#password').fill(PASSWORD);await joined.locator('#name').fill('Synthetic invited member');
+    await joined.locator('#auth-submit').click();await joined.locator('.asset').first().waitFor();
+    assert.equal(await joined.locator('#owner-panel').isVisible(),false);assert.equal(await joined.locator('.asset').count(),2);
+    assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
+    checkpoint('Malformed and signed-in invitation fragments are scrubbed without prefill; explicit phone-bound signup succeeds');
+    await ownerContext.close();await joinedContext.close();return;
+  }
   if(process.env.PH_BROWSER_VIDEO_MOMENTS==='1'){
     const ctx=await context(browser),page=await ctx.newPage();
     await auth(page);await mutate('prepared-video-unavailable');
@@ -1024,11 +1054,15 @@ let browser;
   assert.equal(await filmstrip.locator('button').first().getAttribute('aria-label'),'Photo 1 / 2');
   await filmstrip.locator('img').first().evaluate(img=>img.decode());
   assert((await filmstrip.locator('img').first().evaluate(img=>img.naturalWidth))>0);
+  const displayedThumbnails=await filmstrip.locator('img').elementHandles();
   await filmstrip.locator('button').first().click();
   await page.locator('.viewer-surface img').evaluate(img=>img.decode());
   assert.match(await page.locator('#viewer-title').textContent(),/102/);
   assert.equal(await page.locator('#view-position').textContent(),'This page · 1 / 2');
   assert.equal(await filmstrip.locator('button[aria-current="true"]').getAttribute('data-viewer-index'),'0');
+  for(const [index, thumbnail] of displayedThumbnails.entries()){
+    assert.equal(await thumbnail.evaluate((node,i)=>node===document.querySelectorAll('#viewer-filmstrip img')[i],index),true);
+  }
   assert.equal(await page.locator('#view-play').getAttribute('aria-pressed'),'false');
   checkpoint('Viewer filmstrip mirrors the loaded order, marks the current item, and jumps to it');
   await page.locator('#close-viewer').click();

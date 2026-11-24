@@ -39,6 +39,8 @@ follows. Current installed-client and voice acceptance remain separate.
 
 - The viewer starts loading the photo as soon as the authorized preview is
   ready. Descriptions load in the background and are scoped to the open item.
+  Stepping through the viewer retains the same authorized thumbnails where the
+  filmstrip windows overlap.
 - Reloading the current Jude conversation can keep an ordered frame selection
   after the server confirms the same authorized search result.
 - From a saved memory group, choose **Start a story** to open its current theme
@@ -48,6 +50,14 @@ follows. Current installed-client and voice acceptance remain separate.
   filter. Selecting a moment seeks the protected player to its start and binds
   playback to the prepared version used for that result. Operators supply the
   reviewed intervals. The feature is off in the standard runtime.
+- Owners can copy a phone-bound registration link from Family settings.
+  Registration still requires the invited phone number and an explicit submit.
+- [Oral-history intake](ORAL_HISTORY_INTAKE_FOUNDATION.md) has a default-off
+  protected HTTP API for saving and resuming ordered audio sections. The
+  recording UI and device qualification are still pending.
+- The Windows voice bridge accepts optional exact names of installed
+  [System.Speech voices](MODEL_PROVIDER_ARCHITECTURE.md). The tested bridge
+  behavior does not qualify a new live voice.
 
 See the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md) for generated
 checks and Windows delivery evidence.

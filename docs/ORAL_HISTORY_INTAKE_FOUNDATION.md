@@ -1,8 +1,10 @@
 # Local oral-history intake foundation
 
-**Status: internal source prototype, October 14, 2026.** The source implements
+**Status: internal source prototype, November 25, 2026.** The source implements
 ordered recording sections and durable SQLite mutation receipts using generated
-fixtures. There is no HTTP route, client recorder, Alembic migration, runtime
+fixtures. A protected HTTP transport is available only when its explicit
+`oral_history_intake_enabled` app option is true; it does not initialize storage
+or install a migration. There is no client recorder, production runtime
 configuration, ASR queue, deployment or public recording feature. A new checkout
 and the current Windows installation do not activate this prototype.
 
@@ -32,6 +34,29 @@ permanent erasure remains unqualified. This is not ready for family admission.
 the source. A retained recording with processing declined can still be reopened,
 read by its author and resumed, but does not authorize a worker. Session creation
 accepts a bounded opaque library ID (up to 128 UTF-8 bytes).
+
+## Protected resumable transport source
+
+The internal transport in
+[`oral_history_transport.py`](../server/backend/app/access/oral_history_transport.py)
+is mounted only by `create_app(..., oral_history_intake_enabled=True)` with an
+explicit `AccessRuntime`. The option defaults off; no route is mounted by the
+default app. This flag is not schema admission: the exact fixture schema must
+already exist, and the route never installs or repairs it. Requests use the
+normal protected bearer or same-origin cookie/CSRF path, current author and
+library membership, and no-store privacy headers.
+
+`POST /oral-history/v1/libraries/{library_id}/sessions` requires strict typed
+JSON, including separate explicit boolean `retention_consent` and
+`processing_consent`. Declined retention is refused before a row or receipt is
+written. `GET .../sessions/{session_id}` returns bounded resume status without
+audio. `POST .../sessions/{session_id}/sections` accepts one raw canonical WAV;
+the request ID, expected revision and ordinal are explicit headers. The route
+checks current author access to that exact session before reading audio, then
+the intake rechecks it atomically with the append. Identical retries return
+the committed receipt without adding another section. Existing complete and
+cancel operations are also wired through protected routes. These routes do
+not invoke ASR, processing, workers, playback or story adoption.
 
 ## Section and quota contract
 
@@ -120,12 +145,19 @@ experiment, native ACL/storage check or physical-device acceptance. No model,
 GPU, family data or real recording is used. The exact API source package currently
 served on Windows does not include or activate this experimental feature.
 
+The generated HTTP transport suite additionally exercises create, one committed
+append, status after closing and reopening the client against SQLite, exact
+retry without duplication, a following section, declined consent, author/scope
+refusal, revocation and the default-unmounted route. It does not qualify a
+production schema, live service, recorder, actual recording, processing worker
+or family acceptance.
+
 Immutable recording source identity, authorized retained-source withdrawal and
 content-free V4 journal/replay behavior now have internal source implementations
 and a [versioned generated rehearsal](ORAL_HISTORY_QUALIFICATION.md). Next
 qualify the operator's journal/schema upgrade and paired restore, specify
-permanent erasure and backup retention, then add bounded protected transport and
-a local Web/phone recorder with explicit saved/retrying states. Later
+permanent erasure and backup retention, and build a local Web or phone recorder
+with explicit saved and retrying states. Later
 transcription/proposal workers must recheck consent, source/current membership
 and revision before accepting their output. No recorder or production admission
 is delivered by this foundation.
