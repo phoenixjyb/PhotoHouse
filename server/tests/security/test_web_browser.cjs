@@ -379,6 +379,7 @@ let browser;
     await page.reload();await openInEnglish();
     await create.locator('[name=title]').fill(title);
     await create.locator('[name=subject]').fill('Synthetic subject');
+    await create.locator('[name=narrator]').fill('Synthetic narrator');
     const before=browserRequests.length;
     await create.locator('button').click();
     assert.equal(browserRequests.slice(before).filter(r=>r.method==='POST'&&r.path.startsWith('/oral-history')).length,0);
@@ -445,7 +446,11 @@ let browser;
     const reviewedWrite=entry=>entry.method==='PUT'&&entry.path.endsWith('/reviewed-text');
     const reviewedText=review.getByLabel('Your reviewed text');
     const reviewedWords='We spotted a heron beside the lake.';
-    assert.deepEqual(await sectionPicker.locator('option').allTextContents(),['Section 1','Section 2']);
+    await review.waitFor({state:'visible'});
+    assert.equal(await review.locator('#oral-history-review-attribution').textContent(),
+      'Narrated by Synthetic narrator · About Synthetic subject');
+    assert.deepEqual(await sectionPicker.locator('option').allTextContents(),
+      ['Section 1 · 0:00','Section 2 · 0:00.200']);
     const audioRead=entry=>entry.method==='GET'&&entry.path.startsWith('/oral-history/')&&/\/sections\/\d+$/.test(entry.path);
     assert.equal(browserRequests.slice(readbackStart).filter(audioRead).length,0);
     await sectionPicker.selectOption('1');await loadAudio.click();
@@ -521,6 +526,15 @@ let browser;
     assert.equal(await transcript.locator('#oral-history-transcript-text').textContent(),'');
     assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),title),false);
     assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),transcriptText),false);
+    await panel.getByRole('button',{name:'Review finished recordings'}).click();
+    const lateTimeline=delayNext((url,req)=>req.method()==='GET'&&url.pathname.endsWith('/timeline'));
+    try{
+      await panel.getByRole('button',{name:title}).click();await lateTimeline.seen;
+      await panel.locator('summary').click();
+    }finally{lateTimeline.release();}
+    await openInEnglish();
+    assert.equal(await review.isHidden(),true);
+    assert.equal(await review.locator('#oral-history-review-attribution').textContent(),'');
     await page.reload();await openInEnglish();
     const reopenedReviewStart=browserRequests.length;
     await panel.getByRole('button',{name:'Review finished recordings'}).click();
@@ -533,6 +547,7 @@ let browser;
     assert.equal(browserRequests.slice(reopenedReviewStart).filter(reviewedWrite).length,0);
     assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),reviewedWords),false);
     assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
+    checkpoint('Recording review identifies the narrator and subject and shows verified elapsed offsets. Late timelines are discarded after close');
     checkpoint('Finished sections survive reload, load only on click, decode without autoplay, and are cleared when review closes');
     checkpoint('Explicit local transcription shows only the chosen machine draft and clears it on section changes and late responses after close');
     checkpoint('Author separately reviews and saves text for the selected section; reload recovers it without rerunning ASR or rewriting audio');

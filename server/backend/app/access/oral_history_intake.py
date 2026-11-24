@@ -100,7 +100,7 @@ def _one(db, sql, args):
     return dict(zip((c[0] for c in cursor.description),row)) if row is not None else None
 
 
-def session_snapshot(db, actor, library, ident, *, allow_withdrawn=False):
+def session_snapshot(db, actor, library, ident, *, allow_withdrawn=False, include_timeline=False):
     """Internal bounded metadata verifier; caller owns its authorization/transaction."""
     row = _one(db, f'SELECT * FROM {SESSION} WHERE id=? AND library_id=? AND author_id=?',
                            (ident, library, actor))
@@ -148,6 +148,9 @@ def session_snapshot(db, actor, library, ident, *, allow_withdrawn=False):
             != (len(parts), frames, size, head)
             or row['revision'] != 1 + len(parts) + int(logical_state != 'open') + int(row['state']=='withdrawn')):
         raise TransportError(503, 'Recording storage unavailable')
+    if include_timeline:
+        row['timeline'] = [{'ordinal': part[0], 'start_frame': part[1], 'frames': part[2]}
+                           for part in parts]
     return row
 
 
@@ -177,13 +180,13 @@ class OralHistoryIntake:
         self._ready()
         return member
 
-    def _session(self, actor, library, ident):
+    def _session(self, actor, library, ident, *, include_timeline=False):
         if self.access.original_deletions is not None:
             try:
                 self.access.original_deletions.assert_recording_available(self.db, ident)
             except OriginalDeletionError:
                 raise TransportError(503, 'Recording storage unavailable') from None
-        return session_snapshot(self.db,actor,library,ident)
+        return session_snapshot(self.db, actor, library, ident, include_timeline=include_timeline)
 
     @staticmethod
     def _status(row):
@@ -415,13 +418,28 @@ class OralHistoryIntake:
         return (_uuid(ident), _integer(ordinal, MAX_SECTIONS - 1),
                 _integer(expected_revision, MAX_SECTIONS + 2, minimum=1))
 
-    def _completed_section(self, token, library, ident, ordinal, revision, *, for_transcription=False):
+    def _completed_session(self, token, library, ident, revision, *, include_timeline=False):
         actor = self._member(token, library)['account_id']
-        session = self._session(actor, library, ident)
+        session = self._session(actor, library, ident, include_timeline=include_timeline)
         if session['state'] != 'completed':
             raise TransportError(409, 'Recording is not completed')
         if session['revision'] != revision:
             raise TransportError(409, 'Recording changed; refresh before reading')
+        return session
+
+    def completed_timeline(self, token, library, ident, *, expected_revision):
+        """Project the verified section offsets from the current author-owned manifest."""
+        _text(library, 128, required=True)
+        ident = _uuid(ident)
+        revision = _integer(expected_revision, MAX_SECTIONS + 2, minimum=1)
+        with self.access._transaction():
+            session = self._completed_session(token, library, ident, revision, include_timeline=True)
+            return {'version': 1, 'session_id': ident, 'revision': revision,
+                    'manifest_sha256': session['manifest_sha256'], 'sample_rate': 16000,
+                    'sections': session['timeline']}
+
+    def _completed_section(self, token, library, ident, ordinal, revision, *, for_transcription=False):
+        session = self._completed_session(token, library, ident, revision)
         if for_transcription and not session['processing_consent']:
             raise TransportError(403, 'Recording transcription was not authorized')
         return self._verified_section_audio(ident, ordinal)

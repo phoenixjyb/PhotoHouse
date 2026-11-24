@@ -409,7 +409,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .access-panel .oral-history-actions button{margin:0;padding:.65rem 1.05rem}
 #oral-history-preview{max-width:100%}
 #oral-history-review .oral-history-actions{margin-top:0}
-#oral-history-review-section{width:auto}
+#oral-history-review-section{width:auto;max-width:100%}
+#oral-history-review-attribution{overflow-wrap:anywhere}
 #oral-history-playback{display:block;max-width:100%;margin-top:1rem}
 #oral-history-transcript-text{white-space:pre-wrap;overflow-wrap:anywhere}
 #oral-history-review-form:not([hidden]){display:grid;gap:.65rem;margin:1rem 0}

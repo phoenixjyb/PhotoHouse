@@ -159,17 +159,30 @@ async def session_status(library_id: str, session_id: str, request: Request):
     return _json_response(result)
 
 
+def _section_revision(request):
+    expected = _single(request, 'x-photohouse-expected-revision')
+    if (expected is None or not re.fullmatch(r'[1-9][0-9]{0,2}', expected)
+            or int(expected) > MAX_SECTIONS + 2):
+        raise TransportError(400, 'Invalid recording section')
+    return int(expected)
+
+
+@router.get('/oral-history/v1/libraries/{library_id}/sessions/{session_id}/timeline')
+async def completed_timeline(library_id: str, session_id: str, request: Request):
+    runtime, token = _admitted(request)
+    result = await run_in_threadpool(_intake_call, runtime, 'completed_timeline', token,
+        library_id, session_id, expected_revision=_section_revision(request))
+    return _json_response(result)
+
+
 @router.get('/oral-history/v1/libraries/{library_id}/sessions/{session_id}/sections/{ordinal}')
 async def completed_section(library_id: str, session_id: str, ordinal: str, request: Request):
     runtime, token = _admitted(request)
-    expected = _single(request, 'x-photohouse-expected-revision')
-    if (expected is None or not re.fullmatch(r'[1-9][0-9]{0,2}', expected)
-            or int(expected) > MAX_SECTIONS + 2
-            or not re.fullmatch(r'(?:0|[1-9][0-9]{0,2})', ordinal)
-            or int(ordinal) >= MAX_SECTIONS):
+    revision = _section_revision(request)
+    if not re.fullmatch(r'(?:0|[1-9][0-9]{0,2})', ordinal) or int(ordinal) >= MAX_SECTIONS:
         raise TransportError(400, 'Invalid recording section')
     audio = await run_in_threadpool(_intake_call, runtime, 'completed_audio', token,
-        library_id, session_id, int(ordinal), expected_revision=int(expected))
+        library_id, session_id, int(ordinal), expected_revision=revision)
     return Response(audio, media_type='audio/wav')
 
 
