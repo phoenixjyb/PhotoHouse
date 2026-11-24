@@ -36533,6 +36533,21 @@
       "schema_changed": false,
       "live_runtime_changed": false,
       "providers_activated": false
+    },
+    {
+      "feature": "audit-video-moment-staging-package-closure",
+      "source_commit": "b32fc94736f3ee48064d2c24cdb2183e8bd31dbc",
+      "files": [
+        {
+          "path": "server/scripts/build_staging_package.py",
+          "before_sha256": "96cc4c5e9b9b6dfcfdbb5b7e3d0b9e01bcbcf69624a4d9da7cb64be900103613",
+          "sha256": "09875768153f42d819d6b1095e39d2d7d64581e21f2f18f8f2f694b549f8b553"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Include the already reviewed video-moment module in the existing fixed staging allowlist."
     }
   ]
 }
