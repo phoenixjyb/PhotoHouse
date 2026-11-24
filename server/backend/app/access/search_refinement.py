@@ -217,6 +217,49 @@ def plan_people_answer(words, *, now, entities, previous_filters):
     return QueryPlan(1, 'ready', expected)
 
 
+def plan_location_answer(words, *, now, entities, previous_filters):
+    """Accept one exact reviewed location as a bare v2 follow-up answer.
+
+    The answer can add or replace only the location slot. The ordinary planner
+    validates the authorized resolver output and the full prior filter shape;
+    any extra condition remains outside this narrow admission.
+    """
+    if type(words) is not str or not words.strip() or type(entities) is not dict:
+        return None
+    groups = entities.get('groups')
+    if type(groups) is not dict:
+        return None
+    locations = groups.get('locations')
+    if type(locations) is not list or not locations:
+        return None
+    if len(locations) > 1:
+        return QueryPlan(1, 'clarification', dict(previous_filters or {}),
+                         'ambiguous_entities')
+    if groups.get('people') or groups.get('tags'):
+        return None
+    labels = entities.get('labels')
+    if type(labels) is not list or len(labels) != 1:
+        return None
+    if _QUOTE.search(words) or any(mark in words for mark in '“”"') or _query_mode(words):
+        return None
+
+    # A resolver hit is not sufficient: the complete user text must consist
+    # only of its one matched reviewed place label/alias.
+    surface = d.fold(words.strip())
+    if _remove_occurrences(surface, labels).strip(' \t\r\n,，;；、。.!！?？'):
+        return None
+
+    planned = _plan_query(words, now=now, entities=entities,
+                          previous_filters=previous_filters, refine=True)
+    if planned.status != 'ready':
+        return planned
+    expected = dict(previous_filters or {})
+    expected['locations'] = locations
+    if planned.filters != expected:
+        return None
+    return planned
+
+
 def query_mode(words):
     if type(words) is not str:
         return _query_mode(words)

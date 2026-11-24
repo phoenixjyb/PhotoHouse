@@ -782,6 +782,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     refine = bool(re.match(REFINE_PREFIX, lower) or BARE_FOLLOWUP.fullmatch(lower))
     search = bool(re.match(SEARCH_PREFIX, lower))
     people_answer = None
+    location_answer = None
     answer_entities = None
     if search_v2:
         from .search_refinement import query_mode, plan_people_answer
@@ -802,6 +803,15 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                                                previous_filters=previous['filters'])
             if people_answer is not None:
                 refine = True
+            elif not search_v3:
+                # A single exact reviewed place can answer a bare follow-up.
+                # Keep this v2 admission narrow; v3 has its own intent planner.
+                from .search_refinement import plan_location_answer
+                location_answer = plan_location_answer(
+                    words, now=now, entities=answer_entities,
+                    previous_filters=previous['filters'])
+                if location_answer is not None:
+                    refine = True
         if search_v3 and not (refine or search):
             # V3 accepts ordinary read-only search language. The bounded
             # intent compiler must account for all conditions before retrieval.
@@ -871,6 +881,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 plan = QueryPlan(3, 'ready', dict(plan.filters, date=continuation['date']))
         else:
             plan = (people_answer if people_answer is not None else
+                    location_answer if location_answer is not None else
                     plan_query(words, now=now, entities=first,
                                previous_filters=previous['filters'] if previous else None, refine=refine))
             if planner_outcome is not None:

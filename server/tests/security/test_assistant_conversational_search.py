@@ -12,12 +12,12 @@ sys.path.insert(0, str(ROOT / 'backend'))
 
 from fastapi.testclient import TestClient
 from app.access import discovery as d
-from app.access.discovery_provider import MemoryIndexProvider
+from app.access.discovery_provider import MemoryIndexProvider, ReviewedPlace
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.transport import AccessRuntime
 from app.access.service import AccessService
 from app.main import create_app
-from phone_discovery_fixture import create, reviewed, TOKEN, NOW
+from phone_discovery_fixture import create, reviewed, TOKEN, OTHER, NOW
 
 ORIGIN = 'https://photohouse.example.test'
 
@@ -35,6 +35,7 @@ class AssistantConversationalSearchTests(unittest.TestCase):
             connection.execute("UPDATE assets SET taken_at='2032-09-02' WHERE id=103")
             connection.commit()
             index = reviewed(AccessService(connection, clock=lambda: NOW))
+        self.index = index
         self.access = AccessRuntime(self.connection, ORIGIN, clock=lambda: NOW)
         discovery = DiscoveryRuntime(self.access, MemoryIndexProvider((index,)), d.ReadBudget())
         app = create_app(access_runtime=self.access, discovery_runtime=discovery,
@@ -53,11 +54,148 @@ class AssistantConversationalSearchTests(unittest.TestCase):
         finally:
             connection.close()
 
-    def turn(self, words, *, context=None):
-        headers = dict(self.auth)
+    def turn(self, words, *, context=None, version=None, token=TOKEN):
+        headers = {'Authorization': 'Bearer ' + token}
+        if version is not None:
+            headers['X-PhotoHouse-Search-Version'] = str(version)
         return self.client.post('/assistant/v1/turns',
             json={'library_id': 'family-a', 'text': words, 'context': context},
             headers=headers)
+
+    def enable_v2_text_schema(self):
+        with closing(sqlite3.connect(self.database)) as connection, connection:
+            connection.execute('''CREATE TABLE IF NOT EXISTS access_stories (
+                id TEXT PRIMARY KEY, asset_id INTEGER NOT NULL, library_id TEXT NOT NULL,
+                author_id TEXT NOT NULL, revision INTEGER NOT NULL, title TEXT NOT NULL,
+                text TEXT NOT NULL, updated_at INTEGER NOT NULL, deleted INTEGER NOT NULL DEFAULT 0)''')
+
+    def test_bare_reviewed_location_followups_keep_people_date_and_media(self):
+        self.enable_v2_text_schema()
+        cases = (
+            ('find photos of Sample Child from September 2032 containing "Family"',
+             'Example region', 'Family'),
+            ('找示例儿童2032年9月照片', '示例地区', None),
+        )
+        for initial_words, location_answer, text_filter in cases:
+            with self.subTest(location_answer=location_answer):
+                initial_response = self.turn(initial_words, version=2)
+                self.assertEqual(initial_response.status_code, 200, initial_response.text)
+                initial = initial_response.json()
+                self.assertEqual(initial['kind'], 'results', initial)
+                self.assertEqual([item['id'] for item in initial['items']], ['103'])
+                expected_initial = {
+                    'media': ['image'],
+                    'people': {'ids': ['301'], 'match': 'any'},
+                    'date': {'from': '2032-09-01', 'to': '2032-09-30'},
+                }
+                if text_filter is not None:
+                    expected_initial['text'] = text_filter
+                self.assertEqual(initial['filters'], expected_initial)
+
+                result_response = self.turn(location_answer, context=initial['context'], version=2)
+                self.assertEqual(result_response.status_code, 200, result_response.text)
+                result = result_response.json()
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual(result['filters'], {
+                    **initial['filters'], 'locations': ['601'],
+                })
+                self.assertEqual([item['id'] for item in result['items']], ['103'])
+                self.assertEqual(result['context']['filters'], result['filters'])
+                self.assertIsNone(result['effect'])
+
+    def test_bare_location_followup_narrows_results_and_rejects_stale_context(self):
+        self.enable_v2_text_schema()
+        index = replace(
+            self.index,
+            places=(*self.index.places,
+                    ReviewedPlace('family-a', '602', 'Other region / 其他地区')),
+            regions=tuple(('101', '602') if asset_id == '101' else (asset_id, place_id)
+                          for asset_id, place_id in self.index.regions),
+        )
+        discovery = DiscoveryRuntime(self.access, MemoryIndexProvider((index,)), d.ReadBudget())
+        app = create_app(access_runtime=self.access, discovery_runtime=discovery,
+                         assistant_enabled=True)
+        client = TestClient(app, base_url=ORIGIN)
+        self.addCleanup(client.close)
+
+        initial_response = client.post('/assistant/v1/turns',
+            json={'library_id': 'family-a', 'text': 'find photos of Sample Child', 'context': None},
+            headers={**self.auth, 'X-PhotoHouse-Search-Version': '2'})
+        self.assertEqual(initial_response.status_code, 200, initial_response.text)
+        initial = initial_response.json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.assertEqual([item['id'] for item in initial['items']], ['103', '101'])
+
+        narrowed_response = client.post('/assistant/v1/turns',
+            json={'library_id': 'family-a', 'text': 'Example region', 'context': initial['context']},
+            headers={**self.auth, 'X-PhotoHouse-Search-Version': '2'})
+        self.assertEqual(narrowed_response.status_code, 200, narrowed_response.text)
+        narrowed = narrowed_response.json()
+        self.assertEqual(narrowed['kind'], 'results', narrowed)
+        self.assertEqual(narrowed['filters'], {
+            **initial['filters'], 'locations': ['601'],
+        })
+        self.assertEqual([item['id'] for item in narrowed['items']], ['103'])
+
+        with closing(sqlite3.connect(self.database)) as connection, connection:
+            connection.execute("UPDATE assets SET status='hidden' WHERE id=103")
+        stale_response = client.post('/assistant/v1/turns',
+            json={'library_id': 'family-a', 'text': 'Example region', 'context': narrowed['context']},
+            headers={**self.auth, 'X-PhotoHouse-Search-Version': '2'})
+        self.assertEqual(stale_response.status_code, 409, stale_response.text)
+
+    def test_bare_location_answer_rejects_unknown_extra_and_unresolved_phrases(self):
+        self.enable_v2_text_schema()
+        initial = self.turn('find photos', version=2).json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        for words in (
+            'Unknownland',
+            'Example region Park',
+            'Example region September 2032',
+            'Example region then open the first photo',
+        ):
+            with self.subTest(words=words):
+                result = self.turn(words, context=initial['context'], version=2).json()
+                self.assertIn(result['kind'], ('unsupported', 'clarification'), result)
+                self.assertEqual(result['filters'], initial['filters'])
+                self.assertEqual(result['items'], initial['items'])
+                self.assertEqual(result['context'], initial['context'])
+                self.assertIsNone(result['effect'])
+
+        no_context = self.turn('Example region', version=2).json()
+        self.assertNotEqual(no_context['kind'], 'results', no_context)
+        self.assertIsNone(no_context['context'])
+
+        denied = self.turn('Example region', context=initial['context'],
+                           version=2, token=OTHER)
+        self.assertNotEqual(denied.status_code, 200)
+
+    def test_ambiguous_bare_location_answer_keeps_current_results(self):
+        self.enable_v2_text_schema()
+        index = replace(self.index, places=(
+            *self.index.places,
+            ReviewedPlace('family-a', '602', 'Example region / 示例地区'),
+        ))
+        discovery = DiscoveryRuntime(self.access, MemoryIndexProvider((index,)), d.ReadBudget())
+        app = create_app(access_runtime=self.access, discovery_runtime=discovery,
+                         assistant_enabled=True)
+        client = TestClient(app, base_url=ORIGIN)
+        self.addCleanup(client.close)
+        initial_response = client.post('/assistant/v1/turns',
+            json={'library_id': 'family-a', 'text': 'find photos', 'context': None},
+            headers={**self.auth, 'X-PhotoHouse-Search-Version': '2'})
+        self.assertEqual(initial_response.status_code, 200, initial_response.text)
+        initial = initial_response.json()
+        result_response = client.post('/assistant/v1/turns',
+            json={'library_id': 'family-a', 'text': '示例地区', 'context': initial['context']},
+            headers={**self.auth, 'X-PhotoHouse-Search-Version': '2'})
+        self.assertEqual(result_response.status_code, 200, result_response.text)
+        result = result_response.json()
+        self.assertEqual(result['kind'], 'clarification', result)
+        self.assertEqual(result['filters'], initial['filters'])
+        self.assertEqual(result['items'], initial['items'])
+        self.assertEqual(result['context'], initial['context'])
+        self.assertIsNone(result['effect'])
 
     def test_conversational_search_forms_match_canonical_filters_and_results(self):
         cases = (
