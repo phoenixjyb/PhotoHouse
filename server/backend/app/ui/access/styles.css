@@ -904,6 +904,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .memory-group-split-choice .memory-group-item img { height:3.5rem; }
 .memory-group-split-choice .memory-group-item figcaption { padding-block:0; }
 .memory-group-split-choice:has(input:checked) { border-color:currentColor; }
+.memory-group-order { display:grid; grid-template-columns:repeat(2,minmax(48px,1fr)); gap:.3rem; margin-block:.4rem; }
+.memory-group-order button { min-height:48px; padding:.2rem; }
+.memory-group-member-kind { display:inline-block; color:var(--muted,#796f62); margin-block-start:.25rem; }
 .memory-group-day-items { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr)); gap:.6rem; }
 .memory-group-day-item { padding:.6rem; border:1px solid var(--line,#ddd3c4); border-radius:.65rem; min-width:0; }
 .memory-group-day-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.4rem; }

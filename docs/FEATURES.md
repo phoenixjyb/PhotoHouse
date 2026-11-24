@@ -54,8 +54,8 @@ follows. Current installed-client and voice acceptance remain separate.
   group preserves its selected order. Linked family notes follow their items.
 - In the Web group editor, choose **Find photos and videos from this day** to
   browse the current library using the photo or video's recorded capture date.
-  Adding an item changes the selection. Use **Save this memory group** to keep
-  those changes.
+  Use the up and down buttons to arrange the selected items in story order.
+  Choose **Save this memory group** to keep the changes.
 - An optional video-moment catalog can match reviewed labels in the videos-only
   filter. Selecting a moment seeks the protected player to its start and binds
   playback to the prepared version used for that result. Operators supply the

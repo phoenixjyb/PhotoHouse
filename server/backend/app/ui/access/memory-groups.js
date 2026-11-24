@@ -17,7 +17,9 @@ window.PhotoHouseMemoryGroups = {
         splitItem:n=>`移动画面 ${n}`, splitSaved:'已将选定画面移入新回忆组。',
         startStory:'开始写故事', checkingStory:'正在核对回忆组…', storyChanged:'回忆组已变化或暂不可用，请刷新后重试。',
         theme:'主题', themes:{trip:'旅行',growing_up:'成长',birthday:'生日',grandparents:'祖辈',year_in_review:'年度回顾',everyday:'日常'},
-        addMedia:'从当前相册选择画面', included:'组内画面', remove:'移出此组',
+        addMedia:'从当前相册选择画面', included:'组内顺序', remove:'移出此组',
+        earlier:n=>`将第 ${n} 项前移`, later:n=>`将第 ${n} 项后移`,
+        moved:(n,total)=>`已移动到第 ${n} 项，共 ${total} 项。`,
         sameDayHeading:date=>`${date}拍摄的画面`,
         sameDay:'查看同日照片和视频', sameDayMore:'更多同日画面', sameDayAdd:'加入回忆组',
         sameDayPhoto:'照片', sameDayVideo:'视频', sameDayEmpty:'本页没有可加入的同日画面。',
@@ -44,7 +46,9 @@ window.PhotoHouseMemoryGroups = {
         splitItem:n=>`Move item ${n}`, splitSaved:'The selected items moved to a new memory group.',
         startStory:'Start a story', checkingStory:'Checking this memory group…', storyChanged:'This memory group changed or is unavailable. Refresh and try again.',
         theme:'Theme', themes:{trip:'Trip',growing_up:'Growing up',birthday:'Birthday',grandparents:'Grandparents',year_in_review:'Year in review',everyday:'Everyday'},
-        addMedia:'Choose from this gallery', included:'Group photos', remove:'Remove from group',
+        addMedia:'Choose from this gallery', included:'Group order', remove:'Remove from group',
+        earlier:n=>`Move item ${n} earlier`, later:n=>`Move item ${n} later`,
+        moved:(n,total)=>`Moved to position ${n} of ${total}.`,
         sameDayHeading:date=>`From ${date}`,
         sameDay:'Find photos and videos from this day', sameDayMore:'More from this day', sameDayAdd:'Add to group',
         sameDayPhoto:'Photo', sameDayVideo:'Video', sameDayEmpty:'There are no items to add on this page.',
@@ -343,9 +347,36 @@ window.PhotoHouseMemoryGroups = {
       const members=section(t('included'),'memory-group-members');const memberRows=node('div','', 'memory-group-items');members.append(memberRows);editor.append(members);
       const manualPicker=section(t('addMedia'),'memory-group-gallery');
       const available=new Map();for(const item of [state.asset,...state.manualItems])if(idOk(item?.id)&&!available.has(item.id))available.set(item.id,item);
+      const editable=()=>active(state)&&state.editor===editor&&!state.pendingSave;
+      function moveMember(id,step) {
+        if(!editable())return;
+        const ordered=[...selected],from=ordered.indexOf(id),to=from+step;
+        if(from<0||to<0||to>=ordered.length)return;
+        [ordered[from],ordered[to]]=[ordered[to],ordered[from]];
+        selected.clear();for(const ident of ordered)selected.add(ident);
+        autoSuggestedIds.delete(id);markEditorChanged(state);renderMembers();
+        const controls=memberRows.children[to];
+        const preferred=controls.querySelector(step<0?'.memory-group-earlier':'.memory-group-later');
+        (preferred.disabled?controls.querySelector('.memory-group-order button:enabled'):preferred)?.focus({preventScroll:true});
+        setStatus(state,t('moved')(to+1,ordered.length));
+      }
       const renderMembers=()=>{
-        memberRows.replaceChildren();for(const id of selected){const item=available.get(id)||group?.items?.find(v=>v.id===id)||{id};const wrap=node('div','', 'memory-group-member');wrap.append(image(item));
-          if(id!==state.asset.id||group){const remove=button(t('remove'),()=>{markEditorChanged(state);selected.delete(id);autoSuggestedIds.delete(id);exclusions.add(id);for(const box of suggestionList.querySelectorAll('input'))if(box.value===id)box.checked=false;renderMembers();renderGallery();renderStoryChoices();},'memory-group-remove');wrap.append(remove);}memberRows.append(wrap);}
+        memberRows.replaceChildren();
+        [...selected].forEach((id,index)=>{
+          const item=available.get(id)||group?.items?.find(v=>v.id===id)||{id};
+          const wrap=node('div','', 'memory-group-member');wrap.dataset.assetId=id;wrap.append(image(item));
+          if(item.kind==='video')wrap.append(node('span',t('sameDayVideo'),'memory-group-member-kind'));
+          if(selected.size>1){
+            const controls=node('div','', 'memory-group-order');
+            const earlier=button('↑',()=>moveMember(id,-1),'memory-group-earlier');
+            const later=button('↓',()=>moveMember(id,1),'memory-group-later');
+            earlier.title=t('earlier')(index+1);earlier.setAttribute('aria-label',earlier.title);earlier.disabled=index===0;
+            later.title=t('later')(index+1);later.setAttribute('aria-label',later.title);later.disabled=index===selected.size-1;
+            controls.append(earlier,later);wrap.append(controls);
+          }
+          if(id!==state.asset.id||group){const remove=button(t('remove'),()=>{if(!editable())return;markEditorChanged(state);selected.delete(id);autoSuggestedIds.delete(id);exclusions.add(id);for(const box of suggestionList.querySelectorAll('input'))if(box.value===id)box.checked=false;renderMembers();renderGallery();renderStoryChoices();},'memory-group-remove');wrap.append(remove);}
+          memberRows.append(wrap);
+        });
         count.textContent=t('count')(selected.size,24);
         if(excludedList)excludedList.textContent=exclusions.size?`${t('excluded')}: ${exclusions.size}`:'';
         refreshDayChoices();
@@ -411,7 +442,7 @@ window.PhotoHouseMemoryGroups = {
       editor.append(suggestionSection);
       const save=button(t('save'),()=>{},'memory-group-save');save.type='submit';editor.append(save);
       editor.append(button(t('cancel'),()=>{if(state.dirty&&!window.confirm(t('confirmLeave')))return;clearEditor(state);setStatus(state,'');},'memory-group-cancel'));
-      editor.addEventListener('submit',async event=>{event.preventDefault();if(!active(state)||state.pendingSave)return;
+      editor.addEventListener('submit',async event=>{event.preventDefault();if(!editable())return;
         const assets=[...selected];if(assets.length<1||assets.length>24){setStatus(state,t('invalid'),true);return;}
         const actualSourceIds=[...sourceIds].filter(id=>sourceChoices.has(id)&&storyAssetIds(sourceChoices.get(id)).some(assetId=>selected.has(assetId)));
         const body={asset_ids:assets.join(','),excluded_asset_ids:[...exclusions].filter(id=>!selected.has(id)).join(','),source_story_ids:actualSourceIds.join(','),theme:theme.value,revision:group?.revision||'0',mutation_id:window.crypto?.randomUUID?.()||null};
