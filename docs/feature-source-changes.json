@@ -37238,6 +37238,93 @@
         }
       ],
       "notes": "Generated Chromium uses the actual Jude restore control and verifies both cancel-focus recovery and preservation of existing focus. Only public reference data is indexed; a matched four-example grounding comparison preserves text, repairs and ambiguity with lower local lookup time."
+    },
+    {
+      "feature": "audit-oral-history-transcript-20261125",
+      "source_commit": "ad2fc9e31006b823611343e4cfab620265f62deb",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "6f3b54aad329fdabbb5817609f8597b4ca44f030cacd503187dccbd6b9cf9baa",
+          "sha256": "41ba73e625b3702998a28d7c1d5fc1c54e51e840bc13145d5f13dd4f68edb312"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "fb9634361e0457c5cbc21460221f50d4b4a1d3aa83f379bea443597911d744c3",
+          "sha256": "62e906f999cfe9325d3398dea18daab252942d657670032230eae7a8a6acc410"
+        },
+        {
+          "path": "docs/ORAL_HISTORY_INTAKE_FOUNDATION.md",
+          "before_sha256": "5bf0b29f0651914d74c3bd59e7bf234c98a034b56515ed0ca2305c1dd77dbd4b",
+          "sha256": "f2d4dbfb97e87defa995f79424903a9c20b4862a3d15d07906b868f8b76c001c"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "c0749d61f5a6ccb920ae19e29601815e4728fd09c9f691931f5ee11daf6e65ea",
+          "sha256": "cb0692500533ef752c8358a7e3120c2b7a1ea5573b250016b7608b05ab186d2e"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_intake.py",
+          "before_sha256": "5dc9540f68e435eed7ecb140bf4d13847c9843517eff4739da86f566e3905b86",
+          "sha256": "ec681c99b8f8a51c59959ec97f125d1d8d40b91b24e4c11d522dae775c705969"
+        },
+        {
+          "path": "server/backend/app/access/oral_history_transport.py",
+          "before_sha256": "4e0ac09847ce2798c61a97da41bcf62e34cf6919abdfd606334dd00399607a8f",
+          "sha256": "cb9101e311e83aa9fe2912bfd5d7b6a34457ab47a59babd03881e28db715c800"
+        },
+        {
+          "path": "server/backend/app/main.py",
+          "before_sha256": "c6497047351f1414fa6c072e8cb94301f7621e1be9da5cdebc00fbbbb9cc8415",
+          "sha256": "a17bbd55715e98bec57436dd3634ab9406d16cb0bc8291ab39625b3d4231d4de"
+        },
+        {
+          "path": "server/backend/app/routers/ui.py",
+          "before_sha256": "044817cba9e31ca074fc345d0292b60bcea8c995a9ad9a8c97380ce5124d898d",
+          "sha256": "31e7d40f4e6cda87e2800a8c2060520232663c43aea9514555d3bbde8cf6785a"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "093a744f630676ee94cf7eb9465a0bec1842610316379897d65ca0c7efe1c372",
+          "sha256": "62ae46d171a637c4ffd4cbae5d4a6fb166c255dd684dff0123adc51b6bbe24c6"
+        },
+        {
+          "path": "server/backend/app/ui/access/oral-history.js",
+          "before_sha256": "b16267abf49d37b353d9bd752a8a1303f770d70c8a3afe10ac41015f1f1ac56f",
+          "sha256": "3f5d219e8af3ee7e5fd23198b78cc2247101275aaae6001fe5dee59f031e028d"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "14761eba3ade08965d28686ef56440335c09ce91f84b8a74186b613c9f7681e8",
+          "sha256": "5575b83e30c36323e5943fbe12e77de91dd0ec5945ab5ee80375f46376a65015"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "before_sha256": "73682ebaf73dc6403ffb10248f7c1cb1447d7fd4df90fc1ecaa4cb86aa5e8ac9",
+          "sha256": "c760ab25408e3426b156a246421db121d00573eb00d065ea1d9d502ea7162ab6"
+        },
+        {
+          "path": "server/tests/security/test_assistant_capture_scope_browser.cjs",
+          "before_sha256": "3cd8b524d7a704fb367463d82bbde44a9bdc70d2dbac97d566da09d803df38fe",
+          "sha256": "2b6fc07bed2bb0ceaf13dceef8d711d039e4bf2b7908c89eefe3569171b66167"
+        },
+        {
+          "path": "server/tests/security/test_assistant_transcript_browser.cjs",
+          "before_sha256": "45c12a26e3c8b6d04456bad85721e79b3b4e73e26da3094907a25fb6a62cc2d9",
+          "sha256": "9191659ff0b3dd4ec807eba882d0896a016dd1e6419b754f2fc7bf88cea7e957"
+        },
+        {
+          "path": "server/tests/security/test_oral_history_transport.py",
+          "before_sha256": "0d09be9774eaded291d78cdfe893b4d72f0ffb3122342a33e6f009d2a86db73e",
+          "sha256": "cee3875b9cb4623c0ef64e15af108380772dc3cf9683c1d68fce2fdc3b8ebb85"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "b21d9aff5fb0602fe5e51b3433834a73cfaefa1a3ef191e19f0c73a2e0e6b354",
+          "sha256": "57116a470c970a96c118e2d2e81a65fcf79e592310cf622776d2217b83ffb966"
+        }
+      ],
+      "notes": "The author explicitly requests one completed section with processing consent. The loopback speech preview rechecks the original section and current author access before returning unsaved text. Generated browser and API tests exercised exact audio, no automatic processing, denial, withdrawal and late close."
     }
   ]
 }
