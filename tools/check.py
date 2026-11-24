@@ -260,7 +260,12 @@ def android_command(project, platform):
 def android():
     project = ROOT / "clients" / "android" / "android"
     # No origin, device, release signer or deployment settings are supplied.
-    run(android_command(project, sys.platform), cwd=project)
+    command = android_command(project, sys.platform)
+    if sys.platform == "win32" and check_windows_storage.enabled():
+        with check_windows_storage.android_environment(project) as env:
+            run(command, cwd=project, env=env)
+    else:
+        run(command, cwd=project)
 
 
 def web():

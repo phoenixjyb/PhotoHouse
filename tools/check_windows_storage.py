@@ -60,6 +60,38 @@ def _components():
     return work_storage, private_storage, bounded_windows_job
 
 
+@contextlib.contextmanager
+def android_environment(project):
+    """Choose a reusable cache and temporary directory for a native check."""
+    storage, privacy, _ = _components()
+    try:
+        # Project outputs and the project-local wrapper must also stay off the
+        # system drive. Validate those before creating developer caches.
+        storage.volume(project)
+        storage.volume(project / ".gradle" / "distributions")
+        configured = os.environ.get("GRADLE_USER_HOME")
+        cache = storage.direct(configured or (storage.work_root() / "android-gradle"))
+        storage.volume(cache)
+        if not cache.exists():
+            try:
+                storage.private_mkdir(cache)
+            except FileExistsError:
+                # Another check can initialize the same shared cache.
+                storage.direct(cache)
+        privacy.require_private_directory(cache)
+    except (OSError, ValueError):
+        raise SystemExit("Windows Android checks require a direct, private Gradle cache and a checkout on a fixed data volume.") from None
+
+    with tempfile.TemporaryDirectory(prefix="photohouse-android-", dir=cache) as temporary:
+        temporary = storage.direct(temporary)
+        storage.volume(temporary)
+        privacy.require_private_directory(temporary)
+        env = os.environ.copy()
+        env.update(GRADLE_USER_HOME=str(cache), TEMP=str(temporary),
+                   TMP=str(temporary), TMPDIR=str(temporary))
+        yield env
+
+
 def require_d_receipt(path, expected=None):
     path = Path(path)
     if not path.is_absolute():

@@ -99,10 +99,15 @@ profiles through the existing D: admission and owned Job. Successful scratch is
 retired only after its manifest and closure are verified; three successful runs
 are retained. Failed or uncertain runs are preserved. This is a source contract,
 not a fresh inventory or a claim that every historical launcher uses it.
-Android/package-manager caches, downloads and POSIX agent-probe scratch still
-need integration. Existing shared
-tools/models require version/hash/layout verification before reuse; this change
-does not download or relocate them.
+Native workstation checks with `tools/check.py android` require the Android
+checkout and its `.gradle` directory on a direct fixed data volume. The check
+reuses a private `GRADLE_USER_HOME` on such a volume. If it is unset, the
+default is `D:\PhotoHouseWork\android-gradle` under the existing work-root
+policy. Each run gives Gradle a separate temporary directory in that cache.
+The usual Gradle dependency and wrapper settings still apply. The check does
+not copy an old cache or redirect the Android SDK, JDK or system settings.
+Other package managers, tool installations and POSIX agent scratch remain
+separate.
 
 Historical qualification packets and C:-bound private SYSTEM task launchers are
 immutable and have not been relabeled or executed. Their successor plan generator
