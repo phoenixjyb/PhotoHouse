@@ -131,7 +131,8 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
     await page.locator('#password').fill('Synthetic family passphrase!');
     await page.locator('#auth-submit').click();
     await page.locator('#grid .asset').first().waitFor();
-    // This fixture drives the story controller directly later in the journey.
+    // The gallery paints before the story controller receives its selectable items.
+    await page.locator('#memory-home').waitFor({state:'visible'});
     await page.waitForFunction(()=>typeof window.__storyWorkspaceTest?.open==='function');
   }
   await login();
@@ -517,6 +518,7 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   pass('403 capability rechecks membership, rejects revoked access, and ignores stale checks after scope changes');
   {
     await rpc({command:'mutate',scenario:'restore-member'});if(!await page.locator('#auth').isVisible()){await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible'});}await rpc({command:'mutate',scenario:'advance-auth-window'});await login();await page.locator('#library-select').selectOption('family-a');await page.locator('#grid .asset').first().waitFor();
+    await page.locator('#memory-home').waitFor({state:'visible'});
     await page.evaluate(()=>window.__storyWorkspaceTest.open());await page.locator('#story-build').click();const chapter=page.locator('.story-chapter-card').first(),record=chapter.locator('.story-dictation-record');await record.waitFor();
     const before=await page.evaluate(()=>({...window.__dictationMetrics})),transcriptionsBefore=dictationTranscriptions;await page.evaluate(()=>{let resolve;window.__dictationPermissionGate=new Promise(done=>resolve=done);window.__releaseDictationPermission=()=>{resolve();window.__dictationPermissionGate=null;};});
     await record.click();await page.waitForFunction(previous=>window.__dictationMetrics.permissionRequests>previous,before.permissionRequests);await chapter.locator('.story-dictation-cancel').waitFor({state:'visible'});
