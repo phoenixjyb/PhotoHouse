@@ -36918,6 +36918,101 @@
       "live_runtime_changed": false,
       "providers_activated": false,
       "scope": "Mount the recorder script and advertise it in the HTML only with the existing explicit intake opt-in."
+    },
+    {
+      "feature": "audit-android-folder-review-video-preparation-and-semantic-binding",
+      "source_commit": "b5572e832436a6e124d6c7bd61b37d615216a304",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/BatchUploadReviewUiTest.kt",
+          "before_sha256": "ae3fb6454b94cc9833e3a1288e2aa8dedf1aa72c02716b6849ca57025a86793c",
+          "sha256": "6b8f9b85022536b52a6a3513e973ef133c37fe30acc84f9ece44e089e2e7b00e"
+        },
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/KeystoreBatchFolderPersistenceTest.kt",
+          "before_sha256": null,
+          "sha256": "31aa61eb42ad451f5c2115e256d731ba66d77b221b1433ed29eef9d9f6cf58c7"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchPickerSelectionEffect.kt",
+          "before_sha256": "9eb42c35cf6399e85403aade9225a4b1a5749e0b9e84ce44d9664bcc58c5e95d",
+          "sha256": "955da661b02ffe863547790736c7bba7280f2ce2970dc37ca122a69556f0abf0"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/BatchUploadReviewCard.kt",
+          "before_sha256": "664fb94b0111fe389a22806a0e995856f5e2c8cef7311f6d9f094017ae06f039",
+          "sha256": "8c5b54113257716f825e880331ea4a7a4d11f38876bd8e74160f2fe6d481fed3"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ConnectedApp.kt",
+          "before_sha256": "a3ca952eacd8022b3fa081ff0b3d6fbbacf39659afa5612b2dee3da007da0e27",
+          "sha256": "7c62e41a57f1cdf159458890d49b2a386b3d9129be62896e1e950b23e59c2479"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/KeystoreBatchFolderPersistence.kt",
+          "before_sha256": null,
+          "sha256": "d08c5fae815587ca9d3a9e7b6fdd0561c4992c6e709afd94c99b70be017b43fe"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/UploadSourceAndroid.kt",
+          "before_sha256": "ec424c486a85abc4fb3e1dd0e48f47c65053516387c507ec8b4d89305d9e91ab",
+          "sha256": "5a41191af33a742321fa81abcd0bc3b95ecc977f19cf801f56904369fc8922aa"
+        },
+        {
+          "path": "clients/android/android/connected/src/test/java/dev/photohouse/connected/RememberedBatchFolderEligibilityTest.kt",
+          "before_sha256": null,
+          "sha256": "f7708636f1e4b169da64a09170d6dcbe3cbe9a1e064794865d05a0736363a4fc"
+        },
+        {
+          "path": "clients/android/docs/DEVELOPMENT_PLAN.md",
+          "before_sha256": "ff28fe8cc55aa08fca36abba7656c877c3fab5bec808c70786288a0a0fe5994c",
+          "sha256": "6aa186fe48e471047552a28a68aad25f0abe14aa43844a08b014d90656766707"
+        },
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "36bf240a7de32e3d1fcd4726286a5be650d5e4507003879ec9c893a43f9f4f8b",
+          "sha256": "fd79943e9818ad0020ccd3198e067193ff4f2639b0b163ae745f879446dca517"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "4d2b10913f981b8dd48b6f86f628ab425cb326cbcb80648782dbd047df293c2b",
+          "sha256": "8ed1b8a7a399a97e01dec0d65aecd104125c94821ec4ae89840c3f100eff20c2"
+        },
+        {
+          "path": "server/backend/app/access/media.py",
+          "before_sha256": "021d8eac80b55993f632c69656f62d50aae5999004441e561711348011b0e33a",
+          "sha256": "ebecf6a52cafa3ebbde4eeba3e89496fd30eb7627a7ed051468de305c22d846b"
+        },
+        {
+          "path": "server/backend/app/access/semantic_search.py",
+          "before_sha256": "73aba0407359478a6f3acb34502e8df1f7b0572b25e59773597bdaba105784e3",
+          "sha256": "ec0eb28d3c8ecbe5dcb420d0dd7e63109bc1c40bdd59b4c0a99cae1804e3fcf3"
+        },
+        {
+          "path": "server/backend/app/access/upload_preparation.py",
+          "before_sha256": "b21284f1d579c0fcf204aef6ad3b991c489f4dc5e7b4e46f4b063205e2a5b920",
+          "sha256": "36973718440bedd52b801df3fe8a801aaedd52dec59f92b6a76299a0e5060aee"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "2e88fc5311d21967eaefec7186fa9bf1969edcac03ae3f7dc16b9de44d028c52",
+          "sha256": "85e82eaf04d318e8fe5abc70032f420721e603510b27d717bd375565c1c6c2ed"
+        },
+        {
+          "path": "server/tests/security/test_protected_prepared_video.py",
+          "before_sha256": "d032a2ae49434068fe6e703f1ff75a1280ff39bf82129980e22975ae8136c7cb",
+          "sha256": "fddfbb13b26e17b630368d60b8355d7d123d0d4c37a0a6844f6fab8c7f273556"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "39328f4bf0d98dbdad7517aabf2814ecb885b0a9878310d965de6c5c2a128ef1",
+          "sha256": "1d372de18edaa2c9e4dc2ae04ddcd8eb18a7bb1e66c8a6fd17d05b2265837b5f"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "providers_activated": false,
+      "scope": "Explicit Android folder review, bounded uploader video status, and direct semantic asset helper binding."
     }
   ]
 }
