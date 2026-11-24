@@ -59,7 +59,8 @@ follows. Current installed-client and voice acceptance remain separate.
   Registration still requires the invited phone number and an explicit submit.
 - Android can remember a user-selected upload folder in encrypted local
   storage. Opening it again checks the current account, library and Android
-  read permission before the usual review and explicit upload.
+  read permission before the usual review and explicit upload. The folder
+  review reports when it reaches the scan or batch limit.
 - A known recent preparation task has its own video status for the uploader.
   Retry playback from the viewer after preparation finishes.
 - [Oral-history intake](ORAL_HISTORY_INTAKE_FOUNDATION.md) has a default-off
