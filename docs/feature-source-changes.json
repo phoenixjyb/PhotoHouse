@@ -36013,6 +36013,47 @@
       "generation_enabled": false,
       "providers_activated": false,
       "scope": "Documentation of the separately completed Windows functional rollout; original historical results retained."
+    },
+    {
+      "feature": "search-to-story-selection-order-controls",
+      "source_commit": "0e00ac7f2090c02d896ac13935bba5f963fe942e",
+      "files": [
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "source_sha256": "b6d1b9d26cc3d60ee4962a7382590f12fbe7a336abe5a242dc994290a5bf4ba4",
+          "candidate_sha256": "464f347346125e70676d4196aa2f5f8a086c4d14924ca4c4d28678d42abdbd96"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "source_sha256": "64d79766d172aa90bed510f763939ad7c2251b9037225c062b714521e8e70bee",
+          "candidate_sha256": "349482d52621030ae2823c23c6407b5f9173162110318f0e7c366eba9c64bf50"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "source_sha256": "e38b070cfc849338620a9911d5e64c810543e8a69f3f9ce2243e33cf1b6411c0",
+          "candidate_sha256": "7f509ee4f1e5a88acb9b5dc9563d3c180a910b4b93be85cc9f52398f180e561a"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "source_sha256": "355fb76f304f79c7b1a69fa55059447b1408495d1df8392a416050b302cadc7a",
+          "candidate_sha256": "d324c8284dccbdf9336fce57a05c2b03a3995cf057bdd727de9679a250ba8b7a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection.cjs",
+          "source_sha256": "7294391301d35290bfbb5d9042f958bb4f67cbbdf2f175ff6f755c6faf7075fc",
+          "candidate_sha256": "4a3b9f5f6ad3958ba6f9780c2572fa8c0e01ae67e33187f7104099825888277b"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "source_sha256": "c630d4d0d62d25d4cb8d88523a596fc8777c24f0c877ceda05ac99d86c6bdfb9",
+          "candidate_sha256": "b6a66dbe72753d5961d4cf06eb39ce69e8e33cc1c9cfc73d48501b3284cd9ece"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false,
+      "scope": "Bilingual keyboard-accessible ordering for selected current Search frames; preserves cross-page scope, freshness and explicit story save."
     }
   ]
 }
