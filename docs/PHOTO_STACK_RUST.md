@@ -94,6 +94,27 @@ are nine-run results on a shared Mac, not a latency guarantee. The characterized
 core passed 178 recorded cases, including expected refusals; the separate
 callback adapter is exercised by the public-builder/worker contract tests.
 
+### Full refresh with generated bursts
+
+The November 25 macOS arm64 check used CPython 3.12.12 and the existing arm64
+extension. The repository's 12,800-photo burst fixture was added to the worker
+test's migrated SQLite database, for 12,816 active assets. Each engine had one
+warm-up and four matched measurements on fresh fixtures. The timed worker call
+includes bounded source reads, grouping, source revalidation and transactional
+index publication. Fixture creation and the final SQL comparison are outside
+the timed call.
+
+| Engine | Whole refresh median (range) | Builder median |
+| --- | ---: | ---: |
+| Python | 664 ms (637–665 ms) | 517 ms |
+| Rust | 266 ms (266–291 ms) | 134 ms |
+
+Both engines published identical ordered rows for 801 groups and 12,802
+members. The compared original records and deletion journal stayed intact. Each
+Rust worker call entered the existing extension once. This establishes a
+**2.49×** median speedup for this local generated refresh. Windows refresh
+timing and household-library acceptance remain open.
+
 ## Windows comparison with the cross-compiled artifact
 
 The same four variants ran on Windows 11 x64 / Python 3.12.10 on 2026-11-20,
