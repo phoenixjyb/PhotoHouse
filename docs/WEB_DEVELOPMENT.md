@@ -1,5 +1,9 @@
 # Optional synthetic Web browser checks
 
+The November 24 [design review](WEB_DESIGN_REVIEW_2026-11-24.md) records the
+Google Modern Web Guidance audit, responsive assistant redesign, measured
+accessibility checks and separate Windows delivery boundary.
+
 The optional `web` profile runs the generated-data CommonJS browser suites
 listed in `tools/check.py`. It includes:
 

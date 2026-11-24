@@ -1,5 +1,6 @@
 """Generated SQLite checks for opt-in, one-request source SQL replay."""
 from contextlib import closing
+from pathlib import Path
 import os
 import sqlite3
 
@@ -368,6 +369,7 @@ def test_wal_sidecar_stat_error_is_unsafe_not_an_absent_sidecar(tmp_path, monkey
         writer.close()
 
 
+@pytest.mark.skipif(os.name == 'nt', reason='Windows refuses replacing an open SQLite file; HTTP refusal covered separately')
 def test_path_replacement_refuses_replay_before_any_cached_rows_are_used(tmp_path,
                                                                         monkeypatch):
     path = tmp_path / 'source.sqlite'
@@ -381,6 +383,32 @@ def test_path_replacement_refuses_replay_before_any_cached_rows_are_used(tmp_pat
         path.rename(moved)
         _database(path, wal=False)
         snapshot.request_final_replay()
+        with pytest.raises(d.DiscoveryUnavailable):
+            _read(connection, snapshot, budget)
+        assert snapshot.disabled is True and not snapshot.has_entries
+        snapshot.close()
+
+
+def test_changed_file_identity_refuses_replay_before_any_cached_rows_are_used(tmp_path,
+                                                                          monkeypatch):
+    from app.access import semantic_request_snapshot as native
+    path = tmp_path / 'source.sqlite'
+    _database(path, wal=False)
+    snapshot = create_request_source_snapshot('lib')
+    budget = d.ReadBudget(rows=20, source_bytes=4096, seconds=5)
+    with NativeSnapshotDatabase(path)() as connection:
+        assert _read(connection, snapshot, budget)[0][0] == 1
+        original_identity = native.path_identity
+
+        def substituted_identity(candidate):
+            identity = original_identity(candidate)
+            if Path(candidate) == path and identity is not None:
+                main, sidecars = identity
+                return ((main[0], main[1] + 1, *main[2:]), sidecars)
+            return identity
+
+        snapshot.request_final_replay()
+        monkeypatch.setattr(native, 'path_identity', substituted_identity)
         with pytest.raises(d.DiscoveryUnavailable):
             _read(connection, snapshot, budget)
         assert snapshot.disabled is True and not snapshot.has_entries

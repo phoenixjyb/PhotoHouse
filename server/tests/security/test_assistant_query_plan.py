@@ -46,6 +46,21 @@ def plan(words, *, entities=None, previous=None, refine=False):
 
 
 class AssistantQueryPlanTests(unittest.TestCase):
+    def test_month_refinement_keeps_the_prior_year_but_explicit_dates_override(self):
+        prior = {'media': ['video'], 'date': {'from': '2031-09-01', 'to': '2031-09-30'}}
+        for words in ('改成十月份', '换成10月', 'only October'):
+            with self.subTest(words=words):
+                self.assert_ready(words, {**prior, 'date': {'from': '2031-10-01', 'to': '2031-10-31'}},
+                                  previous=prior, refine=True)
+        for words, year in (('改成今年十月份', 2032), ('改成2030年10月', 2030)):
+            self.assert_ready(words, {**prior, 'date': {'from': f'{year}-10-01', 'to': f'{year}-10-31'}},
+                              previous=prior, refine=True)
+        self.assert_ready('找十月份照片', {'media': ['image'], 'date': {'from': '2032-10-01', 'to': '2032-10-31'}})
+        multiple = {**prior, 'date': {'from': '2030-09-01', 'to': '2031-09-30'}}
+        self.assert_clarifies('改成十月份', 'conflicting_dates', previous=multiple, refine=True)
+        self.assert_ready('改成今年十月份', {**prior, 'date': {'from': '2032-10-01', 'to': '2032-10-31'}},
+                          previous=multiple, refine=True)
+
     def test_reviewed_labels_cannot_silently_become_date_or_media_conditions(self):
         for label in ('May', 'September', '今天', 'videos'):
             with self.subTest(label=label):
@@ -263,6 +278,44 @@ class AssistantQueryPlanTests(unittest.TestCase):
         for words, expected in cases.items():
             with self.subTest(words=words):
                 self.assert_ready(words, expected)
+
+    def test_chinese_month_suffix_is_consumed_as_part_of_the_month(self):
+        now = datetime(2026, 10, 30, 12, 0)
+        cases = {
+            '找去年九月份的照片': {'media': ['image'], 'date': {'from': '2025-09-01', 'to': '2025-09-30'}},
+            '找去年9月份的照片': {'media': ['image'], 'date': {'from': '2025-09-01', 'to': '2025-09-30'}},
+            '找2025年9月份的照片': {'media': ['image'], 'date': {'from': '2025-09-01', 'to': '2025-09-30'}},
+            '找九月份的照片': {'media': ['image'], 'date': {'from': '2026-09-01', 'to': '2026-09-30'}},
+        }
+        for words, expected in cases.items():
+            with self.subTest(words=words):
+                result = plan_query(words, now=now, entities=resolved_entities(words),
+                                    previous_filters=None, refine=False)
+                self.assertEqual((result.status, result.filters), ('ready', expected), result)
+                self.assertEqual(query_mode(words.removeprefix('找').removesuffix('的照片')),
+                                 'refine')
+        for words in ('去年13月份', '2025年13月份'):
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words),
+                                 'refine' if words.startswith('2025') else None)
+                result = plan_query('找' + words + '的照片', now=now,
+                                    entities=resolved_entities(words), previous_filters=None,
+                                    refine=False)
+                self.assertEqual((result.status, result.reason), ('clarification', 'invalid_date'))
+
+        for words in ('2025年9份', '2025年9份照片'):
+            with self.subTest(words=words):
+                self.assertIsNone(query_mode(words))
+                result = plan_query('找' + words, now=now, entities=resolved_entities(words),
+                                    previous_filters=None, refine=False)
+                self.assertNotEqual(result.status, 'ready', result)
+
+        self.assert_ready('find photos containing "月份"',
+                          {'media': ['image'], 'text': '月份'})
+        collision = {**ENTITIES,
+                     'groups': {'people': ['301'], 'tags': [], 'locations': []},
+                     'labels': ['九月份']}
+        self.assert_clarifies('find photos 九月份', 'ambiguous_date_entity', entities=collision)
 
     def test_bilingual_date_ranges_are_inclusive_and_keep_other_conditions(self):
         cases = {

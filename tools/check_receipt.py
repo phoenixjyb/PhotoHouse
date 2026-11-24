@@ -22,6 +22,7 @@ PROFILE_INPUTS = {
     "android": ("clients/android/android", "clients/android/contracts"),
 }
 COMMON_INPUTS = ("tools/check.py", "tools/check_receipt.py")
+GENERATED_WINDOWS_INPUTS = ("tools/check_windows_storage.py", "server/scripts/bounded_windows_job.py")
 EXPANSION = {"api": ("api",), "memory": ("memory",), "windows-cpu": ("windows-cpu",),
              "android": ("android",), "web": ("web",), "all": ("api", "android")}
 EXCLUDED_PARTS = {".git", ".gradle", ".kotlin", ".pytest_cache", "__pycache__", "build",
@@ -51,6 +52,8 @@ def _git_env() -> dict[str, str]:
 
 def _selected(path: str, profiles: tuple[str, ...]) -> bool:
     if path in COMMON_INPUTS:
+        return True
+    if path in GENERATED_WINDOWS_INPUTS and any(profile != "android" for profile in profiles):
         return True
     return any(path == prefix or path.startswith(prefix + "/")
                for profile in profiles for prefix in PROFILE_INPUTS[profile])

@@ -52,6 +52,14 @@ FACE_CLUSTER_DIST_THRESHOLD = 0.35  # default; overridden by settings
 FACE_ASSIGNMENT_TASK_TYPES = ('person_cluster', 'person_recluster', 'person_label_propagate')
 
 
+def _caption_ffmpeg():
+    configured = os.environ.get('FFMPEG_EXE')
+    executable = configured or shutil.which('ffmpeg')
+    if not executable or not Path(executable).is_absolute() or not Path(executable).is_file():
+        raise RuntimeError('Video captioning requires ffmpeg on PATH or an absolute FFMPEG_EXE.')
+    return str(executable)
+
+
 def _run_bounded_media_process(args, *, timeout, output_dir):
     """Run one owned media child with bounded logs and deterministic cleanup."""
     flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
@@ -382,6 +390,7 @@ class TaskExecutor:
                 return safe_exif_transpose(im).convert('RGB')
 
         # Video captioning path: extract a representative frame with ffmpeg.
+        ffmpeg = _caption_ffmpeg()
         tmp_dir = os.getenv('VLM_TMP_DIR') or tempfile.gettempdir()
         os.makedirs(tmp_dir, exist_ok=True)
         with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False, dir=tmp_dir) as tmp:
@@ -398,7 +407,7 @@ class TaskExecutor:
         last_err = None
         try:
             for seek in seek_candidates:
-                cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y']
+                cmd = [ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-y']
                 if seek > 0.0:
                     cmd += ['-ss', f"{seek:.3f}"]
                 cmd += ['-i', path, '-frames:v', '1', frame_path]

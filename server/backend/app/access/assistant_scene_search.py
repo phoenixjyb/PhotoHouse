@@ -230,11 +230,11 @@ class SceneSearchRuntime:
         check()
         return result
 
-    def restore(self, token, library, summary):
+    def restore(self, token, library, summary, *, cancelled=None):
         from .assistant import AssistantChanged, _normalize_cards
         ctx = context_value(summary['context'], library)
         scope = ctx['scene']['scope']
-        check = self.deadline()
+        check = self.deadline(cancelled)
         self.scope_result(token, library, scope)
         check()
         snapshot = tuple(zip(ctx['visible_ids'], ctx['scene']['scores']))

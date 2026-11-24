@@ -1,9 +1,31 @@
 from pathlib import Path
+from types import SimpleNamespace
 import tempfile
 import unittest
 from unittest import mock
+import uuid
 
-from tools import check
+from tools import check, check_windows_storage
+
+
+class WindowsLeanStorageTests(unittest.TestCase):
+    def test_local_windows_missing_work_root_still_uses_guard(self):
+        with mock.patch.object(check_windows_storage.os, "name", "nt"), \
+                mock.patch.object(check_windows_storage.os.path, "lexists", return_value=False), \
+                mock.patch.dict(check_windows_storage.os.environ, {}, clear=True):
+            self.assertTrue(check_windows_storage.enabled())
+
+    def test_retention_selects_only_the_oldest_verified_success(self):
+        runs = [Path.cwd() / str(uuid.UUID(int=index)) for index in range(1, 6)]
+        closed = [{"finished_ns": index} for index in range(1, 5)]
+        storage = SimpleNamespace(direct=mock.Mock())
+        privacy = SimpleNamespace(require_private_directory=mock.Mock())
+        with mock.patch.object(check_windows_storage, "RUNS", SimpleNamespace(iterdir=lambda: iter(runs))), \
+                mock.patch.object(check_windows_storage.os.path, "lexists", return_value=False), \
+                mock.patch.object(check_windows_storage, "_closed_success", side_effect=[*closed, None]), \
+                mock.patch.object(check_windows_storage, "_retire") as retire:
+            check_windows_storage._prune(storage, privacy)
+        retire.assert_called_once_with(runs[0], closed[0], storage, privacy)
 
 
 class AndroidCommandTests(unittest.TestCase):
@@ -87,8 +109,10 @@ class CpuEnvironmentTests(unittest.TestCase):
 
     def test_indexed_photo_stack_checks_are_in_the_api_profile(self):
         self.assertIn("test_photo_stack_index.py", check.API_TESTS)
+        self.assertIn("test_photo_stack_rust.py", check.API_TESTS)
         self.assertIn("test_library_photo_stacks.py", check.API_TESTS)
         self.assertIn("test_photo_stack_index.py", check.WINDOWS_CPU_TESTS)
+        self.assertIn("test_photo_stack_rust.py", check.WINDOWS_CPU_TESTS)
         self.assertIn("test_library_photo_stacks.py", check.WINDOWS_CPU_TESTS)
         self.assertIn("test_library_photo_stacks_qualification.py", check.API_TESTS)
         self.assertIn("test_library_photo_stacks_qualification.py", check.WINDOWS_CPU_TESTS)

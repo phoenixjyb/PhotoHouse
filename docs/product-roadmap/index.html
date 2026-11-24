@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>PhotoHouse roadmap · 产品路线图</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="data.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="skip">Skip to roadmap</a>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="PhotoHouse roadmap home" data-i18n-aria="home">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span>PhotoHouse</span>
+    </a>
+    <div class="header-meta">
+      <span class="private-label"><span class="status-dot" aria-hidden="true"></span><span data-i18n="localRoadmap">Product roadmap</span></span>
+      <div class="language-switch" role="group" aria-label="Language" data-i18n-aria="languageLabel">
+        <button type="button" data-language="en" aria-pressed="true">EN</button>
+        <button type="button" data-language="zh" aria-pressed="false">中文</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="page-shell">
+    <section class="intro" id="top" aria-labelledby="page-title">
+      <div class="eyebrow"><span class="eyebrow-line"></span><span data-i18n="eyebrow">A clearer view of what’s here and what’s next</span></div>
+      <div class="intro-row">
+        <div>
+          <h1 id="page-title">PhotoHouse <span data-i18n="roadmapWord">roadmap</span></h1>
+          <p class="intro-copy" data-i18n="introCopy">A practical map of product work, evidence, and the gaps still to close.</p>
+        </div>
+        <div class="reviewed-card">
+          <span class="reviewed-icon" aria-hidden="true">↻</span>
+          <span><span class="reviewed-caption" data-i18n="reviewed">Reviewed</span><strong id="review-date">—</strong></span>
+        </div>
+      </div>
+      <div id="runtime-notice" class="runtime-notice" role="note" aria-live="polite"></div>
+    </section>
+
+    <section class="overview" aria-labelledby="overview-title">
+      <div class="section-heading compact-heading">
+        <div><span class="section-kicker" data-i18n="overviewKicker">AT A GLANCE</span><h2 id="overview-title" data-i18n="overviewTitle">Recorded delivery</h2></div>
+        <p data-i18n="countNote">Counts describe dated roadmap records, not current service health.</p>
+      </div>
+      <div id="summary-counts" class="summary-grid" aria-live="polite"></div>
+    </section>
+
+    <div class="content-layout">
+      <aside class="roadmap-sidebar" aria-label="Roadmap navigation" data-i18n-aria="navigation">
+        <div class="sidebar-label" data-i18n="explore">EXPLORE</div>
+        <nav id="area-nav" class="area-nav" aria-label="Product areas" data-i18n-aria="areasLabel"></nav>
+        <label class="mobile-area-label" for="area-select" data-i18n="browseArea">Browse area</label>
+        <select id="area-select" class="area-select" aria-label="Browse product area" data-i18n-aria="browseLabel"></select>
+        <div class="sidebar-note"><span class="note-star" aria-hidden="true">✳</span><span data-i18n="sidebarNote">Plans and evidence are reviewed separately from live service status.</span></div>
+      </aside>
+
+      <div class="roadmap-content">
+        <section class="priorities-panel" aria-labelledby="priorities-title">
+          <div class="section-heading">
+            <div><span class="section-kicker" data-i18n="directionKicker">THE DIRECTION</span><h2 id="priorities-title" data-i18n="prioritiesTitle">What we’re working toward</h2></div>
+            <p data-i18n="prioritiesIntro">A small set of outcomes guides the next steps.</p>
+          </div>
+          <div id="priorities" class="priority-grid"></div>
+        </section>
+
+        <section class="features-section" aria-labelledby="features-title">
+          <div class="section-heading feature-heading">
+            <div><span class="section-kicker" data-i18n="detailKicker">THE DETAIL</span><h2 id="features-title" data-i18n="featuresTitle">Capabilities &amp; gaps</h2></div>
+            <p id="result-count" class="result-count" aria-live="polite"></p>
+          </div>
+          <div class="filters" role="search">
+            <label class="search-field"><span class="search-icon" aria-hidden="true"></span><span class="visually-hidden" data-i18n="searchLabel">Search roadmap</span><input id="search-input" type="search" autocomplete="off" placeholder="Search features, gaps, evidence…"></label>
+            <label class="filter-select"><span class="visually-hidden" data-i18n="stageFilter">Filter by stage</span><select id="stage-filter"><option value="all" data-i18n="allStages">All stages</option></select></label>
+            <label class="filter-select"><span class="visually-hidden" data-i18n="priorityFilter">Filter by priority</span><select id="priority-filter"><option value="all" data-i18n="allPriorities">All priorities</option></select></label>
+            <button id="clear-filters" class="clear-button" type="button" hidden data-i18n="clearFilters">Clear filters</button>
+          </div>
+          <div id="feature-list" class="feature-list" aria-live="polite"></div>
+          <div id="empty-state" class="empty-state" hidden>
+            <span class="empty-mark" aria-hidden="true">⌕</span>
+            <h3 data-i18n="emptyTitle">No roadmap items match</h3>
+            <p data-i18n="emptyBody">Try another search or clear the filters.</p>
+            <button class="button-primary" type="button" data-action="clear" data-i18n="clearFilters">Clear filters</button>
+          </div>
+        </section>
+      </div>
+    </div>
+    <footer class="page-footer"><span class="footer-mark" aria-hidden="true">✳</span><span data-i18n="footerNote">PhotoHouse · A product plan grounded in recorded evidence</span><a id="source-link" href="roadmap.md" data-i18n="sourceLink">Download bilingual notes <span aria-hidden="true">↗</span></a></footer>
+  </main>
+</body>
+</html>

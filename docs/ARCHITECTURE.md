@@ -10,12 +10,57 @@ and isolated inference runtimes. The offline catalog is descriptive; it does not
 load weights or select a live deployment. New embedding spaces require versioned
 artifacts and explicit comparison/reindex qualification.
 
+## Product roadmap boundary / 产品路线图边界
+
+`app.product_roadmap.RoadmapGateway` serves `/roadmap/` and five fixed public
+files. `/roadmap` redirects while preserving `?lang=en|zh`. The standalone
+EN/中文 dashboard reads a single checked-in data source; the Markdown companion
+is generated from that same source. It makes no runtime, model or household
+API requests. All other paths continue into the unchanged default-deny
+household boundary. Windows delivery has its own pinned asset/code identity;
+source registration alone is not deployment.
+
+`app.product_roadmap.RoadmapGateway` 提供 `/roadmap/` 与五个固定公共文件。
+`/roadmap` 跳转时保留 `?lang=en|zh`。独立的英／中文看板读取唯一的仓库内容源，
+Markdown 配套说明由同一来源生成。它不请求运行状态、模型或家庭 API。
+其他路径仍进入保持不变、默认拒绝的家庭访问边界。Windows 交付具有独立的资源／代码标识；
+源码注册本身不代表部署完成。维护方式见[双语路线图说明](product-roadmap/README.md)。
+
+## Web presentation and delivery identities
+
+The browser uses native HTML controls and a native assistant dialog. Header,
+voice state, scrolling conversation and composer have separate layout rows;
+large-text layouts retain a usable message pane and can scroll the dialog.
+The [November 24 design review](WEB_DESIGN_REVIEW_2026-11-24.md) records the
+generated checks and physical/Windows acceptance limits.
+
+Static UI provenance is independent of the API backend and native-kernel
+revision. The closed ten-asset manifest is verified before the UI router is
+bound; it does not select a model, change a schema or enable backend features.
+A production launch plan must retain both identities and keep active overlays
+out of scratch cleanup. See [Web delivery](WEB_DELIVERY.md).
+
 ## Conversation and refinement
 
 The October 30 compact UI and bounded conversation projection are deployed
-from `daa7e14`; saved-story refinement remains local source awaiting its matching
-Windows worker and rollout. The conversation store remains the authority for
-account/library ownership, thread revision, retention and current result scope.
+from `daa7e14`. The conversation store remains the authority for account/library
+ownership, thread revision, retention and current result scope. The new explicit
+story/assistant model roles and related name-grounding and cloud-preview UI are
+source and private native-qualification evidence only; they are not live. The
+role-pair Windows rollout recorded here was blocked before effects. Search and grouping remain
+on their existing paths.
+
+Story refinement and interactive Search use separate model roles. Story
+refinement selects approved `Qwen3-4B-Instruct-2507`; Search and the Jude
+assistant retain `qwen2.5-1.5b-instruct-q4-k-m-trial`. Their shared local
+runtime limits and native qualification are recorded in the [story role and
+privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md). The new role pair
+is not live.
+
+Conversation continuity comes from app-managed, authorized retained history
+bound to the account, library, thread revision and result scope. The model does
+not own self-memory or run as an unconstrained agent. Prior turns are projected
+within the byte and turn limits below; the current request is preserved.
 Each model invocation receives a bounded projection rather than an unbounded
 transcript: at most four prior user/assistant pairs, 1,024 UTF-8 bytes per message
 and 4,096 bytes of dialogue text in total. The current request is preserved.
@@ -28,14 +73,24 @@ conditions while preserving the others; results still come from authorized
 retrieval. The model is invoked for the application's bounded purpose, not kept
 running as an independent background conversation process.
 
-Saved-story refinement uses a revision-bound, idempotent background job. Its
-provider is explicitly injected by runtime configuration and remains default-off
-in portable examples. Original text/audio, derived transcription, a proposed
-refinement and adopted story text are separate records/states. A completed job
-exposes a proposal for review; it cannot automatically overwrite the original or
-publish it. Editing or withdrawing a source fences stale work. This increment
-needs its matching Windows worker contract and a separate observed rollout;
-source tests alone do not establish a refined household story.
+Saved-story refinement uses a revision-bound, idempotent background job. The
+current source profile is `asr_editorial_v12_grounded`: deterministic grounding
+precedes one local generation call, and its result is a proposal for review.
+Original text/audio, derived transcription, a proposed refinement and adopted
+story text are separate records/states. A completed job cannot automatically
+overwrite the original or publish it. Editing or withdrawing a source fences
+stale work. The current source feature and its local checks do not establish a
+matching Windows rollout or a refined household story; see
+[story grounding and optional cloud proofreading](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md).
+
+The optional cloud proofreading path is a separate author-only action over a
+saved story revision. Runtime configuration defaults it off and has no provider
+or credential autodiscovery. A preview shows the exact bounded JSON request,
+fixed endpoint and SHA-256 without networking. Only an explicitly configured
+and enabled provider can send after the author gives explicit per-send consent
+to that exact preview. There is no background cloud send. The result stays
+unsaved and review-required. This source path has not been deployed or used for
+an actual cloud request.
 
 
 ## Current integration reference

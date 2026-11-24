@@ -9,15 +9,19 @@ import sys
 
 if __package__:
     from . import check_receipt
+    from . import check_windows_storage
 else:
     import check_receipt
+    import check_windows_storage
 
 ROOT = Path(__file__).resolve().parents[1]
+_lean_run = None
 API_TESTS = (
     "test_inference_admission.py", "test_host_inference_admission.py", "test_windows_story_capacity.py",
     "test_assistant_agent_tools.py", "test_assistant_agent_workspace.py",
     "test_agent_decision.py", "test_local_tool_agent.py", "test_household_gguf_worker.py", "test_household_agent_factory.py",
     "test_discovery_text_validation.py", "test_discovery_chunk_accounting.py",
+    "test_discovery_index_document.py", "test_assistant_caption_scope.py",
     "test_refreshing_people.py", "test_refreshing_people_http.py",
     "test_reviewed_people_readiness.py",
     "test_people_review_candidates.py", "test_people_visual_review.py",
@@ -43,7 +47,7 @@ API_TESTS = (
     "test_semantic_policy_separation.py",
     "test_multilingual_index_provider.py",
     "test_multilingual_library_coverage.py", "test_semantic_loopback_network.py",
-    "test_multilingual_index_collection.py", "test_semantic_streaming_search.py", "test_semantic_bulk_vectors.py", "test_semantic_bulk_search.py",
+    "test_multilingual_index_collection.py", "test_semantic_streaming_search.py", "test_semantic_rust_reuse.py", "test_semantic_bulk_vectors.py", "test_semantic_bulk_search.py",
     "test_semantic_artifact_field_extraction.py",
     "test_semantic_eligibility.py", "test_semantic_eligibility_search.py",
     "test_semantic_request_snapshot.py",
@@ -61,7 +65,7 @@ API_TESTS = (
     "test_semantic_refusal_protocol.py", "test_scene_query_refusal.py",
     "test_kinship.py", "test_assistant_kinship.py",
     "test_closed_application.py", "test_access_foundation.py", "test_access_transport.py", "test_library_reads.py", "test_photo_stacks.py",
-    "test_photo_stack_index.py", "test_library_photo_stacks.py", "test_library_photo_stacks_qualification.py", "test_photo_stack_worker_host.py", "test_apply_library_photo_stack_schema.py",
+    "test_photo_stack_index.py", "test_photo_stack_rust.py", "test_library_photo_stacks.py", "test_library_photo_stacks_qualification.py", "test_photo_stack_worker_host.py", "test_apply_library_photo_stack_schema.py",
     "test_library_albums.py", "test_library_organization.py", "test_android_updates.py",
     "test_upload.py", "test_upload_socketpair_guard.py", "test_resumable_upload.py", "test_upload_annotations.py", "test_upload_auto_approval.py",
     "test_upload_history.py", "test_upload_preparation.py", "test_upload_retry.py", "test_upload_review.py",
@@ -86,10 +90,10 @@ API_TESTS = (
     "test_apply_memory_group_schema.py", "test_memory_group_workers_qualification.py", "test_runtime_adapter.py", "test_windows_tts.py",
     "test_memory_worker_launcher.py",
     "test_memory_book_editorial_contract.py", "test_memory_book_editorial_schema.py", "test_memory_book_editorial_deletions.py", "test_memory_book_editorial_erasure.py",
-    "test_memory_jobs.py", "test_memory_narrative.py", "test_selected_story_narrative.py", "test_selected_story_snapshot.py", "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_selected_story_ui_capabilities.py", "test_selected_story_local.py", "test_selected_story_local_lifecycle.py", "test_selected_story_native.py", "test_selected_story_native_processes.py", "test_qualify_selected_story.py", "test_selected_story_gguf_worker.py", "test_selected_story_grammar.py", "test_selected_story_process.py", "test_selected_story_process_lifecycle.py", "test_selected_story_exchange_root.py", "test_selected_story_windows_factory.py", "test_selected_story_runtime_binding.py", "test_selected_story_runtime_process.py", "test_story_workspace.py", "test_story_outline.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_story_related_media.py", "test_visual_candidates.py", "test_visual_vector_artifacts.py", "test_visual_vector_loader.py", "test_memory_grouping.py", "test_memory_groups.py", "test_memory_group_routes.py", "test_story_titles.py", "test_story_title_routes.py", "test_memory_processing.py",
+    "test_memory_story_auto_refinement.py", "test_story_refinement_context.py", "test_memory_refinement_editorial.py", "test_memory_auto_refinement_app.py", "test_memory_jobs.py", "test_memory_narrative.py", "test_selected_story_narrative.py", "test_selected_story_snapshot.py", "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_selected_story_ui_capabilities.py", "test_selected_story_local.py", "test_selected_story_local_lifecycle.py", "test_selected_story_native.py", "test_selected_story_native_processes.py", "test_qualify_selected_story.py", "test_selected_story_gguf_worker.py", "test_selected_story_grammar.py", "test_selected_story_process.py", "test_selected_story_process_lifecycle.py", "test_selected_story_exchange_root.py", "test_selected_story_windows_factory.py", "test_selected_story_runtime_binding.py", "test_selected_story_runtime_process.py", "test_story_workspace.py", "test_story_outline.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_story_related_media.py", "test_visual_candidates.py", "test_visual_vector_artifacts.py", "test_visual_vector_loader.py", "test_memory_grouping.py", "test_memory_groups.py", "test_memory_group_routes.py", "test_story_titles.py", "test_story_title_routes.py", "test_memory_processing.py",
     "test_memory_editorial_context.py", "test_memory_book_planning.py",
     "test_assistant_http.py", "test_assistant_conversational_search.py", "test_assistant_joint_search.py", "test_assistant_memory_discovery.py", "test_assistant_memory_intent.py", "test_assistant_memory_followup.py", "test_assistant_memory_reading_speech.py", "test_assistant_memory_segment_speech.py", "test_assistant_saved_memory_tool.py", "test_assistant_saved_memory_http.py", "test_assistant_saved_memory_reader.py", "test_assistant_workspace_http.py", "test_assistant_workspace_turn_http.py",
-    "test_assistant_workspace_reply_speech.py", "test_assistant_memory_actions.py", "test_qualify_private_assistant.py",
+    "test_assistant_workspace_reply_speech.py", "test_assistant_result_pages.py", "test_assistant_current_result.py", "test_assistant_memory_actions.py", "test_qualify_private_assistant.py",
     "test_assistant_journal.py", "test_assistant_asr_errors.py", "test_assistant_asset_number.py",
     "test_assistant_playback_receipts.py", "test_assistant_result_overview.py", "test_assistant_workspace_store.py", "test_assistant_workspace_turn_store.py",
     "test_prepare_assistant_workspace.py", "test_memory_transport.py",
@@ -121,13 +125,13 @@ MEMORY_TESTS = (
     "test_memory_book_edition_http.py", "test_memory_book_edition_migration.py",
     "test_memory_book_edition_sources.py", "test_memory_book_edition_sources_http.py",
     "test_memory_editorial_context.py", "test_memory_book_planning.py",
-    "test_memory_jobs.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_memory_narrative.py", "test_selected_story_narrative.py", "test_selected_story_snapshot.py", "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_selected_story_ui_capabilities.py", "test_selected_story_local.py", "test_selected_story_local_lifecycle.py", "test_selected_story_native.py", "test_selected_story_native_processes.py", "test_qualify_selected_story.py", "test_selected_story_gguf_worker.py", "test_selected_story_grammar.py", "test_selected_story_process.py", "test_selected_story_process_lifecycle.py", "test_selected_story_exchange_root.py", "test_selected_story_windows_factory.py", "test_selected_story_runtime_binding.py", "test_selected_story_runtime_process.py", "test_memory_processing.py", "test_memory_transport.py",
+    "test_memory_story_auto_refinement.py", "test_story_refinement_context.py", "test_memory_refinement_editorial.py", "test_memory_auto_refinement_app.py", "test_memory_jobs.py", "test_shared_memory_evidence.py", "test_chapter_source_policy.py", "test_memory_narrative.py", "test_selected_story_narrative.py", "test_selected_story_snapshot.py", "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_selected_story_ui_capabilities.py", "test_selected_story_local.py", "test_selected_story_local_lifecycle.py", "test_selected_story_native.py", "test_selected_story_native_processes.py", "test_qualify_selected_story.py", "test_selected_story_gguf_worker.py", "test_selected_story_grammar.py", "test_selected_story_process.py", "test_selected_story_process_lifecycle.py", "test_selected_story_exchange_root.py", "test_selected_story_windows_factory.py", "test_selected_story_runtime_binding.py", "test_selected_story_runtime_process.py", "test_memory_processing.py", "test_memory_transport.py",
 )
 WINDOWS_CPU_TESTS = (
     "test_inference_admission.py", "test_host_inference_admission.py", "test_windows_story_capacity.py",
     "test_selected_story_operations.py", "test_selected_story_operation_auth.py", "test_selected_story_lifecycle.py", "test_selected_story_transport.py", "test_selected_story_ui_capabilities.py", "test_selected_story_local.py", "test_selected_story_local_lifecycle.py", "test_selected_story_native.py", "test_selected_story_native_processes.py", "test_qualify_selected_story.py", "test_selected_story_gguf_worker.py", "test_selected_story_grammar.py", "test_selected_story_process.py", "test_selected_story_process_lifecycle.py", "test_selected_story_exchange_root.py", "test_selected_story_windows_factory.py", "test_selected_story_runtime_binding.py", "test_selected_story_runtime_process.py",
     "test_approved_workers_f2_compatibility.py",
-    "test_photo_stack_index.py", "test_library_photo_stacks.py", "test_library_photo_stacks_qualification.py", "test_photo_stack_worker_host.py", "test_apply_library_photo_stack_schema.py",
+    "test_photo_stack_index.py", "test_photo_stack_rust.py", "test_library_photo_stacks.py", "test_library_photo_stacks_qualification.py", "test_photo_stack_worker_host.py", "test_apply_library_photo_stack_schema.py",
     "test_upload_socketpair_guard.py", "test_resumable_upload.py",
     "test_database_preparation.py", "test_fullsize_preparation.py",
     "test_runtime_adapter.py", "test_staging_package.py",
@@ -153,11 +157,15 @@ WEB_TESTS = (
     "server/tests/security/test_private_assistant_agent.cjs",
     "server/tests/security/test_assistant_intent_browser.cjs",
     "server/tests/security/test_assistant_workspace_browser.cjs",
+    "server/tests/security/test_assistant_design_browser.cjs",
     "server/tests/security/test_assistant_search_browser.cjs",
+    "server/tests/security/test_assistant_story_selection.cjs",
+    "server/tests/security/test_assistant_story_selection_browser.cjs",
     "server/tests/security/test_assistant_saved_memory_browser.cjs",
     "server/tests/security/test_annotation_web_wav.cjs",
     "server/tests/security/test_assistant_pending_recovery_browser.cjs",
     "server/tests/security/test_assistant_turn_trail_browser.cjs",
+    "server/tests/security/test_assistant_locale_resume_browser.cjs",
     "server/tests/security/test_assistant_transcript_browser.cjs",
     "server/tests/security/test_assistant_capture_scope_browser.cjs",
     "server/tests/security/test_assistant_voice_session_browser.cjs",
@@ -188,6 +196,9 @@ WEB_TESTS = (
 
 
 def run(args, cwd=ROOT, env=None):
+    if _lean_run is not None:
+        _lean_run(args, cwd, env)
+        return
     subprocess.run(args, cwd=cwd, env=env, check=True)
 
 
@@ -202,6 +213,10 @@ def cpu_environment():
     env.update(PHOTOHOUSE_NO_DOTENV="1", PYTEST_DISABLE_PLUGIN_AUTOLOAD="1",
                PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1")
     return env
+
+
+WEB_TOOLCHAIN = ("PLAYWRIGHT_MODULE", "PLAYWRIGHT_MODULE_PATH", "PLAYWRIGHT_BROWSERS_PATH",
+                 "PH_BROWSER_PYTHON", "PH_BROWSER_EXECUTABLE", "PH_BROWSER_ARTIFACTS", "NODE_PATH")
 
 
 def api_tests(names, include_runtime_paths=False):
@@ -261,8 +276,7 @@ def web():
     # caller's explicit existing toolchain and artifact locations, not provider,
     # database, Python plugin or Node preload settings from an operator shell.
     env = cpu_environment()
-    for key in ("PLAYWRIGHT_MODULE", "PLAYWRIGHT_MODULE_PATH", "PLAYWRIGHT_BROWSERS_PATH",
-                "PH_BROWSER_PYTHON", "PH_BROWSER_EXECUTABLE", "PH_BROWSER_ARTIFACTS", "NODE_PATH"):
+    for key in WEB_TOOLCHAIN:
         if key in os.environ:
             env[key] = os.environ[key]
     module = env.get("PLAYWRIGHT_MODULE")
@@ -293,16 +307,25 @@ def web():
 
 
 def dispatch(profile):
-    if profile in ("api", "all"):
-        api()
-    if profile == "memory":
-        memory()
-    if profile in ("android", "all"):
+    if profile == "all":
+        dispatch("api")
         android()
-    if profile == "web":
-        web()
-    if profile == "windows-cpu":
-        windows_cpu()
+        return
+    if profile == "android":
+        android()
+        return
+    if check_windows_storage.enabled():
+        env = cpu_environment()
+        if profile == "web":
+            env.update({key: os.environ[key] for key in WEB_TOOLCHAIN
+                        if key in os.environ and key != "PH_BROWSER_ARTIFACTS"})
+        check_windows_storage.run_profile(profile, env)
+        return
+    generated_profile(profile)()
+
+
+def generated_profile(profile):
+    return {"api": api, "memory": memory, "windows-cpu": windows_cpu, "web": web}[profile]
 
 
 def _exit_code(error):
@@ -316,7 +339,9 @@ def _exit_code(error):
 
 
 def _with_receipt(profile, output):
+    guarded_receipt = profile != "android" and check_windows_storage.enabled()
     try:
+        parent_identity = check_windows_storage.require_d_receipt(output) if guarded_receipt else None
         destination = check_receipt.preflight_destination(output, ROOT)
     except check_receipt.ReceiptError as error:
         print(f"check receipt refused: {error}", file=sys.stderr)
@@ -336,6 +361,8 @@ def _with_receipt(profile, output):
                                          start_identity, end_identity,
                                          _exit_code(failure) if failure is not None else 0)
     try:
+        if guarded_receipt:
+            check_windows_storage.require_d_receipt(destination, parent_identity)
         check_receipt.write_receipt(destination, receipt)
     except check_receipt.ReceiptError as error:
         print(f"check receipt write failed: {error}", file=sys.stderr)

@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from test_network_guard import install_no_external_sockets
 
 from fastapi.testclient import TestClient
 
@@ -43,7 +44,8 @@ class GalleryMediaFilterTests(unittest.TestCase):
         self.client = TestClient(create_app(access_runtime=runtime), base_url='https://photohouse.test')
         self.client.headers['Sec-Fetch-Site'] = 'same-origin'
         self.addCleanup(self.client.close)
-        for target in ('socket.socket.bind', 'socket.socket.connect', 'subprocess.Popen', 'os.system'):
+        install_no_external_sockets(self)
+        for target in ('subprocess.Popen', 'os.system'):
             guard = patch(target, side_effect=AssertionError('External I/O forbidden'))
             guard.start()
             self.addCleanup(guard.stop)

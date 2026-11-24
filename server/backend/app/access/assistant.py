@@ -48,19 +48,25 @@ SEARCH_PREFIX = (
 REFINE_PREFIX = r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|refine|only|filter|just|what about|how about|same but)'
 BARE_FOLLOWUP = re.compile(
     r'(?:视频|影片|照片|图片|相片|videos?|movies?|photos?|pictures?|images?|'
-    r'(?:去年|今年|20\d{2}年)(?:(?:1[0-2]|0?[1-9]|十一|十二|十|[一二三四五六七八九])月)?(?:的)?|'
+    r'(?:去年|今年|20\d{2}年)(?:(?:1[0-2]|0?[1-9]|十一|十二|十|[一二三四五六七八九])月(?:份)?)?(?:的)?|'
     r'(?:last year|this year))(?:呢)?[。！？.!?]*', re.IGNORECASE)
 
 
-def _search_clarification_guidance(enabled, lang):
+def _search_clarification_guidance(enabled, lang, *, unmatched=False):
     """Describe only capabilities in the current authorized search snapshot."""
+    reason = ('这些细节无法全部匹配到可检索证据。没有执行新的结果检索' if lang == 'zh' else
+              'I could not match all those details to searchable evidence. No new result search was run')
+    question = ('你想用哪些条件继续查找？' if lang == 'zh' else ' Which conditions would you like to use?')
     if {'people', 'date', 'tags', 'locations', 'text'} <= set(enabled):
-        return ('有些细节还无法匹配。请发送完整查找句，例如：找包含“红风筝”的照片。'
-                '如需限定人物、拍摄日期、标签或地点，也请在完整句中写明；未匹配的条件不会被忽略。'
-                if lang == 'zh' else
-                'Some details could not be matched. Send the complete query, for example: find photos '
-                'containing "red kite". Add any reviewed person, capture date, tag, or place you need; '
-                'unmatched conditions are not dropped.')
+        intro = reason + ('。' if lang == 'zh' else '. ') if unmatched else (
+            '有些细节还无法匹配。' if lang == 'zh' else 'Some details could not be matched. ')
+        guidance = ('请发送完整查找句。按说明原文查找时，可以写「找包含“红风筝”的照片」。'
+                    '如需限定人物、拍摄日期、标签或地点，也请在完整句中写明。未匹配的条件不会被忽略。'
+                    if lang == 'zh' else
+                    'Send the complete query. For exact caption words, try find photos containing "red kite". '
+                    'Include any reviewed person, capture date, tag, or place you need. '
+                    'Unmatched conditions are not dropped.')
+        return intro + guidance + (question if unmatched else '')
     labels = (
         ('people', '已登记人物', 'reviewed people'),
         ('date', '已记录的拍摄日期', 'recorded capture dates'),
@@ -71,15 +77,18 @@ def _search_clarification_guidance(enabled, lang):
         ('descriptive', '场景描述线索', 'scene description clues'),
     )
     available = [zh if lang == 'zh' else en for key, zh, en in labels if key in enabled]
-    reply = ('有些条件还未匹配，本次未执行新的查找；这些条件没有被忽略。' if lang == 'zh' else
-             'Some requested details could not be matched. No new search was run, and no conditions were dropped.')
+    if unmatched:
+        reply = reason + ('，这些条件没有被忽略。' if lang == 'zh' else ', and no conditions were dropped.')
+    else:
+        reply = ('有些条件还未匹配，本次未执行新的查找；这些条件没有被忽略。' if lang == 'zh' else
+                 'Some requested details could not be matched. No new search was run, and no conditions were dropped.')
     if 'people' not in enabled:
         reply += (' 当前相册库尚未启用人物检索。按姓名或亲属关系查找前，需要相册库主人确认人物资料并启用检索。' if lang == 'zh' else
                   ' People search is not enabled in this library. Its owner must review and enable people data before names or family relationships can filter results.')
     if available:
         reply += (' 当前可用条件：' + '、'.join(available) + '。' if lang == 'zh' else
                   ' Available search conditions: ' + ', '.join(available) + '.')
-    return reply
+    return reply + (question if unmatched else '')
 
 
 class AssistantInvalid(ValueError):
@@ -181,8 +190,11 @@ def _search_v2_endpoint(request):
     path = request.url.path
     return (path in ('/assistant/v1/turns', '/assistant/v1/speech', '/assistant/v1/capabilities',
                      '/assistant/workspace/v1/capabilities',
-                     '/assistant/workspace/v1/agent-capabilities') or
+                     '/assistant/workspace/v1/agent-capabilities',
+                     '/assistant/workspace/v1/result-page-capabilities') or
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/turns', path) is not None or
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+/result-pages', path) is not None or
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+/current-result', path) is not None or
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+(?:/speech)?', path) is not None)
 
 
@@ -199,6 +211,8 @@ def _scene_endpoint(request):
     if scene_reword is not None:
         return False
     return (re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/(?:turns|requests/[0-9a-f-]+)',
+                         request.url.path) is not None or
+            re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+/current-result',
                          request.url.path) is not None or
             re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+/requests/[0-9a-f-]+/scene-pages',
                          request.url.path) is not None)
@@ -484,10 +498,10 @@ def _date_filter(words, now):
     else:
         absolute_year = re.search(r'(?<!\d)(20\d{2})年(?!\d)', normalized)
         year = int(absolute_year.group(1)) if absolute_year else now.year - (1 if '去年' in normalized or 'last year' in normalized else 0)
-        month_match = re.search(r'(?<!\d)(1[0-2]|0?[1-9])月', normalized)
+        month_match = re.search(r'(?<!\d)(1[0-2]|0?[1-9])月(?:份)?', normalized)
         month = int(month_match.group(1)) if month_match else None
         if month is None:
-            chinese = re.search(r'(十一|十二|十|[一二三四五六七八九])月', normalized)
+            chinese = re.search(r'(十一|十二|十|[一二三四五六七八九])月(?:份)?', normalized)
             month = CHINESE_MONTHS[chinese.group(1)] if chinese else None
         if absolute_year is None and year == now.year and month is None and not ('今年' in normalized or 'this year' in normalized):
             return None
@@ -517,8 +531,8 @@ def _unmatched(words, labels):
     remaining = d.fold(words)
     for label in sorted(labels, key=len, reverse=True):
         remaining = remaining.replace(d.fold(label), ' ')
-    remaining = re.sub(r'(?<!\d)20\d{2}(?:年(?:(?:1[0-2]|0?[1-9])月?(?!\d))?|[/.\-](?:1[0-2]|0?[1-9])月?(?!\d))', ' ', remaining)
-    remaining = re.sub(r'\b(?:last year|this year)\b|去年|今年|(?<!\d)(?:1[0-2]|0?[1-9])月|(?:十一|十二|十|[一二三四五六七八九])月', ' ', remaining)
+    remaining = re.sub(r'(?<!\d)20\d{2}(?:年(?:(?:1[0-2]|0?[1-9])(?:月(?:份)?)?(?!\d))?|[/.\-](?:1[0-2]|0?[1-9])月?(?!\d))', ' ', remaining)
+    remaining = re.sub(r'\b(?:last year|this year)\b|去年|今年|(?<!\d)(?:1[0-2]|0?[1-9])月(?:份)?|(?:十一|十二|十|[一二三四五六七八九])月(?:份)?', ' ', remaining)
     remaining = re.sub(SEARCH_PREFIX + '|' + REFINE_PREFIX, ' ', remaining)
     remaining = re.sub(r'视频|影片|照片|图片|相片|\b(?:videos?|movies?|photos?|pictures?|images?)\b', ' ', remaining)
     remaining = re.sub(r'\b(?:the|from|by|in|of|at|and|me|some)\b|[的、，。！？:：,.!?\s]+', '', remaining)
@@ -554,13 +568,13 @@ def _normalize_cards(result):
     return result
 
 
-def _search(engine, token, library, binding, filters, fingerprint=None):
-    return _normalize_cards(engine.call('search', token, library, lambda: False,
+def _search(engine, token, library, binding, filters, fingerprint=None, cancelled=None):
+    return _normalize_cards(engine.call('search', token, library, cancelled or (lambda: False),
                             {'binding': binding, 'filters': filters, 'page': 1,
                              'page_size': PAGE_SIZE, 'fingerprint': fingerprint}))
 
 
-def _context_result(engine, token, library, context):
+def _context_result(engine, token, library, context, cancelled=None):
     from .assistant_search import SearchRuntime
     if context.get('search_version', 1) != (engine.search_version if isinstance(engine, SearchRuntime) else 1):
         raise AssistantChanged()
@@ -569,10 +583,11 @@ def _context_result(engine, token, library, context):
     ids = context['visible_ids']
     if (context['filters'] == {} and context['total'] == 1 and len(ids) == 1
             and context['fingerprint'] == d.assistant_asset_fingerprint(context['binding'], ids[0])):
-        result = _normalize_cards(engine.call('assistant_asset', token, library, lambda: False,
+        result = _normalize_cards(engine.call('assistant_asset', token, library, cancelled or (lambda: False),
             {'asset_id': ids[0], 'binding': context['binding'], 'fingerprint': context['fingerprint']}))
     else:
-        result = _search(engine, token, library, context['binding'], context['filters'], context['fingerprint'])
+        result = _search(engine, token, library, context['binding'], context['filters'],
+                         context['fingerprint'], cancelled)
     if [item['id'] for item in result['items']] != ids or result['total'] != context['total']:
         raise AssistantChanged()
     return result
@@ -767,6 +782,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
     refine = bool(re.match(REFINE_PREFIX, lower) or BARE_FOLLOWUP.fullmatch(lower))
     search = bool(re.match(SEARCH_PREFIX, lower))
     people_answer = None
+    location_answer = None
     answer_entities = None
     if search_v2:
         from .search_refinement import query_mode, plan_people_answer
@@ -787,6 +803,15 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                                                previous_filters=previous['filters'])
             if people_answer is not None:
                 refine = True
+            elif not search_v3:
+                # A single exact reviewed place can answer a bare follow-up.
+                # Keep this v2 admission narrow; v3 has its own intent planner.
+                from .search_refinement import plan_location_answer
+                location_answer = plan_location_answer(
+                    words, now=now, entities=answer_entities,
+                    previous_filters=previous['filters'])
+                if location_answer is not None:
+                    refine = True
         if search_v3 and not (refine or search):
             # V3 accepts ordinary read-only search language. The bounded
             # intent compiler must account for all conditions before retrieval.
@@ -856,6 +881,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 plan = QueryPlan(3, 'ready', dict(plan.filters, date=continuation['date']))
         else:
             plan = (people_answer if people_answer is not None else
+                    location_answer if location_answer is not None else
                     plan_query(words, now=now, entities=first,
                                previous_filters=previous['filters'] if previous else None, refine=refine))
             if planner_outcome is not None:
@@ -868,7 +894,7 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 plan = QueryPlan(plan.version, 'ready',
                                  dict(plan.filters, date=continuation['date']))
         if plan.status != 'ready':
-            reply = _search_clarification_guidance(enabled, lang)
+            reply = _search_clarification_guidance(enabled, lang, unmatched=plan.reason == 'unsupported_condition')
             if plan.reason == 'unsupported_negation':
                 from .search_policy import exclusion_reply
                 reply = exclusion_reply(lang)
@@ -893,8 +919,8 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
                 reply = ('当前查找条件还没有明确人物，无法判断指的是谁。请提供已登记的姓名。' if lang == 'zh' else
                          'The current search has no selected people to refer to. Use a reviewed name first.')
             elif plan.reason == 'ambiguous_relative_date':
-                reply = ('“再早一点”没有指定具体日期。请提供明确的年份、月份或日期；当前人物、媒体和文字条件会保留。' if lang == 'zh' else
-                         '“Earlier” does not specify a capture date. Give a year, month, or date; the current people, media, and text filters will stay in place.')
+                reply = ('想查哪段更早的时间？请给出年份、月份或日期，其他筛选条件会保留。' if lang == 'zh' else
+                         'Which earlier year, month, or date? Your other filters will stay in place.')
             elif plan.reason == 'ambiguous_people_reference':
                 reply = ('这个人物指代与当前选定的人数不一致。请提供完整姓名，或明确要沿用哪些人物。' if lang == 'zh' else
                          'That reference does not match the number of selected people. Use full names or clarify who you mean.')

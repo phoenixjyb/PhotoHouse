@@ -213,12 +213,13 @@ class _LlamaEngine:
     """Optional local native backend. No arbitrary kwargs, RPC or model discovery."""
     def __init__(self, settings):
         from llama_cpp import Llama, LLAMA_SPLIT_MODE_NONE
+        batch_size = 64 if settings.gpu_layers == 0 else 256
         self.model = Llama(model_path=settings.model_file, n_ctx=settings.context_tokens,
             n_threads=settings.threads, n_threads_batch=settings.threads,
             n_gpu_layers=settings.gpu_layers,
             main_gpu=settings.gpu_device if settings.gpu_device is not None else 0, tensor_split=None,
             split_mode=LLAMA_SPLIT_MODE_NONE, offload_kqv=settings.gpu_layers > 0,
-            op_offload=False, n_batch=256, n_ubatch=256,
+            op_offload=False, n_batch=batch_size, n_ubatch=batch_size,
             use_mmap=False, use_mlock=False, seed=0, verbose=False)
 
     def _chat_prompt_tokens(self, prompt):
@@ -371,7 +372,8 @@ def run(settings, *, enabled=False, environment=None, backend_factory=None):
         raise WorkerUnavailable(phase) from None
 
 
-def main(argv=None):
+def build_argument_parser():
+    """Return the closed standalone CLI parser for the single-role worker."""
     class Parser(argparse.ArgumentParser):
         def error(self, message):
             _refuse()
@@ -385,11 +387,24 @@ def main(argv=None):
     parser.add_argument('--gpu-layers', type=int, default=0)
     parser.add_argument('--gpu-device', type=int, default=None,
                         help='explicit qualified backend ordinal, required with GPU layers')
-    args = parser.parse_args(argv)
+    return parser
+
+
+def worker_settings_from_args(args):
+    """Construct the same frozen settings object used by the standalone CLI."""
+    try:
+        return WorkerSettings(args.model_file, args.model_sha256, args.model_label,
+                              args.context_tokens, args.threads, args.gpu_layers,
+                              args.gpu_device)
+    except AttributeError:
+        _refuse()
+
+
+def main(argv=None):
+    args = build_argument_parser().parse_args(argv)
     if not args.execute:
         _refuse()
-    settings = WorkerSettings(args.model_file, args.model_sha256, args.model_label,
-                              args.context_tokens, args.threads, args.gpu_layers, args.gpu_device)
+    settings = worker_settings_from_args(args)
     return run(settings, enabled=True)
 
 

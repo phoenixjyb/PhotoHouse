@@ -167,3 +167,31 @@ class AgentWorkspaceIntegrationTests(unittest.IsolatedAsyncioTestCase):
         path=BASE+'/agent-capabilities?library_id=family-a';r=await self._client.get(path,headers=self.v2);self.assertEqual(r.status_code,200,r.text);self.assertEqual(r.json(),{'version':1,'available':True,'profile':'agent_media_search_v1'})
         self.assertIn((await self._client.get(path)).status_code,(401,403));r=await self.post_turn('find photos',agent=False);self.assertEqual(r.status_code,200,r.text);self.assertEqual(self.provider.calls,[])
         self.app.state.assistant_agent_supervisor=None;r=await self._client.get(path,headers=self.v2);self.assertFalse(r.json()['available'])
+
+class NativeDialogueCompatibilityTests(unittest.TestCase):
+    def test_qualified_v1_packet_gets_recent_dialogue_without_new_fields(self):
+        from app.access.agent_process import native_dialogue_state
+        source = {'turn': {'version': 1, 'text': 'Only September', 'locale': 'en',
+            'dialogue': {'version': 1, 'turns': [{'user': 'Find photos',
+                'assistant': 'Here are the current results.'}], 'truncated': False}},
+            'observations': []}
+        wire = native_dialogue_state(source)
+        self.assertEqual(set(wire['turn']), {'version', 'text', 'locale'})
+        value = json.loads(wire['turn']['text'].split('\n', 1)[1])
+        self.assertEqual(value['current_request'], 'Only September')
+        self.assertEqual(value['prior_dialogue'][0]['user'], 'Find photos')
+        self.assertEqual(source['turn']['text'], 'Only September')
+        self.assertLessEqual(len(wire['turn']['text'].encode()), 1024)
+
+    def test_large_context_trims_history_before_latest_request(self):
+        from app.access.agent_process import native_dialogue_state
+        source = {'turn': {'version': 1, 'text': '去年九月', 'locale': 'zh',
+            'dialogue': {'version': 1, 'turns': [{'user': '你'*300,
+                'assistant': '答'*300}]*2, 'truncated': False}}, 'observations': []}
+        wire = native_dialogue_state(source)
+        value = json.loads(wire['turn']['text'].split('\n', 1)[1])
+        self.assertEqual(value['current_request'], '去年九月')
+        self.assertTrue(value['history_truncated'])
+        self.assertLessEqual(len(wire['turn']['text'].encode()), 1024)
+        source['turn']['text'] = 'x'*1024
+        self.assertEqual(native_dialogue_state(source)['turn']['text'], 'x'*1024)

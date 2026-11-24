@@ -102,7 +102,7 @@ class SearchReadinessTests(unittest.TestCase):
         production = shared_budget(None)
         self.assertEqual((production.source_bytes, production.search_source_bytes),
                          (16 * 1024**2, 64 * 1024**2))
-        self.assertEqual((production.seconds, production.search_seconds), (2.0, 5.0))
+        self.assertEqual((production.seconds, production.search_seconds), (2.0, 30.0))
 
     def test_selected_text_deadline_stays_bounded_without_changing_legacy(self):
         elapsed = [0.0]

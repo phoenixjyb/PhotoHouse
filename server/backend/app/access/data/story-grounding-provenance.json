@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "description": "Bounded offline public reference, not a complete public-person catalog. No family data was sent to prepare it.",
+  "catalog": {
+    "license": "CC0-1.0",
+    "source": "https://www.wikidata.org/wiki/Wikidata:Licensing",
+    "retrieved": "2026-11-02",
+    "queries": [
+      "SELECT ?person ?label WHERE { ?person wdt:P31 wd:Q5; wdt:P106 wd:Q177220; rdfs:label ?label. FILTER(LANG(?label)=\"zh-cn\") FILTER(STRLEN(?label)>=2 && STRLEN(?label)<=5) } ORDER BY ?person LIMIT 2000",
+      "SELECT DISTINCT ?person ?personLabel WHERE { VALUES ?country {wd:Q865 wd:Q8646 wd:Q148} ?person wdt:P27 ?country; wdt:P106 wd:Q177220. SERVICE wikibase:label { bd:serviceParam wikibase:language \"zh-hans,zh,en\". } } LIMIT 1500",
+      "SELECT DISTINCT ?person ?personLabel WHERE { ?person wdt:P27 wd:Q865; wdt:P106 wd:Q177220. SERVICE wikibase:label { bd:serviceParam wikibase:language \"zh-hans,zh,en\". } } LIMIT 1000"
+    ],
+    "transformation": "Union successful 1500-row regional and 977-row Taiwan query responses; retain 2..5 Han labels; deduplicate by entity and spelling. Initial and expanded queries timed out and supplied no data. No per-story name mapping."
+  },
+  "readings": {
+    "license": "MIT",
+    "source": "https://github.com/mozillazg/pinyin-data/tree/v0.15.0",
+    "input_sha256": "6170ab4ff7c9740fe765b1d35e6d3ad43554dd02874199388db513c44dcddf9d",
+    "transformation": "Keep U+3400..U+9FFF, strip tone diacritics, map ü to v, deduplicate readings; no per-name pronunciation rules."
+  },
+  "files": {
+    "story-public-names.json": "8e0bd8c33795cef503907e056f03ecd238c667cdb13ae30aba925d8b8c1b20f0",
+    "pinyin-readings.json": "b677c27fcf6528f67d1f1ad851b392964bf921710ca9b37b56ba5922141bf6b7",
+    "PINYIN-DATA-LICENSE.txt": "9c048697be2502a16e8bcb282d5d465a07295b2def0ffb05a269c5d39dbe1586"
+  }
+}

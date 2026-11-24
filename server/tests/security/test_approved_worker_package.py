@@ -16,6 +16,21 @@ import build_approved_worker_package as package
 
 
 class ApprovedWorkerPackageTests(unittest.TestCase):
+    def test_packaged_config_import_has_its_runtime_path_dependency(self):
+        files = {name: (ROOT / name).read_bytes() for name in package.FILES}
+        data = package.package_bytes('a' * 40, files)
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary).resolve()
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                archive.extractall(target)
+            code = ('import sys; sys.path.insert(0,sys.argv[1]); '
+                    'from app.config import get_settings; '
+                    'assert get_settings() is not None')
+            result = subprocess.run([sys.executable, '-I', '-B', '-c', code,
+                                     str(target / 'backend')],
+                                    cwd=target, capture_output=True, timeout=20)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors='replace'))
+
     def test_fixed_source_only_contents_and_hashes(self):
         files = {name: ('synthetic ' + name).encode() for name in package.FILES}
         data = package.package_bytes('a' * 40, files)

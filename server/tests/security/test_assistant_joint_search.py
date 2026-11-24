@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 import wave
+from unittest.mock import patch
 
 import httpx
 
@@ -18,7 +19,7 @@ sys.path.insert(0, str(ROOT / 'tests' / 'security'))
 from fastapi.testclient import TestClient
 from app.access import discovery as d
 from app.access.discovery_provider import MemoryIndexProvider, ProjectedIndex, ReviewedPerson
-from app.access.assistant_search import name_hits
+from app.access.assistant_search import SearchRuntime, name_hits
 from app.access.assistant_speech import LocalAssistantAsr
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.transport import AccessRuntime
@@ -128,6 +129,57 @@ class AssistantJointSearchTests(unittest.TestCase):
                 self.assertIsNone(body['context'])
                 self.assertIsNone(body['effect'])
 
+    def test_vague_visual_requests_explain_the_available_text_evidence_route(self):
+        for words in ('the photos where we were celebrating indoors',
+                      '找室内庆祝时的照片'):
+            with self.subTest(words=words):
+                response = self.turn(words)
+                self.assertEqual(response.status_code, 200, response.text)
+                body = response.json()
+                self.assertEqual(body['kind'], 'clarification', body)
+                self.assertIsNone(body['context'])
+                self.assertEqual(body['items'], [])
+                self.assertIsNone(body['effect'])
+                if words.startswith('找'):
+                    self.assertIn('可检索证据', body['reply'])
+                    self.assertIn('没有执行新的结果检索', body['reply'])
+                    self.assertIn('说明原文', body['reply'])
+                else:
+                    self.assertIn('searchable evidence', body['reply'])
+                    self.assertIn('No new result search was run', body['reply'])
+                    self.assertIn('exact caption words', body['reply'])
+
+    def test_ambiguous_visual_followup_revalidates_scope_without_running_a_new_result_search(self):
+        calls = []
+        original_call = SearchRuntime.call
+
+        def counted_call(runtime, operation, token, library, cancelled, values):
+            calls.append(operation)
+            return original_call(runtime, operation, token, library, cancelled, values)
+
+        with patch.object(SearchRuntime, 'call', new=counted_call):
+            initial = self.turn('find示例儿童2032年9月的photos').json()
+            self.assertEqual(initial['kind'], 'results', initial)
+            self.assertEqual(calls, ['entities', 'search'])
+
+            calls.clear()
+            refined = self.turn('只看视频', context=initial['context']).json()
+            self.assertEqual(refined['kind'], 'results', refined)
+            self.assertEqual(refined['filters'], {**initial['filters'], 'media': ['video']})
+            self.assertEqual(calls, ['search', 'entities', 'search'])
+
+            calls.clear()
+            followup = self.turn('only the videos where we were celebrating indoors',
+                                 context=refined['context']).json()
+            self.assertEqual(followup['kind'], 'clarification', followup)
+            self.assertEqual(followup['filters'], refined['filters'])
+            self.assertEqual(followup['context'], refined['context'])
+            self.assertEqual(followup['items'], refined['items'])
+            self.assertIn('No new result search was run', followup['reply'])
+            # One search replays the saved scope for authorization/source
+            # revalidation; no second search is run for the ambiguous wording.
+            self.assertEqual(calls, ['search', 'entities'])
+
     def test_mixed_refinement_preserves_people_and_date(self):
         initial = self.turn('find示例儿童2032年9月的photos').json()
         self.assertEqual(initial['kind'], 'results', initial)
@@ -142,6 +194,8 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertEqual(unresolved['kind'], 'clarification', unresolved)
         self.assertEqual(unresolved['filters'], initial['filters'])
         self.assertEqual(unresolved['context'], initial['context'])
+        self.assertEqual(unresolved['items'], initial['items'])
+        self.assertEqual(unresolved['total'], initial['total'])
         self.assertIsNone(unresolved['effect'])
 
     def test_reviewed_people_answers_retain_the_other_current_conditions(self):
@@ -411,6 +465,21 @@ class AssistantJointSearchTests(unittest.TestCase):
                             for item in body['items'] for reason in item['match_reasons']))
         self.assertNotIn('Family beach visit', response.text)
         self.assertNotIn('在海边玩', response.text)
+
+    def test_literal_query_tokens_are_prepared_once_per_search_and_never_shared_between_turns(self):
+        from app.access import search_text
+        original = search_text._tokens
+        for words, phrase, expected in (
+                ('找包含“海边”的照片', '海边', ['103', '101']),
+                ('找包含“海边”的照片', '海边', ['103', '101']),
+                ('find photos containing "Family beach"', 'family beach', ['101'])):
+            with patch.object(search_text, '_tokens', wraps=original) as calls:
+                response = self.turn(words)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual([item['id'] for item in response.json()['items']], expected)
+            self.assertEqual(sum(call.args == (phrase,) for call in calls.call_args_list), 1)
+            self.assertNotIn('_entry', response.text)
+            self.assertNotIn('token_coverage', response.text)
 
     def test_two_character_unicode_text_and_quoted_mixed_language_phrase(self):
         chinese = self.turn('找包含“海边”的照片')

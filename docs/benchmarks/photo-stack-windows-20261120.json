@@ -1,0 +1,685 @@
+{
+  "checks": {
+    "generated_journal_preserved": true,
+    "internal_worker_native_calls": 9,
+    "internal_worker_tests": 16,
+    "kernel_cases": 178,
+    "kernel_expected_errors": 66,
+    "originals_preserved_except_controlled_generated_width_change": true,
+    "python_reference_cli_group": {
+      "101": {
+        "asset_ids": [
+          "103",
+          "101"
+        ],
+        "count": 2,
+        "cover_asset_id": "103",
+        "id": "101",
+        "reason": "near_capture"
+      }
+    },
+    "python_update_new_generation": true,
+    "real_bounded_cli_cases": [
+      {
+        "after_index_sha256": "b8cedc14448c03c4839628379feb5790916d3cfe21a4a2782a9227cfbe9f5b36",
+        "before_index_sha256": "b8cedc14448c03c4839628379feb5790916d3cfe21a4a2782a9227cfbe9f5b36",
+        "case": "cli-invalid-selector",
+        "exit": 2,
+        "index_state_unchanged": true,
+        "matches_expected_membership": true
+      },
+      {
+        "after_index_sha256": "b8cedc14448c03c4839628379feb5790916d3cfe21a4a2782a9227cfbe9f5b36",
+        "before_index_sha256": "6456d6fbf43fd8f4480593167a97b3cf414c98ae555f798bbc9a68b9becd2180",
+        "case": "cli-python-update",
+        "exit": 0,
+        "index_state_unchanged": false,
+        "matches_expected_membership": true
+      },
+      {
+        "after_index_sha256": "67325351c8b16d6378a94bb39717134b5caf2e0724d3d6d23152f8c8d4fb8604",
+        "before_index_sha256": "67325351c8b16d6378a94bb39717134b5caf2e0724d3d6d23152f8c8d4fb8604",
+        "case": "cli-rust-missing",
+        "exit": 2,
+        "index_state_unchanged": true,
+        "matches_expected_membership": true
+      },
+      {
+        "after_index_sha256": "6456d6fbf43fd8f4480593167a97b3cf414c98ae555f798bbc9a68b9becd2180",
+        "before_index_sha256": "6456d6fbf43fd8f4480593167a97b3cf414c98ae555f798bbc9a68b9becd2180",
+        "case": "cli-rust-noop",
+        "exit": 0,
+        "index_state_unchanged": true,
+        "matches_expected_membership": true
+      },
+      {
+        "after_index_sha256": "6456d6fbf43fd8f4480593167a97b3cf414c98ae555f798bbc9a68b9becd2180",
+        "before_index_sha256": "67325351c8b16d6378a94bb39717134b5caf2e0724d3d6d23152f8c8d4fb8604",
+        "case": "cli-rust-update",
+        "exit": 0,
+        "index_state_unchanged": false,
+        "matches_expected_membership": true
+      },
+      {
+        "after_index_sha256": "b8cedc14448c03c4839628379feb5790916d3cfe21a4a2782a9227cfbe9f5b36",
+        "before_index_sha256": "b8cedc14448c03c4839628379feb5790916d3cfe21a4a2782a9227cfbe9f5b36",
+        "case": "cli-stop-control",
+        "exit": 0,
+        "index_state_unchanged": true,
+        "matches_expected_membership": true
+      }
+    ],
+    "rust_update_noop_same_generation": true
+  },
+  "date": "2026-11-20",
+  "evidence_scope": {
+    "build_teardown": "Explicit termination of one owned remaining descendant after parent exit0, then Job0 and5handles closed.",
+    "cli_teardown": "Natural Job0,5handles closed, exact supervisor/child process identities absent.",
+    "failed_scratch_retained": true,
+    "native_components": "Independently accepted sub-results; original overall operation failed later in private CLI qualifier and remains failed.",
+    "real_cli": "Separate fresh operation passed using the exact same wheel and source; earlier failed attempts retained.",
+    "scope_released": true,
+    "successful_cli_scratch_removed": true
+  },
+  "github_actions_run": false,
+  "limits": [
+    "Shared-host generated workloads; full builder includes Python preparation and bridge, not end-to-end household refresh latency.",
+    "Peak process memory includes fixture generation, warm-up and all measured calls.",
+    "Linux native build/runtime, installed production-worker rollout and live household-library acceptance remain open."
+  ],
+  "native_build": {
+    "dependency_notice_sets": 21,
+    "msvc": "14.44.35207",
+    "native_sha256": "56acc0012dc442f025ce5e8494216650e52977076d2cc10454186974c16b176d",
+    "python_abi": "cp39-abi3",
+    "rust": "1.88.0",
+    "sdk": "10.0.26100.0",
+    "target": "x86_64-pc-windows-msvc",
+    "tested_python": "3.12.10",
+    "wheel_bytes": 288317,
+    "wheel_name": "photohouse_photo_stack-0.1.0-cp39-abi3-win_amd64.whl",
+    "wheel_sha256": "d3a3e8525208f0f49b12578355638403996b1d7ab8f6749d3f8fde3dace0169b"
+  },
+  "production_activated": false,
+  "schema": "photohouse-photo-stack-native-qualification@1",
+  "source_commit": "bb1f248b788ef50d5887c688958f050dbd299366",
+  "synthetic_only": true,
+  "workloads": {
+    "bursts": {
+      "cancellable_speedup": 4.722365001211386,
+      "speedup": 4.59282301494265,
+      "variants": {
+        "python": {
+          "callback_checks_per_call": 0,
+          "cancellable": false,
+          "cancellation": {
+            "after_stop_request_seconds": 6.5e-06,
+            "checks": 12921,
+            "status": "PASS",
+            "total_call_seconds": 0.0782912
+          },
+          "cpu_median": 1.1875,
+          "engine": "python",
+          "fixture": "bursts",
+          "group_sizes": {
+            "24": 400,
+            "8": 400
+          },
+          "groups": 800,
+          "groups_sha256": "c8ae5bcca7f0d21e11a4830fefc5616988db103b02e08ce0909bae2f76d77b08",
+          "memory": {
+            "peak_commit_bytes": 35823616,
+            "peak_working_set_bytes": 44412928
+          },
+          "memory_scope": "fresh process lifetime through warmup and all timing calls",
+          "native_sha256": null,
+          "platform": "Windows-11-10.0.26100-SP0",
+          "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+          "rows": 12800,
+          "rows_sha256": "571514983816e9bf7431377cc6962f7dafd9d8f4100c779b6b123a6d1a9c91c7",
+          "runs": [
+            {
+              "process_cpu_seconds": 1.140625,
+              "wall_seconds": 1.1458665
+            },
+            {
+              "process_cpu_seconds": 1.171875,
+              "wall_seconds": 1.1597228
+            },
+            {
+              "process_cpu_seconds": 1.203125,
+              "wall_seconds": 1.2127795
+            },
+            {
+              "process_cpu_seconds": 1.28125,
+              "wall_seconds": 1.2905476
+            },
+            {
+              "process_cpu_seconds": 1.1875,
+              "wall_seconds": 1.188697
+            },
+            {
+              "process_cpu_seconds": 1.203125,
+              "wall_seconds": 1.1995051
+            },
+            {
+              "process_cpu_seconds": 1.09375,
+              "wall_seconds": 1.0880445
+            },
+            {
+              "process_cpu_seconds": 1.21875,
+              "wall_seconds": 1.2243177
+            },
+            {
+              "process_cpu_seconds": 1.171875,
+              "wall_seconds": 1.1642528
+            }
+          ],
+          "wall_max": 1.2905476,
+          "wall_median": 1.188697,
+          "wall_min": 1.0880445,
+          "warmups": 1
+        },
+        "python_cancellable": {
+          "callback_checks_per_call": 38401,
+          "cancellable": true,
+          "cancellation": {
+            "after_stop_request_seconds": 5.3e-06,
+            "checks": 12921,
+            "status": "PASS",
+            "total_call_seconds": 0.0561192
+          },
+          "cpu_median": 1.203125,
+          "engine": "python",
+          "fixture": "bursts",
+          "group_sizes": {
+            "24": 400,
+            "8": 400
+          },
+          "groups": 800,
+          "groups_sha256": "c8ae5bcca7f0d21e11a4830fefc5616988db103b02e08ce0909bae2f76d77b08",
+          "memory": {
+            "peak_commit_bytes": 36077568,
+            "peak_working_set_bytes": 44457984
+          },
+          "memory_scope": "fresh process lifetime through warmup and all timing calls",
+          "native_sha256": null,
+          "platform": "Windows-11-10.0.26100-SP0",
+          "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+          "rows": 12800,
+          "rows_sha256": "571514983816e9bf7431377cc6962f7dafd9d8f4100c779b6b123a6d1a9c91c7",
+          "runs": [
+            {
+              "process_cpu_seconds": 1.15625,
+              "wall_seconds": 1.1646187
+            },
+            {
+              "process_cpu_seconds": 1.203125,
+              "wall_seconds": 1.2016297
+            },
+            {
+              "process_cpu_seconds": 1.265625,
+              "wall_seconds": 1.2778355
+            },
+            {
+              "process_cpu_seconds": 1.1875,
+              "wall_seconds": 1.1757961
+            },
+            {
+              "process_cpu_seconds": 1.328125,
+              "wall_seconds": 1.330019
+            },
+            {
+              "process_cpu_seconds": 1.1875,
+              "wall_seconds": 1.1830438
+            },
+            {
+              "process_cpu_seconds": 1.203125,
+              "wall_seconds": 1.202631
+            },
+            {
+              "process_cpu_seconds": 1.28125,
+              "wall_seconds": 1.2849749
+            },
+            {
+              "process_cpu_seconds": 1.25,
+              "wall_seconds": 1.2550438
+            }
+          ],
+          "wall_max": 1.330019,
+          "wall_median": 1.202631,
+          "wall_min": 1.1646187,
+          "warmups": 1
+        },
+        "rust": {
+          "callback_checks_per_call": 0,
+          "cancellable": false,
+          "cancellation": {
+            "after_stop_request_seconds": 0.0003567,
+            "checks": 12921,
+            "status": "PASS",
+            "total_call_seconds": 0.1463434
+          },
+          "cpu_median": 0.25,
+          "engine": "rust",
+          "fixture": "bursts",
+          "group_sizes": {
+            "24": 400,
+            "8": 400
+          },
+          "groups": 800,
+          "groups_sha256": "c8ae5bcca7f0d21e11a4830fefc5616988db103b02e08ce0909bae2f76d77b08",
+          "memory": {
+            "peak_commit_bytes": 41938944,
+            "peak_working_set_bytes": 49692672
+          },
+          "memory_scope": "fresh process lifetime through warmup and all timing calls",
+          "native_sha256": "56acc0012dc442f025ce5e8494216650e52977076d2cc10454186974c16b176d",
+          "platform": "Windows-11-10.0.26100-SP0",
+          "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+          "rows": 12800,
+          "rows_sha256": "571514983816e9bf7431377cc6962f7dafd9d8f4100c779b6b123a6d1a9c91c7",
+          "runs": [
+            {
+              "process_cpu_seconds": 0.3125,
+              "wall_seconds": 0.3239706
+            },
+            {
+              "process_cpu_seconds": 0.28125,
+              "wall_seconds": 0.2871524
+            },
+            {
+              "process_cpu_seconds": 0.296875,
+              "wall_seconds": 0.2973982
+            },
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2588162
+            },
+            {
+              "process_cpu_seconds": 0.234375,
+              "wall_seconds": 0.2252959
+            },
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2551666
+            },
+            {
+              "process_cpu_seconds": 0.28125,
+              "wall_seconds": 0.2706294
+            },
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2540604
+            },
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2526419
+            }
+          ],
+          "wall_max": 0.3239706,
+          "wall_median": 0.2588162,
+          "wall_min": 0.2252959,
+          "warmups": 1
+        },
+        "rust_cancellable": {
+          "callback_checks_per_call": 38401,
+          "cancellable": true,
+          "cancellation": {
+            "after_stop_request_seconds": 0.0003811,
+            "checks": 12921,
+            "status": "PASS",
+            "total_call_seconds": 0.1255884
+          },
+          "cpu_median": 0.25,
+          "engine": "rust",
+          "fixture": "bursts",
+          "group_sizes": {
+            "24": 400,
+            "8": 400
+          },
+          "groups": 800,
+          "groups_sha256": "c8ae5bcca7f0d21e11a4830fefc5616988db103b02e08ce0909bae2f76d77b08",
+          "memory": {
+            "peak_commit_bytes": 42098688,
+            "peak_working_set_bytes": 49803264
+          },
+          "memory_scope": "fresh process lifetime through warmup and all timing calls",
+          "native_sha256": "56acc0012dc442f025ce5e8494216650e52977076d2cc10454186974c16b176d",
+          "platform": "Windows-11-10.0.26100-SP0",
+          "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+          "rows": 12800,
+          "rows_sha256": "571514983816e9bf7431377cc6962f7dafd9d8f4100c779b6b123a6d1a9c91c7",
+          "runs": [
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2457403
+            },
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2575173
+            },
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2392974
+            },
+            {
+              "process_cpu_seconds": 0.28125,
+              "wall_seconds": 0.2881045
+            },
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2386975
+            },
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2580912
+            },
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2546671
+            },
+            {
+              "process_cpu_seconds": 0.25,
+              "wall_seconds": 0.2482127
+            },
+            {
+              "process_cpu_seconds": 0.265625,
+              "wall_seconds": 0.2668926
+            }
+          ],
+          "wall_max": 0.2881045,
+          "wall_median": 0.2546671,
+          "wall_min": 0.2386975,
+          "warmups": 1
+        }
+      }
+    },
+    "mixed": {
+      "cancellable_speedup": 3.1569187160780148,
+      "speedup": 3.714180915962571,
+      "variants": {
+        "python": {
+          "callback_checks_per_call": 0,
+          "cancellable": false,
+          "cancellation": {
+            "after_stop_request_seconds": 5.7e-06,
+            "checks": 6521,
+            "status": "PASS",
+            "total_call_seconds": 0.0550313
+          },
+          "cpu_median": 0.5,
+          "engine": "python",
+          "fixture": "mixed",
+          "group_sizes": {
+            "16": 400
+          },
+          "groups": 400,
+          "groups_sha256": "e1b784d417e921033e920982c772dec3559eec71bce438bac18c7694bd7d1126",
+          "memory": {
+            "peak_commit_bytes": 25559040,
+            "peak_working_set_bytes": 34136064
+          },
+          "memory_scope": "fresh process lifetime through warmup and all timing calls",
+          "native_sha256": null,
+          "platform": "Windows-11-10.0.26100-SP0",
+          "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+          "rows": 6400,
+          "rows_sha256": "9eda712f800621322ed524f39a9ef359ae3c9142ae3413531260a72551323bc0",
+          "runs": [
+            {
+              "process_cpu_seconds": 0.5625,
+              "wall_seconds": 0.553192
+            },
+            {
+              "process_cpu_seconds": 0.46875,
+              "wall_seconds": 0.4710542
+            },
+            {
+              "process_cpu_seconds": 0.515625,
+              "wall_seconds": 0.5182204
+            },
+            {
+              "process_cpu_seconds": 0.453125,
+              "wall_seconds": 0.4474127
+            },
+            {
+              "process_cpu_seconds": 0.453125,
+              "wall_seconds": 0.4540077
+            },
+            {
+              "process_cpu_seconds": 0.5,
+              "wall_seconds": 0.5047843
+            },
+            {
+              "process_cpu_seconds": 0.484375,
+              "wall_seconds": 0.4825243
+            },
+            {
+              "process_cpu_seconds": 0.53125,
+              "wall_seconds": 0.5316191
+            },
+            {
+              "process_cpu_seconds": 0.515625,
+              "wall_seconds": 0.5345065
+            }
+          ],
+          "wall_max": 0.553192,
+          "wall_median": 0.5047843,
+          "wall_min": 0.4474127,
+          "warmups": 1
+        },
+        "python_cancellable": {
+          "callback_checks_per_call": 19201,
+          "cancellable": true,
+          "cancellation": {
+            "after_stop_request_seconds": 7.2e-06,
+            "checks": 6521,
+            "status": "PASS",
+            "total_call_seconds": 0.0683368
+          },
+          "cpu_median": 0.484375,
+          "engine": "python",
+          "fixture": "mixed",
+          "group_sizes": {
+            "16": 400
+          },
+          "groups": 400,
+          "groups_sha256": "e1b784d417e921033e920982c772dec3559eec71bce438bac18c7694bd7d1126",
+          "memory": {
+            "peak_commit_bytes": 25505792,
+            "peak_working_set_bytes": 34279424
+          },
+          "memory_scope": "fresh process lifetime through warmup and all timing calls",
+          "native_sha256": null,
+          "platform": "Windows-11-10.0.26100-SP0",
+          "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+          "rows": 6400,
+          "rows_sha256": "9eda712f800621322ed524f39a9ef359ae3c9142ae3413531260a72551323bc0",
+          "runs": [
+            {
+              "process_cpu_seconds": 0.5,
+              "wall_seconds": 0.4900406
+            },
+            {
+              "process_cpu_seconds": 0.46875,
+              "wall_seconds": 0.4675065
+            },
+            {
+              "process_cpu_seconds": 0.484375,
+              "wall_seconds": 0.4805363
+            },
+            {
+              "process_cpu_seconds": 0.484375,
+              "wall_seconds": 0.496547
+            },
+            {
+              "process_cpu_seconds": 0.46875,
+              "wall_seconds": 0.4722235
+            },
+            {
+              "process_cpu_seconds": 0.5,
+              "wall_seconds": 0.5056122
+            },
+            {
+              "process_cpu_seconds": 0.515625,
+              "wall_seconds": 0.5168354
+            },
+            {
+              "process_cpu_seconds": 0.515625,
+              "wall_seconds": 0.510012
+            },
+            {
+              "process_cpu_seconds": 0.484375,
+              "wall_seconds": 0.4777577
+            }
+          ],
+          "wall_max": 0.5168354,
+          "wall_median": 0.4900406,
+          "wall_min": 0.4675065,
+          "warmups": 1
+        },
+        "rust": {
+          "callback_checks_per_call": 0,
+          "cancellable": false,
+          "cancellation": {
+            "after_stop_request_seconds": 0.0003298,
+            "checks": 6521,
+            "status": "PASS",
+            "total_call_seconds": 0.0700501
+          },
+          "cpu_median": 0.140625,
+          "engine": "rust",
+          "fixture": "mixed",
+          "group_sizes": {
+            "16": 400
+          },
+          "groups": 400,
+          "groups_sha256": "e1b784d417e921033e920982c772dec3559eec71bce438bac18c7694bd7d1126",
+          "memory": {
+            "peak_commit_bytes": 29642752,
+            "peak_working_set_bytes": 38293504
+          },
+          "memory_scope": "fresh process lifetime through warmup and all timing calls",
+          "native_sha256": "56acc0012dc442f025ce5e8494216650e52977076d2cc10454186974c16b176d",
+          "platform": "Windows-11-10.0.26100-SP0",
+          "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+          "rows": 6400,
+          "rows_sha256": "9eda712f800621322ed524f39a9ef359ae3c9142ae3413531260a72551323bc0",
+          "runs": [
+            {
+              "process_cpu_seconds": 0.125,
+              "wall_seconds": 0.1339734
+            },
+            {
+              "process_cpu_seconds": 0.15625,
+              "wall_seconds": 0.1454355
+            },
+            {
+              "process_cpu_seconds": 0.15625,
+              "wall_seconds": 0.1625516
+            },
+            {
+              "process_cpu_seconds": 0.1875,
+              "wall_seconds": 0.1751659
+            },
+            {
+              "process_cpu_seconds": 0.125,
+              "wall_seconds": 0.1359073
+            },
+            {
+              "process_cpu_seconds": 0.140625,
+              "wall_seconds": 0.1337371
+            },
+            {
+              "process_cpu_seconds": 0.140625,
+              "wall_seconds": 0.1345688
+            },
+            {
+              "process_cpu_seconds": 0.15625,
+              "wall_seconds": 0.1556287
+            },
+            {
+              "process_cpu_seconds": 0.125,
+              "wall_seconds": 0.1342001
+            }
+          ],
+          "wall_max": 0.1751659,
+          "wall_median": 0.1359073,
+          "wall_min": 0.1337371,
+          "warmups": 1
+        },
+        "rust_cancellable": {
+          "callback_checks_per_call": 19201,
+          "cancellable": true,
+          "cancellation": {
+            "after_stop_request_seconds": 0.0003226,
+            "checks": 6521,
+            "status": "PASS",
+            "total_call_seconds": 0.0783187
+          },
+          "cpu_median": 0.15625,
+          "engine": "rust",
+          "fixture": "mixed",
+          "group_sizes": {
+            "16": 400
+          },
+          "groups": 400,
+          "groups_sha256": "e1b784d417e921033e920982c772dec3559eec71bce438bac18c7694bd7d1126",
+          "memory": {
+            "peak_commit_bytes": 29880320,
+            "peak_working_set_bytes": 38400000
+          },
+          "memory_scope": "fresh process lifetime through warmup and all timing calls",
+          "native_sha256": "56acc0012dc442f025ce5e8494216650e52977076d2cc10454186974c16b176d",
+          "platform": "Windows-11-10.0.26100-SP0",
+          "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+          "rows": 6400,
+          "rows_sha256": "9eda712f800621322ed524f39a9ef359ae3c9142ae3413531260a72551323bc0",
+          "runs": [
+            {
+              "process_cpu_seconds": 0.171875,
+              "wall_seconds": 0.1754522
+            },
+            {
+              "process_cpu_seconds": 0.140625,
+              "wall_seconds": 0.1365915
+            },
+            {
+              "process_cpu_seconds": 0.171875,
+              "wall_seconds": 0.1708054
+            },
+            {
+              "process_cpu_seconds": 0.1875,
+              "wall_seconds": 0.1854993
+            },
+            {
+              "process_cpu_seconds": 0.140625,
+              "wall_seconds": 0.1394182
+            },
+            {
+              "process_cpu_seconds": 0.15625,
+              "wall_seconds": 0.1552275
+            },
+            {
+              "process_cpu_seconds": 0.140625,
+              "wall_seconds": 0.1392517
+            },
+            {
+              "process_cpu_seconds": 0.140625,
+              "wall_seconds": 0.1421231
+            },
+            {
+              "process_cpu_seconds": 0.15625,
+              "wall_seconds": 0.1645125
+            }
+          ],
+          "wall_max": 0.1854993,
+          "wall_median": 0.1552275,
+          "wall_min": 0.1365915,
+          "warmups": 1
+        }
+      }
+    }
+  }
+}

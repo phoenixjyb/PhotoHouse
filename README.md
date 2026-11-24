@@ -1,9 +1,30 @@
 # 拾光相册 · PhotoHouse
 
+## Product roadmap / 产品路线图
+
+[English / 中文 dashboard](docs/product-roadmap/index.html) · [Maintenance / 维护](docs/product-roadmap/README.md).
+
+The bilingual snapshot separates recorded delivery, source-ready work, gaps and next steps.
+双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows route: `/roadmap/` (deployment is tracked separately).
+
+
 PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家庭自己的设备或服务器，
 照片、视频、录音和文字共同承载可以讲述、阅读和聆听的故事。
 后端、Web、Android 手机与 TV 在 [PhotoHouse 主仓库](https://github.com/phoenixjyb/PhotoHouse)
 共同维护；旧应用仓库按[整合规则](docs/REPOSITORY_TRANSITION.md)保留为历史与私有运行参考。
+
+## 11 月 24 日 Web 设计改进（本地源码）
+
+参考 Google Modern Web Guidance，统一了小贾对话界面、控件与配色，改用独立滚动的对话区，
+并检查键盘访问、小屏和放大文字、对比度及减少动画设置。切换语言时，空闲私密对话会在
+重新确认权限后恢复文字与未发送草稿，不会自动提交或开启麦克风。搜索细化、语音状态与故事选择的
+生成数据浏览器检查通过；这不代表新版已部署到 Windows，也不替代家庭实际试用。
+详见[设计审查与交付边界](docs/WEB_DESIGN_REVIEW_2026-11-24.md)。GitHub CI 继续暂停。
+
+两次新版界面部署被现有启动校验的 PowerShell 查询超时阻断，均已回滚。
+[查询预算修复](docs/WINDOWS_PLAYBACK_QUERY_BUDGET.md)通过 19 项本地测试与 8 次 Windows 只读查询，
+其中一次实际耗时 35 秒；新上限为 45 秒，仍受原有 900 秒总预算约束。
+该修复尚未安装到 SYSTEM 启动链，新界面尚未上线。回滚后的分组定时任务已自然运行并返回结果 0。
 
 ## 当前交付：2026-10-29
 
@@ -22,6 +43,22 @@ PhotoHouse 是可纯本地部署的家庭记忆中心：原始资料保存在家
   用户明确开始的前台语音会话可轮流听取与播放，暂停/结束及生命周期中断仍有效。
 - **故事草稿**：选定来源生成了结构有效、来源 ID 合法、非空且标记 `needs_review` 的未保存草稿。
   文笔质量暂缓评估；生成结果不会自动保存或发布。
+
+## 故事润色与助手模型角色
+
+当前源码将故事润色和 Search/小贾助手配置为两个本地模型角色：故事润色使用
+Qwen3-4B-Instruct-2507，Search/小贾保留现有 qwen2.5-1.5b-instruct-q4-k-m-trial。
+润色保留原稿，
+只生成需要作者审阅的草稿；姓名校正仅使用公共规范名称与已授权家庭上下文，
+不会猜测私人身份。私有 SQLite 副本上的 native qualification 覆盖运行中主动
+取消、实际 30 秒过期和生日故事生成三个案例，共用时 134.468 秒。测试观察到上下文拼写与
+重复语句有所改善，但标题仍不理想，仍需人工审阅。这不代表功能已部署或通过
+实体设备/家庭验收；新的角色、人名校正和云校对界面尚未上线，当前 Windows
+rollout 在产生效果前被拦截。Search 与照片分组仍走现有路径。
+
+可选云校对默认关闭且未配置。每次发送前都会显示完整请求，并要求作者对该请求
+明确同意；不会在后台发送。对话连续性来自应用管理、已授权且保留的历史，不是
+模型自带记忆或不受限 agent。角色配置、资源上限和 qualification 边界见[技术说明](docs/STORY_GROUNDING_AND_CLOUD_PROOFREADING.md)。
 
 上述是 Windows 服务与源码证据。**真实麦克风/扬声器及家庭体验仍待用户试用**；
 本次没有发布新 Android/TV 安装包，也没有证明所有可选模型和功能均已启用。

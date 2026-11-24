@@ -1,6 +1,7 @@
 # Documentation map
 
-Reviewed 2026-10-30 against merged main `e808e30` and dated October 29 delivery.
+Maintained map. Dated release records describe their specific installed source
+and do not replace current source/runtime status.
 
 Start with the maintained summaries. Follow task contracts for implementation;
 use dated release/qualification records as evidence for their exact revision.
@@ -11,7 +12,9 @@ use dated release/qualification records as evidence for their exact revision.
 | What is delivered, enabled or still unaccepted | [Current project status](PROJECT_STATUS.md) |
 | Components, trust/data boundaries and stores | [Architecture](ARCHITECTURE.md) |
 | Jude conversation, voice controls and receipt recovery | [Assistant guide](JUDE_ASSISTANT.md) |
+| Story/assistant model roles, grounding and cloud-proofreading boundaries | [Role and privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md) |
 | Capabilities and acceptance | [Features](FEATURES.md) |
+| Bilingual product dashboard / 双语产品看板 | [Interactive roadmap](product-roadmap/index.html), [maintenance / 维护](product-roadmap/README.md) |
 | Active priorities and exit criteria | [Roadmap](ROADMAP.md) |
 | Architecture findings and maintenance decisions | [October 14 review](ARCHITECTURE_REVIEW_2026-10-14.md) |
 | Local development commands | [Development](DEVELOPMENT.md#cpu-quick-start), [environment doctor](DEVELOPMENT_ENVIRONMENT.md) |
@@ -32,6 +35,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Local reading-size controls | [Reading comfort](READER_TEXT_SIZE.md) |
 | First saved story and memoir | [Chinese getting-started guide](FIRST_STORY_GUIDE_ZH.md) |
 | Guided Web story creation | [Source flow and recovery contract](STORY_FIRST_GUIDE.md) |
+| Select assistant results for a story | [Ordered selection, ordinary paging and fresh editor handoff](SEARCH_TO_STORY.md) |
 | AI-assisted story completion | [Drafting handoff, recovery and remaining model gates](AI_STORY_COMPLETION.md) |
 | Link an accepted family memory to a story chapter | [Web chooser and protected metadata contract](CHAPTER_FAMILY_MEMORY_CHOOSER.md) |
 | Compare synthetic story output with its sources | [Private operator review page](MEMOIR_QUALITY_REVIEW.md) |
@@ -111,3 +115,5 @@ Search quality and runtime preparation:
 - [Private quality scorecard](SEARCH_QUALITY_SCORECARD.md): language cohorts, relevance labels and measurement limits.
 - [Description clarification continuations](SEARCH_DESCRIPTION_CONTINUATIONS.md): retained search conditions and bounded answers.
 - [Semantic runtime configuration](SEMANTIC_RUNTIME_CONFIGURATION.md): explicit opt-in, private credentials and qualification boundaries.
+
+- [November 24 audit reconciliation and delivery plan](AUDIT_RECONCILIATION_2026-11-24.md)

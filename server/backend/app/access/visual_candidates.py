@@ -15,6 +15,8 @@ import re
 import struct
 from typing import Literal
 
+from .vector_acceleration import visual_backend as _visual_backend
+
 
 MAX_SEEDS = 24
 MAX_CANDIDATES = 512
@@ -120,6 +122,9 @@ def canonical_vector_checksum(vector: tuple[float, ...] | list[float]) -> str:
     return hashlib.sha256(_CHECKSUM_PREFIX + struct.pack(">I", len(packed) // 4) + packed).hexdigest()
 
 
+_COMPONENT_TYPES = frozenset((int, float))
+
+
 def _packed_vector(vector: tuple[float, ...] | list[float]) -> bytes:
     if type(vector) not in (tuple, list) or not 1 <= len(vector) <= MAX_DIMENSION:
         raise ValueError("invalid_vector")
@@ -128,7 +133,9 @@ def _packed_vector(vector: tuple[float, ...] | list[float]) -> bytes:
     vector = vector if type(vector) is tuple else tuple(vector[:MAX_DIMENSION + 1])
     if not 1 <= len(vector) <= MAX_DIMENSION:
         raise ValueError("invalid_vector")
-    if any(type(component) not in (int, float) for component in vector):
+    # Keep exact builtin types (including refusal of bool and numeric subclasses)
+    # while avoiding a Python generator frame for every component.
+    if not all(map(_COMPONENT_TYPES.__contains__, map(type, vector))):
         raise ValueError("invalid_vector")
     try:
         # struct performs builtin int/float conversion while packing, avoiding
@@ -141,13 +148,34 @@ def _packed_vector(vector: tuple[float, ...] | list[float]) -> bytes:
     return packed
 
 
-def _canonical_components(record: VectorRecord, identity: VectorSpaceIdentity) -> tuple[float, ...]:
+def _canonical_components(record: VectorRecord, identity: VectorSpaceIdentity, *,
+                          kernel=None) -> tuple[float, ...]:
     if (type(record) is not VectorRecord or type(record.identity) is not VectorSpaceIdentity
             or record.identity != identity or type(record.checksum_sha256) is not str
             or _SHA256.fullmatch(record.checksum_sha256) is None
             or type(record.vector) is not tuple or len(record.vector) != identity.dimension):
         raise ValueError("invalid_vector_record")
     packed = _packed_vector(record.vector)
+    if kernel is not None:
+        # Reuse the existing qualified byte-buffer kernel. Call it for this row
+        # only: callers retain their original per-row cancellation/mutation
+        # boundaries instead of freezing a later batch before those checks.
+        observed = []
+        def checksum(index):
+            if type(index) is not int or index != 0 or observed:
+                raise ValueError("invalid_vector_record")
+            observed.append(index)
+            return record.checksum_sha256
+        try:
+            raw = kernel.canonicalize(packed, len(record.vector), checksum)
+            if type(raw) is not bytes or len(raw) != len(packed) * 2 or observed != [0]:
+                raise ValueError("invalid_vector_record")
+            values = struct.unpack(f"={len(packed) // 4}d", raw)
+            if not all(map(math.isfinite, values)):
+                raise ValueError("invalid_vector_record")
+            return values
+        except (AttributeError, TypeError, ValueError, OverflowError, struct.error):
+            raise ValueError("invalid_vector_record") from None
     checksum = hashlib.sha256(
         _CHECKSUM_PREFIX + struct.pack(">I", len(record.vector)) + packed
     ).hexdigest()
@@ -187,6 +215,32 @@ def _asset_id(value: object) -> bool:
 def _score(left: tuple[float, ...], right: tuple[float, ...]) -> float:
     """Cosine score over canonical, unit-normalized float32 components."""
     return math.fsum(map(operator.mul, left, right))
+
+
+
+def _native_rank(native, seeds, candidates, dimension):
+    # Only canonical private tuples cross the bridge, after the whole cohort
+    # has passed authorization, identity, checksum, norm and coverage checks.
+    seed_ids = tuple(sorted(seeds, key=int))
+    queries = b"".join(struct.pack(f"={dimension}d", *seeds[key]) for key in seed_ids)
+    rows = tuple((key, value) for key, value in candidates.items() if key not in seeds)
+    block_rows = max(1, (4 * 1024 * 1024) // (dimension * 8))
+    ranked = []
+    for start in range(0, len(rows), block_rows):
+        block = rows[start:start + block_rows]
+        raw = b"".join(struct.pack(f"={dimension}d", *vector) for _, vector in block)
+        matches = native.best_seed(raw, queries, dimension, lambda _: None)
+        if type(matches) is not list or len(matches) != len(block):
+            raise ValueError("invalid_visual_kernel_result")
+        for index, match in enumerate(matches):
+            if (type(match) is not tuple or len(match) != 3
+                    or type(match[0]) is not int or match[0] != index
+                    or type(match[1]) is not int or not 0 <= match[1] < len(seed_ids)
+                    or type(match[2]) is not float or not math.isfinite(match[2])):
+                raise ValueError("invalid_visual_kernel_result")
+            candidate_id = block[index][0]
+            ranked.append((match[2], int(candidate_id), candidate_id, seed_ids[match[1]]))
+    return ranked
 
 
 def rank_visual_candidates(
@@ -267,23 +321,27 @@ def rank_visual_candidates(
                     or seed_record.checksum_sha256 != candidate_record.checksum_sha256):
                 return UNAVAILABLE
 
-        ranked = []
-        for candidate_id, vector in candidates.items():
-            if candidate_id in seeds:
-                continue
-            best_score = None
-            best_seed = None
-            for seed_id, seed_vector in seeds.items():
-                score = _score(seed_vector, vector)
-                if (best_score is None or score > best_score
-                        or score == best_score and int(seed_id) < int(best_seed)):
-                    best_score, best_seed = score, seed_id
-            ranked.append((best_score, int(candidate_id), candidate_id, best_seed))
-
+        native = _visual_backend()
+        if native is None or len(seeds) == 1:
+            # A single seed has no measured bridge win; retain the reference loop.
+            ranked = []
+            for candidate_id, vector in candidates.items():
+                if candidate_id in seeds:
+                    continue
+                best_score = None
+                best_seed = None
+                for seed_id, seed_vector in seeds.items():
+                    score = _score(seed_vector, vector)
+                    if (best_score is None or score > best_score
+                            or score == best_score and int(seed_id) < int(best_seed)):
+                        best_score, best_seed = score, seed_id
+                ranked.append((best_score, int(candidate_id), candidate_id, best_seed))
+        else:
+            ranked = _native_rank(native, seeds, candidates, expected_identity.dimension)
         ranked.sort(key=lambda item: (-item[0], item[1]))
         return RankingResult("ready", tuple(
             VisualCandidate(asset_id, seed_id)
             for _score_value, _numeric_id, asset_id, seed_id in ranked[:MAX_RESULTS]
         ))
-    except (TypeError, ValueError, OverflowError, RecursionError):
+    except (TypeError, ValueError, OverflowError, RecursionError, struct.error):
         return UNAVAILABLE

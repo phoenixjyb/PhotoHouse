@@ -1,0 +1,20 @@
+[package]
+name = "photohouse-vector-python"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0 AND PSF-2.0"
+
+[lib]
+name = "photohouse_vector_kernel"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.30", features = ["extension-module", "abi3-py39"] }
+vector-core = { path = "../vector-core" }
+
+[profile.release]
+lto = true
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

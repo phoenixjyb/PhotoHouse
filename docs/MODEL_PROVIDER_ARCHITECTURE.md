@@ -9,18 +9,26 @@ qualified, enabled, installed, or is live. Source catalog membership and an offl
 manifest validation are separate from a running process, native inference, and
 human quality review.
 
-## Dated installed example: October 29
+## Historical installed example: October 29
 
 The [accepted Windows release](RELEASE_2026-10-29.md) enabled a bounded Jude
 read-only media-search agent and selected-source story drafting using the
-existing Qwen2.5-1.5B-Instruct Q4_K_M / llama-cpp-python 0.3.36 runtime,
-CPU two-thread/context 8192/GPU-layer 0 profile. This is distinct from caption,
+Qwen2.5-1.5B-Instruct Q4_K_M / llama-cpp-python 0.3.36 runtime,
+CPU two-thread/context 8192/GPU-layer 0 profile. This is a historical shared
+model profile; it does not describe the current source's separate story role.
+It is distinct from caption,
 face and embedding workers and from ASR/TTS services; no provider switch or
 GPU-placement claim for those roles follows from it. Real local speech and
 protected reply audio passed separately. The catalog remains descriptive and
 public examples default off. A future installation must select its own explicit,
 compatible provider and resource configuration; do not download these weights
 or enable a role merely because it appears in this historical record.
+
+The current source defines separate story-refinement and Search/assistant roles.
+See the [story role and privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md)
+for their model pins, shared resource profile and native qualification. The new
+roles and related UI are not live because the current Windows rollout was blocked
+before effects. This is not an installed-model inventory or live-runtime check.
 
 ## Inventory and configuration
 

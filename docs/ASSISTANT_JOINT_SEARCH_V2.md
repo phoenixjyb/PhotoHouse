@@ -32,8 +32,18 @@ The internal `SearchPlan(version=2)` accepts existing discovery hard filters
 literal `caption`) plus a separate literal `text` phrase. Date basis is still
 `capture`; neither filenames nor receipt times become capture dates. The current
 context shape is retained, with a separate source-bound opaque binding and
-fingerprint. Downgrading a v2 context or using it in another session/library
-requires refresh; context never grants access.
+fingerprint. That binding includes the authenticated login-token/session identity
+in digest form; the credential itself is not put in the context. A token rotation
+intentionally invalidates prior result context and associated receipt recovery:
+reusing it under the new token is refused with HTTP 409, and the user must start
+a fresh search. There is no cross-session result-context carryover. Downgrading
+a v2 context or using it in another session/library requires refresh; context
+never grants access.
+
+The 20 focused source tests exercise qualification-helper session-rotation
+timing. They do not test application authentication behavior. This is
+source-level evidence; it does not qualify normal native same-session follow-up
+or establish live behavior.
 
 Examples using fictional reviewed names:
 
@@ -289,3 +299,20 @@ the project status. Next are real-library identity/index admission and relevance
 measurement, explicit video date-basis handling, and local understanding/ranking.
 No real date backfill, reviewed-index preparation, deployment, signing or
 publication is part of this source increment.
+
+
+## Reviewed-place answers in an ongoing search — 24 November 2026
+
+A v2 follow-up containing only one exact reviewed place name or alias can add or
+replace the place filter while retaining the current person, capture date,
+media type and literal text filters. For example, search for photos of a reviewed
+person, then answer with a reviewed region name. This is a scoped resolver/planner
+path, not a new model inference or location guessed from captions.
+
+Unknown, mixed-condition, quoted, action-bearing and ambiguous answers retain
+the existing unsupported/clarification behavior. Existing scope revalidation
+still runs: a changed source or revoked access cannot reuse stale results.
+Generated English/Chinese API cases demonstrate real result narrowing, text
+retention and stale-context refusal. This change is v2 source/test evidence;
+v3 remains on its separate intent planner and Windows activation is tracked
+separately. No schema, access policy, model/provider or save behavior changes.

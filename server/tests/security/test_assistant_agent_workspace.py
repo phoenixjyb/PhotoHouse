@@ -3,6 +3,7 @@ import asyncio
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import uuid
 from dataclasses import replace
@@ -17,6 +18,7 @@ sys.path[:0] = [str(ROOT / 'backend'), str(ROOT / 'tests' / 'security')]
 from app.main import create_app
 from app.access.assistant_agent import AgentBudget
 from app.access.assistant_workspace_store import initialize_v2, LEASE_SECONDS
+from app.access.assistant_workspace_transport import _agent_dialogue
 from app.access.assistant_journal import initialize as initialize_journal
 from app.access.search_pending import PENDING_TTL_SECONDS
 import test_semantic_search as generated
@@ -141,11 +143,68 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.runtime.calls), 1)
         self.assertEqual(self.runtime.inputs[0], {
             'version': 1, 'text': 'find photos of Sample Child in September 2032',
-            'locale': None})
+            'locale': None,
+            'dialogue': {'version': 1, 'turns': [], 'truncated': False}})
         self.assertEqual([name for name, _ in self.runtime.tools], [
             'get_search_capabilities', 'search_media', 'inspect_current_results'])
         self.assertNotIn('outcome_handle', response.text)
         self.assertNotIn('item_handle', response.text)
+
+    async def test_media_only_followup_changes_media_and_keeps_results(self):
+        first = await self.post_turn(
+            'Find photos of Sample Child in September 2032 containing "海边"', agent=True)
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(first.json()['status'], 'completed')
+        self.assertEqual(first.json()['result']['kind'], 'results')
+        first_filters = first.json()['result']['filters']
+        self.assertEqual(first_filters['media'], ['image'])
+        self.assertEqual(first_filters['people'], {'ids': ['301'], 'match': 'any'})
+        self.assertEqual(first_filters['date'], {
+            'from': '2032-09-01', 'to': '2032-09-30'})
+        self.assertEqual(first_filters['text'], '海边')
+
+        self.runtime = SyntheticRuntime()
+        self.app.state.assistant_agent_supervisor.runtime = self.runtime
+        followup = await self.post_turn(
+            'Refine the last search to videos only', revision=1, agent=True)
+        self.assertEqual(followup.status_code, 200, followup.text)
+        body = followup.json()
+        self.assertEqual(body['status'], 'completed')
+        self.assertEqual(body['revision'], 2)
+        self.assertEqual(body['result']['kind'], 'results')
+        self.assertEqual(body['result']['filters'], {**first_filters, 'media': ['video']})
+        self.assertTrue(all(item['kind'] == 'video' for item in body['result']['items']))
+        self.assertEqual(len(self.runtime.calls), 1)
+
+    async def test_video_only_followup_preserves_then_replaces_date(self):
+        first = await self.post_turn('Find photos in September 2025', agent=True)
+        self.assertEqual(first.status_code, 200, first.text)
+        first_result = first.json()['result']
+        self.assertEqual(first_result['kind'], 'results')
+        self.assertEqual(first_result['filters']['media'], ['image'])
+        self.assertEqual(first_result['filters']['date'], {
+            'from': '2025-09-01', 'to': '2025-09-30'})
+
+        self.runtime = SyntheticRuntime()
+        self.app.state.assistant_agent_supervisor.runtime = self.runtime
+        videos = await self.post_turn(
+            'Refine my last search to show videos only', revision=1, agent=True)
+        self.assertEqual(videos.status_code, 200, videos.text)
+        video_result = videos.json()['result']
+        self.assertEqual(video_result['kind'], 'results')
+        self.assertEqual(video_result['filters']['media'], ['video'])
+        self.assertEqual(video_result['filters']['date'], {
+            'from': '2025-09-01', 'to': '2025-09-30'})
+
+        self.runtime = SyntheticRuntime()
+        self.app.state.assistant_agent_supervisor.runtime = self.runtime
+        october = await self.post_turn('October 2025', revision=2, agent=True)
+        self.assertEqual(october.status_code, 200, october.text)
+        october_result = october.json()['result']
+        self.assertEqual(october_result['kind'], 'results')
+        self.assertEqual(october_result['filters']['media'], ['video'])
+        self.assertEqual(october_result['filters']['date'], {
+            'from': '2025-10-01', 'to': '2025-10-31'})
 
     async def test_ordinary_turn_is_default_and_never_calls_injected_runtime(self):
         response = await self.post_turn('find photos in 2032')
@@ -453,6 +512,78 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
             'from': '2032-01-01', 'to': '2032-12-31'})
         self.assertEqual(self.runtime.calls[0]['text'], 'in 2032')
 
+    async def test_followup_agent_turn_receives_latest_persisted_exchange(self):
+        first = await self.post_turn('find photos in 2032', agent=True)
+        self.assertEqual(first.status_code, 200, first.text)
+        first_reply = first.json()['result']['reply']
+        self.assertTrue(first_reply)
+
+        # A new adapter instance models a reloaded local assistant. History is
+        # fetched from the durable thread store, not retained by the client.
+        self.runtime = SyntheticRuntime()
+        self.app.state.assistant_agent_supervisor.runtime = self.runtime
+        followup = await self.post_turn('show me videos too', revision=1, agent=True)
+        self.assertEqual(followup.status_code, 200, followup.text)
+        self.assertEqual(self.runtime.inputs[0]['dialogue'], {
+            'version': 1,
+            'turns': [{'user': 'find photos in 2032', 'assistant': first_reply}],
+            'truncated': False,
+        })
+        self.assertNotIn('cards', str(self.runtime.inputs[0]['dialogue']))
+        self.assertNotIn('receipts', str(self.runtime.inputs[0]['dialogue']))
+
+    async def test_dialogue_revision_mismatch_refuses_runtime_before_model_call(self):
+        original = self.store.get_thread
+
+        def stale_history(account, library, thread):
+            history = original(account, library, thread)
+            history['thread']['revision'] += 1
+            return history
+
+        with patch.object(self.store, 'get_thread', side_effect=stale_history):
+            response = await self.post_turn('find photos in 2032', agent=True)
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(self.runtime.calls, [])
+
+        # The HTTP refusal can arrive before its owned lease cleanup finishes.
+        # Wait for that cleanup before testing another independently bad history.
+        await self.settle()
+
+        for field, value in (('thread_id', str(uuid.uuid4())),
+                             ('library_id', 'another-library')):
+            def foreign_history(account, library, thread, field=field, value=value):
+                history = original(account, library, thread)
+                history['thread'][field] = value
+                return history
+
+            with patch.object(self.store, 'get_thread', side_effect=foreign_history):
+                response = await self.post_turn('find photos in 2032', agent=True)
+            self.assertEqual(response.status_code, 409, response.text)
+            self.assertEqual(self.runtime.calls, [])
+            await self.settle()
+
+    async def test_dialogue_projection_caps_utf8_and_keeps_newest_complete_pairs(self):
+        exchanges = [
+            {'input_text': f'user-{i}', 'reply': f'assistant-{i}',
+             'cards': [{'id': 'must-not-pass'}], 'receipts': ['must-not-pass']}
+            for i in range(6)
+        ]
+        projection = _agent_dialogue(exchanges)
+        self.assertEqual(len(projection['turns']), 4)
+        self.assertEqual(projection['turns'][0]['user'], 'user-2')
+        self.assertEqual(projection['turns'][-1]['assistant'], 'assistant-5')
+        self.assertTrue(projection['truncated'])
+        self.assertEqual(set(projection), {'version', 'turns', 'truncated'})
+
+        clipped = _agent_dialogue([{'input_text': '你' * 500,
+                                    'reply': 'é' * 700}])
+        self.assertTrue(clipped['truncated'])
+        self.assertLessEqual(len(clipped['turns'][0]['user'].encode('utf-8')), 1024)
+        self.assertLessEqual(len(clipped['turns'][0]['assistant'].encode('utf-8')), 1024)
+        self.assertLessEqual(sum(len(pair[key].encode('utf-8'))
+                                 for pair in clipped['turns']
+                                 for key in ('user', 'assistant')), 4096)
+
     async def test_stale_reservation_conflict_does_not_disable_future_valid_work(self):
         class ScopedCleanup(SyntheticRuntime):
             def __init__(inner):
@@ -678,9 +809,15 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
         original = self.store.complete_turn
         supervisor = self.app.state.assistant_agent_supervisor
         supervisor.budget = AgentBudget(max_wall_seconds=0.5)
+        # Start the short real-time window at the commit barrier, so native
+        # fixture reads do not consume the interval this case is testing.
+        commit_started = [None]
+        supervisor.clock = lambda: (0 if commit_started[0] is None else
+                                    time.monotonic() - commit_started[0])
 
         def commit_then_gate(*args, **kwargs):
             result = original(*args, **kwargs)
+            commit_started[0] = time.monotonic()
             entered.set()
             release.wait(5)
             return result

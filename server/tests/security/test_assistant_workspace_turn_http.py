@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT / 'backend'))
 from fastapi.testclient import TestClient
 from app.access import discovery as d
 from app.access import assistant as assistant_module
+from app.access.assistant_search import SearchRuntime
 from app.access.discovery_provider import MemoryIndexProvider
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.assistant_journal import initialize as initialize_journal
@@ -117,6 +118,28 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
                 revision INTEGER, title TEXT, text TEXT, updated_at INTEGER, deleted INTEGER)''')
         return self.auth | {'X-PhotoHouse-Search-Version': '2'}
 
+    def test_three_turn_month_refinement_preserves_context_and_is_recoverable(self):
+        from datetime import datetime, timezone
+        self.now[0] = datetime(2026, 10, 30, 12, tzinfo=timezone.utc).timestamp()
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        cases = (
+            ('找去年九月份的照片', 'image', '2025-09-01', '2025-09-30'),
+            ('只看视频', 'video', '2025-09-01', '2025-09-30'),
+            ('改成十月份', 'video', '2025-10-01', '2025-10-31'),
+        )
+        for revision, (words, media, start, end) in enumerate(cases):
+            rid = new_id()
+            response = self.turn(tid, rid, revision, words, headers=headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            value = response.json()
+            self.assertEqual(value['revision'], revision + 1)
+            self.assertEqual(value['result']['kind'], 'results')
+            self.assertEqual(value['result']['filters'], {'media': [media], 'date': {'from': start, 'to': end}})
+            recovered = self.request('GET', f'/threads/{tid}/requests/{rid}?library_id=family-a', headers=headers)
+            self.assertEqual(recovered.status_code, 200, recovered.text)
+            self.assertEqual(recovered.json()['result'], value['result'])
+
     def test_bilingual_year_ranges_use_capture_dates_in_owned_recoverable_turns(self):
         self.enable_search()
         self.update("UPDATE assets SET mime='video/mp4',taken_at='2019-01-01 00:00:00.000000' WHERE id=101")
@@ -219,8 +242,18 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         opened = self.turn(tid, opened_id, revision=1, text='打开第二个', headers=headers)
         self.assertEqual(opened.status_code, 200, opened.text)
         self.assertEqual(opened.json()['result']['effect'], {'type': 'open_asset', 'asset_id': '101'})
-        restored = self.request('GET', f'/threads/{tid}/requests/{opened_id}?library_id=family-a', headers=headers)
+        engine_calls = []
+        original_call = SearchRuntime.call
+
+        def counted_call(runtime, operation, token, library, cancelled, values):
+            engine_calls.append(operation)
+            return original_call(runtime, operation, token, library, cancelled, values)
+
+        with patch.object(SearchRuntime, 'call', new=counted_call):
+            restored = self.request(
+                'GET', f'/threads/{tid}/requests/{opened_id}?library_id=family-a', headers=headers)
         self.assertEqual(restored.status_code, 200, restored.text)
+        self.assertEqual(engine_calls, ['search'])  # Current source/scope revalidation only.
         self.assertTrue(restored.json()['recovered'])
         self.assertEqual(restored.json()['result']['version'], 2)
         self.assertEqual(restored.json()['result']['kind'], 'results')

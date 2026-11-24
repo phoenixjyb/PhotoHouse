@@ -63,7 +63,13 @@ def rank_semantic_batches(query_vector, binding, candidate_batches, *,
                 or type(query_vector.checksum_sha256) is not str
                 or _SHA256.fullmatch(query_vector.checksum_sha256) is None):
             raise SemanticUnavailable()
-        query = _canonical_components(VectorRecord('1', binding.text_identity,
+        from .vector_acceleration import backend
+        native = backend()
+        def canonical(record, identity):
+            if native is None:
+                return _canonical_components(record, identity)
+            return _canonical_components(record, identity, kernel=native)
+        query = canonical(VectorRecord('1', binding.text_identity,
             query_vector.vector, query_vector.checksum_sha256), binding.text_identity)
         ranked, seen = [], set()
         for batch in candidate_batches:
@@ -77,7 +83,7 @@ def rank_semantic_batches(query_vector, binding, candidate_batches, *,
                 if (type(record) is not VectorRecord or not _asset_id(record.asset_id)
                         or record.asset_id in seen):
                     raise SemanticUnavailable()
-                vector = _canonical_components(record, binding.image_identity)
+                vector = canonical(record, binding.image_identity)
                 seen.add(record.asset_id)
                 ranked.append((record.asset_id, _score(query, vector)))
                 _checked(check)

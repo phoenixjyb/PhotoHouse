@@ -18,6 +18,9 @@ import threading
 from contextlib import contextmanager
 from urllib.parse import parse_qsl, unquote, urlsplit
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
+from app import work_storage as storage
+
 GROUPS = (
     (47, ("test_memory_book_editorial_migration.py", "test_memory_book_editorial_http.py",
           "test_memory_book_editorial_service.py", "test_memory_book_editorial_deletions.py",
@@ -127,7 +130,18 @@ def audit_guard(root: Path, pair_allowance: SocketPairAllowance | None = None):
     return audit
 
 
-def run(source: Path, output: Path, group: int) -> dict:
+def run(source: Path, output: Path, group: int, max_work_bytes: int) -> dict:
+    if type(max_work_bytes) is not int or max_work_bytes < 1:
+        raise ValueError('explicit_work_budget_required')
+    storage.direct(output)
+    if not 1 <= group <= len(GROUPS):
+        raise ValueError('unknown_group')
+    with storage.operation([output / f'group-{group}'],
+                           [(output, 'generated fixtures and test temporary maximum', max_work_bytes)]):
+        return _run(source, output, group)
+
+
+def _run(source: Path, output: Path, group: int) -> dict:
     source = source.resolve(strict=True)
     output = output.resolve(strict=True)
     if not output.is_dir() or not output.is_relative_to(source.parent) or output == source:
@@ -200,9 +214,11 @@ def main() -> int:
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--group", type=int, required=True)
+    parser.add_argument("--max-work-bytes", type=int, required=True,
+                        help="reviewed peak for all generated fixtures, runtime and temporary files")
     args = parser.parse_args()
     try:
-        result = run(args.source, args.output, args.group)
+        result = run(args.source, args.output, args.group, args.max_work_bytes)
     except (OSError, ValueError, RuntimeError):
         print(json.dumps({"passed": False, "code": "synthetic_group_refused"}))
         return 2

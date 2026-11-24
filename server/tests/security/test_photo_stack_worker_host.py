@@ -85,6 +85,26 @@ class PhotoStackWorkerHostTests(unittest.TestCase):
         self.assertEqual(host.execute_once(**self.arguments)['results'][0]['status'], 'updated')
         self.assertEqual(tasks, self.rows('tasks'))
 
+    def test_changed_source_retries_without_publishing_a_partial_index(self):
+        first = host.execute_once(**self.arguments)
+        previous = {name:self.rows(name) for name in fixture.TABLES}
+        journal_hash = hashlib.sha256(self.journal_path.read_bytes()).hexdigest()
+        with closing(fixture.fixture._db(self.database)) as db:
+            db.execute('UPDATE assets SET width=800 WHERE id=101'); db.commit()
+        def source_changes(rows, **options):
+            with closing(fixture.fixture._db(self.database)) as db:
+                db.execute('UPDATE assets SET width=900 WHERE id=101'); db.commit()
+            return build_library_photo_stacks(rows, **options)
+        with patch('app.access.photo_stack_index.build_library_photo_stacks', side_effect=source_changes):
+            retry = host.execute_once(**self.arguments)
+        self.assertEqual(retry['results'][0]['status'], 'changed_retry')
+        self.assertEqual(previous, {name:self.rows(name) for name in fixture.TABLES})
+        second = host.execute_once(**self.arguments)
+        self.assertEqual(second['results'][0]['status'], 'updated')
+        self.assertNotEqual(first['results'][0]['index_revision'], second['results'][0]['index_revision'])
+        self.assertEqual(host.execute_once(**self.arguments)['results'][0]['status'], 'unchanged')
+        self.assertEqual(journal_hash, hashlib.sha256(self.journal_path.read_bytes()).hexdigest())
+
     def test_stop_control_or_signal_before_start_never_creates_lock_or_index(self):
         fixture.fixture._create_file(self.stop)
         for entry in (host.preflight, host.execute_once):
@@ -215,6 +235,30 @@ class PhotoStackWorkerHostTests(unittest.TestCase):
         self.assertEqual(args[2][1:4],['-I','-B','-c'])
         with patch('sys.stderr',new_callable=io.StringIO), self.assertRaises(host.Refused):
             host.main(['--bounded-child'])
+
+    def test_windows_child_keeps_only_a_valid_explicit_engine_selection(self):
+        arguments = {k:str(v) if isinstance(v,Path) else v for k,v in self.arguments.items()}
+        for selected, expected in ((None,'python'), ('python','python'), ('rust','rust')):
+            environment = {'SystemRoot':'synthetic-system', 'DATABASE_URL':'must-not-forward',
+                           'PYTHONPATH':'must-not-forward'}
+            if selected is not None:
+                environment['PHOTOHOUSE_PHOTO_STACK_ENGINE'] = selected
+            with self.subTest(engine=selected), patch.dict(os.environ,environment,clear=True), \
+                    patch.object(controller,'WindowsAPI',return_value=object()), \
+                    patch.object(controller,'run_bounded',return_value=0) as launch:
+                self.assertEqual(host._bounded_execute(arguments),0)
+            child = launch.call_args.args[3]
+            self.assertEqual(child['PHOTOHOUSE_PHOTO_STACK_ENGINE'],expected)
+            self.assertNotIn('DATABASE_URL',child)
+            self.assertNotIn('PYTHONPATH',child)
+        for invalid in ('', 'auto', 'RUST'):
+            with self.subTest(invalid=invalid), \
+                    patch.dict(os.environ,{'PHOTOHOUSE_PHOTO_STACK_ENGINE':invalid}), \
+                    patch.object(controller,'WindowsAPI') as api, \
+                    patch.object(controller,'run_bounded') as launch:
+                with self.assertRaisesRegex(controller.CheckRefused,'invalid_photo_stack_engine'):
+                    host._bounded_execute(arguments)
+                api.assert_not_called();launch.assert_not_called()
 
 
 if __name__ == '__main__':

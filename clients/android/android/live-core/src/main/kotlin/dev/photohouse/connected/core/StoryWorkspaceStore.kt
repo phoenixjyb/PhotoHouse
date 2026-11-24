@@ -1,5 +1,6 @@
 package dev.photohouse.connected.core
 
+import dev.photohouse.protocol.Asset
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -81,6 +82,7 @@ data class StoryWorkspaceStoreState(
     val localDraftError: Boolean = false,
     val localDraftRequiresRecovery: Boolean = false,
     val localDraftCanDeleteUnreadable: Boolean = false,
+    val frameSearch: StoryChapterFrameSearchState? = null,
 ) {
     val hasUnfinishedWork: Boolean get() = dirty || composing || invalidInput || busy || hasPendingSave ||
         (draft != null && status != StoryWorkspaceStoreStatus.SAVED)
@@ -112,6 +114,9 @@ class StoryWorkspaceStore(
     private var epoch = 0L
     private var bound: MemoryCommunityBinding? = null
     private var operation: Job? = null
+    private var frameSearchOperation: Job? = null
+    private var frameSearchSerial = 0L
+    private var frameSearchCapture: ChapterFrameSearchCapture? = null
     private var pending: PendingGroupedStorySave? = null
     private var localDraftRecord: StoryDraftRecord? = null
     private var localDraftSlotOccupied = false
@@ -143,10 +148,288 @@ class StoryWorkspaceStore(
         get() = mutableDictationUnfinished.value || chapterDictationBinding?.hasUnfinishedInput == true
     val chapterDictationAvailable: Boolean
         get() = dictationApi?.assistantEnabled == true && currentAccount()?.isNotBlank() == true
+    val chapterFrameSearchAvailable: Boolean
+        get() = frameSearchBaseReady()
     val isSavedStoryEdit: Boolean get() = savedEditStory != null
     val savedEditStoryId: String? get() = savedEditStory?.id
     val savedEditStoryRevision: Long? get() = savedEditStory?.revision
     private fun pendingRecoveryBlocksNewStory() = localDraftRecord?.pendingSave != null && !localDraftAttached
+
+    private data class ChapterFrameSearchCapture(
+        val serial: Long,
+        val expected: MemoryCommunityBinding,
+        val ticket: Long,
+        val accountId: String,
+        val draft: ProtectedStoryWorkspaceDraft,
+        val selectedAssetIds: List<String>,
+        val title: String,
+        val chapters: List<SavedMemoryStoryChapter>,
+        val chapterId: String,
+        val savedEditStoryId: String?,
+        val savedEditStoryRevision: Long?,
+    )
+
+    private fun frameSearchBaseReady(): Boolean {
+        val live = state.value
+        return dictationApi?.assistantEnabled == true && currentAccount()?.isNotBlank() == true &&
+            live.savedStory == null && live.status == StoryWorkspaceStoreStatus.EDITING &&
+            live.draft != null && !live.busy && !live.composing && !live.hasPendingSave && pending == null &&
+            !hasUnfinishedChapterDictation && bound != null && snapshotBinding()?.let { sameBinding(bound, it) } == true
+    }
+
+    private fun frameSearchCurrent(capture: ChapterFrameSearchCapture, allowBusy: Boolean = false): Boolean {
+        val live = state.value
+        return capture.serial == frameSearchSerial && frameSearchCapture === capture &&
+            current(capture.expected, capture.ticket) && live.savedStory == null &&
+            currentAccount() == capture.accountId &&
+            savedEditStory?.id == capture.savedEditStoryId && savedEditStory?.revision == capture.savedEditStoryRevision &&
+            live.status == StoryWorkspaceStoreStatus.EDITING && (allowBusy || !live.busy) &&
+            !live.composing && !live.hasPendingSave && pending == null && !hasUnfinishedChapterDictation &&
+            live.draft === capture.draft && live.selectedAssetIds == capture.selectedAssetIds &&
+            live.title == capture.title && live.editableChapters == capture.chapters &&
+            live.frameSearch?.chapterId == capture.chapterId
+    }
+
+    /** Opens the search affordance for one chapter in a new or saved story draft. This performs no lookup. */
+    fun openChapterFrameSearch(chapterId: String): Boolean {
+        if (!frameSearchBaseReady() || state.value.frameSearch?.adding == true || state.value.frameSearch?.searching == true) return false
+        val live = state.value
+        val draft = live.draft ?: return false
+        val chapter = live.editableChapters.firstOrNull { it.id == chapterId } ?: return false
+        val remaining = StoryChapterFrameSearch.remaining(live.selectedAssetIds.size, chapter.assetIds.size)
+        if (remaining <= 0 || draft.libraryId != snapshotBinding()?.libraryId) return false
+        closeChapterFrameSearch()
+        val expected = snapshotBinding() ?: return false
+        val accountId = currentAccount()?.takeIf { it.isNotBlank() } ?: return false
+        bound = expected
+        val capture = ChapterFrameSearchCapture(
+            serial = ++frameSearchSerial,
+            expected = MemoryCommunityBinding(expected.token, expected.libraryId, expected.generation),
+            ticket = epoch,
+            accountId = accountId,
+            draft = draft,
+            selectedAssetIds = live.selectedAssetIds.toList(),
+            title = live.title,
+            chapters = live.editableChapters.map(::detachChapter),
+            chapterId = chapterId,
+            savedEditStoryId = savedEditStory?.id,
+            savedEditStoryRevision = savedEditStory?.revision,
+        )
+        frameSearchCapture = capture
+        mutable.value = live.copy(frameSearch = StoryChapterFrameSearchState(chapterId, remaining))
+        return true
+    }
+
+    /** Explicit typed assistant lookup with no prior result context. */
+    fun findChapterFrames(query: String): Boolean {
+        val capture = frameSearchCapture ?: return false
+        val live = state.value
+        val search = live.frameSearch ?: return false
+        val api = dictationApi ?: return false
+        if (!frameSearchCurrent(capture) || !api.assistantEnabled || search.searching || search.adding) return false
+        val text = query.trim()
+        if (runCatching { AssistantWire.request(capture.expected.libraryId, text, null) }.isFailure) return false
+        frameSearchOperation?.cancel()
+        val serial = ++frameSearchSerial
+        val requestCapture = capture.copy(serial = serial)
+        frameSearchCapture = requestCapture
+        mutable.value = live.copy(frameSearch = search.copy(results = emptyList(), selectedAssetIds = emptyList(),
+            searched = false, searching = true, adding = false, added = false, error = false, hasMore = false, reply = null))
+        frameSearchOperation = scope.launch {
+            try {
+                val turn = api.assistantTurn(capture.expected.token, capture.expected.libraryId, text, null)
+                if (frameSearchCurrent(requestCapture)) {
+                    val results = if (turn.kind == "results") turn.items.filter { it.kind in setOf("image", "video") } else emptyList()
+                    val next = state.value.frameSearch ?: return@launch
+                    mutable.value = state.value.copy(frameSearch = next.copy(results = immutable(results.map(::detachAsset)),
+                        selectedAssetIds = emptyList(), searched = true, searching = false,
+                        error = turn.kind !in setOf("results", "clarification"), hasMore = turn.hasMore,
+                        reply = turn.reply))
+                } else if (frameSearchCapture?.serial == serial && state.value.frameSearch != null) {
+                    val currentSearch = state.value.frameSearch!!
+                    mutable.value = state.value.copy(frameSearch = currentSearch.copy(searching = false, error = true))
+                }
+            } catch (_: CancellationException) {
+                if (frameSearchCapture?.serial == serial && state.value.frameSearch != null) {
+                    val currentSearch = state.value.frameSearch!!
+                    mutable.value = state.value.copy(frameSearch = currentSearch.copy(searching = false))
+                }
+            } catch (_: Exception) {
+                if (frameSearchCapture?.serial == serial && state.value.frameSearch != null) {
+                    val currentSearch = state.value.frameSearch!!
+                    mutable.value = state.value.copy(frameSearch = currentSearch.copy(searching = false, error = true))
+                }
+            } finally {
+                if (frameSearchCapture?.serial == serial) frameSearchOperation = null
+            }
+        }
+        return true
+    }
+
+    fun toggleChapterFrame(assetId: String): Boolean {
+        val capture = frameSearchCapture ?: return false
+        val live = state.value
+        val search = live.frameSearch ?: return false
+        if (!frameSearchCurrent(capture) || search.searching || search.adding || !search.searched) return false
+        if (search.results.none { it.id == assetId && it.kind in setOf("image", "video") }) return false
+        if (assetId in capture.selectedAssetIds) return false
+        val selected = search.selectedAssetIds.toMutableList()
+        if (assetId in selected) selected.remove(assetId)
+        else {
+            if (selected.size >= search.remaining) return false
+            selected += assetId
+        }
+        mutable.value = live.copy(frameSearch = search.copy(selectedAssetIds = immutable(selected), error = false, added = false))
+        return true
+    }
+
+    /** Re-previews the exact expanded selection, merges only after every guard passes, and never saves. */
+    fun appendChapterFrames(keepSearching: Boolean): Boolean {
+        val capture = frameSearchCapture ?: return false
+        val live = state.value
+        val search = live.frameSearch ?: return false
+        if (!frameSearchCurrent(capture) || search.searching || search.adding || !search.searched || search.selectedAssetIds.isEmpty()) return false
+        val existing = capture.selectedAssetIds.toSet()
+        val chosenById = search.results.filter { it.id in search.selectedAssetIds }.associateBy { it.id }
+        if (chosenById.size != search.selectedAssetIds.size) return false
+        val additions = search.selectedAssetIds.filterNot { it in existing }
+        if (additions.isEmpty() || additions.size > search.remaining || additions.any { id ->
+                chosenById[id]?.kind !in setOf("image", "video")
+            }) return false
+        val api = dictationApi ?: return false
+        if (!api.assistantEnabled) return false
+
+        val serial = ++frameSearchSerial
+        val addCapture = capture.copy(serial = serial)
+        frameSearchCapture = addCapture
+        frameSearchOperation?.cancel()
+        mutable.value = live.copy(busy = true, frameSearch = search.copy(adding = true, error = false, added = false))
+        frameSearchOperation = scope.launch {
+            try {
+                val profile = repository.sourceCapabilities { frameSearchCurrent(addCapture, allowBusy = true) }
+                if (!frameSearchCurrent(addCapture, allowBusy = true)) return@launch
+                if (profile?.sourcePolicy != ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1 || profile.maxSourcesPerChapter != MAX_EVIDENCE_PER_CHAPTER) {
+                    val currentSearch = state.value.frameSearch ?: return@launch
+                    mutable.value = state.value.copy(busy = false, frameSearch = currentSearch.copy(adding = false, error = true))
+                    return@launch
+                }
+                val expectedIds = StoryChapterFrameSearch.append(
+                    capture.selectedAssetIds, capture.chapters, capture.chapterId, additions,
+                ) ?: run {
+                    val currentSearch = state.value.frameSearch ?: return@launch
+                    mutable.value = state.value.copy(busy = false, frameSearch = currentSearch.copy(adding = false, error = true))
+                    return@launch
+                }
+                val fresh = repository.preview(expectedIds.selectedAssetIds, live.theme, live.language, capture.title) {
+                    frameSearchCurrent(addCapture, allowBusy = true)
+                }
+                if (!frameSearchCurrent(addCapture, allowBusy = true)) return@launch
+                val freshById = fresh.items.associateBy { it.asset.id }
+                if (fresh.libraryId != capture.expected.libraryId || fresh.items.map { it.asset.id } != expectedIds.selectedAssetIds ||
+                    freshById.size != expectedIds.selectedAssetIds.size || fresh.chapters.isEmpty() ||
+                    fresh.items.any { item -> item.asset.kind !in setOf("image", "video") } ||
+                    capture.draft.items.any { old -> freshById[old.asset.id]?.asset?.kind != old.asset.kind } ||
+                    additions.any { id -> freshById[id]?.asset?.kind != chosenById[id]?.kind }) {
+                    val currentSearch = state.value.frameSearch ?: return@launch
+                    mutable.value = state.value.copy(busy = false, frameSearch = currentSearch.copy(adding = false, error = true))
+                    return@launch
+                }
+                val freshEvidence = fresh.items.associate { item -> item.asset.id to item.evidence.map { it.id }.toSet() }
+                val mergedChapters = expectedIds.chapters.map { chapter ->
+                    val old = capture.chapters.firstOrNull { it.id == chapter.id }
+                    if (old == null) chapter else {
+                        val eligible = chapter.assetIds.flatMap { freshEvidence[it].orEmpty() }.toSet()
+                        if (old.evidenceIds.any { it !in eligible }) throw ApiFailure(FailureKind.INVALID_RESPONSE)
+                        chapter.copy(title = old.title, narration = old.narration,
+                            evidenceIds = immutable(old.evidenceIds))
+                    }
+                }
+                if (mergedChapters.map { it.id } != capture.chapters.map { it.id } ||
+                    mergedChapters.flatMap { it.assetIds } != expectedIds.selectedAssetIds ||
+                    mergedChapters.any { it.assetIds.size !in 1..MAX_ASSETS_PER_CHAPTER }) {
+                    val currentSearch = state.value.frameSearch ?: return@launch
+                    mutable.value = state.value.copy(busy = false, frameSearch = currentSearch.copy(adding = false, error = true))
+                    return@launch
+                }
+                val merged = detachDraft(fresh).copy(
+                    title = capture.draft.title,
+                    questions = immutable(capture.draft.questions),
+                    chapters = immutable(mergedChapters.map(::detachChapter)),
+                )
+                val chapterCopies = immutable(merged.chapters.map(::detachChapter))
+                invalidateTitleWork()
+                clearRelated()
+                mutable.value = state.value.copy(
+                    status = StoryWorkspaceStoreStatus.EDITING,
+                    busy = false,
+                    selectedAssetIds = immutable(expectedIds.selectedAssetIds),
+                    title = capture.title,
+                    draft = merged,
+                    editableChapters = chapterCopies,
+                    sourceCapabilities = profile,
+                    sourceCapabilitiesChecked = true,
+                    sourceReviewEnabled = true,
+                    titleCandidates = emptyList(),
+                    reviewed = false,
+                    sourcesReloaded = true,
+                    dirty = true,
+                    failureStatus = null,
+                    frameSearch = if (keepSearching) state.value.frameSearch?.copy(
+                        chapterId = capture.chapterId,
+                        remaining = StoryChapterFrameSearch.remaining(expectedIds.selectedAssetIds.size,
+                            chapterCopies.first { it.id == capture.chapterId }.assetIds.size),
+                        selectedAssetIds = emptyList(), searching = false, adding = false, added = true, error = false,
+                    ) else null,
+                )
+                if (keepSearching) {
+                    frameSearchCapture = addCapture.copy(
+                        ticket = epoch,
+                        draft = merged,
+                        selectedAssetIds = immutable(expectedIds.selectedAssetIds),
+                        title = capture.title,
+                        chapters = chapterCopies,
+                    )
+                } else {
+                    frameSearchCapture = null
+                    frameSearchSerial++
+                }
+            } catch (_: CancellationException) {
+                if (frameSearchCapture === addCapture && state.value.frameSearch != null) {
+                    val currentSearch = state.value.frameSearch!!
+                    mutable.value = state.value.copy(busy = false, frameSearch = currentSearch.copy(adding = false))
+                }
+            } catch (_: Exception) {
+                if (frameSearchCapture === addCapture && state.value.frameSearch != null) {
+                    val currentSearch = state.value.frameSearch!!
+                    mutable.value = state.value.copy(busy = false, frameSearch = currentSearch.copy(adding = false, error = true))
+                }
+            } finally {
+                if (frameSearchCapture === addCapture) frameSearchOperation = null
+            }
+        }
+        return true
+    }
+
+    fun closeChapterFrameSearch() {
+        val adding = state.value.frameSearch?.adding == true
+        frameSearchSerial++
+        frameSearchCapture = null
+        frameSearchOperation?.cancel()
+        frameSearchOperation = null
+        if (state.value.frameSearch != null) mutable.value = state.value.copy(frameSearch = null, busy = if (adding) false else state.value.busy)
+    }
+
+    suspend fun chapterFrameThumbnail(assetId: String): ByteArray? {
+        val capture = frameSearchCapture ?: return null
+        val search = state.value.frameSearch ?: return null
+        if (!frameSearchCurrent(capture) || search.searching || search.adding) return null
+        val asset = search.results.firstOrNull { it.id == assetId } ?: return null
+        val api = dictationApi ?: return null
+        return try {
+            val bytes = api.thumbnail(capture.expected.token, capture.expected.libraryId, asset) ?: return null
+            if (frameSearchCurrent(capture)) bytes else { bytes.fill(0); null }
+        } catch (_: Exception) { null }
+    }
 
     /** Reads only this fresh account/library slot; errors remain visible and never erase bytes. */
     fun inspectLocalDraft(): Boolean {
@@ -1314,7 +1597,8 @@ class StoryWorkspaceStore(
     }
 
     fun save(): Boolean {
-        if (!editorReady() || state.value.composing || state.value.invalidInput || !state.value.reviewed || hasUnfinishedChapterDictation) return false
+        if (!editorReady() || state.value.frameSearch != null || state.value.composing || state.value.invalidInput ||
+            !state.value.reviewed || hasUnfinishedChapterDictation) return false
         if (localDraftRecord?.pendingSave != null && !localDraftAttached) return false
         if (state.value.guideStep != null && (state.value.guideStep != StoryGuideStep.REVIEW ||
                 !guideWordsAreValid(state.value) || state.value.editableChapters.none { it.narration.isNotBlank() })) return false
@@ -1327,7 +1611,10 @@ class StoryWorkspaceStore(
             val base = savedEditStory
             if (base == null) repository.freeze(detachDraft(draft), state.value.title, chapters, mutationId, true,
                 state.value.sourceReviewEnabled) { current(expected) }
-            else repository.freezeUpdate(base, savedEditReferences ?: return false, state.value.title, chapters,
+            else repository.freezeUpdate(
+                if (draft.items.map { it.asset.id } == base.items.map { it.asset.id }) base
+                else updateBaseWithAppend(base, draft) ?: return false,
+                savedEditReferences ?: return false, state.value.title, chapters,
                 mutationId, true, state.value.sourceReviewEnabled,
                 if (state.value.sourceReviewEnabled) ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1 else null) { current(expected) }
         }
@@ -1426,6 +1713,21 @@ class StoryWorkspaceStore(
         return true
     }
 
+    /** Saved updates may expand IDs only through the guarded chapter-frame append path. */
+    private fun updateBaseWithAppend(base: SavedMemoryStory, draft: ProtectedStoryWorkspaceDraft): SavedMemoryStory? {
+        val oldIds = base.chapters.flatMap { it.assetIds }
+        val newIds = draft.chapters.flatMap { it.assetIds }
+        if (base.id != savedEditStory?.id || base.revision != savedEditStory?.revision ||
+            base.libraryId != draft.libraryId || base.chapters.map { it.id } != draft.chapters.map { it.id } ||
+            base.chapters.size != draft.chapters.size || oldIds.isEmpty() || newIds.size <= oldIds.size ||
+            base.chapters.indices.any { index ->
+                val old = base.chapters[index]
+                val next = draft.chapters[index]
+                next.assetIds.size < old.assetIds.size || next.assetIds.take(old.assetIds.size) != old.assetIds
+            } || oldIds.any { it !in newIds } || oldIds.filter { it in newIds } != oldIds) return null
+        return base.copy(selectionRevision = draft.selectionRevision, items = draft.items, chapters = draft.chapters)
+    }
+
     /** Dirty or pending work needs an explicit discard decision. Pending writes may already exist. */
     fun close(discard: Boolean = false): Boolean {
         if (hasUnfinishedChapterDictation && !discard) return false
@@ -1435,6 +1737,7 @@ class StoryWorkspaceStore(
     }
 
     fun clear() {
+        closeChapterFrameSearch()
         closeChapterDictation()
         epoch++
         operation?.cancel(); operation = null
@@ -1505,9 +1808,11 @@ class StoryWorkspaceStore(
     }
 
     private fun detachDraft(value: ProtectedStoryWorkspaceDraft) = value.copy(
-        items = immutable(value.items.map { item -> item.copy(asset = item.asset.copy(date_hint = item.asset.date_hint?.copy()),
+        items = immutable(value.items.map { item -> item.copy(asset = detachAsset(item.asset),
             evidence = immutable(item.evidence.map { it.copy() })) }),
         chapters = immutable(value.chapters.map(::detachChapter)), questions = immutable(value.questions))
+
+    private fun detachAsset(value: Asset) = value.copy(date_hint = value.date_hint?.copy())
 
     private fun detachChapter(value: SavedMemoryStoryChapter) = value.copy(
         assetIds = immutable(value.assetIds), evidenceIds = immutable(value.evidenceIds))

@@ -21,9 +21,18 @@ createInterface({input:bridge.stdout}).on('line',line=>{
 bridge.on('exit',code=>{if(code){readyReject(new Error(`Synthetic API bridge exited (${code})`));for(const call of pendingRpc.values())call.reject(new Error('Synthetic API bridge exited'));}});
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pendingRpc.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 function responseGate(){
+  const source=new Error().stack.split("\n").slice(2,4).join(" ");
   let arrive,release,finish;
-  const gate={cancelExpected:false,arrived:new Promise(resolve=>{arrive=resolve;}),released:new Promise(resolve=>{release=resolve;}),
-    finished:new Promise(resolve=>{finish=resolve;}),arrive:()=>arrive(),finish:()=>finish(),release:()=>{release();activeGates.delete(gate);}};
+  const arrived=new Promise(resolve=>{arrive=resolve;}),finished=new Promise(resolve=>{finish=resolve;});
+  const bounded=(pending,label)=>new Promise((resolve,reject)=>{
+    const timer=setTimeout(async()=>{
+      let state=null;try{state=await page?.evaluate(()=>({focus:document.activeElement?.id,text:document.querySelector('#assistant-text')?.value,sendDisabled:document.querySelector('#assistant-send')?.disabled,status:document.querySelector('#assistant-status')?.textContent,privateStatus:document.querySelector('#assistant-private-status')?.textContent,language:document.documentElement.lang}));}catch{}
+      reject(new Error(`Generated response gate ${label} (${source}) did not settle within 10 seconds: ${JSON.stringify(state)}`));
+    },10000);
+    pending.then(value=>{clearTimeout(timer);resolve(value);},error=>{clearTimeout(timer);reject(error);});
+  });
+  const gate={cancelExpected:false,get arrived(){return bounded(arrived,'arrival');},released:new Promise(resolve=>{release=resolve;}),
+    get finished(){return bounded(finished,'completion');},arrive:()=>arrive(),finish:()=>finish(),release:()=>{release();activeGates.delete(gate);}};
   activeGates.add(gate);return gate;
 }
 function turnResponse(body){
@@ -40,7 +49,7 @@ let browser,context,page;
   await ready;
   browser=await chromium.launch({headless:true,...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),
     args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
-  context=await browser.newContext({viewport:{width:1280,height:900},serviceWorkers:'block'});
+  context=await browser.newContext({viewport:{width:1280,height:900},serviceWorkers:'block'});context.setDefaultTimeout(15000);
   await context.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
     if(url.origin!=='https://photohouse.test'){externalOrigins.push(url.origin);await route.abort();return;}
@@ -183,7 +192,7 @@ let browser,context,page;
   assert.equal(await page.evaluate(()=>window.__trailXss===1),false,'rendering the trail does not execute markup');
   for(let index=1;index<10;index++)await submit(`查找照片 ${index}`);
   assert.equal(await page.locator('#assistant-turn-trail').isVisible(),true);
-  assert.equal(await page.locator('#assistant-turn-trail-title').textContent(),'本页最近对话');
+  assert.equal(await page.locator('#assistant-turn-trail-title').textContent(),'对话');
   assert.equal(await page.locator('#assistant-turn-trail-list > li').count(),8,'trail retains no more than eight successful exchanges');
   const trail=await page.locator('#assistant-turn-trail-list').innerText();
   assert.equal(trail.includes('查找照片 2'),true,'oldest retained exchange is the third sent turn');
@@ -401,7 +410,7 @@ let browser,context,page;
   assert(englishReading.length&&englishAfter.some(row=>row.id===englishReading[0].id),'English held response preserves the visible reading row');
   assert(Math.abs(englishAfter.find(row=>row.id===englishReading[0].id).offset-englishReading[0].offset)<2,'English held response preserves the row offset');
   assert.equal(await page.locator('#assistant-turn-trail-latest').textContent(),'Jump to latest','English jump control is localized');
-  assert.equal(await page.locator('#assistant-turn-trail-title').textContent(),'Recent turns on this page');
+  assert.equal(await page.locator('#assistant-turn-trail-title').textContent(),'Conversation');
   const enFonts=await scaleTrailText150();await page.locator('#assistant-turn-trail-title').evaluate(node=>node.scrollIntoView({block:'center',inline:'nearest'}));
   const enLayout=await trailGeometry();
   assert.equal(enLayout.width,390,'English capture keeps the actual 390px viewport');
@@ -423,38 +432,56 @@ let browser,context,page;
   assert.equal(englishJump.focus,'assistant-turn-trail-list','explicit jump leaves focus in the trail after hiding its control');
   assert.equal(await page.evaluate(()=>window.scrollY),pageYBeforeJump,'explicit jump does not move the page');
   console.log('EN_LAYOUT '+JSON.stringify(enLayout));
+  // The native modal uses the workspace pane, rather than the intrinsic list,
+  // as its scroll owner. Exercise actual rendering through the existing route.
+  await page.locator('#memory-assistant').click();await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
+  const modalPane=page.locator('#assistant-workspace-content');
+  const modalGeometry=()=>page.evaluate(()=>{const pane=document.getElementById('assistant-workspace-content'),list=document.getElementById('assistant-turn-trail-list'),p=pane.getBoundingClientRect(),tail=list.lastElementChild.getBoundingClientRect();return {top:p.top,bottom:p.bottom,tailBottom:tail.bottom,scrollTop:pane.scrollTop,scrollY:window.scrollY};});
+  const modalSend=async(text,reply)=>{
+    nextReplyOverride=reply;await page.locator('#assistant-text').fill(text);await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);
+    await page.locator('#assistant-send').click();await page.waitForFunction(value=>document.getElementById('assistant-reply').textContent===value,reply);
+    await page.waitForFunction(()=>!document.getElementById('assistant-private-new').disabled||document.getElementById('assistant-private').hidden);
+  };
+  await page.locator('#assistant-turn-trail-list').evaluate(list=>{list.focus({preventScroll:true});});
+  await page.keyboard.press('End');const modalTail=await modalGeometry();
+  await modalSend('modal tail follow','A generated modal reply. '.repeat(18));
+  const followed=await modalGeometry();assert(followed.tailBottom<=followed.bottom+2,'modal reveals the completed reply in its actual scroll pane');
+  assert.equal(followed.scrollY,modalTail.scrollY,'modal follow does not move the underlying page');
+  const anchor=await modalPane.evaluate(pane=>{const list=document.getElementById('assistant-turn-trail-list'),row=list.children[2],p=pane.getBoundingClientRect();pane.scrollTop+=row.getBoundingClientRect().top-p.top-24;return {id:row.dataset.assistantTurnId,offset:row.getBoundingClientRect().top-p.top};});
+  await modalSend('keep my reading position','Another generated reply. '.repeat(18));
+  const preserved=await modalPane.evaluate((pane,anchor)=>{const row=[...document.querySelectorAll('#assistant-turn-trail-list > li')].find(row=>row.dataset.assistantTurnId===anchor.id);return row.getBoundingClientRect().top-pane.getBoundingClientRect().top;},anchor);
+  assert(Math.abs(preserved-anchor.offset)<=3,'modal preserves a surviving older-message anchor when a reply arrives');
+  assert.equal(await page.locator('#assistant-turn-trail-latest').isVisible(),true,'reading older messages exposes the explicit latest control');
+  // Trigger the same real control without Playwright scrolling its offscreen
+  // button first; the handler itself must move only the owned conversation.
+  const pageBeforeModalJump=await page.evaluate(()=>window.scrollY);await page.locator('#assistant-turn-trail-latest').evaluate(button=>button.click());
+  const jumped=await modalGeometry();assert(jumped.tailBottom<=jumped.bottom+2,'modal jump reaches the latest reply');assert.equal(jumped.scrollY,pageBeforeModalJump,'modal jump leaves the page in place');
+  await page.keyboard.press('ArrowUp');assert((await modalGeometry()).scrollTop<jumped.scrollTop,'modal keyboard scrolling moves the actual pane');
+  await page.locator('#assistant-workspace-close').click();
+  console.log('PASS modal follows its real scroll pane, preserves older-message anchors, and supports explicit jump and keyboard scrolling');
   const reloadWithPrivateProbeHeld=async()=>{
-    const gate=responseGate();holdNextPrivateCapabilities=gate;await page.reload();await page.locator('#grid .asset').first().waitFor();await gate.arrived;
-    await page.locator('#assistant-panel').evaluate(element=>{element.open=true;});await page.locator('#assistant-form').waitFor({state:'visible'});
+    const gate=responseGate();holdNextPrivateCapabilities=gate;await page.reload();await page.locator('#grid .asset').first().waitFor();
+    // Capabilities are intentionally lazy: opening the assistant starts the
+    // deferred restore. A closed panel with no recovery pointer does not probe.
+    await page.locator('#assistant-panel').evaluate(element=>{element.open=true;});await gate.arrived;await page.locator('#assistant-form').waitFor({state:'visible'});
     assert.equal(await page.locator('#assistant-turn-trail').isVisible(),false,'reload clears in-memory exchanges');
     return gate;
   };
-  const startDelayedTurn=async text=>{
-    const gate=responseGate();holdNextTurn=gate;await page.locator('#assistant-text').fill(text);
-    await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);await page.locator('#assistant-send').click();
-    assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','delayed focused submission leaves focus in the composer');
-    await gate.arrived;return gate;
-  };
-  const finishDelayedTurn=async(gate,text)=>{
-    gate.release();await gate.finished;
-    await page.waitForFunction(value=>{const rows=document.querySelectorAll('#assistant-turn-trail-list > li'),last=rows[rows.length-1];return last?.querySelector('.assistant-turn-trail-text')?.textContent===value;},text);
-  };
-  const postsBeforeReload=posts().length,restoreBeforeCompleted=await reloadWithPrivateProbeHeld();
-  const completedDuringRestore=await startDelayedTurn('completed before delayed restore ends');await finishDelayedTurn(completedDuringRestore,'completed before delayed restore ends');
-  const restoreResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/assistant/workspace/v1/capabilities');
-  restoreBeforeCompleted.release();await restoreResponse;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','a late restore after a new turn completed does not steal composer focus');
-  assert.equal(await page.locator('#assistant-receipt-status').textContent(),await page.evaluate(()=>document.documentElement.lang.startsWith('zh')?'服务器已完成此请求。':'The server completed this request.'),'late restore does not replace the completed live receipt with a recovery offer');
-  assert.equal(posts().length,postsBeforeReload+1,'reload restoration does not replay or duplicate the newly completed turn');
-
-  const restoreBeforePending=await reloadWithPrivateProbeHeld(),pendingDuringRestore=await startDelayedTurn('pending while restore finishes');
-  const pendingRestoreResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/assistant/workspace/v1/capabilities');
-  restoreBeforePending.release();await pendingRestoreResponse;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','a late restore during a new pending turn does not steal composer focus');
-  assert.equal(await page.locator('#assistant-receipt-status').textContent(),await page.evaluate(()=>document.documentElement.lang.startsWith('zh')?'服务器是否收到请求尚未确认。网络恢复后可以再次查询。':'The server receipt is unknown. Check again when the connection is available.'),'late restore preserves the active turn receipt');
-  await finishDelayedTurn(pendingDuringRestore,'pending while restore finishes');
-  assert.equal(posts().length,postsBeforeReload+2,'restoration does not issue an automatic or duplicate turn request');
-  console.log('PASS English localization, narrow layout, reload clearing, no automatic replay, and delayed receipt restoration focus guards');
+  // The current account/library restore gate deliberately blocks submission.
+  // Earlier tests attempted a completed or pending turn before this gate ended;
+  // that race is no longer a reachable product state.
+  const postsBeforeReload=posts().length,restoreGate=await reloadWithPrivateProbeHeld();
+  await page.locator('#assistant-text').fill('draft while account context loads');await page.locator('#assistant-text').focus();
+  assert.equal(await page.locator('#assistant-send').isDisabled(),true,'context restoration blocks sending');
+  await page.locator('#assistant-text').press('Control+Enter');assert.equal(posts().length,postsBeforeReload,'shortcut cannot submit before context restoration');
+  const restored=page.waitForResponse(response=>new URL(response.url()).pathname==='/assistant/workspace/v1/capabilities');
+  restoreGate.release();await restored;await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);
+  assert.equal(await page.locator('#assistant-text').inputValue(),'draft while account context loads','restoring context preserves an edited draft');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','restoring context does not steal composer focus');
+  assert.equal(posts().length,postsBeforeReload,'context restoration neither sends nor replays a turn');
+  await submit('explicit turn after context restoration');
+  assert.equal(posts().length,postsBeforeReload+1,'only the later explicit action sends a turn');
+  console.log('PASS English localization, narrow layout, lazy restoration, draft preservation and no automatic replay');
 
   assert(currentAccountId,'synthetic authenticated profile exposes an account scope for the recovery fixture');
   const recoveryKey='photohouse.assistant.turn-recovery.v1',recoveryPointer=requestId=>({version:1,request_id:requestId,account_id:currentAccountId,library_id:'family-a'});

@@ -1,11 +1,29 @@
 # Feature and acceptance matrix
 
-Maintained summary, reviewed **2026-10-30**. PR #111 merged at `e808e30`.
+> **Integration note · 24 November 2026:** The [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md)
+> distinguishes current source, local checks, Windows delivery and remaining
+> device/family acceptance. The bilingual roadmap is live; the later source fixes
+> and optional TV review are tracked separately from installed capability.
+
+
+Maintained summary. PR #111 merged at `e808e30`.
 [Project Status](PROJECT_STATUS.md)
 is the dated record for source, local checks and the October 29 API/Web rollout;
 [Roadmap](ROADMAP.md) lists the remaining product work. “Implemented” describes
 source, “deployed” describes a specific installed surface, and family acceptance
 requires the relevant real-world use.
+
+## Bilingual roadmap / 双语路线图
+
+The [EN/中文 dashboard](product-roadmap/index.html) has 24 reviewed feature
+records, area/stage/priority filters and a dated evidence boundary. Both
+languages cover implementation, missing work, next increments and acceptance.
+The `/roadmap/` source route passed focused local checks; Windows deployment
+remains separate and pending the current rollout reconciliation.
+
+[英／中文看板](product-roadmap/index.html)包含 24 项回顾记录，支持按区域、阶段和
+优先级筛选，并明确有日期的证据边界。两种语言均覆盖实现情况、尚缺工作、下一增量与验收。
+`/roadmap/` 源码入口已通过本地专项检查；Windows 部署单独记录，目前仍待当前部署衔接完成。
 
 ## Current capabilities
 
@@ -13,8 +31,8 @@ requires the relevant real-world use.
 | --- | --- | --- |
 | Accounts, libraries, imports and review | Protected account/library access, owner review, family contributions, upload receipts and recovery are implemented. The receipt journal remains separate from approval, processing and gallery visibility. | Continue real owner/member import and recovery trials; a receipt alone does not make media visible or ready. |
 | Photo/video browsing and playback | Protected Web and phone readers, named libraries/albums, story/memoir readers and the separate Home TV catalog exist. Page-local similar-photo stacks are delivered on API/Web and phone. | TV was not updated by the October 29 rollout. Physical projector, phone playback and family use remain separate checks. |
-| Search and read-only assistant | October 29 API/Web source and assistant UI are deployed. English and Chinese each returned 20 cards; the separate gallery grouping read covered two pages. The `agent_media_search_v1` profile is bounded to read-only tools. | This does not establish broad semantic relevance or full-library coverage. Search quality and user acceptance remain open; this is not a general shell or mutation agent. See [search readiness](SEARCH_READINESS_AND_RELEVANCE.md). |
-| Story preparation | The October 29 Web flow produced an unsaved AI story marked `needs_review`. Story generation remains review-first: output is not saved into a family story automatically. | Human review of story quality is still open. This result does not establish general factual quality or family acceptance. |
+| Search and read-only assistant | October 29 API/Web source and assistant UI are deployed. English and Chinese each returned 20 cards; the separate gallery grouping read covered two pages. Search and Jude retain the incumbent `qwen2.5-1.5b-instruct-q4-k-m-trial` role with the bounded `agent_media_search_v1` read-only tools. | The current R10 same-session follow-up attempt was refused, not passed or newly deployed; basic Search evidence is separate. Token rotation invalidates prior context/receipts with 409. See [Jude status](JUDE_ASSISTANT.md#search-conversation-context-and-current-qualification), [search readiness](SEARCH_READINESS_AND_RELEVANCE.md) and [Search v2](ASSISTANT_JOINT_SEARCH_V2.md#contract-and-compatibility). |
+| Story preparation | Automatic refinement keeps the original and produces a separate `needs_review` draft. The explicitly approved story role is `Qwen3-4B-Instruct-2507`; its source and native qualification do not make the new role or UI live. | Human review of editorial quality remains open. Output is not saved into a family story automatically; this does not establish general factual quality or family acceptance. |
 | Voice path | Existing foreground voice and local speech components remain available. A real local synthesized-audio request completed through transcription, receipt, search and reply audio in 28.688 seconds (ASR: 10.297 seconds). | The user deferred the physical microphone/speaker trial. This single run is not broad device or family acceptance. |
 | Grouping | Page-local similar-photo stacks are distinct from library-wide photo-stack indexing and from activity/shared-memory grouping. Library-wide stacks and their 15-minute SYSTEM index refresh were activated on the October 29 Windows installation, with an initial sweep and two subsequent successful runs. Activity/shared-memory grouping remains separate and is not broadly activated. | Do not infer whole-library coverage or broad activity/shared-memory activation from two gallery group pages. See [library stacks](LIBRARY_PHOTO_STACKS.md) and [grouping design](ACTIVITY_GROUPING_DESIGN.md). |
 | Other clients | The October 29 API/Web rollout did not update Android phone or TV. Their installed versions and acceptance evidence remain tied to their own release records. | The new Web UI may be opened in a phone browser, but that does not update or qualify the native phone/TV apps; no broad family/device trial has occurred. |
@@ -25,18 +43,48 @@ rollout evidence.
 
 ## October 30 delivery and candidates
 
-Compact chat, bounded conversation context and date-to-media follow-ups are
-actually deployed from `daa7e14`, not yet merged into main. Two model/tool turns,
-history, request recovery, an existing unsaved AI draft and the first new SYSTEM
-grouping refresh passed on Windows. A three-turn voice test refused acceptance;
-a follow-up-year bug is fixed locally but not deployed.
+The October 30 Windows rollout from `daa7e14` delivered compact chat and bounded
+conversation projection; it is not yet merged into main. It does not establish
+current same-session Search follow-up. The R10 attempt was refused, not passed;
+see the [Jude guide](JUDE_ASSISTANT.md#search-conversation-context-and-current-qualification)
+for the observed outcome, existing basic Search boundary and separate live-check
+status.
 
-Saved-story refinement remains local source. Natural bilingual TTS failed
-before activation; the existing voice is unchanged. No refined household story
-or physical microphone/speaker outcome has been observed from these increments.
-[Current status](PROJECT_STATUS.md#october-30-delivery-and-remaining-increments)
-and the [Jude guide](JUDE_ASSISTANT.md#october-30-conversation-and-refinement)
-separate the delivered behavior from these remaining tasks.
+The separately qualified Windows story runtime remains distinct from the current
+source and native qualification. The story and assistant roles are described in
+the [role and privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md).
+The new roles and name-grounding/cloud-preview UI are not live: the current
+Windows rollout was blocked before effects. Search and grouping remain stable.
+
+## Story grounding, model qualification and review
+
+Local name grounding uses authorized family context and public canonical names;
+it does not guess a private identity. A three-case native qualification
+(active cancellation, real 30-second expiry and birthday-story generation) completed
+in 134.468 seconds on a private SQLite copy; the production original and
+retained draft were unchanged. Contextual spelling and repetition improved,
+but the title remained imperfect, so editorial quality review remains open.
+This is native qualification evidence, not a live rollout or physical/family
+acceptance. See the [role and privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md)
+for case and runtime details.
+
+Optional cloud proofreading is off and unconfigured by default. It requires an
+exact outgoing-request preview followed by explicit consent for each send; there
+is no background cloud send. Suggestions remain unsaved and review-required.
+Assistant continuity uses app-managed, authorized retained conversation
+history, not model self-memory or an unconstrained agent. See [story grounding
+and optional cloud proofreading](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md),
+[architecture](ARCHITECTURE.md) and the [Jude guide](JUDE_ASSISTANT.md).
+
+## Grounding data and privacy boundary
+
+The public singer catalog is local, offline data; private names come only from
+authorized family context. Ambiguous private identities are not guessed. The
+author-only cloud proofreading source flow is off and unconfigured by default;
+it shows the exact outgoing request and requires explicit per-send consent. No
+actual cloud request or new Windows rollout is claimed. Search and grouping are
+unchanged. See [grounding and cloud proofreading](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md)
+for data licenses, configuration and privacy limits.
 
 ## Acceptance rules
 

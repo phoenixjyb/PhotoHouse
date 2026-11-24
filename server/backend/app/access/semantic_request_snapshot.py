@@ -679,6 +679,7 @@ def _query_templates():
     from .visual_vector_loader import _COLUMNS
     scoped = d.SCOPE
     templates = {
+        d.SCOPED_TEXT_CAPTIONS_SQL,
         "SELECT a.id,CASE WHEN length(CAST(a.mime AS BLOB))<=256 THEN a.mime END,a.width,a.height,a.duration_sec,CASE WHEN length(CAST(a.taken_at AS BLOB))<=64 THEN a.taken_at END,length(CAST(a.taken_at AS BLOB)) FROM assets a JOIN access_asset_libraries m ON m.asset_id=a.id WHERE m.library_id=? AND (a.status='active' OR a.status IS NULL) ORDER BY a.id",
         'SELECT x.id,x.asset_id,CASE WHEN length(CAST(x.text AS BLOB))<=4096 THEN x.text END,length(CAST(x.text AS BLOB)),length(CAST(x.text AS BLOB)),x.user_edited,x.superseded FROM captions x' + scoped + ' ORDER BY x.id',
         'SELECT x.id,x.asset_id,x.person_id,x.label_source FROM face_detections x' + scoped + ' ORDER BY x.id',

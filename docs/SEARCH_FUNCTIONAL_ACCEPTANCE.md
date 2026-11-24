@@ -22,6 +22,7 @@ library access. Deployment and activation need their own reviewed decision.
 | Correct or clarify a request | Preserve unresolved conditions and the current authorized scope. A short reply or recovery cannot silently discard an exclusion. | [Rewording](SCENE_QUERY_REWORDING.md), pending-intent and bilingual correction fixtures. No automatic query translation or identity inference. |
 | Reopen a refused scene request | Recover the exact private draft and reword guidance, hide older cards, and require an explicit fresh scope read before another scene submission. | The negotiated projection below; store, HTTP, controller and browser regressions are required. It performs no search or model call. |
 | Browse and recover ranked results | Keep exact rank order and finite presentation scores; bind continuations and recovery to the current query, source and authorization. | [Protected workspace paging](SCENE_RESULT_PAGING.md), direct-API pagination and model-free saved-result recovery tests. Older servers keep the disclosed first-20 fallback. Paging does not replace the saved conversation scope. |
+| Select photos and videos for a story | Preserve up to 24 deliberate choices across pages of the same result set; freshly check source and access before opening exactly those frames in the existing editor. | [Search-to-story flow](SEARCH_TO_STORY.md), generated ordinary/scene paging, ordered selection and stale-handoff regressions. A new/refined search clears selection; opening never saves. Local source is separate from deployment and family review. |
 | Cancel, lose the connection or retry | Distinguish unconfirmed delivery from a confirmed refusal. Read receipts without resubmitting; preserve edits and discard stale cards after scope changes. | Workspace/controller recovery and cancellation fixtures. Cooperative cancellation is not proof that a remote model process was terminated. |
 | Change membership, source or policy | Recheck access and source before releasing derived results and after provider work. Refuse stale bindings and retain a safe recovery path. | Semantic mutation, membership, postflight-policy and deadline tests. Recovering the owner's own input text is not a claim that an old result remains valid. |
 | See incomplete coverage or no matches | Explain searchable coverage and omissions. An empty or partial result must not claim that an object/person is absent from the whole library. | [Eligibility contract](SEMANTIC_ELIGIBILITY_DESIGN.md), coverage HTTP/UI fixtures. Qualification-only omissions do not authorize production omissions. |
@@ -92,6 +93,12 @@ observations. It does not repair historical receipts or prove global host
 freedom. No operation is replayed by this document.
 
 ## Remaining completion work
+
+The November 14 local increment adds ordinary result continuation and explicit
+story selection, plus grounded bilingual clarification and measured generated
+browser journeys. See [the flow and its evidence boundaries](SEARCH_TO_STORY.md).
+This update does not resume hosted CI, change the historical failed semantic
+qualification, or activate semantic serving.
 
 - The independently reviewed refusal-reopen source checkpoint is committed. Its
   focused HTTP checks passed 8 tests / 14 subtests, controller checks passed

@@ -1,89 +1,173 @@
 # Product roadmap
 
-Reviewed **2026-10-30**. The October 29 API/Web rollout is recorded in
-[Project Status](PROJECT_STATUS.md) and the
-[release record](RELEASE_2026-10-29.md). This roadmap tracks product work after
-that bounded rollout. Android and TV were not updated by it; no broad
-family/device acceptance is claimed.
+## Interactive product view / 交互式产品视图
 
-The October 30 candidate UI, follow-up parser, story refinement and natural
-bilingual voice remain **undelivered** while rollout is in progress. Keep them
-out of the delivered feature list until success is recorded. The October 29
-release remains the last completed delivery evidence.
+[English / 中文 dashboard](product-roadmap/index.html) · [Maintenance / 维护](product-roadmap/README.md).
+
+The bilingual snapshot separates recorded delivery, source-ready work, gaps and next steps.
+双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows route: `/roadmap/` (deployment is tracked separately).
+
+
+Reviewed **2026-11-24** against the current source tree. This is a product plan,
+not a live service check. Use [Project Status](PROJECT_STATUS.md) and the dated
+[release record](RELEASE_2026-10-29.md) for delivery evidence; older entries in
+this file retain the date and scope of their original evidence.
+
+## Current capability and evidence
+
+- **Web design:** the November 24 local redesign consolidates the assistant
+  surface, gives the conversation its actual scroll owner, and checks native
+  dialog keyboard access, contrast, touch controls and narrow/text-resized
+  layouts. Explicit language changes can resume freshly authorized idle private
+  conversation text and an unsent draft without replay. This is generated browser evidence, not a new Windows release
+  ([design review](WEB_DESIGN_REVIEW_2026-11-24.md)).
+- **Story review:** selected-source proposals now offer an explicit original-wording
+  disclosure beside the editable chapter text, using the existing volatile snapshot.
+  From selected assistant results, the author can also explicitly copy the latest
+  user message as optional writing direction. The focused local generated journey
+  passed 18 checkpoints; save remains explicit
+  ([editor contract](SELECTED_SOURCE_STORY_UI.md)).
+- **Source:** the November 14 local increment adds ordinary result paging,
+  fresh current-result validation, and selected-frame handoff to the existing
+  story editor ([details](SEARCH_TO_STORY.md)). The selection lasts only in the
+  current page. It does not restore after reopening a conversation.
+- **Conversation and tools:** account/library-scoped assistant threads, bounded
+  history and request recovery are implemented. The PH-A1 v1 media-search tool
+  profile is a versioned regression fixture, not a permanent three-tool product
+  limit. Future profiles can add reviewed, task-specific domain operations;
+  none grants generic shell, file, browser, network, deployment or coding-agent
+  powers. See the [household AI plan](LOCAL_AGENT_DEVELOPMENT_PLAN.md) and
+  [assistant architecture](ARCHITECTURE.md#conversation-and-refinement).
+- **Stories:** selected-source drafting returns an unsaved proposal marked for
+  review. The October 30 HTTPS run checked one authorized-source, nonempty,
+  unsaved `needs_review` draft; it does not prove saved-story refinement,
+  broader agent behavior, prose quality, or family acceptance. Saved-story
+  refinement remains a separate source and runtime qualification path
+  ([refinement contract](STORY_REFINEMENT.md)).
+- **Deployment and acceptance:** source checks, a narrow dated service result,
+  broader rollout, installed phone/TV clients and family review are separate
+  evidence. The October 29 release and October 30 API/Web status remain dated
+  records, not claims about current service state. No new Android/TV delivery or
+  broad household acceptance is claimed here. The November 24 startup failure
+  and rollback remain historical failures. The qualified task-query revision is
+  now used by the recovered Windows API/UI, and the bilingual `/roadmap/` is
+  externally browser-verified and confirmed by the owner. The final Windows
+  result passed 16 existing HTTPS checks and nine roadmap checks; native Jobs,
+  controller cleanup, offline audit and explicit release completed after recovery
+  of a lost transport response. No service replay was needed to recover that result.
+
+The scheduled grouping binding also passed a natural SYSTEM run. Its actual
+status was `REFRESH_DEFERRED`, with zero updates: this verifies the source/owner
+binding and native closure, not a complete grouping sweep or household quality.
+Current API/UI recovery does not establish new Android/TV delivery. GitHub
+Actions remains cost-paused; all new checks are local or separately recorded
+Windows operations.
+
+Search relevance on real household material, story quality, and in-home
+interaction need family review. Generated fixtures establish software behavior,
+not those product outcomes.
 
 ## Active priorities
 
-### 1. Finish conversational follow-up in the current search session
+### 1. Make an assistant conversation useful from question to follow-up
 
-Carry the current search result into a useful follow-up flow: answer questions
-from the visible, authorized cards, clarify when evidence is insufficient, and
-keep the result and source context current through paging and recovery. Preserve
-explicit user actions and review boundaries. The current assistant profile is
-read-only with bounded result projections; it is not a general-purpose agent.
+Search, supported refinements, clarification and bounded conversation history
+already exist. The next gap is a family-reviewed conversation that explains
+what visible, authorized evidence supports an answer, distinguishes an
+observation from an inference, and says when the source cannot support a claim.
+Refinements must preserve only intended filters; ambiguous or unsupported
+conditions must not broaden the search. Keep domain operations versioned,
+read-only unless a separate explicit action is chosen, and checked by the
+application on every use. Evolve capability profiles around reviewed family
+tasks; retain PH-A1 v1 as a regression fixture.
 
-**Exit:** grounded answers identify their available sources, stale or recovered
-results cannot trigger actions, and browser/API journeys cover English and
-Chinese, paging, clarification, cancellation and recovery. Measure relevance
-against reviewed cases; passing fixtures alone does not establish real-library
-coverage.
+**Deliver:** a small bilingual set of realistic tasks covering find, explain,
+clarify, refine and explicitly open or select a result. For example, after a
+September search is refined to Jane, ask what supports a “by the river” claim:
+the assistant should cite visible authorized evidence or say it cannot tell.
+For each family-reviewed task, record evidence correctness, lost conditions,
+user corrections and unsupported-claim refusals with relevant source references.
+Generated fixtures remain software evidence, not full-library relevance; do not
+invent a global pass threshold before measuring representative cases.
 
-### 2. Make grouped browsing useful for imports and devices
+### 2. Resume safely and make cancellation understandable
 
-Clarify how grouped search results relate to page-local similar-photo stacks,
-library-wide photo stacks and activity/shared-memory groups. Keep these as
-separate capabilities with separate readiness evidence. Help users browse groups
-and newly imported media without implying that two grouped result pages represent
-the whole library.
+Normal conversation reopening can recover the latest valid result. Complete the
+remaining pending and uncertain-turn experience without reviving stale cards or
+hidden context: revalidate account, library, source revisions and authorization,
+and ask for a fresh search when the old scope cannot be restored. Define an
+explicit cancel action and its visible outcome for an in-flight assistant turn.
+Navigation, closing a view and a lost connection must not silently mean either
+“cancelled” or “completed”; preserve the existing owner through reconciliation.
 
-**Exit:** current source and coverage are visible, membership changes are handled
-safely, and each grouping surface has its own rollout and family review. The existing library-wide index is already active in the dated Windows release;
-activity/shared-memory grouping retains its separate activation requirements.
+**Deliver:** generated browser/API journeys for reopen, pending and uncertain
+requests, stale or revoked scope, explicit cancel, disconnect/navigation, and a
+late response. Show the submitted request, its current receipt state and the
+next available action without duplicating a turn or restoring unauthorized
+cards. Keep search, story and speech cancellation semantics distinct where
+their owners differ.
 
-### 3. Connect selected results to existing reviewed stories and playback
+### 3. Complete the reviewable story path
 
-Let a user move selected, currently authorized results into the existing story
-editor or a supported reader/playback action. Preserve source attribution, current
-revisions and explicit review/save. AI-prepared wording stays unsaved until the
-family reviews and chooses to adopt it; story quality remains a human review
-question.
+Keep selected-result handoff, selected-source drafting and saved-story
+refinement as distinct steps. The local source carries selected frames across
+result pages and opens the existing editor after a fresh current-result check,
+but selections are page-only and do not return when a conversation is reopened.
+Add safe resumption bound to the same current result and scope, clearing choices
+after a refined search or changed thread, account, library or source revision.
+The selected-source editor now has an explicit original-wording disclosure and
+editable direction handoff; next, keep source attribution, uncertain wording
+and current revisions clear in review. The author must explicitly adopt or
+reject a proposal; saving, publishing, sharing or changing access never follows
+from generation alone.
 
-**Exit:** selection and source bindings survive ordinary navigation and paging,
-stale scope is rejected, and no model output or playback starts a save or access
-change implicitly.
+**Deliver:** first test selection resumption and stale source/revision refusal
+with generated data. Reconcile the saved-story refinement's last recorded
+transport and native-quality gates against the intended runtime, then prepare
+one requested story proposal for family review. Record the original and
+proposal separately, note names, facts and style the reviewer accepts or
+corrects, and preserve explicit adoption. Do not turn one story's feedback into
+a claim of general quality or a background rewrite of other stories.
 
-### 4. Address caption failures only when observed
+### 4. Check usefulness with the household before widening scope
 
-Investigate a specific current caption failure with its receipt and source state.
-Repair only the affected work under the existing scoped-worker and recovery
-contracts. Do not treat a historical failure, task state or batch count as a
-current failure inventory.
+After the software paths above are reviewable, invite a bounded family trial of
+those same tasks on the intended client and library. Capture the user's task
+outcome, correction/retry, whether the cited material was the right memory, and
+whether a suggested story change preserved the family's meaning and voice. Use
+the findings to choose the next slice. Keep phone, TV, Web, local tests, service
+delivery and physical use as separate evidence; do not infer acceptance from
+another client's release or a successful API request.
 
-**Exit:** each targeted item has a current, attributable outcome and original
-media remains unchanged. Broader caption or host polling is not a roadmap action.
+Grouped browsing remains a separate capability: explain how page-local
+similar-photo suggestions, library-wide stacks and activity/shared-memory
+groups differ, and report source/coverage for the group actually shown. Resume
+that work when a concrete import, grouping or device journey needs it. Investigate
+caption work only from a current, attributable failure; historical counts are
+not a current backlog.
 
-### 5. Run the deferred physical voice trial when the user is ready
+## Product and operating guardrails
 
-The real local voice path completed a synthesized-audio-to-reply run; that does not
-substitute for the physical microphone/speaker trial. The user explicitly deferred
-that trial. When resumed, use the existing visible Start/Pause/End consent and
-record scenario-specific ASR, TTS, playback, echo and interruption observations.
-
-**Exit:** real-device observations and family feedback are recorded separately
-from local tests and service state. No automatic recording or background voice
-session is introduced.
-
-## Delivery and evidence boundaries
-
-- Local source/tests, rollout, installed clients, physical-device use and family
-  acceptance are separate claims.
-- Broad semantic relevance and full-library coverage remain unproven. Do not
-  broaden or describe any unqualified provider or grouping path as accepted.
-- Android phone and TV require their own source, release and acceptance evidence;
-  the October 29 API/Web rollout did not update them.
-- GitHub Actions is cost-paused. Continue with local checks only unless the owner
-  explicitly resumes it.
-- Do not start new Windows host polling or shared-host work as part of these
-  priorities. A future operation needs its own current evidence and coordination.
+- The physical microphone/speaker trial remains deferred by the user. If
+  resumed, use the existing visible Start/Pause/End consent and record
+  scenario-specific recognition, reply, playback and interruption observations.
+  Do not introduce background capture. Natural speech/cloud options remain
+  separate opt-in previews; cloud proofreading stays off until each request is
+  shown and explicitly approved ([story grounding and cloud proofreading](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md)).
+- Keep Rust an optional, isolated fast path for a measured hot operation. Python
+  remains the authority for product policy and unsupported-input behavior;
+  require exact parity on qualified cases and do not use component benchmark
+  ratios as household latency claims ([literal-search Rust boundary](LITERAL_SEARCH_RUST.md)).
+- Put new Windows bulk scratch and generated work on the admitted D: work
+  volume. Reuse shared caches only after checking their source/version and
+  retention; keep cache copies bounded, avoid indefinite duplicate backup sets,
+  and preserve known-good rollback and failed/uncertain evidence under the
+  [storage policy](STORAGE_POLICY.md).
+- GitHub Actions remains cost-paused. Use focused local checks for source work;
+  do not enable, trigger or rerun GitHub workflows.
+- Keep public examples free of household endpoints, credentials, private
+  configuration and runtime paths. Source changes, host operations and
+  family/device acceptance remain separate decisions and evidence.
 
 ## Historical implementation and delivery notes
 

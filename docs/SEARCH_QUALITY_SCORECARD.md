@@ -1,5 +1,12 @@
 # Private search quality scorecard
 
+The November 14 [search-to-story and continuity work](SEARCH_TO_STORY.md) has a
+separate generated browser diagnostic. It records click-to-render timings,
+pending feedback and turn-request counts for typed English/Chinese journeys.
+It is not a relevance scorecard, native-service benchmark, or pass of the frozen
+semantic latency target. Do not pool those samples with the private evaluator
+metrics described below.
+
 `check_private_search.py --cases` accepts the existing version 1 envelope and
 the version 2 envelope. Both run the same bounded, read-only search turns and
 retain source and membership checks. If authorization, readiness, source

@@ -50,10 +50,13 @@ class SyntheticEngine:
         self.calls = []
         self.closed = False
         self.text = json.dumps(narrative())
+        self.responses = None
         self.fail_close = False
 
     def complete(self, generation, settings):
         self.calls.append((generation, settings))
+        if self.responses is not None:
+            return self.responses.pop(0)
         return self.text
 
     def close(self):
@@ -143,6 +146,15 @@ class GGUFWorkerTests(unittest.TestCase):
         corrupted = worker.WorkerUnavailable('generation'); corrupted.phase = ['private']
         self.assertEqual((2, '{"status":"failed","category":"worker_unavailable"}'),
                          worker._failure_record(corrupted))
+
+    def test_reusable_cli_parser_keeps_standalone_settings_and_unknown_flag_refusal(self):
+        args = worker.build_argument_parser().parse_args([
+            '--execute', '--model-file', self.settings.model_file,
+            '--model-sha256', self.settings.model_sha256,
+            '--model-label', self.settings.model])
+        self.assertEqual(self.settings, worker.worker_settings_from_args(args))
+        with self.assertRaises(worker.WorkerUnavailable):
+            worker.build_argument_parser().parse_args(['--unrecognized-private-option'])
 
     def test_success_closes_before_private_response_and_keeps_request_unchanged(self):
         before = self.request.read_bytes()
@@ -407,6 +419,8 @@ class GGUFWorkerTests(unittest.TestCase):
             engine.close()
         options=binding.Llama.call_args.kwargs
         self.assertEqual(str(self.model),options['model_path']);self.assertEqual(0,options['n_gpu_layers'])
+        self.assertEqual(64,options['n_batch']);self.assertEqual(64,options['n_ubatch'])
+        self.assertEqual(8192,options['n_ctx']);self.assertEqual(2,options['n_threads'])
         self.assertFalse(options['offload_kqv']);self.assertFalse(options['op_offload'])
         self.assertFalse(options['verbose']);self.assertFalse(options['use_mmap'])
         self.assertNotIn('rpc_servers',options)
@@ -457,6 +471,38 @@ class GGUFWorkerTests(unittest.TestCase):
         self.assertEqual(system.encode(), calls[1].args[0])
         self.assertEqual(('Task: ' + body).encode(), calls[3].args[0])
         self.assertTrue(calls[-1].args[0].endswith(b'<|im_start|>assistant\n'))
+
+    def test_v10_plan_and_prose_payloads_use_real_chat_prompt_framing(self):
+        from backend.app.access.memory_narrative import (
+            STORY_REFINEMENT_PROFILE, _public_name_repair_payload,
+        )
+        value = bundle()
+        value.update(version=4,
+            target={'type': 'story', 'id': '12345678-1234-4234-8234-123456789abc',
+                    'revision': 1},
+            story_refinement={'profile': STORY_REFINEMENT_PROFILE, 'people': []})
+        value.pop('selection_revision')
+        for source in value['sources']:
+            source.pop('source_kind')
+        clean = worker._validate_bundle(value, allow_draft=True)
+        payloads = [
+            _public_name_repair_payload(clean, MODEL),
+            worker._generation_payload(clean, 'narrative', MODEL,
+                                       public_name_suggestions=[]),
+        ]
+        native = native_mock()
+        native.tokenize.return_value = [1, 2, 3]
+        engine = worker._LlamaEngine.__new__(worker._LlamaEngine)
+        engine.model = native
+        for payload in payloads:
+            system, separator, body = payload['prompt'].partition('\nTask: ')
+            self.assertTrue(system)
+            self.assertTrue(separator)
+            self.assertTrue(body)
+            tokens, stop = engine._chat_prompt_tokens(payload['prompt'])
+            self.assertTrue(tokens)
+            self.assertEqual(['<|im_end|>'], stop)
+        self.assertEqual(10, native.tokenize.call_count)
 
     def test_missing_or_invalid_chat_template_has_no_raw_prompt_fallback(self):
         native = native_mock()
@@ -573,6 +619,7 @@ class GGUFWorkerTests(unittest.TestCase):
         options=binding.Llama.call_args.kwargs
         self.assertEqual(1,options['main_gpu'])
         self.assertEqual(8,options['n_gpu_layers'])
+        self.assertEqual(256,options['n_batch']);self.assertEqual(256,options['n_ubatch'])
         self.assertEqual(0,options['split_mode'])
         self.assertTrue(options['offload_kqv'])
         # An ordinal is configuration, not a claim about physical GPU identity.

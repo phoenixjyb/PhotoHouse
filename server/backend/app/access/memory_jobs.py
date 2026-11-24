@@ -10,7 +10,7 @@ import uuid
 from .library import _integer
 from .memory_books import MemoryBooks, _stored as book_content
 from .memory_stories import MemoryStories, _json, source_policy
-from .memory_narrative import MAX_OUTPUT_BYTES, validate_companion
+from .memory_narrative import MAX_OUTPUT_BYTES, STORY_REFINEMENT_PROFILE, validate_companion
 from .memory_source_refs import available as source_refs_available, current_groups
 from .service import AccessDenied, AccessService
 from .stories import _uuid
@@ -72,7 +72,7 @@ def parent(access, library, member, target_type, ident):
 
 
 def context(access, library, member, target_type, ident, instructions='', recent=None,
-            *, editorial_context=False, principal_neutral_fingerprint=False):
+            *, editorial_context=False, principal_neutral_fingerprint=False, full_narration=False):
     """Model-sized context plus a digest of full current authorized dependencies.
 
     Only consented, accepted contributions enter model prompts. Family text,
@@ -81,7 +81,8 @@ def context(access, library, member, target_type, ident, instructions='', recent
     or synthesized here. Deterministic excerpts bound prompts; full evidence
     remains in its original store, outside job input JSON.
     """
-    if type(editorial_context) is not bool or type(principal_neutral_fingerprint) is not bool:
+    if (type(editorial_context) is not bool or type(principal_neutral_fingerprint) is not bool
+            or type(full_narration) is not bool):
         raise TransportError(400, 'Invalid memoir context choice')
     if editorial_context and target_type != 'book':
         raise TransportError(400, 'Memoir context requires a book')
@@ -199,13 +200,32 @@ def context(access, library, member, target_type, ident, instructions='', recent
                 prefix = clipped(story['title'], 512 - len(suffix.encode('utf-8')) - 4)
                 chapter_title = prefix + ' · ' + suffix
             chapters.append({'id': chapter['id'] if target_type == 'story' else story['id'] + '-' + chapter['id'],
-                'title': clipped(chapter_title, 512), 'narration': clipped(chapter['narration'], 1024),
+                'title': clipped(chapter_title, 512), 'narration': (chapter['narration'] if full_narration else clipped(chapter['narration'], 1024)),
                 'asset_ids': assets, 'evidence_ids': list(dict.fromkeys(refs))})
     bundle = {'version': 1, 'library_id': library,
         'target': {'type': target_type, 'id': ident, 'revision': row['revision']},
         'language': stored['language'], 'title': clipped(stored['title'], 512),
         'theme': stored.get('theme', 'memoir'), 'chapters': chapters, 'sources': sources,
         'recent_turns': recent or [], 'instructions': instructions}
+    if full_narration:
+        if target_type != 'story':
+            raise TransportError(400, 'Story refinement requires a story')
+        from .memory_narrative import refinement_language
+        bundle['language'] = refinement_language(
+            bundle['language'], [chapter['narration'] for chapter in chapters])
+        resolver = getattr(access, 'story_refinement_context', None)
+        if resolver is None:
+            from .story_refinement_context import resolve
+            resolver = resolve
+        people, identity_digest = resolver(
+            access, library, member, '\n'.join(
+                [bundle['title'], *(c['narration'] for c in chapters),
+                 *(s['text'] for s in sources)]),
+            selected_asset_ids=tuple(dict.fromkeys(
+                asset for chapter in chapters for asset in chapter['asset_ids'])))
+        bundle.update(version=4, story_refinement={
+            'profile': STORY_REFINEMENT_PROFILE, 'people': people})
+        dependencies.append([STORY_REFINEMENT_PROFILE, people, identity_digest])
     from .memory_narrative import _validate_bundle
     try:
         bundle = _validate_bundle(bundle)
@@ -257,13 +277,46 @@ class MemoryJobs:
         selected = editorial_choice(_json(row['input_json']), enabled=self.editorial_enabled)
         return context(self.access, library, member,
             'story' if row['story_id'] else 'book', row['story_id'] or row['book_id'],
-            editorial_context=selected)
+            editorial_context=selected, full_narration=(row['story_id'] is not None and
+                row['mutation_id'] == self.auto_refinement_mutation(
+                    row['story_id'], row['base_revision'], row['actor_id'])))
 
     def _ready(self):
         tables = {r[0] for r in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if not {'access_memory_jobs', 'access_memory_conversations', 'access_memory_turns',
                 'access_memory_contributions'} <= tables:
             raise TransportError(503, 'Memory companion unavailable')
+
+    @staticmethod
+    def auto_refinement_mutation(story_id, revision, author_id):
+        """Stable private queue key for one author's proposal on one revision."""
+        return str(uuid.uuid5(uuid.NAMESPACE_URL,
+            f'photohouse:auto-story-refine:{STORY_REFINEMENT_PROFILE}:{story_id}:{revision}:{author_id}'))
+
+    def auto_refinement(self, member, library, story_id, revision):
+        """Read only this member's current, exact-revision automatic proposal."""
+        self._ready()
+        mutation = self.auto_refinement_mutation(
+            story_id, revision, member['account_id'])
+        row = self.access._one('''SELECT * FROM access_memory_jobs
+            WHERE actor_id=? AND library_id=? AND story_id=? AND book_id IS NULL
+              AND kind='narrative' AND mutation_id=? AND base_revision=? AND expires_at>?''',
+            (member['account_id'], library, story_id, mutation, revision,
+             self.access._now()))
+        if row is None:
+            return None
+        result = self._present(row)
+        from .story_refinement_context import StoryRefinementContextBusy
+        try:
+            _, current, _ = self._job_context(library, member, row)
+        except StoryRefinementContextBusy:
+            result.update(state='deferred', result=None, error_code=None)
+            return result
+        except (TransportError, ValueError, TypeError, UnicodeError, RecursionError):
+            current = None
+        if current != row['source_fingerprint']:
+            result.update(state='stale', result=None, error_code='source_changed')
+        return result
 
     def _conversation(self, token, library, ident):
         member = self.access._require(token, library, 'library.read')
@@ -399,7 +452,9 @@ class MemoryJobs:
     def _queue(self, member, library, target_type, target_id, revision, mutation, controls,
                conversation=None, turn=None):
         bundle, fingerprint, can_edit = context(self.access, library, member, target_type, target_id,
-            editorial_context=editorial_choice(controls, enabled=self.editorial_enabled))
+            editorial_context=editorial_choice(controls, enabled=self.editorial_enabled),
+            full_narration=(target_type == 'story' and mutation ==
+                self.auto_refinement_mutation(target_id, revision, member['account_id'])))
         if conversation is None and not can_edit:
             raise AccessDenied('Access denied')
         body_digest = digest([library, target_type, target_id, revision, controls, conversation, turn])
@@ -436,7 +491,7 @@ class MemoryJobs:
     def _present(row):
         return {'version': 1, **{k: row[k] for k in ('id','kind','state',
                 'created_at','updated_at','expires_at','error_code')},
-                'result': _json(row['output_json']) if row['output_json'] else None,
+                'result': _json(row['output_json']) if row['state'] == 'ready' and row['output_json'] else None,
                 'needs_review': True, 'base_revision': str(row['base_revision'])}
 
     def narrative(self, token, library, target_type, target_id, revision, mutation, instructions,
@@ -514,8 +569,11 @@ class MemoryJobs:
                 self.db.execute('UPDATE access_memory_turns SET reply_text=NULL,reply_kind=NULL WHERE job_id=?', (ident,))
                 row = self.access._one('SELECT * FROM access_memory_jobs WHERE id=?', (ident,))
             elif row['state']=='ready':
+                from .story_refinement_context import StoryRefinementContextBusy
                 try:
                     _, current, _ = self._job_context(library, member, row)
+                except StoryRefinementContextBusy:
+                    return self._present({**row, 'state':'deferred', 'output_json':None, 'error_code':None})
                 except (TransportError, ValueError, TypeError, UnicodeError, RecursionError):
                     current = None
                 if current != row['source_fingerprint']:

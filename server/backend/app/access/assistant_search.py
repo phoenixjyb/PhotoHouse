@@ -69,12 +69,15 @@ class AssistantSearchReads(d.DiscoveryReads):
         self._check = lambda: None
         self._prepared_description = None
         self._prepared_description_key = None
+        self._text_query_cache = search_text.TextQueryCache()
 
     def _extra_source(self, index, source, read, check):
+        # Scope only IDs first, then read captions in primary-key order. This
+        # avoids sorting complete text rows while keeping projection/order.
+        # Filter superseded rows at the outer lookup, so the inner asset-ID
+        # index scan never loads caption text rows merely to select their IDs.
         captions = source['captions'] if 'caption' in index.enabled else read(
-            'SELECT x.id,x.asset_id,CASE WHEN length(CAST(x.text AS BLOB))<=4096 THEN x.text END,'
-            'length(CAST(x.text AS BLOB)),length(CAST(x.text AS BLOB)),x.user_edited,x.superseded '
-            'FROM captions x' + d.SCOPE + ' AND x.superseded=0 ORDER BY x.id', (index.library_id,))
+            d.SCOPED_TEXT_CAPTIONS_SQL, (index.library_id,))
         # Same child AND parent scope as Stories.search; no revisions/history,
         # annotation drafts, saved multi-image stories, or assistant receipts.
         notes = read('''SELECT s.id,s.asset_id,s.revision,
@@ -179,7 +182,8 @@ class AssistantSearchReads(d.DiscoveryReads):
         if row and ('text' in filters or 'descriptive' in filters) and '_normalized_sources' not in row:
             row['_normalized_sources'] = search_text.normalize_sources(row['text_sources'], self._check)
         text_match, text_reasons, text_quality = search_text.match_text(
-            {'text_sources': row.get('_normalized_sources', ())} if row else {}, filters, self._check)
+            {'text_sources': row.get('_normalized_sources', ())} if row else {}, filters, self._check,
+            query_cache=self._text_query_cache)
         if not text_match:
             return False, []
         description_match = True

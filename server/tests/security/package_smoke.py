@@ -65,6 +65,8 @@ with ExitStack() as guards:
     from fastapi.testclient import TestClient
     import app
     from app.main import create_app
+    import app.product_roadmap as product_roadmap
+    from app.product_roadmap import FILES as roadmap_files
     from app.access.runtime import RuntimeConfiguration, REQUIRED_REVISION
     import provision_access
     import staging_app
@@ -79,13 +81,28 @@ with ExitStack() as guards:
     import prepare_access_database
     from app.access import (captions, duplicates, promotion, task_recovery,
                             upload, upload_schema, upload_transport)
-    for module in (app,provision_access,staging_app,prepare_access_database,prepared_video,
+    for module in (app,product_roadmap,provision_access,staging_app,prepare_access_database,prepared_video,
                    home_memory_envelope, memory_book_planning, apply_memory_collaboration_schema,
                    apply_memory_sources_schema, apply_memory_editorial_schema,
                    serve_windows_tts, windows_tts,
                    captions, duplicates, promotion, task_recovery,
                    upload, upload_schema, upload_transport):
         assert Path(module.__file__).resolve().is_relative_to(root)
+    application=create_app()
+    roadmap_root=root/'backend/app/product-roadmap'
+    with TestClient(application,base_url='https://photohouse.test') as roadmap_client:
+        for language in ('en','zh'):
+            redirect=roadmap_client.get('/roadmap?lang='+language+'&view=full',
+                follow_redirects=False)
+            assert redirect.status_code==307
+            assert redirect.headers['location']=='/roadmap/?lang='+language+'&view=full'
+            page=roadmap_client.get('/roadmap/?lang='+language)
+            assert page.status_code==200
+            assert page.content==(roadmap_root/'index.html').read_bytes()
+            for name in roadmap_files:
+                response=roadmap_client.get('/roadmap/'+name+'?lang='+language)
+                assert response.status_code==200, (language,name,response.status_code)
+                assert response.content==(roadmap_root/name).read_bytes(), (language,name)
     speech_plan=io.StringIO()
     with redirect_stdout(speech_plan):
         assert serve_windows_tts.main([])==0
@@ -109,7 +126,7 @@ with ExitStack() as guards:
                 '--backup',str(data/'candidate-backup.sqlite'),'--out',str(data/'candidate.sqlite'),
                 '--reviewed-snapshot-digest',reviewed,'--authority-reference','synthetic-authority',
                 '--quiescence-reference','synthetic-stopped-workers'])==0
-        with TestClient(create_app(),base_url='https://photohouse.test') as client:
+        with TestClient(application,base_url='https://photohouse.test') as client:
             assert client.get('/auth/session').status_code==503
         runtime=RuntimeConfiguration(database,'https://photohouse.test',(data/'originals',),data/'derived')
         with TestClient(runtime.build_app(),base_url='https://photohouse.test') as client:
@@ -259,6 +276,6 @@ with ExitStack() as guards:
             assert client.get('/ui/story-draft-store.js').status_code==200
 print(json.dumps({'package_smoke':'pass','synthetic_migration_revision':REQUIRED_REVISION,
     'asgi_checks':7,'operator_commands':19,'database_preparation_commands':9,
-    'saved_story_checks':7,'local_tts_plan_checks':1,
+    'saved_story_checks':7,'local_tts_plan_checks':1,'roadmap_checks':14,
     'application_listeners_opened':False,'internal_loopback_socketpairs':internal_pairs,
     'live_data_accessed':False}))

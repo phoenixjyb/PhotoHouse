@@ -61,7 +61,7 @@ class ImportIsolationTests(unittest.TestCase):
                 self.assertIs(main.app.state.assistant_semantic_search_enabled, False)
                 self.assertIs(main.app.state.selected_story_drafts_enabled, False)
                 self.assertIs(main.app.state.selected_story_ui_enabled, False)
-                self.assertEqual(len(main.app.routes), 182)
+                self.assertEqual(len(main.app.routes), 188)
                 self.assertEqual(main.app.router.on_startup, [])
                 self.assertEqual(main.app.router.on_shutdown, [])
                 self.assertEqual(logging.getLogger().handlers, handlers)
@@ -177,6 +177,7 @@ class ClosedApplicationTests(unittest.TestCase):
             ('GET', '/assistant/workspace/v1/capabilities'),
             ('GET', '/assistant/workspace/v1/scene-search-capabilities'),
             ('GET', '/assistant/workspace/v1/scene-page-capabilities'),
+            ('GET', '/assistant/workspace/v1/result-page-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
             ('GET', '/assistant/workspace/v1/saved-memory-action-capabilities'),
@@ -193,6 +194,8 @@ class ClosedApplicationTests(unittest.TestCase):
             ('POST', '/assistant/workspace/v1/preferences/reset'),
             ('POST', '/assistant/workspace/v1/threads/{thread_id}/turns'),
             ('POST', '/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/scene-pages'),
+            ('POST', '/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/result-pages'),
+            ('GET', '/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/current-result'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/requests/{turn_id}/memory-cards/{ordinal}'),
             ('GET', '/assistant/workspace/v1/threads/{thread_id}/history'),
@@ -202,11 +205,13 @@ class ClosedApplicationTests(unittest.TestCase):
             ('GET', '/ui/assistant-private-workspace.js'),
             ('GET', '/ui/voice-session-control.js'),
             ('GET', '/ui/voice-turn-timing.js'),
+            ('POST', '/memory-stories/{story_id}/proofreading/preview'),
+            ('POST', '/memory-stories/{story_id}/proofreading/confirm'),
         }
         actual = [(method, route.path) for route in self.app.routes for method in route.methods]
         self.assertEqual(len(actual), len(set(actual)))
         self.assertEqual(set(actual), expected)
-        self.assertEqual(len(actual), 182)
+        self.assertEqual(len(actual), 188)
         for method, path in actual:
             sample = (path.replace('{ident}', '11111111-1111-4111-8111-111111111111')
                       .replace('{upload_id}', '1'*32)
@@ -285,6 +290,30 @@ class ClosedApplicationTests(unittest.TestCase):
             self.assertEqual(response.headers['location'], '/ui')
             self.assertNotIn('private-synthetic', response.text)
         self.assertEqual(self.client.get('/ui/access/index.html').status_code, 403)
+
+    def test_only_verified_versioned_ui_files_keep_a_public_cache_policy(self):
+        shell = self.client.get('/ui')
+        self.assert_private(shell)
+        app_url = re.search(r'/ui/app\.js\?v=[0-9a-f]{64}', shell.text)[0]
+        versioned = self.client.get(app_url, headers={'Accept-Encoding': 'gzip'})
+        self.assertEqual(versioned.status_code, 200)
+        self.assertEqual(versioned.headers['cache-control'], 'public, max-age=31536000, immutable')
+        self.assertEqual(versioned.headers['vary'], 'Accept-Encoding')
+        self.assertEqual(versioned.headers['content-encoding'], 'gzip')
+        self.assertEqual(versioned.headers['cross-origin-resource-policy'], 'same-origin')
+        self.assertNotIn('pragma', versioned.headers)
+        self.assertEqual(versioned.content, (ROOT / 'backend/app/ui/access/app.js').read_bytes())
+
+        self.assert_private(self.client.get('/ui/app.js'))
+        stale = self.client.get('/ui/app.js?v=' + '0' * 64)
+        self.assertEqual(stale.status_code, 404)
+        self.assert_private(stale)
+        session = self.client.get('/auth/session', headers=self.headers())
+        self.assertEqual(session.status_code, 200)
+        self.assert_private(session)
+        media = self.client.get('/assets/101/media?library=family-a', headers=self.headers())
+        self.assertEqual(media.status_code, 200)
+        self.assert_private(media)
 
     def test_head_denials_have_no_asgi_body_even_before_an_http_server(self):
         import asyncio

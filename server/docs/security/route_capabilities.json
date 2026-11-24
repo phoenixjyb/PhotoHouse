@@ -4842,6 +4842,20 @@
    ],
    "current_control": "Exact closed-boundary handler, strict query, current account/library recheck, healthy server-owned supervisor and Search v2; returns closed availability/profile only. No model or tool invoked.",
    "gap": "Optional local source. Actual Windows model/tool execution, current deployment and device acceptance remain separate evidence."
+  },
+  {
+   "source": "backend/app/access/memory_stories.py",
+   "owner": "router",
+   "method": "POST",
+   "path": "/memory-stories/{story_id}/refinement",
+   "handler": "refine_memory",
+   "surface": "photohouse",
+   "scope": "One current authorized saved story and exact revision; private per-author proposal only",
+   "capabilities": [
+    "story.write"
+   ],
+   "current_control": "Explicit auto-refinement runtime and health gate; current membership and author/owner authorization, cookie CSRF, stable per-revision job identity, current source fingerprint; original text unchanged",
+   "gap": "Review proposal only; does not adopt wording, publish, or change original recordings"
   }
  ]
 }

@@ -1,5 +1,14 @@
 # Current project status
 
+> **24 November 2026 update:** The bilingual product roadmap is live on Windows
+> and owner-confirmed. The current integration source reconciles qualified Rust
+> history and optional TV approval, and repairs conversational Search, authored
+> chapter preservation, Jude recovery and extracted-package closure. These later
+> source fixes do not imply a new installed client or Windows feature activation.
+> See [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md). The dated records
+> below remain historical evidence; GitHub CI is still cost-paused.
+
+
 Maintained **2026-10-30** against merged source `e808e30` and the accepted
 October 29 and October 30 Windows delivery records. The later deployed `daa7e14`
 increment is not yet merged into main. This update reads retained operation

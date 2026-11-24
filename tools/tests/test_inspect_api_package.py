@@ -21,11 +21,13 @@ class InspectApiPackageTests(unittest.TestCase):
         self.repo = self.root / 'repo'
         self.repo.mkdir()
         (self.repo / 'server/scripts').mkdir(parents=True)
-        (self.repo / 'server/scripts/build_staging_package.py').write_text(mini_builder)
+        # The verifier deliberately compares exact committed bytes. Preserve LF
+        # here even when Python's native text writer defaults to Windows CRLF.
+        (self.repo / 'server/scripts/build_staging_package.py').write_bytes(mini_builder.encode())
         (self.repo / 'server/.env').write_text('SYNTHETIC_NOT_A_SECRET=yes\n')
         (self.repo / 'server/a.py').write_text('SAFE = True\n')
         (self.repo / 'server/b.txt').write_text('source only\n')
-        for args in (['init', '-q'], ['add', 'server'], ['-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.test', 'commit', '-qm', 'fixture']):
+        for args in (['init', '-q'], ['config', 'core.autocrlf', 'false'], ['add', 'server'], ['-c', 'user.name=Synthetic', '-c', 'user.email=synthetic@example.test', 'commit', '-qm', 'fixture']):
             subprocess.run(['git', *args], cwd=self.repo, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=self.repo, text=True).strip()
         s = importlib.util.spec_from_file_location('test_package_builder', self.repo / 'server/scripts/build_staging_package.py')
@@ -43,6 +45,14 @@ class InspectApiPackageTests(unittest.TestCase):
         self.archive.write_bytes(raw)
         self.archive.chmod(384)
         self.digest = hashlib.sha256(raw).hexdigest()
+
+    def symlink(self, path, target, **kwargs):
+        try:
+            path.symlink_to(target, **kwargs)
+        except OSError as error:
+            if os.name == 'nt' and error.winerror == 1314:
+                self.skipTest('Windows token lacks symlink privilege; no privilege escalation in local checks')
+            raise
 
     def inspect(self, commit=None, digest=None, schema_revision='a0c9d2e4f817'):
         return tool.inspect(self.archive, self.commit if commit is None else commit,
@@ -134,7 +144,7 @@ class InspectApiPackageTests(unittest.TestCase):
 
     def test_symlink_parent_refused(self):
         link = self.root / 'directory-link'
-        link.symlink_to(self.root, target_is_directory=True)
+        self.symlink(link, self.root, target_is_directory=True)
         with self.assertRaisesRegex(tool.Refused, 'archive_path_invalid'):
             tool.inspect(link / 'source.zip', self.commit, self.digest, self.git, self.git_sha)
 
@@ -204,7 +214,7 @@ class InspectApiPackageTests(unittest.TestCase):
 
     def test_git_symlink_path_refused(self):
         path = self.root / 'git-link'
-        path.symlink_to(self.git)
+        self.symlink(path, self.git)
         with self.assertRaisesRegex(tool.Refused, 'git_path_invalid'):
             tool.inspect(self.archive, self.commit, self.digest, path, self.git_sha)
 
@@ -215,6 +225,7 @@ class InspectApiPackageTests(unittest.TestCase):
 
             def __init__(self):
                 self.stdout = BytesIO(b'X' * 200000)
+                self.stdin = None
                 self.returncode = 0
 
             def wait(self, timeout=None):
@@ -244,7 +255,9 @@ class InspectApiPackageTests(unittest.TestCase):
     def test_missing_promised_blob_cannot_trigger_lazy_fetch(self):
         oid = subprocess.check_output([str(self.git), 'rev-parse', self.commit + ':server/a.py'], cwd=self.repo, text=True).strip()
         objects = self.repo / '.git/objects'
-        (objects / oid[:2] / oid[2:]).unlink()
+        missing = objects / oid[:2] / oid[2:]
+        missing.chmod(0o600)  # Git loose objects have the Windows read-only bit.
+        missing.unlink()
         for key, value in [('extensions.partialClone', 'origin'), ('remote.origin.promisor', 'true'), ('remote.origin.url', str(self.root / 'absent-generated-local-remote'))]:
             subprocess.run([str(self.git), 'config', key, value], cwd=self.repo, check=True)
         commands = []
@@ -253,10 +266,34 @@ class InspectApiPackageTests(unittest.TestCase):
         def capture(arguments, **kwargs):
             commands.append((arguments, kwargs['env']))
             return original(arguments, **kwargs)
-        with patch.object(tool.subprocess, 'Popen', side_effect=capture), self.assertRaisesRegex(tool.Refused, 'local_git_failed'):
+        with patch.object(tool.subprocess, 'Popen', side_effect=capture), self.assertRaises(ValueError):
             self.inspect()
         self.assertTrue(commands)
         self.assertTrue(all(('--no-lazy-fetch' in args and env.get('GIT_NO_LAZY_FETCH') == '1' for args, env in commands)))
+
+    def test_attestation_uses_bounded_batches_instead_of_per_blob_processes(self):
+        commands = []
+        original = tool.subprocess.Popen
+        def capture(arguments, **kwargs):
+            commands.append(arguments)
+            return original(arguments, **kwargs)
+        with patch.object(tool.subprocess, 'Popen', side_effect=capture):
+            self.assertEqual(self.inspect()['status'], 'verified')
+        self.assertEqual(len(commands), 5)
+        self.assertEqual(sum('--batch-check' in args for args in commands), 1)
+        self.assertEqual(sum('--batch' in args for args in commands), 1)
+
+    def test_batch_input_and_output_bounds_are_checked_before_launch(self):
+        git = tool.LocalGit(self.git, self.git_sha)
+        for args, kwargs in (
+            (('show',), {'input_data': b'a' * 40 + b'\n', 'output_limit': 80}),
+            (('cat-file', '--batch'), {'input_data': b'HEAD\n', 'output_limit': 80}),
+            (('cat-file', '--batch'), {'input_data': b'a' * 40 + b'\n', 'output_limit': 16_100_001}),
+        ):
+            with self.subTest(args=args, kwargs=kwargs), patch.object(tool.subprocess, 'Popen') as launch:
+                with self.assertRaises(tool.Refused):
+                    git(*args, **kwargs)
+                launch.assert_not_called()
 
     def test_source_budget_timeout_refused(self):
         with patch.object(tool.time, 'monotonic', side_effect=[0, 31]), self.assertRaisesRegex(tool.Refused, 'source_inspection_timeout'):

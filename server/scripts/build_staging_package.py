@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,7 @@ GIT_PREFIX = 'server/'
 DEFAULT_MIGRATION_REVISION = 'a0c9d2e4f817'
 MIGRATION_REVISIONS = (DEFAULT_MIGRATION_REVISION, 'e7c1a9d5b304', 'f2a8c5d1e640')
 FILES = (
+    'backend/app/work_storage.py',
     'backend/alembic.ini',
     'backend/app/__init__.py',
     'backend/app/access/__init__.py',
@@ -66,6 +68,8 @@ FILES = (
     'backend/app/access/semantic_search.py',
     'backend/app/access/semantic_streaming.py',
     'backend/app/access/semantic_bulk_vectors.py',
+    'backend/app/access/vector_acceleration.py',
+    'backend/app/access/vector_kernel_reference/__init__.py',
     'backend/app/access/semantic_eligibility.py',
     'backend/app/access/semantic_request_snapshot.py',
     'backend/app/access/semantic_search_transport.py',
@@ -88,6 +92,10 @@ FILES = (
     'backend/app/access/captions.py',
     'backend/app/access/credentials.py',
     'backend/app/access/date_hints.py',
+    'backend/app/access/data/PINYIN-DATA-LICENSE.txt',
+    'backend/app/access/data/pinyin-readings.json',
+    'backend/app/access/data/story-grounding-provenance.json',
+    'backend/app/access/data/story-public-names.json',
     'backend/app/access/discovery.py',
     'backend/app/access/discovery_index.py',
     'backend/app/access/discovery_provider.py',
@@ -101,6 +109,9 @@ FILES = (
     'backend/app/access/library_organization.py',
     'backend/app/access/photo_stacks.py',
     'backend/app/access/photo_stack_index.py',
+    'backend/app/access/photo_stack_acceleration.py',
+    'backend/app/access/photo_stack_reference/__init__.py',
+    'backend/app/access/photo_stack_reference/algorithm.py',
     'backend/app/access/photo_stack_schema.py',
     'backend/app/access/library_photo_stacks.py',
     'backend/app/access/photo_stack_transport.py',
@@ -157,6 +168,10 @@ FILES = (
     'backend/app/access/service.py',
     'backend/app/access/stories.py',
     'backend/app/access/story_outline.py',
+    'backend/app/access/story_cloud_proofreading.py',
+    'backend/app/access/story_cloud_transport.py',
+    'backend/app/access/story_name_grounding.py',
+    'backend/app/access/story_refinement_context.py',
     'backend/app/access/story_schema.py',
     'backend/app/access/story_titles.py',
     'backend/app/access/story_workspace.py',
@@ -190,6 +205,12 @@ FILES = (
     'backend/app/home_feed.py',
     'backend/app/ingest.py',
     'backend/app/main.py',
+    'backend/app/product_roadmap.py',
+    'backend/app/product-roadmap/app.js',
+    'backend/app/product-roadmap/data.js',
+    'backend/app/product-roadmap/index.html',
+    'backend/app/product-roadmap/roadmap.md',
+    'backend/app/product-roadmap/styles.css',
     'backend/app/photo_delivery.py',
     'backend/app/routers/ui.py',
     'backend/app/scoped_face_worker.py',
@@ -326,33 +347,93 @@ FILES = (
     'scripts/qualify_reviewed_semantic_scenes.py',
     'scripts/serve_semantic_text.py',
     'scripts/staging_app.py',
+    'scripts/rust_overlay_selection.py',
 )
 
+# Keep archive paths stable while sourcing the public roadmap from its one
+# maintained repository location. These five mappings are intentionally fixed.
+ROADMAP_ASSET_SOURCES = {
+    'backend/app/product-roadmap/app.js': 'docs/product-roadmap/app.js',
+    'backend/app/product-roadmap/data.js': 'docs/product-roadmap/data.js',
+    'backend/app/product-roadmap/index.html': 'docs/product-roadmap/index.html',
+    'backend/app/product-roadmap/roadmap.md': 'docs/product-roadmap/roadmap.md',
+    'backend/app/product-roadmap/styles.css': 'docs/product-roadmap/styles.css',
+}
+SOURCE_BY_PACKAGE = {name: GIT_PREFIX + name for name in FILES}
+SOURCE_BY_PACKAGE.update(ROADMAP_ASSET_SOURCES)
 
-def git(*args):
-    return subprocess.check_output(['git',*args],cwd=ROOT,stderr=subprocess.DEVNULL)
+
+def git(*args, input_data=None, output_limit=2_000_000):
+    raw = subprocess.check_output(['git', *args], cwd=ROOT,
+        input=input_data, stderr=subprocess.DEVNULL, timeout=10,
+        env=dict(os.environ, GIT_NO_REPLACE_OBJECTS='1', GIT_NO_LAZY_FETCH='1'))
+    if len(raw) > output_limit:
+        raise ValueError('Source object output exceeded')
+    return raw
+
+
+def _read_blobs(entries):
+    # Check every size before requesting any bodies. One immutable object may
+    # occur at several allowlisted paths; charge its size for each path.
+    oids = tuple(dict.fromkeys(entries.values()))
+    request = ''.join(oid + '\n' for oid in oids).encode('ascii')
+    metadata = git('cat-file', '--batch-check', input_data=request,
+                   output_limit=80 * len(oids)).splitlines()
+    if len(metadata) != len(oids):
+        raise ValueError('Source object metadata invalid')
+    sizes = {}
+    for oid, line in zip(oids, metadata):
+        match = re.fullmatch(oid.encode() + rb' blob (0|[1-9][0-9]{0,6})', line)
+        if match is None:
+            raise ValueError('Source object metadata invalid')
+        sizes[oid] = int(match[1])
+    if (any(size > 2_000_000 for size in sizes.values()) or
+            sum(sizes[oid] for oid in entries.values()) > 16_000_000):
+        raise ValueError('Source package size exceeded')
+    raw = git('cat-file', '--batch', input_data=request,
+              output_limit=sum(sizes.values()) + 80 * len(oids))
+    blobs, offset = {}, 0
+    for oid in oids:
+        header = (oid + ' blob ' + str(sizes[oid]) + '\n').encode('ascii')
+        if raw[offset:offset + len(header)] != header:
+            raise ValueError('Source object header invalid')
+        offset += len(header)
+        body = raw[offset:offset + sizes[oid]]
+        offset += sizes[oid]
+        if len(body) != sizes[oid] or raw[offset:offset + 1] != b'\n':
+            raise ValueError('Source object body incomplete')
+        offset += 1
+        digest = hashlib.sha1(b'blob ' + str(len(body)).encode() + b'\0' + body,
+                              usedforsecurity=False).hexdigest()
+        if digest != oid:
+            raise ValueError('Source object identity invalid')
+        blobs[oid] = body
+    if offset != len(raw):
+        raise ValueError('Source object trailing output')
+    return {name: blobs[entries[name]] for name in FILES}
 
 
 def source_files(commit):
     if not re.fullmatch('[0-9a-f]{40}',commit) or git('cat-file','-t',commit).strip() != b'commit':
         raise ValueError('Explicit full commit required')
-    records = git('ls-tree','-r','-z','--full-tree',commit,'--',*(GIT_PREFIX+name for name in FILES)).split(b'\0')
+    source_to_package = {source: package for package, source in SOURCE_BY_PACKAGE.items()}
+    if len(source_to_package) != len(FILES) or set(SOURCE_BY_PACKAGE) != set(FILES):
+        raise ValueError('Fixed source mapping invalid')
+    records = git('ls-tree','-r','-z','--full-tree',commit,'--',*SOURCE_BY_PACKAGE.values()).split(b'\0')
     entries = {}
     for record in filter(None,records):
         identity,name = record.split(b'\t',1)
         mode,kind,oid = identity.decode('ascii').split()
-        if mode not in ('100644','100755') or kind != 'blob':
+        if mode not in ('100644','100755') or kind != 'blob' or not re.fullmatch('[0-9a-f]{40}', oid):
             raise ValueError('Only regular source blobs are allowed')
         path = name.decode('utf-8')
-        if not path.startswith(GIT_PREFIX):
-            raise ValueError('Selected source path escaped monorepo prefix')
-        entries[path[len(GIT_PREFIX):]] = oid
+        package_path = source_to_package.get(path)
+        if package_path is None:
+            raise ValueError('Selected source path escaped fixed mapping')
+        entries[package_path] = oid
     if set(entries) != set(FILES):
         raise ValueError('Selected commit lacks required source files')
-    sizes = {name:int(git('cat-file','-s',oid)) for name,oid in entries.items()}
-    if any(size > 2_000_000 for size in sizes.values()) or sum(sizes.values()) > 16_000_000:
-        raise ValueError('Source package size exceeded')
-    return {name:git('cat-file','blob',entries[name]) for name in FILES}
+    return _read_blobs(entries)
 
 
 def package_bytes(commit, files, *, schema_revision=DEFAULT_MIGRATION_REVISION):
@@ -375,23 +456,29 @@ def package_bytes(commit, files, *, schema_revision=DEFAULT_MIGRATION_REVISION):
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--commit',required=True)
-    parser.add_argument('--out',type=Path,required=True)
+    parser.add_argument('--out',type=Path)
     parser.add_argument('--schema-revision', choices=MIGRATION_REVISIONS,
                         default=DEFAULT_MIGRATION_REVISION,
                         help='Target API schema contract recorded in the source-only manifest')
     args=parser.parse_args(argv)
     try:
+        sys.path.insert(0, str(ROOT / 'backend'))
+        from app import work_storage as storage
+        if args.out is None:
+            args.out = storage.new_run() / 'api-source.zip'
+        storage.target(args.out)
         if (not args.out.is_absolute() or '..' in args.out.parts
                 or args.out.parent.resolve(strict=True) != args.out.parent):
             raise ValueError('Explicit direct output required')
         data=package_bytes(args.commit,source_files(args.commit),schema_revision=args.schema_revision)
         flags=os.O_WRONLY|os.O_CREAT|os.O_EXCL|getattr(os,'O_BINARY',0)
-        with os.fdopen(os.open(args.out,flags,0o600),'wb') as stream:
-            stream.write(data); stream.flush(); os.fsync(stream.fileno())
+        with storage.operation([args.out], [(args.out, 'API source archive', len(data))]):
+            with os.fdopen(os.open(args.out,flags,0o600),'wb') as stream:
+                stream.write(data); stream.flush(); os.fsync(stream.fileno())
         print(json.dumps({'source_commit':args.commit,'source_files':len(FILES),
-            'zip_sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'deployed':False}))
+            'zip_sha256':hashlib.sha256(data).hexdigest(),'bytes':len(data),'output':str(args.out),'deployed':False}))
         return 0
-    except (ValueError,OSError,subprocess.CalledProcessError):
+    except (ValueError,OSError,subprocess.SubprocessError):
         print('Source packaging refused; no existing output was overwritten.')
         return 2
 
