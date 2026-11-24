@@ -167,7 +167,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "FEATURES.md · RELEASE_2026-10-29.md",
             "zh": "FEATURES.md · RELEASE_2026-10-29.md"
           },
-          "href": "roadmap.md#privacy-library-access",
           "at": "2026-10-29",
           "state": "verified"
         }
@@ -217,7 +216,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "UPLOAD_PREPARATION.md · PHONE_IMPORT_STATUS.md",
             "zh": "UPLOAD_PREPARATION.md · PHONE_IMPORT_STATUS.md"
           },
-          "href": "roadmap.md#upload-and-review",
           "at": "2026-10-29",
           "state": "verified"
         }
@@ -267,7 +265,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "Family intake delivery and owner confirmation",
             "zh": "家庭导入交付与所有者确认"
           },
-          "href": "roadmap.md#automatic-intake",
           "at": "2026-11-22",
           "state": "verified"
         }
@@ -317,7 +314,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "FEATURES.md · PROJECT_STATUS.md",
             "zh": "FEATURES.md · PROJECT_STATUS.md"
           },
-          "href": "roadmap.md#caption-processing",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -367,7 +363,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "FEATURES.md · RELEASE_2026-10-29.md",
             "zh": "FEATURES.md · RELEASE_2026-10-29.md"
           },
-          "href": "roadmap.md#protected-media-browsing",
           "at": "2026-10-29",
           "state": "verified"
         }
@@ -417,7 +412,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "FEATURES.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md",
             "zh": "FEATURES.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md"
           },
-          "href": "roadmap.md#literal-search",
           "at": "2026-11-23",
           "state": "verified"
         }
@@ -467,7 +461,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "SEMANTIC_SEARCH_PILOT.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md",
             "zh": "SEMANTIC_SEARCH_PILOT.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md"
           },
-          "href": "roadmap.md#semantic-search",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -517,7 +510,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "RELEASE_2026-10-29.md · assistant contracts",
             "zh": "RELEASE_2026-10-29.md · 助手契约"
           },
-          "href": "roadmap.md#assistant-search",
           "at": "2026-10-29",
           "state": "verified"
         }
@@ -567,7 +559,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "ROADMAP.md · assistant Search contracts",
             "zh": "ROADMAP.md · 助手搜索契约"
           },
-          "href": "roadmap.md#assistant-followups",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -617,7 +608,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "ROADMAP.md · FEATURES.md",
             "zh": "ROADMAP.md · FEATURES.md"
           },
-          "href": "roadmap.md#search-result-handoff",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -667,7 +657,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "LIBRARY_PHOTO_STACKS.md · FEATURES.md",
             "zh": "LIBRARY_PHOTO_STACKS.md · FEATURES.md"
           },
-          "href": "roadmap.md#page-local-photo-stacks",
           "at": "2026-10-26",
           "state": "verified"
         }
@@ -717,7 +706,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "LIBRARY_PHOTO_STACKS.md · Windows deployment reconciliation",
             "zh": "LIBRARY_PHOTO_STACKS.md · Windows 部署衔接记录"
           },
-          "href": "roadmap.md#library-wide-photo-stacks",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -767,7 +755,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "ROADMAP.md · FEATURES.md",
             "zh": "ROADMAP.md · FEATURES.md"
           },
-          "href": "roadmap.md#activity-memory-grouping",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -817,7 +804,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "FEATURES.md · FEATURES.md",
             "zh": "FEATURES.md · FEATURES.md"
           },
-          "href": "roadmap.md#story-editor-and-sources",
           "at": "2026-11-23",
           "state": "partial"
         }
@@ -867,7 +853,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "ROADMAP.md · local story role contracts",
             "zh": "ROADMAP.md · 本地故事角色契约"
           },
-          "href": "roadmap.md#saved-story-refinement",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -917,7 +902,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "ROADMAP.md · story role implementation",
             "zh": "ROADMAP.md · 故事角色实现"
           },
-          "href": "roadmap.md#name-grounded-story-roles",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -967,7 +951,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "ROADMAP.md · cloud proofreading contracts",
             "zh": "ROADMAP.md · 云端校对契约"
           },
-          "href": "roadmap.md#cloud-proofreading",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -1017,7 +1000,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "FEATURES.md · ROADMAP.md",
             "zh": "FEATURES.md · ROADMAP.md"
           },
-          "href": "roadmap.md#oral-history-intake-foundation",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -1067,7 +1049,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "ROADMAP.md · assistant lifecycle contracts",
             "zh": "ROADMAP.md · 助手生命周期契约"
           },
-          "href": "roadmap.md#assistant-history-and-recovery",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -1117,7 +1098,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "RELEASE_2026-10-29.md · voice delivery",
             "zh": "RELEASE_2026-10-29.md · 语音交付"
           },
-          "href": "roadmap.md#foreground-voice",
           "at": "2026-10-29",
           "state": "verified"
         }
@@ -1167,7 +1147,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "FEATURES.md · FEATURES.md",
             "zh": "FEATURES.md · FEATURES.md"
           },
-          "href": "roadmap.md#native-phone-and-tv-clients",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -1217,7 +1196,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "ROADMAP.md · Windows component recovery",
             "zh": "ROADMAP.md · Windows 组件恢复"
           },
-          "href": "roadmap.md#web-assistant-redesign",
           "at": "2026-11-24",
           "state": "partial"
         }
@@ -1267,7 +1245,6 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "Rust rollout delivery · component qualification",
             "zh": "Rust 部署交付 · 组件验证"
           },
-          "href": "roadmap.md#rust-production-kernels",
           "at": "2026-11-21",
           "state": "verified"
         }
@@ -1317,20 +1294,11 @@ window.PHOTOHOUSE_ROADMAP = {
             "en": "WINDOWS_PLAYBACK_QUERY_BUDGET.md · Rust qualification",
             "zh": "WINDOWS_PLAYBACK_QUERY_BUDGET.md · Rust 验证"
           },
-          "href": "roadmap.md#semantic-rust-reuse",
           "at": "2026-11-24",
           "state": "verified"
         }
       ]
     }
   ],
-  "reference_links": [
-    {
-      "label": {
-        "en": "Bilingual roadmap notes",
-        "zh": "双语路线图说明"
-      },
-      "href": "roadmap.md"
-    }
-  ]
+  "reference_links": []
 };
