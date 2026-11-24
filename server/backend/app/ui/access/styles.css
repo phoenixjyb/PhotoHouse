@@ -904,6 +904,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .memory-group-split-choice .memory-group-item img { height:3.5rem; }
 .memory-group-split-choice .memory-group-item figcaption { padding-block:0; }
 .memory-group-split-choice:has(input:checked) { border-color:currentColor; }
+.memory-group-day-items { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr)); gap:.6rem; }
+.memory-group-day-item { padding:.6rem; border:1px solid var(--line,#ddd3c4); border-radius:.65rem; min-width:0; }
+.memory-group-day-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.4rem; }
+.memory-group-day-controls span { color:var(--muted,#796f62); }
+.memory-group-day-add,.memory-group-day-load { min-height:48px; }
+.memory-group-day-status:empty { margin:0; }
 .memory-group-prose { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; }
 .memory-group-byline { color:var(--muted,#796f62); font-size:.9em; }
 .memory-group-source { border-left:3px solid var(--accent,#ad583b); padding-inline-start:1rem; margin-block:1rem; }
