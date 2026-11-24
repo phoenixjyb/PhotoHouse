@@ -638,8 +638,8 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "Generated English, Chinese and mixed-language turns can change the month or weekend while retaining the other filters. The Web assistant offers Any date for review and Send.",
-          "zh": "合成的中英文及混合语言流程可更改月份或周末，同时保留其他筛选条件。网页助手可将「不限日期」填入输入框，供用户确认后发送。"
+          "en": "Generated English, Chinese and mixed-language turns retain reviewed people while changing the month or media. The Web assistant can prepare Any date or Any person for review and Send.",
+          "zh": "合成的中英文及混合语言流程可更改月份或媒体类型，同时保留已核对的人物条件。网页助手可填入「不限日期」或「不限人物」，供用户确认后发送。"
         }
       ],
       "gaps": [

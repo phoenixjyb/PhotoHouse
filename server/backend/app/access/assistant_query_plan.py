@@ -70,7 +70,7 @@ _REFINE_OPEN = re.compile(
     r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
     r'refine(?a:\b)|only(?a:\b)|filter(?a:\b)|just(?a:\b)|what about(?a:\b)|how about(?a:\b)|same but(?a:\b)|make it(?a:\b))', re.I)
 _KEEP_PEOPLE_DIRECTIVE = re.compile(
-    r'不要(?:改变|更改|变更)人物(?:条件|筛选)|'
+    r'(?:不要(?:改变|更改|变更)|保留)人物(?:条件|筛选)|'
     r'(?<![a-z0-9_])keep\s+(?:(?:the\s+)?same\s+|the\s+)?'
     r'(?:person|people)\s+filter(?![a-z0-9_])', re.I)
 _CONNECTORS = re.compile(r'(?a:\b)(and|or|both|together|with)(?a:\b)|和|跟|与|及|或者|或|一起|同时', re.I)
@@ -144,8 +144,6 @@ def query_mode(words):
     value = d.fold(words.strip())
     if _MEDIA_ONLY_REFINEMENT.fullmatch(value):
         return 'refine'
-    if _KEEP_PEOPLE_DIRECTIVE.fullmatch(value):
-        return 'refine'
     if _SEARCH_OPEN.match(value):
         return 'search'
     if _REFINE_OPEN.match(value):
@@ -153,6 +151,8 @@ def query_mode(words):
     value = re.sub(r'[。！？.!?]+$', '', value).strip()
     value = re.sub(r'^(?:请|please)\s*', '', value)
     value = re.sub(r'(?:呢|嗎|吗)$', '', value).strip()
+    if _KEEP_PEOPLE_DIRECTIVE.fullmatch(value):
+        return 'refine'
     if _DATE_ONLY_WORD.fullmatch(value) or _BARE_MEDIA.fullmatch(value):
         return 'refine'
     if _DATE_ONLY_SHAPE.fullmatch(value):

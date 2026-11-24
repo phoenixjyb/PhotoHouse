@@ -8,7 +8,7 @@ import re
 from . import discovery as d
 from .assistant_query_plan import (QueryPlan, plan_query as _plan_query,
                                    query_mode as _query_mode, _SEARCH_OPEN, _MEDIA)
-from .assistant_query_plan import _QUOTE, _consumed_label, _remove_occurrences
+from .assistant_query_plan import _CONTENT_INTRO, _QUOTE, _consumed_label, _remove_occurrences
 
 
 _SLOTS = {
@@ -35,7 +35,7 @@ _SEPARATORS = re.compile(r'^[\s,，;；、。.!！?？]+|[\s,，;；、。.!！?
 # These words refer only to the explicit people filter of a revalidated search.
 # They never select people from visible faces, gender, a roster or kinship data.
 _REFERENCE_FORMS = {
-    'group': (r'same\s+people', r'同一批人'),
+    'group': (r'(?:keep\s+(?:the\s+)?)?same\s+people', r'同一批人'),
     'plural': (r'these\s+people|those\s+people|them|they|their', r'他们|她们|这些人|那些人'),
     # Chinese exclusions are lexical compounds, not a semantic guess about
     # the surrounding sentence. Keep a standalone 他 available as a reference.
@@ -145,8 +145,10 @@ def _operations(words):
     surface = _QUOTE.sub(lambda match: ' ' * len(match.group(0)), surface)
     spans = sorted((match.start(), match.end(), slot)
                    for slot, pattern in _REMOVALS.items() for match in pattern.finditer(surface))
+    content = _CONTENT_INTRO.search(surface)
+    syntax_end = content.start() if content else len(surface)
     references = [(match.start(), match.end(), match.lastgroup)
-                  for match in _PEOPLE_REFERENCES.finditer(surface)]
+                  for match in _PEOPLE_REFERENCES.finditer(surface, 0, syntax_end)]
     residue = list(surface)
     for start, end, _ in spans + references:
         residue[start:end] = ' ' * (end - start)

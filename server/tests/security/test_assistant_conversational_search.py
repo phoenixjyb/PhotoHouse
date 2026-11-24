@@ -313,6 +313,20 @@ class AssistantConversationalSearchTests(unittest.TestCase):
         self.assertEqual(conflict['filters'], videos['filters'])
         self.assertEqual(conflict['context'], videos['context'])
 
+    def test_keep_people_words_inside_content_remain_literal(self):
+        self.enable_v2_text_schema()
+        for words, text in (
+                ('find photos containing keep the same people', 'keep the same people'),
+                ('find photos containing "keep the same people"', 'keep the same people'),
+                ('找包含“保留人物条件”的照片', '保留人物条件')):
+            with self.subTest(words=words):
+                response = self.turn(words, version=2)
+                self.assertEqual(response.status_code, 200, response.text)
+                body = response.json()
+                self.assertEqual(body['kind'], 'results', body)
+                self.assertEqual(body['filters'], {'media': ['image'], 'text': text})
+                self.assertIsNone(body['effect'])
+
     def test_negation_unknown_constraints_and_unknown_names_never_broaden(self):
         phrases = (
             '帮我找一下不要示例儿童的照片',
