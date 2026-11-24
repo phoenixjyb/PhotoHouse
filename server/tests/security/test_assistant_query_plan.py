@@ -46,6 +46,27 @@ def plan(words, *, entities=None, previous=None, refine=False):
 
 
 class AssistantQueryPlanTests(unittest.TestCase):
+    def test_explicit_weekends_are_two_calendar_days_in_each_language(self):
+        for words, media, start, end in (
+                ('find photos from last weekend', 'image', '2032-09-11', '2032-09-12'),
+                ('找上个周末的照片', 'image', '2032-09-11', '2032-09-12'),
+                ('find 上週末的photos', 'image', '2032-09-11', '2032-09-12'),
+                ('show videos this weekend', 'video', '2032-09-18', '2032-09-19'),
+                ('找本周末的视频', 'video', '2032-09-18', '2032-09-19')):
+            with self.subTest(words=words):
+                result = plan(words)
+                self.assertEqual(result.status, 'ready', result)
+                self.assertEqual(result.filters, {
+                    'media': [media], 'date': {'from': start, 'to': end}})
+        across_year = plan_query('find photos from last weekend', now=datetime(2032, 1, 1),
+                                 entities=resolved_entities(''), previous_filters=None,
+                                 refine=False)
+        self.assertEqual(across_year.filters['date'], {'from': '2031-12-27', 'to': '2031-12-28'})
+        quoted = plan('find photos containing "last weekend"')
+        self.assertEqual(quoted.filters, {'media': ['image'], 'text': 'last weekend'})
+        conflicting = plan('find photos from last weekend and this month')
+        self.assertEqual(conflicting.status, 'clarification', conflicting)
+
     def test_month_refinement_keeps_the_prior_year_but_explicit_dates_override(self):
         prior = {'media': ['video'], 'date': {'from': '2031-09-01', 'to': '2031-09-30'}}
         for words in ('改成十月份', '换成10月', 'only October'):

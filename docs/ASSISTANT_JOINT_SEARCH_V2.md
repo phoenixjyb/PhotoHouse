@@ -143,7 +143,10 @@ access, or execute mutations. V1 parsing and wire contracts remain independent.
 Quoted content remains opaque; unknown modifiers, unsupported negation and
 conflicting dates/media require clarification. Today/yesterday, Monday-based
 weeks, calendar months/years and explicit Chinese/English dates use the supplied
-server civil date. No user-time-zone inference is introduced by this increment.
+server civil date. “This weekend” or “本周末” selects Saturday through Sunday of
+that week. “Last weekend” or “上周末” selects those two days of the previous week.
+A weekend follow-up changes the date and retains the current search's other
+conditions.
 Resolved names that overlap a date or media keyword (for example, `May`) also
 require clarification instead of silently adding that condition. Quoted text
 must fit the existing 512-byte text filter limit; a longer literal asks for a

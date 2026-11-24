@@ -586,6 +586,24 @@ class SearchRefinementHttpTests(unittest.TestCase):
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
 
+    def test_a_weekend_followup_keeps_the_reviewed_people_media_and_text(self):
+        initial = self.fixture.turn(
+            'find Sample Child and Sample Adult photos in September 2032 containing "海边"').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.assertEqual([item['id'] for item in initial['items']], ['103'])
+        # The fixed HTTP clock is 2033-05-18 UTC; the earlier search date is
+        # deliberately different to prove the new relative date uses that clock.
+        expected = {**initial['filters'], 'date': {'from': '2033-05-14', 'to': '2033-05-15'}}
+        for words in ('last weekend', '上週末', '改成 last weekend'):
+            with self.subTest(words=words):
+                result = self.fixture.turn(words, context=initial['context']).json()
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual(result['filters'], expected)
+                self.assertEqual(result['items'], [])
+                self.assertEqual(result['total'], 0)
+        denied = self.fixture.turn('上週末', context=initial['context'], token=OTHER)
+        self.assertNotEqual(denied.status_code, 200)
+
     def test_removing_date_keeps_joint_people_and_literal_over_http(self):
         initial = self.fixture.turn('找2031年9月示例儿童和示例成人包含“海边”的照片').json()
         self.assertEqual(initial['kind'], 'results', initial)
