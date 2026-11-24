@@ -38597,6 +38597,33 @@
         }
       ],
       "notes": "Accept supported keep-people refinements with the current reviewed filters, preserve literal content and prepare explicit people-filter removal from the Web."
+    },
+    {
+      "feature": "confirmed-group-save-and-refresh-measurement",
+      "source_commit": "5cda943dcd48b822796f0c0ebdd87529b7ded6fc",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "fe8eff16976ec45db537e43d8c3f504e9acf5bef2bd6d1ae24c0829723d3f5e1",
+          "sha256": "40e40ae146036ccb826ae2825a9ca6d7be3bf3cbdd0d9f514d22f14dd57d7acb"
+        },
+        {
+          "path": "docs/PHOTO_STACK_RUST.md",
+          "before_sha256": "214e6f31485803d2277a15e81b5b0e0b5af0412c7c39f6321a76d35d842ee65e",
+          "sha256": "06273aa5bebad1b226bd3f900e5e24da4d64ee80628de6a2d00e02a5112062a9"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "5051032c1dcb0218874aaef8638906a0219040b28c50608f4253d2299cb18580",
+          "sha256": "19e051e6a9472a1448cc00d688ae4886546ff3bbfea13e3f01a24bee99033f40"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "d88a2ce040b3d7cfe5703dab7a552f2066db8da797cddf06330dd64a62f7f512",
+          "sha256": "1e7e91f7e311c4438584bd073926499a2412522e2c83840f647c7bb983575dc7"
+        }
+      ],
+      "notes": "Preserve the save receipt message if the subsequent group list read fails, and record the measured whole-refresh parity of the existing Rust kernel."
     }
   ]
 }
