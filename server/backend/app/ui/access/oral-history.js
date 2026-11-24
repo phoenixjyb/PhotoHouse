@@ -27,6 +27,10 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
       transcribing:'Transcribing this section on your PhotoHouse server…',
       transcriptReady:'A draft transcript is ready to review.',
       transcriptUnavailable:'Local transcription is unavailable for this section. Try again later.',
+      editText:'Review text', reviewText:'Your reviewed text', saveText:'Save reviewed text privately',
+      reviewLoading:'Loading your reviewed text…', reviewUnavailable:'Reviewed text is unavailable for this section.',
+      reviewSaved:'Reviewed text saved for this section.',
+      reviewDiscard:'Leave this section and discard your unsaved edits?',
       uncertain:'The server did not confirm this action. Try the same action again.',
       changed:'This recording has changed. Reopen this panel to check the saved sections.',
       unavailable:'Your recordings are unavailable. Reopen this panel to try again.',
@@ -56,6 +60,10 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
       transcribing:'正在通过 PhotoHouse 服务器转写本段…',
       transcriptReady:'转写稿已就绪，可以核对。',
       transcriptUnavailable:'本段暂时无法在本机转写，请稍后重试。',
+      editText:'审阅文字', reviewText:'你审阅后的文字', saveText:'私密保存审阅文字',
+      reviewLoading:'正在加载你审阅后的文字…', reviewUnavailable:'暂时无法打开本段的审阅文字。',
+      reviewSaved:'本段的审阅文字已保存。',
+      reviewDiscard:'离开本段并放弃未保存的修改？',
       uncertain:'服务器尚未确认。请重试同一操作。',
       changed:'录音已发生变化。请重新打开此面板，查看已保存的段落。',
       unavailable:'暂时无法打开你的录音。请重新打开此面板重试。',
@@ -71,6 +79,9 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
   const reviewTitle = element('review-title'), reviewSection = element('review-section'), loadAudio = element('load-audio');
   const loadTranscript = element('load-transcript'), transcript = element('transcript');
   const transcriptText = element('transcript-text'), transcriptionEnabled = panel.dataset.transcription === 'enabled';
+  const editText = element('edit-text'), reviewForm = element('review-form');
+  const reviewText = element('review-text'), saveText = element('save-text');
+  const reviewedTextEnabled = panel.dataset.reviewedText === 'enabled';
   const uuid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/;
   const digest = /^[0-9a-f]{64}$/;
   const maxSections = 180;
@@ -79,6 +90,7 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
   let owner = null, sessions = [], session = null, task = null, recording = null, section = null;
   let pendingCreate = null, pendingFinish = null, notice = '', loaded = false;
   let completed = null, reviewed = null, previewURL = null, playbackURL = null;
+  let reviewDraft = null, reviewInitialText = '';
 
   const text = key => words[scope().language === 'zh' ? 'zh' : 'en'][key] || '';
   const path = binding => '/oral-history/v1/libraries/' + encodeURIComponent(binding.library) + '/sessions';
@@ -150,6 +162,12 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
     back.disabled = loadAudio.disabled = reviewSection.disabled = !!task;
     loadTranscript.hidden = !transcriptionEnabled || reviewed?.processing_consent !== true;
     loadTranscript.disabled = !!task;
+    editText.hidden = !reviewedTextEnabled || !!reviewDraft;
+    editText.setAttribute('aria-disabled', String(!!task));
+    reviewForm.hidden = !reviewDraft;
+    reviewText.readOnly = !!task;
+    saveText.disabled = !!task || !reviewDraft || reviewText.value === reviewDraft.text ||
+      !reviewText.value.trim() || new TextEncoder().encode(reviewText.value).length > 8192;
     for (const button of completedList.querySelectorAll('button')) button.disabled = !!task;
     status.textContent = text(notice);
     for (const field of form.querySelectorAll('input,select')) field.disabled = !!task || !!pendingCreate;
@@ -204,6 +222,13 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
     transcript.hidden = true;
   }
 
+  function clearReviewedText() {
+    reviewDraft = null;
+    reviewInitialText = '';
+    reviewText.value = '';
+    reviewForm.hidden = true;
+  }
+
   function clear() {
     owner = null;
     task?.abort();
@@ -215,6 +240,7 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
     clearSection();
     clearPlayback();
     clearTranscript();
+    clearReviewedText();
     task = recording = pendingCreate = pendingFinish = session = null;
     completed = reviewed = null;
     loaded = false;
@@ -307,9 +333,10 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
   });
 
   back.addEventListener('click', () => {
-    if (!current(owner) || task) return;
+    if (!current(owner) || task || !canLeaveReview()) return;
     clearPlayback();
     clearTranscript();
+    clearReviewedText();
     const returnTo = reviewed ? completedList.querySelectorAll('button')[completed.indexOf(reviewed)] : finished;
     if (!reviewed) {
       completed = null;
@@ -324,11 +351,20 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
   });
 
   reviewSection.addEventListener('change', () => {
+    if (!canLeaveReview()) {
+      reviewSection.value = String(reviewDraft.ordinal);
+      return;
+    }
     clearPlayback();
     clearTranscript();
+    clearReviewedText();
     notice = '';
     paint();
   });
+
+  function canLeaveReview() {
+    return !reviewDraft || reviewText.value === reviewInitialText || window.confirm(text('reviewDiscard'));
+  }
 
   loadAudio.addEventListener('click', () => {
     const source = reviewed, ordinal = reviewSection.selectedIndex;
@@ -368,6 +404,58 @@ window.PhotoHouseOralHistory = ({panel, scope, request, capture, validateWav, re
       transcriptText.textContent = result.text;
       transcript.hidden = false;
       notice = 'transcriptReady';
+    });
+  });
+
+  function checkedReview(result, source, ordinal) {
+    if (result?.version !== 1 || result.session_id !== source.session_id ||
+        result.source_revision !== source.revision || result.ordinal !== ordinal ||
+        !Number.isSafeInteger(result.review_revision) || result.review_revision < 0 ||
+        (result.review_revision === 0 ? result.text !== null :
+          typeof result.text !== 'string' || !result.text.trim() || new TextEncoder().encode(result.text).length > 8192)) {
+      throw new Error('Invalid reviewed text');
+    }
+    return result;
+  }
+
+  editText.addEventListener('click', () => {
+    const source = reviewed, ordinal = reviewSection.selectedIndex;
+    if (!reviewedTextEnabled || !current(owner) || task || reviewDraft || !source || ordinal < 0 ||
+        ordinal >= source.section_count) return;
+    void run('reviewLoading', 'reviewUnavailable', async (binding, call) => {
+      const result = await call('/' + source.session_id + '/sections/' + ordinal + '/reviewed-text', {
+        extraHeaders:{'X-PhotoHouse-Expected-Revision':String(source.revision)},
+      });
+      if (!current(binding) || reviewed !== source || reviewSection.selectedIndex !== ordinal) return;
+      const retainFocus = document.activeElement === editText;
+      reviewDraft = checkedReview(result, source, ordinal);
+      reviewInitialText = reviewDraft.text ?? transcriptText.textContent;
+      reviewText.value = reviewInitialText;
+      notice = '';
+      paint();
+      if (retainFocus) reviewText.focus({preventScroll:true});
+    });
+  });
+
+  reviewText.addEventListener('input', paint);
+  reviewForm.addEventListener('submit', event => {
+    event.preventDefault();
+    const source = reviewed, draft = reviewDraft, words = reviewText.value;
+    if (!reviewedTextEnabled || !current(owner) || task || saveText.disabled ||
+        !source || !draft || reviewSection.selectedIndex !== draft.ordinal) return;
+    if (document.activeElement === saveText) reviewText.focus({preventScroll:true});
+    void run('saving', 'uncertain', async (binding, call) => {
+      const result = await call('/' + source.session_id + '/sections/' + draft.ordinal + '/reviewed-text', {
+        method:'PUT', body:{expected_revision:source.revision, expected_review_revision:draft.review_revision, text:words},
+      });
+      if (!current(binding) || reviewed !== source || reviewDraft !== draft) return;
+      const saved = checkedReview(result, source, draft.ordinal);
+      if (saved.text !== words || saved.review_revision <= draft.review_revision) {
+        throw new Error('Invalid reviewed text receipt');
+      }
+      reviewDraft = saved;
+      reviewInitialText = words;
+      notice = 'reviewSaved';
     });
   });
 

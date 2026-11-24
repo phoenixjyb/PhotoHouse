@@ -65,8 +65,9 @@ follows. Current installed-client and voice acceptance remain separate.
   Web recorder and protected API. Generated checks cover local preview, exact
   retry and resume after reload. Authors can also reopen completed recordings
   and play selected sections. An opt-in local speech provider can generate an
-  unsaved transcript for a selected section with processing consent. Native
-  speech and physical devices are pending.
+  unsaved transcript for a selected section with processing consent. Authors
+  can separately edit and explicitly save reviewed wording. Native speech,
+  production storage and physical devices are pending.
 - The Windows voice bridge accepts optional exact names of installed
   [System.Speech voices](MODEL_PROVIDER_ARCHITECTURE.md). The tested bridge
   behavior does not qualify a new live voice.

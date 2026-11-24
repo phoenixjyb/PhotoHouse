@@ -10,7 +10,9 @@ import httpx
 import test_oral_history_intake as fixture
 from app.main import create_app
 from app.access.assistant_speech import LocalAssistantAsr
-from app.access.oral_history_schema import SESSION, SECTION, MUTATION, STATEMENTS
+from app.access.oral_history_schema import (
+    SESSION, SECTION, MUTATION, REVIEW, STATEMENTS, install_fixture_review_schema,
+)
 from app.access.transport import AccessRuntime, COOKIE, csrf_token
 from app.access.oral_history_intake import STATUS_FIELDS
 from app.access.service import AccessService
@@ -45,9 +47,10 @@ class OralHistoryTransportTests(unittest.TestCase):
         self.client = self.build()
         self.addCleanup(self.client.close)
 
-    def build(self, *, enabled=True, asr=None):
+    def build(self, *, enabled=True, asr=None, review=False):
         return TestClient(create_app(access_runtime=self.runtime, assistant_asr=asr,
-            oral_history_intake_enabled=enabled, oral_history_transcription_enabled=asr is not None),
+            oral_history_intake_enabled=enabled, oral_history_transcription_enabled=asr is not None,
+            oral_history_reviewed_text_enabled=review),
             base_url='https://photohouse.test',
             client=('192.0.2.30', 24567))
 
@@ -183,6 +186,100 @@ class OralHistoryTransportTests(unittest.TestCase):
         retried = self.preview(record, client=client)
         self.assertEqual(retried.status_code, 200)
         self.assertEqual(retried.json()['text'], 'A later machine transcript')
+
+    def review_client(self):
+        with closing(self.connect()) as db, db:
+            db.execute('BEGIN IMMEDIATE')
+            install_fixture_review_schema(db)
+        client = self.build(review=True)
+        self.addCleanup(client.close)
+        return client
+
+    def test_reviewed_text_saves_explicitly_and_reopens_without_changing_audio(self):
+        audio = fixture.wav(800)
+        record = self.completed_record(audio=audio)
+        section = self.session_path(record['session_id']) + '/sections/0'
+        review = section + '/reviewed-text'
+        headers = {'X-PhotoHouse-Expected-Revision': str(record['revision'])}
+        client = self.review_client()
+        original_counts = self.counts()
+
+        self.assertEqual(self.request('GET', review, headers=headers).status_code, 503)
+        blank = self.request('GET', review, headers=headers, client=client)
+        self.assertEqual(blank.status_code, 200, blank.text)
+        self.assert_private(blank)
+        self.assertEqual(blank.json()['review_revision'], 0)
+        self.assertIsNone(blank.json()['text'])
+        words = '我们在湖边散步。\nA reviewed family memory.'
+        body = {'expected_revision': record['revision'], 'expected_review_revision': 0, 'text': words}
+        first = self.request('PUT', review, body=body, client=client)
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assert_private(first)
+        self.assertEqual(first.json(), {
+            'version': 1, 'session_id': record['session_id'], 'ordinal': 0,
+            'source_revision': record['revision'], 'review_revision': 1, 'text': words,
+        })
+        replay = self.request('PUT', review, body=body, client=client)
+        self.assertEqual(replay.json(), first.json())
+        fresh = self.build(review=True)
+        self.addCleanup(fresh.close)
+        opened = self.request('GET', review, headers=headers, client=fresh)
+        self.assertEqual(opened.json(), first.json())
+        conflict = self.request('PUT', review, body=body | {'text': 'older edit'}, client=fresh)
+        self.assertEqual(conflict.status_code, 409)
+        edited = self.request('PUT', review, body=body | {'expected_review_revision': 1,
+                              'text': 'A second reviewed wording.'}, client=fresh)
+        self.assertEqual(edited.status_code, 200, edited.text)
+        self.assertEqual(edited.json()['review_revision'], 2)
+        self.assertEqual(self.request('GET', section, headers=headers).content, audio)
+        self.assertEqual(self.counts(), original_counts)
+        with closing(self.connect()) as db:
+            self.assertEqual(db.execute(f'SELECT count(*) FROM {REVIEW}').fetchone()[0], 1)
+
+    def test_review_requires_current_author_source_and_bounded_text(self):
+        record = self.completed_record()
+        review = self.session_path(record['session_id']) + '/sections/0/reviewed-text'
+        expected = {'X-PhotoHouse-Expected-Revision': str(record['revision'])}
+        client = self.review_client()
+        body = {'expected_revision': record['revision'], 'expected_review_revision': 0,
+                'text': 'Family reviewed wording'}
+        owner = {'Authorization': 'Bearer ' + self.owner}
+        self.assertEqual(self.request('GET', review, headers=expected | owner, client=client).status_code, 401)
+        self.assertEqual(self.request('PUT', review, body=body, headers=owner, client=client).status_code, 401)
+        self.assertEqual(self.request('PUT', review, body=body | {'text': '字' * 2731},
+                                      client=client).status_code, 422)
+        self.assertEqual(self.request('PUT', review, body=body | {'expected_revision': 2},
+                                      client=client).status_code, 409)
+        self.assertEqual(self.request('PUT', review, body=body, client=client).status_code, 200)
+        with closing(self.connect()) as db:
+            db.execute(f"UPDATE {SESSION} SET state='withdrawn',withdrawn_from='completed',"
+                       "withdrawal_request_id=?,withdrawal_request_digest=?,revision=revision+1 WHERE id=?",
+                       (str(uuid.uuid4()), 'a' * 64, record['session_id']))
+            db.commit()
+        withdrawn = self.request('GET', review, headers=expected, client=client)
+        self.assertEqual(withdrawn.status_code, 401)
+        self.assertNotIn(body['text'], withdrawn.text)
+        self.assertEqual(self.request('PUT', review, body=body, client=client).status_code, 401)
+
+    def test_review_opt_in_does_not_create_a_schema_or_expose_an_invalid_digest(self):
+        record = self.completed_record()
+        review = self.session_path(record['session_id']) + '/sections/0/reviewed-text'
+        headers = {'X-PhotoHouse-Expected-Revision': str(record['revision'])}
+        client = self.build(review=True)
+        self.addCleanup(client.close)
+        response = self.request('GET', review, headers=headers, client=client)
+        self.assertEqual(response.status_code, 503)
+        self.assert_private(response)
+        with closing(self.connect()) as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM sqlite_master WHERE name=?', (REVIEW,)).fetchone())
+        installed = self.review_client()
+        body = {'expected_revision': record['revision'], 'expected_review_revision': 0, 'text': 'Original checked wording'}
+        self.assertEqual(self.request('PUT', review, body=body, client=installed).status_code, 200)
+        with closing(self.connect()) as db, db:
+            db.execute(f'UPDATE {REVIEW} SET text=?', ('Mismatched private wording',))
+        result = self.request('GET', review, headers=headers, client=installed)
+        self.assertEqual(result.status_code, 503)
+        self.assertNotIn('Mismatched', result.text)
 
     def test_create_append_restart_status_exact_retry_and_next_section(self):
         create_body=self.create_body()

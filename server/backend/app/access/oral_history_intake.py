@@ -12,9 +12,10 @@ import struct
 import unicodedata
 import uuid
 
-from .oral_history_schema import (SESSION, SECTION, MUTATION, MAX_SECTIONS,
+from .oral_history_schema import (SESSION, SECTION, MUTATION, REVIEW, MAX_SECTIONS,
     MAX_SECTION_FRAMES, MAX_SECTION_BYTES, MAX_TOTAL_BYTES, MAX_TOTAL_FRAMES,
-    MAX_SESSIONS_PER_AUTHOR, assert_schema)
+    MAX_SESSIONS_PER_AUTHOR, MAX_REVIEW_TEXT_BYTES, MAX_REVIEW_REVISION,
+    assert_schema, assert_review_schema)
 from .service import AccessDenied
 from .original_deletions import OriginalDeletionError
 from .transport import TransportError
@@ -408,23 +409,81 @@ class OralHistoryIntake:
             self._session(actor, library, ident)
             return self._verified_section_audio(ident, ordinal)
 
+    @staticmethod
+    def _completed_coordinates(library, ident, ordinal, expected_revision):
+        _text(library,128,required=True)
+        return (_uuid(ident), _integer(ordinal, MAX_SECTIONS - 1),
+                _integer(expected_revision, MAX_SECTIONS + 2, minimum=1))
+
+    def _completed_section(self, token, library, ident, ordinal, revision, *, for_transcription=False):
+        actor = self._member(token, library)['account_id']
+        session = self._session(actor, library, ident)
+        if session['state'] != 'completed':
+            raise TransportError(409, 'Recording is not completed')
+        if session['revision'] != revision:
+            raise TransportError(409, 'Recording changed; refresh before reading')
+        if for_transcription and not session['processing_consent']:
+            raise TransportError(403, 'Recording transcription was not authorized')
+        return self._verified_section_audio(ident, ordinal)
+
     def completed_audio(self, token, library, ident, ordinal, *, expected_revision,
                         for_transcription=False):
         """Read one verified section only from this author's current completed snapshot."""
-        _text(library,128,required=True)
-        ident = _uuid(ident)
-        ordinal = _integer(ordinal, MAX_SECTIONS - 1)
-        revision = _integer(expected_revision, MAX_SECTIONS + 2, minimum=1)
+        ident, ordinal, revision = self._completed_coordinates(library, ident, ordinal, expected_revision)
         with self.access._transaction():
-            actor = self._member(token, library)['account_id']
-            session = self._session(actor, library, ident)
-            if session['state'] != 'completed':
-                raise TransportError(409, 'Recording is not completed')
-            if session['revision'] != revision:
-                raise TransportError(409, 'Recording changed; refresh before reading')
-            if for_transcription and not session['processing_consent']:
-                raise TransportError(403, 'Recording transcription was not authorized')
-            return self._verified_section_audio(ident, ordinal)
+            return self._completed_section(token, library, ident, ordinal, revision,
+                                           for_transcription=for_transcription)
+
+    def _read_section_review(self, ident, ordinal, revision, source_sha256):
+        unavailable = TransportError(503, 'Recording review unavailable')
+        try:
+            assert_review_schema(self.db)
+        except ValueError:
+            raise unavailable from None
+        metadata = self.access._one(f'''SELECT revision,source_revision,source_sha256,text_sha256,
+            CASE WHEN typeof(text)='text' THEN length(CAST(text AS BLOB)) END AS text_bytes
+            FROM {REVIEW} WHERE session_id=? AND ordinal=?''', (ident, ordinal))
+        if metadata is None:
+            return 0, None
+        if (metadata['source_revision'] != revision or metadata['source_sha256'] != source_sha256
+                or type(metadata['revision']) is not int or not 1 <= metadata['revision'] <= MAX_REVIEW_REVISION
+                or type(metadata['text_bytes']) is not int or not 1 <= metadata['text_bytes'] <= MAX_REVIEW_TEXT_BYTES):
+            raise unavailable
+        text = self.access._one(f'SELECT text FROM {REVIEW} WHERE session_id=? AND ordinal=?',
+                                (ident, ordinal))['text']
+        try:
+            _text(text, MAX_REVIEW_TEXT_BYTES, required=True)
+        except TransportError:
+            raise unavailable from None
+        if hashlib.sha256(text.encode('utf-8')).hexdigest() != metadata['text_sha256']:
+            raise unavailable
+        return metadata['revision'], text
+
+    def reviewed_section(self, token, library, ident, ordinal, *, expected_revision,
+                         text=None, expected_review_revision=None):
+        """Read or explicitly save the author's separate reviewed text."""
+        ident, ordinal, revision = self._completed_coordinates(library, ident, ordinal, expected_revision)
+        if expected_review_revision is not None:
+            _integer(expected_review_revision, MAX_REVIEW_REVISION)
+            _text(text, MAX_REVIEW_TEXT_BYTES, required=True)
+        with self.access._transaction(write=expected_review_revision is not None):
+            audio = self._completed_section(token, library, ident, ordinal, revision)
+            source_sha256 = hashlib.sha256(audio).hexdigest()
+            review_revision, reviewed = self._read_section_review(ident, ordinal, revision, source_sha256)
+            if expected_review_revision is not None and text != reviewed:
+                if review_revision != expected_review_revision or review_revision >= MAX_REVIEW_REVISION:
+                    raise TransportError(409, 'Reviewed text changed; reopen before saving')
+                review_revision += 1
+                self.db.execute(f'''INSERT INTO {REVIEW}
+                    (session_id,ordinal,source_revision,source_sha256,revision,text,text_sha256)
+                    VALUES (?,?,?,?,?,?,?)
+                    ON CONFLICT(session_id,ordinal) DO UPDATE SET revision=excluded.revision,
+                        text=excluded.text,text_sha256=excluded.text_sha256''',
+                    (ident, ordinal, revision, source_sha256, review_revision, text,
+                     hashlib.sha256(text.encode('utf-8')).hexdigest()))
+                reviewed = text
+            return {'version': 1, 'session_id': ident, 'ordinal': ordinal, 'source_revision': revision,
+                    'review_revision': review_revision, 'text': reviewed}
 
     def close(self, token, library, ident, *, request_id, expected_revision, cancel=False):
         _text(library,128,required=True)

@@ -147,10 +147,16 @@ def _versioned_shell(html: str, versions: tuple[tuple[str, str], ...]) -> bytes:
 def ui_home(request: Request):
     html = _read_asset(INDEX_FILE)[0].decode("utf-8")
     if getattr(request.app.state, 'oral_history_intake_enabled', False):
-        transcription = (' data-transcription="enabled"'
-                         if getattr(request.app.state, 'oral_history_transcription_enabled', False) else '')
+        flags = ''.join(
+            f' data-{name}="enabled"'
+            for name, option in (
+                ('transcription', 'oral_history_transcription_enabled'),
+                ('reviewed-text', 'oral_history_reviewed_text_enabled'),
+            )
+            if getattr(request.app.state, option, False)
+        )
         html = html.replace(_ORAL_HISTORY_PANEL,
-                            _ORAL_HISTORY_PANEL.removesuffix(" hidden>") + transcription + ">", 1)
+                            _ORAL_HISTORY_PANEL.removesuffix(" hidden>") + flags + ">", 1)
     else:
         html = html.replace(_ORAL_HISTORY_SCRIPT, "", 1)
     versions = tuple((name, _read_asset(_asset_path(name))[1]) for name in _referenced_assets(html))

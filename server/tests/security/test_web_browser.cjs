@@ -40,6 +40,8 @@ const playbackOverrides=[];
 let assignmentPosts=0;
 let authorProfileOverride,authorSaveBodies=[];
 const external=[],errors=[],checks=[],browserRequests=[],browserResponses=[];let syntheticFetchMetadata=0;
+let loseSectionReview=false;
+const oralReviewReceipts=[];
 function checkpoint(name){checks.push(name);console.log('PASS '+name);}
 function delayNext(predicate){
   let release,arrived;
@@ -87,6 +89,11 @@ async function context(browser){
     if(request.method()==='POST'&&url.pathname.startsWith('/oral-history/')&&url.pathname.endsWith('/sections')){
       oralSections.push({id:headers['x-photohouse-request-id'],ordinal:headers['x-photohouse-ordinal'],status:response.status});
       if(loseOralSection){loseOralSection=false;await route.abort();return;}
+    }
+    if(request.method()==='PUT'&&url.pathname.startsWith('/oral-history/')&&url.pathname.endsWith('/reviewed-text')){
+      oralReviewReceipts.push({status:response.status,
+        revision:response.status===200?JSON.parse(Buffer.from(response.body,'base64')).review_revision:null});
+      if(loseSectionReview&&response.status===200){loseSectionReview=false;await route.abort();return;}
     }
     if(hold&&hold.predicate(url,request)) {const delayed=hold;hold=null;delayed.arrived();await delayed.gate;}
     const outputHeaders={...response.headers};if(request.method()!=='HEAD')delete outputHeaders['content-length'];delete outputHeaders['content-encoding'];
@@ -435,6 +442,9 @@ let browser;
     const transcript=review.locator('#oral-history-transcript');
     const transcriptText='We saw a heron by the lake. <private draft>';
     const transcriptRead=entry=>entry.method==='POST'&&entry.path.startsWith('/oral-history/')&&entry.path.endsWith('/transcription');
+    const reviewedWrite=entry=>entry.method==='PUT'&&entry.path.endsWith('/reviewed-text');
+    const reviewedText=review.getByLabel('Your reviewed text');
+    const reviewedWords='We spotted a heron beside the lake.';
     assert.deepEqual(await sectionPicker.locator('option').allTextContents(),['Section 1','Section 2']);
     const audioRead=entry=>entry.method==='GET'&&entry.path.startsWith('/oral-history/')&&/\/sections\/\d+$/.test(entry.path);
     assert.equal(browserRequests.slice(readbackStart).filter(audioRead).length,0);
@@ -452,12 +462,41 @@ let browser;
     assert.equal(browserRequests.slice(readbackStart).filter(transcriptRead).length,1);
     assert.match(browserRequests.slice(readbackStart).find(transcriptRead).path,/\/sections\/1\/transcription$/);
     assert.equal(await player.evaluate(audio=>audio.paused),true);
+    await review.getByRole('button',{name:'Review text',exact:true}).press('Enter');
+    await reviewedText.waitFor();
+    assert.equal(await reviewedText.inputValue(),transcriptText);
+    assert.equal(await reviewedText.evaluate(field=>document.activeElement===field),true);
+    await reviewedText.fill(reviewedWords);
+    page.once('dialog',dialog=>{void dialog.dismiss();});
+    await sectionPicker.selectOption('0');
+    assert.equal(await sectionPicker.inputValue(),'1');
+    assert.equal(await reviewedText.inputValue(),reviewedWords);
+    assert.equal(browserRequests.slice(readbackStart).filter(reviewedWrite).length,0);
+    const saveReviewed=review.getByRole('button',{name:'Save reviewed text privately'});
+    loseSectionReview=true;
+    await saveReviewed.click();
+    await status.getByText('The server did not confirm this action. Try the same action again.').waitFor();
+    assert.equal(browserRequests.slice(readbackStart).filter(reviewedWrite).length,1);
+    assert.equal(await reviewedText.inputValue(),reviewedWords);
+    await saveReviewed.click();
+    await status.getByText('Reviewed text saved for this section.').waitFor();
+    assert.equal(browserRequests.slice(readbackStart).filter(reviewedWrite).length,2);
+    assert.deepEqual(oralReviewReceipts,[{status:200,revision:1},{status:200,revision:1}]);
+    assert.match(browserRequests.slice(readbackStart).find(reviewedWrite).path,/\/sections\/1\/reviewed-text$/);
+    assert.equal(await transcript.locator('#oral-history-transcript-text').textContent(),transcriptText);
     await page.setViewportSize({width:390,height:850});
+    await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+    assert.equal(await reviewedText.evaluate(field=>{
+      const area=field.getBoundingClientRect(), parent=field.parentElement.getBoundingClientRect();
+      return area.width>parent.width-2&&area.right<=innerWidth&&
+        document.querySelector('#oral-history-save-text').getBoundingClientRect().height>=44;
+    }),true);
     await panel.screenshot({path:path.join(artifacts,'oral-history-completed-review.png')});
     await sectionPicker.selectOption('0');
     assert.equal(await player.getAttribute('src'),null);
     assert.equal(await transcript.isHidden(),true);
     assert.equal(await transcript.locator('#oral-history-transcript-text').textContent(),'');
+    assert.equal(await reviewedText.isHidden(),true);
     const held=delayNext((url,req)=>req.method()==='GET'&&url.pathname.startsWith('/oral-history/')&&url.pathname.endsWith('/sections/0'));
     try{
       await loadAudio.click();await held.seen;
@@ -482,9 +521,21 @@ let browser;
     assert.equal(await transcript.locator('#oral-history-transcript-text').textContent(),'');
     assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),title),false);
     assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),transcriptText),false);
+    await page.reload();await openInEnglish();
+    const reopenedReviewStart=browserRequests.length;
+    await panel.getByRole('button',{name:'Review finished recordings'}).click();
+    await panel.getByRole('button',{name:title}).click();
+    await sectionPicker.selectOption('1');
+    await review.getByRole('button',{name:'Review text',exact:true}).click();
+    await reviewedText.waitFor();
+    assert.equal(await reviewedText.inputValue(),reviewedWords);
+    assert.equal(browserRequests.slice(reopenedReviewStart).filter(transcriptRead).length,0);
+    assert.equal(browserRequests.slice(reopenedReviewStart).filter(reviewedWrite).length,0);
+    assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),reviewedWords),false);
     assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
     checkpoint('Finished sections survive reload, load only on click, decode without autoplay, and are cleared when review closes');
     checkpoint('Explicit local transcription shows only the chosen machine draft and clears it on section changes and late responses after close');
+    checkpoint('Author separately reviews and saves text for the selected section; reload recovers it without rerunning ASR or rewriting audio');
     await ctx.close();return;
   }
   if(process.env.PH_BROWSER_VIDEO_MOMENTS==='1'){

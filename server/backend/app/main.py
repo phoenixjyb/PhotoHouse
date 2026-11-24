@@ -63,6 +63,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                selected_story_provider=None, selected_story_drafts_enabled=False,
                selected_story_ui_enabled=False,
                oral_history_intake_enabled=False, oral_history_transcription_enabled=False,
+               oral_history_reviewed_text_enabled=False,
                story_cloud_proofreading_enabled=False, story_cloud_proofreading_provider=None):
     from .access.story_cloud_proofreading import CloudProofreading
     cloud_proofreading = CloudProofreading(enabled=story_cloud_proofreading_enabled,
@@ -96,6 +97,9 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
         from .access.assistant_speech import LocalAssistantAsr
         if not oral_history_intake_enabled or not isinstance(assistant_asr, LocalAssistantAsr):
             raise ValueError('Recording transcription requires recording intake and a local speech provider')
+    if (type(oral_history_reviewed_text_enabled) is not bool or
+            (oral_history_reviewed_text_enabled and not oral_history_intake_enabled)):
+        raise ValueError('Recording review requires explicit recording intake opt-in')
     if memory_group_vectors is not None and (not memory_groups_enabled or
             type(memory_group_vectors) is not GroupVectorConfiguration):
         raise ValueError('Explicit enabled memory group vector configuration required')
@@ -327,6 +331,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.oral_history_intake_enabled = oral_history_intake_enabled
     app.state.oral_history_transcription_enabled = oral_history_transcription_enabled
     app.state.oral_history_transcription_lock = Lock() if oral_history_transcription_enabled else None
+    app.state.oral_history_reviewed_text_enabled = oral_history_reviewed_text_enabled
     app.state.memory_group_vectors = memory_group_vectors
     app.state.memory_collaboration_enabled = memory_collaboration_enabled
     app.state.memory_originals_enabled = memory_originals_enabled

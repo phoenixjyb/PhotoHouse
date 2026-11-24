@@ -11,7 +11,7 @@ import uuid
 
 import test_oral_history_intake as fixture_module
 from app.access.oral_history_intake import OralHistoryIntake
-from app.access.oral_history_schema import SESSION,SECTION,MUTATION,STATEMENTS
+from app.access.oral_history_schema import SESSION, SECTION, MUTATION, REVIEW, STATEMENTS, install_fixture_review_schema
 from app.access.oral_history_withdrawal import parse_recording_binding
 from app.access.original_deletions import OriginalDeletionJournal,OriginalDeletionError
 from app.access.service import AccessService,AccessDenied
@@ -197,6 +197,33 @@ class RecordingWithdrawalTests(unittest.TestCase):
             closed=self.f.intake.close(self.f.member,'family-a',record['session_id'],request_id=str(uuid.uuid4()),expected_revision=record['revision'],cancel=cancel)
             receipt=self.withdraw(closed);self.assertEqual(receipt['state'],'withdrawn');self.denied_source(record)
         self.assertEqual(self.journal.head()[1],2)
+
+    def test_restored_reviewed_text_stays_hidden_after_source_withdrawal(self):
+        recording = self.add(self.record())
+        completed = self.f.intake.close(self.f.member, 'family-a', recording['session_id'],
+            request_id=str(uuid.uuid4()), expected_revision=recording['revision'])
+        self.db.execute('BEGIN IMMEDIATE')
+        install_fixture_review_schema(self.db)
+        self.db.commit()
+        wording = 'Private reviewed wording from a generated section'
+
+        def read_review():
+            return self.f.intake.reviewed_section(self.f.member, 'family-a', completed['session_id'], 0,
+                                                  expected_revision=completed['revision'])
+
+        self.f.intake.reviewed_section(self.f.member, 'family-a', completed['session_id'], 0,
+            expected_revision=completed['revision'], text=wording, expected_review_revision=0)
+        self.assertEqual(read_review()['text'], wording)
+        previous = self.backup('before-reviewed-source-withdrawal.sqlite')
+        self.withdraw(completed)
+        self.restore(previous)
+        self.error(503, read_review)
+        self.journal.replay(self.db)
+        with self.assertRaises(AccessDenied):
+            read_review()
+        self.assertEqual(self.db.execute(f'SELECT text FROM {REVIEW}').fetchone()[0], wording)
+        with closing(sqlite3.connect(self.journal.path)) as ledger:
+            self.assertNotIn(wording, ledger.execute('SELECT oral_binding_json FROM deletions').fetchone()[0])
 
     def legacy(self,version=3):
         journal=OriginalDeletionJournal.initialize(self.root/f'upgrade-v{version}.sqlite',self.journal.namespace,format_version=version)
