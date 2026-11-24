@@ -27,7 +27,7 @@ packages.
 | `api` | Required CPU profile | Python 3.12 and installed versions matching the development lock |
 | `memory` | Focused CPU profile | The same Python and locked CPU development environment |
 | `android` | Phone and TV profile | Python 3.12, JDK 17, Android SDK platform 34, required build-tools 34.0.0 executables, and a complete pinned platform Gradle wrapper |
-| `web` | Optional browser profile | The CPU environment, Node.js meeting the resolved Playwright package's declared engine range, the four checked-in browser suites, the module and a detected or configured Chromium executable |
+| `web` | Optional browser profile | The CPU environment, Node.js meeting the resolved Playwright package's declared engine range, every suite in the Web check profile, the module and a detected or configured Chromium executable |
 | `all` | API plus Android | The `api` and `android` prerequisites; it excludes optional `web` checks |
 
 The SDK check requires `android.jar` for platform 34 plus `aapt2`, `d8`,

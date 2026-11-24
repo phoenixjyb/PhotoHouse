@@ -14,7 +14,7 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
-from tools import doctor
+from tools import check, doctor
 
 
 def python312():
@@ -30,6 +30,21 @@ def make_root(base: Path, lock: str = "alpha==1.2.3\n") -> Path:
 
 
 class DoctorTests(unittest.TestCase):
+    def test_web_check_detects_a_missing_suite_required_by_the_runner(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            missing = "server/tests/security/test_memory_groups_browser.cjs"
+            self.assertIn(missing, check.WEB_TESTS)
+            for suite in check.WEB_TESTS:
+                if suite != missing:
+                    path = root / suite
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.touch()
+            self.assertEqual(doctor._suite_check(root)["status"], "missing")
+            self.assertEqual(doctor._suite_check(root)["missing_count"], 1)
+            (root / missing).touch()
+            self.assertEqual(doctor._suite_check(root)["status"], "available")
+
     def test_lock_reads_includes_and_skips_inactive_platform_pins(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "repo"
