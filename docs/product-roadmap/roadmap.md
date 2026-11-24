@@ -3,19 +3,19 @@
 
 24 November 2026 · reviewed snapshot / 2026 年 11 月 24 日 · 回顾快照
 
-API restored; deployment reconciliation remains open / API 已恢复；部署衔接仍待完成
+Reviewed integration record / 部署与集成回顾记录
 
-The Windows API and new UI component passed SYSTEM startup and HTTPS checks. The scheduled grouping handoff still needs repair before the full UI rollout can be accepted. This page records dated evidence; it does not poll the server or certify current health. / Windows API 与新版界面组件已通过 SYSTEM 启动和 HTTPS 检查。定时分组任务的衔接仍需修复，完整界面部署尚未验收。本页记录有日期的证据，不轮询服务器，也不代表实时健康状态。
+Windows API/UI startup and the scheduled grouping binding now have verified records. Household grouping quality and assistant workflows still have open work. This page separates dated delivery evidence from remaining gaps; it does not poll the server or certify current health. / Windows API／界面启动及定时分组任务的版本绑定已有验证记录。家庭分组质量与助手流程仍有待完善。本页区分有日期的交付证据与尚缺功能，不轮询服务器，也不代表实时健康状态。
 
 This is a dated product record, not a live health check. / 这是有日期的产品记录，不是实时健康检查。
 
 ## Priorities / 优先方向
 
-### Close the live delivery gap / 补齐当前部署衔接
+### Make Search refinement conversational / 让搜索条件能够自然逐轮细化
 
-Keep the restored API usable and bind the existing grouping refresh to the exact deployed revision. / 保持已恢复的 API 可用，让现有分组刷新任务与实际部署版本一致。
+Understand dates, retain the active filters across follow-up questions, and show what is actually being searched. / 理解日期表达，保留追问中的现有筛选条件，并清楚展示实际查找范围。
 
-**Done when / 完成标准:** The API, UI and scheduled refresh have a consistent accepted binding and the failed rollout has an explicit resolution. / API、界面与定时刷新采用一致且验收通过的版本绑定，失败部署有明确收尾。
+**Done when / 完成标准:** A family member can find photos, narrow by person/date/place, change a condition and open a result without starting over. / 家人能够查找照片，按人物／日期／地点逐步缩小范围，修改条件并打开结果，无需反复从头描述。
 
 ### Make Jude useful across conversations / 让小贾在多轮对话中真正好用
 
@@ -328,16 +328,17 @@ Refresh persistent visual grouping through the existing scheduled worker. / 通�
 **Implemented / 已实现**
 
 - Windows grouping worker and recurring refresh have prior accepted runs. / Windows 分组工作进程与定时刷新已有验收通过的运行记录。
+- The current API/task binding passed an actual SYSTEM natural-run check on 24 November, with the native Job drained and closed. / 11 月 24 日已在 SYSTEM 自然触发运行中验证当前 API／任务绑定，原生作业已排空并关闭。
 
 **Gaps / 差距**
 
-- The new UI/API revision still needs the exact scheduled grouping binding repaired. / 新版界面／API 仍需修复与定时分组任务的精确版本绑定。
+- Household grouping quality and predictable refresh outcomes after library changes remain open. / 真实家庭分组质量，以及相册变更后的可预期刷新效果，仍待完善。
 
-**Next / 下一步:** Fix the concrete handoff failure and close the held rollout without rebuilding qualified kernels. / 修复具体衔接失败，完成暂挂部署收尾，不重建已验证内核。
+**Next / 下一步:** Review actual groups and address concrete deferred or incomplete refresh cases within the existing resource budgets. / 检查实际分组，并在现有资源预算内解决具体的暂缓或未完成刷新情形。
 
-**Delivery / 交付背景:** The API component is restored; complete new-UI rollout acceptance remains pending. / API 组件已恢复；完整新版界面部署验收仍待完成。
+**Delivery / 交付背景:** A recorded 24 November run returned REFRESH_DEFERRED with no updates. Binding acceptance does not turn that result into a completed sweep. / 11 月 24 日的一次记录返回 REFRESH_DEFERRED，未更新分组。版本绑定验收通过并不代表该次扫描已完成。
 
-**Acceptance / 验收背景:** A successful sweep is not proof of whole-library grouping quality. / 一次成功扫描不能证明全库分组质量。
+**Acceptance / 验收背景:** Task binding, completed cache refresh and household grouping quality are separate outcomes. / 任务版本绑定、缓存刷新完成与家庭分组质量是不同成果。
 
 **Evidence record / 证据记录**
 
@@ -581,27 +582,27 @@ Bring protected browsing, playback and Search to household devices. / 让家庭�
 
 ### Modern bilingual Web UI / 现代双语网页界面
 
-In progress / 进行中 · Now / 当前重点
+Recorded delivery / 已交付记录 · Now / 当前重点
 
 A consistent assistant, story workspace and responsive navigation. / 统一的助手、故事工作区与响应式导航。
 
 **Implemented / 已实现**
 
-- New UI passed local responsive/large-text checks and repaired Windows startup/HTTPS. / 新版界面已通过本地响应式／大字检查及修复后的 Windows 启动／HTTPS。
+- The new UI passed responsive/large-text checks, actual Windows SYSTEM startup, trusted HTTPS checks and the repaired grouping binding. / 新版界面已通过响应式／大字检查、实际 Windows SYSTEM 启动、可信 HTTPS 检查及修复后的分组版本绑定。
 
 **Gaps / 差距**
 
-- Complete rollout remains held at the grouping configuration handoff. / 完整部署仍暂挂在分组配置衔接环节。
+- Family feedback on the installed interface and real voice interactions is still pending. / 已部署界面的家庭反馈与真实语音交互体验仍待确认。
 
-**Next / 下一步:** Close the handoff, then record the actual deployed revision and user feedback. / 完成衔接，再记录实际部署版本与用户反馈。
+**Next / 下一步:** Collect concrete phone/desktop feedback and improve the affected user journeys. / 收集手机／桌面端的具体反馈，改进对应使用流程。
 
-**Delivery / 交付背景:** The new component is restored and responds; full package acceptance is not claimed. / 新版组件已恢复并响应；尚未宣称完整包验收通过。
+**Delivery / 交付背景:** The reviewed UI component is served on Windows; the failed attempt and later recovery remain separate records. / 已审查的界面组件已由 Windows 提供；失败尝试与后续恢复分别保留记录。
 
 **Acceptance / 验收背景:** Local rendering, HTTPS and family/device taste remain distinct. / 本地渲染、HTTPS 与家庭／设备审美体验分别记录。
 
 **Evidence record / 证据记录**
 
-- 2026-11-24 · ROADMAP.md · Windows component recovery / ROADMAP.md · Windows 组件恢复
+- 2026-11-24 · ROADMAP.md · Windows UI recovery and current grouping binding / ROADMAP.md · Windows 界面恢复与当前分组版本绑定
 
 <a id="rust-production-kernels"></a>
 
