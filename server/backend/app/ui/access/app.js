@@ -668,6 +668,7 @@
     resetVideoMoments();
     clearPeopleReview({hide:true});
     galleryItems=[];
+    memoryGroups?.clearRecent?.();
     $('recent-memory-groups').open=false;
     $('recent-group-list').replaceChildren();
     $('recent-groups-story').replaceChildren();

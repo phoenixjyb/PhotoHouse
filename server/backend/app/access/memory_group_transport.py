@@ -7,7 +7,8 @@ from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from .library import LibraryRoute, _integer, _query
-from .memory_groups import MemoryGroups, MEMORY_GROUP_FIELDS, MEMORY_GROUP_SPLIT_FIELDS, _csv
+from .memory_groups import (MemoryGroups, MEMORY_GROUP_FIELDS, MEMORY_GROUP_SPLIT_FIELDS,
+                            MEMORY_GROUP_COMBINE_FIELDS, _csv)
 from .memory_group_schema import GROUP_REVISIONS, verify_memory_group_schema
 from .service import AccessService
 from .stories import _uuid
@@ -41,7 +42,7 @@ def capabilities(runtime, token, library, enabled, vectors):
                 and verify_memory_group_schema(db))
             manual = bool(ready and member['role'] in {'owner', 'contributor'})
             return {'version': 1, 'enabled': bool(ready), 'manual': manual, 'split': manual,
-                    'recent': bool(ready),
+                    'recent': bool(ready), 'combine': manual,
                     'suggestions': bool(ready and vectors is not None),
                     'max_members': 24, 'needs_review': True}
 
@@ -139,6 +140,13 @@ async def create_group(request: Request):
     runtime, token, library = await scope(request)
     body = await _body(request, MEMORY_GROUP_FIELDS, max_body=24576)
     return response(await run_in_threadpool(call, runtime, 'save', token, library, body), status=201)
+
+
+@router.post('/memory-groups/combine')
+async def combine_groups(request: Request):
+    runtime, token, library = await scope(request)
+    body = await _body(request, MEMORY_GROUP_COMBINE_FIELDS, max_body=2048)
+    return response(await run_in_threadpool(call, runtime, 'combine', token, library, body), status=201)
 
 
 @router.put('/memory-groups/{group_id}')

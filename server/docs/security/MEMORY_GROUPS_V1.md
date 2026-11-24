@@ -56,8 +56,11 @@ CSRF validation; native bearer requests use the existing admission contract.
 | POST | `/memory-groups/proposals?library=…` | Read-only time and visual candidates |
 | GET | `/assets/{id}/memory-groups?library=…` | Bounded complete groups for this asset |
 | GET | `/memory-groups/{id}?library=…` | Current group and dynamically hydrated notes |
+| GET | `/memory-groups?library=…` | Up to eight recent groups with a protected cover |
 | POST | `/memory-groups?library=…` | Explicitly create a group |
 | PUT | `/memory-groups/{id}?library=…` | Revision-checked manual adjustment |
+| POST | `/memory-groups/{id}/split?library=…` | Move selected members to a new group |
+| POST | `/memory-groups/combine?library=…` | Save two reviewed groups as a new group |
 
 Proposals accept string fields `asset_ids` and `excluded_asset_ids`, canonical
 CSV IDs. Saves accept exactly `asset_ids`, `excluded_asset_ids`,
@@ -67,6 +70,17 @@ disjoint. Every source must currently belong to an included asset in this
 library. Owner or creating contributor can edit; viewers can read. Saves use
 revision comparison and actor-bound idempotency in the same write transaction
 as authorization and membership validation.
+
+Combining is available under the existing manual-edit capability. The request
+contains string fields `group_ids`, `group_revisions`, `source_story_ids`,
+`source_story_revisions`, `theme` and `mutation_id`. In one transaction, the
+server checks the ordered pair of group IDs and revisions, every included
+asset, and the reviewed linked note IDs and revisions. It keeps the first
+occurrence of each included asset and retains exclusions for items outside the
+new group. The caller chooses its theme. The receipt identifies the new group
+and both original groups. An identical request from the same actor returns the
+same receipt after a lost response. Both original group records are retained.
+The new group links accessible original notes through the existing read path.
 
 Responses have a 1 MiB ceiling and return no vectors, source filesystem paths
 or model identities. Per-asset listing examines at most 64 matching groups,

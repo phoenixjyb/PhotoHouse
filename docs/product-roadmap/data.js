@@ -838,14 +838,14 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "A Web editor can add same-day photos or videos and split a saved group. Stories can reopen a recent group or start an unsaved draft from one or two groups in the selected order.",
-          "zh": "网页编辑器可添加同日照片或视频并拆分已保存的回忆组。「故事」可打开近期回忆组，也可按所选顺序从一到两个回忆组生成未保存的草稿。"
+          "en": "The Web editor can add same-day photos or videos and split a saved group. Stories can reopen a recent group, start an unsaved draft, or review and save two groups as a new group while keeping both originals.",
+          "zh": "网页编辑器可添加同日照片或视频，也可拆分已保存的回忆组。「故事」可打开近期回忆组、创建未保存的草稿，或审阅两个回忆组并保存为新组，同时保留两组原记录。"
         }
       ],
       "gaps": [
         {
-          "en": "Automatic event discovery across devices, group merging and household review remain open.",
-          "zh": "跨设备自动识别活动、合并回忆组以及家庭使用验收仍待完成。"
+          "en": "Automatic event discovery across devices and household review remain open.",
+          "zh": "跨设备自动识别活动和家庭使用验收仍待完成。"
         }
       ],
       "next_step": {
@@ -853,8 +853,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "用一小组可审阅的家庭活动试用可编辑的回忆组。"
       },
       "delivery_note": {
-        "en": "Generated browser checks covered addition, split, retry and opening a draft from two verified revisions. Windows release remains open for the optional activity group editor.",
-        "zh": "合成浏览器测试覆盖添加、拆分、重试，以及按两个已核对版本打开故事草稿。可选的活动回忆组编辑器仍待 Windows 交付。"
+        "en": "Generated browser checks covered adding items, splitting, ordered drafts and saving a combined group once after a lost response. Windows release remains open for the optional activity group editor.",
+        "zh": "合成浏览器测试覆盖添加项目、拆分、有序草稿和保存合并组。保存响应丢失后，重试只创建一个新组。可选的活动回忆组编辑器仍待 Windows 交付。"
       },
       "acceptance_note": {
         "en": "Family usefulness must be evaluated directly.",

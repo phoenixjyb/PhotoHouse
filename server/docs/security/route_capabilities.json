@@ -4662,6 +4662,20 @@
    "gap": "Windows migration and installed-client acceptance remain separate"
   },
   {
+   "source": "backend/app/access/memory_group_transport.py",
+   "owner": "router",
+   "method": "POST",
+   "path": "/memory-groups/combine",
+   "handler": "combine_groups",
+   "surface": "photohouse",
+   "scope": "Two reviewed groups in the current library and the resulting ordered group",
+   "capabilities": [
+    "story.write"
+   ],
+   "current_control": "Default-off e7 schema, current membership, CSRF, exact group and family note revisions, bounded ordered membership and exclusions, actor-bound exact retry, source notes read through on access",
+   "gap": "Windows and installed-client acceptance remain separate"
+  },
+  {
    "source": "backend/app/routers/ui.py",
    "owner": "router",
    "method": "GET",
