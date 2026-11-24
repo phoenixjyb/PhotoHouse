@@ -224,7 +224,8 @@ async function captionDecoupling(page,{staleCaptionText='caption-101'}={}){
   assert.equal(await pixelsReady(),true,'an unavailable description must not hide the photo');
   assert.equal(captionReads('102'),readsBeforeRetry+1);
   await page.locator('#captions').screenshot({path:path.join(artifacts,'description-retry.png')});
-  await retry.click();await description102.waitFor();
+  await retry.press('Enter');await description102.waitFor();
+  assert.equal(await descriptions.evaluate(summary=>summary===document.activeElement),true);
   assert.equal(captionReads('102'),readsBeforeRetry+2);
   await page.locator('#close-viewer').click();
   assert.deepEqual(external,[]);assert.deepEqual(errors,[]);

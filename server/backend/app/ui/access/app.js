@@ -3066,7 +3066,10 @@
       retry.className='quiet';
       retry.textContent=t('captionsRetry');
       retry.addEventListener('click',()=>{
-        if(current())void loadViewerCaptions(item,epoch,viewerGeneration);
+        if(!current())return;
+        if(document.activeElement===retry)
+          $('viewer-descriptions').querySelector('summary').focus({preventScroll:true});
+        void loadViewerCaptions(item,epoch,viewerGeneration);
       },{once:true});
       container.replaceChildren(status,retry);
     }finally{
