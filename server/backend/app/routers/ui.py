@@ -11,6 +11,7 @@ router = APIRouter()
 
 UI_DIR = Path(__file__).resolve().parents[1] / "ui" / "access"
 INDEX_FILE = UI_DIR / "index.html"
+_ORAL_HISTORY_PANEL = '<details id="oral-history-panel" class="access-panel" hidden>'
 APP_FILE = UI_DIR / "app.js"
 STYLE_FILE = UI_DIR / "styles.css"
 ICON_FILE = UI_DIR.parent / "photohouse-icon.svg"
@@ -29,6 +30,7 @@ ASSET_MEDIA_TYPES = {
     "story-workspace.js": "application/javascript",
     "memory-groups.js": "application/javascript",
     "memory-community.js": "application/javascript",
+    "oral-history.js": "application/javascript",
     "styles.css": "text/css",
     "assistant-private-workspace.js": "application/javascript",
     "voice-session-control.js": "application/javascript",
@@ -142,6 +144,8 @@ def _versioned_shell(html: str, versions: tuple[tuple[str, str], ...]) -> bytes:
 @router.get("/ui")
 def ui_home(request: Request):
     html = _read_asset(INDEX_FILE)[0].decode("utf-8")
+    if getattr(request.app.state, 'oral_history_intake_enabled', False):
+        html = html.replace(_ORAL_HISTORY_PANEL, _ORAL_HISTORY_PANEL.removesuffix(" hidden>") + ">", 1)
     versions = tuple((name, _read_asset(_asset_path(name))[1]) for name in _referenced_assets(html))
     return _static_response(request, _versioned_shell(html, versions), "text/html", NO_CACHE_HEADERS)
 
@@ -169,6 +173,11 @@ def ui_memory_groups(request: Request, v: str | None = None):
 @router.get("/ui/memory-community.js")
 def ui_memory_community(request: Request, v: str | None = None):
     return _asset_response(request, "memory-community.js", v)
+
+
+@router.get("/ui/oral-history.js")
+def ui_oral_history(request: Request, v: str | None = None):
+    return _asset_response(request, "oral-history.js", v)
 
 
 @router.get("/ui/styles.css")

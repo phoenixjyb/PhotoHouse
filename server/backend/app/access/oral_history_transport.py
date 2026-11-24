@@ -137,6 +137,13 @@ async def create_session(library_id: str, request: Request):
     return _json_response(result, status=201)
 
 
+@router.get('/oral-history/v1/libraries/{library_id}/sessions')
+async def list_open_sessions(library_id: str, request: Request):
+    runtime, token = _admitted(request)
+    result = await run_in_threadpool(_intake_call, runtime, 'list_open', token, library_id)
+    return _json_response(result)
+
+
 @router.get('/oral-history/v1/libraries/{library_id}/sessions/{session_id}')
 async def session_status(library_id: str, session_id: str, request: Request):
     runtime, token = _admitted(request)

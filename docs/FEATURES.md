@@ -46,6 +46,9 @@ follows. Current installed-client and voice acceptance remain separate.
 - From a saved memory group, choose **Start a story** to open its current theme
   and ordered media in the story editor. Building, reviewing and saving remain
   explicit actions.
+- Memory-group suggestions offer **Cover more selected moments** when the
+  existing reviewed results can represent additional seed photos. Changing the
+  suggestions preserves choices you made yourself.
 - An optional video-moment catalog can match reviewed labels in the videos-only
   filter. Selecting a moment seeks the protected player to its start and binds
   playback to the prepared version used for that result. Operators supply the
@@ -53,8 +56,8 @@ follows. Current installed-client and voice acceptance remain separate.
 - Owners can copy a phone-bound registration link from Family settings.
   Registration still requires the invited phone number and an explicit submit.
 - [Oral-history intake](ORAL_HISTORY_INTAKE_FOUNDATION.md) has a default-off
-  protected HTTP API for saving and resuming ordered audio sections. The
-  recording UI and device qualification are still pending.
+  Web recorder and protected API. Generated checks cover local preview, exact
+  retry and resume after reload. Physical devices are pending.
 - The Windows voice bridge accepts optional exact names of installed
   [System.Speech voices](MODEL_PROVIDER_ARCHITECTURE.md). The tested bridge
   behavior does not qualify a new live voice.

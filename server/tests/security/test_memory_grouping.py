@@ -29,7 +29,7 @@ def record(asset_id, vector=(1.0, 0.0), identity=IDENTITY, checksum=None):
 
 def propose(seed_records, candidate_records, *, times=None, exclusions=(), seed_ids=None,
             candidate_ids=None, authorized_ids=None, minimum_similarity=0.9,
-            max_gap_seconds=21600):
+            max_gap_seconds=21600, coverage_mode="default"):
     seed_ids = tuple(seed_ids if seed_ids is not None else (item.asset_id for item in seed_records))
     candidate_ids = tuple(candidate_ids if candidate_ids is not None
                           else (item.asset_id for item in candidate_records))
@@ -42,12 +42,34 @@ def propose(seed_records, candidate_records, *, times=None, exclusions=(), seed_
         expected_identity=IDENTITY,
         capture_times=times if times is not None else {asset_id: "2026-05-01T10:00:00"
                                                          for asset_id in cohort},
-        excluded_ids=exclusions, minimum_similarity=minimum_similarity,
+        excluded_ids=exclusions, coverage_mode=coverage_mode,
+        minimum_similarity=minimum_similarity,
         max_gap_seconds=max_gap_seconds,
     )
 
 
 class MemoryGroupingTests(unittest.TestCase):
+    def test_opt_in_coverage_reserves_best_eligible_candidate_per_seed(self):
+        seeds = [record("1", (1.0, 0.0)), record("2", (0.0, 1.0))]
+        candidates = [record(str(asset_id), (1.0, 0.0)) for asset_id in range(3, 24)]
+        candidates.append(record("99", (0.0, 1.0)))
+        default = propose(seeds, candidates)
+        covered = propose(seeds, candidates, coverage_mode="by_seed")
+        self.assertEqual(20, len(default.candidates))
+        self.assertNotIn("99", [item.asset_id for item in default.candidates])
+        self.assertTrue(default.coverage_available)
+        self.assertEqual("default", default.coverage_mode)
+        self.assertEqual([("3", "1"), ("99", "2")], [
+            (item.asset_id, item.matched_seed_asset_id) for item in covered.candidates[:2]
+        ])
+        self.assertEqual(["3", "99", *map(str, range(4, 22))],
+                         [item.asset_id for item in covered.candidates])
+        self.assertEqual("by_seed", covered.coverage_mode)
+        excluded = propose(seeds, candidates, exclusions=("99",), coverage_mode="by_seed")
+        self.assertFalse(excluded.coverage_available)
+        self.assertNotIn("99", [item.asset_id for item in excluded.candidates])
+        self.assertIs(propose(seeds, candidates, coverage_mode="unknown"), UNAVAILABLE)
+
     def test_validates_entire_authorized_cohort_and_all_vector_records(self):
         seed, candidate = record("1"), record("2")
         self.assertIs(propose([seed], [candidate], authorized_ids={"1"}), UNAVAILABLE)

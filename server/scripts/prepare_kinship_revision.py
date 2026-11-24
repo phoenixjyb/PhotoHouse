@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Create a new private kinship graph draft from reviewed assertion edits.
+"""Create a new private kinship graph draft from reviewed assertion and alias edits.
 
 The selected graph is never changed or activated. The patch must name the
-expected canonical graph digest and may only add, replace or remove assertions.
+expected canonical graph digest and may change assertions or one person's aliases.
 """
 import argparse
 from copy import deepcopy
@@ -77,16 +77,26 @@ def _apply_patch(document, patch):
     else:
         raise Refused()
 
-    people = {person['id'] for person in document['people']}
+    draft = deepcopy(document)
+    people = {person['id']: person for person in draft['people']}
     assertions = list(document['assertions'])
     by_id = {item['id']: index for index, item in enumerate(assertions)}
     touched = set()
+    touched_people = set()
     added = set()
     for operation in patch['operations']:
         if type(operation) is not dict or type(operation.get('op')) is not str:
             raise Refused()
         kind = operation['op']
-        if kind == 'add':
+        if kind == 'replace_aliases':
+            ident, aliases = operation.get('person_id'), operation.get('aliases')
+            if (set(operation) != {'op', 'person_id', 'aliases'} or type(ident) is not str
+                    or ident not in people or ident in touched_people or type(aliases) is not list
+                    or len(aliases) > 16 or aliases == people[ident]['aliases']):
+                raise Refused()
+            people[ident]['aliases'] = list(aliases)
+            touched_people.add(ident)
+        elif kind == 'add':
             if set(operation) != {'op', 'assertion'}:
                 raise Refused()
             assertion = operation['assertion']
@@ -115,7 +125,6 @@ def _apply_patch(document, patch):
         else:
             raise Refused()
 
-    draft = deepcopy(document)
     draft['revision'] = revision
     draft['assertions'] = [item for item in assertions if item is not None]
     validated = KinshipGraph(draft)

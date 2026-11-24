@@ -318,6 +318,20 @@ try:
                                                 client=('192.0.2.20', 23456))
                 else:
                     fixture.client.app.state.media_runtime = media
+            elif scenario=='oral-history-enabled':
+                from app.access.oral_history_schema import install_fixture_schema
+                from app.main import create_app
+                with fixture.connection() as db:
+                    db.execute('BEGIN IMMEDIATE')
+                    install_fixture_schema(db)
+                    db.commit()
+                state = fixture.client.app.state
+                app = create_app(access_runtime=state.access_runtime,
+                    discovery_runtime=state.discovery_runtime, media_runtime=state.media_runtime,
+                    oral_history_intake_enabled=True)
+                fixture.client.close()
+                fixture.client = TestClient(app, base_url='https://photohouse.test',
+                    client=('192.0.2.20', 23456))
             elif scenario=='memory-concurrent-edit':
                 fixture.mutate("UPDATE access_memory_stories SET revision=revision+1 WHERE library_id='family-a'")
             elif scenario=='memory-concurrent-reorder':

@@ -37,6 +37,12 @@ They use synthetic fixtures and need no family database, GPU or model weights.
 Do not substitute an unrestricted historical `pytest tests/` run for the supported
 profile. See the [test entry](tests/README.md) for focused examples.
 
+The extracted staging package smoke verifies a fresh generated owner can send,
+approve, and browse one photo through the protected API. An exact retry keeps
+one asset and creates no new tasks. The preview itself is a generated fixture
+so this check can run without a media worker or listener. Installation and
+service configuration remain separate from this package check.
+
 Web sources live here, with optional Node/Playwright checks described in
 [Web development](../docs/WEB_DEVELOPMENT.md). They are source checks, not a live
 owner/member or device review. Phone/TV share the protected/domain contracts

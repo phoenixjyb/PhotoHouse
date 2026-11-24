@@ -157,7 +157,7 @@ def credentials_from_request(request, *, allow_query=False):
     return token, mode
 
 
-async def _body(request, fields, *, max_body=MAX_BODY):
+async def _body(request, fields, *, max_body=MAX_BODY, optional_fields=()):
     if _single(request, 'content-encoding') is not None:
         raise TransportError(400, 'Invalid request')
     if (_single(request, 'content-type') or '').split(';')[0].strip().lower() != 'application/json':
@@ -179,7 +179,9 @@ async def _body(request, fields, *, max_body=MAX_BODY):
         return result
     try:
         body = json.loads(raw, object_pairs_hook=unique)
-        if not isinstance(body, dict) or set(body) != set(fields):
+        required, optional = set(fields), set(optional_fields)
+        if (not isinstance(body, dict) or not required <= set(body)
+                or not set(body) - required <= optional):
             raise ValueError('Invalid fields')
         if any(not isinstance(value, str) for value in body.values()):
             raise ValueError('Invalid value')

@@ -11,7 +11,7 @@
   }
   const state = {language:'zh', mode:'login', generation:0, controllers:new Set(), profile:null,
     csrf:null, library:null, catalogue:null, sessionCheckFailed:false, viewerGeneration:0, page:1, busy:false, locked:false, invite:null, memberPage:1, memberGeneration:0, memberTotal:0, total:0, videoRetryTimer:null, videoController:null,captionController:null};
-  let storyWorkspace, memoryCommunity, memoryGroups;
+  let storyWorkspace, memoryCommunity, memoryGroups, oralHistory;
   let privateAssistant=null,privateAssistantBusy=false,privateAssistantOperation=0,privateCreationRetryId=null,assistantMemoryActionTarget=null,privateSceneRenderedPage=null,privateResultRenderedPage=null;
   let privateMemorySpeechScope='',privateMemorySpeechEnabled=false;
   let galleryItems=[];
@@ -119,6 +119,24 @@
   Object.assign(words.en,{annotationIntakeClosed:'New family notes are not available yet.',annotationDelete:'Delete note',annotationDeleteConfirm:'Delete this original note or recording and its suggestions from the active library? Existing backups may still contain a copy.',annotationDeleted:'Note deleted.',annotationDeleteError:'Deletion could not be confirmed. Refresh this photo before trying again.'});
   Object.assign(words.zh,{annotationIntakeClosed:'暂时无法添加新的家庭留言。',annotationDelete:'删除留言',annotationDeleteConfirm:'从当前相册库删除这条原始留言或录音及其建议？现有备份中可能仍有副本。',annotationDeleted:'留言已删除。',annotationDeleteError:'暂时无法确认删除结果，请刷新此照片后重试。'});
   const annotationState={pending:new Map(),capture:null};
+  function canReserveRecording(){
+    return !annotationState.capture&&!assistantState.capture&&!assistantState.captureStarting&&
+      !assistantState.transcribing&&!memoryCommunity?.isCapturing?.();
+  }
+  function reserveRecording(){
+    if(!canReserveRecording())return null;
+    const token={dictationReservation:true,stop:async()=>null};
+    annotationState.capture=token;
+    return token;
+  }
+  function claimRecording(token,handle){
+    if(annotationState.capture!==token)return false;
+    annotationState.capture=handle;
+    return true;
+  }
+  function releaseRecording(token){
+    if(annotationState.capture===token)annotationState.capture=null;
+  }
   const viewerAnnotationState={page:1,total:0,load:0,batch:null};
   function annotationWav(chunks,total,rate){
     const outputRate=16000,frames=Math.min(60*outputRate,Math.floor(total*outputRate/rate));
@@ -588,6 +606,8 @@
   Object.assign(words.en,{assistantPrivacyDetails:'Privacy and voice',assistantComposerPlaceholder:'Tell Jude what you’re looking for…',assistantWorkspaceKicker:'PHOTOHOUSE · PRIVATE ASSISTANT'});
   Object.assign(words.en,{copyInviteLink:'Copy registration link',inviteLinkCopied:'Registration link copied. It expires in 24 hours and works only for the invited phone number.',inviteLinkCopyFailed:'Could not copy the registration link. You can still send the invitation code privately.'});
   Object.assign(words.zh,{copyInviteLink:'复制注册链接',inviteLinkCopied:'注册链接已复制。有效期为 24 小时，且仅适用于受邀的手机号码。',inviteLinkCopyFailed:'无法复制注册链接。你仍可以私下发送邀请码。'});
+  Object.assign(words.en,{oralHistory:'Oral history',oralHistoryUnavailable:'Your recordings are unavailable. Reopen this panel to try again.'});
+  Object.assign(words.zh,{oralHistory:'口述历史',oralHistoryUnavailable:'暂时无法打开你的录音。请重新打开此面板重试。'});
   function translate() {
     document.documentElement.lang = state.language === 'zh' ? 'zh-CN' : 'en';
     document.querySelectorAll('[data-i18n]').forEach(node => {node.textContent=t(node.dataset.i18n);});
@@ -601,6 +621,7 @@
     $('grid').setAttribute('aria-label',t('memoryMediaRegion'));
     updatePhotoStackControls();
     storyWorkspace?.translate();
+    oralHistory?.translate();
     if(peopleReviewState.person)renderPeopleReview();
     if(peopleReviewState.statusKey)reviewStatus(peopleReviewState.statusKey,peopleReviewState.statusValues);
     renderAssistantTrail();
@@ -636,6 +657,8 @@
     resetVideoMoments();
     clearPeopleReview({hide:true});
     galleryItems=[];
+    oralHistory?.clear();
+    $('oral-history-panel').open=false;
     if(storyWorkspace)storyWorkspace.clear({cancelCommunityJobs:cancelMemoryJobs});
     else $('saved-memory-status').textContent='';
     transferState.selected.clear();transferState.review=null;transferState.source=null;transferState.destinations=[];transferState.busy=false;transferState.canMove=null;
@@ -4933,10 +4956,10 @@
       voiceCapabilities:({signal}={})=>request(`/assistant/v1/capabilities?${new URLSearchParams({library_id:state.library||''})}`,{epoch:state.generation,signal}),
       transcribe:(file,{signal}={})=>request('/assistant/v1/transcribe',{method:'POST',rawBody:file,signal,
         extraHeaders:{'Content-Type':'audio/wav','X-PhotoHouse-Library-Id':state.library,'X-PhotoHouse-Request-Id':crypto.randomUUID()}}),
-      canCapture:()=>!annotationState.capture&&!assistantState.capture&&!assistantState.captureStarting&&!assistantState.transcribing&&!memoryCommunity?.isCapturing?.(),
-      reserveCapture:()=>{if(annotationState.capture||assistantState.capture||assistantState.captureStarting||assistantState.transcribing||memoryCommunity?.isCapturing?.())return null;const token={dictationReservation:true,stop:async()=>null};annotationState.capture=token;return token;},
-      claimCapture:(token,handle)=>{if(annotationState.capture!==token)return false;annotationState.capture=handle;return true;},
-      releaseCapture:token=>{if(annotationState.capture===token)annotationState.capture=null;},
+      canCapture:canReserveRecording,
+      reserveCapture:reserveRecording,
+      claimCapture:claimRecording,
+      releaseCapture:releaseRecording,
       stopAudioForCapture:()=>{stopAssistantSpeech();memoryCommunity?.stopPlayback?.();window.dispatchEvent(new CustomEvent('photohouse-memory-audio-start'));},
       request:body=>request(libraryPath('/story-workspace/preview'),{method:'POST',body,epoch:state.generation}),
       openFrameSearch:openAssistantFrameSearch,
@@ -5344,6 +5367,23 @@
   $('transfer-review').addEventListener('cancel',event=>{event.preventDefault();if(!transferState.busy)$('transfer-review').close();});
   $('invite-form').addEventListener('submit',event=>{void invite(event);});
   $('copy-invite-link').addEventListener('click',()=>{void copyInviteLink();});
+  $('oral-history-panel').addEventListener('toggle',async event=>{
+    const panel=event.currentTarget,epoch=state.generation;
+    if(!panel.open){oralHistory?.clear();return;}
+    const current=()=>panel.open&&!panel.hidden&&!stale(epoch)&&!state.locked&&state.profile?.account_id&&state.library;
+    if(!current())return;
+    try{
+      await loadPanelScript('oral-history');
+      if(!current())return;
+      oralHistory??=window.PhotoHouseOralHistory({panel,request,capture:annotationCapture,
+        scope:()=>({account:state.profile?.account_id,library:state.library,generation:state.generation,
+          language:state.language,locked:state.locked}),
+        reserveCapture:reserveRecording,claimCapture:claimRecording,releaseCapture:releaseRecording,onAuthorizationFailure:failure});
+      await oralHistory.open();
+    }catch{
+      if(current())$('oral-history-status').textContent=t('oralHistoryUnavailable');
+    }
+  });
   $('cancel-invite').addEventListener('click',()=>{void cancelInvite();});
   $('accept-form').addEventListener('submit',event=>{void accept(event);});
   $('language').addEventListener('click',()=>{
@@ -5368,7 +5408,9 @@
     closeAssistantWorkspace({restoreFocus:false,restoreScroll:false});
     if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();
     state.language=state.language==='en'?'zh':'en';translate();
-    const keepWork=assistantState.pendingTurn||assistantState.busy||assistantState.transcribing||assistantState.transcriptReviewPending||assistantState.capture||assistantState.captureStarting||memoryCommunity?.isBookEditing?.()||peopleReviewState.person;
+    const keepWork=assistantState.pendingTurn||assistantState.busy||assistantState.transcribing||
+      assistantState.transcriptReviewPending||assistantState.capture||assistantState.captureStarting||
+      memoryCommunity?.isBookEditing?.()||peopleReviewState.person||$('oral-history-panel').open;
     if(state.profile&&!state.locked&&!keepWork)void restore(true,intent);
     else if(intent)discardLocaleAssistantResume(intent,{clearDraft:true});
   });

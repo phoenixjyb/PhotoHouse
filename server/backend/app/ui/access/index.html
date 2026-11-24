@@ -11,6 +11,7 @@
     <script data-module="story-draft-store" src="/ui/story-draft-store.js"></script>
     <script data-module="story-workspace" src="/ui/story-workspace.js"></script>
     <script data-module="memory-groups" src="/ui/memory-groups.js"></script>
+    <script data-module="oral-history" src="/ui/oral-history.js"></script>
     <script data-module="assistant-private-workspace" src="/ui/assistant-private-workspace.js"></script>
   </template>
   <script src="/ui/voice-session-control.js" defer></script>
@@ -293,6 +294,36 @@
       <p id="empty" class="empty" hidden></p><div id="grid" class="grid" role="region" aria-label="照片与视频"></div>
       <nav id="pagination" class="pagination" aria-label="Gallery pages" hidden><button id="previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="page-label"></span><button id="next" class="quiet" type="button" data-i18n="next">Next</button><form id="page-jump" class="page-jump"><label for="page-input" class="fine" data-i18n="goToPage">Go to page</label><input id="page-input" type="number" min="1" step="1" inputmode="numeric" autocomplete="off"><button class="quiet" type="submit" data-i18n="go">Go</button></form></nav>
       <h2 id="library-tools" class="library-tools-heading" data-i18n="memoryFamilyHeading">Family library</h2>
+      <details id="oral-history-panel" class="access-panel" hidden>
+        <summary data-i18n="oralHistory">Oral history</summary>
+        <p class="fine" data-oral-word="help">Only you can open the saved recording. Record up to 20 seconds at a time. Save each section before leaving.</p>
+        <p id="oral-history-status" role="status" aria-live="polite"></p>
+        <ul id="oral-history-list" class="receipt-list" hidden></ul>
+        <form id="oral-history-create" hidden>
+          <label for="oral-history-title" data-oral-word="title">Title</label>
+          <input id="oral-history-title" name="title" type="text" maxlength="128" required autocomplete="off">
+          <label for="oral-history-subject" data-oral-word="subject">Who is this about?</label>
+          <input id="oral-history-subject" name="subject" type="text" maxlength="128" autocomplete="off">
+          <label for="oral-history-narrator" data-oral-word="narrator">Who is speaking?</label>
+          <input id="oral-history-narrator" name="narrator" type="text" maxlength="64" autocomplete="off">
+          <label for="oral-history-language" data-oral-word="language">Recording language</label>
+          <select id="oral-history-language" name="language"><option value="und" data-oral-word="und">Unspecified</option><option value="zh">中文</option><option value="en">English</option><option value="mixed" data-oral-word="mixed">Mixed</option></select>
+          <label class="choice"><input type="checkbox" name="retention" required><span data-oral-word="retention">I agree to keep my original recording in PhotoHouse.</span></label>
+          <label class="choice"><input type="checkbox" name="processing"><span data-oral-word="processing">I also allow future local transcription.</span></label>
+          <button class="primary" type="submit" data-oral-word="create">Start a recording</button>
+        </form>
+        <section id="oral-history-active" hidden aria-labelledby="oral-history-current">
+          <h3 id="oral-history-current"></h3><p id="oral-history-sections" class="fine"></p>
+          <audio id="oral-history-preview" controls preload="none" hidden></audio>
+          <div class="memory-home-actions oral-history-actions">
+            <button id="oral-history-record" class="primary" type="button" data-oral-word="record">Record a section</button>
+            <button id="oral-history-stop" class="quiet" type="button" data-oral-word="stop" hidden>Stop recording</button>
+            <button id="oral-history-save" class="primary" type="button" data-oral-word="save" hidden>Save section</button>
+            <button id="oral-history-discard" class="quiet" type="button" data-oral-word="discard" hidden>Discard unsaved audio</button>
+            <button id="oral-history-finish" class="quiet" type="button" data-oral-word="finish">Finish recording</button>
+          </div>
+        </section>
+      </details>
       <details id="albums-panel" class="access-panel"><summary data-i18n="albums">Family albums</summary><p class="fine" data-i18n="albumPrivacy">Saved in this library, not automatically published to TV.</p><button id="album-create" class="primary" type="button" hidden data-i18n="newAlbum">Create album</button><p id="album-status" role="status"></p><div id="album-list"></div><nav id="album-pages" class="pagination" hidden><button id="album-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="album-page-label"></span><button id="album-next" class="quiet" type="button" data-i18n="next">Next</button></nav><details id="album-archived-panel" hidden><summary data-i18n="archivedAlbums">Albums put away</summary><p class="fine" data-i18n="archivedHelp">Albums this library has put away. Nothing was deleted, so any of them can be brought back.</p><p id="album-archived-status" role="status" aria-live="polite"></p><div id="album-archived-list"></div></details></details>
       <details id="my-uploads-panel" class="access-panel account-uploads-panel" hidden>
         <summary data-i18n="myUploads">My uploads</summary>

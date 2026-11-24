@@ -74,7 +74,7 @@ class ClosedBoundary:
         if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-groups/[0-9a-f-]{36}', path): return True
         if method == 'GET' and re.fullmatch(r'/assets/[0-9]+/memory-groups', path): return True
         oral = r'/oral-history/v1/libraries/[A-Za-z0-9_-]{1,128}/sessions'
-        if method == 'POST' and re.fullmatch(oral, path): return True
+        if method in {'GET', 'POST'} and re.fullmatch(oral, path): return True
         session = oral+r'/[0-9a-f-]{36}'
         if method == 'GET' and re.fullmatch(session, path): return True
         if method == 'POST' and re.fullmatch(session+r'/(?:sections|complete|cancel)', path): return True
