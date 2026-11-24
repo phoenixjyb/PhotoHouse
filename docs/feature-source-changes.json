@@ -38451,6 +38451,23 @@
         }
       ],
       "notes": "Reconcile the public bilingual roadmap, current local proof and earlier Windows delivery."
+    },
+    {
+      "feature": "full-gallery-recheck-and-generated-capacity",
+      "source_commit": "768e5e79c6dbb4b262b03198c05193132c7f34f8",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "79fd96e9de108ed3d7376a768315442fdc6740f88d3d794918997c5296534fe5",
+          "sha256": "0a24dad4d86fa565164a2bdd220478bf0c8af93b0519397938912773a7bdad60"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "f96a30b3fcc1c773d97a133db02ecfb929040049942d9f6182f066d63e585290",
+          "sha256": "58d15ec6bc57a141bb1c9b0cd824a169835526f137450be76473345333ecc454"
+        }
+      ],
+      "notes": "Open the on-demand description panel before checking protected caption text. Record the passing 68-check generated browser journey and the separately measured source-row limit."
     }
   ]
 }

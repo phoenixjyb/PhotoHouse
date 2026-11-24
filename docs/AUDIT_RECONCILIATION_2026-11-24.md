@@ -134,6 +134,10 @@ identities and the [operations guide](OPERATIONS.md) for release gates.
 GitHub Actions remains cost-paused. Family and physical-device acceptance remains
 separate from the generated source checks.
 
+The full local Chromium gallery journey passed 68 checks, including on-demand
+descriptions, protected media navigation, prepared playback, and membership
+revocation. It used generated media and an in-process API fixture.
+
 ### Generated Search request timing
 
 Twenty runs per source used the same three-turn Chinese journey and a fresh
@@ -185,6 +189,16 @@ Two cold samples per variant ranged from 665–668 ms before the change to
 546–547 ms afterward for an initial search. The current data, authorization and
 source checks ran in every request. These are generated local timings and the
 native breadth and latency goals remain open.
+
+Three more local trials used a **50,000-asset generated library** with date and
+media as its reviewed facets. The protected API returned the expected complete
+totals of 12,501, 12,499 and 12,499, with median request times of **567 ms**,
+**827 ms** and **809 ms**. At **100,000 assets**, the initial search returned
+503 in all three trials, in about 324–325 ms. A separate diagnostic traced it to
+caption rows exhausting the shared 100,000-source-row budget after the asset
+scan. Structured turns still bind current captions and photo notes so later
+turns can validate their context. The two-second attempt budget and the scope
+checks were in effect. This establishes a limit for this generated fixture.
 
 ### Generated photo-viewer timing
 
