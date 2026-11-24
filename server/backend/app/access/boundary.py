@@ -71,6 +71,7 @@ class ClosedBoundary:
         if method == 'POST' and path == '/photo-stacks/preferences': return True
         if method == 'GET' and path == '/memory-groups/capabilities': return True
         if method == 'POST' and path in {'/memory-groups', '/memory-groups/proposals'}: return True
+        if method == 'POST' and re.fullmatch(r'/memory-groups/[0-9a-f-]{36}/split', path): return True
         if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-groups/[0-9a-f-]{36}', path): return True
         if method == 'GET' and re.fullmatch(r'/assets/[0-9]+/memory-groups', path): return True
         oral = r'/oral-history/v1/libraries/[A-Za-z0-9_-]{1,128}/sessions'

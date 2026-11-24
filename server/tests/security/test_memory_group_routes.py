@@ -66,6 +66,7 @@ class MemoryGroupRouteTests(unittest.TestCase):
         self.assertEqual(self.request('GET', '/memory-groups/capabilities', library='family-b').status_code, 401)
         manual = self.request('GET', '/memory-groups/capabilities', client=self.build()).json()
         self.assertTrue(manual['manual'])
+        self.assertTrue(manual['split'])
         self.assertFalse(manual['suggestions'])
 
     def test_group_opt_in_uses_request_local_runtime_copies(self):
@@ -197,6 +198,42 @@ class MemoryGroupRouteTests(unittest.TestCase):
         self.assertEqual(repeat.json()['revision'], updated.json()['revision'])
         stale = dict(body, mutation_id=self.base.body()['mutation_id'])
         self.assertEqual(self.request('PUT', '/memory-groups/' + group['id'], stale).status_code, 409)
+
+    def test_split_moves_reviewed_members_and_linked_notes_atomically_and_retries(self):
+        note = self.base.note(asset=101)
+        created = self.request('POST', '/memory-groups',
+                               self.base.body(excluded='504', sources=note['id']))
+        self.assertEqual(created.status_code, 201, created.text)
+        original = created.json()
+        parent = '/memory-groups/' + original['id']
+        body = {'asset_ids': '101', 'revision': original['revision'],
+                'mutation_id': self.base.body()['mutation_id']}
+        self.assertEqual(self.request('POST', parent+'/split', body, headers=self.member_headers).status_code, 401)
+        self.assertEqual(self.request('POST', parent+'/split', body, library='family-b').status_code, 401)
+        self.assertEqual(self.request('POST', parent+'/split', body | {'asset_ids':'101,102'}).status_code, 422)
+        self.assertEqual(self.request('POST', parent+'/split', body | {'asset_ids':'201'}).status_code, 422)
+        self.assertEqual(self.request('GET', parent).json(), original)
+
+        result = self.request('POST', parent+'/split', body)
+        self.assertEqual(result.status_code, 200, result.text)
+        sibling = '/memory-groups/' + result.json()['created_id']
+        self.assertEqual(result.json(), {'version':1, 'library_id':'family-a',
+            'source_id':original['id'], 'created_id':sibling.rsplit('/',1)[1]})
+        retained = self.request('GET', parent).json()
+        moved = self.request('GET', sibling, headers=self.member_headers).json()
+        self.assertEqual((retained['asset_ids'], retained['excluded_asset_ids'], retained['sources']),
+                         (['102'], ['504','101'], []))
+        self.assertEqual((moved['asset_ids'], moved['excluded_asset_ids'], moved['source_story_ids']),
+                         (['101'], ['504','102'], [note['id']]))
+        self.assertEqual(moved['sources'][0]['text'], note['text'])
+        repeated = self.request('POST', parent+'/split', body)
+        self.assertEqual(repeated.json(), result.json())
+        self.assertEqual(self.request('POST', parent+'/split', body | {'asset_ids':'102'}).status_code, 409)
+        stale = body | {'mutation_id':self.base.body()['mutation_id']}
+        self.assertEqual(self.request('POST', parent+'/split', stale).status_code, 409)
+        self.assertEqual(self.request('GET', parent).json(), retained)
+        self.assertEqual(self.request('GET', '/assets/101/memory-groups').json()['items'][0]['id'],
+                         moved['id'])
 
     def test_csrf_revocation_and_whole_group_authorization(self):
         body = self.base.body()

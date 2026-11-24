@@ -898,6 +898,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .memory-group-editor label { display:block; min-width:0; }
 .memory-group-editor select { max-width:100%; }
 .memory-group-gallery-choice, .memory-group-suggestion, .memory-group-story-choice { padding:.65rem; border:1px solid var(--line,#ddd3c4); border-radius:.65rem; }
+.memory-group-editor .memory-group-split-choice { display:grid; grid-template-columns:1.4rem minmax(0,1fr); align-items:center; gap:.55rem; margin-block:.45rem; min-height:48px; cursor:pointer; }
+.memory-group-split-choice input { width:1.1rem; height:1.1rem; margin:0; }
+.memory-group-split-choice .memory-group-item { display:grid; grid-template-columns:3.5rem minmax(0,1fr); align-items:center; gap:.55rem; }
+.memory-group-split-choice .memory-group-item img { height:3.5rem; }
+.memory-group-split-choice .memory-group-item figcaption { padding-block:0; }
+.memory-group-split-choice:has(input:checked) { border-color:currentColor; }
 .memory-group-prose { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; }
 .memory-group-byline { color:var(--muted,#796f62); font-size:.9em; }
 .memory-group-source { border-left:3px solid var(--accent,#ad583b); padding-inline-start:1rem; margin-block:1rem; }

@@ -37745,6 +37745,63 @@
         }
       ],
       "notes": "Verified matching authorized labels and management flags. Generated 100004-record service benchmark and 68 browser checkpoints."
+    },
+    {
+      "feature": "reviewed-memory-group-split-20261125",
+      "source_commit": "24b8f0549f71d2003a4e2e3ddf66bc0f515059a1",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "842e3b5d7b1d8cb9bd3c1e6a12d9c00ff6535e566d7397093ae1cac5b25813dc",
+          "sha256": "6ff39bb20fb21eca6aa73b221ee9b2137c7e1f9a2acd1c999e6e106d7051ae83"
+        },
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "9cf17cd77439f4be5e0d48a4fd4c691354645bd8f741b9152573f696d5cf5341",
+          "sha256": "ea0ed3d702fe401c8cfb83a63e8859fded051b4f051a4951dd8127895b0e2fed"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "f92843dc749a120d3ed72e5c4a324d26e14580605882454f3890598b8883e8d7",
+          "sha256": "8a3db87662206e0d4019508103013c309acf7f107f0109810a4b7461ff897919"
+        },
+        {
+          "path": "server/backend/app/access/memory_group_transport.py",
+          "before_sha256": "7d3942355f96ad6e3f60aac61fe72f39316cf4b3d1f457a11b51cb35534cb9c8",
+          "sha256": "6506205eaff18c2b777b3263694b08a9c154fd25e1825dfcbe49798f3537b472"
+        },
+        {
+          "path": "server/backend/app/access/memory_groups.py",
+          "before_sha256": "d0e528489559d246a94b30b7b95d2d5598f6ca0c2571cde4929847c21660c423",
+          "sha256": "775b805bb9a1903af5c85b87f2b26215c5a3a93e8c0495300f77f488af35e78d"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "624dfe15f4ef152e1d9b57b4c94e9d63c1c7e94420ec5c2cf63d66e947c45e57",
+          "sha256": "f25caf9cc96015a2d9c4af18766ba99f54a641c10a0e5502a80bf474ec8cd55d"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "d7c8f538fb7877da85ba5722ff5dd9d3a8f2dd0ff1c177571a213948dd7f5822",
+          "sha256": "562a874efe15463dde4ef7c84e0e0d4590cac089758bb5fa97d04dd740820cc8"
+        },
+        {
+          "path": "server/tests/security/test_memory_group_routes.py",
+          "before_sha256": "4342ca5b5e0b900ca64fa411fce878e986fefc80e6eed35dc900a9b4b2760559",
+          "sha256": "e42952c93597ec29e63bbf2b3c94120eb762123ea1c6971358f567d0dab18955"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups.py",
+          "before_sha256": "183688436577aeec5029a244052fc9624e0ee289313fb05f251f19b4d00901ed",
+          "sha256": "654b0bb555ec824ed5aafb5ae70c51a42d7e99a54c98d86eb4d409f80b57ff07"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "57e2de3e8d776f76e6985db890c77919378c9b4686aa8c70ef717cbb9fdde481",
+          "sha256": "f0a2edcfbe77455dd6e434f976493917c572fa0752c782b1398528ef25163d83"
+        }
+      ],
+      "notes": "Generated protected write proves atomic split, exact lost-response retry, permissions and source-note binding. Bilingual compact review panels passed local Chromium checks."
     }
   ]
 }
