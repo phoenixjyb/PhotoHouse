@@ -32088,7 +32088,7 @@
           "sha256": "7584b50ffb7a3dbe3cdf997506a6702dbd0574bef4a437700834be8764314eb0"
         }
       ],
-      "description": "Name the assistant Jude in English and 小贾 in Chinese, including its explicit agent action. Behavior unchanged.",
+      "description": "Name the assistant Jude in English and \u5c0f\u8d3e in Chinese, including its explicit agent action. Behavior unchanged.",
       "routes_added": false,
       "schema_changed": false,
       "native_qualification_created": false
@@ -33587,7 +33587,7 @@
         }
       ],
       "notes": [
-        "Apply only the local grounder’s original-chapter-bound exact spelling repairs to copied generated prose before final grounding, so moving a name away from its concert cue cannot reintroduce its original ASR spelling. Title uses the same original-source-backed names. No model suggestion supplies repair authority; originals and canonical validation remain unchanged.",
+        "Apply only the local grounder\u2019s original-chapter-bound exact spelling repairs to copied generated prose before final grounding, so moving a name away from its concert cue cannot reintroduce its original ASR spelling. Title uses the same original-source-backed names. No model suggestion supplies repair authority; originals and canonical validation remain unchanged.",
         "The actual worker fixture covers a copied misspelling in both title and prose after the concert cue is removed, with one completion, reviewed alias preservation, unchanged originals and owned engine closure."
       ]
     },
@@ -33705,7 +33705,7 @@
         }
       ],
       "notes": [
-        "The deterministic planner accepts an anchored media-only “Refine [my/the] last search to [show] videos only” form. Existing accepted media-only English and Chinese forms remain unchanged; unknown clauses, exclusions, and added conditions still clarify.",
+        "The deterministic planner accepts an anchored media-only \u201cRefine [my/the] last search to [show] videos only\u201d form. Existing accepted media-only English and Chinese forms remain unchanged; unknown clauses, exclusions, and added conditions still clarify.",
         "Focused planner tests cover the requested wording, bounded scaffold variants, fail-closed residue, and preservation of the full prior filter set. The in-process assistant API regression changes only media while preserving person, date, and literal-text constraints.",
         "No routes, schema, provider, model, runtime configuration, or deployment state changed. Local source and tests only."
       ]
@@ -34356,6 +34356,93 @@
         "Web UI component delivery remains separate from household/device taste acceptance.",
         "This source update does not claim Windows publication of the roadmap route."
       ]
+    },
+    {
+      "feature": "reconcile-adaptive-client-source-provenance-20261124",
+      "source_commit": "72a038fb4a4f7c27cf7f5331a4333326b0d37ec5",
+      "files": [
+        {
+          "path": "clients/android/android/connected/src/androidTest/java/dev/photohouse/connected/GroupedStoryCreationUiTest.kt",
+          "before_sha256": "b3c7fdc7430b398c634d12fab4c35827d3e16877424e00ad231bd2a2fd44de69",
+          "sha256": "1fa921a9a8b2ebb49aa7118ca89ffa19a53a68788572b40bc5c74c61e80a28d2"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/ChapterFrameSearch.kt",
+          "before_sha256": null,
+          "sha256": "de978cf3de0c6ddb99c2d1f2d4cdf797dbe2690fcbf9a176ab0cd511fb5c5495"
+        },
+        {
+          "path": "clients/android/android/connected/src/main/java/dev/photohouse/connected/GroupedStoryReview.kt",
+          "before_sha256": "5b02a9de2675e4e3e792cfbdcee06611063bde17fe5bdd7a8f774a48e15bd410",
+          "sha256": "c72afa5c27f40b710f24eeca00d74a88cce200e9d0d5570a9b667986108fcaff"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryChapterFrameSearch.kt",
+          "before_sha256": null,
+          "sha256": "4de0da355cdfd5df501e7a54f9d27ef1c7dcb282f68336bbd0a33063aeddbaa5"
+        },
+        {
+          "path": "clients/android/android/live-core/src/main/kotlin/dev/photohouse/connected/core/StoryWorkspaceStore.kt",
+          "before_sha256": "848f4c9d1087c98d6aee3ce51dc1af6a4f1ccbd570c0c4f026e9b057d21079a4",
+          "sha256": "46c32c7ef0005b0108b40588207efd30e3557c30e4ecc0d08be062e3ba567546"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryChapterFrameSearchTest.kt",
+          "before_sha256": null,
+          "sha256": "c635e775f7d6af2e22b83d3b9d6264d76abb0e292616c3a88fbcf9bdeb588081"
+        },
+        {
+          "path": "clients/android/android/live-core/src/test/kotlin/dev/photohouse/connected/core/StoryWorkspaceStoreTest.kt",
+          "before_sha256": "42c033ed757fb2567002645a886a2769e287747140de5da3f5bcbd70cb24aa24",
+          "sha256": "d71d667a89370df8ee39b30ff5f471d6feb7fac2a2ab156386632da705a363fd"
+        },
+        {
+          "path": "clients/android/android/tv/build.gradle.kts",
+          "before_sha256": "180f294438d23fc57c228c3e43677b31693eb085644ede1e5f5185cd03fbba00",
+          "sha256": "82c99c8fe4080fde9131523602c06f44307931f05fa6b78afff07b04ae713771"
+        },
+        {
+          "path": "clients/android/android/tv/src/androidTest/java/dev/photohouse/tv/TvDiscoveryResultsTest.kt",
+          "before_sha256": "275f46d8264eb4dd3ada2d7330431f410c298770af5f7896414dc9b8a1ab176e",
+          "sha256": "4d27e387226a110f1aed5e299eebc478f82535800b99804a87f52cf52eddecb7"
+        },
+        {
+          "path": "clients/android/android/tv/src/main/java/dev/photohouse/tv/TvApp.kt",
+          "before_sha256": "5aab8aac3a6b0fd7b9f052ec225c28a6a866eef75ccb2a190b8216849d54ca36",
+          "sha256": "bb50c9c6ac9eb80619693ad4dbe1f86a11c205d18c51586f83ee1d758a1cad56"
+        },
+        {
+          "path": "clients/android/android/tv/src/main/java/dev/photohouse/tv/TvResultSelection.kt",
+          "before_sha256": null,
+          "sha256": "658e8e6c573e339eec84fcb8d3c277a3f65864838f5cab7cb599ccee814abbcf"
+        },
+        {
+          "path": "clients/android/android/tv/src/main/java/dev/photohouse/tv/TvResultSelectionReview.kt",
+          "before_sha256": null,
+          "sha256": "6cc03e2acf6ed00b366a21ee22d7aba00d5d8e74645e73ac1ee1a347f206df18"
+        },
+        {
+          "path": "clients/android/android/tv/src/test/java/dev/photohouse/tv/TvResultSelectionTest.kt",
+          "before_sha256": null,
+          "sha256": "11e3baeeb40eb33c540cb69e0b85cc6d8ff003a98028d5342633d39d0271f20d"
+        },
+        {
+          "path": "tools/android_emulator_test.py",
+          "before_sha256": "e86040ae1da9a2b1660e67444fa18957c964ef7374dfa538d53fe03a213a0f05",
+          "sha256": "a3cbef357af0aaf4775a430af5e363e5b51b311a68ecb11eb73ccc0a04c4a877"
+        },
+        {
+          "path": "tools/tests/test_android_emulator_test.py",
+          "before_sha256": "8f7e99a1813cdb694dad6f0a0aee8855b4ec3891ce2026b937a9d74214821986",
+          "sha256": "6fc4061e69e305cb1646222897e686282a4dafd8fd90aecb36a8cd3f036a8128"
+        }
+      ],
+      "routes_added": false,
+      "schema_changed": false,
+      "live_schema_changed": false,
+      "alembic_head_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false
     }
   ]
 }
