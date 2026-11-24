@@ -57,6 +57,7 @@ Library membership bounds browsing, assistant requests and contributions. / 相�
 **Evidence record / 证据记录**
 
 - 2026-10-29 · FEATURES.md · RELEASE_2026-10-29.md / FEATURES.md · RELEASE_2026-10-29.md
+- 2026-11-25 · Audit reconciliation · generated viewer checks / 审计对照记录 · 合成查看器测试
 - 2026-11-25 · AUDIT_RECONCILIATION_2026-11-24.md / AUDIT_RECONCILIATION_2026-11-24.md
 
 <a id="upload-and-review"></a>
@@ -150,6 +151,7 @@ Browse authorized photos and videos through Web and client surfaces. / 通过网
 **Implemented / 已实现**
 
 - Gallery, detail and protected playback routes are implemented. / 已实现相册、详情和受保护播放入口。
+- Local Web checks verified on-demand descriptions and faster prepared-video startup under fixed response delays. / 本地网页测试验证了按需加载照片描述，并在固定响应延迟下缩短了已准备视频的启动时间。
 
 **Gaps / 差距**
 
@@ -157,7 +159,7 @@ Browse authorized photos and videos through Web and client surfaces. / 通过网
 
 **Next / 下一步:** Keep navigation, loading and playback errors consistent across screens. / 统一不同屏幕上的导航、加载与播放错误体验。
 
-**Delivery / 交付背景:** Existing browsing delivery remains distinct from the pending new-UI grouping handoff. / 已有浏览交付与新版界面待完成的分组衔接分别记录。
+**Delivery / 交付背景:** Fullscreen browsing is live on Windows. The newer loading improvements have local evidence and await release. / Windows 已上线全屏浏览。较新的加载改进已完成本地验证，仍待交付。
 
 **Acceptance / 验收背景:** No physical device result is inferred from an API check. / API 检查不能替代物理设备结果。
 
@@ -281,7 +283,7 @@ Refine a search across turns instead of repeatedly starting over. / 跨轮次细
 
 **Implemented / 已实现**
 
-- Generated English, Chinese and mixed-language journeys retain the date and media filters. A follow-up can change the month and keep the reviewed person filter. / 合成的中英文及混合语言流程能保留日期和媒体类型条件。追问可以更改月份，同时保留已核实的人物筛选。
+- Generated English, Chinese and mixed-language turns can change the month or weekend while retaining the other filters. The Web assistant offers Any date for review and Send. / 合成的中英文及混合语言流程可更改月份或周末，同时保留其他筛选条件。网页助手可将「不限日期」填入输入框，供用户确认后发送。
 
 **Gaps / 差距**
 
@@ -386,7 +388,7 @@ Organize related moments into meaningful activities, not only look-alike images.
 
 **Implemented / 已实现**
 
-- A Web editor can add same-day photos or videos from the current library, split a saved group and open an ordered story draft. / 网页编辑器可从当前相册库添加同日照片或视频、拆分已保存的回忆组，并按顺序打开故事草稿。
+- A Web editor can add same-day photos or videos and split a saved group. Stories can reopen a recent group or start an unsaved draft from one or two groups in the selected order. / 网页编辑器可添加同日照片或视频并拆分已保存的回忆组。「故事」可打开近期回忆组，也可按所选顺序从一到两个回忆组生成未保存的草稿。
 
 **Gaps / 差距**
 
@@ -394,7 +396,7 @@ Organize related moments into meaningful activities, not only look-alike images.
 
 **Next / 下一步:** Try the editable groups with a small reviewed set of family events. / 用一小组可审阅的家庭活动试用可编辑的回忆组。
 
-**Delivery / 交付背景:** Generated browser checks covered explicit addition, save, split and retry. The optional activity group editor awaits Windows release. / 合成浏览器测试覆盖主动添加、保存、拆分和重试。可选的活动回忆组编辑器仍待 Windows 交付。
+**Delivery / 交付背景:** Generated browser checks covered addition, split, retry and opening a draft from two verified revisions. Windows release remains open for the optional activity group editor. / 合成浏览器测试覆盖添加、拆分、重试，以及按两个已核对版本打开故事草稿。可选的活动回忆组编辑器仍待 Windows 交付。
 
 **Acceptance / 验收背景:** Family usefulness must be evaluated directly. / 家庭实用性必须直接评价。
 
@@ -702,6 +704,7 @@ Make new installations and backup restores repeatable. / 让新安装和备份�
 **Implemented / 已实现**
 
 - An extracted source package can provision a synthetic owner, import a photo and recover without restoring withdrawn access. / 解包后的源码可创建合成测试所有者、导入照片，并在恢复时保留已撤销的访问限制。
+- Native Windows Android checks now select a reusable Gradle cache and temporary files on a fixed data volume. Local tests cover the storage selection. / Windows 本机 Android 检查会在本地固定数据盘复用 Gradle 缓存并放置临时文件。存储位置的选择已通过本地测试。
 
 **Gaps / 差距**
 

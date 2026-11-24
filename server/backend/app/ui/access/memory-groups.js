@@ -14,6 +14,8 @@ window.PhotoHouseMemoryGroups = {
         disabled:'此相册库尚未开启家庭回忆组。', failed:'暂时无法载入，请重试。', retry:'重试载入',
         recentEmpty:'暂无可查看的近期回忆组。', recentUnavailable:'此相册库暂时无法查看近期回忆组。',
         recentCount:n=>`${n} 项照片或视频`, browse:'查看组内照片和视频',
+        chooseForStory:'用于故事', storyGroupOrder:n=>`第 ${n} 组`,
+        combineDraftHelp:'选一到两个回忆组，按选择顺序使用组内已保存的画面。',
         create:'新建回忆组', edit:'编辑', save:'明确保存回忆组', cancel:'取消编辑',
         split:'拆分回忆组', splitHelp:'选择要移入新组的画面。关联的家人原话随对应画面移动。',
         splitCount:(moved, kept)=>`移入新组 ${moved} 张 · 原组保留 ${kept} 张`,
@@ -45,6 +47,8 @@ window.PhotoHouseMemoryGroups = {
         disabled:'Memory groups are not enabled for this library.', failed:'Could not load this yet. Try again.', retry:'Retry loading',
         recentEmpty:'No recent memory groups are available.', recentUnavailable:'Recent groups are unavailable in this library.',
         recentCount:n=>n===1?'1 item':`${n} items`, browse:'View photos and videos',
+        chooseForStory:'Use in story', storyGroupOrder:n=>`Group ${n}`,
+        combineDraftHelp:'Choose one or two groups. The draft uses their saved items in the order you choose.',
         create:'Create a memory group', edit:'Edit', save:'Save this memory group', cancel:'Cancel editing',
         split:'Split group', splitHelp:'Select photos or videos for the new group. Linked notes move with their items.',
         splitCount:(moved, kept)=>`${moved} to the new group · ${kept} stay here`,
@@ -126,9 +130,52 @@ window.PhotoHouseMemoryGroups = {
         scopeKey(scopeNow())===scopeKey(binding);
       const status=panel.querySelector('#recent-groups-status');
       const list=panel.querySelector('#recent-group-list');
+      const story=panel.querySelector('#recent-groups-story');
       const refresh=panel.querySelector('#recent-groups-refresh');
+      const selected=new Map(), choices=[];
       let opening=false;
-      list.replaceChildren();status.textContent=t('loading');refresh.disabled=true;
+      list.replaceChildren();story.replaceChildren();status.textContent=t('loading');refresh.disabled=true;
+      async function recheck(group){
+        const latest=await request(binding,`/memory-groups/${encodeURIComponent(group.id)}`);
+        if(!current()||!validGroup(latest,binding)||latest.id!==group.id||
+            latest.revision!==group.revision||!sameOrdered(latest.items.map(item=>item.id),latest.asset_ids))
+          throw Error('Memory group changed');
+        return latest;
+      }
+      const draft=button(t('startStory'),async()=>{
+        if(!current()||opening||!selected.size)return;
+        opening=true;syncChoices();status.textContent=t('checkingStory');
+        try{
+          const latest=await Promise.all([...selected.values()].map(recheck));
+          if(!current())return;
+          // Exclusions belong to each saved group. Follow its reviewed
+          // membership, including when separately selected groups were split.
+          const frames=new Map();
+          for(const group of latest)for(const item of group.items){
+            if(!frames.has(item.id))frames.set(item.id,item);
+          }
+          const theme=latest.every(group=>group.theme===latest[0].theme)?latest[0].theme:'everyday';
+          const opened=await onStory({assets:[...frames.values()],theme},current);
+          if(current()){
+            if(opened)selected.clear();
+            status.textContent='';
+          }
+        }catch{
+          if(current())status.textContent=t('storyChanged');
+        }finally{
+          if(current()){opening=false;syncChoices();}
+        }
+      },'primary recent-group-draft');
+      function syncChoices(){
+        const order=[...selected.keys()];
+        draft.disabled=opening||!order.length;
+        for(const {group,box,text} of choices){
+          const index=order.indexOf(group.id);
+          box.checked=index!==-1;
+          box.disabled=opening||(!box.checked&&order.length===2);
+          text.textContent=box.checked?t('storyGroupOrder')(index+1):t('chooseForStory');
+        }
+      }
       try{
         const caps=await request(binding,'/memory-groups/capabilities');
         if(!current())return;
@@ -152,23 +199,37 @@ window.PhotoHouseMemoryGroups = {
           card.append(node('strong',label),image(group.cover),node('p',t('recentCount')(group.count),'fine'));
           const open=button(t('browse'),async()=>{
             if(!current()||opening)return;
-            opening=true;open.disabled=true;status.textContent=t('checkingStory');
+            opening=true;open.disabled=true;syncChoices();status.textContent=t('checkingStory');
             try{
-              const latest=await request(binding,`/memory-groups/${encodeURIComponent(group.id)}`);
+              const latest=await recheck(group);
               if(!current())return;
-              if(!validGroup(latest,binding)||latest.id!==group.id||latest.revision!==group.revision)
-                throw Error('Memory group changed');
               status.textContent='';
               onOpen(latest.items);
             }catch{
               if(current())status.textContent=t('storyChanged');
             }finally{
-              if(current()){opening=false;open.disabled=false;}
+              if(current()){opening=false;open.disabled=false;syncChoices();}
             }
           },'quiet recent-group-open');
           open.setAttribute('aria-label',`${t('browse')} · ${label}`);
-          card.append(open);list.append(card);
+          card.append(open);
+          if(typeof onStory==='function'){
+            const choice=node('label','', 'recent-group-choice');
+            const box=document.createElement('input'), text=node('span');
+            box.type='checkbox';
+            box.setAttribute('aria-label',`${t('chooseForStory')} · ${label}`);
+            box.addEventListener('change',()=>{
+              if(!current()||opening)return;
+              if(box.checked&&selected.size<2)selected.set(group.id,group);
+              if(!box.checked)selected.delete(group.id);
+              syncChoices();
+            });
+            choices.push({group,box,text});choice.append(box,text);card.append(choice);
+          }
+          list.append(card);
         }
+        if(choices.length)story.append(node('p',t('combineDraftHelp'),'fine'),draft);
+        syncChoices();
         refresh.hidden=false;
       }catch{
         if(current()){status.textContent=t('failed');refresh.hidden=false;}

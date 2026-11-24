@@ -9,13 +9,15 @@ The bilingual snapshot separates recorded delivery, source-ready work, gaps and 
 
 ## 11 月 25 日源码整合 / November 25 source integration
 
-`main` includes protected memory-group splitting, same-day photo and video review,
-metered-network consent for Android upload retries, and Search coverage checks.
-See the [audit reconciliation](docs/AUDIT_RECONCILIATION_2026-11-24.md) for the
-local evidence and remaining product work. The Windows release is recorded below.
+`main` includes bilingual Search refinements, recent memory groups and reviewable
+story drafts made from saved groups. Photo descriptions load on demand and
+prepared videos start their two protected checks together. See the
+[audit reconciliation](docs/AUDIT_RECONCILIATION_2026-11-24.md) for local
+verification and remaining product work. The Windows release is recorded below.
 
-`main` 已合并受保护的回忆组拆分、同日照片和视频挑选、Android 上传重试的计费网络确认，
-以及搜索覆盖检查。[审计对照表](docs/AUDIT_RECONCILIATION_2026-11-24.md)记录本地验证与待完成工作，
+`main` 已合并中英文搜索追问、近期回忆组，以及从已保存的回忆组生成待审阅故事草稿的功能。
+照片描述按需加载，已准备的视频可并行执行两项受保护的播放检查。
+[审计对照表](docs/AUDIT_RECONCILIATION_2026-11-24.md)记录本地验证与待完成工作。
 Windows 交付记录见下方。
 
 ## Windows 交付：2026-11-24
