@@ -38468,6 +38468,83 @@
         }
       ],
       "notes": "Open the on-demand description panel before checking protected caption text. Record the passing 68-check generated browser journey and the separately measured source-row limit."
+    },
+    {
+      "feature": "reviewed-combined-memory-group-save",
+      "source_commit": "f7eb58ea8a2d60393e9911ee5471e69537d9cd7b",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "0a24dad4d86fa565164a2bdd220478bf0c8af93b0519397938912773a7bdad60",
+          "sha256": "8657216eb8724fad2e9825af3539081c8f15f650ad2f91f357d4774dcbaf4345"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "1a6daeb9ce2e7d24866fb7970caf3bdc693a5a506e833af653ec6779dbbd7024",
+          "sha256": "134d85a7e049dc70623f1df5b9e4ea286d3f8f0d5da6b2fdd44ae8b68893f4c7"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "3203bd7047a77d9844630abcd93292948ec4e56226972d6d1f372f27bbe2f8f0",
+          "sha256": "3e0253ef3dae9ef71bb5d7bb18a2ab1d8e86e02f015aacb0126c9fd4df38c3a4"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "60239701c56c811c436d022c1fa8b68b3e6ee0b4d21c9a2b5e8e2069ef903a74",
+          "sha256": "cb7c6d5ce4bb46369fce7812350a4844dc1d525fbe7e35b88940fc6e4e40bee1"
+        },
+        {
+          "path": "server/backend/app/access/memory_group_transport.py",
+          "before_sha256": "054f65e8c69a57311fd03b145705585872ebda731dee4f307bb2238acb4e687e",
+          "sha256": "904c06d5b0572edeb6d245f6010fba31bfa1a018023b5e13bde7db1c1bfebc8d"
+        },
+        {
+          "path": "server/backend/app/access/memory_groups.py",
+          "before_sha256": "ccc7f0f4eeadbffa49736868c3e84ad0249f39875c83cd70be01e39fe4e4d729",
+          "sha256": "115087492e25c096ba2afcc029ba3de0ed4de11d1ea855d4578fa74b0a979b10"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "9493ea14340a23ce1beb7989b5a866fc85c5f8f8c1bc028eefd6112766043c49",
+          "sha256": "736d1c51db0a8aaa2f561b85b2b59694037096e681dc609efbbb0cfbb79dad2a"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "031f9b1dc53763fe8f63101f8e04fbea7868e2c76ee1ca4613e82287917792e8",
+          "sha256": "5051032c1dcb0218874aaef8638906a0219040b28c50608f4253d2299cb18580"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "e07ac9497e815fa609e8c8826bd3d121127663b63ea2b61039f255d68a5eee08",
+          "sha256": "ae57123a60bd743ec8c84be504ceca65dca6994c5ec31d8d6ad4a6847f0ede0f"
+        },
+        {
+          "path": "server/docs/security/MEMORY_GROUPS_V1.md",
+          "before_sha256": "acb397bd473881636e3402b0ce358fc3007de6226a8740ffb6d15a558650453a",
+          "sha256": "6d7e602ad40f0468a43f0ae85d95e5fb9ab4b0d2a672a78fad1a5316b8ff80fc"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "118f34c291da5b90c9c2f6313819fb7806e129ed2371c99f710e818b7a3bfa6c",
+          "sha256": "127a3df8419b532c9bd02c57714231c464994a459999313f58a6cbed0be38e97"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "0cdb29483f178439af3f59d0f9962d2b7554e647282ffe9f156cad783dd5c909",
+          "sha256": "703a35a669c6f7862e83870ccac0f6de45028dd7b8f6fa2c98664be5a00731bd"
+        },
+        {
+          "path": "server/tests/security/test_memory_group_routes.py",
+          "before_sha256": "24c8eff756fa37140b7a32c2f52b4c900780a776d6a457e96df2a7cb7b8cb177",
+          "sha256": "5062a6db887cda7dd5d8e169cb973a0a3693abfb11a0d6de2731f6c476e74116"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "00732fd535250d86627e583045d1ccb530b4e7f0aa6350479f5bc57d3b4d42bd",
+          "sha256": "d88a2ce040b3d7cfe5703dab7a552f2066db8da797cddf06330dd64a62f7f512"
+        }
+      ],
+      "notes": "Add a closed default-off group combine route, review exact ordered group and linked-note revisions with a generated Web fixture, and save one new group on identical retry."
     }
   ]
 }
