@@ -359,8 +359,14 @@
         <button id="view-in" class="quiet" type="button" data-i18n="viewIn">Zoom in</button>
         <button id="view-fullscreen" class="quiet" type="button" data-i18n="viewFullscreen">Fullscreen</button>
       </div>
+      <button id="view-video-fullscreen" class="quiet" type="button" data-i18n="viewVideoFullscreen" hidden disabled>Fullscreen video</button>
       <div id="viewer-media" tabindex="0" role="region" aria-label="Photo preview" aria-describedby="view-help view-quality"></div>
-      <p id="view-quality" class="fine" role="status"></p><p id="view-help" class="fine" data-i18n="viewHelp">Scroll to zoom; drag to pan. Keyboard: + / − zoom, arrows pan, 0 fits.</p>
+      <nav id="viewer-fullscreen-controls" aria-label="Fullscreen controls" hidden>
+        <button id="view-full-previous" type="button" aria-label="Previous photo">‹</button>
+        <button id="view-full-next" type="button" aria-label="Next photo">›</button>
+        <button id="view-full-exit" type="button" aria-label="Exit fullscreen">×</button>
+      </nav>
+      <p id="view-quality" class="fine" role="status"></p><p id="view-help" class="fine" data-i18n="viewHelp">Pinch or scroll to zoom. Drag to pan. Keyboard: + / − zoom, arrows pan, 0 fits.</p>
     </section><h2 id="viewer-title"></h2><button id="viewer-move" class="primary" type="button" hidden data-i18n="moveThisMemory">Move this memory</button>
     <details id="face-panel" class="access-panel" hidden><summary data-i18n="assignFaces">Review face assignments · Owner</summary><p class="fine" data-i18n="assignHelp">Choose an existing person for one face. No automatic propagation or new person is created.</p><button id="face-refresh" class="quiet" type="button" data-i18n="refresh">Refresh</button><p id="face-status" role="status" aria-live="polite"></p><div id="face-list"></div><nav id="face-pages" class="pagination" hidden><button id="face-previous" class="quiet" type="button" data-i18n="previous">Previous</button><span id="face-page-label"></span><button id="face-next" class="quiet" type="button" data-i18n="next">Next</button></nav></details>
     <section id="viewer-annotations" class="annotation-list" aria-labelledby="viewer-annotations-heading" hidden><h3 id="viewer-annotations-heading" data-i18n="annotationTitle">Family notes</h3><p id="viewer-annotations-status" role="status" aria-live="polite"></p><div id="viewer-annotations-list" class="annotation-notes"></div><button id="viewer-annotations-more" class="quiet" type="button" hidden data-i18n="annotationMore">More notes</button></section>

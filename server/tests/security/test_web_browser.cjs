@@ -104,12 +104,113 @@ async function auth(page,phone=MEMBER,code){
   await page.locator('.asset').first().waitFor();
 }
 async function ids(page){return page.locator('.asset-label').allTextContents();}
+async function checkFullscreenPhotoLayout(page){
+  await page.waitForFunction(()=>{
+    const stage=document.getElementById('viewer-media').getBoundingClientRect();
+    const photo=document.querySelector('#viewer-media img').getBoundingClientRect();
+    return stage.x===0&&stage.y===0&&stage.width===innerWidth&&stage.height===innerHeight&&
+      photo.width<=stage.width+1&&photo.height<=stage.height+1&&
+      Math.abs(Math.max(photo.width/stage.width,photo.height/stage.height)-1)<0.002;
+  });
+  assert.equal(await page.locator('#viewer-sequence').isHidden(),true);
+  assert.equal(await page.locator('#viewer-controls').isHidden(),true);
+}
+async function checkFullscreenPhotoTouch(page){
+  const stage=page.locator('#viewer-media'),image=stage.locator('.viewer-surface img');
+  await page.locator('#photo-viewer').evaluate(frame=>Object.defineProperty(frame,'requestFullscreen',{value:undefined,configurable:true}));
+  await page.locator('#view-fullscreen').click();
+  assert.equal(await page.evaluate(()=>document.fullscreenElement),null);
+  await checkFullscreenPhotoLayout(page);
+  const targets=await page.locator('#viewer-fullscreen-controls button:not([hidden])').evaluateAll(buttons=>buttons.map(button=>button.getBoundingClientRect().toJSON()));
+  assert.equal(targets.length,3);
+  assert(targets.every(target=>target.width>=44&&target.height>=44));
+  await page.screenshot({path:path.join(artifacts,'viewer-mobile-fullscreen-fit.png')});
+  const touch=await page.context().newCDPSession(page);
+  try{
+    await touch.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:2});
+    const dispatch=(type,touchPoints)=>touch.send('Input.dispatchTouchEvent',{type,touchPoints});
+    const photoWidth=await image.evaluate(photo=>photo.getBoundingClientRect().width);
+    await dispatch('touchStart',[{x:155,y:420,id:1},{x:235,y:420,id:2}]);
+    await dispatch('touchMove',[{x:82,y:420,id:1},{x:308,y:420,id:2}]);
+    await dispatch('touchEnd',[]);
+    assert(await image.evaluate(photo=>photo.getBoundingClientRect().width)>photoWidth*2,'two touches zoom the photo');
+    assert.equal(await page.evaluate(()=>visualViewport.scale),1,'pinching does not zoom the whole page');
+    const beforePan=await stage.evaluate(element=>element.scrollLeft);
+    await dispatch('touchStart',[{x:210,y:420,id:1}]);
+    await dispatch('touchMove',[{x:155,y:420,id:1}]);
+    await dispatch('touchEnd',[]);
+    assert(await stage.evaluate(element=>element.scrollLeft)>beforePan,'one touch pans the zoomed photo');
+    await page.screenshot({path:path.join(artifacts,'viewer-mobile-fullscreen-pinch.png')});
+  }finally{
+    await touch.send('Emulation.setTouchEmulationEnabled',{enabled:false});
+    await touch.detach();
+  }
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#viewer').evaluate(dialog=>dialog.open),true);
+  assert.equal(await page.locator('#viewer-fullscreen-controls').isHidden(),true);
+  await page.locator('#photo-viewer').evaluate(frame=>delete frame.requestFullscreen);
+}
 let browser;
 (async()=>{
   await ready;
   browser=await chromium.launch({headless:true,
     ...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),
     args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
+  if(process.env.PH_BROWSER_MEDIA_FULLSCREEN==='1'){
+    const ctx=await context(browser),page=await ctx.newPage();
+    await auth(page);
+    const openAsset=async id=>{
+      await page.locator(`.asset[data-asset-id="${id}"]`).click();
+      await page.locator('#photo-viewer').waitFor({state:'visible'});
+    };
+    const image=page.locator('#viewer-media .viewer-surface img');
+    await openAsset('102');
+    await image.evaluate(element=>element.decode());
+    await page.locator('#view-fullscreen').click();
+    await page.waitForFunction(()=>document.fullscreenElement?.id==='photo-viewer');
+    await checkFullscreenPhotoLayout(page);
+    assert.equal(await page.locator('#view-full-previous').isDisabled(),true);
+    await page.locator('#view-full-next').click();
+    await page.waitForFunction(()=>document.getElementById('viewer-title').textContent.includes('101'));
+    await image.evaluate(element=>element.decode());
+    assert.equal(await page.locator('#view-full-next').isDisabled(),true);
+    await checkFullscreenPhotoLayout(page);
+    await page.screenshot({path:path.join(artifacts,'viewer-desktop-fullscreen.png')});
+    await page.locator('#view-full-previous').click();
+    await page.waitForFunction(()=>document.getElementById('viewer-title').textContent.includes('102'));
+    await image.evaluate(element=>element.decode());
+    await page.locator('#view-full-exit').click();
+    await page.waitForFunction(()=>!document.fullscreenElement&&document.activeElement?.id==='view-fullscreen');
+    checkpoint('Native photo fullscreen fills the screen, preserves image fit, and keeps bounded navigation and focus');
+    await page.setViewportSize({width:390,height:844});
+    await checkFullscreenPhotoTouch(page);
+    await page.locator('#close-viewer').click();
+    checkpoint('Phone viewport fallback fills the display; real touch events pinch the photo and pan without page zoom');
+    await mutate('prepared-video-unavailable');
+    await page.locator('#refresh').click();
+    await openAsset('105');
+    await page.locator('#viewer-media').getByRole('button',{name:'Retry video'}).waitFor();
+    assert.equal(await page.locator('#view-video-fullscreen').isHidden(),true);
+    await page.locator('#close-viewer').click();
+    await mutate('prepared-video-ready');
+    await openAsset('105');
+    const video=page.locator('#viewer-media video');
+    await page.locator('#view-video-fullscreen').click();
+    await page.waitForFunction(()=>document.fullscreenElement===document.querySelector('#viewer-media video'));
+    await video.evaluate(async player=>{player.muted=true;await player.play();});
+    await page.waitForFunction(()=>document.querySelector('#viewer-media video').currentTime>0);
+    await page.screenshot({path:path.join(artifacts,'viewer-native-video-fullscreen.png')});
+    await page.evaluate(()=>document.exitFullscreen());
+    assert.equal(await page.locator('#viewer').evaluate(dialog=>dialog.open),true);
+    assert(browserRequests.some(request=>request.method==='HEAD'&&request.path.startsWith('/assets/105/playback?')));
+    assert(browserRequests.some(request=>request.method==='GET'&&request.path.startsWith('/assets/105/playback?')));
+    assert(!browserRequests.some(request=>request.method==='GET'&&/^\/assets\/(101|102|105)\/(media|original)\b/.test(request.path)));
+    assert.deepEqual(external,[]);
+    assert.deepEqual(errors,[]);
+    checkpoint('Prepared video plays in native fullscreen; unavailable video offers retry through the protected route');
+    await ctx.close();
+    return;
+  }
   if(process.env.PH_BROWSER_STORY_AUTHOR_DEFAULTS==='1'){
     const ctx=await context(browser),owner=await ctx.newPage();
     await mutate('story-author-chosen-name');await auth(owner,'+12025550100');
@@ -432,14 +533,21 @@ let browser;
   await photoStage.evaluate(s=>{const r=s.getBoundingClientRect();for(let i=0;i<20;i++)s.dispatchEvent(new WheelEvent('wheel',{deltaY:1000,clientX:r.left+r.width/2,clientY:r.top+r.height/2,cancelable:true}));});
   assert.equal(await owner.locator('#view-scale').textContent(),'1%');assert.equal(await owner.locator('#view-out').isDisabled(),true);
   await photoStage.focus();await photoStage.press('0');assert.equal(await owner.locator('#view-fit').getAttribute('aria-pressed'),'true');
-  await owner.locator('#view-fullscreen').click();await owner.waitForFunction(()=>document.fullscreenElement?.id==='photo-viewer');await owner.waitForFunction(()=>document.getElementById('view-fullscreen').textContent.includes('Exit fullscreen'));
+  await owner.locator('#view-fullscreen').click();
+  await owner.waitForFunction(()=>document.fullscreenElement?.id==='photo-viewer');
+  await checkFullscreenPhotoLayout(owner);
   await owner.screenshot({path:path.join(artifacts,'viewer-desktop-fullscreen.png')});
-  await owner.locator('#view-fullscreen').click();await owner.waitForFunction(()=>!document.fullscreenElement);
+  await owner.locator('#view-full-exit').click();
+  await owner.waitForFunction(()=>!document.fullscreenElement&&!document.getElementById('viewer').hasAttribute('data-view-presentation'));
+  await owner.waitForFunction(()=>document.getElementById('view-fullscreen')===document.activeElement);
   await owner.locator('#close-viewer').click();await owner.locator('.asset').filter({hasText:'102'}).click();await owner.locator('#photo-viewer').waitFor({state:'visible'});await photoStage.locator('.viewer-surface img').evaluate(img=>img.decode());
   assert.equal(await owner.locator('#view-fit').getAttribute('aria-pressed'),'true');assert.equal(await owner.locator('#view-scale').textContent(),`${await owner.evaluate(()=>{const s=document.getElementById('viewer-media'),i=s.querySelector('img');return Math.round(Math.min(s.clientWidth/i.naturalWidth,s.clientHeight/i.naturalHeight)*100);})}%`);
   await owner.locator('#close-viewer').click();await owner.setViewportSize({width:390,height:844});await owner.locator('#language').click();await owner.locator('.asset').filter({hasText:'102'}).click();await owner.locator('#photo-viewer').waitFor({state:'visible'});await photoStage.locator('.viewer-surface img').evaluate(img=>img.decode());
   assert(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert(await owner.locator('#viewer').evaluate(d=>d.scrollWidth<=d.clientWidth));
-  await owner.screenshot({path:path.join(artifacts,'viewer-mobile-zh.png')});await owner.locator('#close-viewer').click();await owner.locator('#language').click();await owner.setViewportSize({width:1200,height:900});await owner.locator('.asset').filter({hasText:'102'}).click();await owner.locator('#face-panel summary').click();
+  await owner.screenshot({path:path.join(artifacts,'viewer-mobile-zh.png')});
+  await checkFullscreenPhotoTouch(owner);
+  assert.equal(await owner.locator('#view-full-exit').getAttribute('aria-label'),'退出全屏');
+  await owner.locator('#close-viewer').click();await owner.locator('#language').click();await owner.setViewportSize({width:1200,height:900});await owner.locator('.asset').filter({hasText:'102'}).click();await owner.locator('#face-panel summary').click();
   checkpoint('Viewer fit modes preserve aspect ratio, native actual pixels, bounded zoom/pan, fullscreen, reset and narrow Chinese layout');
 
   const face=owner.locator('[data-face-id="200"]');await face.waitFor();
@@ -805,10 +913,14 @@ let browser;
   checkpoint('Gallery sequence exposes current-page order, position, and previous/next bounds');
   await page.locator('#view-actual').click();
   await page.locator('#view-fullscreen').click();await page.waitForFunction(()=>document.fullscreenElement?.id==='photo-viewer');
-  await page.locator('#view-next').click();await page.locator('.viewer-surface img').evaluate(img=>img.decode());
+  await page.locator('#view-full-next').click();await page.locator('.viewer-surface img').evaluate(img=>img.decode());
   assert.equal(await page.evaluate(()=>document.fullscreenElement?.id),'photo-viewer');
   assert.equal(await page.locator('#view-fit').getAttribute('aria-pressed'),'true');
-  await page.locator('#view-fullscreen').click();await page.waitForFunction(()=>!document.fullscreenElement);
+  assert.equal(await page.locator('#view-full-next').isDisabled(),true);
+  await page.locator('#view-full-previous').click();await page.locator('.viewer-surface img').evaluate(img=>img.decode());
+  assert.equal(await page.locator('#view-full-previous').isDisabled(),true);
+  await page.locator('#view-full-next').click();await page.locator('.viewer-surface img').evaluate(img=>img.decode());
+  await page.locator('#view-full-exit').click();await page.waitForFunction(()=>!document.fullscreenElement);
   checkpoint('Manual navigation resets fit mode and retains fullscreen across a step');
   // The filmstrip mirrors the legacy strip over the same loaded order, and reuses the
   // gallery grid's already-authorized 256 URL rather than escalating to a larger variant.
@@ -1331,6 +1443,8 @@ let browser;
   const video=owner.locator('#viewer-media video');try{await owner.waitForFunction(()=>document.querySelector('#viewer-media video')||document.querySelector('#viewer-media button'),null,{timeout:10000});}catch(error){const diagnostic={viewerOpen:await owner.locator('#viewer').evaluate(node=>node.open),quality:await owner.locator('#view-quality').textContent(),retry:await owner.locator('#viewer-media button').allTextContents(),requests:browserRequests.slice(readyPlaybackStart).filter(item=>item.path.includes('/assets/105/'))};fs.writeFileSync(path.join(artifacts,'prepared-video-ready-diagnostic.json'),JSON.stringify(diagnostic,null,2));throw new Error('Synthetic prepared video produced no player or retry: '+JSON.stringify(diagnostic));}if(await video.count()!==1){const diagnostic={quality:await owner.locator('#view-quality').textContent(),retry:await owner.locator('#viewer-media button').allTextContents(),requests:browserRequests.slice(readyPlaybackStart).filter(item=>item.path.includes('/assets/105/playback'))};fs.writeFileSync(path.join(artifacts,'prepared-video-ready-diagnostic.json'),JSON.stringify(diagnostic,null,2));assert.fail('Synthetic prepared video was not accepted: '+JSON.stringify(diagnostic));}await video.waitFor();
   try{await owner.waitForFunction(()=>document.querySelector('#viewer-media video')?.readyState>=1||document.querySelector('#viewer-media button'),null,{timeout:10000});}catch(error){const diagnostic=await video.evaluate(element=>({readyState:element.readyState,networkState:element.networkState,currentSrc:element.currentSrc,error:element.error?{code:element.error.code,message:element.error.message}:null,canPlay:element.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')})).catch(()=>({removed:true}));const detail={video:diagnostic,quality:await owner.locator('#view-quality').textContent(),retry:await owner.locator('#viewer-media button').allTextContents(),requests:browserRequests.slice(readyPlaybackStart).filter(item=>item.path.includes('/assets/105/')),responses:browserResponses.filter(item=>item.path.includes('/assets/105/'))};fs.writeFileSync(path.join(artifacts,'prepared-video-ready-diagnostic.json'),JSON.stringify(detail,null,2));throw new Error('Synthetic prepared video never reached metadata readiness: '+JSON.stringify(detail));}
   if(await video.count()!==1){const detail={quality:await owner.locator('#view-quality').textContent(),retry:await owner.locator('#viewer-media button').allTextContents(),responses:browserResponses.filter(item=>item.path.includes('/assets/105/'))};fs.writeFileSync(path.join(artifacts,'prepared-video-ready-diagnostic.json'),JSON.stringify(detail,null,2));assert.fail('Synthetic prepared video failed before metadata readiness: '+JSON.stringify(detail));}
+  await owner.locator('#view-video-fullscreen').click();
+  await owner.waitForFunction(()=>document.fullscreenElement===document.querySelector('#viewer-media video'));
   await video.evaluate(async element=>{element.muted=true;await element.play();});
   await owner.waitForFunction(()=>document.querySelector('#viewer-media video')?.currentTime>0);
   const duration=await video.evaluate(element=>element.duration);assert(duration>0);
@@ -1340,7 +1454,9 @@ let browser;
   const playbackRequests=browserRequests.slice(videoRequestsStart);
   assert(playbackRequests.some(item=>item.method==='HEAD'&&item.path==='/assets/105/playback?library=family-a'));
   assert(playbackRequests.some(item=>item.method==='GET'&&item.path==='/assets/105/playback?library=family-a'));
-  await owner.screenshot({path:path.join(artifacts,'prepared-video-playing.png'),fullPage:true});
+  await owner.screenshot({path:path.join(artifacts,'prepared-video-playing.png')});
+  await owner.evaluate(()=>document.exitFullscreen());
+  assert.equal(await owner.locator('#viewer').evaluate(dialog=>dialog.open),true);
   await owner.locator('#close-viewer').click();
   checkpoint('Prepared video passes HEAD metadata validation, native decode/play, and seek against synthetic MP4');
   failNextPlaybackGet=true;await owner.locator('.asset').filter({hasText:'105'}).click();

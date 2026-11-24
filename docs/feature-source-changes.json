@@ -36054,6 +36054,37 @@
       "generation_enabled": false,
       "providers_activated": false,
       "scope": "Bilingual keyboard-accessible ordering for selected current Search frames; preserves cross-page scope, freshness and explicit story save."
+    },
+    {
+      "feature": "fullscreen-photo-touch-and-prepared-video",
+      "source_commit": "29828253ebe88dcae23c66aeade1bbb7652073bc",
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "349482d52621030ae2823c23c6407b5f9173162110318f0e7c366eba9c64bf50",
+          "sha256": "559ce233a2e79cef6b6eb767d45004c9231bde0ec95df68fa83dac8c88bb7ccb"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "c3b0e40bd903603f649f5f0c8cd0e40f0dfdec2946cc77191b7114394358231a",
+          "sha256": "5834cb0fd04d16b534e73b98466f94b7c287136a3205b7b0828c653cbeb571d4"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "d324c8284dccbdf9336fce57a05c2b03a3995cf057bdd727de9679a250ba8b7a",
+          "sha256": "7a697fa44c35494805ed7e5cee4996dbd75ee2c451c32d9778b46af5f0c0a6d5"
+        },
+        {
+          "path": "server/tests/security/test_web_browser.cjs",
+          "before_sha256": "cf80a8e82e4b2c8d7015fe58f7e3856ff556e1d2d1a6e022af2618c766a0d4bc",
+          "sha256": "b1e6e141409438277cf1b09724f15d7575a7f6db3f40ed5c71ae9da5dda364ef"
+        }
+      ],
+      "schema_changed": false,
+      "live_runtime_changed": false,
+      "generation_enabled": false,
+      "providers_activated": false,
+      "scope": "Viewport-filling photos with touch navigation, pinch and pan, and native fullscreen for authorized prepared videos. No media route changes."
     }
   ]
 }
