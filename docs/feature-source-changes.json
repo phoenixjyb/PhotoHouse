@@ -38624,6 +38624,58 @@
         }
       ],
       "notes": "Preserve the save receipt message if the subsequent group list read fails, and record the measured whole-refresh parity of the existing Rust kernel."
+    },
+    {
+      "feature": "large-library-structured-search-row-limit-20261125",
+      "source_commit": "9ed130b0b401d3ed5bace0e617aba3d5c0ca65f8",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "40e40ae146036ccb826ae2825a9ca6d7be3bf3cbdd0d9f514d22f14dd57d7acb",
+          "sha256": "de543e76e1e570e54566a96143b4e511a2777ca20adc7637a3c59982911d1c98"
+        },
+        {
+          "path": "docs/SEARCH_READINESS_AND_RELEVANCE.md",
+          "before_sha256": "a570e0187d3f8a3149f9bfbe14299cd6bbacc178673e4d598441f23b5f3fe582",
+          "sha256": "354758b907af02826e705bccb6ef0f5e76c49d50598d34642676b0af2c694e08"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "66eebc6967272170aa5f46c66f7825f0e62a66b6d821fc6083f2fe6998199994",
+          "sha256": "b3eae6e6f0e8164d1ae2546044324e4f02d55559eeefd05b254b4b41f9777ed2"
+        },
+        {
+          "path": "server/backend/app/access/assistant_scene_search.py",
+          "before_sha256": "dbcac91c543ebd430109ba76c817ad76f328f1059f63ba3535852467d1d108d2",
+          "sha256": "dc3f847ac727231c769150ed537c68ca9ed30858b4b34264db97508fc4c65bdf"
+        },
+        {
+          "path": "server/backend/app/access/assistant_search.py",
+          "before_sha256": "67444e5133b136d3313b65bb3d6487143835e32abad7221d931108540ac2bc48",
+          "sha256": "4f7b8d8f55ec743d80179cc0fc6aecbf65259540013351add3100ec9ae12add9"
+        },
+        {
+          "path": "server/backend/app/access/discovery.py",
+          "before_sha256": "7493abc6cb7b78cf1b3ac4d270ce93c069b2126d770b1af867b3aba0fc2c7e5b",
+          "sha256": "a9ed13c932eb49746c2f35e7223b9e767b62eab2ff6cbf0c106ff75f636e2fbd"
+        },
+        {
+          "path": "server/backend/app/access/search_intent.py",
+          "before_sha256": "2a5bd98f168920b1a1c212055afdfb1fd881740110d8637292a59ddde948bf9c",
+          "sha256": "5c348a950af0d4ebf2b31efb3de0115475a1c0dd6c26c81a340e7efbd38ecc48"
+        },
+        {
+          "path": "server/tests/security/test_assistant_joint_search.py",
+          "before_sha256": "72f1742c70655d0cf52e868d82528e83c75a431840a08b3ad4ecce4a2ae5b89d",
+          "sha256": "410952e7b4b332cc2705c690b626267e894cc99fbc4008f0e2db9bf2d414f73f"
+        },
+        {
+          "path": "server/tests/security/test_discovery_chunk_accounting.py",
+          "before_sha256": "d0414e3db220cdc60c441216c9a1523ac59beb229bcc13bc83121bd9e6ec66ed",
+          "sha256": "1fa6ea751ebf6b16cbf8aa173aabfb53b915aedbe592ad3ad5d5c8c4a784a05f"
+        }
+      ],
+      "notes": "Keep reviewed filters usable at the supplemental text row limit. Clarify unsupported text conditions and bind complete and limited projections separately. The generated 100,000-asset Search conversation completed all three turns under the same bounds."
     }
   ]
 }
