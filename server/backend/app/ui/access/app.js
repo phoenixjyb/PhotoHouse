@@ -1910,7 +1910,7 @@
     if(reason.source==='capture_date')return t('assistantReasonDate').replace('{date}',reason.value);
     return '';
   }
-  Object.assign(words.en,{assistantStoryTitle:'Choose frames for your story',assistantStoryHelp:'Choose up to 24 photos or videos. Review selection order to move or remove frames. Page changes keep your choices; a new search clears them.',assistantStoryOpen:'Shape a story with selected frames',assistantStoryClear:'Clear selection',assistantStoryReview:'Review selection order',assistantStoryPick:'Select for story',assistantStoryPicked:'Selected · {order}',assistantStoryCount:'{count} / 24 selected',assistantStoryRemove:'Remove {label}',assistantStoryViewerRemove:'Remove {label} from selection',assistantStoryChecking:'Checking these results and your access…',assistantStoryUnavailable:'These results could not be confirmed. Refresh the search and select again.',assistantStoryLimit:'24 frames selected. Remove a frame to choose another.',assistantStoryNotOpened:'Your existing story needs attention before opening another selection.'});
+  Object.assign(words.en,{assistantStoryTitle:'Choose photos and videos',assistantStoryHelp:'Choose up to 24 photos or videos. Review selection order to move or remove frames. Page changes keep your choices; a new search clears them.',assistantStoryOpen:'Shape a story with selected frames',assistantStoryClear:'Clear selection',assistantStoryReview:'Review selection order',assistantStoryPick:'Select for story',assistantStoryPicked:'Selected · {order}',assistantStoryCount:'{count} / 24 selected',assistantStoryRemove:'Remove {label}',assistantStoryViewerRemove:'Remove {label} from selection',assistantStoryChecking:'Checking these results and your access…',assistantStoryUnavailable:'These results could not be confirmed. Refresh the search and select again.',assistantStoryLimit:'24 frames selected. Remove a frame to choose another.',assistantStoryNotOpened:'Your existing story needs attention before opening another selection.'});
   Object.assign(words.en,{
     assistantStoryAddTitle:'Add frames to this story',
     assistantStoryAddChapterTitle:'Add frames to chapter {number}',
@@ -1928,7 +1928,7 @@
     assistantStoryTargetChanged:'This story changed. Return to it and try again.',
     assistantStoryAddFailed:'These frames could not be added. Your story remains open.'
   });
-  Object.assign(words.zh,{assistantStoryTitle:'挑选故事里的画面',assistantStoryHelp:'最多选择 24 张照片或视频，可在“查看选择顺序”中调整或移除。翻页保留选择；重新查找会清空。',assistantStoryOpen:'用所选画面编排故事',assistantStoryClear:'清空选择',assistantStoryReview:'查看选择顺序',assistantStoryPick:'选入故事',assistantStoryPicked:'已选 · 第 {order} 项',assistantStoryCount:'已选 {count} / 24 项',assistantStoryRemove:'移除{label}',assistantStoryViewerRemove:'从选择中移除{label}',assistantStoryChecking:'正在核对这些结果和访问权限…',assistantStoryUnavailable:'暂时无法确认这些结果。请重新查找后选择。',assistantStoryLimit:'已选满 24 项，请先移除一项再选。',assistantStoryNotOpened:'请先处理现有故事，再打开新的选择。'});
+  Object.assign(words.zh,{assistantStoryTitle:'挑选照片和视频',assistantStoryHelp:'最多选择 24 张照片或视频，可在“查看选择顺序”中调整或移除。翻页保留选择；重新查找会清空。',assistantStoryOpen:'用所选画面编排故事',assistantStoryClear:'清空选择',assistantStoryReview:'查看选择顺序',assistantStoryPick:'选入故事',assistantStoryPicked:'已选 · 第 {order} 项',assistantStoryCount:'已选 {count} / 24 项',assistantStoryRemove:'移除{label}',assistantStoryViewerRemove:'从选择中移除{label}',assistantStoryChecking:'正在核对这些结果和访问权限…',assistantStoryUnavailable:'暂时无法确认这些结果。请重新查找后选择。',assistantStoryLimit:'已选满 24 项，请先移除一项再选。',assistantStoryNotOpened:'请先处理现有故事，再打开新的选择。'});
   Object.assign(words.zh,{
     assistantStoryAddTitle:'为这个故事添加画面',
     assistantStoryAddChapterTitle:'为第 {number} 章添加画面',
@@ -2033,12 +2033,24 @@
   }
   Object.assign(words.en,{assistantStoryEarlier:'Move {label} earlier',assistantStoryLater:'Move {label} later',assistantStoryReordered:'Frame order updated.'});
   Object.assign(words.zh,{assistantStoryEarlier:'将{label}提前',assistantStoryLater:'将{label}后移',assistantStoryReordered:'画面顺序已更新。'});
+  Object.assign(words.en,{assistantMediaPick:'Select this item',assistantAlbumOpen:'Make an album from selection',
+    assistantAlbumUnavailable:'The album editor could not open. Check your library access and try again.',
+    albumSelectedMedia:'Selected photos and videos',albumChooseMore:'Choose more photos and videos'});
+  Object.assign(words.zh,{assistantMediaPick:'选取此项目',assistantAlbumOpen:'用所选画面创建相册',
+    assistantAlbumUnavailable:'暂时无法打开相册编辑器。请检查相册库权限后重试。',
+    albumSelectedMedia:'已选照片和视频',albumChooseMore:'选择更多照片或视频'});
+  function canStartAssistantAlbum(view){
+    return !view.addMode&&!state.busy&&!albumState.draft&&!$('album-create').hidden;
+  }
   function renderAssistantStoryControls(snapshot=privateAssistant?.state()){
     const panel=$('assistant-story-selection');if(!panel)return;
     const view=assistantStoryView(snapshot),order=new Map(view.selected.map((item,index)=>[item.id,index+1]));
     panel.hidden=!view.visible;
     $('assistant-story-selection-count').textContent=view.addMode?t('assistantStoryAddCount').replace('{count}',String(view.selected.length)).replace('{limit}',String(view.limit)):t('assistantStoryCount').replace('{count}',String(view.selected.length));
     $('assistant-shape-story').disabled=!view.ready||view.blocked||!view.selected.length;
+    const album=$('assistant-shape-album');
+    album.hidden=!canStartAssistantAlbum(view);
+    album.disabled=album.hidden||$('assistant-shape-story').disabled;
     const keepSearching=$('assistant-add-keep-searching');
     keepSearching.hidden=!assistantStoryTarget?.target.chapterNumber;
     keepSearching.disabled=keepSearching.hidden||$('assistant-shape-story').disabled;
@@ -2082,7 +2094,7 @@
       const position=order.get(input.value),already=!!view.existingIds?.has(input.value);input.checked=!!position;input.disabled=view.blocked||!view.ready||already||!position&&view.selected.length>=view.limit;
       const card=input.closest('.assistant-result');card.classList.toggle('assistant-result--selected',!!position);
       card.hidden=hideExisting&&already;if(card.hidden)hidden++;
-      input.nextElementSibling.textContent=already?t('assistantStoryAlreadyInStory'):position?t('assistantStoryPicked').replace('{order}',String(position)):t('assistantStoryPick');
+      input.nextElementSibling.textContent=already?t('assistantStoryAlreadyInStory'):position?t('assistantStoryPicked').replace('{order}',String(position)):t(view.addMode?'assistantStoryPick':'assistantMediaPick');
     }
     const empty=$('assistant-story-page-empty'),notice=hidden>0&&hidden===choices.length?t('assistantStoryPageEmpty'):'';
     if(empty.textContent!==notice)empty.textContent=notice;
@@ -2114,8 +2126,9 @@
       assistantStorySerial++;assistantStoryNotice='';renderAssistantStoryControls();
     }catch{clearAssistantStorySelection();$('assistant-story-selection-status').textContent=t('assistantStoryUnavailable');}
   }
-  async function openAssistantStorySelection({keepSearching=false}={}){
+  async function openAssistantStorySelection({keepSearching=false,asAlbum=false}={}){
     const view=assistantStoryView();if(!view.ready||view.blocked||!view.selected.length)return;
+    if(asAlbum&&!canStartAssistantAlbum(view))return;
     const addTarget=assistantStoryTarget;
     if(keepSearching&&!addTarget?.target.chapterNumber)return;
     if(addTarget&&view.selected.length>addTarget.limit){
@@ -2123,22 +2136,22 @@
       renderAssistantStoryControls();return;
     }
     const owner={account:state.profile?.account_id,library:state.library,generation:state.generation},serial=++assistantStorySerial;
-    const operation={serial,owner};assistantStoryHandoff=operation;
+    const operation={serial,owner,asAlbum};assistantStoryHandoff=operation;
     const operationCurrent=()=>assistantStoryHandoff===operation&&assistantStorySerial===serial&&assistantBindingCurrent(owner)&&
       (!addTarget||assistantStoryTarget===addTarget);
     const current=()=>operationCurrent()&&(!addTarget||assistantStoryAddTargetCurrent(addTarget));
     $('assistant-story-selection-status').textContent=t('assistantStoryChecking');syncAssistantControls();
     try{
-      const workspace=addTarget?null:await loadStoryWorkspace(owner.generation);
-      if((!addTarget&&!workspace)||!current())return;
-      let chosen;
+      const workspace=addTarget||asAlbum?null:await loadStoryWorkspace(owner.generation);
+      if((!addTarget&&!asAlbum&&!workspace)||!current())return;
+      let chosen,profile;
       if(view.privateRoute)chosen=await privateAssistant.prepareStorySelection();
       else{
         // Legacy assistant results use discovery v1. Recheck their exact source
         // fingerprint instead of silently rerunning the natural-language turn.
         const legacy=assistantStoryLegacy,context=legacy?.turn.context;
         if(!context||legacy.turn.version!==1)throw new Error('Unbound results');
-        const profile=await request('/auth/session',{epoch:owner.generation});
+        profile=await request('/auth/session',{epoch:owner.generation});
         if(!current()||profile.account_id!==owner.account||!profile.memberships?.some(member=>member.library_id===owner.library&&member.available===true))throw new Error('Changed access');
         const result=await request(`/libraries/${encodeURIComponent(owner.library)}/discovery/v1/search`,{method:'POST',epoch:owner.generation,
           body:{binding:context.binding,fingerprint:context.fingerprint,filters:context.filters,page:1,page_size:20}});
@@ -2146,6 +2159,21 @@
         chosen=view.selected.map(selected=>{const item=result.items.find(item=>item.id===selected.id&&item.kind===selected.kind);if(!item)throw new Error('Changed item');return item;});
       }
       if(!current()||!Array.isArray(chosen)||!chosen.length||chosen.length>24||new Set(chosen.map(item=>item.id)).size!==chosen.length)return;
+      if(asAlbum){
+        profile??=await request('/auth/session',{epoch:owner.generation});
+        if(!current())return;
+        if(!canStartAssistantAlbum(view)||profile.account_id!==owner.account||
+           !profile.memberships?.some(member=>member.library_id===owner.library&&member.available===true&&member.role==='owner')){
+          assistantStoryNotice='assistantAlbumUnavailable';
+          return;
+        }
+        closeAssistantWorkspace({restoreFocus:false,restoreScroll:false});
+        const albums=$('albums-panel');
+        albums.open=true;
+        albums.querySelector('summary').focus({preventScroll:true});
+        editAlbum(null,null,chosen.map(item=>item.id));
+        return;
+      }
       if(addTarget){
         const appended=await addTarget.target.append(chosen,current);
         if(!operationCurrent())return;
@@ -2168,7 +2196,8 @@
     }catch(error){
       if(current()){
         clearAssistantStorySelection();
-        if(addTarget)assistantStoryNotice='assistantStoryAddFailed';
+        if(asAlbum)assistantStoryNotice='assistantAlbumUnavailable';
+        else if(addTarget)assistantStoryNotice='assistantStoryAddFailed';
         else $('assistant-status').textContent=t('assistantStoryUnavailable');
         renderAssistantStoryControls();
         if(error.status===401||error.status===403)await failure(error,owner.generation);
@@ -2292,7 +2321,7 @@
       if(turn.kind==='results'&&['image','video'].includes(item.kind)){
         const label=document.createElement('label');label.className='assistant-story-choice';
         const input=document.createElement('input');input.type='checkbox';input.className='assistant-story-pick';input.value=item.id;
-        const text=document.createElement('span');text.textContent=t('assistantStoryPick');
+        const text=document.createElement('span');text.textContent=t(assistantStoryTarget?'assistantStoryPick':'assistantMediaPick');
         input.addEventListener('change',()=>{if(!input.isConnected||stale(epoch)||root.__assistantRenderedTurn!==turn)return;toggleAssistantStoryItem(item.id);});
         label.append(input,text);card.append(label);
       }
@@ -4531,10 +4560,10 @@
       $('album-page-label').textContent=`${t('page')} ${albumState.page} ${t('of')} ${Math.max(1,Math.ceil(result.total/10))}`;
     }catch(error){if(!stale(epoch)&&load===albumState.load){$('album-status').textContent=t(errorStatus(error));await failure(error,epoch);}}
   }
-  function editAlbum(album=null,restored=null){
+  function editAlbum(album=null,restored=null,selectedIds=[]){
     if(state.locked||state.busy||$('album-create').hidden)return;
     const epoch=state.generation,dialog=$('album-editor');
-    const draft=restored||{account:state.profile.account_id,library:state.library,id:album?.id,revision:album?.revision,mutation_id:crypto.randomUUID(),title:album?.title||'',title_zh:album?.title_zh||'',description:album?.description||'',theme:album?.theme||'custom',ids:[...(album?.asset_ids||[])],cover_asset_id:album?.cover_asset_id||'',dirty:false,locked:false};
+    const draft=restored||{account:state.profile.account_id,library:state.library,id:album?.id,revision:album?.revision,mutation_id:crypto.randomUUID(),title:album?.title||'',title_zh:album?.title_zh||'',description:album?.description||'',theme:album?.theme||'custom',ids:[...(album?.asset_ids||selectedIds)],cover_asset_id:album?.cover_asset_id||selectedIds[0]||'',dirty:false,locked:false,fromSelection:selectedIds.length>0};
     albumState.draft=draft;dialog.replaceChildren();
     const current=()=>!stale(epoch)&&albumState.draft===draft&&dialog.open;
     const heading=document.createElement('h2');heading.textContent=t(draft.id?'editAlbum':'newAlbum');
@@ -4552,15 +4581,20 @@
       const marker=document.createElement('span');marker.textContent=`${index+1} · ${id}${draft.cover_asset_id===id?' · '+t('cover'):''}`;row.append(marker);
       for(const [key,action,disabled] of [['moveUp',()=>{[draft.ids[index-1],draft.ids[index]]=[draft.ids[index],draft.ids[index-1]];},index===0],['moveDown',()=>{[draft.ids[index+1],draft.ids[index]]=[draft.ids[index],draft.ids[index+1]];},index===draft.ids.length-1],['setCover',()=>{draft.cover_asset_id=id;},draft.cover_asset_id===id],['remove',()=>{draft.ids=draft.ids.filter(value=>value!==id);if(draft.cover_asset_id===id)draft.cover_asset_id=draft.ids[0]||'';},false]]){const button=storyButton(key,()=>{if(!draft.locked&&current()){action();draft.dirty=true;selection();}});button.disabled=disabled||draft.locked;row.append(button);}selected.append(row);
     }}
-    const selectedTitle=document.createElement('h3');selectedTitle.textContent=t('selectedPhotos');const pickTitle=document.createElement('h3');pickTitle.textContent=t('selectPhotos');
+    const selectedTitle=document.createElement('h3');selectedTitle.textContent=t(draft.fromSelection?'albumSelectedMedia':'selectedPhotos');
+    const picker=document.createElement(draft.fromSelection?'details':'div');picker.className='album-picker';
+    const pickTitle=document.createElement(draft.fromSelection?'summary':'h3');pickTitle.textContent=t(draft.fromSelection?'albumChooseMore':'selectPhotos');
     const choices=document.createElement('div');choices.className='album-strip';choices.id='album-choices';const nav=document.createElement('nav');nav.className='pagination';let page=1,serial=0;
-    async function pick(){const attempt=++serial;choices.replaceChildren();nav.replaceChildren();try{const result=await request(libraryPath('/assets',{page:String(page),page_size:'20'}),{epoch});if(!current()||attempt!==serial)return;
+    async function pick(){const attempt=++serial;choices.replaceChildren();nav.replaceChildren();if(draft.fromSelection&&!draft.locked)notice.textContent='';try{const result=await request(libraryPath('/assets',{page:String(page),page_size:'20'}),{epoch});if(!current()||attempt!==serial)return;
       for(const item of result.items){const button=document.createElement('button');button.type='button';button.className='quiet';button.dataset.assetId=item.id;button.setAttribute('aria-label',assetLabel(item));const img=document.createElement('img');img.src=safeMediaURL(item.id,'thumbnail');img.alt=assetLabel(item);img.loading='lazy';button.append(img);button.disabled=draft.locked;button.addEventListener('click',()=>{if(draft.locked||!current())return;if(!draft.ids.includes(item.id)&&draft.ids.length<60){draft.ids.push(item.id);draft.cover_asset_id=draft.cover_asset_id||item.id;draft.dirty=true;selection();}});choices.append(button);}
       const prev=storyButton('previous',()=>{page--;void pick();}),next=storyButton('next',()=>{page++;void pick();});prev.disabled=page===1||draft.locked;next.disabled=page*20>=result.total||draft.locked;nav.append(prev,next);
-    }catch(error){if(current()){notice.textContent=t(errorStatus(error));await failure(error,epoch);}}}
+    }catch(error){if(current()&&attempt===serial){if(draft.fromSelection)serial=0;notice.textContent=t(errorStatus(error));await failure(error,epoch);}}}
     const save=document.createElement('button');save.id='album-save';save.type='submit';save.className='primary';save.textContent=t('saveAlbum');
     const close=storyButton('cancel',()=>{if(!state.busy&&(!draft.dirty||window.confirm(t('discardAlbum')))){albumState.draft=null;dialog.close();dialog.replaceChildren();}});
-    form.append(selectedTitle,selected,pickTitle,choices,nav,notice,save,close);dialog.append(heading,form);if(!dialog.open)dialog.showModal();selection();void pick();
+    picker.append(pickTitle,choices,nav);
+    form.append(selectedTitle,selected,picker,notice,save,close);dialog.append(heading,form);if(!dialog.open)dialog.showModal();selection();
+    if(draft.fromSelection)picker.addEventListener('toggle',()=>{if(picker.open&&current()&&serial===0)void pick();});
+    else void pick();
     function lock(){for(const input of form.querySelectorAll('input,textarea,select,button'))input.disabled=draft.locked;save.disabled=false;close.disabled=false;selection();}
     if(draft.locked){notice.textContent=t('albumUncertain');lock();}
     form.addEventListener('submit',async event=>{event.preventDefault();if(!current()||state.busy)return;state.busy=true;save.disabled=true;
@@ -5299,6 +5333,7 @@
   }
   function closeAssistantWorkspace({restoreFocus=true,restoreScroll=true,stopVoice=true,preserveFrameSearch=false}={}){
     const dialog=$('assistant-workspace-dialog');
+    if(assistantStoryHandoff?.asAlbum){assistantStorySerial++;assistantStoryHandoff=null;}
     assistantPendingFocus=null;
     const frameSearch=assistantStoryTarget;
     if(frameSearch&&!preserveFrameSearch){assistantStoryTarget=null;clearAssistantStorySelection({keepResult:true});}
@@ -5676,6 +5711,7 @@
   }
   $('assistant-scene').addEventListener('toggle',()=>syncAssistantControls());
   $('assistant-shape-story').addEventListener('click',()=>void openAssistantStorySelection());
+  $('assistant-shape-album').addEventListener('click',()=>void openAssistantStorySelection({asAlbum:true}));
   $('assistant-add-keep-searching').addEventListener('click',()=>void openAssistantStorySelection({keepSearching:true}));
   $('assistant-story-hide-existing').addEventListener('change',event=>{
     const view=assistantStoryView();

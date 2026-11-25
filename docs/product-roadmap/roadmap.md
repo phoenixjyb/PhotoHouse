@@ -319,6 +319,7 @@ Carry selected, authorized results into a detail or story task. / 把已选且�
 **Implemented / 已实现**
 
 - Choose story frames across result pages. After a reload in the same tab, reopening the conversation can recover the selection after checking the exact current result and selected pages. / 可跨结果页选择故事画面。同一标签页重新加载后，再打开对话并核实原结果与相关页，即可恢复选择。
+- A library owner can open the ordered selection in a new album draft, review the cover and explicitly save it in the current library. / 相册库所有者可按已选顺序创建相册草稿，检查封面后明确保存到当前相册库。
 
 **Gaps / 差距**
 
@@ -326,7 +327,7 @@ Carry selected, authorized results into a detail or story task. / 把已选且�
 
 **Next / 下一步:** Try selecting, reloading, reopening the conversation and starting an unsaved story on the installed Web client. / 在已安装网页客户端上试用选择画面、重新加载、打开原对话与创建未保存故事的完整流程。
 
-**Delivery / 交付背景:** The same-tab Web journey passed with generated results and a fresh authorization check. / 使用合成数据通过了同一标签页的网页流程，并重新校验了访问权限。
+**Delivery / 交付背景:** Generated Web journeys cover the same-tab selection recovery and the owner’s explicit album save. Windows rollout is pending. / 合成网页流程覆盖了同一标签页的选择恢复及所有者主动保存相册。仍待 Windows 发布。
 
 **Acceptance / 验收背景:** The saved selection needs the same account, library, result and current source revisions. / 恢复选择须与账户、相册库、搜索结果及当前来源版本一致。
 

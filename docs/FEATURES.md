@@ -94,6 +94,9 @@ checks and Windows delivery evidence.
   Browsing stays within the selected library.
 - The Web photo viewer keeps its Close button inside the viewport at enlarged
   text sizes. These changes await Windows rollout and household review.
+- Library owners can open the current Jude Search selection in a new album
+  draft. Review the selected photos and videos in order, add a title and
+  choose **Save album** to keep it in the current library.
 
 ## Earlier capability snapshot (historical)
 

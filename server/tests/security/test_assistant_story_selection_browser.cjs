@@ -292,6 +292,7 @@ let browser,context,page;
   await search('找示例儿童');
   assert.equal(await page.locator('.assistant-result').evaluateAll(cards=>cards.length>0),true);
   assert.equal(await page.locator('#assistant-story-selection').isVisible(),true);
+  assert.equal(await page.locator('#assistant-shape-album').isHidden(),true,'contributors cannot start an album');
   assert.equal(await hideExisting.isHidden(),true,'plain search-to-story has no existing frames to hide');
   assert.equal(await keepSearching.isHidden(),true,'the continuation action is chapter-scoped');
   assert.match(await count(),/0\s*\/\s*24/);
@@ -869,6 +870,58 @@ let browser,context,page;
   assert.equal(requests.slice(beforeDenied).some(item=>item.method==='POST'&&storyPreviewPath(item.path)),false);
   assert.equal(requests.slice(beforeDenied).some(item=>item.method==='POST'&&memoryStoryPath(item.path)),false);
   pass('A fresh permission denial blocks story preparation and saving');
+
+  await page.locator('#assistant-workspace-close').click();
+  const discardGeneratedDraft=dialog=>dialog.accept();
+  page.once('dialog',discardGeneratedDraft);
+  try{await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible'});}
+  finally{page.off('dialog',discardGeneratedDraft);}
+  await page.locator('#phone').fill('+12025550100');await page.locator('#password').fill('Synthetic family passphrase!');
+  await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();
+  await page.locator('#memory-assistant-link').click();await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
+  await page.locator('#assistant-private-new').click();await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
+  await search('找示例儿童');
+  const draftAlbum=page.locator('#assistant-shape-album');
+  assert.equal(await draftAlbum.isDisabled(),true,'the owner must explicitly choose at least one result');
+  const albumIds=(await pickIds()).slice(0,2).reverse();assert.equal(albumIds.length,2);
+  for(const id of albumIds)await page.locator(`.assistant-story-pick[value="${id}"]`).check();
+  const albumWrites=()=>requests.filter(item=>item.method==='POST'&&item.path.startsWith('/admin/albums?'));
+  const beforeAlbums=albumWrites().length;
+  const albumReceiptArrived=new Promise(resolve=>{arriveFreshCheck=resolve;});
+  const albumReceiptSettled=new Promise(resolve=>{settleHeldFreshCheck=resolve;});
+  holdFreshCheck=new Promise(resolve=>{releaseFreshCheck=resolve;});
+  await draftAlbum.click();await albumReceiptArrived;
+  try{await page.locator('#assistant-workspace-close').click();}
+  finally{releaseFreshCheck();}
+  await albumReceiptSettled;
+  await page.locator('#memory-assistant-link').click();await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
+  assert.equal(await page.locator('#album-editor').isHidden(),true);
+  assert.equal(albumWrites().length,beforeAlbums);
+  assert.deepEqual(await selectedIds(),albumIds,'closing a late album handoff keeps the current search selection');
+
+  await page.setViewportSize({width:390,height:844});
+  await draftAlbum.click();await page.locator('#album-editor').waitFor({state:'visible'});
+  await page.evaluate(()=>{document.documentElement.style.zoom='150%';});
+  assert.equal(await page.locator('#assistant-workspace-dialog').isHidden(),true);
+  assert.equal(await page.locator('#album-title').inputValue(),'');
+  assert.deepEqual(await page.locator('#album-selected .album-selection').evaluateAll(rows=>rows.map(row=>row.dataset.assetId)),albumIds);
+  assert.equal(albumWrites().length,beforeAlbums,'preparing the album writes nothing');
+  assert.equal(await page.locator('#album-choices button').count(),0,'the draft loads extra choices only on request');
+  assert(await page.locator('#album-editor').evaluate(el=>el.scrollWidth<=el.clientWidth),'album draft fits at 390px and 150%');
+  await page.locator('#album-editor').screenshot({path:path.join(artifacts,'search-album-draft-mobile-150-zh.png')});
+  await page.locator('.album-picker > summary').click();await page.locator('#album-choices button').first().waitFor();
+  await page.locator('.album-picker > summary').click();
+  await page.locator('#album-title').fill('合成：从搜索创建的相册');
+  await page.locator('#album-save').click();await page.locator('#album-editor').waitFor({state:'hidden'});
+  await page.locator('#album-list').getByText('合成：从搜索创建的相册',{exact:true}).waitFor();
+  assert.equal(albumWrites().length,beforeAlbums+1);
+  const savedAlbum=albumWrites().at(-1);
+  assert.equal(savedAlbum.status,200);
+  assert.deepEqual(JSON.parse(savedAlbum.body).asset_ids.split(','),albumIds);
+  assert.deepEqual(savedAlbum.response.asset_ids,albumIds);
+  assert.equal(savedAlbum.response.cover_asset_id,albumIds[0]);
+  await page.evaluate(()=>{document.documentElement.style.zoom='';});
+  pass('Owners can save the current Search selection as an ordered family album after review; closing a pending handoff creates nothing');
   assert.deepEqual(blocked,[],'all external origins are blocked without a successful outside request');assert.deepEqual(errors,[]);
   const pageCalls=requests.filter(item=>/\/assistant\/workspace\/v1\/threads\/[0-9a-f-]+\/requests\/[0-9a-f-]+\/result-pages(?:\?|$)/.test(item.path));
   const receiptCalls=requests.filter(item=>item.method==='GET'&&freshReadPath(item.path));

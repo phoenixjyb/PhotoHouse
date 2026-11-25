@@ -39682,6 +39682,44 @@
         }
       ],
       "notes": "Add a private On this day shelf and keep its protected viewer reachable at enlarged text size."
+    },
+    {
+      "feature": "search-selection-family-album",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7fcf1dd2a852ce3b8e477b11d516c9d2aaf9e21bf8deb73247a203a5e66d64f6",
+          "sha256": "c9631c5f2a6dd68006c9dd976a664fc5fa1338bf7be419eb64d57284a05979ff"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "d8da170e04663a547bc2c33cab6cf22e07c48945f383e6aa19b597bb32f899c3",
+          "sha256": "202c7f7151d3120afa04800a2d916bf548831a5f7506b510de4fa1edef4ca60d"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "9a3881585d018636a863a1669336b5fb06fd9d68d5221c0b58765f6d32684022",
+          "sha256": "cf724ce5488f33028615e1e98e6138b998423def0aa290023c41723db494ca6d"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "7f9851ebda2e011de65c2ac1d5fa423c7ba81772281178278f5cd34373ca4958",
+          "sha256": "142481ec8d9bc285c1a19eb28c9581815988f6e846b77537262ecd47ea389717"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "68401ab2e16644a95512c97f745aa91ddec5e9443ad1a3eaf770163d941f4460",
+          "sha256": "b75ba107353a6adba66f54806cb5005eda44f6c33f838429cc6a19dc4ead314f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "91633833655e271166fc599968f6cc45f64fc58ae66885ab574f03ad92fccb83",
+          "sha256": "40fc807f0794cd5664ecb8dc8397ac462a7a0ae9e7222e29d6a021658876adb4"
+        }
+      ],
+      "notes": "Prepare a current private Search selection in the existing owner-only album editor and preserve explicit saving."
     }
   ]
 }
