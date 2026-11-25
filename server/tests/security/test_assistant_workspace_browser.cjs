@@ -776,6 +776,27 @@ async function installSyntheticTransport(targetContext){
   await newer.click();
   await pageLabel.getByText('第 1 页',{exact:true}).waitFor();
   assert.equal(await picker.inputValue(),archived.thread_id,'going back keeps the reopened conversation');
+  const pickerTyping=await page.evaluate(()=>{
+    const picker=document.getElementById('assistant-private-select');
+    const composer=document.getElementById('assistant-text');
+    const options=[...picker.options],originalDraft=composer.value;
+    const observer=new MutationObserver(()=>{});
+    observer.observe(picker,{childList:true});
+    const started=performance.now();
+    for(let step=0;step<24;step++){
+      composer.value='Synthetic draft '+step;
+      composer.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    composer.value=originalDraft;
+    composer.dispatchEvent(new Event('input',{bubbles:true}));
+    const elapsed_ms=performance.now()-started,mutations=observer.takeRecords().length;
+    observer.disconnect();
+    return {options:options.length,mutations,retained:options.filter((node,index)=>picker.options[index]===node).length,elapsed_ms};
+  });
+  console.log('PICKER_TYPING '+JSON.stringify(pickerTyping));
+  assert(pickerTyping.options>=51,'the measurement covers a full private conversation page');
+  assert.equal(pickerTyping.mutations,0,'typing leaves the unchanged conversation picker intact');
+  assert.equal(pickerTyping.retained,pickerTyping.options);
   assert.equal(turns().length,beforePaging,'listing and reopening older threads submits no turn');
   checkpoint('Earlier conversations remain reachable from the private picker after the first 50');
 
@@ -783,6 +804,7 @@ async function installSyntheticTransport(targetContext){
   assert.equal(await page.locator('#assistant-search-refinements').count(),0,'logout removes account-scoped refinement controls');
   assert.equal(await page.locator('#assistant-private-submitted-text').textContent(),'');
   assert.equal(await pageLabel.textContent(),'','logout clears the conversation page');
+  assert.equal(await picker.locator('option').count(),1,'logout clears cached private conversation labels');
   checkpoint('Logout clears protected recovery content and refinement controls');
   console.log('REFINEMENT_SCREENSHOTS '+refinementDesktop+' '+refinementPhone);
 

@@ -38,6 +38,9 @@ expiry before paging in descending update time and ascending UUID order.
 The position identifies where to resume, including after its original thread
 is removed. Pages request summary labels and leave the conversation unchanged.
 An older server returns its ordinary list with the page controls hidden.
+The Web picker keeps its current options while you type in the composer.
+A generated browser check covers 24 draft edits with a full conversation page,
+then verifies that signing out clears the picker.
 
 ## Older text
 

@@ -39532,6 +39532,29 @@
         }
       ],
       "notes": "Highlight changed wording in the saved story draft comparison."
+    },
+    {
+      "feature": "keep-conversation-picker-stable-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_HISTORY_V1.md",
+          "before_sha256": "372e516c7b14ff4207b19f3254f3d8746ddb5e3f2ac1c11c29c930f3a5bcb633",
+          "sha256": "eb2ec766b1507ba05f154987c999def22d91b44a1927e743db7960c866b9fd26"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "f9635784186957b2b02a6de8a2d3a933ecd6682116a8718e206582769b4ba9cc",
+          "sha256": "c1bba5a3ca33475a5faddb227c609eb46c5ba8e152d39e706b6b87373c746989"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "175f092412c38b3bb050e2dad06129af5ff6895b255b775a350139d6de5763d9",
+          "sha256": "e38bfc9ed5badfeb2f26f160ef53750e446beac11a8d9a11bbcaaad826eea2c5"
+        }
+      ],
+      "notes": "Preserve conversation picker options while typing within the same current scope."
     }
   ]
 }

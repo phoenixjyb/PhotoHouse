@@ -2382,6 +2382,31 @@
     }
   }
 
+  let renderedConversationPicker=null;
+  function renderConversationPicker(snapshot,selected){
+    const select=$('assistant-private-select');
+    const current=!state.locked&&!snapshot.locked&&snapshot.account===state.profile?.account_id&&
+      snapshot.library===state.library;
+    const rows=current?snapshot.threads:[];
+    if(!current)selected='';
+    const fallback=selected&&!rows.some(thread=>thread.thread_id===selected)?selected:'';
+    const prior=renderedConversationPicker;
+    const unchanged=prior?.generation===state.generation&&prior.language===state.language&&
+      prior.fallback===fallback&&prior.rows.length===rows.length&&rows.every((row,index)=>row===prior.rows[index]);
+    if(!unchanged){
+      const option=new Option(t('assistantPrivateSelect'),'');
+      const dates=new Intl.DateTimeFormat(state.language==='zh'?'zh-CN':'en',{
+        month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      const options=rows.map(thread=>{
+        const updated=dates.format(new Date(thread.updated_at));
+        return new Option(thread.label?[thread.label,updated].join(' · '):updated,thread.thread_id);
+      });
+      if(fallback)options.push(new Option(t('assistantPrivateCurrentLabel'),fallback));
+      select.replaceChildren(option,...options);
+      renderedConversationPicker={generation:state.generation,language:state.language,rows,fallback};
+    }
+    if(select.value!==selected)select.value=selected;
+  }
   function renderPrivateAssistant(snapshot){
     if(!snapshot?.currentResult&&!snapshot?.scenePageResult){
       const results=$('assistant-results');
@@ -2470,13 +2495,9 @@
     const turnAvailable=snapshot.capabilities?.server_owned_turns===true;
     if(snapshot.activeThread&&!turnAvailable&&assistantState.voiceSession.phase!=='idle')queueMicrotask(()=>{if(privateAssistant?.state().activeThread&&privateAssistant.state().capabilities?.server_owned_turns!==true)endAssistantVoice();});
     $('assistant-private').hidden=!available;
-    const select=$('assistant-private-select'),selected=snapshot.activeThread?.thread_id||'';
+    const selected=snapshot.activeThread?.thread_id||'';
     syncPrivateManagement(snapshot);
-    const option=document.createElement('option');option.value='';option.textContent=t('assistantPrivateSelect');
-    select.replaceChildren(option);
-    for(const thread of snapshot.threads){const row=document.createElement('option');row.value=thread.thread_id;row.textContent=[thread.label,new Intl.DateTimeFormat(state.language==='zh'?'zh-CN':'en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(thread.updated_at))].filter(Boolean).join(' · ');select.append(row);}
-    if(selected&&!snapshot.threads.some(thread=>thread.thread_id===selected)){const row=document.createElement('option');row.value=selected;row.textContent=t('assistantPrivateCurrentLabel');select.append(row);}
-    select.value=selected;
+    renderConversationPicker(snapshot,selected);
     const voiceActive=assistantState.voiceSession.phase!=='idle';
     const blocked=!!assistantStoryHandoff||snapshot.storySelectionBusy===true||privateAssistantBusy||!!snapshot.pendingTurn||!!snapshot.pendingCreation||voiceActive||state.locked||snapshot.locked;
     for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-voice-pace','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=blocked;
