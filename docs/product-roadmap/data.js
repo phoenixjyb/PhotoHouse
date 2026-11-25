@@ -13,8 +13,8 @@ window.PHOTOHOUSE_ROADMAP = {
       "zh": "部署与集成回顾记录"
     },
     "body": {
-      "en": "Windows delivery records cover the bilingual roadmap, fullscreen viewer and the 25 November Search fix. The 26 November local build improves Jude recovery, saved memory groups and story review. Those changes await Windows rollout and household review.",
-      "zh": "双语路线图、全屏浏览和 11 月 25 日搜索修复已有 Windows 交付记录。11 月 26 日的本地版本改进了小贾的请求恢复、已保存回忆组和故事审阅，仍待 Windows 发布与家庭试用。"
+      "en": "Windows delivery records cover the bilingual roadmap, fullscreen viewer and the 25 November Search fix. The 26 November local build adds Search refinements, private conversation lookup, On this day, album drafts and story review improvements. Windows rollout and household review are pending for these local changes.",
+      "zh": "双语路线图、全屏浏览和 11 月 25 日搜索修复已有 Windows 交付记录。11 月 26 日的本地版本增加了搜索细化、私密对话查找、「往年今日」、相册草稿及故事审阅改进。这些本地改动仍待 Windows 发布与家庭试用。"
     }
   },
   "areas": [
@@ -391,6 +391,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Local Web checks verified on-demand descriptions and faster prepared-video startup under fixed response delays.",
           "zh": "本地网页测试验证了按需加载照片描述，并在固定响应延迟下缩短了已准备视频的启动时间。"
+        },
+        {
+          "en": "Open “On this day” to see photos and videos with the same recorded capture date in earlier years. The enlarged viewer keeps its Close button reachable.",
+          "zh": "网页首页可按需打开「往年今日」，浏览往年这一天拍摄的照片和视频。放大后的浏览窗口仍可关闭。"
         }
       ],
       "gaps": [
@@ -404,8 +408,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "统一不同屏幕上的导航、加载与播放错误体验。"
       },
       "delivery_note": {
-        "en": "Fullscreen browsing is live on Windows. The newer loading improvements have local evidence and await release.",
-        "zh": "Windows 已上线全屏浏览。较新的加载改进已完成本地验证，仍待交付。"
+        "en": "Fullscreen browsing is live on Windows. The newer loading, enlarged viewer and On this day changes have local evidence and await release.",
+        "zh": "Windows 已上线全屏浏览。本地已验证加载改进、放大浏览窗口和「往年今日」，仍待交付。"
       },
       "acceptance_note": {
         "en": "No physical device result is inferred from an API check.",
@@ -679,6 +683,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Why this match? prepares a question about a visible result. The reply cites the available evidence and keeps the current filters and results.",
           "zh": "「为什么匹配？」可为当前可见结果准备提问。回复会说明已有的匹配依据，并保留现有筛选条件和结果。"
+        },
+        {
+          "en": "Ask for the same month, day or date range in a different year while keeping the other search filters. An invalid date such as February 29 in a non-leap year prompts for a new range.",
+          "zh": "可沿用相同月份、某一天或日期范围切换年份，并保留其余搜索条件。若遇到平年的 2 月 29 日等无效日期，会提示重新指定日期范围。"
         }
       ],
       "gaps": [
@@ -746,6 +754,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Choose story frames across result pages. After a reload in the same tab, reopening the conversation can recover the selection after checking the exact current result and selected pages.",
           "zh": "可跨结果页选择故事画面。同一标签页重新加载后，再打开对话并核实原结果与相关页，即可恢复选择。"
+        },
+        {
+          "en": "A library owner can open the ordered selection in a new album draft, review the cover and explicitly save it in the current library.",
+          "zh": "相册库所有者可按已选顺序创建相册草稿，检查封面后明确保存到当前相册库。"
         }
       ],
       "gaps": [
@@ -759,8 +771,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "在已安装网页客户端上试用选择画面、重新加载、打开原对话与创建未保存故事的完整流程。"
       },
       "delivery_note": {
-        "en": "The same-tab Web journey passed with generated results and a fresh authorization check.",
-        "zh": "使用合成数据通过了同一标签页的网页流程，并重新校验了访问权限。"
+        "en": "Generated Web journeys cover the same-tab selection recovery and the owner’s explicit album save. Windows rollout is pending.",
+        "zh": "合成网页流程覆盖了同一标签页的选择恢复及所有者主动保存相册。仍待 Windows 发布。"
       },
       "acceptance_note": {
         "en": "The saved selection needs the same account, library, result and current source revisions.",
@@ -1106,6 +1118,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Grounding and separated story-role source work are prepared.",
           "zh": "姓名依据与独立故事角色源码已准备。"
+        },
+        {
+          "en": "Two exact spellings reviewed for the same person can resolve to one canonical name. A known alias belonging to a different person keeps the ambiguous phrase available for review.",
+          "zh": "同一人的两种已审阅写法可统一为一个规范名。若别名属于另一位已登记人物，会保留原有歧义片段供审阅。"
         }
       ],
       "gaps": [
@@ -1257,6 +1273,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Manage conversations can page past the first 50 while keeping your current conversation open.",
           "zh": "「管理对话」可翻页查看超过前 50 条的较早对话，当前对话继续打开。"
+        },
+        {
+          "en": "Search by first-question label finds older conversations in the selected library. The query travels only in a private request body and signing out clears the field.",
+          "zh": "可按对话首问标签查找当前相册库中的较早对话。关键词只随私密请求正文发送，退出后会清空输入框。"
         }
       ],
       "gaps": [
@@ -1319,6 +1339,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "The local Web client lets each account choose normal or slightly slower spoken replies in Jude’s preferences.",
           "zh": "本地网页中，每个账户可在小贾的偏好设置选择正常或稍慢的语音回复速度。"
+        },
+        {
+          "en": "An optional 0.85× playback speed uses the same spoken reply audio. Jude remembers the setting for the signed-in account.",
+          "zh": "可选择以 0.85 倍速度播放同一语音回复。小贾会为当前登录账户保存此偏好。"
         }
       ],
       "gaps": [

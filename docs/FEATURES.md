@@ -16,13 +16,13 @@ requires the relevant real-world use.
 
 ## Bilingual roadmap / 双语路线图
 
-The [EN/中文 dashboard](product-roadmap/index.html) has 24 reviewed feature
+The [EN/中文 dashboard](product-roadmap/index.html) has 26 reviewed feature
 records, area/stage/priority filters and a dated evidence boundary. Both
 languages cover implementation, missing work, next increments and acceptance.
 The `/roadmap/` route passed local, Windows HTTPS and browser checks; the owner
 confirmed it works. The page is a dated product record, not a live host monitor.
 
-[英／中文看板](product-roadmap/index.html)包含 24 项回顾记录，支持按区域、阶段和
+[英／中文看板](product-roadmap/index.html)包含 26 项回顾记录，支持按区域、阶段和
 优先级筛选，并明确有日期的证据边界。两种语言均覆盖实现情况、尚缺工作、下一增量与验收。
 `/roadmap/` 已通过本地、Windows HTTPS 与浏览器检查，并经用户确认；页面是有日期的产品记录，不是在线主机监控。
 

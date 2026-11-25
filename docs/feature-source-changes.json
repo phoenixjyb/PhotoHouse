@@ -39854,6 +39854,29 @@
         }
       ],
       "notes": "Use exact reviewed ownership before phonetic name repair and keep conflicting name phrases for review."
+    },
+    {
+      "feature": "synchronize-bilingual-roadmap-export",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "e7e9d70a0afb60c03491f89127da70d0f4e75ec6ac202149da576792c8cee9fb",
+          "sha256": "5b3db27bdac02faefee7d8eb53aad54903c018c6b97b52ed6dfbae5f10b27117"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "f1954858923ae9ac30f9ba5409aafa7e641b047ac039e26784e059e53e12a1e2",
+          "sha256": "07dde74e899ecb9c3277f8dd3b4bde66d029f8a35349b83c611c05a3f38b1372"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "931d5f216572c4b3ecf96a37598f335ff065f0e02a0901914d3e1d99f3977170",
+          "sha256": "05cc2941aed20e75e0212563b99efe64ecb68014bc0afc3e1cdd0f5f2c6d3759"
+        }
+      ],
+      "notes": "Record the overnight feature changes in the bilingual source and regenerate the packaged roadmap."
     }
   ]
 }
