@@ -39345,6 +39345,44 @@
         }
       ],
       "notes": "Record the two new private routes and retain exact closed-application checks."
+    },
+    {
+      "feature": "assistant-exact-filter-controls-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "c01e4b32667c3a19e5f8a0a6bd75c476c0a8463a2c1d08f1ec1eaa62e53a6aae",
+          "sha256": "76a840518b45453b5c7598116769729ad0e98c0d5b5c0cd69a234588a3eade49"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "641f528faae8a82988fc018a4f15a974c0ad31000b307da97da5d8cecb086bb7",
+          "sha256": "b93266d0ca5dc8e4ea8ee67893bec1f8d3ce08a2e884152a4cc5b1cbadc40bae"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "971111be5796b6e20f18d08130cb2603f63885f56135fc0ddffb89703c45fdfc",
+          "sha256": "986f49d8fd207475df23f44f8cb68341ebe134c0062db27a822f2bb6de73e930"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "cf33b152e73b2483dcef5928bfbab4e24d2cb8b347f847177b2b358c0c8fcfc5",
+          "sha256": "1af1ac71d36e0df8c1e337461e64e7cda5d23bc9393330f15c2e7c99f653844f"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "c372ca8d9ca36157ca9e1037234554e76c83d9a6a13d6608ed87337549caa70c",
+          "sha256": "bffd384a1f79dc921b03da60c2817c9bac93b2a9406e441d143f85bb582d1a8a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_search_browser.cjs",
+          "before_sha256": "7f9a94de7b69ba1dd780dee18823c950002fc083652b71ee20fa7f6cba9b5555",
+          "sha256": "3dcfefd78701242a64d6339938f99e3132ec3c381becaf9719bc3ae5cc8d9a61"
+        }
+      ],
+      "notes": "Draft exact date ranges and remove individual active Search filters."
     }
   ]
 }

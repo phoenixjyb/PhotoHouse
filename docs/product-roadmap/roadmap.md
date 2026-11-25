@@ -179,6 +179,7 @@ Find authorized media by supported people, dates, places, type and indexed text.
 **Implemented / 已实现**
 
 - Search API, Web results and bounded filter translation are implemented. / 已实现搜索 API、网页结果和有边界的条件转换。
+- The local Web client can prepare an exact date range or clear the current media type or text condition. You review and send each change. / 本地网页可拟定具体日期范围，或清除当前媒体类型及文字条件。由用户检查并发送每次修改。
 - When reviewed metadata fits the row limit and supplementary captions or notes exceed it, structured filters still work. Search asks for clarification when the request needs the unavailable text. / 当已核对的元数据符合行数上限，而补充说明或照片留言超出上限时，结构化筛选仍可使用。如果查询需要当前不可用的文字，搜索会请用户澄清。
 
 **Gaps / 差距**
@@ -195,6 +196,7 @@ Find authorized media by supported people, dates, places, type and indexed text.
 
 - 2026-11-23 · FEATURES.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md / FEATURES.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md
 - 2026-11-25 · Live date and media filters across follow-ups / 真实搜索验证跨轮次保留日期和媒体类型
+- 2026-11-26 · Generated Web check · exact dates and filter removal / 合成网页测试 · 具体日期和清除筛选
 
 <a id="semantic-search"></a>
 

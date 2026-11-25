@@ -1726,6 +1726,10 @@
   words.en.assistantRefineAnyPerson='Any person';
   words.zh.assistantRefineAnyPlace='不限地点';
   words.en.assistantRefineAnyPlace='Any place';
+  Object.assign(words.zh,{assistantRefineAnyMedia:'不限类型',assistantRefineAnyText:'清除文字条件'});
+  Object.assign(words.en,{assistantRefineAnyMedia:'Any media type',assistantRefineAnyText:'Clear text filter'});
+  Object.assign(words.zh,{assistantRefineRange:'更改日期范围',assistantRefineUseRange:'使用此日期范围',assistantRefineRangeInvalid:'结束日期必须与开始日期相同或更晚。'});
+  Object.assign(words.en,{assistantRefineRange:'Change date range',assistantRefineUseRange:'Use these dates',assistantRefineRangeInvalid:'The end date must be on or after the start date.'});
   Object.assign(words.zh,{assistantWhyMatch:'为什么匹配？',assistantWhyMatchLabel:'第 {n} 项结果的匹配说明',assistantFollowupDraftReady:'请检查输入框中的问题，再发送。'});
   Object.assign(words.en,{assistantWhyMatch:'Why this match?',assistantWhyMatchLabel:'Why did result {n} match?',assistantFollowupDraftReady:'Review the question in the composer, then send it.'});
   function fillAssistantSearchDraft(text,readyKey='assistantRefineReady'){
@@ -1750,14 +1754,53 @@
     const button=(key,action)=>{const b=document.createElement('button');b.type='button';b.className='quiet';b.dataset.i18n=key;b.textContent=t(key);b.addEventListener('click',action);actions.append(b);return b;};
     button('assistantRefinePhotos',()=>fill(state.language==='zh'?'只看照片':'only photos'));
     button('assistantRefineVideos',()=>fill(state.language==='zh'?'只看视频':'only videos'));
+    if(turn.filters?.media?.length)button('assistantRefineAnyMedia',()=>fill(state.language==='zh'?'不限类型':'any media type'));
     const monthRow=document.createElement('div');monthRow.className='assistant-actions';monthRow.hidden=true;
-    button('assistantRefineMonth',()=>{if(!current())return;monthRow.hidden=!monthRow.hidden;if(!monthRow.hidden)month.focus();});
+    monthRow.id='assistant-refine-month-picker';
+    const rangeRow=document.createElement('form');rangeRow.id='assistant-refine-range';rangeRow.className='assistant-refine-range';rangeRow.hidden=true;
+    const togglePicker=(key,row,other,focus)=>{
+      const control=button(key,()=>{
+        if(!current())return;
+        const reveal=row.hidden;
+        if(reveal){other.hidden=true;actions.querySelector('[aria-controls="'+other.id+'"]').setAttribute('aria-expanded','false');}
+        row.hidden=!reveal;
+        control.setAttribute('aria-expanded',String(reveal));
+        if(reveal)focus().focus();
+      });
+      control.setAttribute('aria-controls',row.id);
+      control.setAttribute('aria-expanded','false');
+    };
+    togglePicker('assistantRefineMonth',monthRow,rangeRow,()=>month);
+    togglePicker('assistantRefineRange',rangeRow,monthRow,()=>rangeStart);
     if(turn.filters?.date)button('assistantRefineAnyDate',()=>fill(state.language==='zh'?'不限日期':'any date'));
     if(turn.filters?.people?.ids?.length)button('assistantRefineAnyPerson',()=>fill(state.language==='zh'?'不限人物':'anyone'));
     if(turn.filters?.locations?.length)button('assistantRefineAnyPlace',()=>fill(state.language==='zh'?'不限地点':'anywhere'));
+    if(turn.filters?.text)button('assistantRefineAnyText',()=>fill(state.language==='zh'?'清除文字筛选':'clear text filter'));
     const month=document.createElement('input');month.type='month';month.id='assistant-refine-month';month.min='1900-01';month.max='2099-12';month.setAttribute('aria-label',t('assistantRefineMonthLabel'));
     const from=turn.filters?.date?.from;if(typeof from==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(from))month.value=from.slice(0,7);
     const use=document.createElement('button');use.type='button';use.className='quiet';use.dataset.i18n='assistantRefineUseMonth';use.textContent=t('assistantRefineUseMonth');use.addEventListener('click',()=>{const value=month.value;if(!/^(?:19|20)\d{2}-(?:0[1-9]|1[0-2])$/.test(value))return;const [year,m]=value.split('-');fill(state.language==='zh'?`只看${year}年${Number(m)}月`:`only ${year}-${m}`);});monthRow.append(month,use);box.append(monthRow);summary.append(box);
+    const dateField=(key,value)=>{
+      const label=document.createElement('label');
+      const name=document.createElement('span');name.dataset.i18n=key;name.textContent=t(key);
+      const field=document.createElement('input');field.type='date';field.required=true;field.min='1900-01-01';field.max='2099-12-31';
+      if(typeof value==='string')field.value=value;
+      label.append(name,field);rangeRow.append(label);
+      return field;
+    };
+    const rangeStart=dateField('dateFrom',from),rangeEnd=dateField('dateTo',turn.filters?.date?.to);
+    const useRange=document.createElement('button');useRange.type='submit';useRange.className='quiet';useRange.dataset.i18n='assistantRefineUseRange';useRange.textContent=t('assistantRefineUseRange');
+    const rangeError=document.createElement('p');rangeError.className='fine';rangeError.setAttribute('role','status');rangeError.hidden=true;
+    rangeRow.addEventListener('input',()=>{rangeError.hidden=true;rangeEnd.removeAttribute('aria-invalid');});
+    rangeRow.addEventListener('submit',event=>{
+      event.preventDefault();
+      if(!current())return;
+      const start=rangeStart.value,end=rangeEnd.value,iso=/^(?:19|20)\d{2}-\d{2}-\d{2}$/;
+      if(!iso.test(start)||!iso.test(end))return;
+      if(start>end){rangeError.textContent=t('assistantRefineRangeInvalid');rangeError.hidden=false;rangeEnd.setAttribute('aria-invalid','true');rangeEnd.focus();return;}
+      const display=date=>{const [y,m,d]=date.split('-');return y+'年'+Number(m)+'月'+Number(d)+'日';};
+      fill(state.language==='zh'?'从'+display(start)+'到'+display(end):'from '+start+' to '+end);
+    });
+    rangeRow.append(useRange,rangeError);box.append(rangeRow);
   }
 
   function clearAssistantSearchSummary(){$('assistant-search-refinements')?.remove();const summary=$('assistant-search-summary'),items=$('assistant-search-summary-items');if(items)items.replaceChildren();if(summary)summary.hidden=true;const ranking=$('assistant-scene-ranking');if(ranking)ranking.hidden=true;}

@@ -7,6 +7,9 @@ an Android build. GitHub Actions remain paused.
 ## Family flow
 
 1. Submit a typed or explicitly authorized voice search in the private assistant.
+   In **Search conditions**, choose an exact date range or clear an active type
+   or text filter. Review the proposed change in the composer and send it
+   to apply it to the current search.
 2. Select individual photos and videos. The count shows the 24-frame limit.
    Selections initially keep click order across pages of the same result set;
    duplicate IDs never add a frame.
