@@ -149,6 +149,10 @@ A weekend follow-up changes the date and retains the current search's other
 conditions. After a dated result, the Web assistant's **Any date** control
 puts that instruction in the composer for review and explicit Send. It keeps
 the existing media, person, place and text conditions.
+A result with a place filter offers **Any place** (**不限地点**). The control
+prepares the instruction for review in an empty composer and preserves an
+existing draft. Sending it removes the place filter and keeps the other
+conditions.
 Resolved names that overlap a date or media keyword (for example, `May`) also
 require clarification instead of silently adding that condition. Quoted text
 must fit the existing 512-byte text filter limit; a longer literal asks for a

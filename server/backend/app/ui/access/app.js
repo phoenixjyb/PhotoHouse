@@ -1696,6 +1696,8 @@
   Object.assign(words.en,{assistantRefineHint:'Keep refining this search. Your other conditions stay in place.',assistantRefinePhotos:'Photos only',assistantRefineVideos:'Videos only',assistantRefineMonth:'Change month',assistantRefineAnyDate:'Any date',assistantRefineUseMonth:'Use this month',assistantRefineMonthLabel:'Capture month',assistantRefineDraftFirst:'Your composer already has a draft. Send or keep it before changing conditions.',assistantRefineReady:'The condition is in the composer. Review it, then send.'});
   words.zh.assistantRefineAnyPerson='不限人物';
   words.en.assistantRefineAnyPerson='Any person';
+  words.zh.assistantRefineAnyPlace='不限地点';
+  words.en.assistantRefineAnyPlace='Any place';
   function renderAssistantRefinements(turn,epoch){
     $('assistant-search-refinements')?.remove();
     const summary=$('assistant-search-summary');
@@ -1717,6 +1719,7 @@
     button('assistantRefineMonth',()=>{if(!current())return;monthRow.hidden=!monthRow.hidden;if(!monthRow.hidden)month.focus();});
     if(turn.filters?.date)button('assistantRefineAnyDate',()=>fill(state.language==='zh'?'不限日期':'any date'));
     if(turn.filters?.people?.ids?.length)button('assistantRefineAnyPerson',()=>fill(state.language==='zh'?'不限人物':'anyone'));
+    if(turn.filters?.locations?.length)button('assistantRefineAnyPlace',()=>fill(state.language==='zh'?'不限地点':'anywhere'));
     const month=document.createElement('input');month.type='month';month.id='assistant-refine-month';month.min='1900-01';month.max='2099-12';month.setAttribute('aria-label',t('assistantRefineMonthLabel'));
     const from=turn.filters?.date?.from;if(typeof from==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(from))month.value=from.slice(0,7);
     const use=document.createElement('button');use.type='button';use.className='quiet';use.dataset.i18n='assistantRefineUseMonth';use.textContent=t('assistantRefineUseMonth');use.addEventListener('click',()=>{const value=month.value;if(!/^(?:19|20)\d{2}-(?:0[1-9]|1[0-2])$/.test(value))return;const [year,m]=value.split('-');fill(state.language==='zh'?`只看${year}年${Number(m)}月`:`only ${year}-${m}`);});monthRow.append(month,use);box.append(monthRow);summary.append(box);

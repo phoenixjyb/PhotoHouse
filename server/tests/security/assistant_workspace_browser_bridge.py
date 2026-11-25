@@ -122,7 +122,7 @@ with closing(producer.open_read_only(fixture.path.resolve(), time.monotonic())) 
     index, _catalog = producer.derive(db, producer.library('family-a'), producer.revision('1'))
     if search_fixture:
         from app.access import discovery as d
-        from app.access.discovery_provider import ReviewedIndex, ReviewedPerson, ReviewedFace
+        from app.access.discovery_provider import ReviewedIndex, ReviewedPerson, ReviewedFace, ReviewedPlace
         source = d.scoped_source('family-a', lambda sql, args: db.execute(sql, args).fetchall())
         scope = tuple(str(row[0]) for row in source['assets'])
         assignments = [(1,101,301), (2,101,302), (3,102,301), (4,102,302)]
@@ -132,7 +132,9 @@ with closing(producer.open_read_only(fixture.path.resolve(), time.monotonic())) 
             people=(ReviewedPerson('family-a','301','Sample Child / 示例儿童',('示例儿童','Sample Child')),
                     ReviewedPerson('family-a','302','Sample Adult / 示例成人',('示例成人','Sample Adult'))),
             assignments=tuple(ReviewedFace(str(fid),str(aid),str(pid)) for fid,aid,pid in
-                assignments))
+                assignments),
+            places=(ReviewedPlace('family-a', '601', 'Example region / 示例地区'),),
+            regions=(('101', '601'),))
 if scene_coverage_fixture:
     with closing(sqlite3.connect(fixture.path)) as db, db:
         db.execute("UPDATE access_memberships SET role='owner' WHERE account_id=? AND library_id='family-a'",
