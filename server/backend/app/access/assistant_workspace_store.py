@@ -20,6 +20,7 @@ import uuid
 
 RETENTION_SECONDS = 30 * 86400
 MAX_THREADS = 10000
+MAX_THREAD_TIMESTAMP = 253402300799  # 9999-12-31T23:59:59Z
 MAX_EXCHANGES = 100000
 MAX_PREFERENCES = 100000
 MAX_EXCHANGES_PER_THREAD = 200
@@ -606,37 +607,43 @@ class AssistantWorkspaceStore:
             db.commit()
             return result
 
-    def list_threads(self, account_id, library_id, *, limit=50, include_labels=False):
+    def list_threads(self, account_id, library_id, *, limit=50, include_labels=False, before=None):
         account_id, library_id = _scope(account_id), _scope(library_id)
         if (type(limit) is not int or not 1 <= limit <= 100 or
                 type(include_labels) is not bool):
             raise ValueError('Invalid limit')
+        position_filter, position_args = '', ()
+        if before is not None:
+            if (type(before) is not tuple or len(before) != 2
+                    or type(before[0]) is not int or not 0 <= before[0] <= MAX_THREAD_TIMESTAMP):
+                raise ValueError('Invalid list position')
+            updated_at, thread_id = before
+            position_filter = 'AND t.updated_at<=? AND (t.updated_at<? OR t.thread_id>?)'
+            position_args = (updated_at, updated_at, _uuid4(thread_id, 'thread ID'))
         # Labels are an explicit presentation opt-in. Keeping the default
         # projection unchanged preserves the original strict list contract.
         now = int(self.clock())
+        label_projection = '''
+            , (SELECT e.input_text FROM exchanges e WHERE e.thread_id=t.thread_id
+                AND e.account_id=t.account_id AND e.library_id=t.library_id AND e.expires_at>?
+                ORDER BY e.revision LIMIT 1) AS first_question''' if include_labels else ''
+        label_args = (now,) if include_labels else ()
         with self.connection() as db:
-            if include_labels:
-                rows = db.execute('''SELECT t.*,
-                    (SELECT count(*) FROM exchanges e WHERE e.thread_id=t.thread_id
-                        AND e.account_id=t.account_id AND e.library_id=t.library_id AND e.expires_at>?) AS exchange_count,
-                    (SELECT e.input_text FROM exchanges e WHERE e.thread_id=t.thread_id
-                        AND e.account_id=t.account_id AND e.library_id=t.library_id AND e.expires_at>?
-                        ORDER BY e.revision LIMIT 1) AS first_question
-                    FROM threads t WHERE t.account_id=? AND t.library_id=? AND t.expires_at>?
-                    ORDER BY t.updated_at DESC,t.thread_id LIMIT ?''',
-                    (now, now, account_id, library_id, now, limit)).fetchall()
-                result = []
-                for row in rows:
-                    item = self._thread(row, row['exchange_count'])
-                    item['label'] = self._display_label(row['first_question'])
-                    result.append(item)
-                return result
-            rows = db.execute('''SELECT t.*, (SELECT count(*) FROM exchanges e
-                WHERE e.thread_id=t.thread_id AND e.expires_at>?) AS exchange_count
+            rows = db.execute(f'''SELECT t.*, (SELECT count(*) FROM exchanges e
+                WHERE e.thread_id=t.thread_id AND e.account_id=t.account_id
+                AND e.library_id=t.library_id AND e.expires_at>?) AS exchange_count
+                {label_projection}
                 FROM threads t WHERE t.account_id=? AND t.library_id=? AND t.expires_at>?
+                {position_filter}
                 ORDER BY t.updated_at DESC,t.thread_id LIMIT ?''',
-                              (now, account_id, library_id, now, limit)).fetchall()
-            return [self._thread(row, row['exchange_count']) for row in rows]
+                (now, *label_args, account_id, library_id, now, *position_args, limit)).fetchall()
+            results = []
+            for row in rows:
+                item = self._thread(row, row['exchange_count'])
+                if include_labels:
+                    item['label'] = self._display_label(row['first_question'])
+                results.append(item)
+            return results
 
     @staticmethod
     def _display_label(value):

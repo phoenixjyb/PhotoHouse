@@ -39383,6 +39383,79 @@
         }
       ],
       "notes": "Draft exact date ranges and remove individual active Search filters."
+    },
+    {
+      "feature": "jude-older-conversations-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_HISTORY_V1.md",
+          "before_sha256": "661daacecc07208ceefe0b886918c46c67f5efd7b6009951c4bc86da3e1b5812",
+          "sha256": "372e516c7b14ff4207b19f3254f3d8746ddb5e3f2ac1c11c29c930f3a5bcb633"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "b93266d0ca5dc8e4ea8ee67893bec1f8d3ce08a2e884152a4cc5b1cbadc40bae",
+          "sha256": "99cf899cfb3b142dd420f428d169708c5436ed2d01c4d5e2c680eb7cbd4299f8"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "986f49d8fd207475df23f44f8cb68341ebe134c0062db27a822f2bb6de73e930",
+          "sha256": "7d4efec52e8a5a95f7036363f9c7bef51ae6f560a25c5652169156dc48c939ba"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "a667a4738f054f6681e27487d47a77f0c96913c826b2569f77973ae68afb4858",
+          "sha256": "15eb3a589d4b6c32b458a3cf28ac78cbf06c04c883094f9fc0114d7f0ee704d9"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "3c6d408c7edff35004eca054dff096104951073a9d891e3e59fde0b2879339d1",
+          "sha256": "8c1a4f71c09e20bb8849bb96afd8100d863f4daaaaf8c25554ddbbfe6c691a2f"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "1af1ac71d36e0df8c1e337461e64e7cda5d23bc9393330f15c2e7c99f653844f",
+          "sha256": "78080ebac6b41619c50052b2607b8457bae18ce9f0c12c9615addefff80c8681"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "0dd10c72134965b87090f32434ba12c4e391649a8456b7e723121959830b780d",
+          "sha256": "beace72c9b4afb5483a0719bbc34820f501e15eb573e6d376b8e2f18ee5da480"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "40fc3b3d619e666a4907b4e258a0edb2b7e9294f0adeff1e734ddce09dbca20f",
+          "sha256": "b3916e06a2297c70cf9a82532fbdd1b6c508c07fa8a2eddd0ca5d536abc0d8be"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "bffd384a1f79dc921b03da60c2817c9bac93b2a9406e441d143f85bb582d1a8a",
+          "sha256": "c4481e3f098da489a483cb92921d8de019bcca5a1f09eb1d98dae7f45a861239"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "442c104f8c4c7e94faea9ebf554156a98c49ed3091e605fc02093b32f40252ee",
+          "sha256": "71320a9d99f86fbf369dd67941da3986f75f6acd1bcf1593c4c8084f1d6ab2b8"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "65e739dfa9efd410f77197c31e519d09b672e63d043d879110b528ce95bc5464",
+          "sha256": "175f092412c38b3bb050e2dad06129af5ff6895b255b775a350139d6de5763d9"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_http.py",
+          "before_sha256": "bfdc2f94e58817e83fb674d7217a54944e293f960247473df67d81cec618af08",
+          "sha256": "ef8ec8d786d68acba5ee5cacc962fa4456bba3bbcb0720a985951ad4f046cdc0"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_store.py",
+          "before_sha256": "990bd3c952f89b7333566bb3b195da04c5bde1abf8fb33bb5745bd85f75f55aa",
+          "sha256": "20d73c7f1aa5b1f6f10c50455ac629ab806a9c566e5b21d9bed1acab3970b26f"
+        }
+      ],
+      "notes": "Browse older owned conversations with scoped keyset pages and preserve narrow Search controls."
     }
   ]
 }

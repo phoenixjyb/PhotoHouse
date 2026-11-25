@@ -91,6 +91,11 @@
               <div class="assistant-private-management-content">
                 <div class="assistant-private-heading"><div><h3 id="assistant-private-title" data-i18n="assistantPrivateTitle">我的私密对话</h3></div></div>
                 <div class="assistant-private-toolbar"><label for="assistant-private-select" data-i18n="assistantPrivateChoose">继续之前的对话</label><select id="assistant-private-select"><option value="">选择对话</option></select><button id="assistant-private-refresh" class="quiet" type="button" data-i18n="refresh">刷新</button></div>
+                <div id="assistant-private-thread-pages" class="assistant-private-thread-pages" hidden>
+                  <button id="assistant-private-newer-threads" class="quiet" type="button" data-i18n="assistantPrivateNewerThreads">较新的对话</button>
+                  <span id="assistant-private-thread-page" role="status" class="fine"></span>
+                  <button id="assistant-private-older-threads" class="quiet" type="button" data-i18n="assistantPrivateOlderThreads">较早的对话</button>
+                </div>
                 <div id="assistant-private-submitted" class="assistant-private-submitted" hidden>
                   <strong data-i18n="assistantPrivateSubmitted">已提交的请求</strong>
                   <p id="assistant-private-submitted-text" dir="auto"></p>

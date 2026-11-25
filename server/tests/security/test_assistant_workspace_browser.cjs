@@ -754,9 +754,35 @@ async function installSyntheticTransport(targetContext){
   assert.equal(turns().length,beforeDiscard);
   checkpoint('Discarding a pending reply keeps the thread and blocks late completion; a reply that already completed is recoverable');
 
+  const archived=await rpc({command:'seed-thread-pages'});
+  await openManagement();
+  await page.locator('#assistant-private-refresh').click();
+  const earlier=page.locator('#assistant-private-older-threads'),newer=page.locator('#assistant-private-newer-threads');
+  const picker=page.locator('#assistant-private-select'),pageLabel=page.locator('#assistant-private-thread-page');
+  await earlier.waitFor({state:'visible'});
+  assert.equal(await picker.locator('option').filter({hasText:'较早的合成对话'}).count(),0);
+  const beforePaging=turns().length;
+  await earlier.press('Enter');
+  await pageLabel.getByText('第 2 页',{exact:true}).waitFor();
+  assert.equal(await picker.inputValue(),refinementThreadId,'browsing keeps the active conversation');
+  await page.waitForFunction(()=>document.activeElement?.id==='assistant-private-select');
+  assert((await picker.locator('option').allTextContents()).some(text=>text.includes('较早的合成对话')));
+  await page.locator('#assistant-private-thread-pages').scrollIntoViewIfNeeded();
+  assert(await page.locator('#assistant-private-thread-pages').evaluate(el=>el.scrollWidth<=el.clientWidth));
+  await page.screenshot({path:path.join(artifacts,'assistant-older-conversations-phone-zh-150.png')});
+  await picker.selectOption(archived.thread_id);
+  await page.locator('#assistant-turn-trail').getByText('已从较早的对话恢复文字。',{exact:true}).waitFor();
+  await openManagement();
+  await newer.click();
+  await pageLabel.getByText('第 1 页',{exact:true}).waitFor();
+  assert.equal(await picker.inputValue(),archived.thread_id,'going back keeps the reopened conversation');
+  assert.equal(turns().length,beforePaging,'listing and reopening older threads submits no turn');
+  checkpoint('Earlier conversations remain reachable from the private picker after the first 50');
+
   await page.locator('#assistant-workspace-lock').click();await page.locator('#auth').waitFor({state:'visible'});
   assert.equal(await page.locator('#assistant-search-refinements').count(),0,'logout removes account-scoped refinement controls');
   assert.equal(await page.locator('#assistant-private-submitted-text').textContent(),'');
+  assert.equal(await pageLabel.textContent(),'','logout clears the conversation page');
   checkpoint('Logout clears protected recovery content and refinement controls');
   console.log('REFINEMENT_SCREENSHOTS '+refinementDesktop+' '+refinementPhone);
 

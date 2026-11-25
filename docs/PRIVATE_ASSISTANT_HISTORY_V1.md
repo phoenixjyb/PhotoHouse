@@ -21,7 +21,23 @@ Capabilities add optional `thread_labels` and `history_paging` booleans. They
 reflect a healthy owned store, independently of discovery/model availability.
 Clients retain compatibility when these fields are absent. History access needs
 `available` and `threads`; sending/voice additionally needs `server_owned_turns`.
-A unavailable search engine must not hide previously saved conversation text.
+An unavailable search engine must not hide previously saved conversation text.
+
+## Older conversations
+
+In **Manage conversations**, use **Older conversations** and **Newer
+conversations** to browse the private picker. Moving through the list keeps the
+current conversation open. Choose an item explicitly to reopen its text.
+
+The client requests this list mode with
+`X-PhotoHouse-Thread-Page-Version: 1` on the existing threads GET. The response
+adds `has_more` and returns at most 50 threads by default. A `before` query
+position uses the last item's UTC update time in seconds and thread UUID,
+separated by a comma. The server filters by the current account, library and
+expiry before paging in descending update time and ascending UUID order.
+The position identifies where to resume, including after its original thread
+is removed. Pages request summary labels and leave the conversation unchanged.
+An older server returns its ordinary list with the page controls hidden.
 
 ## Older text
 

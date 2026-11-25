@@ -280,6 +280,20 @@ try:
             client.app.state.assistant_workspace_healthy = True
             print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
             continue
+        if message.get('command') == 'seed-thread-pages':
+            store = client.app.state.assistant_workspace_store
+            for _ in range(50):
+                store.create_thread(fixture.member_id, 'family-a')
+            thread = store.create_thread(fixture.member_id, 'family-a')['thread_id']
+            append_synthetic_exchange(store, fixture.member_id, thread, 0,
+                '较早的合成对话', '已从较早的对话恢复文字。')
+            with store.connection() as db:
+                db.execute('''UPDATE threads SET updated_at=updated_at-60,created_at=created_at-60
+                    WHERE thread_id=? AND account_id=? AND library_id=?''',
+                           (thread, fixture.member_id, 'family-a'))
+                db.commit()
+            print(json.dumps({'id': message['id'], 'ok': True, 'thread_id': thread}), flush=True)
+            continue
         if message.get('command') == 'seed-private-history':
             store = client.app.state.assistant_workspace_store
             thread = store.create_thread(fixture.member_id, 'family-a')['thread_id']

@@ -1,6 +1,7 @@
 """In-process security checks for private assistant history/preferences."""
 from contextlib import closing, contextmanager
 import asyncio
+from datetime import datetime
 from pathlib import Path
 import sqlite3
 import sys
@@ -100,6 +101,32 @@ class AssistantWorkspaceHttpTests(unittest.TestCase):
             with self.assertRaises(TransportError) as raised:
                 asyncio.run(workspace_transport._body(stalled, {'library_id'}))
         self.assertEqual(raised.exception.status, 408)
+
+    def test_thread_paging_is_opt_in_and_remains_private(self):
+        older = self.store.create_thread('one','family-a')['thread_id']
+        self.now[0] += 1
+        newer = self.store.create_thread('one','family-a')['thread_id']
+        self.store.create_thread('other','family-a')
+        path = '/threads?library_id=family-a&limit=1'
+        headers = self.auth | {'X-PhotoHouse-Thread-Page-Version':'1'}
+        legacy = self.request('GET',path).json()
+        self.assertEqual(set(legacy), {'version','threads'})
+        page = self.request('GET',path,headers=headers)
+        self.assertEqual(page.status_code,200,page.text)
+        self.assertEqual(page.headers['cache-control'],'no-store')
+        self.assertIs(page.json()['has_more'], True)
+        anchor = page.json()['threads'][0]
+        self.assertEqual(anchor['thread_id'], newer)
+        updated_at = int(datetime.fromisoformat(anchor['updated_at']).timestamp())
+        continuation = path + f'&before={updated_at},{newer}'
+        self.assertEqual(self.request('GET',continuation).status_code,400)
+        next_page = self.request('GET',continuation,headers=headers)
+        self.assertEqual([row['thread_id'] for row in next_page.json()['threads']], [older])
+        self.assertIs(next_page.json()['has_more'], False)
+        for cursor in ('0,invalid', '1', '999999999999,'+newer):
+            self.assertEqual(self.request('GET',path+'&before='+cursor,headers=headers).status_code,400)
+        self.assertNotEqual(self.request('GET',continuation,headers={
+            'X-PhotoHouse-Thread-Page-Version':'1'}).status_code,200)
 
     def test_owned_threads_are_account_and_library_scoped_and_redact_bindings(self):
         self.update("INSERT INTO access_memberships VALUES('one','family-b','approved','viewer',1,NULL,0,'one')")

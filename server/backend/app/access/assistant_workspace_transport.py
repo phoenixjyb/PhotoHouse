@@ -26,7 +26,7 @@ from .assistant_memory_followup import (AssistantMemoryFollowupTool,
                                         parse_saved_memory_action)
 from .assistant_memory_discovery import AssistantMemoryDiscovery
 
-from .assistant_workspace_store import (AssistantWorkspaceStore,
+from .assistant_workspace_store import (AssistantWorkspaceStore, MAX_THREAD_TIMESTAMP,
     WorkspaceStoreConflict, WorkspaceStoreMissing, WorkspaceStoreUnavailable)
 from .assistant_speech import (AssistantSpeechUnavailable, LocalAssistantTts,
                                valid_reply_wav)
@@ -2236,26 +2236,38 @@ async def capabilities(request: Request):
 
 @router.get('/assistant/workspace/v1/threads')
 async def list_threads(request: Request):
-    query = _query(request, {'library_id', 'limit', 'include_labels'}, {'library_id'})
+    query = _query(request, {'library_id', 'limit', 'include_labels', 'before'}, {'library_id'})
     library = _library(query['library_id'])
     account = await _principal(request, library)
+    paged = _single(request, 'x-photohouse-thread-page-version') == '1'
     limit = 50
     if 'limit' in query:
-        if not query['limit'].isascii() or not query['limit'].isdecimal() or not 1 <= int(query['limit']) <= 100:
+        raw_limit = query['limit']
+        if (not raw_limit.isascii() or not raw_limit.isdecimal()
+                or not 1 <= int(raw_limit) <= (99 if paged else 100)):
             raise WorkspaceInvalid()
-        limit = int(query['limit'])
+        limit = int(raw_limit)
     include_labels = False
     if 'include_labels' in query:
         if query['include_labels'] not in ('true', 'false'):
             raise WorkspaceInvalid()
         include_labels = query['include_labels'] == 'true'
+    before = None
+    if 'before' in query:
+        seconds, separator, thread_id = query['before'].partition(',')
+        if (not paged or not separator or not seconds.isascii() or not seconds.isdecimal()
+                or len(seconds) > 12 or int(seconds) > MAX_THREAD_TIMESTAMP):
+            raise WorkspaceInvalid()
+        before = int(seconds), _thread_id(thread_id)
     store = _workspace(request)
-    items = await _call(store, 'list_threads', account, library, limit=limit,
-                        include_labels=include_labels)
+    items = await _call(store, 'list_threads', account, library, limit=limit + int(paged),
+                        include_labels=include_labels, before=before)
     if await _principal(request, library) != account:
         raise AccessDenied()
-    return JSONResponse({'version': 1, 'threads': [_safe_thread(row) for row in items]},
-                        headers=PRIVACY_HEADERS)
+    result = {'version': 1, 'threads': [_safe_thread(row) for row in items[:limit]]}
+    if paged:
+        result['has_more'] = len(items) > limit
+    return JSONResponse(result, headers=PRIVACY_HEADERS)
 
 
 @router.post('/assistant/workspace/v1/threads')

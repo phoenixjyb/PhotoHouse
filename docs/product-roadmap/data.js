@@ -1249,6 +1249,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Jude can open the latest conversation in one step, show an admitted pending request and check its result. An explicit discard prevents that reply from entering the conversation.",
           "zh": "小贾可一步打开上次对话，查看服务器已接收的待处理请求，并核实结果。明确丢弃可阻止该回复写入对话。"
+        },
+        {
+          "en": "Manage conversations can page past the first 50 while keeping your current conversation open.",
+          "zh": "「管理对话」可翻页查看超过前 50 条的较早对话，当前对话继续打开。"
         }
       ],
       "gaps": [

@@ -933,6 +933,7 @@
     $('assistant-play').disabled=sessionOwnsVoice;
     const managementBlocked=!!assistantStoryHandoff||privateSnapshot?.storySelectionBusy===true||privateAssistantBusy||!!privatePending||sessionOwnsVoice||state.locked||privateSnapshot?.locked===true;
     for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=managementBlocked;
+    syncPrivateThreadPages(privateSnapshot,managementBlocked);
     const presentationPhase=session.phase!=='idle'?session.phase:assistantState.capture||assistantState.captureStarting?'listening':assistantState.transcribing?'transcribing':assistantState.busy||privateAssistantBusy?'requesting':assistantState.activePlayback||assistantState.speechController?'speaking':'idle';
     const microphoneReady=presentationPhase==='listening'&&!!assistantState.capture&&!assistantState.captureStarting;
     const playbackReady=presentationPhase==='speaking'&&assistantState.activePlayback?.playConfirmed===true;
@@ -2472,13 +2473,14 @@
     const option=document.createElement('option');option.value='';option.textContent=t('assistantPrivateSelect');
     select.replaceChildren(option);
     for(const thread of snapshot.threads){const row=document.createElement('option');row.value=thread.thread_id;row.textContent=[thread.label,new Intl.DateTimeFormat(state.language==='zh'?'zh-CN':'en',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(thread.updated_at))].filter(Boolean).join(' · ');select.append(row);}
-    if(selected&&!snapshot.threads.some(thread=>thread.thread_id===selected)){const row=document.createElement('option');row.value=selected;row.textContent=t('assistantPrivateNew');select.append(row);}
+    if(selected&&!snapshot.threads.some(thread=>thread.thread_id===selected)){const row=document.createElement('option');row.value=selected;row.textContent=t('assistantPrivateCurrentLabel');select.append(row);}
     select.value=selected;
     const voiceActive=assistantState.voiceSession.phase!=='idle';
     const blocked=!!assistantStoryHandoff||snapshot.storySelectionBusy===true||privateAssistantBusy||!!snapshot.pendingTurn||!!snapshot.pendingCreation||voiceActive||state.locked||snapshot.locked;
     for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=blocked;
+    syncPrivateThreadPages(snapshot,blocked);
     const latest=$('assistant-private-continue-latest');
-    latest.hidden=!available||state.locked||snapshot.locked||Boolean(selected)||!snapshot.threads.length||Boolean(assistantStoryTarget);
+    latest.hidden=!available||state.locked||snapshot.locked||Boolean(selected)||snapshot.threadPage>1||!snapshot.threads.length||Boolean(assistantStoryTarget);
     latest.disabled=blocked||assistantState.busy;
     const reopened=available&&!state.locked&&!snapshot.locked&&snapshot.pendingTurn?.mode==='reopened';
     const recover=$('assistant-private-recover');
@@ -2518,6 +2520,18 @@
     if(!available){$('assistant-private-status').textContent='';$('assistant-private-older').hidden=true;}
   }
 
+  Object.assign(words.zh,{assistantPrivateNewerThreads:'较新的对话',assistantPrivateOlderThreads:'较早的对话',assistantPrivateThreadPage:'第 {page} 页',assistantPrivateThreadsEmpty:'这一页没有对话'});
+  Object.assign(words.en,{assistantPrivateNewerThreads:'Newer conversations',assistantPrivateOlderThreads:'Older conversations',assistantPrivateThreadPage:'Page {page}',assistantPrivateThreadsEmpty:'No conversations on this page'});
+  function syncPrivateThreadPages(snapshot,blocked){
+    const nav=$('assistant-private-thread-pages'),page=snapshot?.threadPage??1;
+    const older=snapshot?.hasOlderThreads===true&&snapshot.threads.length>0,newer=page>1;
+    nav.hidden=!snapshot||snapshot.locked||state.locked||(!older&&!newer);
+    $('assistant-private-newer-threads').disabled=blocked||!newer;
+    $('assistant-private-older-threads').disabled=blocked||!older;
+    const status=$('assistant-private-thread-page');
+    const text=nav.hidden?'':snapshot.threads.length?t('assistantPrivateThreadPage').replace('{page}',String(page)):t('assistantPrivateThreadsEmpty');
+    if(status.textContent!==text)status.textContent=text;
+  }
   function syncPrivateManagement(snapshot){
     const panel=$('assistant-private-management'),toggle=$('assistant-private-management-toggle');
     if(!panel||!toggle)return;
@@ -5616,6 +5630,21 @@
     if(!target.disabled&&target.getClientRects().length)target.focus();
   });
   $('assistant-private-refresh').addEventListener('click',()=>void privateAssistantAction(()=>privateAssistant.list()));
+  async function changePrivateThreadPage(direction,button){
+    const controller=privateAssistant;
+    if(button.disabled||!controller)return;
+    const page=controller.state().threadPage,epoch=state.generation;
+    const restoreFocus=document.activeElement===button;
+    await privateAssistantAction(()=>controller.list({direction}));
+    if(stale(epoch)||privateAssistant!==controller)return;
+    const current=controller.state();
+    if(restoreFocus&&current.threadPage!==page&&
+        (document.activeElement===button||document.activeElement===document.body)){
+      $(current.threads.length?'assistant-private-select':'assistant-private-newer-threads').focus();
+    }
+  }
+  $('assistant-private-newer-threads').addEventListener('click',event=>void changePrivateThreadPage('newer',event.currentTarget));
+  $('assistant-private-older-threads').addEventListener('click',event=>void changePrivateThreadPage('older',event.currentTarget));
   $('assistant-private-select').addEventListener('change',()=>void readPrivateAssistant($('assistant-private-select').value));
   $('assistant-private-load-older').addEventListener('click',()=>void privateAssistantAction(async()=>{
     const position=captureAssistantTrailPosition($('assistant-turn-trail-list'));
