@@ -46,6 +46,8 @@ class DiscoveryChanged(Exception):
     def __init__(self): super().__init__('Refresh discovery state')
 class DiscoveryUnavailable(Exception):
     def __init__(self): super().__init__('Discovery unavailable')
+class DiscoverySourceRowLimit(DiscoveryUnavailable):
+    """The cumulative source-row allowance was exceeded."""
 class DiscoveryQueryUnsupported(Exception):
     def __init__(self): super().__init__('Scene query unsupported')
 class DiscoveryBusy(Exception):
@@ -223,13 +225,16 @@ class ReadBudget:
                 if (snapshot is not None
                         and snapshot.owns_attempt(attempt, connection)):
                     return snapshot.read(attempt, sql, args, check=check)
-                check(); result=[]
+                check()
+                if count>self.rows: raise DiscoverySourceRowLimit()
+                result=[]
                 cursor=connection.execute(sql,args)
                 while True:
-                    chunk=cursor.fetchmany(128)
+                    # Read at most one extra row to distinguish an exact fit from overflow.
+                    chunk=cursor.fetchmany(min(128,self.rows-count+1))
                     if not chunk: break
                     check(); count+=len(chunk)
-                    if count>self.rows: raise DiscoveryUnavailable()
+                    if count>self.rows: raise DiscoverySourceRowLimit()
                     chunk_size = _packed_chunk_size(chunk, self.source_bytes - size)
                     if chunk_size is None:
                         for row in chunk:

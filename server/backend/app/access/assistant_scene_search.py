@@ -92,7 +92,8 @@ class SceneSearchRuntime:
         discovery = (replace(self.semantic.discovery, budget=self.semantic.budget)
                      if self.semantic.serving_limits else self.semantic.discovery)
         return SearchRuntime(discovery, self.kinship_provider,
-                             search_version=scope['search_version'])
+                             search_version=scope['search_version'],
+                             allow_structured_on_text_limit=False)
 
     def scope_result(self, token, library, scope, check=None):
         from .assistant import _normalize_cards

@@ -987,6 +987,9 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'text_too_long':
                 reply = ('要匹配的文字太长，请缩短引号内的内容后再查找。' if lang == 'zh' else
                          'The quoted text is too long. Shorten it and search again.')
+            elif plan.reason == 'text_unavailable' and first.get('text_source_limited') is True:
+                reply = ('当前相册库的数据量超过本次检索上限，无法完整检查照片说明和留言。' if lang == 'zh' else
+                         'This library is too large to check all captions and photo notes for this search. ') + reply
             elif plan.reason in ('people_unavailable', 'tags_unavailable', 'locations_unavailable', 'text_unavailable'):
                 unavailable = {
                     'people_unavailable': ('人物', 'People'),

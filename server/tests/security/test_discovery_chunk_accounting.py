@@ -104,7 +104,7 @@ def test_read_budget_uses_bounded_chunk_path_and_preserves_row_limit_and_cancel_
     limited = d.ReadBudget(rows=127, source_bytes=64 * 1024, seconds=30)
     with limited.attempt(db, lambda: False) as (_check, read):
         with patch.object(d, "packed", wraps=d.packed) as pack:
-            with pytest.raises(d.DiscoveryUnavailable):
+            with pytest.raises(d.DiscoverySourceRowLimit):
                 read("SELECT value FROM items ORDER BY rowid", ())
             pack.assert_not_called()
 
