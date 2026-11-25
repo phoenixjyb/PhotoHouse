@@ -87,8 +87,12 @@
                   <strong data-i18n="assistantPrivateSubmitted">已提交的请求</strong>
                   <p id="assistant-private-submitted-text" dir="auto"></p>
                 </div>
-                <div class="assistant-actions"><button id="assistant-private-recover" class="quiet" type="button" hidden data-i18n="assistantPrivateRecover">恢复已发送的请求</button><button id="assistant-private-reconcile" class="quiet" type="button" hidden data-i18n="assistantPrivateReconcile">确认新对话是否已创建</button></div>
-                <button id="assistant-private-abandon" class="quiet" type="button" hidden data-i18n="assistantPrivateAbandon">结束等待，开始新对话</button>
+                <div class="assistant-private-actions">
+                  <button id="assistant-private-recover" class="quiet" type="button" hidden data-i18n="assistantPrivateRecover">恢复已发送的请求</button>
+                  <button id="assistant-private-discard-reply" class="quiet" type="button" hidden data-i18n="assistantPrivateDiscardReply">丢弃待处理回复</button>
+                  <button id="assistant-private-abandon" class="quiet" type="button" hidden data-i18n="assistantPrivateAbandon">结束等待，开始新对话</button>
+                  <button id="assistant-private-reconcile" class="quiet" type="button" hidden data-i18n="assistantPrivateReconcile">确认新对话是否已创建</button>
+                </div>
                 <section id="assistant-private-abandon-confirm" class="assistant-private-confirm" hidden>
                   <p id="assistant-private-abandon-help" data-i18n="assistantPrivateAbandonHelp">服务器可能仍会完成之前的请求。原对话不会被删除，问题会留在输入框；新对话不会自动发送它。</p>
                   <button id="assistant-private-abandon-yes" class="quiet" type="button" data-i18n="assistantPrivateAbandonYes">我了解，开始新对话</button><button id="assistant-private-abandon-no" class="quiet" type="button" data-i18n="cancel">取消</button>
@@ -155,7 +159,7 @@
           <div class="assistant-actions">
             <button id="assistant-send" class="primary" type="submit" data-i18n="assistantSend">查找</button>
             <button id="assistant-agent-send" class="quiet" type="button" hidden data-i18n="assistantAgentSend">AI 查找</button>
-            <button id="assistant-cancel" class="quiet" type="button" hidden data-i18n="assistantCancel">取消</button>
+            <button id="assistant-cancel" class="quiet" type="button" hidden data-i18n="assistantCancel">停止等待</button>
             <button id="assistant-clear" class="quiet" type="button" data-i18n="assistantClear">清空</button>
           </div>
         </form>

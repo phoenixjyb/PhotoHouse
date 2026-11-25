@@ -98,9 +98,9 @@
     return Object.freeze({exchange_id:row.exchange_id,revision:row.revision,created_at:row.created_at,expires_at:row.expires_at,input_text:row.input_text,reply:row.reply,cards:Object.freeze(cards),receipt_count:row.receipt_count,...(row.request_id?{request_id:row.request_id}:{})});
   }
   function validateCapabilities(v) {
-    if(!exactKeys(v,['version','available','threads','preferences','preferences_applied','server_owned_turns'],['applied_preferences','thread_labels','history_paging','reply_speech','search'])||v.version!==1||
+    if(!exactKeys(v,['version','available','threads','preferences','preferences_applied','server_owned_turns'],['applied_preferences','thread_labels','history_paging','reply_speech','search','discard_pending'])||v.version!==1||
       ['available','threads','preferences','preferences_applied','server_owned_turns'].some(k=>typeof v[k]!=='boolean')||
-      ['thread_labels','history_paging','reply_speech'].some(k=>Object.hasOwn(v,k)&&typeof v[k]!=='boolean')||
+      ['thread_labels','history_paging','reply_speech','discard_pending'].some(k=>Object.hasOwn(v,k)&&typeof v[k]!=='boolean')||
       (Object.hasOwn(v,'applied_preferences')&&(!Array.isArray(v.applied_preferences)||v.applied_preferences.some(x=>x!=='locale')||new Set(v.applied_preferences).size!==v.applied_preferences.length)))fail('invalid_response');
     let search=null;
     if(Object.hasOwn(v,'search')){
@@ -608,11 +608,13 @@
     async function capabilitiesRead(){
       const t=begin();sceneProbeNonce++;sceneAvailable=false;agentProbeNonce++;agentAvailable=false;publish();
       const nonce=++capabilitiesProbeNonce,path=`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`;
+      const options=version=>({extraHeaders:{'X-PhotoHouse-Pending-Turn-Version':'1',
+        ...(version?{'X-PhotoHouse-Search-Version':version}:{})}});
       let raw;
-      try{raw=await call(path,'GET',undefined,t.base,t.token,{extraHeaders:{'X-PhotoHouse-Search-Version':'3'}});}
+      try{raw=await call(path,'GET',undefined,t.base,t.token,options('3'));}
       catch(error){if(error.status!==400||error.code!=='search_version_unsupported')throw error;if(nonce!==capabilitiesProbeNonce){assertCurrent(t.base,t.token);fail('conflict');}
-        try{raw=await call(path,'GET',undefined,t.base,t.token,{extraHeaders:{'X-PhotoHouse-Search-Version':'2'}});}
-        catch(olderError){if(olderError.status!==400||olderError.code!=='search_version_unsupported')throw olderError;if(nonce!==capabilitiesProbeNonce){assertCurrent(t.base,t.token);fail('conflict');}raw=await call(path,'GET',undefined,t.base,t.token);}}
+        try{raw=await call(path,'GET',undefined,t.base,t.token,options('2'));}
+        catch(olderError){if(olderError.status!==400||olderError.code!=='search_version_unsupported')throw olderError;if(nonce!==capabilitiesProbeNonce){assertCurrent(t.base,t.token);fail('conflict');}raw=await call(path,'GET',undefined,t.base,t.token,options());}}
       assertCurrent(t.base,t.token);if(nonce!==capabilitiesProbeNonce)fail('conflict');
       const v=validateCapabilities(raw);capabilities=v;
       if(!v.available||!v.server_owned_turns){writeStoryResume(null);invalidateStorySelection();resultPageProbeNonce++;resultPageAvailable=false;clearResultPage();agentProbeNonce++;agentAvailable=false;savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearMemorySpeechSource();abortSpeechCalls(source=>source?.savedMemoryOpening===true);}else if(v.reply_speech!==true){savedMemorySpeechProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemorySpeechAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearMemorySpeechSource();abortSpeechCalls(source=>source?.savedMemoryOpening===true);}publish();return v;
@@ -990,9 +992,10 @@
       if(env.status==='pending'){
         pendingTurn={...submitted,status:'pending'};publish();return env;
       }
-      readGeneration++;abortHydrations();invalidateHistory();pendingTurn=null;
+      readGeneration++;abortHydrations();invalidateHistory();
       const sentText=submitted.text;
       if(env.status==='completed'){
+        pendingTurn=null;
         activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;
         if(submitted.mode==='scene'||env.result.version===4){
           if(sceneDraft===sentText)sceneDraft='';
@@ -1002,14 +1005,33 @@
         bindStoryResult(t,id,rid,env.revision,env.result);
         storyDirectionInput={text:sentText,account:t.base.account,library:t.base.library,
           generation:t.base.generation,thread_id:id,request_id:rid,revision:env.revision};
-      }else{
-        if(submitted.mode==='scene'||(submitted.mode==='reopened'&&sceneRefusal&&validSceneQuery(sentText))){
-          if(!sceneDraft)sceneDraft=sentText;
-          sceneRewordRequired=sceneRefusal;
-        }else if(submitted.mode!=='reopened'&&!draft)draft=sentText;
-        currentResult=null;contextState='requires_search';sceneRequestId=null;invalidateStorySelection();
-      }
+      }else retirePendingReply(submitted,sceneRefusal);
       publish();return env;
+    }
+    function retirePendingReply(submitted,sceneRefusal=false){
+      if(submitted.mode==='scene'||(submitted.mode==='reopened'&&sceneRefusal&&validSceneQuery(submitted.text))){
+        if(!sceneDraft)sceneDraft=submitted.text;
+        sceneRewordRequired=sceneRefusal;
+      }else if(submitted.mode!=='reopened'&&!draft)draft=submitted.text;
+      pendingTurn=null;currentResult=null;contextState='requires_search';sceneRequestId=null;invalidateStorySelection();
+    }
+    async function discardPendingReply(){
+      const t=begin(),submitted=pendingTurn;
+      if(capabilities?.discard_pending!==true||submitted?.status!=='pending'||
+          activeThread?.thread_id!==submitted.thread_id)fail('conflict');
+      const {thread_id,request_id,expected_revision}=submitted;
+      const path=`${threadPath(thread_id)}/requests/${encodeURIComponent(request_id)}/discard`;
+      const value=await call(path,'POST',{library_id:t.base.library,expected_revision},t.base,t.token);
+      assertCurrent(t.base,t.token);
+      if(pendingTurn!==submitted)fail('conflict');
+      if(!exactKeys(value,['version','thread_id','request_id','revision','discarded'])||
+          value.version!==1||value.thread_id!==thread_id||value.request_id!==request_id||
+          value.revision!==expected_revision||typeof value.discarded!=='boolean')fail('invalid_response');
+      if(value.discarded){
+        clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;
+        readGeneration++;abortHydrations();invalidateHistory();retirePendingReply(submitted);publish();
+      }
+      return value.discarded;
     }
     function abandonPending(){
       begin();if(!pendingTurn)fail('invalid_input');clearSpeechSource();
@@ -1234,7 +1256,7 @@
     async function updatePreferences(changes){const t=begin();if(!isObject(changes)||!Object.keys(changes).length||Object.keys(changes).some(k=>!Object.hasOwn(PREFS,k)||!PREFS[k].includes(changes[k])))fail('invalid_input');const current=preferences||await readPreferences();assertCurrent(t.base,t.token);const body={library_id:t.base.library,expected_revision:current.revision,...changes};preferences=validatePrefs(await call(`${BASE}/preferences`,'PUT',body,t.base,t.token));publish();return preferences;}
     async function resetPreferences(){const t=begin(),current=preferences||await readPreferences();assertCurrent(t.base,t.token);preferences=validatePrefs(await call(`${BASE}/preferences/reset`,'POST',{library_id:t.base.library,expected_revision:current.revision},t.base,t.token));publish();return preferences;}
     function close(){if(closed)return;closed=true;invalidateStorySelection();sceneProbeNonce++;scenePageProbeNonce++;resultPageProbeNonce++;sceneAvailable=false;scenePageAvailable=false;resultPageAvailable=false;agentProbeNonce++;agentAvailable=false;sceneRequestId=null;sceneRankingDigest=null;clearScenePage();clearResultPage();sceneDraft='';sceneRewordRequired=false;instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemoryCard=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearHistory();clearSpeechSource();capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';storyDirectionInput=null;publish();}
-    return Object.freeze({state,setDraft,setSceneDraft,sendScene,sceneCapabilities:sceneCapabilitiesRead,scenePageCapabilities:scenePageCapabilitiesRead,scenePage:scenePageRead,returnSceneResults,resultPageCapabilities:resultPageCapabilitiesRead,resultPage:resultPageRead,returnResults,capabilities:capabilitiesRead,agentCapabilities:agentCapabilitiesRead,savedMemoryCapabilities:savedMemoryCapabilitiesRead,savedMemoryActionsCapabilities:savedMemoryActionsCapabilitiesRead,savedMemorySpeechCapabilities:savedMemorySpeechCapabilitiesRead,savedMemoryReaderCapabilities:savedMemoryReaderCapabilitiesRead,savedMemoryFollowupCapabilities:savedMemoryFollowupCapabilitiesRead,savedMemoryReadingCapabilities:savedMemoryReadingCapabilitiesRead,savedMemorySegmentReadingCapabilities:savedMemorySegmentReadingCapabilitiesRead,toggleStoryItem,moveStoryItem,clearStorySelection,prepareStorySelection,storyDirectionCandidate,openMemoryCard,list,create,reconcileCreation,read,older,send,speakReply,speakMemoryOpening,speakMemorySegment,discardSpeechSource,recover,abandonPending,delete:deleteThread,readPreferences,updatePreferences,resetPreferences,close});
+    return Object.freeze({state,setDraft,setSceneDraft,sendScene,sceneCapabilities:sceneCapabilitiesRead,scenePageCapabilities:scenePageCapabilitiesRead,scenePage:scenePageRead,returnSceneResults,resultPageCapabilities:resultPageCapabilitiesRead,resultPage:resultPageRead,returnResults,capabilities:capabilitiesRead,agentCapabilities:agentCapabilitiesRead,savedMemoryCapabilities:savedMemoryCapabilitiesRead,savedMemoryActionsCapabilities:savedMemoryActionsCapabilitiesRead,savedMemorySpeechCapabilities:savedMemorySpeechCapabilitiesRead,savedMemoryReaderCapabilities:savedMemoryReaderCapabilitiesRead,savedMemoryFollowupCapabilities:savedMemoryFollowupCapabilitiesRead,savedMemoryReadingCapabilities:savedMemoryReadingCapabilitiesRead,savedMemorySegmentReadingCapabilities:savedMemorySegmentReadingCapabilitiesRead,toggleStoryItem,moveStoryItem,clearStorySelection,prepareStorySelection,storyDirectionCandidate,openMemoryCard,list,create,reconcileCreation,read,older,send,speakReply,speakMemoryOpening,speakMemorySegment,discardSpeechSource,recover,discardPendingReply,abandonPending,delete:deleteThread,readPreferences,updatePreferences,resetPreferences,close});
   }
   return Object.freeze({createController,PrivateAssistantError,validateThread,validateExchange,validateCapabilities,validateSavedMemoryFollowupCapabilities,validateSavedMemoryActionCapabilities,validateHistoryPage,validatePrefs,validateEnvelope,validateResult,validateSceneCapabilities,safeJson,uuid,validUtc});
 });

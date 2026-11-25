@@ -21,6 +21,11 @@ question and **Check request status**. The action reads the existing request by
 ID. An earlier result is withheld while this request is pending. The displayed
 question stays in the active page and is never used as a new submission.
 
+**Stop waiting** ends the browser's wait. After confirming that the server
+has a pending request, you can choose **Discard pending reply** to prevent
+its reply from joining the conversation. If the reply completed first,
+**Check request status** recovers it. Earlier exchanges remain in place.
+
 ## Routes
 
 All routes require current library membership, the exact account owning the
@@ -110,6 +115,19 @@ The thread detail route opts into this read-only projection with
 pending revision. `latest_request_id` still identifies the latest completed
 request. The store exposes no lease details. The existing request GET resolves
 the status, including a lease that expires while the conversation is closed.
+
+### Discard a pending reply
+
+`POST /assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/discard`
+accepts `library_id` and the request's `expected_revision`. The response contains
+`version`, the exact thread and request IDs, that revision, and `discarded`.
+The request is interrupted with `request_cancelled` only if its owned pending
+revision still matches. Repeating an accepted discard returns the same receipt.
+If completion or another terminal outcome won, `discarded` is false.
+
+The discard is a transaction on the conversation ledger. The worker still
+owns its resources until normal cleanup completes. Its later completion
+cannot append an exchange or change the earlier search context.
 
 Repeated POST with the identical request identity reads its existing state; it
 does not regenerate. A changed text, revision or thread under the same request ID

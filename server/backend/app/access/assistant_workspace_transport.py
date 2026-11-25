@@ -1129,7 +1129,7 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
     async def finish_journal(*, error=None, kind=None, total=None):
         status, http_status = ('succeeded', 200) if committed else ('failed', 503)
         if row is not None and row['status'] == 'interrupted':
-            error, http_status = 'turn_interrupted', 409
+            error, http_status = row['error_code'], 409
 
         async def read():
             return await operation.reconcile(operation.spawn_call(journal.get,
@@ -1214,7 +1214,7 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
         row = await operation.wait(completion, finalizing=True)
         committed = row['status'] == 'completed'
         if journal_started:
-            await finish_journal(error=None if committed else 'turn_interrupted',
+            await finish_journal(error=None if committed else row['error_code'],
                                  kind=summary['kind'], total=summary['total'])
         return {'row': row, 'recovered': False, 'tracking': journal is not None,
                 'receipt': ('succeeded' if committed else 'failed') if journal_started else None}
@@ -1265,7 +1265,8 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
                             raise JournalConflict()
                         journal_started = True
             if journal_started:
-                await finish_journal(error=None if committed else _error_code(error))
+                await finish_journal(error=None if committed else
+                                     (row and row.get('error_code')) or _error_code(error))
         except BaseException:
             # Retain an unavailable lane and the existing bounded durable lease.
             operation.owner.healthy = False
@@ -1438,7 +1439,7 @@ async def create_turn(request: Request, thread_id: str):
         if journal_started:
             await run_in_threadpool(journal.finish, ident,
                 'succeeded' if committed else 'failed', http_status=200 if committed else 409,
-                error=None if committed else 'turn_interrupted',
+                error=None if committed else row['error_code'],
                 kind=summary['kind'] if committed else None,
                 total=summary['total'] if committed else None)
         response = await _turn_envelope(request, account, library, row, recovered=False,
@@ -1467,7 +1468,7 @@ async def create_turn(request: Request, thread_id: str):
             try:
                 await asyncio.shield(run_in_threadpool(journal.finish, ident, 'failed',
                     http_status=499 if isinstance(exc, asyncio.CancelledError) else 200 if unsupported_receipt else 503,
-                    error=_error_code(exc)))
+                    error=(failed and failed.get('error_code')) or _error_code(exc)))
                 journal_failure_confirmed = True
             except Exception:
                 pass
@@ -1492,6 +1493,22 @@ async def read_turn(request: Request, thread_id: str, request_id: str):
     row = await _call(_workspace(request), 'get_turn', account, library,
                       _thread_id(thread_id), _thread_id(request_id))
     return await _turn_envelope(request, account, library, row, recovered=True)
+
+
+@router.post('/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/discard')
+async def discard_turn(request: Request, thread_id: str, request_id: str):
+    body = await _body(request, {'library_id', 'expected_revision'})
+    library = _library(body['library_id'])
+    account = await _principal(request, library)
+    selected_thread, selected_request = _thread_id(thread_id), _thread_id(request_id)
+    revision = _revision(body['expected_revision'])
+    discarded = await _call(_workspace(request), 'discard_turn', account, library,
+                            selected_thread, selected_request, revision)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'thread_id': selected_thread,
+                         'request_id': selected_request, 'revision': revision,
+                         'discarded': discarded}, headers=PRIVACY_HEADERS)
 
 
 async def reply_speech(request: Request, thread_id: str, turn_id: str):
@@ -2212,6 +2229,8 @@ async def capabilities(request: Request):
                          applied_preferences=[])
         if await _principal(request, library) != account:
             raise AccessDenied()
+    if _single(request, 'x-photohouse-pending-turn-version') == '1':
+        value['discard_pending'] = bool(healthy)
     return JSONResponse(value, headers=PRIVACY_HEADERS)
 
 

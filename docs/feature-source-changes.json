@@ -39054,6 +39054,74 @@
         }
       ],
       "notes": "Show editors their prepared story draft, then open its fresh review in the normal story reader."
+    },
+    {
+      "feature": "jude-discard-pending-reply-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_TURNS_V1.md",
+          "before_sha256": "72bf7ffae8766d139efb9bf0a767bb135432e3d601a69e450afc20c589dc75ee",
+          "sha256": "0c96c344cea16fa2b7b634de469d727830086d9e56071ca4e6e784c4e57099b9"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "1daa4a22302ae36c28e6876552027b69cfd56d4aeea58d7d8478379099f27517",
+          "sha256": "a667a4738f054f6681e27487d47a77f0c96913c826b2569f77973ae68afb4858"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "5dd75253e83ab258283001b42bd4e397f9427180658c7f742d1f800c8d61a22f",
+          "sha256": "3c6d408c7edff35004eca054dff096104951073a9d891e3e59fde0b2879339d1"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "cb7c6d5ce4bb46369fce7812350a4844dc1d525fbe7e35b88940fc6e4e40bee1",
+          "sha256": "4c9fd20efeda739341e0d25519e1931db8f8562dfc419c5b6d340434d1e5f02c"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "501170589c0580321934b12ebacf1caa50c4fee0c25f333a5f114e6b47a9fcef",
+          "sha256": "f28409888d07aee004a903daec77e32f918197882ee02ea05cc1741843c899a8"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "02e23a525bdfd1697cceae7fcc3353a78f242e59af2cdbef1be4fa44a2ef4631",
+          "sha256": "c5de51ac4e3459a1cbcb9128fcdd8c1b4e65c69ba0434a92d62618ee549c488a"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "b77d2d341d0e64d6cbbb39e540b3e157cfc5373b3ba706e62ef79981e7877411",
+          "sha256": "692bdf0dcbafd7c2abcd9bc0d27c0bc2d7fe7885caff64192ced911d8ce10970"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "79baa11282d961ae000f8f477ef45a7fb56cbf92286a0823e1606ef0d7f11d8a",
+          "sha256": "31ad43904408baaa08c8b2d74e8d430e7bd1f6fc239d1e61592d410960043c97"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "c39c7da9165bb61025edee2dcb14bd8823306bf09642047274fe2c6c5ceeb927",
+          "sha256": "5350fc521e782ff7873193b985e8abfc83ccf3ef3aa65a1f188c70949c7cc521"
+        },
+        {
+          "path": "server/tests/security/test_assistant_agent_workspace.py",
+          "before_sha256": "68fea90f16ab301019730569ca5e7deb93a463134350d8b8eec8260794778f66",
+          "sha256": "1e16e5448358e703e426e065eeaaf154deced3e5a749baa9523c0d326a8e8b73"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "65aceef4e23a4391cd0adc79c9a02566812a7071c851eed2d735be3bf0da095f",
+          "sha256": "3df107b3b76a61da01c5ce7359923794dbbb5306b542b457563089d97b85325d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "04d1c27e2b0452609ab809fbc1728f33baab884c2efc6152350a1d064420f045",
+          "sha256": "2796dc16e733123cf03e23331bf00e029f0a99bc2e316f4309de608bc082b78a"
+        }
+      ],
+      "notes": "Discard only the exact owned pending reply, preserve completed exchanges, and keep cleanup owned."
     }
   ]
 }

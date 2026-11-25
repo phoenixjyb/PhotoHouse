@@ -236,6 +236,10 @@ class ClosedBoundary:
         if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/turns', path):
             return True
         if method == 'POST' and re.fullmatch(
+                r'/assistant/workspace/v1/threads/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}'
+                r'/requests/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/discard', path):
+            return True
+        if method == 'POST' and re.fullmatch(
                 r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/scene-pages', path):
             return True
         if method == 'POST' and re.fullmatch(

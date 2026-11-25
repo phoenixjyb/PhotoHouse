@@ -314,10 +314,10 @@ try:
             continue
         if message.get('command') == 'complete-held-private-turn':
             store = client.app.state.assistant_workspace_store
-            complete_synthetic_exchange(store, fixture.member_id, held_turn['thread_id'],
-                                        held_turn, '合成的已完成回复。')
+            terminal = complete_synthetic_exchange(store, fixture.member_id, held_turn['thread_id'],
+                                                   held_turn, '合成的已完成回复。')
             held_turn = None
-            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
+            print(json.dumps({'id': message['id'], 'status': terminal['status']}), flush=True)
             continue
         client.cookies.clear()
         response = client.request(message['method'], message['path'], headers=message['headers'],

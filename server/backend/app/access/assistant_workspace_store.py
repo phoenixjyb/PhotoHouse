@@ -1104,6 +1104,36 @@ class AssistantWorkspaceStore:
             db.commit()
             return result
 
+    def discard_turn(self, account_id, library_id, thread_id, request_id, expected_revision):
+        account_id, library_id = _scope(account_id), _scope(library_id)
+        thread_id, request_id = _uuid4(thread_id, 'thread ID'), _uuid4(request_id, 'request ID')
+        expected_revision = _expected_revision(expected_revision)
+        now = int(self.clock())
+        with self.connection() as db:
+            self._begin(db)
+            self._prune(db, now)
+            row = db.execute('''SELECT r.*,t.revision AS thread_revision
+                FROM turn_requests r JOIN threads t ON t.thread_id=r.thread_id
+                WHERE r.account_id=? AND r.library_id=? AND r.thread_id=?
+                AND r.request_id=? AND t.expires_at>?''',
+                             (account_id, library_id, thread_id, request_id, now)).fetchone()
+            if row is None:
+                raise WorkspaceStoreMissing()
+            if row['expected_revision'] != expected_revision:
+                raise WorkspaceStoreConflict()
+            row = self._reconcile_lease(db, row, now)
+            discarded = row['status'] == 'interrupted' and row['error_code'] == 'request_cancelled'
+            if row['status'] == 'pending':
+                if row['thread_revision'] != expected_revision:
+                    raise WorkspaceStoreConflict()
+                db.execute('''UPDATE turn_requests SET status='interrupted',lease_id=NULL,
+                    lease_expires_at=NULL,error_code='request_cancelled'
+                    WHERE request_id=? AND account_id=? AND library_id=?''',
+                           (request_id, account_id, library_id))
+                discarded = True
+            db.commit()
+            return discarded
+
     def _leased_request(self, db, account_id, library_id, thread_id, request_id,
                         lease_id, now):
         lease_id = _uuid4(lease_id, 'lease ID')
@@ -1113,6 +1143,9 @@ class AssistantWorkspaceStore:
                          (account_id, library_id, thread_id, request_id, now)).fetchone()
         if row is None:
             raise WorkspaceStoreMissing()
+        if row['status'] == 'interrupted' and row['error_code'] == 'request_cancelled':
+            # A late worker sees the terminal receipt and cannot append an exchange.
+            return None
         if row['status'] != 'pending' or row['lease_id'] != lease_id:
             raise WorkspaceStoreConflict()
         if row['lease_expires_at'] <= now:

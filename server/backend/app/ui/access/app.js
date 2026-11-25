@@ -2414,6 +2414,9 @@
     recover.hidden=!snapshot.pendingTurn;
     recover.dataset.i18n=reopened?'assistantPrivateCheckRequest':'assistantPrivateRecover';
     recover.textContent=t(recover.dataset.i18n);
+    const discard=$('assistant-private-discard-reply');
+    discard.hidden=!available||snapshot.locked||state.locked||snapshot.pendingTurn?.status!=='pending'||snapshot.capabilities?.discard_pending!==true;
+    discard.disabled=privateAssistantBusy;
     $('assistant-private-submitted').hidden=!reopened;
     const submittedText=$('assistant-private-submitted-text');
     const sentQuestion=reopened?snapshot.pendingTurn.text:'';
@@ -2662,7 +2665,8 @@
     try{const envelope=await privateAssistant.recover(pending.thread_id,pending.request_id);if(stale(epoch))return;
       if(envelope.status==='completed'){showPrivateAssistantResult(envelope,pending.text);$('assistant-text').value=privateAssistant.state().draft;}
       else{
-        const key=envelope.status==='pending'?(pending.mode==='reopened'?'assistantPrivateReceived':'assistantPrivateUnknown'):'assistantPrivateFailed';
+        const key=envelope.status==='pending'?(pending.mode==='reopened'?'assistantPrivateReceived':'assistantPrivateUnknown'):
+          envelope.error==='request_cancelled'?'assistantPrivateDiscarded':'assistantPrivateFailed';
         $('assistant-private-status').textContent=envelope.error==='scene_query_unsupported'?'':t(key);
         if(envelope.status!=='pending'){assistantState.pendingTurn=null;$('assistant-receipt').hidden=true;}
       }
@@ -2673,6 +2677,33 @@
         const snapshot=privateAssistant.state();renderPrivateAssistant(snapshot);syncAssistantControls();
         if(restoreFocus&&(document.activeElement===document.body||document.activeElement===trigger)){
           const target=snapshot.pendingTurn?trigger:$('assistant-text');
+          if(!target.disabled&&target.getClientRects().length)target.focus();
+        }
+      }
+    }
+  }
+  async function discardPrivateAssistantReply(trigger){
+    const pending=privateAssistant?.state().pendingTurn;
+    if(pending?.status!=='pending'||trigger.hidden||trigger.disabled||privateAssistantBusy||state.locked)return;
+    const epoch=state.generation,restoreFocus=document.activeElement===trigger;
+    privateAssistantBusy=true;renderPrivateAssistant(privateAssistant.state());syncAssistantControls();
+    let statusKey='assistantPrivateUnknown';
+    try{
+      const discarded=await privateAssistant.discardPendingReply();
+      if(stale(epoch))return;
+      statusKey=discarded?'assistantPrivateDiscarded':'assistantPrivateAlreadyFinished';
+      if(discarded){
+        assistantState.pendingTurn=null;$('assistant-receipt').hidden=true;
+        $('assistant-text').value=privateAssistant.state().draft;
+      }
+    }catch{ /* An uncertain response keeps the exact recovery controls available. */ }
+    finally{
+      if(!stale(epoch)){
+        privateAssistantBusy=false;
+        const snapshot=privateAssistant.state();renderPrivateAssistant(snapshot);syncAssistantControls();
+        $('assistant-private-status').textContent=t(statusKey);
+        if(restoreFocus&&(document.activeElement===trigger||document.activeElement===document.body)){
+          const target=snapshot.pendingTurn?$('assistant-private-recover'):$('assistant-text');
           if(!target.disabled&&target.getClientRects().length)target.focus();
         }
       }
@@ -5512,6 +5543,7 @@
   $('assistant-private-reload-history').addEventListener('click',()=>void readPrivateAssistant(
     privateAssistant?.state().activeThread?.thread_id,{preserveStorySelection:true}));
   $('assistant-private-recover').addEventListener('click',event=>void recoverPrivateAssistant(event.currentTarget));
+  $('assistant-private-discard-reply').addEventListener('click',event=>void discardPrivateAssistantReply(event.currentTarget));
   $('assistant-private-reconcile').addEventListener('click',()=>void privateAssistantAction(async()=>{
     const id=privateAssistant.state().pendingCreation?.thread_id;
     try{await privateAssistant.reconcileCreation();privateCreationRetryId=null;}
@@ -5555,6 +5587,8 @@
   $('assistant-agent-send')?.addEventListener('click',()=>{if($('assistant-agent-send').disabled)return;void submitAssistant(null,null,null,true);});
   $('assistant-text').addEventListener('input',()=>{assistantTextEditRevision++;if(privateAssistant?.state().capabilities?.available&&privateAssistant.state().capabilities?.threads){try{privateAssistant.setDraft($('assistant-text').value);}catch{}}syncAssistantControls();});
   $('assistant-clear').addEventListener('click',()=>{if(state.locked)return;if(privateAssistant?.state().capabilities?.available&&privateAssistant.state().capabilities?.threads){if(privateAssistant.state().pendingTurn||privateAssistant.state().pendingCreation){$('assistant-private-status').textContent=t('assistantPrivateUnknown');return;}void newPrivateConversation();return;}if(assistantState.receipt?.recovered&&!assistantState.receipt.recoveryCleared){acknowledgeAssistantRecovery();return;}if(assistantState.pendingTurn){$('assistant-text').value='';syncAssistantControls();return;}clearAssistantRecoveryPointer();resetAssistant();});
+  Object.assign(words.zh,{assistantCancel:'停止等待',assistantPrivateDiscardReply:'丢弃待处理回复',assistantPrivateDiscarded:'已丢弃回复。此前的对话已保留。',assistantPrivateAlreadyFinished:'请求已结束。请查看处理结果。'});
+  Object.assign(words.en,{assistantCancel:'Stop waiting',assistantPrivateDiscardReply:'Discard pending reply',assistantPrivateDiscarded:'Reply discarded. Your earlier conversation is still available.',assistantPrivateAlreadyFinished:'This request has finished. Check its result.'});
   $('assistant-cancel').addEventListener('click',()=>{if(!assistantState.busy)return;if(assistantState.pendingTurn){assistantState.pendingTurn.receipt.cancelled=true;renderAssistantPending();}$('assistant-status').textContent=t('assistantPendingCancelled');assistantState.controller?.abort();});
   document.addEventListener('focusin',()=>{assistantFocusRevision++;},true);
   $('assistant-mic').addEventListener('pointerdown',event=>{if(!event.isPrimary||assistantState.capture||assistantState.captureStarting)return;event.preventDefault();assistantState.pressPointerId=event.pointerId;assistantState.ignoreMicClick=true;try{$('assistant-mic').setPointerCapture(event.pointerId);}catch{}void startAssistantCapture();});

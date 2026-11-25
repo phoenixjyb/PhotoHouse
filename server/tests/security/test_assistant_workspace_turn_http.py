@@ -705,6 +705,42 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         self.assertEqual(denied.status_code, 401)
         self.assertNotIn(question, denied.text)
 
+    def test_discard_is_scoped_idempotent_and_preserves_completed_turns(self):
+        thread_id = self.thread()['thread_id']
+        ready = self.turn(thread_id).json()
+        self.assertEqual(ready['status'], 'completed')
+        request_id = new_id()
+        question = 'Find videos'
+        self.workspace.begin_turn('one', 'family-a', thread_id, request_id, 1, question)
+        path = f'/threads/{thread_id}/requests/{request_id}'
+        body = {'library_id': 'family-a', 'expected_revision': 1}
+        self.assertEqual(self.request('POST', path + '/discard', body=body,
+            headers={'Authorization': 'Bearer ' + SECOND}).status_code, 404)
+        self.assertEqual(self.request('POST', path + '/discard',
+            body={**body, 'expected_revision': 0}).status_code, 409)
+
+        first = self.request('POST', path + '/discard', body=body)
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(first.headers['cache-control'], 'no-store')
+        receipt = {'version': 1, 'thread_id': thread_id, 'request_id': request_id,
+                   'revision': 1, 'discarded': True}
+        self.assertEqual(first.json(), receipt)
+        self.assertEqual(self.request('POST', path + '/discard', body=body).json(), receipt)
+        recovered = self.request('GET', path + '?library_id=family-a').json()
+        self.assertEqual((recovered['status'], recovered['error'], recovered['result']),
+                         ('interrupted', 'request_cancelled', None))
+        self.assertEqual(self.turn(thread_id, request_id, 1, question).json(), recovered)
+
+        completed = self.request('POST',
+            f"/threads/{thread_id}/requests/{ready['request_id']}/discard",
+            body={**body, 'expected_revision': 0})
+        self.assertEqual(completed.status_code, 200)
+        self.assertIs(completed.json()['discarded'], False)
+        detail = self.request('GET', f'/threads/{thread_id}?library_id=family-a').json()
+        self.assertEqual(detail['latest_request_id'], ready['request_id'])
+        self.assertEqual(detail['thread']['revision'], 1)
+        self.assertEqual(len(detail['exchanges']), 1)
+
     def test_foreign_account_library_and_revoked_membership_are_unavailable(self):
         thread = self.thread()
         self.update("INSERT INTO access_memberships VALUES('one','family-b','approved','viewer',1,NULL,0,'one')")
