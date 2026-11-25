@@ -39720,6 +39720,39 @@
         }
       ],
       "notes": "Prepare a current private Search selection in the existing owner-only album editor and preserve explicit saving."
+    },
+    {
+      "feature": "followup-repeat-capture-dates-by-year",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "c9631c5f2a6dd68006c9dd976a664fc5fa1338bf7be419eb64d57284a05979ff",
+          "sha256": "06806ee22887197d131cfb937724c45944c972c7994dcaeb3414cd9eaef1b35d"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "202c7f7151d3120afa04800a2d916bf548831a5f7506b510de4fa1edef4ca60d",
+          "sha256": "cadf942b57b76b89fa9b3bf6d0adfc28716726adefa644dd6c7cdda5ca094902"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "b3eae6e6f0e8164d1ae2546044324e4f02d55559eeefd05b254b4b41f9777ed2",
+          "sha256": "e73d665955b57a56d6cb759b38bd19713d62687ccbbb3e5b49b65cece89e2655"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "c95b3215c3bbf7f74039a2eb17e1b77fe40ac0c86b3857de7c34b3b329861215",
+          "sha256": "0327e0bc0cfbdebf97534bfbc70d49064860a3c6c3cc6d3bf3c29c8048fba7d7"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": "51823986fedbcfcdccf207f267c3b169b675ffc5bf1acaf40c691300a0f573ab",
+          "sha256": "1eecd4889e0c7e6834d4a17763a4f493d08a2705e0e2eb6630912692dce50142"
+        }
+      ],
+      "notes": "Reuse the current Search date window in a specified year with exact calendar handling and preserved filters."
     }
   ]
 }

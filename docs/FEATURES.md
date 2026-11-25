@@ -97,6 +97,9 @@ checks and Windows delivery evidence.
 - Library owners can open the current Jude Search selection in a new album
   draft. Review the selected photos and videos in order, add a title and
   choose **Save album** to keep it in the current library.
+- Jude can follow up with “same month in 2024” or “2024 年同期” from an
+  existing date search. It changes only the date condition. Exact dates that
+  do not occur in the requested year prompt for a new date range.
 
 ## Earlier capability snapshot (historical)
 
