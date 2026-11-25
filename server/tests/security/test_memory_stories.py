@@ -127,7 +127,7 @@ class MemoryStoryTests(unittest.TestCase):
             self.assertEqual(saved.status_code, 200, saved.text)
             trip_ids.add(saved.json()['id'])
         for index in range(3):
-            self.assertEqual(self.save(body | {'theme':'everyday', 'title':f'Day {index}',
+            self.assertEqual(self.save(body | {'theme':'everyday', 'title':f'Trip diary {index}',
                 'mutation_id':str(uuid.uuid4())}).status_code, 200)
         first = self.get('/memory-stories?library=family-a&theme=trip').json()
         second = self.get('/memory-stories?library=family-a&theme=trip&page=2').json()
@@ -142,6 +142,11 @@ class MemoryStoryTests(unittest.TestCase):
         self.assertFalse(days['has_more'])
         self.assertEqual(set(days), set(first), 'optional theme keeps the existing response contract')
         self.assertEqual(self.get('/memory-stories?library=family-a&theme=birthday').json()['items'], [])
+        pages = [self.client.post('/memory-stories/search?library=family-a',
+                    headers=self.headers, json={'theme':'trip','title_query':' tRiP ','page':str(page)})
+                 for page in (1, 2)]
+        self.assertTrue(all(response.status_code == 200 for response in pages))
+        self.assertEqual([response.json() for response in pages], [first, second])
         viewer = self.get('/memory-stories?library=family-a&theme=trip',
             {'Authorization':'Bearer '+self.f.member_token}).json()
         self.assertFalse(viewer['can_create'])
@@ -163,6 +168,35 @@ class MemoryStoryTests(unittest.TestCase):
         self.f.mutate("UPDATE access_memberships SET status='revoked' WHERE account_id=?",(self.f.member_id,))
         self.assertEqual(self.get('/memory-stories?library=family-a&theme=trip',
             {'Authorization':'Bearer '+self.f.member_token}).status_code,401)
+
+    def test_title_search_uses_literal_titles_and_current_private_scope(self):
+        saved = self.save(self.body() | {'title':'湖边晚餐 100%'}).json()
+        capability = self.get(headers=self.headers | {'X-PhotoHouse-Story-Shelf-Version':'1'}).json()
+        self.assertIs(capability['title_search'], True)
+        self.assertNotIn('title_search', self.get().json())
+        url = '/memory-stories/search?library=family-a'
+        member = {'Cookie':COOKIE+'='+self.f.member_token, 'Origin':'https://photohouse.test'}
+        body = {'title_query':'湖边晚餐', 'page':'1'}
+        self.assertEqual(self.client.post(url, headers=member, json=body).status_code,403)
+        member['X-CSRF-Token'] = csrf_token(self.f.member_token)
+        for query in ('湖边晚餐', '100%', ' % '):
+            result = self.client.post(url, headers=member, json=body | {'title_query':query})
+            self.assertEqual(result.status_code,200)
+            self.assertEqual(result.headers['cache-control'],'no-store')
+            self.assertEqual([story['id'] for story in result.json()['items']], [saved['id']])
+            self.assertFalse(result.json()['can_create'])
+        for query in ('_', '家人讲述', 'absent'):
+            result = self.client.post(url, headers=member, json=body | {'title_query':query})
+            self.assertEqual(result.json()['items'], [])
+        for query in ('', 'a\n', '字'*161, 9):
+            self.assertEqual(self.client.post(url, headers=member,
+                json=body | {'title_query':query}).status_code,400)
+        self.assertEqual(self.client.post(url+'&title_query=only-in-body', headers=member, json=body).status_code,400)
+        self.assertEqual(self.client.post(url.replace('family-a','family-b'), headers=member, json=body).status_code,401)
+        self.f.mutate("DELETE FROM access_asset_libraries WHERE asset_id=101")
+        self.assertEqual(self.client.post(url, headers=member, json=body).json()['items'], [])
+        self.f.mutate("UPDATE access_memberships SET status='revoked' WHERE account_id=?",(self.f.member_id,))
+        self.assertEqual(self.client.post(url, headers=member, json=body).status_code,401)
 
     def test_structure_sources_unicode_and_body_validation(self):
         body = self.body(); chapters = json.loads(body['chapters'])

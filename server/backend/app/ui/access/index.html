@@ -49,6 +49,14 @@
       <section id="saved-memory-panel" class="saved-memory-panel" aria-labelledby="saved-memory-heading">
         <div class="saved-memory-heading"><div><p class="eyebrow" data-story-word="savedEyebrow">家人共同留下的时光</p><h3 id="saved-memory-heading" data-story-word="savedHeading">我们的故事</h3></div><button id="saved-memory-refresh" type="button" class="quiet" data-story-word="refresh">刷新</button></div>
         <nav id="saved-memory-filters" class="saved-memory-filters" aria-label="按主题浏览已保存故事"></nav>
+        <form id="saved-memory-search" class="saved-memory-search" role="search" aria-labelledby="saved-memory-search-label" hidden>
+          <label id="saved-memory-search-label" for="saved-memory-search-title" data-story-word="savedSearchLabel">按标题查找故事</label>
+          <div class="saved-memory-search-controls">
+            <input id="saved-memory-search-title" type="text" enterkeyhint="search" maxlength="160" autocomplete="off" aria-controls="saved-memory-list">
+            <button type="submit" data-story-word="savedSearchSubmit">查找</button>
+            <button id="saved-memory-search-clear" type="button" class="quiet" data-story-word="savedSearchClear" hidden>清除</button>
+          </div>
+        </form>
         <p id="saved-memory-status" role="status" aria-live="polite"></p><div id="saved-memory-list" class="saved-memory-list"></div><button id="saved-memory-more" type="button" class="quiet" hidden data-story-word="moreStories">更多故事</button>
         <details id="recent-memory-groups" class="recent-memory-groups">
           <summary data-i18n="recentMemoryGroups">已保存的回忆组</summary>

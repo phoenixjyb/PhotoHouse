@@ -425,10 +425,11 @@ Keep original contributions separate from drafts and adopted stories. / 将原�
 **Implemented / 已实现**
 
 - Story editing and source links are available. Selected-source drafts show the original wording and let the author keep it for one chapter while reviewing the rest. / 已有故事编辑和来源关联。使用所选资料生成的草稿可与原文对照，可保留某一章原文并继续审核其余章节。
+- Find saved stories by title across the current library, with the same theme filters and pagination. / 可在当前相册库按标题查找已保存的故事，并结合现有主题筛选和分页。
 
 **Gaps / 差距**
 
-- The chapter review flow needs deployed Web and family acceptance. / 逐章审阅流程仍待网页发布与家庭验收。
+- Chapter review and title search need Windows rollout and family acceptance. / 逐章审阅和标题查找仍待 Windows 发布与家庭试用。
 
 **Next / 下一步:** Try keeping one original chapter, editing a second one and reopening the saved result. / 试用保留一章原文、编辑另一章，并再次打开已保存故事的流程。
 
@@ -439,7 +440,7 @@ Keep original contributions separate from drafts and adopted stories. / 将原�
 **Evidence record / 证据记录**
 
 - 2026-11-23 · FEATURES.md · FEATURES.md / FEATURES.md · FEATURES.md
-- 2026-11-26 · Generated Web check · keep original wording by chapter / 合成网页测试 · 逐章保留原文
+- 2026-11-26 · Generated API and Web checks · chapter review and saved title search / 合成 API 与网页测试 · 逐章审阅和已保存故事标题查找
 
 <a id="saved-story-refinement"></a>
 

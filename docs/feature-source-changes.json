@@ -39269,6 +39269,64 @@
         }
       ],
       "notes": "Draft a grounded explanation for a current result and wait for paging readiness when reopening selected frames."
+    },
+    {
+      "feature": "saved-story-title-search-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "23afcd07eac1518484eaa12a8e007d590d75dece66ad3a3d06ca4b1e901ef781",
+          "sha256": "c6b113b886b49e2c085d36eb53ba9f7d71cf688710446cf7b04eb2723f368625"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "7f689acfb8c5c69a765565cf7aa81155656013341a263a981c49b7c34c35d22d",
+          "sha256": "641f528faae8a82988fc018a4f15a974c0ad31000b307da97da5d8cecb086bb7"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "c9ec52e4545c6e72df121ae945c104d84687afb0e36b114da9e58588565648e0",
+          "sha256": "971111be5796b6e20f18d08130cb2603f63885f56135fc0ddffb89703c45fdfc"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "4c9fd20efeda739341e0d25519e1931db8f8562dfc419c5b6d340434d1e5f02c",
+          "sha256": "14d0edc05047e2a80c0ff8496a68f638b7d69338aa9ffaf4d9c968160e25c604"
+        },
+        {
+          "path": "server/backend/app/access/memory_stories.py",
+          "before_sha256": "1a47eae00b1ebc6fea019205463e90d8bb1f7eab33700dfd126271dd47a2ecb9",
+          "sha256": "aa85b911a4081e50b704f483324e288b46589ae6dc66c0b389d5a41066a9a319"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "4d4d0a70a55ccf98562a1cdb9ee17abb329f94a38568221e8ab92f4d45607cf2",
+          "sha256": "40fc3b3d619e666a4907b4e258a0edb2b7e9294f0adeff1e734ddce09dbca20f"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "ded73c4a86c56129973afb9e4478c3ace56e0289f62b141ce8d917081840baa8",
+          "sha256": "a1ed626165c6ce20d5df833f0e024f1519f6a3e3e9ff35356bc82e40e511caa0"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "4e72d06bba6b319f2a831afd08cd3ef3aec0a5c21c4a3098c8272febd23d0f30",
+          "sha256": "c372ca8d9ca36157ca9e1037234554e76c83d9a6a13d6608ed87337549caa70c"
+        },
+        {
+          "path": "server/tests/security/test_memory_stories.py",
+          "before_sha256": "ef077d5863ac5fbfad97ae1c135054084471fb7d129daa7b50a1312ea89f72fe",
+          "sha256": "5b91d2d8e6233e9c592ef3fef128884f0606b62723f8e4d9866af63a806e080c"
+        },
+        {
+          "path": "server/tests/security/test_memory_stories_browser.cjs",
+          "before_sha256": "46a594add3c303dd5d70083c1ecaf34b72a695cdd1a5c40cfddaf3e42dda9725",
+          "sha256": "3bab3b6eed99850b29568e71622bbc68a86bb4253dfa621806ee558dfe2955c0"
+        }
+      ],
+      "notes": "Find authorized saved stories by their titles within the current library."
     }
   ]
 }

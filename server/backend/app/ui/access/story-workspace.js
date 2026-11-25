@@ -55,6 +55,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.zh,{addContribution:'添加家人回忆来源',contributionSourceHelp:'这里只保存来源链接，不会复制或改写家人的原始文字或录音。保存故事前，可先查看已选来源。',candidatePanelTitle:'选择已接受的家人回忆',candidateLoading:'正在读取可用来源…',candidateEmpty:'本章没有可添加的已接受来源。',candidateFailed:'暂时无法读取可添加来源。当前草稿和已核实链接均已保留。',candidateRetry:'重试读取来源',candidateMore:'更多来源',candidateCancel:'取消选择',candidateAdded:'已添加来源链接；请保存故事以保留更改。',candidateAlreadyAdded:'本章已引用这条来源。',candidateLimit:'每章最多添加 12 条家人回忆来源。',candidateKindText:'文字回忆',candidateKindAudio:'录音回忆',candidateSubmitted:'提交于 ',candidateDate:d=>d?new Intl.DateTimeFormat('zh-CN',{dateStyle:'medium',timeStyle:'medium'}).format(d):'日期待补充'});
   Object.assign(labels.en,{addContribution:'Add family memory source',contributionSourceHelp:'This saves a source link only. It does not copy or rewrite the family member’s original words or recording. Review selected sources before saving the story.',candidatePanelTitle:'Choose an accepted family memory',candidateLoading:'Loading available sources…',candidateEmpty:'There are no accepted sources available for this chapter.',candidateFailed:'Available sources could not be loaded. Your draft and verified links are kept.',candidateRetry:'Retry loading sources',candidateMore:'More sources',candidateCancel:'Cancel selection',candidateAdded:'Source link added. Save the story to keep the change.',candidateAlreadyAdded:'This chapter already cites that source.',candidateLimit:'A chapter can link up to 12 family memories.',candidateKindText:'Written memory',candidateKindAudio:'Recorded memory',candidateSubmitted:'Submitted ',candidateDate:d=>d?new Intl.DateTimeFormat('en',{dateStyle:'medium',timeStyle:'medium'}).format(d):'Date unavailable'});
   let shelf=[], shelfPage=1, shelfLoad=0, shelfBinding=null, shelfTheme=null, canCreate=false, pendingSave=null, playTimer=null, playing=false, bookReader=null, narrationEpoch=0, narrationState=null;
+  let shelfQuery='', titleSearchAvailable=false;
+  const shelfSearchForm=$('saved-memory-search'), shelfSearchInput=$('saved-memory-search-title'), shelfSearchClear=$('saved-memory-search-clear');
   // Session-only positions contain references, never family prose or audio.
   // Clearing protected scope clears every position; nothing goes to storage.
   const bookPositions=new Map();
@@ -1982,6 +1984,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if($('story-reader').open)$('story-reader-close').textContent=text(readerFromShelf?'backStories':'close');
     updateReaderFrameLabels();
     renderShelfFilters();
+    if(shelfQuery&&shelfReady&&!shelf.length)$('saved-memory-status').textContent=text('savedSearchEmpty');
     $('story-workspace-title').placeholder=text('titlePlaceholder');
     const selectedTheme=$('story-workspace-theme').value;
     $('story-workspace-theme').replaceChildren();for(const theme of themes){const opt=node('option',text(theme));opt.value=theme;$('story-workspace-theme').append(opt);}
@@ -1992,6 +1995,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   function clear({cancelCommunityJobs=true}={}) {
     draftDirectionCandidate=null;
+    shelfQuery='';titleSearchAvailable=false;
+    if(shelfSearchInput)shelfSearchInput.value='';
+    syncShelfSearch();
     endGuide();shelfReady=false;localEpoch++;localRecord=null;activeLocalRevision=null;localBusy=false;localError=false;localStatus='';localReviewRequired=false;localReviewVisible=false;outlineScaffolding.clear();authoredNarrations=new WeakSet();
     cancelDictation();
     clearRelated();
@@ -2261,13 +2267,29 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const label=node('p',text('savedThemeFilter'),'saved-memory-filters-label');root.setAttribute('aria-label',text('savedThemeFilter'));root.append(label);
     const options=[null,...themes];for(const theme of options){const b=button(theme===null?text('savedThemeAll'):text(theme),()=>selectShelfTheme(theme),'saved-memory-filter');b.setAttribute('aria-pressed',String(shelfTheme===theme));b.dataset.theme=theme||'all';root.append(b);}
   }
+  function syncShelfSearch() {
+    if(!shelfSearchForm)return;
+    shelfSearchForm.hidden=!titleSearchAvailable;
+    shelfSearchClear.hidden=!shelfQuery&&!shelfSearchInput.value;
+  }
+  function setShelfFilters(theme,query) {
+    if(theme===shelfTheme&&query===shelfQuery)return;
+    shelfTheme=theme;
+    shelfQuery=query;
+    shelfPage=1;
+    shelf=[];
+    $('saved-memory-list').replaceChildren();
+    $('saved-memory-more').hidden=true;
+    renderShelfFilters();
+    syncShelfSearch();
+    void loadShelf();
+  }
   function selectShelfTheme(theme) {
-    if(theme!==null&&!themes.includes(theme))return;
-    if(theme===shelfTheme)return;
-    shelfTheme=theme;shelfPage=1;shelf=[];$('saved-memory-list').replaceChildren();$('saved-memory-more').hidden=true;$('saved-memory-status').textContent=text('savedLoading');renderShelfFilters();void loadShelf();
+    if(theme===null||themes.includes(theme))setShelfFilters(theme,shelfQuery);
   }
   function renderShelf() {
     const root=$('saved-memory-list');root.replaceChildren();
+    if(!shelf.length&&shelfQuery)return;
     if(!shelf.length&&!shelfTheme&&guideEntryReady()){const empty=node('section',undefined,'story-first-guide-empty');empty.append(node('h4',text('guideEmptyTitle')),node('p',text('guideEmptyHelp')),button(text('guideStart'),startGuide,'primary'));root.append(empty);return;}
     if(!shelf.length&&shelfTheme){const empty=node('div',undefined,'saved-memory-empty');empty.append(node('p',text('savedThemeEmpty')));const actions=node('div',undefined,'saved-memory-empty-actions');actions.append(button(text('savedThemeViewAll'),()=>selectShelfTheme(null),'quiet'),button(text('savedThemeCreate'),()=>open(null,shelfTheme),'quiet'));empty.append(actions);root.append(empty);return;}
     for(const story of shelf){
@@ -2290,16 +2312,28 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   async function loadShelf(append=false) {
     if(!savedRequest||scope().locked||!scope().account||!scope().library)return;
-    const owner={...scope()},filter=shelfTheme,ticket=++shelfLoad,target=append?shelfPage+1:1;
+    const owner={...scope()},filter=shelfTheme,query=shelfQuery,ticket=++shelfLoad,target=append?shelfPage+1:1;
+    const latest=()=>{
+      const selectedScope=scope();
+      return ticket===shelfLoad&&!selectedScope.locked&&owner.account===selectedScope.account&&owner.library===selectedScope.library;
+    };
     shelfReady=false;$('saved-memory-list').querySelector('.story-first-guide-empty')?.remove();syncGuide();
     $('saved-memory-status').textContent=text('savedLoading');$('saved-memory-refresh').disabled=true;$('saved-memory-more').disabled=true;
-    try{const result=await savedRequest(`/memory-stories?page=${target}${filter?`&theme=${encodeURIComponent(filter)}`:''}`,{extraHeaders:{'X-PhotoHouse-Story-Refinement-Hints':'1'}});if(ticket!==shelfLoad||filter!==shelfTheme||scope().locked||owner.account!==scope().account||owner.library!==scope().library)return;
+    const extraHeaders={'X-PhotoHouse-Story-Refinement-Hints':'1','X-PhotoHouse-Story-Shelf-Version':'1'};
+    try{
+      const result=query
+        ?await savedRequest('/memory-stories/search',{method:'POST',body:{title_query:query,page:String(target),...(filter?{theme:filter}:{})},extraHeaders})
+        :await savedRequest(`/memory-stories?page=${target}${filter?`&theme=${encodeURIComponent(filter)}`:''}`,{extraHeaders});
+      if(!latest())return;
       if(result.library_id!==owner.library||result.page!==target||result.page_size!==8||typeof result.has_more!=='boolean'||typeof result.can_create!=='boolean'||!Array.isArray(result.items)||result.items.length>8||result.items.some(s=>!uuidOK(s.id)||!validText(s.title,160)||!idOK(s.cover_asset_id)||!themes.includes(s.theme)||(filter!==null&&s.theme!==filter)||!Number.isInteger(s.item_count)||s.item_count<1||s.item_count>24||!Number.isInteger(s.chapter_count)||s.chapter_count<1||s.chapter_count>6))throw new Error('Invalid saved stories');
-      shelf=append?[...shelf,...result.items]:result.items;shelfPage=target;canCreate=result.can_create;shelfBinding=JSON.stringify([owner.account,owner.library]);shelfReady=true;renderShelf();void refreshLocalDraft();$('saved-memory-more').hidden=!result.has_more;$('saved-memory-status').textContent=shelf.length?'':text('savedEmpty');setSelectionCount();
-      if(!append&&community)void community.books($('memory-books'));
-    }catch(error){if(ticket===shelfLoad&&filter===shelfTheme&&owner.account===scope().account&&owner.library===scope().library){$('saved-memory-status').textContent=text('savedUnavailable');onError(error);}}
-    finally{if(ticket===shelfLoad&&filter===shelfTheme&&owner.account===scope().account&&owner.library===scope().library){$('saved-memory-refresh').disabled=false;$('saved-memory-more').disabled=false;}}
+      if(!query){titleSearchAvailable=result.title_search===true;syncShelfSearch();}
+      shelf=append?[...shelf,...result.items]:result.items;shelfPage=target;canCreate=result.can_create;shelfBinding=JSON.stringify([owner.account,owner.library]);shelfReady=true;renderShelf();void refreshLocalDraft();$('saved-memory-more').hidden=!result.has_more;$('saved-memory-status').textContent=shelf.length?'':text(query?'savedSearchEmpty':'savedEmpty');setSelectionCount();
+      if(!append&&!query&&community)void community.books($('memory-books'));
+    }catch(error){if(latest()){$('saved-memory-status').textContent=text('savedUnavailable');onError(error);}}
+    finally{if(latest()){$('saved-memory-refresh').disabled=false;$('saved-memory-more').disabled=false;}}
   }
+  Object.assign(labels.zh,{savedSearchLabel:'按标题查找故事',savedSearchSubmit:'查找',savedSearchClear:'清除',savedSearchEmpty:'没有标题符合条件的故事。'});
+  Object.assign(labels.en,{savedSearchLabel:'Find stories by title',savedSearchSubmit:'Search',savedSearchClear:'Clear',savedSearchEmpty:'No saved story titles match.'});
   labels.zh.reviewSavedRefinement='核对 AI 草稿';
   labels.en.reviewSavedRefinement='Review AI draft';
   async function reopen(id,{reviewRefinement=false}={}) {
@@ -2797,6 +2831,24 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function stopPlaying(){if(playTimer)clearInterval(playTimer);playTimer=null;playing=false;$('story-reader').dataset.playing='false';$('story-reader-play').textContent=text('playStory');$('story-reader-play').setAttribute('aria-pressed','false');}
   function togglePlaying(){if(playing){stopPlaying();return;}if(!draft||scope().locked)return;stopNarration();playing=true;$('story-reader').dataset.playing='true';$('story-reader-play').textContent=text('pauseStory');$('story-reader-play').setAttribute('aria-pressed','true');playTimer=setInterval(()=>{if(scope().locked||document.hidden||!$('story-reader').open){stopPlaying();return;}const c=draft.chapters[chapter];if(frame<c.asset_ids.length-1)frame++;else if(chapter<draft.chapters.length-1){chapter++;frame=0;}else{stopPlaying();return;}renderReader();},7000);}
   $('saved-memory-refresh').addEventListener('click',()=>{void loadShelf();});$('saved-memory-more').addEventListener('click',()=>{void loadShelf(true);});
+  shelfSearchForm?.addEventListener('submit',event=>{
+    event.preventDefault();
+    if(!titleSearchAvailable)return;
+    shelfSearchInput.value=shelfSearchInput.value.trim();
+    if(shelfSearchInput.value===shelfQuery){
+      syncShelfSearch();
+      if(shelfQuery)void loadShelf();
+      return;
+    }
+    setShelfFilters(shelfTheme,shelfSearchInput.value);
+  });
+  shelfSearchInput?.addEventListener('input',syncShelfSearch);
+  shelfSearchClear?.addEventListener('click',()=>{
+    shelfSearchInput.value='';
+    setShelfFilters(shelfTheme,'');
+    syncShelfSearch();
+    shelfSearchInput.focus();
+  });
   $('story-save-memory').addEventListener('click',()=>{void saveMemory();});$('story-reload-memory').addEventListener('click',()=>{if(draft?.id)void reopen(draft.id);});
   $('story-reader-play').addEventListener('click',togglePlaying);$('story-reader').addEventListener('close',()=>{stopAutoRefinementPolling();resetReaderFontScale($('story-reader'),$('story-reader-font-presets'));stopPlaying();stopNarration();community?.detach($('story-reader-community'));if(readerFromShelf&&!$('story-workspace').open){contributionRefs=null;refsLoadEpoch++;}});$('story-reader').addEventListener('cancel',event=>{if(!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'})){event.preventDefault();return;}stopNarration();});document.addEventListener('visibilitychange',()=>{if(document.hidden){cloudReview=null;renderCloudPanels();stopAutoRefinementPolling();cancelDictation();stopPlaying();stopNarration();}});window.addEventListener('pagehide',()=>{cloudReview=null;renderCloudPanels();stopAutoRefinementPolling();cancelDictation();stopNarration();});window.addEventListener('photohouse-memory-audio-start',stopNarration);document.getElementById('view-play')?.addEventListener('click',stopNarration);
   const storyReaderFontControls=$('story-reader-font-presets');

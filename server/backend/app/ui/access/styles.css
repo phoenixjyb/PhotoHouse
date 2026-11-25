@@ -615,6 +615,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .saved-memory-filters-label{flex:0 0 100%;margin:0;color:#786b5d;font-size:.9rem;line-height:1.5}
 .saved-memory-filter{min-height:44px;max-width:100%;padding:.55rem .9rem;border:1px solid #d9cfc1;border-radius:999px;background:#fffcf6;color:#41382e;white-space:normal;overflow-wrap:anywhere}
 .saved-memory-filter[aria-pressed=true]{border-color:#776452;background:#eee4d7;color:#342a20;font-weight:650}
+.saved-memory-search{max-width:38rem;margin:0 0 1rem}
+.saved-memory-search label{display:block;margin:0 0 .4rem;color:#514539}
+.saved-memory-search-controls{display:flex;flex-wrap:wrap;gap:.5rem}
+.saved-memory-search-controls input{flex:1 1 14rem;min-width:0;margin:0}
+.saved-memory-search-controls :is(input,button){min-height:44px}
 .saved-memory-empty{grid-column:1/-1;padding:1.2rem;border:1px solid #e5ddd2;border-radius:16px;background:#fffcf6;color:#786b5d;line-height:1.7;overflow-wrap:anywhere}
 .saved-memory-empty-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:.6rem}
 .saved-memory-empty-actions button{min-height:44px;max-width:100%;white-space:normal;overflow-wrap:anywhere}

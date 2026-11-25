@@ -969,12 +969,16 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Story editing and source links are available. Selected-source drafts show the original wording and let the author keep it for one chapter while reviewing the rest.",
           "zh": "已有故事编辑和来源关联。使用所选资料生成的草稿可与原文对照，可保留某一章原文并继续审核其余章节。"
+        },
+        {
+          "en": "Find saved stories by title across the current library, with the same theme filters and pagination.",
+          "zh": "可在当前相册库按标题查找已保存的故事，并结合现有主题筛选和分页。"
         }
       ],
       "gaps": [
         {
-          "en": "The chapter review flow needs deployed Web and family acceptance.",
-          "zh": "逐章审阅流程仍待网页发布与家庭验收。"
+          "en": "Chapter review and title search need Windows rollout and family acceptance.",
+          "zh": "逐章审阅和标题查找仍待 Windows 发布与家庭试用。"
         }
       ],
       "next_step": {
@@ -1002,8 +1006,8 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "kind": "local",
           "label": {
-            "en": "Generated Web check · keep original wording by chapter",
-            "zh": "合成网页测试 · 逐章保留原文"
+            "en": "Generated API and Web checks · chapter review and saved title search",
+            "zh": "合成 API 与网页测试 · 逐章审阅和已保存故事标题查找"
           },
           "at": "2026-11-26",
           "state": "verified"

@@ -180,6 +180,7 @@ class ClosedBoundary:
         if method == 'GET' and path == '/story-workspace/source-capabilities': return True
         if method == 'POST' and path == '/story-workspace/title-suggestions': return True
         if method in {'GET', 'POST'} and path == '/memory-stories': return True
+        if method == 'POST' and path == '/memory-stories/search': return True
         if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}', path): return True
         if method == 'GET' and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}/contribution-refs', path): return True
         if method == 'POST' and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}/refinement', path): return True

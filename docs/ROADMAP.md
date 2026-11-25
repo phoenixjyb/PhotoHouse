@@ -28,6 +28,9 @@ retain the date and scope of their original evidence.
   browser checks covered these actions.
   [Selected-source editing](SELECTED_SOURCE_STORY_UI.md) ·
   [Saved-story refinement](STORY_REFINEMENT.md).
+- **Find a saved story:** search by part of its title across the current
+  library's readable stories, with the existing theme filter and pagination.
+  The title goes in the private request body when you submit the search.
 - **Search to story:** ordinary result paging and selected-frame handoff are
   integrated. After a reload in the same tab, reopening the conversation
   can restore the selection after fresh checks of the exact result and selected
