@@ -194,7 +194,7 @@ try:
                       'chapters': [{'id': chapter['id'], 'source_ids': [],
                                     'narration': ('待家人核对的整理建议：湖边散步。'
                                                   if chapter['id'] == 'chapter-2'
-                                                  else chapter['narration'])}
+                                                  else '合成的另一种第一章写法。')}
                                    for chapter in current['chapters']],
                       'questions': ['那天还有谁同行？'], 'needs_review': True}
             fixture.mutate("UPDATE access_memory_jobs SET state='ready',output_json=? WHERE id=?",

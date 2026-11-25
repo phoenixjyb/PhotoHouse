@@ -39160,6 +39160,39 @@
         }
       ],
       "notes": "Open the most recently updated private conversation from Jude by explicit choice."
+    },
+    {
+      "feature": "saved-refinement-chapter-choices-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/STORY_REFINEMENT.md",
+          "before_sha256": "6090ce25c858fd55406fbdaf8d8a68b8dff60981fa432791fc651ec1d8c73e03",
+          "sha256": "0dae16d3695a1e8e17dc73ea26c3f7441d262bdb01cd0dc371b76501095f8750"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "eeeec88752f40a8ced3185d3593be86a0f1a849e909896f96e9d155e798f7074",
+          "sha256": "ded73c4a86c56129973afb9e4478c3ace56e0289f62b141ce8d917081840baa8"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "9b8ef119ce235f5705507a93c11a650473c53c6106e4b4a15936a87644355ad3",
+          "sha256": "2b3b22846658a72af316084ec252a686019bd7280d647dfbe520cd12428a2fd7"
+        },
+        {
+          "path": "server/tests/security/memory_community_browser_bridge.py",
+          "before_sha256": "effa147d3169a4873209721d8b325fbc4775282922822edc01d11baaadd1b1f2",
+          "sha256": "d63cb8adddfcc0c214a2cb1ddaccfd150d4cbfd15b45a445b1fccb464998ee00"
+        },
+        {
+          "path": "server/tests/security/test_story_auto_refinement_browser.cjs",
+          "before_sha256": "4a42fb4ae9dcb95162e60ab53a1d0a91ac97aabb45834f405bfe67ecd303d2fa",
+          "sha256": "27b5def828ac77998643e04d0c5c5fe3d0a9a3811ecd2222e49e9ac8d6c3d594"
+        }
+      ],
+      "notes": "Carry only the chapters selected during saved-story refinement review into the unsaved editor."
     }
   ]
 }

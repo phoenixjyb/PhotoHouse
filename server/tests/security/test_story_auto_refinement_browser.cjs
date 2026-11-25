@@ -102,7 +102,23 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   assert.equal(await panel.locator('h3').evaluate(el=>el===document.activeElement),true);
   assert.equal(await page.locator('#story-reader-text').textContent(),original);
   assert.match(await panel.textContent(),/待家人核对的整理建议：湖边散步。/);
+  assert.match(await panel.textContent(),/合成的另一种第一章写法。/);
   assert(requests.slice(readsBeforeShelf).every(row=>['GET','HEAD'].includes(row.method)));
+  const firstChapterChoice=panel.locator('.story-auto-refinement-section[data-chapter-id="chapter-1"] input');
+  const secondChapterChoice=panel.locator('.story-auto-refinement-section[data-chapter-id="chapter-2"] input');
+  assert.equal(await firstChapterChoice.isChecked(),true);
+  assert.equal(await secondChapterChoice.isChecked(),true);
+  await firstChapterChoice.press('Space');
+  assert.equal(await firstChapterChoice.isChecked(),false);
+  await secondChapterChoice.uncheck();
+  assert.equal(await panel.getByRole('button',{name:'审核通过，带入编辑'}).isDisabled(),true);
+  await secondChapterChoice.check();
+  if(process.env.PH_BROWSER_ARTIFACTS){
+    const firstChoiceLabel=panel.locator('.story-auto-refinement-section[data-chapter-id="chapter-1"] label');
+    await firstChoiceLabel.scrollIntoViewIfNeeded();
+    assert(await firstChoiceLabel.evaluate(el=>el.getBoundingClientRect().height>=44&&el.scrollWidth<=el.clientWidth));
+    await page.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'story-refinement-chapter-choice-phone-zh-150.png')});
+  }
   await page.evaluate(()=>{document.documentElement.style.fontSize='';});
   await page.setViewportSize({width:1280,height:900});
   console.log('PASS One keyboard action opens the current prepared draft from its saved story without restarting refinement or saving');
@@ -113,6 +129,8 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   assert.equal(await panel.locator('.story-auto-refinement-row').count(),0,'keeping the original hides the suggestion comparison');
   assert.equal(requests.filter(item=>['PUT','DELETE'].includes(item.method)).length,keepWrites,'keeping the original does not write');assert.equal(generationPosts(),keepGenerations,'keeping the original does not generate');assert.equal(refinementPosts,keepRefinements);
   await panel.getByRole('button',{name:'重新审核建议',exact:true}).click();await panel.locator('.story-auto-refinement-row').first().waitFor();
+  assert.equal(await firstChapterChoice.isChecked(),false);
+  assert.equal(await secondChapterChoice.isChecked(),true);
   assert.equal(generationPosts(),keepGenerations,'returning to review reuses the ready suggestion');assert.equal(refinementPosts,keepRefinements);
   if(process.env.PH_BROWSER_ARTIFACTS){
     await page.setViewportSize({width:390,height:844});
@@ -127,6 +145,8 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   }
   await page.locator('#story-reader-edit').click();const editor=page.locator('#story-chapter-editor .story-auto-refinement');await editor.waitFor();assert.match(await editor.textContent(),/原标题保留/);assert.match(await editor.textContent(),new RegExp(originalTitle));assert.equal(await editor.getByText(modelTitle,{exact:true}).count(),0,'the model title stays absent in editor review');
   await editor.getByRole('button',{name:'在阅读器中核对并带入编辑'}).click();const readerPanel=page.locator('#story-reader-title').locator('xpath=..').locator('.story-auto-refinement');await readerPanel.waitFor();
+  assert.equal(await firstChapterChoice.isChecked(),false);
+  assert.equal(await secondChapterChoice.isChecked(),true);
   assert.equal(generationPosts(),0,'display and polling never create a generation job');
   confirmAction='dismiss';const dismissed=new Promise(resolve=>{dialogWaiter=resolve;});
   await readerPanel.getByRole('button',{name:'审核通过，带入编辑'}).click();await dismissed;
@@ -175,7 +195,7 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   await saveButton.click();const deadline=Date.now()+5000;while(Date.now()<deadline&&!requests.some(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)))await new Promise(resolve=>setTimeout(resolve,25));
   const save=requests.find(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId));assert.ok(save,'the adopted wording is saved only by the explicit Save action');assert.match(save.path,/[?&]auto_refine=0(?:&|$)/,'the adoption save skips one refinement cycle');
   assert.equal(saveBodies.length,1);assert.equal(requests.filter(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)).length,1,'exactly one story PUT is sent by explicit Save');await page.locator('#story-workspace-status').getByText('已保存到这个相册库',{exact:false}).waitFor();assert.equal(save.status,200,'the fixture API confirms the explicit story Save');assert.equal(saveBodies[0].title,originalTitle,'the explicit adoption save keeps the saved story title');
-  const savedChapters=JSON.parse(saveBodies[0].chapters);assert.deepEqual(savedChapters.map(chapter=>chapter.id),['chapter-1','chapter-2'],'the explicit save preserves chapter IDs and order');assert.equal(savedChapters[0].narration,'家人一起沿着湖边散步，留下了这段回忆。','the explicit save preserves unchanged chapter one');assert.equal(savedChapters[1].narration,approvedText,'the explicit save persists only the reviewed second chapter edit');
+  const savedChapters=JSON.parse(saveBodies[0].chapters);assert.deepEqual(savedChapters.map(chapter=>chapter.id),['chapter-1','chapter-2'],'the explicit save preserves chapter IDs and order');assert.equal(savedChapters[0].narration,'家人一起沿着湖边散步，留下了这段回忆。','the explicit save keeps the original for the unchecked chapter');assert.equal(savedChapters[1].narration,approvedText,'the explicit save persists only the reviewed second chapter edit');
   assert.deepEqual(savedChapters.map(chapter=>chapter.asset_ids),[['101'],['102']],'the explicit save preserves chapter frame ownership and order');
   assert.equal((await page.locator('#story-approval-status').textContent()).trim(),'','approval status clears after confirmed Save');assert.equal(await page.locator('#story-approval-status').isHidden(),true,'approval status is hidden after confirmed Save');
   noAutoJob=true;realShelfDraft=false;

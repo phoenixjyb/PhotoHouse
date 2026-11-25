@@ -1286,6 +1286,8 @@ dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
 .story-auto-refinement-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:.8rem;min-width:0}
 .story-auto-refinement-row article{min-width:0;padding:1rem;border:1px solid var(--refine-line);border-radius:12px;background:var(--refine-card)}
 .story-auto-refinement-row p{margin:0;white-space:pre-wrap;line-height:1.85}
+.story-auto-refinement .story-auto-refinement-use{display:flex;align-items:center;gap:.6rem;min-height:44px;margin:.45rem 0;font-size:1em;line-height:1.45;overflow-wrap:anywhere}
+.story-auto-refinement-use input{flex:0 0 auto;width:1.15rem;height:1.15rem;margin:0}
 .story-auto-refinement button{max-width:100%;margin:.5rem .5rem .25rem 0;white-space:normal}
 .story-auto-refinement-questions{margin:1rem 0;padding:0 1rem;border-left:3px solid var(--refine-line)}
 @media(max-width:600px){.story-auto-refinement{padding:1rem}.story-auto-refinement-row{grid-template-columns:minmax(0,1fr)}}
