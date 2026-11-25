@@ -309,6 +309,13 @@ try:
             revision = store.get_thread(fixture.member_id, 'family-a', thread)['thread']['revision']
             held_turn = store.begin_turn(fixture.member_id, 'family-a', thread, str(uuid.uuid4()),
                                          revision, '只看河边的照片，再看看有哪些是傍晚拍的。')
+            # The fixture clock is fixed. Give this conversation a distinct
+            # update time so the last-conversation path is deterministic.
+            with store.connection() as db:
+                db.execute('''UPDATE threads SET updated_at=(SELECT max(updated_at)+1 FROM threads)
+                    WHERE thread_id=? AND account_id=? AND library_id=?''',
+                           (thread, fixture.member_id, 'family-a'))
+                db.commit()
             print(json.dumps({'id': message['id'], 'ok': True,
                               'request_id': held_turn['request_id']}), flush=True)
             continue

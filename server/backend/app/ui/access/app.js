@@ -68,6 +68,8 @@
   Object.assign(words.en,{assistantPrivateAbandon:'Stop waiting and start a new conversation',assistantPrivateAbandonHelp:'The server may still complete the earlier request. Its conversation remains saved and your question stays in the composer. A new conversation will not send it automatically.',assistantPrivateAbandonYes:'I understand; start a new conversation',assistantPrivateRetryCreation:'Retry creating the same conversation'});
   Object.assign(words.zh,{assistantPrivateSubmitted:'已提交的请求',assistantPrivateCheckRequest:'查看处理结果',assistantPrivateReceived:'服务器已收到此请求。请查看处理结果。',assistantPrivateAbandonReopened:'服务器仍可能完成此请求。你可以在原对话中查看。'});
   Object.assign(words.en,{assistantPrivateSubmitted:'Submitted request',assistantPrivateCheckRequest:'Check request status',assistantPrivateReceived:'The server received this request. Check whether it has finished.',assistantPrivateAbandonReopened:'The server may still complete this request. You can find it in the original conversation.'});
+  words.zh.assistantPrivateContinueLatest='继续上次对话';
+  words.en.assistantPrivateContinueLatest='Continue last conversation';
   Object.assign(words.en,{libraryTools:'Explore this library'});
   Object.assign(words.zh,{libraryTools:'浏览相册库'});
   Object.assign(words.en,{assistantTitle:'Jude · PhotoHouse Assistant',assistantHelp:'Search this library only. Add details to refine; matching photos are shown before you open one. After a search, ask “describe these results” for a brief overview. To request a specific item, say “open asset ID 123”. Recognized text, submitted commands, and processing status are kept for 30 days. Recordings are transient. This is separate from saved family notes.',assistantPrompt:'What would you like to find?',assistantSend:'Find',assistantClear:'Clear',assistantCancel:'Cancel request',assistantCancelled:'Request canceled.',assistantWorking:'Looking in this library…',assistantError:'The assistant could not complete that request. Try again.',assistantDenied:'Your access could not be confirmed. Sign in again or contact the library owner.',assistantConflict:'The library changed. Clear this search and try again.',assistantLimited:'Too many requests. Please wait and try again.',assistantUnavailable:'The assistant is temporarily unavailable. Please try again later.',assistantInvalid:'The reply could not be safely displayed. Please try again.',assistantNoResults:'No matching photos were found.',assistantOpen:'Open photo',assistantUnsupported:'This request is not supported yet.'});
@@ -2409,6 +2411,9 @@
     const voiceActive=assistantState.voiceSession.phase!=='idle';
     const blocked=!!assistantStoryHandoff||snapshot.storySelectionBusy===true||privateAssistantBusy||!!snapshot.pendingTurn||!!snapshot.pendingCreation||voiceActive||state.locked||snapshot.locked;
     for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=blocked;
+    const latest=$('assistant-private-continue-latest');
+    latest.hidden=!available||state.locked||snapshot.locked||Boolean(selected)||!snapshot.threads.length||Boolean(assistantStoryTarget);
+    latest.disabled=blocked||assistantState.busy;
     const reopened=available&&!state.locked&&!snapshot.locked&&snapshot.pendingTurn?.mode==='reopened';
     const recover=$('assistant-private-recover');
     recover.hidden=!snapshot.pendingTurn;
@@ -5532,6 +5537,18 @@
   const clearPrivateView=()=>{stopAssistantSpeech();assistantState.context=null;assistantState.items=[];assistantState.turnTrail=[];assistantState.turnTrailHasNewer=false;assistantState.voicePendingText=null;assistantState.voicePendingStatusKey='assistantVoiceWorking';assistantState.pendingTurn=null;assistantState.turnReceipt=null;assistantState.turnRequestId=null;$('assistant-results').replaceChildren();$('assistant-reply').textContent='';clearAssistantSearchSummary();$('assistant-receipt').hidden=true;$('assistant-private-older').hidden=true;$('assistant-private-delete-confirm').hidden=true;renderAssistantTrail();syncAssistantControls();};
   const newPrivateConversation=()=>privateAssistantAction(async()=>{await privateAssistant.create();clearPrivateView();$('assistant-text').value=privateAssistant.state().draft;await privateAssistant.list();});
   $('assistant-private-new').addEventListener('click',()=>void newPrivateConversation());
+  $('assistant-private-continue-latest').addEventListener('click',async event=>{
+    const action=event.currentTarget;
+    const snapshot=privateAssistant?.state(),latest=snapshot?.threads[0];
+    if(action.hidden||action.disabled||!latest||snapshot.activeThread||state.locked||assistantStoryTarget)return;
+    const epoch=state.generation,restoreFocus=document.activeElement===action;
+    await readPrivateAssistant(latest.thread_id);
+    const current=privateAssistant?.state();
+    if(stale(epoch)||current?.activeThread?.thread_id!==latest.thread_id||!restoreFocus||
+        (document.activeElement!==action&&document.activeElement!==document.body))return;
+    const target=$(current.pendingTurn?'assistant-private-recover':'assistant-text');
+    if(!target.disabled&&target.getClientRects().length)target.focus();
+  });
   $('assistant-private-refresh').addEventListener('click',()=>void privateAssistantAction(()=>privateAssistant.list()));
   $('assistant-private-select').addEventListener('change',()=>void readPrivateAssistant($('assistant-private-select').value));
   $('assistant-private-load-older').addEventListener('click',()=>void privateAssistantAction(async()=>{

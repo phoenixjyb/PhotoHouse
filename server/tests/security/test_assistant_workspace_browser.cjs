@@ -79,6 +79,7 @@ async function installSyntheticTransport(targetContext){
     'the real unconfigured server rejects v3 explicitly, then admits its supported v2 contract');
   assert.match(await page.locator('#assistant-private-new').innerText(),/开始/,'the empty conversation view offers a clear start action');
   assert.equal(await page.locator('#assistant-private-welcome').isVisible(),true,'the empty workspace explains how to begin a conversation');
+  assert.equal(await page.locator('#assistant-private-continue-latest').isVisible(),false);
   assert.equal(await management.evaluate(el=>el.open),false,'conversation management stays secondary when no conversation is selected');
   const noThreadStart=page.locator('#assistant-private-new');
   assert.equal(await noThreadStart.isVisible(),true,'starting a conversation does not require opening management');
@@ -684,22 +685,31 @@ async function installSyntheticTransport(targetContext){
   await page.reload();
   await page.locator('#grid .asset').first().waitFor();
   await page.locator('#memory-assistant').click();
-  await openManagement();
-  await page.locator('#assistant-private-select').selectOption(refinementThreadId);
+  const continueLatest=page.getByRole('button',{name:'继续上次对话',exact:true});
+  await continueLatest.waitFor();
+  assert.equal(requests('GET',`${workspace}/threads/${refinementThreadId}?`).filter(
+    req=>browserRequests.indexOf(req)>=requestCount).length,0,'opening the assistant does not select a thread');
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  await continueLatest.scrollIntoViewIfNeeded();
+  assert(await continueLatest.evaluate(el=>el.getBoundingClientRect().height>=44&&el.scrollWidth<=el.clientWidth));
+  await page.screenshot({path:path.join(artifacts,'assistant-continue-latest-phone-zh-150.png')});
+  await continueLatest.press('Enter');
   const submittedCard=page.locator('#assistant-private-submitted');
   await submittedCard.waitFor();
+  assert.equal(await continueLatest.isVisible(),false);
+  assert.equal(await page.locator('#assistant-private-select').inputValue(),refinementThreadId);
   assert.equal(await page.locator('#assistant-private-submitted-text').textContent(),'只看河边的照片，再看看有哪些是傍晚拍的。');
   assert.equal(await page.locator('#assistant-text').inputValue(),'');
   assert.equal(await page.locator('#assistant-send').isDisabled(),true);
   assert.equal(await page.locator('#assistant-search-refinements').count(),0);
   const pendingPath=`${workspace}/threads/${refinementThreadId}/requests/${held.request_id}?library_id=family-a`;
   assert.equal(requests('GET',pendingPath).length,0,'reopening does not automatically check the pending result');
-  await page.setViewportSize({width:390,height:844});
-  await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
   await submittedCard.scrollIntoViewIfNeeded();
   assert(await submittedCard.evaluate(el=>el.scrollWidth<=el.clientWidth));
   await page.screenshot({path:path.join(artifacts,'assistant-submitted-request-phone-zh-150.png')});
   const recoverReopened=page.locator('#assistant-private-recover');
+  assert.equal(await recoverReopened.evaluate(el=>el===document.activeElement),true);
   assert.equal(await recoverReopened.textContent(),'查看处理结果');
   const stillPending=page.waitForResponse(response=>response.request().method()==='GET'&&response.url().includes(pendingPath));
   await recoverReopened.press('Enter');await stillPending;
@@ -721,7 +731,7 @@ async function installSyntheticTransport(targetContext){
   assert(browserRequests.slice(requestCount).every(req=>['GET','HEAD'].includes(req.method)||req.path===discardRace));
   assert.equal(await page.evaluate(()=>window.__phSpeechCalls),0);
   assert.equal(await page.evaluate(()=>Object.values(sessionStorage).some(value=>value.includes('只看河边的照片'))),false);
-  checkpoint('Reopening Jude shows the owned pending question; explicit checks recover its reply without replay, speech or text storage');
+  checkpoint('Continue last conversation opens the current owned request on demand; explicit checks recover the reply without replay or speech');
 
   const secondPending=await rpc({command:'hold-private-turn',thread_id:refinementThreadId});
   await openManagement();

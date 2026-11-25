@@ -39122,6 +39122,44 @@
         }
       ],
       "notes": "Discard only the exact owned pending reply, preserve completed exchanges, and keep cleanup owned."
+    },
+    {
+      "feature": "jude-continue-latest-conversation-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_HISTORY_V1.md",
+          "before_sha256": "23c18490579e77e6a550bf96098e75b7cc117b32630ac6c60eb2b46834fc1d25",
+          "sha256": "661daacecc07208ceefe0b886918c46c67f5efd7b6009951c4bc86da3e1b5812"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "f28409888d07aee004a903daec77e32f918197882ee02ea05cc1741843c899a8",
+          "sha256": "20bfb7380bb8801868bc3331559232baa7555f497007a88fe3f97f3ed8b6562b"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "692bdf0dcbafd7c2abcd9bc0d27c0bc2d7fe7885caff64192ced911d8ce10970",
+          "sha256": "4d4d0a70a55ccf98562a1cdb9ee17abb329f94a38568221e8ab92f4d45607cf2"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "31ad43904408baaa08c8b2d74e8d430e7bd1f6fc239d1e61592d410960043c97",
+          "sha256": "9b8ef119ce235f5705507a93c11a650473c53c6106e4b4a15936a87644355ad3"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "5350fc521e782ff7873193b985e8abfc83ccf3ef3aa65a1f188c70949c7cc521",
+          "sha256": "442c104f8c4c7e94faea9ebf554156a98c49ed3091e605fc02093b32f40252ee"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "3df107b3b76a61da01c5ce7359923794dbbb5306b542b457563089d97b85325d",
+          "sha256": "65e739dfa9efd410f77197c31e519d09b672e63d043d879110b528ce95bc5464"
+        }
+      ],
+      "notes": "Open the most recently updated private conversation from Jude by explicit choice."
     }
   ]
 }

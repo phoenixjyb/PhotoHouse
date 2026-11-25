@@ -950,6 +950,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .assistant-private-welcome { max-width:50rem; margin:.6rem 0 .4rem; padding:1rem 1.1rem; border:1px solid #d7e0d3; border-radius:12px; background:linear-gradient(145deg,#f7f8ef,#fffdf8); }
 .assistant-private-welcome h3 { margin:0 0 .3rem; color:#244b3c; font-size:1.15rem; }
 .assistant-private-welcome p { margin:0; max-width:60ch; line-height:1.55; }
+.assistant-private-welcome button { min-height:44px; max-width:100%; margin-top:.8rem; white-space:normal; }
 .assistant-private-current-label { display:block; color:var(--accent,#9c4f37); font-size:.7rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
 .assistant-private-current p { margin:.12rem 0 0; color:var(--ink,#38322c); font-size:.9rem; font-weight:600; overflow-wrap:anywhere; }
 .assistant-private-current-help { margin:.35rem 0 .25rem; }

@@ -62,6 +62,11 @@ response is exposed. No history lookup invokes discovery or model inference.
 
 ## Client behavior
 
+When Jude opens without a selected conversation, **Continue last conversation**
+opens the most recently updated conversation authorized for the current account
+and library. It uses the same fresh detail read as choosing a conversation
+from the history list.
+
 An explicit “查看更早消息” action reads one page. It prepends validated text to
 the selected thread only when account/library/generation, thread, revision and
 cursor still match. Duplicate/out-of-order IDs or revisions, inconsistent cursors,
