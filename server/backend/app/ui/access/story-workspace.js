@@ -2103,12 +2103,18 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         adopt.disabled=review.chapters.size===0;
       }
       panel.append(node('p',`${text('autoRefinementTitleKept')}: ${draft.title}`,'story-auto-refinement-title'));
+      let wordingChanged=false;
+      const wordingNote=node('p',text('autoRefinementWordingChanges'),'fine');
+      panel.append(wordingNote);
       for(const [index,chapter] of job.result.chapters.entries()){
         const chapterReview=node('section',undefined,'story-auto-refinement-section');chapterReview.append(node('h4',draft.chapters[index].title));
         chapterReview.dataset.chapterId=chapter.id;
         const row=node('div',undefined,'story-auto-refinement-row');
-        const compare=node('article',undefined,'story-auto-refinement-comparison');compare.append(node('h5',text('autoRefinementOriginal')),node('p',autoRefinementOriginal?.chapters[index]?.narration??draft.chapters[index].narration));
-        const suggested=node('article',undefined,'story-auto-refinement-chapter');suggested.append(node('h5',text('autoRefinementSuggestion')),node('p',chapter.narration));
+        const original=autoRefinementOriginal?.chapters[index]?.narration??draft.chapters[index].narration;
+        wordingChanged ||= original!==chapter.narration;
+        const [originalText,suggestedText]=compareRefinementWording(original,chapter.narration,draft.language);
+        const compare=node('article',undefined,'story-auto-refinement-comparison');compare.append(node('h5',text('autoRefinementOriginal')),originalText);
+        const suggested=node('article',undefined,'story-auto-refinement-chapter');suggested.append(node('h5',text('autoRefinementSuggestion')),suggestedText);
         row.append(compare,suggested);chapterReview.append(row);
         if(review){
           const label=node('label',undefined,'story-auto-refinement-use');
@@ -2124,6 +2130,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         }
         panel.append(chapterReview);
       }
+      wordingNote.hidden=!wordingChanged;
       if(job.result.questions.length){const questions=node('section',undefined,'story-auto-refinement-questions');questions.append(node('h4',text('autoRefinementQuestions')));const list=node('ul');job.result.questions.forEach(question=>list.append(node('li',question)));questions.append(list);panel.append(questions);}
       panel.append(node('p',text('autoRefinementSaveHelp'),'fine'));
       if(adopt)panel.append(adopt);
@@ -2131,6 +2138,65 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       panel.append(button(text('autoRefinementKeep'),()=>{if(reviewCurrent()){autoRefinementDismissed=identity;renderAutoRefinementPanels();}},'quiet'));
     }
     host.append(panel);
+  }
+  labels.zh.autoRefinementWordingChanges='已标出两版文字之间的变化。';
+  labels.en.autoRefinementWordingChanges='Wording changes are highlighted.';
+  function compareRefinementWording(original,suggestion,language){
+    if(original===suggestion)return [node('p',original),node('p',suggestion)];
+    const segmenter=typeof Intl.Segmenter==='function'
+      ?new Intl.Segmenter(language==='zh'?'zh':'en',{granularity:'word'}):null;
+    const split=value=>segmenter?Array.from(segmenter.segment(value),item=>item.segment):Array.from(value);
+    const before=split(original),after=split(suggestion);
+    const beforeShared=new Uint8Array(before.length),afterShared=new Uint8Array(after.length);
+    let start=0,beforeEnd=before.length,afterEnd=after.length;
+    while(start<beforeEnd&&start<afterEnd&&before[start]===after[start]){
+      beforeShared[start]=1;
+      afterShared[start]=1;
+      start++;
+    }
+    while(beforeEnd>start&&afterEnd>start&&before[beforeEnd-1]===after[afterEnd-1]){
+      beforeEnd--;
+      afterEnd--;
+      beforeShared[beforeEnd]=1;
+      afterShared[afterEnd]=1;
+    }
+    // Match shared words inside the changed region. Large rewrites keep the
+    // common edges and highlight the whole middle to bound browser work.
+    const rows=beforeEnd-start+1,columns=afterEnd-start+1;
+    if(rows>1&&columns>1&&rows*columns<=100000){
+      const remaining=new Uint16Array(rows*columns);
+      for(let i=rows-2;i>=0;i--){
+        for(let j=columns-2;j>=0;j--){
+          const index=i*columns+j;
+          remaining[index]=before[start+i]===after[start+j]
+            ?1+remaining[index+columns+1]
+            :Math.max(remaining[index+columns],remaining[index+1]);
+        }
+      }
+      let i=0,j=0;
+      while(i<rows-1&&j<columns-1){
+        const index=i*columns+j;
+        if(before[start+i]===after[start+j]){
+          beforeShared[start+i]=1;
+          afterShared[start+j]=1;
+          i++;
+          j++;
+        }else if(remaining[index+columns]>=remaining[index+1])i++;
+        else j++;
+      }
+    }
+    function paragraph(tokens,shared){
+      const result=node('p');
+      for(let start=0;start<tokens.length;){
+        let end=start+1;
+        while(end<tokens.length&&shared[start]===shared[end])end++;
+        const wording=tokens.slice(start,end).join('');
+        result.append(shared[start]?document.createTextNode(wording):node('mark',wording));
+        start=end;
+      }
+      return result;
+    }
+    return [paragraph(before,beforeShared),paragraph(after,afterShared)];
   }
   let cloudReview=null;
   const cloudLabels={zh:{title:'可选云端校对',help:'本地整理照常工作。云端默认关闭；先查看将发送的完整请求，再决定是否发送。只有故事作者可以使用。',preview:'预览发送内容',loading:'正在准备本地预览…',disabled:'云端未启用或未配置。当前只可预览，不会发送。',privacy:'只发送下方请求中的文字，不发送照片、录音或对话。已审核姓名已替换为占位符；仍可能含有其他私人信息，请逐项检查。',consent:'我已检查完整请求，同意将这些文字发送到上述云端服务。',send:'确认发送这份请求',sending:'正在等待云端校对；不会自动重试…',cancel:'关闭预览',failed:'未能完成；原故事保持不变。请重新预览后再决定。',body:'完整请求 JSON（按此内容发送）',result:'云端建议 · 尚未保存',adopt:'将建议带入编辑',review:'打开阅读器核对',expiry:'此预览 10 分钟内有效，只可发送一次。',original:'当前保存的原文'},en:{title:'Optional cloud proofreading',help:'Local editing remains available. Cloud is off by default: preview the complete request before deciding to send. Only the story author can use it.',preview:'Preview outgoing request',loading:'Preparing a local preview…',disabled:'Cloud is disabled or unconfigured. Preview only; nothing will be sent.',privacy:'Only the text in the request below is sent, without photos, audio or conversation history. Reviewed names are placeholders; other private information may remain. Check the entire request.',consent:'I reviewed the complete request and consent to sending this text to the cloud service above.',send:'Confirm and send this request',sending:'Waiting for cloud proofreading; no automatic retry…',cancel:'Close preview',failed:'Not completed. The original story is unchanged. Prepare a new preview before deciding again.',body:'Complete request JSON (sent exactly as shown)',result:'Cloud suggestion · unsaved',adopt:'Bring suggestion into editor',review:'Open reader to review',expiry:'This preview expires after 10 minutes and can be sent only once.',original:'Currently saved wording'}};

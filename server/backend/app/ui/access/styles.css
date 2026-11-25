@@ -1303,7 +1303,10 @@ dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
 .story-auto-refinement-status{padding:.75rem 1rem;border:1px solid var(--refine-line);border-radius:12px;line-height:1.65}
 .story-auto-refinement-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:.8rem;min-width:0}
 .story-auto-refinement-row article{min-width:0;padding:1rem;border:1px solid var(--refine-line);border-radius:12px;background:var(--refine-card)}
-.story-auto-refinement-row p{margin:0;white-space:pre-wrap;line-height:1.85}
+.story-auto-refinement-row p{margin:0;white-space:pre-wrap;line-height:1.85;overflow-wrap:anywhere}
+.story-auto-refinement-row mark{border-radius:.15em;font-weight:650;box-decoration-break:clone}
+.story-auto-refinement-comparison mark{background:#f7ded4;color:#552d24}
+.story-auto-refinement-chapter mark{background:#dbeed9;color:#203c24}
 .story-auto-refinement .story-auto-refinement-use{display:flex;align-items:center;gap:.6rem;min-height:44px;margin:.45rem 0;font-size:1em;line-height:1.45;overflow-wrap:anywhere}
 .story-auto-refinement-use input{flex:0 0 auto;width:1.15rem;height:1.15rem;margin:0}
 .story-auto-refinement button{max-width:100%;margin:.5rem .5rem .25rem 0;white-space:normal}

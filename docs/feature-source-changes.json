@@ -39494,6 +39494,44 @@
         }
       ],
       "notes": "Apply the account reply speed preference in Jude Web playback."
+    },
+    {
+      "feature": "highlight-saved-story-refinement-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/STORY_REFINEMENT.md",
+          "before_sha256": "0dae16d3695a1e8e17dc73ea26c3f7441d262bdb01cd0dc371b76501095f8750",
+          "sha256": "b7b51051260828471465a6ed7f531a7539fe9b10ad5ece5eb84bdca865e83116"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "05e73cc97bcbf773ba8b734565a114cea87db1f5b1764bd6a6a07337f48429be",
+          "sha256": "aba701914a6460aeaab633e5f1d345ea7942c738428e4f70ecabd676f67b6241"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "3800ab9b25966cbdb24644501c74c6874933e510589c459f14c2ee0eb07de306",
+          "sha256": "ebf208328d2a778f3d0949757fe20072228a4757fa26bdd8e435186864f39973"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "a1ed626165c6ce20d5df833f0e024f1519f6a3e3e9ff35356bc82e40e511caa0",
+          "sha256": "20be687d5bb59dc60c7a6fe70c23700bb48b673ef4dfab71c005f40627e38b8c"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "c4481e3f098da489a483cb92921d8de019bcca5a1f09eb1d98dae7f45a861239",
+          "sha256": "b26b7d0a925388f179e7652943993d6b15202d829436f616b980d5afb37b31b0"
+        },
+        {
+          "path": "server/tests/security/test_story_auto_refinement_browser.cjs",
+          "before_sha256": "27b5def828ac77998643e04d0c5c5fe3d0a9a3811ecd2222e49e9ac8d6c3d594",
+          "sha256": "f8c6b88c6037d24fb1501eabb4e3dd8c57e50383e4ca9f75c62cb72f8588119b"
+        }
+      ],
+      "notes": "Highlight changed wording in the saved story draft comparison."
     }
   ]
 }

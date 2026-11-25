@@ -64,10 +64,16 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   const firstRow=rows.nth(0),firstOriginal=firstRow.locator('.story-auto-refinement-comparison'),firstSuggested=firstRow.locator('.story-auto-refinement-chapter');
   assert.equal(await firstOriginal.isVisible(),true);assert.equal(await firstSuggested.isVisible(),true);
   assert.match(await firstOriginal.textContent(),new RegExp(original));assert.match(await firstSuggested.textContent(),new RegExp(original),'the first chapter wording is unchanged in the suggestion');
+  assert.equal(await firstRow.locator('mark').count(),0,'unchanged chapters have no highlights');
   const secondRow=rows.nth(1),originalCard=secondRow.locator('.story-auto-refinement-comparison'),suggestedCard=secondRow.locator('.story-auto-refinement-chapter');
   assert.equal(await originalCard.isVisible(),true);assert.equal(await suggestedCard.isVisible(),true);
   assert.match(await originalCard.locator('h5').textContent(),/当前保存的原文/);assert.match(await originalCard.textContent(),/家人接着坐在湖边聊天，记录那天的心情。/);
   assert.match(await suggestedCard.locator('h5').textContent(),/整理建议/);assert.match(await suggestedCard.textContent(),/待家人核对的整理建议：湖边散步。/);
+  assert.equal(await originalCard.locator('p').textContent(),'家人接着坐在湖边聊天，记录那天的心情。');
+  assert.equal(await suggestedCard.locator('p').textContent(),'待家人核对的整理建议：湖边散步。');
+  assert((await originalCard.locator('mark').allTextContents()).join('').includes('聊天'));
+  assert((await suggestedCard.locator('mark').allTextContents()).join('').includes('整理建议'));
+  await panel.getByText('已标出两版文字之间的变化。',{exact:true}).waitFor();
   if(process.env.PH_BROWSER_ARTIFACTS){
     await fs.mkdir(process.env.PH_BROWSER_ARTIFACTS,{recursive:true});
     await panel.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'story-local-ai-review-desktop.png')});

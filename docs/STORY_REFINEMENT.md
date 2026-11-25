@@ -15,8 +15,10 @@ The saved-story shelf offers **Review AI draft** when there is a prepared
 proposal for the current editor and saved revision. The shelf reads only a
 small availability hint. Opening the draft rechecks library membership,
 the current story revision and source fingerprints through the normal story
-reader. In the comparison, clear **Use this chapter’s suggestion** to keep
-that chapter and its saved sources. Only checked chapters enter the editor.
+reader. The comparison highlights wording changes on both sides. For longer
+rewrites the changed passage is highlighted as a whole. Clear **Use this
+chapter’s suggestion** to keep that chapter and its saved sources. Only checked
+chapters enter the editor.
 Reviewing and editing the draft keeps the saved wording in place until an
 explicit save.
 
