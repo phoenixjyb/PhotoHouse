@@ -39327,6 +39327,24 @@
         }
       ],
       "notes": "Find authorized saved stories by their titles within the current library."
+    },
+    {
+      "feature": "overnight-private-route-inventory-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "127a3df8419b532c9bd02c57714231c464994a459999313f58a6cbed0be38e97",
+          "sha256": "145f01f495f9ca98117d426ba77d347653d93015b963f75932290a781f87d867"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "703a35a669c6f7862e83870ccac0f6de45028dd7b8f6fa2c98664be5a00731bd",
+          "sha256": "d3a22e201fe00c86cdb59554b09ef7b8f62c0f34d79e1e1fa8ddf6a06343e3c5"
+        }
+      ],
+      "notes": "Record the two new private routes and retain exact closed-application checks."
     }
   ]
 }

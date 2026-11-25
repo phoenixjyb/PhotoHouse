@@ -4020,6 +4020,20 @@
   {
    "source": "backend/app/access/memory_stories.py",
    "owner": "router",
+   "method": "POST",
+   "path": "/memory-stories/search",
+   "handler": "search_memories",
+   "surface": "photohouse",
+   "scope": "Current readable library stories whose selected assets remain accessible",
+   "capabilities": [
+    "library.read"
+   ],
+   "current_control": "Read-only POST with cookie CSRF and no-store headers. Bounded literal title query in the body and optional theme before pagination.",
+   "gap": "Title matching within the selected library. Windows rollout is pending."
+  },
+  {
+   "source": "backend/app/access/memory_stories.py",
+   "owner": "router",
    "method": "GET",
    "path": "/memory-stories/{story_id}/contribution-refs",
    "handler": "get_contribution_refs",
@@ -4702,6 +4716,20 @@
    ],
    "current_control": "Closed boundary and exact handler; protected transport; strict query; separate default-off flag, current store and retention health, authorized reader checks; existing base capabilities remain unchanged.",
    "gap": "Local source only. Windows activation, client card presentation and protected reader handoff are separate gates."
+  },
+  {
+   "source": "backend/app/access/assistant_workspace_transport.py",
+   "owner": "router",
+   "method": "POST",
+   "path": "/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/discard",
+   "handler": "discard_turn",
+   "surface": "photohouse",
+   "scope": "Current member's owned private thread and exact pending request at the expected revision",
+   "capabilities": [
+    "library.read"
+   ],
+   "current_control": "Closed request body, cookie CSRF, current account and library, UUIDv4 identities and atomic pending-state check. A completed reply remains recoverable.",
+   "gap": "Conversation reply discard. Worker cleanup stays with its existing owner."
   },
   {
    "source": "backend/app/access/assistant_workspace_transport.py",
