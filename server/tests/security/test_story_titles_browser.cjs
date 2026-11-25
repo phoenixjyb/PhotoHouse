@@ -13,7 +13,8 @@ bridge.stderr.on('data',v=>process.stderr.write(v));bridge.on('exit',code=>{if(c
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const pass=name=>{checks.push(name);console.log('PASS '+name);};
 (async()=>{
- await ready;browser=await chromium.launch({headless:true,args:['--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
+ await ready;browser=await chromium.launch({headless:true,executablePath:process.env.PH_BROWSER_EXECUTABLE,
+   args:['--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
  ctx=await browser.newContext({viewport:{width:1280,height:960},serviceWorkers:'block'});
  await ctx.addInitScript(()=>{let factory;Object.defineProperty(window,'PhotoHouseStoryWorkspace',{configurable:true,get:()=>factory,set:value=>{factory=config=>{let language=null;const original=config.scope;const instance=value({...config,scope:()=>({...original(),...(language?{language}:{})})});window.__titleTestLanguage=value=>{language=value;instance.translate();};return instance;};}});});
  await ctx.route('**/*',async route=>{

@@ -39606,6 +39606,34 @@
         }
       ],
       "notes": "Use media-specific result actions and exercise the exact viewer controls."
+    },
+    {
+      "feature": "use-configured-browser-for-local-web-checks-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "server/tests/security/test_memoir_review_page_browser.cjs",
+          "before_sha256": "f95640f22e0f0448c7a3cc362e67eb421c3b1683f84fbdcf61adfa13d3ba8db5",
+          "sha256": "2170ac8e76811e23047592a067351c44e3729e4f10a4b8ceb0a2cb364247fbab"
+        },
+        {
+          "path": "server/tests/security/test_story_proposal_wording_browser.cjs",
+          "before_sha256": "74e2ba9ac3abb224738109c6ae00c0c7c3e986de41cad7080c4340abd5d0d55d",
+          "sha256": "01ea6107438800f62de52e111df12c6271433d7eff23649070c06a178911b853"
+        },
+        {
+          "path": "server/tests/security/test_story_titles_browser.cjs",
+          "before_sha256": "592b9a7ae42310a9ede6ad7a9205fa5e691bb57adb54f7953a94c4ac92e51729",
+          "sha256": "6a44b519a600e58242a939a0a68bff22284b1a4eca513b9982bf4d0a615676f5"
+        },
+        {
+          "path": "server/tests/security/test_upload_history_browser.cjs",
+          "before_sha256": "d0cfd9be855cf641102ab978b97eca68a4dff57e2bdeeeb67d7d6b39b2253e0b",
+          "sha256": "36bd07a7e9dffa52d1cf781f646a99f03c53bd73cc5e9f123f87520323764e87"
+        }
+      ],
+      "notes": "Use the configured Chromium executable in four existing Web fixtures."
     }
   ]
 }

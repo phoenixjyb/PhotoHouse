@@ -7,7 +7,8 @@ const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tm
 fs.mkdirSync(artifacts,{recursive:true});
 let browser;
 (async()=>{
-  browser=await chromium.launch({headless:true,args:['--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
+  browser=await chromium.launch({headless:true,executablePath:process.env.PH_BROWSER_EXECUTABLE,
+    args:['--disable-background-networking','--host-resolver-rules=MAP * ~NOTFOUND']});
   const context=await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'}),errors=[],external=[];
   await context.route('**/*',async route=>{
     if(route.request().url()!=='https://photohouse.test/'){external.push(route.request().url());await route.abort();return;}
