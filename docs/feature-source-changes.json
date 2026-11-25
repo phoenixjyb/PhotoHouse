@@ -38730,6 +38730,33 @@
         }
       ],
       "notes": "Place removal uses the existing authorized Search refinement and requires explicit submission. Local Search refinement passed 37 tests and 172 subtests. Generated Chromium Search, scene and local-agent browser suites passed."
+    },
+    {
+      "feature": "jude-bilingual-typed-result-explanations",
+      "source_commit": "a3734feb0ae1445d01818fae32e70968a6e9807c",
+      "files": [
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "79f7dc362e7b52e81b2df56b5e2e975eed621404bf3ee423a7003b0b51690b05",
+          "sha256": "4533bac6fa0a1731f958dd04f27d0514080db3ae8b0f32535e3dd7accdad3fe0"
+        },
+        {
+          "path": "server/backend/app/access/result_explanation.py",
+          "before_sha256": "cbe25cf01561b322e4464075b711cd2714a04916b5d3de40a01d4cbb61a9a8db",
+          "sha256": "2036547d56eddf9b02c556dad246d9d6bba27a04ac46585c81e905b2ca4d990d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_result_explanation.py",
+          "before_sha256": "05c75129006fda8096c72446ce97fc11e162c82e9562122a2f7cfd9d5f3dfac9",
+          "sha256": "c01959e9c2ee8d30b3639d3622868991420043375d27ec8470fb8f9352ff880a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "b9106da2f3c150572aed99b466f15420fa0c26f53fc9c775d4a63dd62ac00e74",
+          "sha256": "0559a3e8011cd259fb14168093a87158eba8089c64217ed1c3b2d75df07b42c4"
+        }
+      ],
+      "notes": "Bilingual requests explain the numbered photo or video in the authorized current result list. Local explanation and current-result suites passed 21 tests and 20 subtests. The generated browser completed the explanation, frame selection, story review, save and reopen."
     }
   ]
 }
