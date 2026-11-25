@@ -28,11 +28,13 @@ results and filters available for selection.
 
 A new or refined search clears the selection, including one that needs
 clarification. Switching conversations or accounts, changing libraries, losing
-access, and signing out also clear it. When you reload the history of the same
-active conversation, PhotoHouse can keep the selected frames and their order
-after the server confirms the exact current ordinary search. Choices live in
-the current page's memory and reset on a full page reload. An uncertain search
-uses the existing GET-only recovery flow.
+access, and signing out also clear it. After a refresh in the same browser tab,
+reopen the same Jude conversation to resume your ordered picks for a new story
+from an ordinary search. PhotoHouse keeps the result identifiers and page numbers
+in tab storage and reads the current result and selected pages again to verify
+each pick. If the result expired or a picked item is no longer available, choose
+the frames again. Scene results, legacy results, and picks for an open editor
+stay in page memory. An uncertain search uses the existing GET-only recovery flow.
 
 ## Ordinary result pages
 

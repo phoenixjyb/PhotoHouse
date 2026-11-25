@@ -135,6 +135,33 @@ let browser,context,page;
     await waitForCards(firstPage);
     const joinedOrder=[firstPick,laterPick];
     assert.deepEqual(await selectedIds(),joinedOrder);
+    const threadId=await page.locator('#assistant-private-select').inputValue();
+    const resumeKey='photohouse.assistant.story-selection.v1';
+    const stored=await page.evaluate(key=>JSON.parse(sessionStorage.getItem(key)),resumeKey);
+    assert.equal(stored.thread_id,threadId);
+    assert.deepEqual(stored.picks.map(pick=>pick.id),joinedOrder);
+    const reloadStart=requests.length;
+    const turnsBeforeReload=turnPosts().length;
+    await page.setViewportSize({width:390,height:845});
+    await page.reload();await page.locator('#grid .asset').first().waitFor();
+    assert.equal(await page.evaluate(key=>sessionStorage.getItem(key)!==null,resumeKey),true,'the signed-in same-library refresh keeps the tab record');
+    if(!await page.locator('#assistant-workspace-dialog').isVisible()){
+      await page.locator('[href="#assistant-panel"]').first().click();
+    }
+    await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
+    const conversation=page.locator('#assistant-private-select');
+    if(!await conversation.isVisible())await page.locator('#assistant-private-management-toggle').click();
+    assert.deepEqual(await selectedIds(),[],'reload keeps the selection private until the conversation is opened');
+    await conversation.selectOption(threadId);
+    await page.waitForFunction(order=>{
+      const listed=[...document.querySelectorAll('#assistant-story-selected-list [data-asset-id]')];
+      return listed.length===order.length&&listed.every((item,index)=>item.dataset.assetId===order[index]);
+    },joinedOrder);
+    const reopenedReads=requests.slice(reloadStart);
+    assert.equal(reopenedReads.filter(item=>item.method==='GET'&&freshReadPath(item.path)).length,1);
+    assert.equal(reopenedReads.filter(item=>item.method==='POST'&&resultPagePath.test(new URL(item.path,'https://photohouse.test').pathname)).length,1);
+    assert.equal(turnPosts().length,turnsBeforeReload,'resuming picks keeps the existing search turn');
+    pass('Reopening the same conversation after a phone-size tab refresh restores both story picks in order');
     assert.equal(prepareRows().length,beforeJoinedStart.prepares);assert.equal(saves().length,beforeJoinedStart.saves);
     assert.equal(requests.filter(item=>item.method==='POST'&&storyPreviewPath(item.path)).length,beforeJoinedStart.outlines,
       'search, refinement, paging and selecting do not generate a story before the editor action');

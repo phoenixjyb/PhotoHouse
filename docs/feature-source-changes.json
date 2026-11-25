@@ -38824,6 +38824,39 @@
         }
       ],
       "notes": "Place the worker identity results and provider observations within their October 22 trial dates and source pins."
+    },
+    {
+      "feature": "jude-ordered-story-selection-tab-resume-20261125",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "4533bac6fa0a1731f958dd04f27d0514080db3ae8b0f32535e3dd7accdad3fe0",
+          "sha256": "a456aa7b649d2e11bd9cc713cc348fa8b6eb8e445992259704dc2758fec004c6"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "4b3bed256bedc84264da131cc61fe869bdb2be5504a06158fa55802cd782213e",
+          "sha256": "9681b96b994b6c91188e691f027ec87590f701fba751b57d6046b309adfc5de4"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "39f9440a1648f60f1d7f76fc5035414d78f118cc4ab37e012182be652dfc8c9e",
+          "sha256": "e4e3568f2928bd9a173ef0dfeffaadd4167e911ba2ae0ee9f2a7cb68ac7e43fb"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection.cjs",
+          "before_sha256": "44febec63ca7b3bd3b165aca04cf914443864396619503062fc3523e57bb594c",
+          "sha256": "d388e19d6d9f1c48bca1c67113eaabfa4a53b0331b11e4b8d706c8d1b4183ec4"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "0559a3e8011cd259fb14168093a87158eba8089c64217ed1c3b2d75df07b42c4",
+          "sha256": "855cb428bebfbe9176756be49e6c4ec186c6bdac2fe7d2c7db3efcefa3e8d478"
+        }
+      ],
+      "notes": "Reopen ordinary Jude story picks in the same browser tab by checking the current authenticated result and selected result pages."
     }
   ]
 }

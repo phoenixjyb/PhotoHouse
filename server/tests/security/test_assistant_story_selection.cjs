@@ -28,9 +28,10 @@ function envelope(requestId,revision,turn=result()){
 function caps(){return {version:1,available:true,threads:true,preferences:true,preferences_applied:true,
   server_owned_turns:true,search:{version:3,date_basis:'capture',perspective:null}};}
 function error(status,code){return Object.assign(new Error(code),{status,code});}
-function makeController({holdResult=false,denyResult=false,latestMismatch=false,denyCurrent=false,denyBaseCapabilities=false,resultPageCapabilityAvailable=true,sceneSetup=false}={}){
+function makeController({holdResult=false,denyResult=false,latestMismatch=false,denyCurrent=false,denyBaseCapabilities=false,resultPageCapabilityAvailable=true,sceneSetup=false,storyResumeStore=null}={}){
   const scope={account:'synthetic-account',library,generation:1,locked:false},calls=[];
   let counter=0,latestRequestId=null,latestRevision=0,holdResolve=null,held=null,capabilityCalls=0,pageCapabilityDenied=false,pageCapabilityAvailable=resultPageCapabilityAvailable;
+  let currentConflict=false,resultPageError=null;
   const uuid=()=>counter++===0?threadId:`22222222-2222-4222-8222-${String(counter).padStart(12,'0')}`;
   const request=async(path,options={})=>{
     calls.push({path,method:options.method,body:options.body});
@@ -48,6 +49,7 @@ function makeController({holdResult=false,denyResult=false,latestMismatch=false,
       return {version:1,thread_id:threadId,request_id:latestRequestId,revision:latestRevision,page,page_size:20,total:ids.length,has_more:offset+20<ids.length,binding,fingerprint,ranking_sha256:'c'.repeat(64),items,semantic:{mode:'text_to_image',score_kind:'cosine',candidate_count:ids.length,coverage:'complete_eligible_images',needs_review:true}};
     }
     if(path.endsWith('/result-pages')){
+      if(resultPageError)throw error(resultPageError,'page_refused');
       const page=options.body.page,offset=(page-1)*20;
       return {version:1,library_id:library,thread_id:threadId,request_id:latestRequestId,revision:latestRevision,
         search_version:3,binding,fingerprint,page,page_size:20,total:ids.length,has_more:offset+20<ids.length,items:media.slice(offset,offset+20)};
@@ -55,7 +57,7 @@ function makeController({holdResult=false,denyResult=false,latestMismatch=false,
     if(path.includes(`/requests/${latestRequestId}/current-result?`)){
       const requestedId=path.split('/requests/')[1].split('/')[0];
       if(denyCurrent)throw error(403,'access_denied');
-      if(latestMismatch)throw error(409,'context_changed');
+      if(latestMismatch||currentConflict)throw error(409,'context_changed');
       if(denyResult)throw error(403,'access_denied');
       if(holdResult){holdResult=false;held=new Promise(resolve=>{holdResolve=resolve;});await held;}
       if(requestedId!==latestRequestId)throw error(409,'context_changed');
@@ -72,8 +74,11 @@ function makeController({holdResult=false,denyResult=false,latestMismatch=false,
     }
     throw new Error(`Unexpected synthetic request: ${options.method} ${path}`);
   };
-  const controller=PrivateAssistant.createController({scope:()=>scope,request,newUUID:uuid});
-  return {controller,scope,calls,release(){holdResolve?.();},setLatestMismatch(value){latestMismatch=value;},deny(){denyResult=true;},denyPageCapability(){pageCapabilityDenied=true;},disablePageCapability(){pageCapabilityAvailable=false;}};
+  const instantiate=(view=scope)=>PrivateAssistant.createController({scope:()=>view,request,newUUID:uuid,storyResumeStore});
+  const controller=instantiate();
+  return {controller,scope,calls,instantiate,release(){holdResolve?.();},setLatestMismatch(value){latestMismatch=value;},
+    deny(){denyResult=true;},denyPageCapability(){pageCapabilityDenied=true;},disablePageCapability(){pageCapabilityAvailable=false;},
+    setCurrentConflict(value){currentConflict=value;},setPageError(status){resultPageError=status;}};
 }
 
 (async()=>{
@@ -119,6 +124,73 @@ function makeController({holdResult=false,denyResult=false,latestMismatch=false,
     fixture.deny();
     await controller.read(threadId,{preserveStorySelection:true});
     assert.deepEqual(controller.state().storySelection,[],'unconfirmed result authority clears the old selection');
+    controller.close();
+  }
+  {
+    let stored=null;
+    const storyResumeStore={read:()=>JSON.parse(stored),write:value=>{stored=JSON.stringify(value);}};
+    const fixture=makeController({storyResumeStore}),{controller,calls}=fixture;
+    await controller.capabilities();await controller.resultPageCapabilities();await controller.create();
+    await controller.send('Find photos to use in a story');
+    controller.toggleStoryItem('101');await controller.resultPage(2);controller.toggleStoryItem('121');
+    controller.moveStoryItem('121',-1);
+    const saved=storyResumeStore.read();
+    assert.deepEqual(saved.picks,[{id:'121',page:2},{id:'101',page:1}]);
+    assert.deepEqual(Object.keys(saved).sort(),['account','binding','fingerprint','format','library','picks','request_id','revision','thread_id','total','version']);
+    assert(!stored.includes('thumbnail')&&!stored.includes('Find photos'));
+
+    const reopened=fixture.instantiate();
+    await reopened.capabilities();await reopened.resultPageCapabilities();
+    const started=calls.length;
+    await reopened.read(threadId);
+    assert.deepEqual(reopened.state().storySelection.map(item=>item.id),['121','101']);
+    assert.deepEqual(calls.slice(started).map(call=>[call.method,call.path.split('?')[0].split('/').at(-1)]),
+      [['GET',threadId],['GET','current-result'],['POST','result-pages']],
+      'a fresh controller reads the bound receipt and only the off-page picks it needs');
+    assert.deepEqual((await reopened.prepareStorySelection()).map(item=>item.id),['121','101']);
+    reopened.close();
+
+    storyResumeStore.write(saved);
+    const retry=fixture.instantiate();
+    await retry.capabilities();await retry.resultPageCapabilities();
+    fixture.setPageError(503);
+    await retry.read(threadId);
+    assert.deepEqual(retry.state().storySelection,[],'a failed page read cannot partially recover the selection');
+    assert.deepEqual(storyResumeStore.read(),saved,'a temporary page failure leaves the selection available to retry');
+    fixture.setPageError(null);
+    await retry.read(threadId);
+    assert.deepEqual(retry.state().storySelection.map(item=>item.id),['121','101']);
+    retry.clearStorySelection();
+    assert.equal(storyResumeStore.read(),null);
+    retry.close();
+
+    const refusedCases=[
+      {record:{...saved,account:'someone-else'},receiptReads:0,pageReads:0},
+      {record:{...saved,library:'another-library'},receiptReads:0,pageReads:0},
+      {record:{...saved,picks:[{id:'121',page:2},{id:'121',page:1}]},receiptReads:0,pageReads:0},
+      {record:{...saved,fingerprint:'d'.repeat(64)},receiptReads:1,pageReads:0},
+      {record:{...saved,picks:[{id:'126',page:1},{id:'101',page:1}]},receiptReads:1,pageReads:0},
+      {record:{...saved,picks:[{id:'999',page:2},{id:'101',page:1}]},receiptReads:1,pageReads:1},
+      {record:saved,expired:true,receiptReads:1,pageReads:0},
+    ];
+    for(const {record,expired,receiptReads,pageReads} of refusedCases){
+      storyResumeStore.write(record);
+      fixture.setCurrentConflict(!!expired);
+      const refused=fixture.instantiate();
+      await refused.capabilities();await refused.resultPageCapabilities();
+      const start=calls.length;
+      await refused.read(threadId);
+      assert.deepEqual(refused.state().storySelection,[]);
+      assert.equal(storyResumeStore.read(),null);
+      assert.equal(calls.slice(start).filter(call=>call.path.includes('/current-result?')).length,receiptReads);
+      assert.equal(calls.slice(start).filter(call=>call.path.endsWith('/result-pages')).length,pageReads);
+      refused.close();
+    }
+    fixture.setCurrentConflict(false);
+    await controller.returnResults();
+    assert.deepEqual(storyResumeStore.read(),saved);
+    await controller.send('Only photos from this year');
+    assert.equal(storyResumeStore.read(),null,'a new search drops the saved picks');
     controller.close();
   }
   {
