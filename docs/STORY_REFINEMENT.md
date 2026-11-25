@@ -11,6 +11,13 @@ chapter prose. Other explicit proposal flows retain their own title behavior.
 Adopting an automatic refinement does not immediately queue another refinement
 of the same save.
 
+The saved-story shelf offers **Review AI draft** when there is a prepared
+proposal for the current editor and saved revision. The shelf reads only a
+small availability hint. Opening the draft rechecks library membership,
+the current story revision and source fingerprints through the normal story
+reader. Reviewing the draft keeps the saved wording in place until an
+explicit save.
+
 Existing stories have an explicit **Refine story** action. Repeating a request
 for the same story revision recovers the same job. A changed revision or changed
 source invalidates the old proposal. The operation requires current library

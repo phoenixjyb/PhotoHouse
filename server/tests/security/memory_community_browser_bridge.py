@@ -182,6 +182,24 @@ try:
             print(json.dumps({'id':message['id'],'state':state()},ensure_ascii=False),flush=True);continue
         if command=='seed-long-thread':
             print(json.dumps({'id':message['id'],'seed':seed_long_thread(message['story_id'])},ensure_ascii=False),flush=True);continue
+        if command=='seed-shelf-refinement':
+            app.state.memory_auto_refinement_enabled = True
+            path = f'/memory-stories/{story_id}'
+            current = fixture.client.get(path + '?library=family-a', headers=headers).json()
+            prepared = fixture.client.post(path + '/refinement?library=family-a', headers=headers,
+                                           json={'revision': current['revision']})
+            if prepared.status_code != 200:
+                raise RuntimeError('Synthetic shelf refinement could not be queued')
+            result = {'version': 1, 'title': 'MODEL_TITLE_MUST_NOT_APPEAR',
+                      'chapters': [{'id': chapter['id'], 'source_ids': [],
+                                    'narration': ('待家人核对的整理建议：湖边散步。'
+                                                  if chapter['id'] == 'chapter-2'
+                                                  else chapter['narration'])}
+                                   for chapter in current['chapters']],
+                      'questions': ['那天还有谁同行？'], 'needs_review': True}
+            fixture.mutate("UPDATE access_memory_jobs SET state='ready',output_json=? WHERE id=?",
+                           (json.dumps(result), prepared.json()['id']))
+            print(json.dumps({'id':message['id'],'job_id':prepared.json()['id']}),flush=True);continue
         fixture.client.cookies.clear()
         response=fixture.client.request(message['method'],message['path'],headers=message['headers'],
             content=base64.b64decode(message.get('body','')),follow_redirects=False)

@@ -39006,6 +39006,54 @@
         }
       ],
       "notes": "Show the exact owned pending question when reopening and recover only through its existing authenticated receipt."
+    },
+    {
+      "feature": "saved-story-refinement-shelf-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/STORY_REFINEMENT.md",
+          "before_sha256": "d6cab156f30f34d9263d8de3e613d85b4c9be1ce95f5d7b498477a4df925bee6",
+          "sha256": "6090ce25c858fd55406fbdaf8d8a68b8dff60981fa432791fc651ec1d8c73e03"
+        },
+        {
+          "path": "server/backend/app/access/memory_jobs.py",
+          "before_sha256": "713de7a45c7d6e0cf01c74c1937b8c43b055d3fdae79a5f45281313661a058ab",
+          "sha256": "9d1e7bc14165192910d36e6535c32fd8a7afe848c758224dcdbd7311f27b768d"
+        },
+        {
+          "path": "server/backend/app/access/memory_stories.py",
+          "before_sha256": "e52e484a97f194184c1465b8e7699a86487545d311035d7d472780b5b2e6305f",
+          "sha256": "1a47eae00b1ebc6fea019205463e90d8bb1f7eab33700dfd126271dd47a2ecb9"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "745651ddaf6e17580961de4caf24a2f55d0ce7cda49b5029c6576fb3b7d9f7cf",
+          "sha256": "eeeec88752f40a8ced3185d3593be86a0f1a849e909896f96e9d155e798f7074"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "9aa410507d57e2423c0933e69f61a9e97cb9adf49005b7921edb56a7ad0e0c02",
+          "sha256": "79baa11282d961ae000f8f477ef45a7fb56cbf92286a0823e1606ef0d7f11d8a"
+        },
+        {
+          "path": "server/tests/security/memory_community_browser_bridge.py",
+          "before_sha256": "57ceeea9f86d440592301291c5a0151e670ceada9a5075da79ed9d2d5c201797",
+          "sha256": "effa147d3169a4873209721d8b325fbc4775282922822edc01d11baaadd1b1f2"
+        },
+        {
+          "path": "server/tests/security/test_memory_story_auto_refinement.py",
+          "before_sha256": "6707fc0d463468d9a4a0cabf23fdbb55ecdea11f6ba24dc91965f3d7864fcd08",
+          "sha256": "6df5ebbb991fb1429afd659ef3b232f12b78ac71933a7066b67b61c44936b328"
+        },
+        {
+          "path": "server/tests/security/test_story_auto_refinement_browser.cjs",
+          "before_sha256": "fe3534a2ccadebc99cfacdce70dbeab27c7dccb90d1009083f11e868a68d974f",
+          "sha256": "4a42fb4ae9dcb95162e60ab53a1d0a91ac97aabb45834f405bfe67ecd303d2fa"
+        }
+      ],
+      "notes": "Show editors their prepared story draft, then open its fresh review in the normal story reader."
     }
   ]
 }

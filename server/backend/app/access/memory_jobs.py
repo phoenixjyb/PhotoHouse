@@ -293,6 +293,23 @@ class MemoryJobs:
         return str(uuid.uuid5(uuid.NAMESPACE_URL,
             f'photohouse:auto-story-refine:{STORY_REFINEMENT_PROFILE}:{story_id}:{revision}:{author_id}'))
 
+    def prepared_refinement_ids(self, member, library, revisions):
+        """Return shelf hints without loading proposals or opening their sources."""
+        if not revisions:
+            return set()
+        self._ready()
+        actor = member['account_id']
+        expected = {self.auto_refinement_mutation(story_id, revision, actor): (story_id, revision)
+                    for story_id, revision in revisions}
+        placeholders = ','.join('?' for _ in expected)
+        rows = self.db.execute(f'''SELECT story_id,base_revision,mutation_id
+            FROM access_memory_jobs WHERE actor_id=? AND library_id=?
+            AND mutation_id IN ({placeholders}) AND book_id IS NULL AND kind='narrative'
+            AND state='ready' AND output_json<>'' AND expires_at>?''',
+            (actor, library, *expected, self.access._now()))
+        return {story_id for story_id, revision, mutation in rows
+                if expected.get(mutation) == (story_id, revision)}
+
     def auto_refinement(self, member, library, story_id, revision):
         """Read only this member's current, exact-revision automatic proposal."""
         self._ready()

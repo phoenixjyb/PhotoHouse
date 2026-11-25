@@ -15,7 +15,7 @@ createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(l
 bridge.on('exit',code=>{if(code){readyReject(new Error(`Synthetic bridge failed (${code})`));for(const call of pending.values())call.reject(new Error('Synthetic bridge failed'));}});
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const jobId='5f79b251-a8fd-43b6-bfc2-d130b6055fb6',modelTitle='MODEL_TITLE_MUST_NOT_APPEAR',originalTitle='一起走过的日子';let saveBodies=[];
-let browser,context,page,jobPolls=0,refinementPosts=0,external=[],staleMetadata=false,noAutoJob=true,confirmAction='accept',dialogWaiter=null;
+let browser,context,page,jobPolls=0,refinementPosts=0,external=[],staleMetadata=false,noAutoJob=true,realShelfDraft=false,confirmAction='accept',dialogWaiter=null;
 const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/jobs')).length;
 (async()=>{
   await ready;
@@ -40,7 +40,7 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
       if(entry.method==='PUT'&&url.pathname==='/memory-stories/'+storyId)saveBodies.push(JSON.parse((request.postDataBuffer()||Buffer.alloc(0)).toString()));
       const result=await rpc({method:entry.method,path:entry.path,headers,body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});status=result.status;responseBody=Buffer.from(result.body,'base64');headersOut={...result.headers};
       if(entry.method==='GET'&&url.pathname==='/memory-stories/'+storyId&&status===200){
-        story=JSON.parse(responseBody.toString());story.auto_refinement=noAutoJob?null:{version:1,id:jobId,kind:'narrative',state:'queued',created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:null,result:null,needs_review:true,base_revision:staleMetadata?'999':story.revision};
+        story=JSON.parse(responseBody.toString());if(!realShelfDraft)story.auto_refinement=noAutoJob?null:{version:1,id:jobId,kind:'narrative',state:'queued',created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:null,result:null,needs_review:true,base_revision:staleMetadata?'999':story.revision};
         responseBody=Buffer.from(JSON.stringify(story));
       }
     }
@@ -81,6 +81,32 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
     await panel.evaluate((root,rows)=>rows.forEach(row=>{const node=root.querySelector(`[data-review-scale="${row.index}"]`);if(node){node.style.fontSize=row.font;node.style.lineHeight=row.line;delete node.dataset.reviewScale;}}),scaled);
     await page.setViewportSize({width:1280,height:900});
   }
+  await page.locator('#story-reader-close').click();
+  const preparedShelf=await rpc({command:'seed-shelf-refinement'});
+  assert.match(preparedShelf.job_id,/^[0-9a-f-]{36}$/);
+  realShelfDraft=true;
+  const readsBeforeShelf=requests.length;
+  await page.locator('#saved-memory-refresh').click();
+  const shelfReview=page.getByRole('button',{name:`核对 AI 草稿: ${originalTitle}`,exact:true});
+  await shelfReview.waitFor();
+  assert.equal(await page.locator('.saved-refinement-review').count(),1);
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  assert(await shelfReview.evaluate(el=>el.getBoundingClientRect().height>=44&&el.scrollWidth<=el.clientWidth));
+  if(process.env.PH_BROWSER_ARTIFACTS){
+    await shelfReview.scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'review-from-saved-stories-phone-zh-150.png')});
+  }
+  await shelfReview.press('Enter');
+  await panel.waitFor({state:'visible'});
+  assert.equal(await panel.locator('h3').evaluate(el=>el===document.activeElement),true);
+  assert.equal(await page.locator('#story-reader-text').textContent(),original);
+  assert.match(await panel.textContent(),/待家人核对的整理建议：湖边散步。/);
+  assert(requests.slice(readsBeforeShelf).every(row=>['GET','HEAD'].includes(row.method)));
+  await page.evaluate(()=>{document.documentElement.style.fontSize='';});
+  await page.setViewportSize({width:1280,height:900});
+  console.log('PASS One keyboard action opens the current prepared draft from its saved story without restarting refinement or saving');
+
   const keepWrites=requests.filter(item=>['PUT','DELETE'].includes(item.method)).length,keepGenerations=generationPosts(),keepRefinements=refinementPosts;
   await panel.getByRole('button',{name:'保留原文',exact:true}).click();
   await panel.getByText('已保留原文，AI 建议未保存。',{exact:true}).waitFor();
@@ -152,10 +178,13 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   const savedChapters=JSON.parse(saveBodies[0].chapters);assert.deepEqual(savedChapters.map(chapter=>chapter.id),['chapter-1','chapter-2'],'the explicit save preserves chapter IDs and order');assert.equal(savedChapters[0].narration,'家人一起沿着湖边散步，留下了这段回忆。','the explicit save preserves unchanged chapter one');assert.equal(savedChapters[1].narration,approvedText,'the explicit save persists only the reviewed second chapter edit');
   assert.deepEqual(savedChapters.map(chapter=>chapter.asset_ids),[['101'],['102']],'the explicit save preserves chapter frame ownership and order');
   assert.equal((await page.locator('#story-approval-status').textContent()).trim(),'','approval status clears after confirmed Save');assert.equal(await page.locator('#story-approval-status').isHidden(),true,'approval status is hidden after confirmed Save');
-  noAutoJob=true;
+  noAutoJob=true;realShelfDraft=false;
   await page.locator('#story-workspace-close').click();await page.locator('#story-workspace').waitFor({state:'hidden'});
   await page.locator('.saved-memory-cover').first().click();await page.locator('#story-reader-chapters').getByRole('button').nth(1).click();await page.locator('#story-reader-text').getByText(approvedText,{exact:true}).waitFor();assert.equal(await page.locator('#story-reader-memory-title').textContent(),originalTitle,'reopening the saved story keeps its original story title');
-  assert.equal(generationPosts(),0);assert.equal(refinementPosts,1);assert.deepEqual(external,[]);assert.deepEqual(pageErrors,[]);assert.ok(jobPolls>=3,'deferred and ready refinement states were both polled');const terminalPollCount=jobPolls;await page.waitForTimeout(3200);assert.equal(jobPolls,terminalPollCount,'polling stops when the job reaches ready');
+  assert.equal(generationPosts(),0);assert.equal(refinementPosts,1);assert.deepEqual(external,[]);assert.deepEqual(pageErrors,[]);
+  assert.equal(jobPolls,2,'deferred and ready refinement states were both polled');
+  assert.equal(requests.filter(row=>row.method==='GET'&&row.path.startsWith(`/memory-community/v1/jobs/${preparedShelf.job_id}?`)).length,2,'both adoption attempts recheck the real ready shelf job');
+  const terminalPollCount=jobPolls;await page.waitForTimeout(3200);assert.equal(jobPolls,terminalPollCount,'polling stops when the job reaches ready');
   await page.locator('#story-reader-close').click();noAutoJob=false;await page.locator('#language').click();await page.waitForFunction(()=>document.documentElement.lang==='en');
   await page.locator('.saved-memory-cover').first().click();await page.waitForFunction(()=>document.querySelector('.story-auto-refinement-status')?.textContent.includes('ready'),null,{timeout:7000});
   await page.locator('#story-reader-edit').click();const englishEditor=page.locator('#story-chapter-editor .story-auto-refinement');await englishEditor.waitFor();await englishEditor.getByRole('button',{name:'Review and bring into the reader'}).click();

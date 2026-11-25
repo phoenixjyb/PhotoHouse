@@ -205,7 +205,7 @@ class MemoryStories:
                        'story': ident, 'revision': str(row['revision']), 'fingerprint': fingerprint}
             return binding, story, people
 
-    def list(self, token, library, page, theme=None):
+    def list(self, token, library, page, theme=None, refinement_hints=False):
         with self.access._transaction():
             member = self.access._require(token, library, 'library.read')
             self._ready()
@@ -222,14 +222,29 @@ class MemoryStories:
                 ORDER BY s.updated_at DESC,s.id DESC LIMIT ? OFFSET ?''',
                 (library, theme, theme, PAGE_SIZE+1, (page-1)*PAGE_SIZE))
             rows = [dict(zip((c[0] for c in rows.description), r)) for r in rows]
+            page_rows = rows[:PAGE_SIZE]
+            prepared = set()
+            if refinement_hints:
+                from .memory_jobs import MemoryJobs
+                editable = [(row['id'], row['revision']) for row in page_rows
+                            if self._can_edit(member, row)]
+                try:
+                    prepared = MemoryJobs(self.access).prepared_refinement_ids(member, library, editable)
+                except TransportError as error:
+                    # The shelf is useful even when the optional companion schema is absent.
+                    if error.status != 503:
+                        raise
             summaries = []
-            for row in rows[:PAGE_SIZE]:
+            for row in page_rows:
                 stored = _json(row['content'])
-                summaries.append({key: stored[key] for key in ('title', 'theme', 'language')} | {
+                summary = {key: stored[key] for key in ('title', 'theme', 'language')} | {
                     'id': row['id'], 'revision': str(row['revision']),
                     'cover_asset_id': stored['asset_ids'][0], 'item_count': len(stored['asset_ids']),
                     'chapter_count': len(stored['chapters']), 'updated_at': row['updated_at'],
-                    'can_edit': self._can_edit(member, row)})
+                    'can_edit': self._can_edit(member, row)}
+                if row['id'] in prepared:
+                    summary['has_refinement_draft'] = True
+                summaries.append(summary)
             return {'library_id': library, 'page': page, 'page_size': PAGE_SIZE,
                 'has_more': len(rows) > PAGE_SIZE, 'can_create': member['role'] in {'owner', 'contributor'},
                 'items': summaries}
@@ -459,8 +474,11 @@ def call(runtime, action, *args, story_refinement_context=None):
 async def list_memories(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library', 'page', 'theme'})
+    refinement_hints = (bool(getattr(request.app.state, 'memory_auto_refinement_enabled', False))
+                        and request.headers.getlist('x-photohouse-story-refinement-hints') == ['1'])
     result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'list', token,
-                                    query['library'], _integer(query.get('page', '1'), 100000), query.get('theme'))
+                                    query['library'], _integer(query.get('page', '1'), 100000),
+                                    query.get('theme'), refinement_hints)
     return JSONResponse(result)
 
 

@@ -628,6 +628,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .saved-memory-copy h4{font:400 1.35rem/1.5 Georgia,"Songti SC",serif;overflow-wrap:anywhere;margin:0 0 .5rem}
 .saved-memory-copy .fine{margin:.4rem 0 .8rem}
 .saved-memory-copy button{min-height:44px}
+.saved-memory-actions{display:flex;flex-wrap:wrap;gap:.5rem}
+.saved-memory-actions button{max-width:100%;white-space:normal}
 #saved-memory-status{color:#786b5d;line-height:1.7}
 #saved-memory-more{margin-top:1rem}
 .story-reader header{gap:1rem;flex-wrap:wrap}
