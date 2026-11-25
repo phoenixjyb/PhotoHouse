@@ -932,7 +932,7 @@
     $('assistant-mic').hidden=active||paused;
     $('assistant-play').disabled=sessionOwnsVoice;
     const managementBlocked=!!assistantStoryHandoff||privateSnapshot?.storySelectionBusy===true||privateAssistantBusy||!!privatePending||sessionOwnsVoice||state.locked||privateSnapshot?.locked===true;
-    for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=managementBlocked;
+    for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-voice-pace','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=managementBlocked;
     syncPrivateThreadPages(privateSnapshot,managementBlocked);
     const presentationPhase=session.phase!=='idle'?session.phase:assistantState.capture||assistantState.captureStarting?'listening':assistantState.transcribing?'transcribing':assistantState.busy||privateAssistantBusy?'requesting':assistantState.activePlayback||assistantState.speechController?'speaking':'idle';
     const microphoneReady=presentationPhase==='listening'&&!!assistantState.capture&&!assistantState.captureStarting;
@@ -1379,6 +1379,8 @@
         assistantState.voicePlayback=owned;audio.addEventListener('ended',owned.onEnded);audio.addEventListener('error',owned.onError);
       }else{manual.playback=playback;manual.onEnded=()=>{if(assistantState.manualPlayback!==manual||assistantState.activePlayback!==playback)return;reportAssistantPlaybackOutcome(playback,'completed');assistantState.activePlayback=null;releaseManual();};manual.onError=()=>{if(assistantState.manualPlayback!==manual||assistantState.activePlayback!==playback)return;reportAssistantPlaybackOutcome(playback,'failed');assistantState.activePlayback=null;releaseManual();};audio.addEventListener('ended',manual.onEnded);audio.addEventListener('error',manual.onError);}
       playback.started=true;assistantState.activePlayback=playback;
+      audio.playbackRate=privateState?.preferences?.voice_pace==='slow' ? 0.85 : 1;
+      if('preservesPitch' in audio)audio.preservesPitch=true;
       await audio.play();
       if(assistantState.activePlayback===playback&&(owned?assistantState.voicePlayback===owned&&currentAssistantVoice(owned.token,owned.binding):assistantState.manualPlayback===manual&&assistantBindingCurrent(binding))){
         playback.playConfirmed=true;syncAssistantControls();
@@ -2477,7 +2479,7 @@
     select.value=selected;
     const voiceActive=assistantState.voiceSession.phase!=='idle';
     const blocked=!!assistantStoryHandoff||snapshot.storySelectionBusy===true||privateAssistantBusy||!!snapshot.pendingTurn||!!snapshot.pendingCreation||voiceActive||state.locked||snapshot.locked;
-    for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=blocked;
+    for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-voice-pace','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=blocked;
     syncPrivateThreadPages(snapshot,blocked);
     const latest=$('assistant-private-continue-latest');
     latest.hidden=!available||state.locked||snapshot.locked||Boolean(selected)||snapshot.threadPage>1||!snapshot.threads.length||Boolean(assistantStoryTarget);
@@ -2510,6 +2512,7 @@
     $('assistant-private-delete').hidden=!selected;
     if(!selected)$('assistant-private-delete-confirm').hidden=true;
     $('assistant-private-locale').value=snapshot.preferences?.locale||'';
+    $('assistant-private-voice-pace').value=snapshot.preferences?.voice_pace||'normal';
     const history=snapshot.historyDetail,refresh=snapshot.historyRefreshRequired===true;
     $('assistant-private-load-older').hidden=!available||!snapshot.capabilities?.history_paging||!history?.has_older_exchanges||refresh;
     $('assistant-private-load-older').disabled=blocked||snapshot.historyLoading===true;
@@ -2522,6 +2525,8 @@
 
   Object.assign(words.zh,{assistantPrivateNewerThreads:'较新的对话',assistantPrivateOlderThreads:'较早的对话',assistantPrivateThreadPage:'第 {page} 页',assistantPrivateThreadsEmpty:'这一页没有对话'});
   Object.assign(words.en,{assistantPrivateNewerThreads:'Newer conversations',assistantPrivateOlderThreads:'Older conversations',assistantPrivateThreadPage:'Page {page}',assistantPrivateThreadsEmpty:'No conversations on this page'});
+  Object.assign(words.zh,{assistantPrivateVoicePace:'语音回复速度',assistantPrivateVoiceNormal:'正常',assistantPrivateVoiceSlow:'稍慢（0.85 倍）'});
+  Object.assign(words.en,{assistantPrivateVoicePace:'Spoken reply speed',assistantPrivateVoiceNormal:'Normal',assistantPrivateVoiceSlow:'Slower (0.85×)'});
   function syncPrivateThreadPages(snapshot,blocked){
     const nav=$('assistant-private-thread-pages'),page=snapshot?.threadPage??1;
     const older=snapshot?.hasOlderThreads===true&&snapshot.threads.length>0,newer=page>1;
@@ -5680,6 +5685,10 @@
       $('assistant-private-abandon-confirm').hidden=true;$('assistant-status').textContent='';await privateAssistant.create();clearPrivateView();await privateAssistant.list();});
   });
   $('assistant-private-locale').addEventListener('change',()=>void privateAssistantAction(()=>privateAssistant.updatePreferences({locale:$('assistant-private-locale').value||null})));
+  $('assistant-private-voice-pace').addEventListener('change',event=>{
+    const voicePace=event.currentTarget.value;
+    if(['normal','slow'].includes(voicePace))void privateAssistantAction(()=>privateAssistant.updatePreferences({voice_pace:voicePace}));
+  });
   $('assistant-private-delete').addEventListener('click',()=>{$('assistant-private-delete-confirm').hidden=false;$('assistant-private-delete-confirm').focus();});
   $('assistant-private-delete-confirm').addEventListener('click',()=>void privateAssistantAction(async()=>{await privateAssistant.delete();clearPrivateView();await privateAssistant.list();}));
   $('assistant-form').addEventListener('submit',event=>{void submitAssistant(event);});

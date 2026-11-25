@@ -39456,6 +39456,44 @@
         }
       ],
       "notes": "Browse older owned conversations with scoped keyset pages and preserve narrow Search controls."
+    },
+    {
+      "feature": "jude-reply-playback-speed-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_TURNS_V1.md",
+          "before_sha256": "0c96c344cea16fa2b7b634de469d727830086d9e56071ca4e6e784c4e57099b9",
+          "sha256": "38eb5abce2a9ed2f7dc7634ccb45d4c8982220cb5fea10adbffef827380a76d2"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "99cf899cfb3b142dd420f428d169708c5436ed2d01c4d5e2c680eb7cbd4299f8",
+          "sha256": "05e73cc97bcbf773ba8b734565a114cea87db1f5b1764bd6a6a07337f48429be"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "7d4efec52e8a5a95f7036363f9c7bef51ae6f560a25c5652169156dc48c939ba",
+          "sha256": "3800ab9b25966cbdb24644501c74c6874933e510589c459f14c2ee0eb07de306"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "78080ebac6b41619c50052b2607b8457bae18ce9f0c12c9615addefff80c8681",
+          "sha256": "f9635784186957b2b02a6de8a2d3a933ecd6682116a8718e206582769b4ba9cc"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "b3916e06a2297c70cf9a82532fbdd1b6c508c07fa8a2eddd0ca5d536abc0d8be",
+          "sha256": "5ec3186c6917d7015cf71efec1a584fbf7c34bf8a9113ca5cb2d4e6de10a9cfa"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "33d79a649f632554caf3309f212c8caced7694d84f6e213054f8eab04d9ec863",
+          "sha256": "3df17a065ec209d3265a18e97bd2818515ef756732a77ba5146868823141642a"
+        }
+      ],
+      "notes": "Apply the account reply speed preference in Jude Web playback."
     }
   ]
 }

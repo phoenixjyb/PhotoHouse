@@ -165,11 +165,15 @@ its operation-specific authorization gate.
 
 ## Personal presentation
 
-The first applied preference is response language (`zh` or `en`). Other stored
-preferences remain visibly unsupported until their presentation adapters exist.
-Capabilities retain the existing boolean fields and may additionally declare
-`applied_preferences`, a list currently limited to `locale`. No preference can
-change library permissions or admit a model/provider.
+The server applies the saved response language (`zh` or `en`) and reports
+`locale` in its optional `applied_preferences` list. Library permissions and
+provider admission follow their existing access checks.
+
+In the Web workspace, **Manage conversations → My assistant preferences →
+Spoken reply speed** saves the account's choice of normal speed or 0.85×.
+The browser applies it when the next Jude reply starts playing and preserves
+pitch where the player supports it. This is a playback setting. Story narration
+uses its reader controls.
 
 ## Acceptance
 

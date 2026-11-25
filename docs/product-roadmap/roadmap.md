@@ -588,6 +588,7 @@ Use an explicit foreground voice session with visible Pause and End controls. / 
 **Implemented / 已实现**
 
 - Windows HTTPS recognition, matching receipt, Search and reply audio passed together. / Windows HTTPS 识别、匹配回执、搜索与回复音频已联合通过。
+- The local Web client lets each account choose normal or slightly slower spoken replies in Jude’s preferences. / 本地网页中，每个账户可在小贾的偏好设置选择正常或稍慢的语音回复速度。
 
 **Gaps / 差距**
 
