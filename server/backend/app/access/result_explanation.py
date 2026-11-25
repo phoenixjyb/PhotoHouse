@@ -50,22 +50,20 @@ def parse_why_result_query(words):
         normalized = normalized[len('请'):].strip()
 
     match = re.fullmatch(
-        r'why (?:the )?(first|second|third|fourth|fifth|[1-9]|10) result',
+        r'why (?:(?:the )?(first|second|third|fourth|fifth|[1-9]|10)|this) (result|photo|video)',
         normalized)
     if match:
-        return {'ordinal': _ordinal(match.group(1)), 'kind': None}
-    match = re.fullmatch(r'why this (result|photo|video)', normalized)
-    if match:
-        kind = {'result': None, 'photo': 'image', 'video': 'video'}[match.group(1)]
-        return {'ordinal': None, 'kind': kind}
+        number, media = match.groups()
+        kind = {'result': None, 'photo': 'image', 'video': 'video'}[media]
+        return {'ordinal': _ordinal(number) if number is not None else None, 'kind': kind}
 
     match = re.fullmatch(
         r'为什么(?:是)?第(10|[1-9]|十|[一二三四五六七八九])'
-        r'((?:项|个|张)?(?:结果)|项|个|张)', normalized)
+        r'((?:项|个|张)?结果|项|个|张(?:照片)?|(?:个|段)视频)', normalized)
     if match:
-        unit = match.group(2)
-        kind = 'image' if unit == '张' else None
-        return {'ordinal': _ordinal(match.group(1)), 'kind': kind}
+        number, media = match.groups()
+        kind = {'张': 'image', '张照片': 'image', '个视频': 'video', '段视频': 'video'}.get(media)
+        return {'ordinal': _ordinal(number), 'kind': kind}
     match = re.fullmatch(r'为什么(?:是)?这(张照片|个视频|个结果)', normalized)
     if match:
         kind = {'张照片': 'image', '个视频': 'video', '个结果': None}[match.group(1)]

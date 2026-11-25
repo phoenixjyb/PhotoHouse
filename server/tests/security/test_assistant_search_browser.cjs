@@ -207,6 +207,55 @@ async function installSyntheticTransport(targetContext){
   assert.equal(turns().length,beforeClear+1);
   await anyPerson.waitFor({state:'detached'});
   checkpoint('Any person preserves the composer draft and clears only the people filter after explicit submission');
+
+  const placeCases=[
+    {language:'en',query:'find Sample Child and Sample Adult photos in Example region in 2026 containing "beach"',
+      button:'Any place',instruction:'anywhere',place:'Example region',caption:'beach',width:1440},
+    {language:'zh',query:'找示例儿童和示例成人在示例地区的照片，2026年，包含"海边"',
+      button:'不限地点',instruction:'不限地点',place:'示例地区',caption:'海边',width:390},
+  ];
+  for(const {language,query,button,instruction,place,caption,width} of placeCases){
+    await page.setViewportSize({width,height:845});
+    if(language==='zh'){
+      const capabilities=page.waitForResponse(r=>new URL(r.url()).pathname==='/assistant/workspace/v1/capabilities'&&r.status()===200);
+      capabilities.catch(()=>{});
+      await page.locator('#language').click();
+      await capabilities;
+      await page.waitForFunction(()=>document.documentElement.lang==='zh-CN'&&!document.querySelector('#assistant-private-new').disabled);
+    }
+    const located=await send(query);
+    assert.equal(located.result.kind,'results',JSON.stringify(located.result));
+    assert.deepEqual(located.result.filters,{
+      media:['image'],date:{from:'2026-01-01',to:'2026-12-31'},
+      people:{ids:['301','302'],match:'all'},locations:['601'],text:caption,
+    });
+    assert.deepEqual(located.result.items.map(item=>item.id),['101']);
+    const searchSummary=page.locator('#assistant-search-summary');
+    const anyPlace=searchSummary.getByRole('button',{name:button,exact:true});
+    await anyPlace.waitFor({timeout:5000});
+    const beforePlace=turns().length;
+    const composer=page.locator('#assistant-text');
+    await composer.fill('My unsent draft');
+    await anyPlace.click();
+    assert.equal(await composer.inputValue(),'My unsent draft');
+    await composer.fill('');
+    await anyPlace.press('Enter');
+    assert.equal(await composer.inputValue(),instruction);
+    assert((await searchSummary.innerText()).includes(place));
+    assert.equal(turns().length,beforePlace,'preparing the place change sends no turn');
+    await anyPlace.scrollIntoViewIfNeeded();
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+    await page.screenshot({path:path.join(artifacts,'any-place-'+language+'.png'),fullPage:false});
+    const updated=await submit();
+    const {locations,...expected}=located.result.filters;
+    assert.deepEqual(updated.result.filters,expected);
+    assert.deepEqual(updated.result.items.map(item=>item.id).sort(),['101','102']);
+    assert.equal(updated.result.effect,null);
+    assert.equal(turns().length,beforePlace+1);
+    await anyPlace.waitFor({state:'detached'});
+    assert(!(await searchSummary.innerText()).includes(place));
+  }
+  checkpoint('English and Chinese place controls preserve drafts and clear only place after Send');
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);
   fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,pageErrors,blockedOrigins,syntheticBackend:true,externalRequests:0,timings,timing_scope:'Generated ASGI bridge + browser click-to-render; not native or provider latency'},null,2));
   console.log(`Search browser checks: ${checkpoints.length} passed. Artifacts: ${artifacts}`);

@@ -38703,6 +38703,60 @@
         }
       ],
       "notes": "Records the deployed Windows Search fix, verified follow-ups, deferred grouping refresh and a later successful intake run in the bilingual roadmap and audit."
+    },
+    {
+      "feature": "jude-explicit-bilingual-place-filter-removal",
+      "source_commit": "faf3cc5b8ed476203efdb34ec264ade0c812b8ab",
+      "files": [
+        {
+          "path": "docs/ASSISTANT_JOINT_SEARCH_V2.md",
+          "before_sha256": "b9bf44be7742d7a0a130740f527cd9994b49d709afa642e5c8a459c1c7c3a5fb",
+          "sha256": "d98e47fa393346e59cccf69f6a39489c38c482c2922fedc7cacb2d223132078c"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "89da7b9e8da2df1b496b80be1b9583c939caf7a0aaa9553be30619944bf72e0e",
+          "sha256": "4b3bed256bedc84264da131cc61fe869bdb2be5504a06158fa55802cd782213e"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "ef39b135fe7de11d54f083b5ac65e6d28e5989ac62029732107096c2f508b31d",
+          "sha256": "831d65b5016d0fe845dd0afc7be3699577a69272e317d2528d08142e1cf9efda"
+        },
+        {
+          "path": "server/tests/security/test_assistant_search_browser.cjs",
+          "before_sha256": "4202aeb80bb0507866092a7c0776798eefa9461bde30cd40070563d8bb690ea5",
+          "sha256": "7f9a94de7b69ba1dd780dee18823c950002fc083652b71ee20fa7f6cba9b5555"
+        }
+      ],
+      "notes": "Place removal uses the existing authorized Search refinement and requires explicit submission. Local Search refinement passed 37 tests and 172 subtests. Generated Chromium Search, scene and local-agent browser suites passed."
+    },
+    {
+      "feature": "jude-bilingual-typed-result-explanations",
+      "source_commit": "a3734feb0ae1445d01818fae32e70968a6e9807c",
+      "files": [
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "79f7dc362e7b52e81b2df56b5e2e975eed621404bf3ee423a7003b0b51690b05",
+          "sha256": "4533bac6fa0a1731f958dd04f27d0514080db3ae8b0f32535e3dd7accdad3fe0"
+        },
+        {
+          "path": "server/backend/app/access/result_explanation.py",
+          "before_sha256": "cbe25cf01561b322e4464075b711cd2714a04916b5d3de40a01d4cbb61a9a8db",
+          "sha256": "2036547d56eddf9b02c556dad246d9d6bba27a04ac46585c81e905b2ca4d990d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_result_explanation.py",
+          "before_sha256": "05c75129006fda8096c72446ce97fc11e162c82e9562122a2f7cfd9d5f3dfac9",
+          "sha256": "c01959e9c2ee8d30b3639d3622868991420043375d27ec8470fb8f9352ff880a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "b9106da2f3c150572aed99b466f15420fa0c26f53fc9c775d4a63dd62ac00e74",
+          "sha256": "0559a3e8011cd259fb14168093a87158eba8089c64217ed1c3b2d75df07b42c4"
+        }
+      ],
+      "notes": "Bilingual requests explain the numbered photo or video in the authorized current result list. Local explanation and current-result suites passed 21 tests and 20 subtests. The generated browser completed the explanation, frame selection, story review, save and reopen."
     }
   ]
 }
