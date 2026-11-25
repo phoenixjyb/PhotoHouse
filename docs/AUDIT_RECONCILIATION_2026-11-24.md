@@ -114,7 +114,7 @@ using the same trusted HTTPS address on the home network.
 | Audit item | Verified work | Remaining product or release work |
 | --- | --- | --- |
 | PH-001 source integration | The November integration, Search-to-story ordering, and fullscreen viewer are on main. | Preserve the historical qualification and failed-scene drafts as separate evidence. |
-| PH-002 Search reliability | Generated English, Chinese, and mixed-language turns retain the intended month and media. A follow-up can explicitly keep reviewed people while changing the month or media, and the Web can prepare a date or people filter removal for explicit Send. The server clarifies references to people when no filter is selected. Ordinary Search stays available while the optional saved-memory prompt check is delayed. | Native multi-turn acceptance and representative cold and warm request timings. |
+| PH-002 Search reliability | Generated English, Chinese, and mixed-language turns retain the intended month and media. A follow-up can explicitly keep reviewed people while changing the month or media, and the Web can prepare a date or people filter removal for explicit Send. The server clarifies references to people when no filter is selected. Ordinary Search stays available while the optional saved-memory prompt check is delayed. A live November 25 Windows Search confirmed both date and media follow-ups after the row-limit fix. | Broader household multi-turn acceptance and representative cold and warm request timings. |
 | PH-003 relevance | The generated scorecard separates ranking, hard filters, confirmed empty results, and clarification. A returned total above the complete allowed set fails the filter. An empty semantic page with unindexed matches is inconclusive, as verified through the negotiated English and Chinese workspace turns. | Reviewed family labels, whole-library coverage, and native quality and latency. |
 | PH-004 story integration | One generated Web journey goes from a refined Jude search and ordered picks across result pages to chapter arrangement, explicit family evidence, proposal review, save and reopen. A separate journey checks current Jude selection recovery. Phone and TV debug checks ran offline. | Combined installed-client journeys and physical review. |
 | PH-005 Web responsiveness | The viewer requests descriptions when you expand their panel. A generated browser verified that a collapsed panel sends no description request, you can retry while the photo is visible, and closing or changing photos discards a late response. Thumbnail placeholders keep their shape and adjacent viewer steps retain the same authorized filmstrip images. The Web library selector requests labels and permissions without counting each library. | Matched scrolling and video-start measurements on representative devices. |
@@ -210,7 +210,15 @@ When the reviewed source fits and the supplemental captions or photo notes
 exceed the row allowance, Search v2/v3 can still use the reviewed filters. It
 clarifies requests that need unavailable caption, note or scene-description
 matches. A saved search from a complete text projection must be restarted if
-that projection no longer fits. Native Windows testing remains open.
+that projection no longer fits.
+
+The November 25 Windows deployment passed a live HTTPS date search and two
+follow-ups. Changing the media type preserved the date, and changing the month
+preserved the media type. The 100,000-asset result above is from the generated
+fixture. Broader household relevance and Windows timings remain open. Existing
+groups were visible, while the scheduled grouping refresh returned
+`REFRESH_DEFERRED` with zero updates. After one HTTP 503, a later scheduled
+Family intake run succeeded with the same task definition.
 
 ### Generated photo-viewer timing
 

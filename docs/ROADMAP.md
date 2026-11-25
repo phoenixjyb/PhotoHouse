@@ -8,10 +8,10 @@ The bilingual snapshot separates recorded delivery, source-ready work, gaps and 
 双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows route: `/roadmap/` (deployment is tracked separately).
 
 
-Reviewed **2026-11-24** against the current source tree. This is a product plan,
-not a live service check. Use [Project Status](PROJECT_STATUS.md) and the dated
-[release record](RELEASE_2026-10-29.md) for delivery evidence; older entries in
-this file retain the date and scope of their original evidence.
+Reviewed **2026-11-25** against current source and recorded Windows results.
+Use [Project Status](PROJECT_STATUS.md) and the dated
+[release record](RELEASE_2026-10-29.md) for delivery evidence. Older entries
+retain the date and scope of their original evidence.
 
 ## Current capability and evidence
 
@@ -57,12 +57,19 @@ this file retain the date and scope of their original evidence.
   controller cleanup, offline audit and explicit release completed after recovery
   of a lost transport response. No service replay was needed to recover that result.
 
-The scheduled grouping binding also passed a natural SYSTEM run. Its actual
-status was `REFRESH_DEFERRED`, with zero updates: this verifies the source/owner
-binding and native closure, not a complete grouping sweep or household quality.
-Current API/UI recovery does not establish new Android/TV delivery. GitHub
-Actions remains cost-paused; all new checks are local or separately recorded
-Windows operations.
+- **Windows Search:** the November 25 fix preserves structured filters when
+  supplemental text exceeds the row allowance. A live HTTPS date search kept its
+  date when the media type changed and kept its media type when the month changed.
+  The 100,000-asset stress check used generated data.
+  [Audit evidence](AUDIT_RECONCILIATION_2026-11-24.md#generated-search-request-timing).
+- **Grouping and automatic importing:** existing groups were visible after the
+  Search rollout. The scheduled SYSTEM refresh returned `REFRESH_DEFERRED` with
+  zero updates. A complete refresh on this build remains open. A scheduled
+  Family intake run succeeded after an earlier HTTP 503 with the same task
+  definition.
+
+Installed Android and TV clients still need separate acceptance. GitHub
+Actions remains cost-paused.
 
 Search relevance on real household material, story quality, and in-home
 interaction need family review. Generated fixtures establish software behavior,

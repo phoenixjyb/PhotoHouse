@@ -5,7 +5,7 @@
 
 Reviewed integration record / 部署与集成回顾记录
 
-Windows delivery records cover the bilingual roadmap and fullscreen viewer. Later audit changes have local API, browser and Android emulator evidence. Household use, native Search relevance and installed-client checks are still open. / 双语路线图与全屏浏览器已有 Windows 交付记录。之后的审计改进已有本地 API、浏览器及 Android 模拟器验证。家庭实际使用、本机搜索相关性和已安装客户端仍待验收。
+Windows delivery records cover the bilingual roadmap, fullscreen viewer and the 25 November Search fix. A live date search preserved filters through two follow-ups. Newer Web improvements await release. Broader Search relevance, story quality and household device checks remain open. / 双语路线图、全屏浏览器和 11 月 25 日的搜索修复已有 Windows 交付记录。真实日期搜索在两轮追问中保留了相应筛选条件。较新的网页改进仍待发布，更全面的搜索相关性、故事质量和家庭设备验证仍待完成。
 
 This is a dated product record, not a live health check. / 这是有日期的产品记录，不是实时健康检查。
 
@@ -108,11 +108,12 @@ A watched Family drop imports eligible media without duplicate retries. / 家庭
 
 **Delivery / 交付背景:** Automatic importing was completed in the November Family intake rollout and confirmed by the owner. / 11 月家庭导入部署已完成，所有者确认自动导入可用。
 
-**Acceptance / 验收背景:** This records the completed pilot and rollout, not continuous monitoring. / 此处记录已完成的试点与部署，不代表持续监控。
+**Acceptance / 验收背景:** One scheduled run returned HTTP 503. A later run succeeded with the same task definition. / 一次定时运行返回 HTTP 503，之后在定时任务定义未修改的情况下成功运行。
 
 **Evidence record / 证据记录**
 
 - 2026-11-22 · Family intake delivery and owner confirmation / 家庭导入交付与所有者确认
+- 2026-11-25 · Successful scheduled run after an HTTP 503 / HTTP 503 后定时导入运行成功
 
 <a id="caption-processing"></a>
 
@@ -178,6 +179,7 @@ Find authorized media by supported people, dates, places, type and indexed text.
 **Implemented / 已实现**
 
 - Search API, Web results and bounded filter translation are implemented. / 已实现搜索 API、网页结果和有边界的条件转换。
+- When reviewed metadata fits the row limit and supplementary captions or notes exceed it, structured filters still work. Search asks for clarification when the request needs the unavailable text. / 当已核对的元数据符合行数上限，而补充说明或照片留言超出上限时，结构化筛选仍可使用。如果查询需要当前不可用的文字，搜索会请用户澄清。
 
 **Gaps / 差距**
 
@@ -185,13 +187,14 @@ Find authorized media by supported people, dates, places, type and indexed text.
 
 **Next / 下一步:** Show applied conditions, ask one useful clarification and preserve earlier constraints. / 展示已生效条件，提出有用的澄清问题，并保留前文约束。
 
-**Delivery / 交付背景:** Windows Search is delivered; the newest optional Rust reuse path is not yet activated. / Windows 搜索已有交付；最新可选 Rust 复用路径尚未启用。
+**Delivery / 交付背景:** The 25 November Windows release includes the structured Search row-limit fix. / 11 月 25 日的 Windows 发布已包含结构化搜索的行数上限修复。
 
-**Acceptance / 验收背景:** Representative family relevance still requires household review. / 代表性家庭查询的相关性仍需家庭成员评价。
+**Acceptance / 验收背景:** The fix passed a generated 100,000-asset scenario and a live Windows date search with two follow-ups. Representative family relevance still needs review. / 修复通过了 10 万项合成素材场景，以及 Windows 上真实日期搜索和两轮追问的验证。代表性家庭查询的相关性仍需评价。
 
 **Evidence record / 证据记录**
 
 - 2026-11-23 · FEATURES.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md / FEATURES.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md
+- 2026-11-25 · Live date and media filters across follow-ups / 真实搜索验证跨轮次保留日期和媒体类型
 
 <a id="semantic-search"></a>
 
@@ -291,13 +294,14 @@ Refine a search across turns instead of repeatedly starting over. / 跨轮次细
 
 **Next / 下一步:** Qualify the find, clarify, narrow and open journey on approved household devices with visible filters. / 在获准的家庭设备上验证查找、澄清、缩小范围和打开结果的完整流程，保持筛选条件可见。
 
-**Delivery / 交付背景:** Local generated journeys passed. Native relevance and device acceptance remain open. / 本地合成流程已通过。本机搜索相关性和设备验收仍待完成。
+**Delivery / 交付背景:** A live Windows search kept the date when media type changed and kept the media type when the month changed. Broader relevance and device acceptance remain open. / Windows 真实搜索在更改媒体类型时保留了日期条件，在更改月份时保留了媒体类型。更全面的相关性与设备验收仍待完成。
 
 **Acceptance / 验收背景:** Test with real user phrasing without hardcoding a demonstration. / 使用真实用户表达进行验证，不硬编码演示答案。
 
 **Evidence record / 证据记录**
 
 - 2026-11-25 · Audit reconciliation · generated Search journeys / 审计对照记录 · 合成搜索流程
+- 2026-11-25 · Live Windows date search with two follow-ups / Windows 真实日期搜索与两轮追问
 
 <a id="search-result-handoff"></a>
 
@@ -362,7 +366,7 @@ Refresh persistent visual grouping through the existing scheduled worker. / 通�
 **Implemented / 已实现**
 
 - Windows grouping worker and recurring refresh have prior accepted runs. / Windows 分组工作进程与定时刷新已有验收通过的运行记录。
-- The current API/task binding passed an actual SYSTEM natural-run check on 24 November, with the native Job drained and closed. / 11 月 24 日已在 SYSTEM 自然触发运行中验证当前 API／任务绑定，原生作业已排空并关闭。
+- The 24 November API/task binding passed a scheduled SYSTEM run with the native job drained and closed. / 11 月 24 日的 API／任务绑定通过了 SYSTEM 定时运行验证，原生作业已排空并关闭。
 
 **Gaps / 差距**
 
@@ -370,13 +374,14 @@ Refresh persistent visual grouping through the existing scheduled worker. / 通�
 
 **Next / 下一步:** Review actual groups and address concrete deferred or incomplete refresh cases within the existing resource budgets. / 检查实际分组，并在现有资源预算内解决具体的暂缓或未完成刷新情形。
 
-**Delivery / 交付背景:** A recorded 24 November run returned REFRESH_DEFERRED with no updates. Binding acceptance does not turn that result into a completed sweep. / 11 月 24 日的一次记录返回 REFRESH_DEFERRED，未更新分组。版本绑定验收通过并不代表该次扫描已完成。
+**Delivery / 交付背景:** Existing groups were visible after the 25 November Search rollout. The scheduled worker returned REFRESH_DEFERRED with zero updates. A completed sweep on that build remains open. / 11 月 25 日搜索发布后，已有分组仍可查看。定时任务返回 REFRESH_DEFERRED，未更新分组。此版本的完整扫描仍待完成。
 
 **Acceptance / 验收背景:** Task binding, completed cache refresh and household grouping quality are separate outcomes. / 任务版本绑定、缓存刷新完成与家庭分组质量是不同成果。
 
 **Evidence record / 证据记录**
 
 - 2026-11-24 · LIBRARY_PHOTO_STACKS.md · Windows deployment reconciliation / LIBRARY_PHOTO_STACKS.md · Windows 部署衔接记录
+- 2026-11-25 · Groups visible after Search rollout, sweep deferred / 搜索发布后分组仍可查看，完整扫描暂缓
 
 <a id="activity-memory-grouping"></a>
 
