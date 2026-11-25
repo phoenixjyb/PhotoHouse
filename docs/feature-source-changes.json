@@ -38676,6 +38676,33 @@
         }
       ],
       "notes": "Keep reviewed filters usable at the supplemental text row limit. Clarify unsupported text conditions and bind complete and limited projections separately. The generated 100,000-asset Search conversation completed all three turns under the same bounds."
+    },
+    {
+      "feature": "november25-windows-search-roadmap-evidence",
+      "source_commit": "3ade704240a8be543ed47b803c95e75fc7d8ce4c",
+      "files": [
+        {
+          "path": "docs/AUDIT_RECONCILIATION_2026-11-24.md",
+          "before_sha256": "de543e76e1e570e54566a96143b4e511a2777ca20adc7637a3c59982911d1c98",
+          "sha256": "41212f6e26da6b91297b52a8b35dfa7ef7a3a809421b5884de0084d650b80146"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "58d0048eb46d1442a330c54b5a449e0793bf07f013fcb88d6526bb95bb9cc10c",
+          "sha256": "dc2d49cb2b8699582b4c44199a484e07181d8dec1ab6426c93162363307a0d6e"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "41b00f9a30842f58f738d22196a29a45860d04960b951f71b13c92b625032719",
+          "sha256": "859271e72990ce963068e91c355085c8625a1fa2797dced455ddaaefaa1786e8"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "c7416a700838cd0f0838c47076fcfe9e875fa5e0b3a7ad143d9d0dd3d9aa8941",
+          "sha256": "86ab3cebbfd30f784a0a2ae71977680e4cbac2d3856291a93460c7f263628f2a"
+        }
+      ],
+      "notes": "Records the deployed Windows Search fix, verified follow-ups, deferred grouping refresh and a later successful intake run in the bilingual roadmap and audit."
     }
   ]
 }
