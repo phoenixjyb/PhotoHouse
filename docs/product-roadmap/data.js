@@ -13,8 +13,8 @@ window.PHOTOHOUSE_ROADMAP = {
       "zh": "部署与集成回顾记录"
     },
     "body": {
-      "en": "Windows delivery records cover the bilingual roadmap and fullscreen viewer. Later audit changes have local API, browser and Android emulator evidence. Household use, native Search relevance and installed-client checks are still open.",
-      "zh": "双语路线图与全屏浏览器已有 Windows 交付记录。之后的审计改进已有本地 API、浏览器及 Android 模拟器验证。家庭实际使用、本机搜索相关性和已安装客户端仍待验收。"
+      "en": "Windows delivery records cover the bilingual roadmap, fullscreen viewer and the 25 November Search fix. A live date search preserved filters through two follow-ups. Newer Web improvements await release. Broader Search relevance, story quality and household device checks remain open.",
+      "zh": "双语路线图、全屏浏览器和 11 月 25 日的搜索修复已有 Windows 交付记录。真实日期搜索在两轮追问中保留了相应筛选条件。较新的网页改进仍待发布，更全面的搜索相关性、故事质量和家庭设备验证仍待完成。"
     }
   },
   "areas": [
@@ -297,8 +297,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "11 月家庭导入部署已完成，所有者确认自动导入可用。"
       },
       "acceptance_note": {
-        "en": "This records the completed pilot and rollout, not continuous monitoring.",
-        "zh": "此处记录已完成的试点与部署，不代表持续监控。"
+        "en": "One scheduled run returned HTTP 503. A later run succeeded with the same task definition.",
+        "zh": "一次定时运行返回 HTTP 503，之后在定时任务定义未修改的情况下成功运行。"
       },
       "evidence": [
         {
@@ -308,6 +308,15 @@ window.PHOTOHOUSE_ROADMAP = {
             "zh": "家庭导入交付与所有者确认"
           },
           "at": "2026-11-22",
+          "state": "verified"
+        },
+        {
+          "kind": "windows",
+          "label": {
+            "en": "Successful scheduled run after an HTTP 503",
+            "zh": "HTTP 503 后定时导入运行成功"
+          },
+          "at": "2026-11-25",
           "state": "verified"
         }
       ]
@@ -431,6 +440,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Search API, Web results and bounded filter translation are implemented.",
           "zh": "已实现搜索 API、网页结果和有边界的条件转换。"
+        },
+        {
+          "en": "When reviewed metadata fits the row limit and supplementary captions or notes exceed it, structured filters still work. Search asks for clarification when the request needs the unavailable text.",
+          "zh": "当已核对的元数据符合行数上限，而补充说明或照片留言超出上限时，结构化筛选仍可使用。如果查询需要当前不可用的文字，搜索会请用户澄清。"
         }
       ],
       "gaps": [
@@ -444,12 +457,12 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "展示已生效条件，提出有用的澄清问题，并保留前文约束。"
       },
       "delivery_note": {
-        "en": "Windows Search is delivered; the newest optional Rust reuse path is not yet activated.",
-        "zh": "Windows 搜索已有交付；最新可选 Rust 复用路径尚未启用。"
+        "en": "The 25 November Windows release includes the structured Search row-limit fix.",
+        "zh": "11 月 25 日的 Windows 发布已包含结构化搜索的行数上限修复。"
       },
       "acceptance_note": {
-        "en": "Representative family relevance still requires household review.",
-        "zh": "代表性家庭查询的相关性仍需家庭成员评价。"
+        "en": "The fix passed a generated 100,000-asset scenario and a live Windows date search with two follow-ups. Representative family relevance still needs review.",
+        "zh": "修复通过了 10 万项合成素材场景，以及 Windows 上真实日期搜索和两轮追问的验证。代表性家庭查询的相关性仍需评价。"
       },
       "evidence": [
         {
@@ -459,6 +472,15 @@ window.PHOTOHOUSE_ROADMAP = {
             "zh": "FEATURES.md · SEARCH_FUNCTIONAL_ACCEPTANCE.md"
           },
           "at": "2026-11-23",
+          "state": "verified"
+        },
+        {
+          "kind": "windows",
+          "label": {
+            "en": "Live date and media filters across follow-ups",
+            "zh": "真实搜索验证跨轮次保留日期和媒体类型"
+          },
+          "at": "2026-11-25",
           "state": "verified"
         }
       ]
@@ -653,8 +675,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "在获准的家庭设备上验证查找、澄清、缩小范围和打开结果的完整流程，保持筛选条件可见。"
       },
       "delivery_note": {
-        "en": "Local generated journeys passed. Native relevance and device acceptance remain open.",
-        "zh": "本地合成流程已通过。本机搜索相关性和设备验收仍待完成。"
+        "en": "A live Windows search kept the date when media type changed and kept the media type when the month changed. Broader relevance and device acceptance remain open.",
+        "zh": "Windows 真实搜索在更改媒体类型时保留了日期条件，在更改月份时保留了媒体类型。更全面的相关性与设备验收仍待完成。"
       },
       "acceptance_note": {
         "en": "Test with real user phrasing without hardcoding a demonstration.",
@@ -669,6 +691,15 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-25",
           "state": "partial"
+        },
+        {
+          "kind": "windows",
+          "label": {
+            "en": "Live Windows date search with two follow-ups",
+            "zh": "Windows 真实日期搜索与两轮追问"
+          },
+          "at": "2026-11-25",
+          "state": "verified"
         }
       ]
     },
@@ -789,8 +820,8 @@ window.PHOTOHOUSE_ROADMAP = {
           "zh": "Windows 分组工作进程与定时刷新已有验收通过的运行记录。"
         },
         {
-          "en": "The current API/task binding passed an actual SYSTEM natural-run check on 24 November, with the native Job drained and closed.",
-          "zh": "11 月 24 日已在 SYSTEM 自然触发运行中验证当前 API／任务绑定，原生作业已排空并关闭。"
+          "en": "The 24 November API/task binding passed a scheduled SYSTEM run with the native job drained and closed.",
+          "zh": "11 月 24 日的 API／任务绑定通过了 SYSTEM 定时运行验证，原生作业已排空并关闭。"
         }
       ],
       "gaps": [
@@ -804,8 +835,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "检查实际分组，并在现有资源预算内解决具体的暂缓或未完成刷新情形。"
       },
       "delivery_note": {
-        "en": "A recorded 24 November run returned REFRESH_DEFERRED with no updates. Binding acceptance does not turn that result into a completed sweep.",
-        "zh": "11 月 24 日的一次记录返回 REFRESH_DEFERRED，未更新分组。版本绑定验收通过并不代表该次扫描已完成。"
+        "en": "Existing groups were visible after the 25 November Search rollout. The scheduled worker returned REFRESH_DEFERRED with zero updates. A completed sweep on that build remains open.",
+        "zh": "11 月 25 日搜索发布后，已有分组仍可查看。定时任务返回 REFRESH_DEFERRED，未更新分组。此版本的完整扫描仍待完成。"
       },
       "acceptance_note": {
         "en": "Task binding, completed cache refresh and household grouping quality are separate outcomes.",
@@ -819,6 +850,15 @@ window.PHOTOHOUSE_ROADMAP = {
             "zh": "LIBRARY_PHOTO_STACKS.md · Windows 部署衔接记录"
           },
           "at": "2026-11-24",
+          "state": "partial"
+        },
+        {
+          "kind": "windows",
+          "label": {
+            "en": "Groups visible after Search rollout, sweep deferred",
+            "zh": "搜索发布后分组仍可查看，完整扫描暂缓"
+          },
+          "at": "2026-11-25",
           "state": "partial"
         }
       ]
