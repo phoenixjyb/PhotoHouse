@@ -486,6 +486,7 @@ Use approved household context and role-specific local inference to resolve name
 **Implemented / 已实现**
 
 - Grounding and separated story-role source work are prepared. / 姓名依据与独立故事角色源码已准备。
+- Two exact spellings reviewed for the same person can resolve to one canonical name. A known alias belonging to a different person keeps the ambiguous phrase available for review. / 同一人的两种已审阅写法可统一为一个规范名。若别名属于另一位已登记人物，会保留原有歧义片段供审阅。
 
 **Gaps / 差距**
 

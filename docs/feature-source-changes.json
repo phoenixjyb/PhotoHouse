@@ -39826,6 +39826,34 @@
         }
       ],
       "notes": "Search current-library private conversation labels independently of the active thread and original assistant work."
+    },
+    {
+      "feature": "prefer-reviewed-alias-ownership",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "1d21b83776646c2fb687f459ba4ba1fc9deade6cd960f333b4e9cf0b61d791e1",
+          "sha256": "e7e9d70a0afb60c03491f89127da70d0f4e75ec6ac202149da576792c8cee9fb"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "4413f2c76f378694b0025bf6bb8922bd3b9a6f362e5172288df0ffbf2c806673",
+          "sha256": "931d5f216572c4b3ecf96a37598f335ff065f0e02a0901914d3e1d99f3977170"
+        },
+        {
+          "path": "server/backend/app/access/story_name_grounding.py",
+          "before_sha256": "e85bae4ea1d10475287f9cc7dfd326c2038794bcf7af037bd022adb78a28f01a",
+          "sha256": "16ad04cb3cbe69c8c3308c0f38d1bc68c97630e27d79f36bade9d7b362ef5f8f"
+        },
+        {
+          "path": "server/tests/security/test_story_name_grounding.py",
+          "before_sha256": "b8acf2a9c7bce91a70a6d4660009a16dcfb9ac9f653453e4c7349c005d524c68",
+          "sha256": "4eee55f5fe761ced07e1cf47f691b0afaf43e85e59a4739bed96cf4fa5ecba34"
+        }
+      ],
+      "notes": "Use exact reviewed ownership before phonetic name repair and keep conflicting name phrases for review."
     }
   ]
 }

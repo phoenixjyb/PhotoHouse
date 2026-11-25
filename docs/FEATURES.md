@@ -103,6 +103,9 @@ checks and Windows delivery evidence.
 - **Manage conversations** can find an older private thread by the visible
   label derived from its first question. Submitting the search keeps the
   active conversation and its unsent message in place.
+- Story name grounding can use two exact reviewed spellings of the same
+  person to produce a single canonical name. If a spelling belongs to a
+  different reviewed person, the ambiguous phrase is kept for review.
 
 ## Earlier capability snapshot (historical)
 
