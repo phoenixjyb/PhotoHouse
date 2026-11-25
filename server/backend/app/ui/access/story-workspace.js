@@ -185,6 +185,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.en,{storyDraftHeading:'Prepare a story from selected sources',storyDraftHelp:'Uses only selected frames and sources checked for each chapter. AI wording goes into chapter bodies; you keep control of the story and chapter titles. Review it before saving.',storyDraftDirection:'Writing direction (optional)',storyDraftUseDirection:'Use my latest assistant-chat message as a starting point',storyDraftDirectionKept:'Copied into writing direction; you can edit it.',storyDraftDirectionNoOverwrite:'Clear the writing direction before using your assistant-chat message. Existing text was kept.',storyDraftPrepare:'Prepare story draft',storyDraftCancel:'Cancel and clear generated wording',storyDraftRetry:'Retry the same request',storyDraftReview:'I reviewed the AI draft, chapters and citations',storyDraftAIProse:'AI-generated wording · pending review',storyDraftOriginal:'View original wording',storyDraftOriginalEmpty:'The original chapter has no wording.',storyDraftQuestions:'AI questions to help recall · review these',sourceFamilyNote:'Family note',sourceAICaption:'AI caption',sourceFamilyEditedCaption:'Family-edited caption',storyDraftNeedSources:'Opt in to source review first, then choose sources per chapter. Choices may be empty.',storyDraftWorking:'Preparing the story draft…',storyDraftReady:'The AI draft is in the chapter fields. Review the wording and citations.',storyDraftReviewRequired:'Check the review box before explicitly saving.',storyDraftExpired:'The AI draft expired and was cleared; your earlier wording was restored.',storyDraftCancelled:'The generated draft was cleared; your earlier wording was restored.',storyDraftFailed:'The draft could not be prepared. Existing chapter wording is preserved.',storyDraftConflict:'Selected sources or story revision changed. Refresh and review sources before preparing again.',storyDraftCitation:'Cited source',storyDraftExpiry:'Draft expires',storyDraftUnavailable:'Story draft preparation is unavailable.',storyDraftNoFallback:'No automatic provider switch or retry will occur.'});
   labels.zh.storyDraftWordsKept='各章保留了原有文字。';
   labels.en.storyDraftWordsKept='Your chapters kept their original wording.';
+  labels.zh.storyDraftKeepChapter='保留本章原文';
+  labels.en.storyDraftKeepChapter='Keep this chapter’s original wording';
   function clearDraftExpiry(){if(draftPreparation.expiresTimer){clearTimeout(draftPreparation.expiresTimer);draftPreparation.expiresTimer=null;}}
   function draftProposalFingerprint(){
     if(!draftPreparation.proposal||!draft)return null;
@@ -1169,6 +1171,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(titleView)titleView.action.disabled=frozen()||sourceRefreshPending||sourceRefreshRequired||(sourceRefreshNeedsAcknowledgement&&!sourceRefreshAcknowledged)||titleComposing||titleView.busy;
     for(const el of $('story-chapter-editor').querySelectorAll('input,textarea'))el.disabled=frozen();
     for(const button of $('story-chapter-editor').querySelectorAll('.story-dictation-record'))button.disabled=frozen()||sourceRefreshPending||dictationPending();
+    for(const button of $('story-chapter-editor').querySelectorAll('.story-draft-keep-original'))button.disabled=frozen()||sourceRefreshPending;
     $('story-save-memory').hidden=!canCreate && !draft?.can_edit;
     const reviewRequired=Boolean(draftPreparation.proposal&&!pendingSave&&(draftProposalFingerprint()!==draftPreparation.reviewedFingerprint||!$('story-draft-preparation')?.querySelector('.story-draft-reviewed')?.checked));
     $('story-save-memory').disabled=busy||localBusy||Boolean(draftPreparation.pending)||localReviewRequired||sourceRefreshPending||sourceRefreshRequired||(sourceRefreshNeedsAcknowledgement&&!sourceRefreshAcknowledged)||readOnly()||!draft||reviewRequired;
@@ -1581,11 +1584,23 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         const find=button(text('findFramesForChapter'),event=>findMoreFrames(event,c),'quiet story-chapter-find-frames');
         find.dataset.chapterId=c.id;find.setAttribute('aria-haspopup','dialog');section.append(find);
       }
-      const original=draftPreparation.proposal?.original.get(c.id);
+      const proposal=draftPreparation.proposal,original=proposal?.original.get(c.id);
       if(original!==undefined){
         const origin=node('p',text('storyDraftAIProse'),'story-draft-prose-origin');origin.dataset.storyWord='storyDraftAIProse';section.append(origin);
         const comparison=node('details',undefined,'story-draft-original'),summary=node('summary',text('storyDraftOriginal'));
-        comparison.append(summary,node('p',original||text('storyDraftOriginalEmpty'),'story-draft-original-text'));section.append(comparison);
+        const keep=button(text('storyDraftKeepChapter'),()=>{
+          if(!current(renderedTicket,renderedOwner)||draft!==renderedStory||draftPreparation.proposal!==proposal||
+            !$('story-workspace').open||!keep.isConnected||frozen()||sourceRefreshPending||titleComposing||!dictationGuard())return;
+          c.narration=original;
+          proposal.original.delete(c.id);
+          dirty=true;downloaded=false;
+          invalidateTitles();
+          draftPreparation.reviewedFingerprint=null;
+          if(!proposal.original.size)clearDraftProposal('storyDraftWordsKept',false,false);
+          renderEditor(true);
+          Array.from(root.querySelectorAll('.story-chapter-card')).find(card=>card.dataset.chapterId===c.id)?.querySelector('textarea')?.focus();
+        },'quiet story-draft-keep-original');
+        comparison.append(summary,node('p',original||text('storyDraftOriginalEmpty'),'story-draft-original-text'),keep);section.append(comparison);
       }
       const bodyLabel=node('label',text('narration')),body=node('textarea');body.value=c.narration;body.maxLength=6000;body.rows=5;
       if(guideCurrent())body.placeholder=text('guideNarrativePlaceholder');
@@ -1657,7 +1672,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       if(draftPreparation.proposal.questions.length){const questions=node('section',undefined,'story-draft-questions');questions.append(node('h4',text('storyDraftQuestions')));for(const question of draftPreparation.proposal.questions)questions.append(node('p',question));panel.append(questions);}
       const expiry=node('p',`${text('storyDraftExpiry')}: ${new Date(draftPreparation.proposal.expires_at).toLocaleString(scope().language==='en'?'en':'zh-CN')}`,'fine');panel.append(expiry);
       const citations=node('div',undefined,'story-draft-citations');citations.className='story-draft-citations';
-      for(const proposed of draftPreparation.proposal.chapters){const chapterRecord=story.chapters.find(c=>c.id===proposed.id);if(!chapterRecord)continue;const group=node('details',undefined,'story-draft-citation-group');group.append(node('summary',`${text('storyDraftCitation')} · ${chapterRecord.title}`));
+      for(const proposed of draftPreparation.proposal.chapters){
+        if(!draftPreparation.proposal.original.has(proposed.id))continue;
+        const chapterRecord=story.chapters.find(c=>c.id===proposed.id);if(!chapterRecord)continue;const group=node('details',undefined,'story-draft-citation-group');group.append(node('summary',`${text('storyDraftCitation')} · ${chapterRecord.title}`));
         for(const cite of proposed.citations){const item=story.items.find(i=>cite.selected_asset_ids.includes(i.id));const evidence=item?.evidence.find(e=>e.id===cite.source_id);if(!evidence)continue;
           const article=node('article',undefined,'story-draft-citation');article.append(node('strong',`${text(cite.source_kind==='family_note'?'sourceFamilyNote':cite.source_kind==='ai_caption'?'sourceAICaption':'sourceFamilyEditedCaption')} · ${item.id}`));
           if(cite.byline&&cite.byline!==evidence.byline)article.append(node('p',`${text('sourceByline')}: ${cite.byline}`));article.append(node('p',evidence.text));appendEvidenceAttribution(article,evidence,item.id);group.append(article);

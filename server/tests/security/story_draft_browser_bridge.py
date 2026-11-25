@@ -69,6 +69,14 @@ story_response = client.post(
 if story_response.status_code != 201:
     raise RuntimeError('Synthetic family note setup failed')
 family_note = story_response.json()
+second_note = client.post(
+    '/assets/102/stories?library=family-a',
+    headers={'Authorization': 'Bearer ' + fixture.owner_token},
+    json={'title': '河边散步', 'text': '合成河边原话：我们停下来等大家。',
+          'language': 'zh', 'byline': '合成家人', 'mutation_id': str(uuid.uuid4())},
+)
+if second_note.status_code != 201:
+    raise RuntimeError('Second synthetic family note setup failed')
 
 
 def mutate(message):

@@ -38857,6 +38857,39 @@
         }
       ],
       "notes": "Reopen ordinary Jude story picks in the same browser tab by checking the current authenticated result and selected result pages."
+    },
+    {
+      "feature": "selected-source-story-keep-chapter-original-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_UI.md",
+          "before_sha256": "3854fab5ecb6a40233d8755cee7cc94c7564b9c79e2a13241019cec040b39e94",
+          "sha256": "5c4e389d4202c433c02a798e827aa654181ba8af75a870aa65b3c0872e5cb52c"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "b3ab40f6b5169fab9388ce3dd67e4f3eda679c0bfcdcc0886f40757c73d5d994",
+          "sha256": "745651ddaf6e17580961de4caf24a2f55d0ce7cda49b5029c6576fb3b7d9f7cf"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "ae57123a60bd743ec8c84be504ceca65dca6994c5ec31d8d6ad4a6847f0ede0f",
+          "sha256": "46ae5e5d5833010db577c1e7edd07ef69d70026db6036820fb0ccee31530075f"
+        },
+        {
+          "path": "server/tests/security/story_draft_browser_bridge.py",
+          "before_sha256": "d34c297312690f3c91f55c4255e976c4907b95a72b9f9179a524c6e8adfcacbe",
+          "sha256": "b40cb8cc57e9dc9297834b7e327f9fb1140cdcef83794bf3d299cb878224b2bf"
+        },
+        {
+          "path": "server/tests/security/test_story_draft_preparation_browser.cjs",
+          "before_sha256": "48d2dda92c63c79dea3c6ee5d67c81008a6dedaff30935b99aaa07116190cb65",
+          "sha256": "8cc43aaa8a1dc15070972489941e61716b80c87ac8ebe657df686280daf2e672"
+        }
+      ],
+      "notes": "Restore original narration for one chapter while retaining other proposals and requiring review before explicit save."
     }
   ]
 }
