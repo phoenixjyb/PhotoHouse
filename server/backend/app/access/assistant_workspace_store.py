@@ -648,9 +648,10 @@ class AssistantWorkspaceStore:
             return collapsed or None
         return collapsed[:63].rstrip() + '…'
 
-    def get_thread(self, account_id, library_id, thread_id, *, include_scene_reword=False):
-        if type(include_scene_reword) is not bool:
-            raise ValueError('Invalid scene reword projection')
+    def get_thread(self, account_id, library_id, thread_id, *,
+                   include_scene_reword=False, include_pending_turn=False):
+        if type(include_scene_reword) is not bool or type(include_pending_turn) is not bool:
+            raise ValueError('Invalid thread projection')
         account_id, library_id = _scope(account_id), _scope(library_id)
         thread_id = _uuid4(thread_id, 'thread ID')
         now = int(self.clock())
@@ -671,14 +672,27 @@ class AssistantWorkspaceStore:
             result = dict(version=1, thread=self._thread(row, len(exchanges)),
                           exchanges=[self._exchange(item) for item in exchanges],
                           latest_request_id=None if latest is None else latest['request_id'])
-            if include_scene_reword:
-                # Select the newest retained request before inspecting its status
-                # or expiry. A later request must suppress an older refusal cue.
+            if include_scene_reword or include_pending_turn:
+                # A later request supersedes both a refusal cue and a pending turn.
                 newest = db.execute('''SELECT request_id,status,error_code,expires_at,
                     expected_revision,revision,input_text FROM turn_requests
                     WHERE thread_id=? AND account_id=? AND library_id=?
                     ORDER BY rowid DESC LIMIT 1''',
                     (thread_id, account_id, library_id)).fetchone()
+            if include_pending_turn:
+                pending = None
+                if (newest is not None and newest['status'] == 'pending'
+                        and newest['expires_at'] > now
+                        and newest['revision'] == newest['expected_revision'] == row['revision']):
+                    try:
+                        pending = dict(version=1,
+                            request_id=_uuid4(newest['request_id'], 'request ID'),
+                            revision=_expected_revision(newest['revision']),
+                            text=_text(newest['input_text'], MAX_INPUT_BYTES))
+                    except ValueError:
+                        raise WorkspaceStoreUnavailable() from None
+                result['pending_turn'] = pending
+            if include_scene_reword:
                 cue = None
                 if (newest is not None and newest['status'] == 'failed' and
                         newest['error_code'] == 'scene_query_unsupported' and

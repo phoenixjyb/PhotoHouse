@@ -66,6 +66,8 @@
   Object.assign(words.zh,{assistantScenePrevious:'上一页 20 张',assistantSceneNext:'下一页 20 张',assistantSceneReturn:'返回首批结果',assistantScenePage:'显示第 {start}–{end} 张，共 {total} 张 · 第 {page}/{pages} 页',assistantScenePageBusy:'正在重新核对完整画面排序…'});
   Object.assign(words.zh,{assistantPrivateAbandon:'结束等待，开始新对话',assistantPrivateAbandonHelp:'服务器可能仍会完成之前的请求。原对话不会被删除，问题会留在输入框；新对话不会自动发送它。',assistantPrivateAbandonYes:'我了解，开始新对话',assistantPrivateRetryCreation:'重试创建同一个对话'});
   Object.assign(words.en,{assistantPrivateAbandon:'Stop waiting and start a new conversation',assistantPrivateAbandonHelp:'The server may still complete the earlier request. Its conversation remains saved and your question stays in the composer. A new conversation will not send it automatically.',assistantPrivateAbandonYes:'I understand; start a new conversation',assistantPrivateRetryCreation:'Retry creating the same conversation'});
+  Object.assign(words.zh,{assistantPrivateSubmitted:'已提交的请求',assistantPrivateCheckRequest:'查看处理结果',assistantPrivateReceived:'服务器已收到此请求。请查看处理结果。',assistantPrivateAbandonReopened:'服务器仍可能完成此请求。你可以在原对话中查看。'});
+  Object.assign(words.en,{assistantPrivateSubmitted:'Submitted request',assistantPrivateCheckRequest:'Check request status',assistantPrivateReceived:'The server received this request. Check whether it has finished.',assistantPrivateAbandonReopened:'The server may still complete this request. You can find it in the original conversation.'});
   Object.assign(words.en,{libraryTools:'Explore this library'});
   Object.assign(words.zh,{libraryTools:'浏览相册库'});
   Object.assign(words.en,{assistantTitle:'Jude · PhotoHouse Assistant',assistantHelp:'Search this library only. Add details to refine; matching photos are shown before you open one. After a search, ask “describe these results” for a brief overview. To request a specific item, say “open asset ID 123”. Recognized text, submitted commands, and processing status are kept for 30 days. Recordings are transient. This is separate from saved family notes.',assistantPrompt:'What would you like to find?',assistantSend:'Find',assistantClear:'Clear',assistantCancel:'Cancel request',assistantCancelled:'Request canceled.',assistantWorking:'Looking in this library…',assistantError:'The assistant could not complete that request. Try again.',assistantDenied:'Your access could not be confirmed. Sign in again or contact the library owner.',assistantConflict:'The library changed. Clear this search and try again.',assistantLimited:'Too many requests. Please wait and try again.',assistantUnavailable:'The assistant is temporarily unavailable. Please try again later.',assistantInvalid:'The reply could not be safely displayed. Please try again.',assistantNoResults:'No matching photos were found.',assistantOpen:'Open photo',assistantUnsupported:'This request is not supported yet.'});
@@ -2407,7 +2409,18 @@
     const voiceActive=assistantState.voiceSession.phase!=='idle';
     const blocked=!!assistantStoryHandoff||snapshot.storySelectionBusy===true||privateAssistantBusy||!!snapshot.pendingTurn||!!snapshot.pendingCreation||voiceActive||state.locked||snapshot.locked;
     for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=blocked;
-    $('assistant-private-recover').hidden=!snapshot.pendingTurn;
+    const reopened=available&&!state.locked&&!snapshot.locked&&snapshot.pendingTurn?.mode==='reopened';
+    const recover=$('assistant-private-recover');
+    recover.hidden=!snapshot.pendingTurn;
+    recover.dataset.i18n=reopened?'assistantPrivateCheckRequest':'assistantPrivateRecover';
+    recover.textContent=t(recover.dataset.i18n);
+    $('assistant-private-submitted').hidden=!reopened;
+    const submittedText=$('assistant-private-submitted-text');
+    const sentQuestion=reopened?snapshot.pendingTurn.text:'';
+    if(submittedText.textContent!==sentQuestion)submittedText.textContent=sentQuestion;
+    const abandonHelp=$('assistant-private-abandon-help');
+    abandonHelp.dataset.i18n=reopened?'assistantPrivateAbandonReopened':'assistantPrivateAbandonHelp';
+    abandonHelp.textContent=t(abandonHelp.dataset.i18n);
     $('assistant-private-reconcile').hidden=!snapshot.pendingCreation;
     $('assistant-private-abandon').hidden=!snapshot.pendingTurn;
     $('assistant-private-abandon').disabled=privateAssistantBusy;
@@ -2576,7 +2589,11 @@
     // when it stays in the same account/library generation.
     localeAssistantResume=null;localeAssistantResumeOwner=null;
     const epoch=state.generation;privateAssistantBusy=true;renderPrivateAssistant(privateAssistant.state());
-    try{await action();if(!stale(epoch))$('assistant-private-status').textContent=t('assistantPrivateReady');}
+    try{
+      await action();
+      if(!stale(epoch))$('assistant-private-status').textContent=t(
+        privateAssistant.state().pendingTurn?.mode==='reopened'?'assistantPrivateReceived':'assistantPrivateReady');
+    }
     catch(error){if(!stale(epoch)&&error.code!=='scope_changed')$('assistant-private-status').textContent=t('assistantPrivateFailed');}
     finally{privateAssistantBusy=false;renderPrivateAssistant(privateAssistant.state());syncAssistantControls();}
   }
@@ -2644,7 +2661,11 @@
     const epoch=state.generation,restoreFocus=document.activeElement===trigger;privateAssistantBusy=true;
     try{const envelope=await privateAssistant.recover(pending.thread_id,pending.request_id);if(stale(epoch))return;
       if(envelope.status==='completed'){showPrivateAssistantResult(envelope,pending.text);$('assistant-text').value=privateAssistant.state().draft;}
-      else{$('assistant-private-status').textContent=envelope.status==='failed'&&envelope.error==='scene_query_unsupported'?'':t(envelope.status==='pending'?'assistantPrivateUnknown':'assistantPrivateFailed');if(envelope.status!=='pending'){assistantState.pendingTurn=null;$('assistant-receipt').hidden=true;}}
+      else{
+        const key=envelope.status==='pending'?(pending.mode==='reopened'?'assistantPrivateReceived':'assistantPrivateUnknown'):'assistantPrivateFailed';
+        $('assistant-private-status').textContent=envelope.error==='scene_query_unsupported'?'':t(key);
+        if(envelope.status!=='pending'){assistantState.pendingTurn=null;$('assistant-receipt').hidden=true;}
+      }
     }catch(error){if(!stale(epoch))$('assistant-private-status').textContent=t(error?.code==='context_changed'?'assistantPrivateContextChanged':'assistantPrivateUnknown');}
     finally{
       if(!stale(epoch)){

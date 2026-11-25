@@ -370,8 +370,11 @@
     if((v.status==='pending'||v.status==='completed')&&v.error!==null)fail('invalid_response');
     return Object.freeze({...v,result:v.result?validateResult(v.result,library,v.recovered,allowMemory&&mode==='POST'&&!v.recovered,allowMemoryActions&&mode==='POST'&&!v.recovered,searchVersion):null});
   }
-  function validateThreadDetail(v, library, expectedId, sceneRewordOptIn=false) {
-    if(typeof sceneRewordOptIn!=='boolean'||!exactKeys(v,['version','thread','exchanges'],['latest_request_id','has_older_exchanges',...(sceneRewordOptIn?['scene_reword']:[])])||v.version!==1||!Array.isArray(v.exchanges)||
+  function validateThreadDetail(v, library, expectedId, sceneRewordOptIn=false, pendingTurnOptIn=false) {
+    const optional=['latest_request_id','has_older_exchanges'];
+    if(sceneRewordOptIn)optional.push('scene_reword');
+    if(pendingTurnOptIn)optional.push('pending_turn');
+    if(!exactKeys(v,['version','thread','exchanges'],optional)||v.version!==1||!Array.isArray(v.exchanges)||
       v.exchanges.length>20||
       (Object.hasOwn(v,'latest_request_id')&&v.latest_request_id!==null&&!uuid(v.latest_request_id))||
       (Object.hasOwn(v,'has_older_exchanges')&&typeof v.has_older_exchanges!=='boolean'))fail('invalid_response');
@@ -382,9 +385,17 @@
       if(cue!==null&&(!exactKeys(cue,['version','request_id','revision','query'])||cue.version!==1||!uuid(cue.request_id)||!safeInt(cue.revision)||cue.revision!==thread.revision||!validSceneQuery(cue.query)))fail('invalid_response');
       sceneReword=cue===null?null:Object.freeze({...cue});
     }
+    let pendingTurn;
+    if(Object.hasOwn(v,'pending_turn')){
+      const turn=v.pending_turn;
+      if(turn!==null&&(!exactKeys(turn,['version','request_id','revision','text'])||turn.version!==1||
+        !uuid(turn.request_id)||turn.request_id===v.latest_request_id||turn.revision!==thread.revision||
+        typeof turn.text!=='string'||!turn.text||byteLength(turn.text)>1024||sceneReword))fail('invalid_response');
+      pendingTurn=turn===null?null:Object.freeze({...turn});
+    }
     const exchanges=v.exchanges.map(validateExchange);let previous=0;const ids=new Set();for(const e of exchanges){if(e.revision<=previous||ids.has(e.exchange_id))fail('invalid_response');previous=e.revision;ids.add(e.exchange_id);}
     if(v.has_older_exchanges===true&&exchanges.length===0)fail('invalid_response');
-    return Object.freeze({version:1,thread,exchanges:Object.freeze(exchanges),...(Object.hasOwn(v,'latest_request_id')?{latest_request_id:v.latest_request_id}:{}),...(Object.hasOwn(v,'has_older_exchanges')?{has_older_exchanges:v.has_older_exchanges}:{}),...(Object.hasOwn(v,'scene_reword')?{scene_reword:sceneReword}:{})});
+    return Object.freeze({version:1,thread,exchanges:Object.freeze(exchanges),...(Object.hasOwn(v,'latest_request_id')?{latest_request_id:v.latest_request_id}:{}),...(Object.hasOwn(v,'has_older_exchanges')?{has_older_exchanges:v.has_older_exchanges}:{}),...(Object.hasOwn(v,'scene_reword')?{scene_reword:sceneReword}:{}),...(Object.hasOwn(v,'pending_turn')?{pending_turn:pendingTurn}:{})});
   }
   function validateHistoryPage(v, threadId, library, snapshotRevision, beforeRevision) {
     if(!exactKeys(v,['version','thread_id','snapshot_revision','before_revision','exchanges','has_older_exchanges','next_before_revision'])||
@@ -888,16 +899,16 @@
       // currently available. Older servers ignore the unknown header and keep
       // their legacy response shape.
       const sceneProjection=true;
-      const detailHeaders={extraHeaders:{'X-PhotoHouse-Scene-Reword-Version':'1'}};
+      const detailHeaders={extraHeaders:{'X-PhotoHouse-Scene-Reword-Version':'1','X-PhotoHouse-Pending-Turn-Version':'1'}};
       const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders);
       assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');
-      let detail=validateThreadDetail(raw,t.base.library,id,sceneProjection);
+      const detail=validateThreadDetail(raw,t.base.library,id,sceneProjection,true);
       if(reloadBase&&(detail.thread.revision!==reloadBase.revision||detail.thread.thread_id!==reloadBase.threadId))fail('conflict');
       const rewordCue=Object.hasOwn(detail,'scene_reword')?detail.scene_reword:null;
       if(rewordCue&&!reloadBase){
-        const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders),t.base.library,id,sceneProjection);
+        const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders),t.base.library,id,sceneProjection,true);
         assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');
-        if(confirm.thread.revision!==detail.thread.revision||confirm.latest_request_id!==detail.latest_request_id||canonical(confirm.scene_reword??null)!==canonical(detail.scene_reword??null)){
+        if(confirm.thread.revision!==detail.thread.revision||confirm.latest_request_id!==detail.latest_request_id||confirm.pending_turn||canonical(confirm.scene_reword??null)!==canonical(detail.scene_reword??null)){
           currentResult=null;contextState='requires_search';publish();fail('conflict');
         }
       }
@@ -908,8 +919,9 @@
         sceneRewordRequired=!!rewordCue;
         if(rewordCue&&!sceneDraft)sceneDraft=rewordCue.query;
       }
-      currentResult=null;contextState=suppressOldResult?'requires_search':detail.latest_request_id?'unloaded':'requires_search';
-      if(!suppressOldResult&&detail.latest_request_id&&hydrate&&capabilities?.server_owned_turns!==false){try{
+      const reopenedTurn=detail.pending_turn;
+      currentResult=null;contextState=reopenedTurn?'pending':suppressOldResult?'requires_search':detail.latest_request_id?'unloaded':'requires_search';
+      if(!reopenedTurn&&!suppressOldResult&&detail.latest_request_id&&hydrate&&capabilities?.server_owned_turns!==false){try{
           const resumeSource=resumeStory?preservedStorySource:storedStory;
           const sameStoryTurn=resumeSource&&detail.latest_request_id===resumeSource.request_id&&
             detail.thread.revision===resumeSource.revision;
@@ -928,8 +940,14 @@
           assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');
           latest=null;currentResult=null;contextState='requires_search';
         }else throw safe;}}
-      if(reloadBase){const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders),t.base.library,id,sceneProjection);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');if(confirm.thread.revision!==reloadBase.revision||confirm.latest_request_id!==detail.latest_request_id||canonical(confirm.scene_reword??null)!==canonical(detail.scene_reword??null)||activeThread?.thread_id!==reloadBase.threadId||revision!==reloadBase.revision){currentResult=null;contextState='requires_search';publish();fail('conflict');}}
+      if(reloadBase&&!reopenedTurn){const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders),t.base.library,id,sceneProjection,true);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');if(confirm.thread.revision!==reloadBase.revision||confirm.latest_request_id!==detail.latest_request_id||confirm.pending_turn||canonical(confirm.scene_reword??null)!==canonical(detail.scene_reword??null)||activeThread?.thread_id!==reloadBase.threadId||revision!==reloadBase.revision){currentResult=null;contextState='requires_search';publish();fail('conflict');}}
       assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');activeThread=latest?.status==='completed'?Object.freeze({...detail.thread,revision:latest.revision}):detail.thread;revision=latest?.status==='completed'?latest.revision:detail.thread.revision;if(reloadBase){currentResult=guardedResult;if(guardedResult)contextState=resultContextState(guardedResult);}
+      if(reopenedTurn){
+        // Older server rows do not record the composer mode. Show the submitted
+        // text read-only until the receipt establishes the outcome.
+        pendingTurn={thread_id:id,request_id:reopenedTurn.request_id,expected_revision:reopenedTurn.revision,
+          text:reopenedTurn.text,status:'pending',search_version:readVersion,mode:'reopened'};
+      }
       if(!reloadBase&&currentResult&&latest?.status==='completed'&&latest.revision===revision){
         const nextSource=bindStoryResult(t,id,latest.request_id,latest.revision,currentResult);
         const sameSelection=nextSource&&expectedStoryNonce===storySelectionNonce;
@@ -958,8 +976,47 @@
       try{const raw=await call(`${BASE}/threads`,'POST',{library_id:t.base.library,thread_id:id},t.base,t.token);const created=validateCreation(raw,t.base.library,id);assertCurrent(t.base,t.token);pendingCreation=null;if(ticket!==readGeneration){threads=[created.thread,...threads.filter(x=>x.thread_id!==id)];publish();return created;}activeThread=created.thread;revision=created.thread.revision;currentResult=null;contextState='requires_search';publish();return created;}
       catch(e){const safe=safeFailure(e);if(safe.code==='scope_changed'||safe.code==='closed')throw safe; // retain ID and require explicit reconciliation or retry
         throw safe;}}
-    async function recover(id,rid){if(!uuid(id)||!uuid(rid))fail('invalid_input');const t=begin();clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;if(!pendingTurn||pendingTurn.thread_id!==id||pendingTurn.request_id!==rid)fail('conflict');const searchVersion=[2,3,4].includes(pendingTurn.search_version)?pendingTurn.search_version:1;const env=await getRequest(id,rid,{_ticket:t,hydrate:true,searchVersion});assertCurrent(t.base,t.token);if(env.status==='failed'&&env.error==='scene_query_unsupported'&&pendingTurn.mode==='scene'&&searchVersion===4&&env.revision!==pendingTurn.expected_revision)fail('invalid_response');if(pendingTurn?.thread_id===id&&pendingTurn.request_id===rid){if(env.status==='completed'||env.status==='failed'||env.status==='interrupted'){readGeneration++;abortHydrations();invalidateHistory();if(env.status==='completed'){activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;const sentText=pendingTurn.text,scenePending=pendingTurn.mode==='scene'||env.result.version===4;pendingTurn=null;if(scenePending){if(sceneDraft===sentText)sceneDraft='';}else if(draft===sentText)draft='';currentResult=env.result;contextState=resultContextState(env.result);sceneRequestId=env.result.version===4?rid:null;bindStoryResult(t,id,rid,env.revision,env.result);storyDirectionInput={text:sentText,account:t.base.account,library:t.base.library,generation:t.base.generation,thread_id:id,request_id:rid,revision:env.revision};}else{if(pendingTurn.mode==='scene'){if(!sceneDraft)sceneDraft=pendingTurn.text;sceneRewordRequired=env.status==='failed'&&env.error==='scene_query_unsupported'&&searchVersion===4;}else if(!draft)draft=pendingTurn.text;pendingTurn=null;currentResult=null;contextState='requires_search';sceneRequestId=null;invalidateStorySelection();}}else pendingTurn={...pendingTurn,status:'pending'};publish();}return env;}
-    function abandonPending(){begin();if(!pendingTurn)fail('invalid_input');clearSpeechSource();if(pendingTurn.mode==='scene'){if(!sceneDraft)sceneDraft=pendingTurn.text;}else if(!draft)draft=pendingTurn.text;pendingTurn=null;publish();return draft;}
+    async function recover(id,rid){
+      if(!uuid(id)||!uuid(rid))fail('invalid_input');
+      const t=begin(),submitted=pendingTurn;
+      if(!submitted||submitted.thread_id!==id||submitted.request_id!==rid)fail('conflict');
+      clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;
+      const searchVersion=[2,3,4].includes(submitted.search_version)?submitted.search_version:1;
+      const env=await getRequest(id,rid,{_ticket:t,hydrate:true,searchVersion});
+      assertCurrent(t.base,t.token);
+      if(pendingTurn!==submitted)fail('conflict');
+      const sceneRefusal=env.status==='failed'&&env.error==='scene_query_unsupported'&&searchVersion===4;
+      if(sceneRefusal&&submitted.mode&&env.revision!==submitted.expected_revision)fail('invalid_response');
+      if(env.status==='pending'){
+        pendingTurn={...submitted,status:'pending'};publish();return env;
+      }
+      readGeneration++;abortHydrations();invalidateHistory();pendingTurn=null;
+      const sentText=submitted.text;
+      if(env.status==='completed'){
+        activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;
+        if(submitted.mode==='scene'||env.result.version===4){
+          if(sceneDraft===sentText)sceneDraft='';
+        }else if(submitted.mode!=='reopened'&&draft===sentText)draft='';
+        currentResult=env.result;contextState=resultContextState(env.result);
+        sceneRequestId=env.result.version===4?rid:null;
+        bindStoryResult(t,id,rid,env.revision,env.result);
+        storyDirectionInput={text:sentText,account:t.base.account,library:t.base.library,
+          generation:t.base.generation,thread_id:id,request_id:rid,revision:env.revision};
+      }else{
+        if(submitted.mode==='scene'||(submitted.mode==='reopened'&&sceneRefusal&&validSceneQuery(sentText))){
+          if(!sceneDraft)sceneDraft=sentText;
+          sceneRewordRequired=sceneRefusal;
+        }else if(submitted.mode!=='reopened'&&!draft)draft=sentText;
+        currentResult=null;contextState='requires_search';sceneRequestId=null;invalidateStorySelection();
+      }
+      publish();return env;
+    }
+    function abandonPending(){
+      begin();if(!pendingTurn)fail('invalid_input');clearSpeechSource();
+      if(pendingTurn.mode==='scene'){if(!sceneDraft)sceneDraft=pendingTurn.text;}
+      else if(pendingTurn.mode!=='reopened'&&!draft)draft=pendingTurn.text;
+      pendingTurn=null;publish();return draft;
+    }
     function discardSpeechSource(){
       // This is a local revocation path (Pause/End), so it must still wipe the
       // reference after a library lock, account switch, or controller close.

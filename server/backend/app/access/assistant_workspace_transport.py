@@ -2257,16 +2257,21 @@ async def read_thread(request: Request, thread_id: str):
     library = _library(query['library_id'])
     search_version = _single(request, 'x-photohouse-search-version')
     scene_reword_version = _single(request, 'x-photohouse-scene-reword-version')
+    pending_turn_version = _single(request, 'x-photohouse-pending-turn-version')
     if (scene_reword_version is not None and
             (scene_reword_version != '1' or search_version not in (None, '4'))):
         raise WorkspaceInvalid()
     include_scene_reword = scene_reword_version == '1'
+    if pending_turn_version not in (None, '1'):
+        raise WorkspaceInvalid()
+    include_pending_turn = pending_turn_version == '1'
     account = await _principal(request, library)
     store = _workspace(request)
     selected = _thread_id(thread_id)
     result = await _call(store, 'get_thread', account, library, selected,
-                         include_scene_reword=include_scene_reword)
-    if include_scene_reword and await _principal(request, library) != account:
+                         include_scene_reword=include_scene_reword,
+                         include_pending_turn=include_pending_turn)
+    if (include_scene_reword or include_pending_turn) and await _principal(request, library) != account:
         raise AccessDenied()
     latest = result.get('latest_request_id')
     all_rows = result['exchanges']
@@ -2278,6 +2283,8 @@ async def read_thread(request: Request, thread_id: str):
                  'latest_request_id': latest}
         if include_scene_reword:
             value['scene_reword'] = result['scene_reword']
+        if include_pending_turn:
+            value['pending_turn'] = result['pending_turn']
         return value
 
     selected_rows = all_rows[-20:]

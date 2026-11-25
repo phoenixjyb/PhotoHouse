@@ -38948,6 +38948,64 @@
         }
       ],
       "notes": "Browse older complete groups and keep the chosen group order in Stories."
+    },
+    {
+      "feature": "jude-pending-turn-reopen-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_TURNS_V1.md",
+          "before_sha256": "e997b8cc3550f100aea698a1f59fd63b29e7346075f98e74fd0970a8efa6d3af",
+          "sha256": "72bf7ffae8766d139efb9bf0a767bb135432e3d601a69e450afc20c589dc75ee"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "df252e6bef611adca719183dbd91dce245423bf27b2b143df83828e426fc71b4",
+          "sha256": "1daa4a22302ae36c28e6876552027b69cfd56d4aeea58d7d8478379099f27517"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "4bff1b988257ab3d5cf9cf06e06c1b4c9613503c2504fe8ba621532cc9035850",
+          "sha256": "5dd75253e83ab258283001b42bd4e397f9427180658c7f742d1f800c8d61a22f"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "7f422512a1189ca251213e47eccca417414f169969cd0813fcc4266a0e7601b5",
+          "sha256": "501170589c0580321934b12ebacf1caa50c4fee0c25f333a5f114e6b47a9fcef"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "e4e3568f2928bd9a173ef0dfeffaadd4167e911ba2ae0ee9f2a7cb68ac7e43fb",
+          "sha256": "02e23a525bdfd1697cceae7fcc3353a78f242e59af2cdbef1be4fa44a2ef4631"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "234065de1d4230e69408d39da6d91a7f16a58a9ccba895639b9f6ab6e1060511",
+          "sha256": "b77d2d341d0e64d6cbbb39e540b3e157cfc5373b3ba706e62ef79981e7877411"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "cc2211897503ae834922195a7acc46a4eda4feaffe2fa2982959332c02664dbe",
+          "sha256": "9aa410507d57e2423c0933e69f61a9e97cb9adf49005b7921edb56a7ad0e0c02"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "831d65b5016d0fe845dd0afc7be3699577a69272e317d2528d08142e1cf9efda",
+          "sha256": "c39c7da9165bb61025edee2dcb14bd8823306bf09642047274fe2c6c5ceeb927"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "5e963a26e035d93c204a4eb8a1d1034a2e2a07a37d0b0a9e93baee31a32cc13a",
+          "sha256": "65aceef4e23a4391cd0adc79c9a02566812a7071c851eed2d735be3bf0da095f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "23bd43725d4ab2727203e0365265edcd2d7e59041bb00cf5506d4d3f7df12280",
+          "sha256": "04d1c27e2b0452609ab809fbc1728f33baab884c2efc6152350a1d064420f045"
+        }
+      ],
+      "notes": "Show the exact owned pending question when reopening and recover only through its existing authenticated receipt."
     }
   ]
 }

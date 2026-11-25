@@ -225,13 +225,18 @@ def append_synthetic_exchange(store, account_id, thread_id, revision, question, 
     request_id = str(uuid.uuid4())
     started = store.begin_turn(account_id, 'family-a', thread_id, request_id,
                                revision, question)
+    return complete_synthetic_exchange(store, account_id, thread_id, started, reply)
+
+
+def complete_synthetic_exchange(store, account_id, thread_id, started, reply):
     summary = dict(version=1, kind='clarification', reply=reply, context=None,
                    filters=None, total=0, has_more=False, effect=None)
-    return store.complete_turn(account_id, 'family-a', thread_id, request_id,
+    return store.complete_turn(account_id, 'family-a', thread_id, started['request_id'],
                                started['lease_id'], summary)
 
 try:
     print(json.dumps({'ready': True}), flush=True)
+    held_turn = None
     for line in sys.stdin:
         message = json.loads(line)
         if message.get('command') == 'quit':
@@ -297,6 +302,22 @@ try:
                 f'Synthetic concurrent reply {revision + 1}')
             print(json.dumps({'id': message['id'], 'ok': True,
                               'revision': revision + 1}), flush=True)
+            continue
+        if message.get('command') == 'hold-private-turn':
+            store = client.app.state.assistant_workspace_store
+            thread = message['thread_id']
+            revision = store.get_thread(fixture.member_id, 'family-a', thread)['thread']['revision']
+            held_turn = store.begin_turn(fixture.member_id, 'family-a', thread, str(uuid.uuid4()),
+                                         revision, '只看河边的照片，再看看有哪些是傍晚拍的。')
+            print(json.dumps({'id': message['id'], 'ok': True,
+                              'request_id': held_turn['request_id']}), flush=True)
+            continue
+        if message.get('command') == 'complete-held-private-turn':
+            store = client.app.state.assistant_workspace_store
+            complete_synthetic_exchange(store, fixture.member_id, held_turn['thread_id'],
+                                        held_turn, '合成的已完成回复。')
+            held_turn = None
+            print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
             continue
         client.cookies.clear()
         response = client.request(message['method'], message['path'], headers=message['headers'],

@@ -16,6 +16,11 @@ request by GET rather than sending the turn again. History recovery never repeat
 a navigation or playback action automatically. Personal history retains text and
 bounded references for 30 days; input audio remains transient.
 
+Reopening a conversation with a pending server request shows the submitted
+question and **Check request status**. The action reads the existing request by
+ID. An earlier result is withheld while this request is pending. The displayed
+question stays in the active page and is never used as a new submission.
+
 ## Routes
 
 All routes require current library membership, the exact account owning the
@@ -98,6 +103,13 @@ interrupted. Failed/interrupted responses have a fixed, safe `error` code. They
 do not expose stack traces, credentials, provider output or storage paths.
 The current thread revision accompanies pending and failed responses. Deleted,
 expired and foreign threads/requests return the same unavailable response.
+
+The thread detail route opts into this read-only projection with
+`X-PhotoHouse-Pending-Turn-Version: 1`. Its `pending_turn` is null or contains
+`version`, `request_id`, `revision`, and the submitted `text` for the current
+pending revision. `latest_request_id` still identifies the latest completed
+request. The store exposes no lease details. The existing request GET resolves
+the status, including a lease that expires while the conversation is closed.
 
 Repeated POST with the identical request identity reads its existing state; it
 does not regenerate. A changed text, revision or thread under the same request ID

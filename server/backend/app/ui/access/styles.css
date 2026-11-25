@@ -952,6 +952,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .assistant-private-current p { margin:.12rem 0 0; color:var(--ink,#38322c); font-size:.9rem; font-weight:600; overflow-wrap:anywhere; }
 .assistant-private-current-help { margin:.35rem 0 .25rem; }
 #assistant-private-status { margin:.35rem 0 0; overflow-wrap:anywhere; }
+.assistant-private-submitted { margin:.6rem 0; padding:.75rem; border-radius:.65rem; background:var(--surface-muted,#f1f4ef); }
+.assistant-private-submitted p { margin:.25rem 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
 .assistant-private-management { min-width:0; }
 .assistant-private-management[open] { grid-column:1 / -1; width:100%; }
 .assistant-private-management>summary { list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:center; min-height:44px; max-width:100%; padding:.55rem .8rem; border:1px solid #cbd7c8; border-radius:8px; background:#fffefb; color:#244b3c; font-size:.85rem; font-weight:650; text-align:center; overflow-wrap:anywhere; }

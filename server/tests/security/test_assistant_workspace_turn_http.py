@@ -670,6 +670,41 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
             f"/threads/{thread['thread_id']}/requests/{request_id}?library_id=family-a")
         self.assertIn(recovered.status_code, (404, 409), recovered.text)
 
+    def test_opted_in_thread_read_exposes_only_its_current_pending_request(self):
+        thread_id = self.thread()['thread_id']
+        ready = self.turn(thread_id)
+        self.assertEqual(ready.status_code, 200, ready.text)
+        request_id = new_id()
+        question = 'Find the latest photos I was looking for'
+        self.workspace.begin_turn('one', 'family-a', thread_id, request_id, 1, question)
+        path = f'/threads/{thread_id}?library_id=family-a'
+        requested = {**self.auth, 'X-PhotoHouse-Pending-Turn-Version': '1'}
+
+        legacy = self.request('GET', path)
+        self.assertNotIn('pending_turn', legacy.json())
+        self.assertNotIn(question, legacy.text)
+        detail = self.request('GET', path, headers=requested)
+        self.assertEqual(detail.status_code, 200, detail.text)
+        self.assertEqual(detail.headers['cache-control'], 'no-store')
+        self.assertEqual(detail.json()['latest_request_id'], ready.json()['request_id'])
+        self.assertEqual(detail.json()['pending_turn'], {'version': 1, 'request_id': request_id,
+                                                       'revision': 1, 'text': question})
+        other = self.request('GET', path, headers={**requested, 'Authorization': 'Bearer ' + SECOND})
+        self.assertEqual(other.status_code, 404)
+        self.assertNotIn(question, other.text)
+        self.assertEqual(self.request('GET', path,
+            headers={**requested, 'X-PhotoHouse-Pending-Turn-Version': '2'}).status_code, 400)
+
+        self.now[0] += LEASE_SECONDS
+        expired = self.request('GET', f'/threads/{thread_id}/requests/{request_id}?library_id=family-a')
+        self.assertEqual(expired.json()['status'], 'interrupted')
+        self.assertIsNone(self.request('GET', path, headers=requested).json()['pending_turn'])
+        self.update("UPDATE access_memberships SET status='requested' "
+                    "WHERE account_id='one' AND library_id='family-a'")
+        denied = self.request('GET', path, headers=requested)
+        self.assertEqual(denied.status_code, 401)
+        self.assertNotIn(question, denied.text)
+
     def test_foreign_account_library_and_revoked_membership_are_unavailable(self):
         thread = self.thread()
         self.update("INSERT INTO access_memberships VALUES('one','family-b','approved','viewer',1,NULL,0,'one')")
