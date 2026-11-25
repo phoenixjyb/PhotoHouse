@@ -23,10 +23,11 @@ Reviewing and editing the draft keeps the saved wording in place until an
 explicit save.
 
 Existing stories have an explicit **Refine story** action. Repeating a request
-for the same story revision recovers the same job. A changed revision or changed
-source invalidates the old proposal. The operation requires current library
-membership and permission to edit that story. There is no background scan or
-mass rewrite of previously saved stories.
+for the same story revision recovers the same job. After an eligible processing
+failure, **Retry local refinement** queues that job again for the current story
+revision. The saved wording remains available while you wait. A changed revision
+or source invalidates the old proposal. The operation requires current library
+membership and permission to edit that story.
 
 The drafting instructions preserve meaning, names, dates and the family's voice.
 They ask for clear transcription and punctuation errors to be corrected only

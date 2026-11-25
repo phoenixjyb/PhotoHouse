@@ -455,6 +455,7 @@ Correct transcript errors and repetition, then propose readable prose. / 纠正�
 **Implemented / 已实现**
 
 - Saved Stories can open a prepared AI draft directly and highlight wording changes next to the original. The author can choose which chapters enter the editor and explicitly save the review result. / 可从「已保存的故事」直接打开待核对的 AI 草稿，与原文对照查看标出的文字变化。作者可选择带入编辑的章节，并在核实后明确保存。
+- The reader can retry eligible local processing failures for the same saved revision. / 阅读器可在同一已保存版本中重试符合条件的本地处理失败。
 
 **Gaps / 差距**
 

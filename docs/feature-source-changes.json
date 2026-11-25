@@ -39555,6 +39555,39 @@
         }
       ],
       "notes": "Preserve conversation picker options while typing within the same current scope."
+    },
+    {
+      "feature": "retry-saved-story-refinement-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/STORY_REFINEMENT.md",
+          "before_sha256": "b7b51051260828471465a6ed7f531a7539fe9b10ad5ece5eb84bdca865e83116",
+          "sha256": "ed58f4c10777d438bf2b4a32a63f65ad6932e409b74db1e4bc4f1146d976071b"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "aba701914a6460aeaab633e5f1d345ea7942c738428e4f70ecabd676f67b6241",
+          "sha256": "f1954858923ae9ac30f9ba5409aafa7e641b047ac039e26784e059e53e12a1e2"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "ebf208328d2a778f3d0949757fe20072228a4757fa26bdd8e435186864f39973",
+          "sha256": "6810193f48653c8a525674dffbbbd612a22af2676d53ae7ef47c56f5f7ce4cad"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "20be687d5bb59dc60c7a6fe70c23700bb48b673ef4dfab71c005f40627e38b8c",
+          "sha256": "08b2cf948bd78ae70e40d77250e2852f7c3ebb4f3b02dff71d62c59471352fc2"
+        },
+        {
+          "path": "server/tests/security/test_story_auto_refinement_browser.cjs",
+          "before_sha256": "f8c6b88c6037d24fb1501eabb4e3dd8c57e50383e4ca9f75c62cb72f8588119b",
+          "sha256": "ece8d07030d4c95e1fc3902422e71b9c74a9227799497aeed097467d72c8480a"
+        }
+      ],
+      "notes": "Expose the existing exact-version local refinement retry in the story reader."
     }
   ]
 }

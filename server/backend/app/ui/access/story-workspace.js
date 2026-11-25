@@ -2018,6 +2018,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   const uuidOK = id => typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
   const autoJobKeys='base_revision,created_at,error_code,expires_at,id,kind,needs_review,result,state,updated_at,version';
+  // The existing saved-story refinement endpoint retries these terminal codes.
+  const retryableRefinementErrors=new Set(['local_processing_failed','model_timeout','model_input_refused',
+    'model_output_refused','model_worker_failed','model_interrupted']);
+  const canRetryAutoRefinement=job=>job?.state==='failed'&&retryableRefinementErrors.has(job.error_code);
   function validAutoRefinement(value,story){
     if(value===null)return null;
     if(!value||Object.keys(value).sort().join(',')!==autoJobKeys||value.version!==1||!uuidOK(value.id)||value.kind!=='narrative'||value.needs_review!==true||value.base_revision!==story?.revision||
@@ -2035,16 +2039,16 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function autoRefinementActive(){return Boolean(draft?.saved&&!scope().locked&&scope().account&&scope().library&&draft.library_id===scope().library&&autoRefinementJob?.base_revision===draft.revision&&autoRefinementJob.id&&(($('story-reader').open)||$('story-workspace').open));}
   function stopAutoRefinementPolling(){if(autoRefinementTimer){clearTimeout(autoRefinementTimer);autoRefinementTimer=null;}}
   function scheduleAutoRefinementPoll(){
-    stopAutoRefinementPolling();if(!autoRefinementActive()||document.hidden||autoRefinementAttempts>=60||!['queued','running','deferred'].includes(autoRefinementJob.state))return;
+    stopAutoRefinementPolling();if(autoRefinementQueueing||!autoRefinementActive()||document.hidden||autoRefinementAttempts>=60||!['queued','running','deferred'].includes(autoRefinementJob.state))return;
     autoRefinementTimer=setTimeout(()=>{autoRefinementTimer=null;void refreshAutoRefinement(false);},3000);
   }
   async function refreshAutoRefinement(manual=true){
-    if(!autoRefinementActive()||document.hidden||!savedRequest)return;
-    stopAutoRefinementPolling();const owner={...scope()},story=draft,ticket=generation,jobId=autoRefinementJob.id;
+    if(autoRefinementQueueing||!autoRefinementActive()||document.hidden||!savedRequest)return;
+    stopAutoRefinementPolling();const owner={...scope()},story=draft,ticket=generation,job=autoRefinementJob,jobId=job.id;
     if(manual)autoRefinementAttempts=0;else autoRefinementAttempts++;
     try{
       const result=await savedRequest('/memory-community/v1/jobs/'+jobId);
-      if(!current(ticket,owner)||draft!==story||!autoRefinementActive()||jobId!==autoRefinementJob.id)return;
+      if(autoRefinementQueueing||!current(ticket,owner)||draft!==story||!autoRefinementActive()||autoRefinementJob!==job)return;
       const validated=validAutoRefinement(result,story);
       if(!validated||validated.id!==jobId){autoRefinementJob={...autoRefinementJob,state:'failed',result:null};}
       else autoRefinementJob=validated;
@@ -2077,8 +2081,23 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const panel=node('section',undefined,'story-auto-refinement');panel.dataset.jobId=job.id;panel.append(node('h3',text('autoRefinement')));
     panel.append(node('p',text('autoRefinementHelp'),'fine'));
     const status=job.state==='queued'?text('autoRefinementQueued'):job.state==='running'?text('autoRefinementWorking'):job.state==='deferred'?text('autoRefinementDeferred'):job.state==='ready'?text('autoRefinementReady'):text('autoRefinementFailed');
-    const statusNode=node('p',status,'story-auto-refinement-status');statusNode.setAttribute('role','status');panel.append(statusNode);
-    const refresh=button(text('autoRefinementRefresh'),()=>void refreshAutoRefinement(true),'quiet');panel.append(refresh);
+    const restarting=autoRefinementQueueing===autoRefinementIdentity(draft);
+    const statusNode=node('p',restarting?text('autoRefinementStartWorking'):status,'story-auto-refinement-status');
+    statusNode.setAttribute('role','status');panel.append(statusNode);
+    const refresh=button(text('autoRefinementRefresh'),()=>void refreshAutoRefinement(true),'quiet');
+    refresh.disabled=restarting;panel.append(refresh);
+    if(mode==='reader'&&draft.can_edit&&!scope().locked&&canRetryAutoRefinement(job)){
+      const story=draft,owner={...scope()},ticket=generation;
+      const retry=button(text('autoRefinementRetry'),()=>{
+        if(panel.isConnected)void startAutoRefinement(story,owner,ticket,job);
+      },'primary');
+      retry.disabled=restarting;
+      panel.append(retry);
+      if(autoRefinementQueueError){
+        const notice=node('p',text('autoRefinementRetryFailed'),'fine');
+        notice.setAttribute('role','status');panel.append(notice);
+      }
+    }
     if(job.state==='ready'&&job.result){
       const identity=JSON.stringify([autoRefinementIdentity(draft),job.id]);
       const story=draft,owner={...scope()},ticket=generation;
@@ -2141,6 +2160,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   labels.zh.autoRefinementWordingChanges='已标出两版文字之间的变化。';
   labels.en.autoRefinementWordingChanges='Wording changes are highlighted.';
+  Object.assign(labels.zh,{autoRefinementRetry:'重试本地整理',autoRefinementRetryFailed:'暂时无法重试此整理建议。请稍后再试。'});
+  Object.assign(labels.en,{autoRefinementRetry:'Retry local refinement',autoRefinementRetryFailed:'This refinement could not restart. Try again later.'});
   function compareRefinementWording(original,suggestion,language){
     if(original===suggestion)return [node('p',original),node('p',suggestion)];
     const segmenter=typeof Intl.Segmenter==='function'
@@ -2310,17 +2331,23 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       renderAutoRefinementPanels();
     }catch(error){if(current(ticket,owner)&&draft===story&&error?.status===401)onError(error);}
   }
-  async function startAutoRefinement(story,owner,ticket){
+  async function startAutoRefinement(story,owner,ticket,failedJob=null){
     const identity=autoRefinementIdentity(story,owner);
-    if(!autoRefinementMayStart||autoRefinementCapability?.identity!==identity||!autoRefinementCapability.enabled||
-       !story?.saved||!story.can_edit||scope().locked||dirty||pendingSave||busy||autoRefinementQueueing||
+    const canStart=failedJob
+      ?failedJob===autoRefinementJob&&canRetryAutoRefinement(failedJob)&&$('story-reader').open
+      :autoRefinementMayStart&&autoRefinementCapability?.identity===identity&&autoRefinementCapability.enabled;
+    if(!canStart||!story?.saved||!story.can_edit||scope().locked||dirty||pendingSave||busy||autoRefinementQueueing||
        !current(ticket,owner)||draft!==story||!$('story-reader').open&&!$('story-workspace').open||!savedRequest)return;
     autoRefinementQueueing=identity;autoRefinementQueueError=false;renderAutoRefinementPanels();
     try{
       const result=await savedRequest(`/memory-stories/${story.id}/refinement`,{method:'POST',body:{revision:story.revision}});
       if(!current(ticket,owner)||draft!==story||scope().locked||identity!==autoRefinementIdentity(draft,scope()))return;
       const validated=validAutoRefinement(result,story);
-      if(!validated){autoRefinementQueueError=true;return;}
+      if(!validated||(failedJob&&(validated.id!==failedJob.id||
+          !['queued','running','deferred','ready'].includes(validated.state)))){
+        autoRefinementQueueError=true;
+        return;
+      }
       autoRefinementJob=validated;autoRefinementMayStart=false;autoRefinementOriginal={title:story.title,chapters:story.chapters.map(({id,title,narration})=>({id,title,narration}))};autoRefinementAttempts=0;
     }catch(error){
       if(current(ticket,owner)&&draft===story){autoRefinementQueueError=true;if(error?.status===401||error?.status===403)onError(error);}

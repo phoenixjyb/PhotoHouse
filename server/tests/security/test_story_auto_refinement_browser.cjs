@@ -16,6 +16,7 @@ bridge.on('exit',code=>{if(code){readyReject(new Error(`Synthetic bridge failed 
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const jobId='5f79b251-a8fd-43b6-bfc2-d130b6055fb6',modelTitle='MODEL_TITLE_MUST_NOT_APPEAR',originalTitle='一起走过的日子';let saveBodies=[];
 let browser,context,page,jobPolls=0,refinementPosts=0,external=[],staleMetadata=false,noAutoJob=true,realShelfDraft=false,confirmAction='accept',dialogWaiter=null;
+let previousJobError=null, refuseNextRetry=false;
 const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/jobs')).length;
 (async()=>{
   await ready;
@@ -28,7 +29,14 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
     let responseBody,status,headersOut;
     if(entry.method==='POST'&&url.pathname==='/memory-stories/'+storyId+'/refinement'){
       const body=JSON.parse((request.postDataBuffer()||Buffer.alloc(0)).toString());assert.equal(body.revision,story.revision);refinementPosts++;
-      responseBody=Buffer.from(JSON.stringify({version:1,id:jobId,kind:'narrative',state:'queued',created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:null,result:null,needs_review:true,base_revision:story.revision}));status=200;headersOut={'content-type':'application/json'};
+      if(refuseNextRetry){
+        refuseNextRetry=false;status=503;
+        responseBody=Buffer.from(JSON.stringify({detail:'Synthetic local retry unavailable'}));
+      }else{
+        previousJobError=null;status=200;
+        responseBody=Buffer.from(JSON.stringify({version:1,id:jobId,kind:'narrative',state:'queued',created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:null,result:null,needs_review:true,base_revision:story.revision}));
+      }
+      headersOut={'content-type':'application/json'};
     }else if(entry.method==='GET'&&url.pathname==='/memory-community/v1/capabilities'){
       const result=await rpc({method:entry.method,path:entry.path,headers,body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});status=result.status;responseBody=Buffer.from(result.body,'base64');headersOut={...result.headers};
       const caps=JSON.parse(responseBody.toString());caps.enabled=true;caps.auto_refinement_enabled=true;responseBody=Buffer.from(JSON.stringify(caps));
@@ -40,7 +48,7 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
       if(entry.method==='PUT'&&url.pathname==='/memory-stories/'+storyId)saveBodies.push(JSON.parse((request.postDataBuffer()||Buffer.alloc(0)).toString()));
       const result=await rpc({method:entry.method,path:entry.path,headers,body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});status=result.status;responseBody=Buffer.from(result.body,'base64');headersOut={...result.headers};
       if(entry.method==='GET'&&url.pathname==='/memory-stories/'+storyId&&status===200){
-        story=JSON.parse(responseBody.toString());if(!realShelfDraft)story.auto_refinement=noAutoJob?null:{version:1,id:jobId,kind:'narrative',state:'queued',created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:null,result:null,needs_review:true,base_revision:staleMetadata?'999':story.revision};
+        story=JSON.parse(responseBody.toString());if(!realShelfDraft)story.auto_refinement=noAutoJob?null:{version:1,id:jobId,kind:'narrative',state:previousJobError?'failed':'queued',created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:previousJobError,result:null,needs_review:true,base_revision:staleMetadata?'999':story.revision};
         responseBody=Buffer.from(JSON.stringify(story));
       }
     }
@@ -55,7 +63,28 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   await panel.getByRole('button',{name:'整理这个故事'}).click();await panel.getByText('整理任务已排队。稍后会自动检查；你也可以手动刷新。').waitFor();assert.equal(refinementPosts,1,'one explicit click queues one revision-bound refinement');assert.equal(await page.locator('#story-reader-text').textContent(),original,'queueing never edits the saved story');
   await page.locator('#story-reader-close').click();await page.waitForTimeout(3200);assert.equal(jobPolls,0,'closing the story stops queued-job polling');
   noAutoJob=false;staleMetadata=true;await page.locator('.saved-memory-cover').first().click();await page.locator('#story-reader').waitFor({state:'visible'});assert.equal(await page.locator('.story-auto-refinement').count(),0,'metadata for a different base revision is refused');await page.locator('#story-reader-close').click();staleMetadata=false;
-  await page.locator('.saved-memory-cover').first().click();await page.locator('#story-reader-title').locator('xpath=..').locator('.story-auto-refinement').waitFor();
+  const retry=panel.getByRole('button',{name:'重试本地整理',exact:true});
+  previousJobError='source_changed';
+  await page.locator('.saved-memory-cover').first().click();await panel.waitFor();
+  assert.equal(await retry.count(),0,'a changed-source failure cannot be retried');
+  await page.locator('#story-reader-close').click();
+  previousJobError='model_timeout';
+  await page.locator('.saved-memory-cover').first().click();await retry.waitFor();
+  assert.equal(await retry.isEnabled(),true,'the opened reader enables an eligible retry');
+  assert.equal(await panel.getAttribute('data-job-id'),jobId);
+  assert.equal(refinementPosts,1,'reopening a failed job does not retry automatically');
+  refuseNextRetry=true;
+  await retry.press('Enter');
+  await panel.getByText('暂时无法重试此整理建议。请稍后再试。',{exact:true}).waitFor();
+  assert.equal(refinementPosts,2);
+  assert.equal(await page.locator('#story-reader-text').textContent(),original);
+  await retry.press('Enter');
+  await panel.getByText('整理任务已排队。稍后会自动检查；你也可以手动刷新。').waitFor();
+  assert.equal(refinementPosts,3,'each explicit retry makes one request for the same story revision');
+  assert.equal(await panel.getAttribute('data-job-id'),jobId);
+  assert.equal(await retry.count(),0);
+  assert.equal(saveBodies.length,0,'retry neither edits nor saves the story');
+  console.log('PASS A failed saved-story refinement offers an explicit same-job retry and keeps the original intact');
   const deferNotice='资料暂时忙碌，稍后会继续检查本地 AI 建议。';
   await panel.getByText(deferNotice,{exact:true}).waitFor({timeout:7000});assert.equal(jobPolls,1,'deferred is shown as a temporary state and remains pollable');
   await page.waitForFunction(()=>document.querySelector('.story-auto-refinement-status')?.textContent.includes('建议已就绪'),null,{timeout:7000});
@@ -207,7 +236,7 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   noAutoJob=true;realShelfDraft=false;
   await page.locator('#story-workspace-close').click();await page.locator('#story-workspace').waitFor({state:'hidden'});
   await page.locator('.saved-memory-cover').first().click();await page.locator('#story-reader-chapters').getByRole('button').nth(1).click();await page.locator('#story-reader-text').getByText(approvedText,{exact:true}).waitFor();assert.equal(await page.locator('#story-reader-memory-title').textContent(),originalTitle,'reopening the saved story keeps its original story title');
-  assert.equal(generationPosts(),0);assert.equal(refinementPosts,1);assert.deepEqual(external,[]);assert.deepEqual(pageErrors,[]);
+  assert.equal(generationPosts(),0);assert.equal(refinementPosts,3);assert.deepEqual(external,[]);assert.deepEqual(pageErrors,[]);
   assert.equal(jobPolls,2,'deferred and ready refinement states were both polled');
   assert.equal(requests.filter(row=>row.method==='GET'&&row.path.startsWith(`/memory-community/v1/jobs/${preparedShelf.job_id}?`)).length,2,'both adoption attempts recheck the real ready shelf job');
   const terminalPollCount=jobPolls;await page.waitForTimeout(3200);assert.equal(jobPolls,terminalPollCount,'polling stops when the job reaches ready');
