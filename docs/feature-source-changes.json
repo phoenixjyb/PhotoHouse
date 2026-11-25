@@ -38890,6 +38890,64 @@
         }
       ],
       "notes": "Restore original narration for one chapter while retaining other proposals and requiring review before explicit save."
+    },
+    {
+      "feature": "saved-memory-group-pages-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_group_transport.py",
+          "before_sha256": "904c06d5b0572edeb6d245f6010fba31bfa1a018023b5e13bde7db1c1bfebc8d",
+          "sha256": "621d31919cc2b0091631cc2901f87f3d15243ac7f1505971186c93fed2f1a088"
+        },
+        {
+          "path": "server/backend/app/access/memory_groups.py",
+          "before_sha256": "115087492e25c096ba2afcc029ba3de0ed4de11d1ea855d4578fa74b0a979b10",
+          "sha256": "6ca474cd9f345833fc3daffdf3c9012867486f01ed59d07218804964e41eda68"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "9681b96b994b6c91188e691f027ec87590f701fba751b57d6046b309adfc5de4",
+          "sha256": "7f422512a1189ca251213e47eccca417414f169969cd0813fcc4266a0e7601b5"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "e1d2b1daa4fe9a00a675c36a31aedac2ec111d9af5ccae1132f2e89049958411",
+          "sha256": "234065de1d4230e69408d39da6d91a7f16a58a9ccba895639b9f6ab6e1060511"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "19e051e6a9472a1448cc00d688ae4886546ff3bbfea13e3f01a24bee99033f40",
+          "sha256": "4dc45aa5f1bd7779aaf014c3528f647671a557ffb49fa20786766130c8946d11"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "46ae5e5d5833010db577c1e7edd07ef69d70026db6036820fb0ccee31530075f",
+          "sha256": "cc2211897503ae834922195a7acc46a4eda4feaffe2fa2982959332c02664dbe"
+        },
+        {
+          "path": "server/docs/security/MEMORY_GROUPS_V1.md",
+          "before_sha256": "6d7e602ad40f0468a43f0ae85d95e5fb9ab4b0d2a672a78fad1a5316b8ff80fc",
+          "sha256": "d9475314d1bfcf289f19ddf2ff346b549dc3ee69d3305ae23e0370f8a23d9a3e"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "before_sha256": "606a95791c4de6106b6505fde4a3619340727768b206dae16aa1bce8c0a6916c",
+          "sha256": "59f9210f5d02c826e404a900068162a43dbd79e2b89e75d9ba88b1397712a711"
+        },
+        {
+          "path": "server/tests/security/test_memory_group_routes.py",
+          "before_sha256": "5062a6db887cda7dd5d8e169cb973a0a3693abfb11a0d6de2731f6c476e74116",
+          "sha256": "9d7354c50ecf62332cf266531757aa4fee244c0e5b0f8691352555c7648f68ad"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "1e7e91f7e311c4438584bd073926499a2412522e2c83840f647c7bb983575dc7",
+          "sha256": "9b75c2deea9828e8d9133f3da7aa30f5904d33c9e7431eabdd6ed7a7c6778098"
+        }
+      ],
+      "notes": "Browse older complete groups and keep the chosen group order in Stories."
     }
   ]
 }

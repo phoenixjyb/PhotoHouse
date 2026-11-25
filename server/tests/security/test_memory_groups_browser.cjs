@@ -25,6 +25,7 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   if((legacyGroups||hideCombine)&&req.method()==='GET'&&url.pathname==='/memory-groups/capabilities'&&status===200){
     const value=JSON.parse(body.toString());
     if(legacyGroups)delete value.recent;
+    if(hideCombine)delete value.recent_pages;
     delete value.combine;body=Buffer.from(JSON.stringify(value));
   }
   if(holdRecent&&req.method()==='GET'&&url.pathname==='/memory-groups'){
@@ -291,10 +292,45 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
  await recent.getByText('Birthday',{exact:true}).waitFor();
  pass('A lost save can be retried once, and a later list read failure preserves the confirmed group without offering another save');
 
+ await rpc({command:'mutate',scenario:'memory-group-older-pages'});
+ await recent.locator('#recent-groups-refresh').click();
+ const older=recent.getByRole('button',{name:'Show older groups'});
+ await older.waitFor();
+ assert.equal(await recent.locator('.recent-group-card').count(),8);
+ const newest=recent.locator('.recent-group-card').filter({hasText:'Year in review'});
+ await newest.locator('input').check();
+ await older.scrollIntoViewIfNeeded();
+ assert(await older.evaluate(el=>el.getBoundingClientRect().height>=44&&el.scrollWidth<=el.clientWidth));
+ await recent.screenshot({path:path.join(artifacts,'saved-memory-groups-more-mobile-en.png')});
+ const olderStart=requests.length;
+ await older.press('Enter');
+ const oldest=recent.locator('.recent-group-card').filter({hasText:'Grandparents'});
+ await oldest.waitFor();
+ assert.equal(await recent.locator('.recent-group-card').count(),10);
+ assert.equal(await older.isVisible(),false);
+ assert.equal(await newest.locator('input').isChecked(),true);
+ assert.match(await recentStatus.textContent(),/^2 more memory groups loaded/);
+ assert.equal(await recent.locator('.recent-group-open').nth(8).evaluate(el=>el===document.activeElement),true);
+ await oldest.locator('input').check();
+ assert.equal(await newest.locator('.recent-group-choice span').textContent(),'Group 1');
+ assert.equal(await oldest.locator('.recent-group-choice span').textContent(),'Group 2');
+ const fromOlderGroups=recent.locator('.recent-group-draft');
+ await fromOlderGroups.click();
+ await page.locator('#story-workspace').waitFor({state:'visible'});
+ assert.deepEqual(await page.locator('#story-selection input:checked').evaluateAll(nodes=>nodes.map(node=>node.value)),
+   ['1100','102','101','1101']);
+ const olderReads=requests.slice(olderStart);
+ assert.equal(olderReads.filter(req=>req.method==='GET'&&/^\/memory-groups\/[0-9a-f-]+$/.test(req.path)).length,2);
+ assert(olderReads.every(req=>req.method==='GET'||req.method==='HEAD'));
+ await page.locator('#story-workspace-close').click();
+ pass('Older pages preserve selected groups and can start an ordered, unsaved story without writes');
+
+ await recent.locator('#recent-groups-refresh').click();
+ await older.waitFor();
  let release,arrived;
  const pendingRead=new Promise(resolve=>{arrived=resolve;});
  holdRecent={arrived,wait:new Promise(resolve=>{release=resolve;})};
- await recent.locator('#recent-groups-refresh').click();
+ await older.click();
  await pendingRead;
  try{
    await page.locator('#logout').click();await page.locator('#auth').waitFor();

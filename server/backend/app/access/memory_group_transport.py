@@ -42,7 +42,7 @@ def capabilities(runtime, token, library, enabled, vectors):
                 and verify_memory_group_schema(db))
             manual = bool(ready and member['role'] in {'owner', 'contributor'})
             return {'version': 1, 'enabled': bool(ready), 'manual': manual, 'split': manual,
-                    'recent': bool(ready), 'combine': manual,
+                    'recent': bool(ready), 'recent_pages': bool(ready), 'combine': manual,
                     'suggestions': bool(ready and vectors is not None),
                     'max_members': 24, 'needs_review': True}
 
@@ -80,9 +80,9 @@ def proposal(runtime, token, library, body, vectors):
                 'seed_asset_ids': list(seeds), 'needs_review': True, 'items': []}
 
 
-async def scope(request):
+async def scope(request, *, extra_query_fields=()):
     token, _ = credentials_from_request(request, allow_query=True)
-    query = _query(request, {'library'})
+    query = _query(request, {'library', *extra_query_fields})
     runtime = _runtime(request, allow_query=True)
     # Authenticate before exposing feature/storage availability.
     caps = await run_in_threadpool(capabilities, runtime, token, query['library'],
@@ -125,8 +125,9 @@ async def asset_groups(asset_id: str, request: Request):
 
 @router.get('/memory-groups')
 async def recent_groups(request: Request):
-    runtime, token, library = await scope(request)
-    return response(await run_in_threadpool(call, runtime, 'list_recent', token, library))
+    runtime, token, library = await scope(request, extra_query_fields={'page'})
+    return response(await run_in_threadpool(call, runtime, 'list_recent', token, library,
+        request.query_params.get('page')))
 
 
 @router.get('/memory-groups/{group_id}')

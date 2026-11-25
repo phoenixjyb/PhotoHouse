@@ -373,6 +373,21 @@ try:
                         'language':'zh','byline':'讲述人：家人','mutation_id':str(__import__('uuid').uuid4())},asset_id=101)
                 fixture.client.close()
                 fixture.client=build_client()
+            elif scenario=='memory-group-older-pages':
+                from app.access.memory_groups import MemoryGroups
+                from app.access.service import AccessService
+                from test_memory_groups import MemoryGroupTests
+                with fixture.connection() as db:
+                    groups = MemoryGroups(AccessService(db, clock=lambda: fixture.now))
+                    ids = []
+                    for number in range(7):
+                        body = MemoryGroupTests.body(assets='101' if number else '1101',
+                            theme='everyday' if number else 'grandparents')
+                        group = groups.save(fixture.owner_token, 'family-a', body)
+                        ids.append(group['id'])
+                    db.executemany('UPDATE access_memory_groups SET updated_at=? WHERE id=?',
+                                   list(enumerate(ids, 1)))
+                    db.commit()
             elif scenario=='memory-group-day-media':
                 samples = [(1100, 'video/mp4', '2026-01-01T23:45:00-08:00', 'family-a')]
                 samples.extend((aid, 'image/jpeg', '2026-01-01', 'family-a') for aid in range(1101, 1121))

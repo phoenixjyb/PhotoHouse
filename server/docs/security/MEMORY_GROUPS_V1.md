@@ -16,6 +16,11 @@ after saving. Group sources show their original attribution. An uncertain save
 retains the exact mutation ID and body for retry; no draft is stored in browser
 storage. Library/account/session changes discard late responses and private UI.
 
+In Stories, **Saved memory groups** shows up to eight groups at a time.
+**Show older groups** keeps the current selections so you can start a story or
+review a combination across pages. Opening a group rechecks its revision and
+all its media against the current library.
+
 ## Suggestions
 
 The operator must explicitly enable the feature and supply a prepared vector
@@ -56,7 +61,7 @@ CSRF validation; native bearer requests use the existing admission contract.
 | POST | `/memory-groups/proposals?library=…` | Read-only time and visual candidates |
 | GET | `/assets/{id}/memory-groups?library=…` | Bounded complete groups for this asset |
 | GET | `/memory-groups/{id}?library=…` | Current group and dynamically hydrated notes |
-| GET | `/memory-groups?library=…` | Up to eight recent groups with a protected cover |
+| GET | `/memory-groups?library=…` | Up to eight recent groups with a protected cover. Use `page=first` or the returned `next_page` when `recent_pages` is available. |
 | POST | `/memory-groups?library=…` | Explicitly create a group |
 | PUT | `/memory-groups/{id}?library=…` | Revision-checked manual adjustment |
 | POST | `/memory-groups/{id}/split?library=…` | Move selected members to a new group |
@@ -86,6 +91,10 @@ Responses have a 1 MiB ceiling and return no vectors, source filesystem paths
 or model identities. Per-asset listing examines at most 64 matching groups,
 returns up to eight complete groups, and reports `has_more` for further or
 uninspected matches. It does not return partial groups or truncate original prose.
+The paged Stories list orders by last update and group ID. Its next-page value
+is an ID and revision already visible on that page. A changed or no longer
+visible anchor requires refreshing the list. Calls without `page` retain the
+original response shape.
 
 ## Schema and delivery gates
 

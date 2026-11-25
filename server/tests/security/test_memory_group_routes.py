@@ -40,8 +40,10 @@ class MemoryGroupRouteTests(unittest.TestCase):
             memory_groups_enabled=enabled, memory_group_vectors=vectors_config),
             base_url='https://photohouse.test', client=('192.0.2.20', 23456))
 
-    def request(self, method, path, body=None, *, headers=None, library='family-a', client=None):
-        return (client or self.client).request(method, path + '?library=' + library,
+    def request(self, method, path, body=None, *, headers=None, library='family-a',
+                client=None, params=None):
+        return (client or self.client).request(method, path,
+            params={'library': library, **(params or {})},
             headers=self.owner_headers if headers is None else headers, json=body)
 
     def install_vectors(self):
@@ -107,6 +109,43 @@ class MemoryGroupRouteTests(unittest.TestCase):
         after = self.request('GET', '/memory-groups', headers=self.member_headers)
         self.assertEqual(after.status_code, 200, after.text)
         self.assertEqual(after.json()['items'], [])
+
+    def test_older_pages_skip_withdrawn_groups_beyond_the_old_candidate_limit(self):
+        visible = [self.base.save(self.base.owner, self.base.body(assets='101'))
+                   for _ in range(10)]
+        hidden = [self.base.save(self.base.owner, self.base.body(assets='101,102'))
+                  for _ in range(65)]
+        with self.f.connection() as db:
+            db.execute('UPDATE access_memory_groups SET updated_at=1')
+            db.executemany('UPDATE access_memory_groups SET updated_at=2 WHERE id=?',
+                           [(group['id'],) for group in hidden])
+            db.execute("DELETE FROM access_asset_libraries WHERE asset_id=102 AND library_id='family-a'")
+            db.commit()
+        # Tied update times must still partition by group ID.
+        expected = sorted((group['id'] for group in visible), reverse=True)
+
+        def read(page, **kwargs):
+            return self.request('GET', '/memory-groups', headers=self.member_headers,
+                                params={'page': page}, **kwargs)
+
+        first = read('first')
+        self.assertEqual(first.status_code, 200, first.text)
+        document = first.json()
+        self.assertEqual([item['id'] for item in document['items']], expected[:8])
+        anchor = document['next_page']
+        self.assertEqual(anchor, f'{expected[7]}.1')
+        second = read(anchor)
+        self.assertEqual(second.status_code, 200, second.text)
+        self.assertEqual([item['id'] for item in second.json()['items']], expected[8:])
+        self.assertIsNone(second.json()['next_page'])
+        self.assertEqual(read(anchor, library='family-b').status_code, 401)
+        self.assertEqual(read(f"{hidden[0]['id']}.1").status_code, 409)
+        self.assertEqual(read(f'{expected[7]}.01').status_code, 400)
+        self.f.mutate('UPDATE access_memory_groups SET revision=2 WHERE id=?', (expected[7],))
+        self.assertEqual(read(anchor).status_code, 409)
+        self.f.mutate("UPDATE access_memory_groups SET asset_ids_json='[',updated_at=3 WHERE id=?",
+                      (expected[-1],))
+        self.assertEqual(read('first').status_code, 503)
 
     def test_group_opt_in_uses_request_local_runtime_copies(self):
         enabled = create_app(access_runtime=self.runtime, memory_groups_enabled=True)

@@ -907,6 +907,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .recent-group-choice input { width:auto; margin:0; }
 .recent-groups-story:empty { display:none; }
 .recent-groups-story { margin-block-end:.75rem; }
+.recent-group-more { min-height:44px; max-width:100%; margin-block-end:.75rem; white-space:normal; }
 .recent-group-actions { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
 .recent-group-actions button,.recent-combine-review select { min-height:44px; }
 .recent-combine-review > h4 { scroll-margin-top:var(--memory-navigation-offset,140px); }

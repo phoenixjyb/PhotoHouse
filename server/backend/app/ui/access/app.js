@@ -5134,12 +5134,12 @@
     storyPanelLoading:'Loading stories…',storyPanelLoadFailed:'Stories could not load. Try refreshing this panel or reloading PhotoHouse.',
     assistantCapabilitiesRetry:'Jude couldn’t load. Return and reopen Jude to try again.',
     assistantPanelLoadFailed:'The Assistant could not load. Reopen this panel or reload PhotoHouse.',
-    memoryGroupsRetry:'Retry memory groups',recentMemoryGroups:'Recent memory groups',viewMemoryGroup:'Memory group'});
+    memoryGroupsRetry:'Retry memory groups',recentMemoryGroups:'Saved memory groups',viewMemoryGroup:'Memory group'});
   Object.assign(words.zh,{
     storyPanelLoading:'正在加载故事…',storyPanelLoadFailed:'故事暂时无法加载，请刷新此面板或重新加载 PhotoHouse。',
     assistantCapabilitiesRetry:'暂时无法打开小贾。请返回，再打开小贾重试。',
     assistantPanelLoadFailed:'助手暂时无法加载，请重新打开此面板或重新加载 PhotoHouse。',
-    memoryGroupsRetry:'重试回忆组',recentMemoryGroups:'最近的回忆组',viewMemoryGroup:'回忆组'});
+    memoryGroupsRetry:'重试回忆组',recentMemoryGroups:'已保存的回忆组',viewMemoryGroup:'回忆组'});
   async function loadStoryWorkspace(epoch){
     if(stale(epoch)||state.locked||!state.library)return null;
     if(storyWorkspace)return storyWorkspace;
@@ -5175,7 +5175,7 @@
           if(workspace.fromMemoryGroup(assets,theme)!==true)return false;
           closeViewer();return true;
         },
-        api:async(path,options={})=>{try{return await request(libraryPath(path),options);}
+        api:async(path,{query,...options}={})=>{try{return await request(libraryPath(path,query),options);}
           catch(error){if(error.status===401||error.status===403)await failure(error,options.epoch);throw error;}}});
     }
     return memoryGroups;

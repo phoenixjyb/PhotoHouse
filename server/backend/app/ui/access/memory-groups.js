@@ -13,7 +13,8 @@ window.PhotoHouseMemoryGroups = {
       zh: {
         title:'家庭回忆组', open:'家庭回忆组', loading:'正在载入…', unavailable:'家庭回忆组暂时不可用。',
         disabled:'此相册库尚未开启家庭回忆组。', failed:'暂时无法载入，请重试。', retry:'重试载入',
-        recentEmpty:'暂无可查看的近期回忆组。', recentUnavailable:'此相册库暂时无法查看近期回忆组。',
+        recentEmpty:'暂无可查看的回忆组。', recentUnavailable:'此相册库暂时无法查看回忆组。',
+        recentMore:'查看更多回忆组', recentLoaded:n=>`已载入 ${n} 个回忆组。`,
         recentCount:n=>`${n} 项照片或视频`, browse:'查看组内照片和视频',
         chooseForStory:'用于故事', storyGroupOrder:n=>`第 ${n} 组`,
         combineDraftHelp:'选一到两个回忆组，按选择顺序使用组内已保存的画面。',
@@ -50,7 +51,8 @@ window.PhotoHouseMemoryGroups = {
       en: {
         title:'Family memory groups', open:'Family memory groups', loading:'Loading…', unavailable:'Memory groups are temporarily unavailable.',
         disabled:'Memory groups are not enabled for this library.', failed:'Could not load this yet. Try again.', retry:'Retry loading',
-        recentEmpty:'No recent memory groups are available.', recentUnavailable:'Recent groups are unavailable in this library.',
+        recentEmpty:'No saved memory groups are available.', recentUnavailable:'Saved groups are unavailable in this library.',
+        recentMore:'Show older groups', recentLoaded:n=>`${n} more memory ${n===1?'group':'groups'} loaded.`,
         recentCount:n=>n===1?'1 item':`${n} items`, browse:'View photos and videos',
         chooseForStory:'Use in story', storyGroupOrder:n=>`Group ${n}`,
         combineDraftHelp:'Choose one or two groups. The draft uses their saved items in the order you choose.',
@@ -152,8 +154,8 @@ window.PhotoHouseMemoryGroups = {
       const readStatus=message=>{
         status.textContent=[notice,message].filter(Boolean).map(t).join(' ');
       };
-      const selected=new Map(), choices=[], browseButtons=[];
-      let opening=false, reviewing=false, combine=null;
+      const selected=new Map(), shown=new Set(), choices=[], browseButtons=[];
+      let opening=false, reviewing=false, paging=false, combine=null, nextPage=null;
       list.replaceChildren();story.replaceChildren();readStatus('loading');refresh.disabled=true;
       if(recentPending&&recentPending.key!==scopeKey(binding))recentPending=null;
       if(recentPending){
@@ -278,24 +280,40 @@ window.PhotoHouseMemoryGroups = {
       }
       function syncChoices(){
         const order=[...selected.keys()];
-        draft.disabled=opening||reviewing||!order.length;
-        if(combine)combine.disabled=opening||reviewing||order.length!==2;
-        for(const open of browseButtons)open.disabled=opening||reviewing;
+        const blocked=opening||reviewing||paging;
+        draft.disabled=blocked||!order.length;
+        if(combine)combine.disabled=blocked||order.length!==2;
+        older.disabled=blocked;
+        for(const open of browseButtons)open.disabled=blocked;
         for(const {group,box,text,idleLabel} of choices){
           const index=order.indexOf(group.id);
           box.checked=index!==-1;
-          box.disabled=opening||reviewing||(!box.checked&&order.length===2);
+          box.disabled=blocked||(!box.checked&&order.length===2);
           text.textContent=box.checked?t('storyGroupOrder')(index+1):idleLabel;
         }
       }
-      try{
-        const caps=await request(binding,'/memory-groups/capabilities');
-        if(!current())return;
-        if(caps?.version!==1||caps.enabled!==true||caps.recent!==true){
-          readStatus('recentUnavailable');refresh.hidden=true;return;
+      const older=button(t('recentMore'),async()=>{
+        if(!current()||!nextPage||older.disabled)return;
+        const moveFocus=document.activeElement===older;
+        const start=browseButtons.length;
+        paging=true;syncChoices();status.textContent=t('loading');
+        try{
+          await appendPage(nextPage);
+          if(!current())return;
+          status.textContent=t('recentLoaded')(browseButtons.length-start);
+        }catch(error){
+          if(current())status.textContent=t(error?.status===409?'storyChanged':'failed');
+        }finally{
+          if(current()){
+            paging=false;syncChoices();
+            if(moveFocus&&(document.activeElement===older||document.activeElement===document.body))
+              (browseButtons[start]||older).focus();
+          }
         }
-        if(caps.combine===true)combine=button(t('reviewCombine'),reviewCombine,'quiet recent-group-combine');
-        const result=await request(binding,'/memory-groups');
+      },'quiet recent-group-more');
+      older.hidden=true;
+      async function appendPage(page){
+        const result=await request(binding,'/memory-groups',page===null?{}:{query:{page}});
         if(!current())return;
         const items=result?.items;
         if(result?.version!==1||result.library_id!==binding.library||!Array.isArray(items)||items.length>8||
@@ -305,8 +323,15 @@ window.PhotoHouseMemoryGroups = {
               !Number.isInteger(group.count)||group.count<1||group.count>24||
               !safeThumbnail(group.cover)||!['image','video'].includes(group.cover.kind)))
           throw Error('Invalid recent memory groups');
-        readStatus(items.length?'':'recentEmpty');
+        const last=items.at(-1),next=result.next_page;
+        if(page!==null&&next!==null&&
+            (items.length!==8||next===page||next!==`${last.id}.${last.revision}`))
+          throw Error('Invalid memory group page');
+        nextPage=page===null?null:next;
+        older.hidden=nextPage===null;
         for(const group of items){
+          if(shown.has(group.id))continue;
+          shown.add(group.id);
           const label=t('themes')[group.theme];
           const card=node('li','', 'recent-group-card');
           card.append(node('strong',label),image(group.cover),node('p',t('recentCount')(group.count),'fine'));
@@ -342,6 +367,18 @@ window.PhotoHouseMemoryGroups = {
           }
           list.append(card);
         }
+      }
+      try{
+        const caps=await request(binding,'/memory-groups/capabilities');
+        if(!current())return;
+        if(caps?.version!==1||caps.enabled!==true||caps.recent!==true){
+          readStatus('recentUnavailable');refresh.hidden=true;return;
+        }
+        if(caps.combine===true)combine=button(t('reviewCombine'),reviewCombine,'quiet recent-group-combine');
+        await appendPage(caps.recent_pages===true?'first':null);
+        if(!current())return;
+        readStatus(shown.size?'':'recentEmpty');
+        story.append(older);
         if(choices.length){
           const actions=node('div','','recent-group-actions');
           if(typeof onStory==='function'){story.append(node('p',t('combineDraftHelp'),'fine'));actions.append(draft);}
