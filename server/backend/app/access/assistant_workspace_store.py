@@ -31,6 +31,7 @@ MAX_CARDS = 40
 MAX_RECEIPTS = 20
 HISTORY_PAGE_SIZE = 20
 MAX_INPUT_BYTES = 1024
+MAX_THREAD_LABEL_QUERY_BYTES = 256
 MAX_REPLY_BYTES = 8192
 MAX_SCOPE_ID_BYTES = 128
 MAX_EXPECTED_REVISION = (1 << 63) - 2
@@ -607,11 +608,16 @@ class AssistantWorkspaceStore:
             db.commit()
             return result
 
-    def list_threads(self, account_id, library_id, *, limit=50, include_labels=False, before=None):
+    def list_threads(self, account_id, library_id, *, limit=50, include_labels=False, before=None, label_query=None):
         account_id, library_id = _scope(account_id), _scope(library_id)
         if (type(limit) is not int or not 1 <= limit <= 100 or
                 type(include_labels) is not bool):
             raise ValueError('Invalid limit')
+        label_filter, label_filter_args = '', ()
+        if label_query is not None:
+            if not include_labels:
+                raise ValueError('Label search requires labeled threads')
+            label_query = ' '.join(_text(label_query, MAX_THREAD_LABEL_QUERY_BYTES).split()).casefold()
         position_filter, position_args = '', ()
         if before is not None:
             if (type(before) is not tuple or len(before) != 2
@@ -623,20 +629,28 @@ class AssistantWorkspaceStore:
         # Labels are an explicit presentation opt-in. Keeping the default
         # projection unchanged preserves the original strict list contract.
         now = int(self.clock())
-        label_projection = '''
-            , (SELECT e.input_text FROM exchanges e WHERE e.thread_id=t.thread_id
+        first_question = '''(SELECT e.input_text FROM exchanges e WHERE e.thread_id=t.thread_id
                 AND e.account_id=t.account_id AND e.library_id=t.library_id AND e.expires_at>?
-                ORDER BY e.revision LIMIT 1) AS first_question''' if include_labels else ''
+                ORDER BY e.revision LIMIT 1)'''
+        label_projection = f', {first_question} AS first_question' if include_labels else ''
         label_args = (now,) if include_labels else ()
         with self.connection() as db:
+            if label_query is not None:
+                def matches_label(question):
+                    label = self._display_label(question) or ''
+                    return int(label_query in label.casefold())
+
+                db.create_function('matches_thread_label', 1, matches_label, deterministic=True)
+                label_filter = f'AND matches_thread_label({first_question})'
+                label_filter_args = (now,)
             rows = db.execute(f'''SELECT t.*, (SELECT count(*) FROM exchanges e
                 WHERE e.thread_id=t.thread_id AND e.account_id=t.account_id
                 AND e.library_id=t.library_id AND e.expires_at>?) AS exchange_count
                 {label_projection}
                 FROM threads t WHERE t.account_id=? AND t.library_id=? AND t.expires_at>?
-                {position_filter}
+                {position_filter} {label_filter}
                 ORDER BY t.updated_at DESC,t.thread_id LIMIT ?''',
-                (now, *label_args, account_id, library_id, now, *position_args, limit)).fetchall()
+                (now, *label_args, account_id, library_id, now, *position_args, *label_filter_args, limit)).fetchall()
             results = []
             for row in rows:
                 item = self._thread(row, row['exchange_count'])

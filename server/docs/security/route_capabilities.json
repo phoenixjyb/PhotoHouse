@@ -4734,6 +4734,20 @@
   {
    "source": "backend/app/access/assistant_workspace_transport.py",
    "owner": "router",
+   "method": "POST",
+   "path": "/assistant/workspace/v1/thread-search",
+   "handler": "search_threads",
+   "surface": "photohouse",
+   "scope": "Current approved member’s conversation labels in the selected library",
+   "capabilities": [
+    "library.read"
+   ],
+   "current_control": "Read-only private label search with a bounded JSON body, cookie CSRF, account and library checks before and after the store read, retention and a 50-result page limit.",
+   "gap": "Generated local qualification. Windows and household use are separate."
+  },
+  {
+   "source": "backend/app/access/assistant_workspace_transport.py",
+   "owner": "router",
    "method": "GET",
    "path": "/assistant/workspace/v1/saved-memory-speech-capabilities",
    "handler": "saved_memory_speech_capabilities",

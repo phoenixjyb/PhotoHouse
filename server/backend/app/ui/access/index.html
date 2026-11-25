@@ -99,6 +99,15 @@
               <summary id="assistant-private-management-toggle" data-i18n="assistantPrivateManage">管理对话</summary>
               <div class="assistant-private-management-content">
                 <div class="assistant-private-heading"><div><h3 id="assistant-private-title" data-i18n="assistantPrivateTitle">我的私密对话</h3></div></div>
+                <form id="assistant-private-thread-search" class="assistant-private-thread-search" role="search" aria-labelledby="assistant-private-thread-query-label" hidden>
+                  <label id="assistant-private-thread-query-label" for="assistant-private-thread-query" data-i18n="assistantPrivateThreadQuery">按对话首问查找</label>
+                  <div class="assistant-private-thread-search-actions">
+                    <input id="assistant-private-thread-query" type="search" maxlength="64" enterkeyhint="search" autocomplete="off" required aria-controls="assistant-private-select">
+                    <button id="assistant-private-thread-submit" type="submit" data-i18n="search">查找</button>
+                    <button id="assistant-private-thread-clear" class="quiet" type="button" data-i18n="assistantPrivateAllThreads" hidden>全部对话</button>
+                  </div>
+                  <p id="assistant-private-thread-search-status" class="fine" role="status" hidden></p>
+                </form>
                 <div class="assistant-private-toolbar"><label for="assistant-private-select" data-i18n="assistantPrivateChoose">继续之前的对话</label><select id="assistant-private-select"><option value="">选择对话</option></select><button id="assistant-private-refresh" class="quiet" type="button" data-i18n="refresh">刷新</button></div>
                 <div id="assistant-private-thread-pages" class="assistant-private-thread-pages" hidden>
                   <button id="assistant-private-newer-threads" class="quiet" type="button" data-i18n="assistantPrivateNewerThreads">较新的对话</button>

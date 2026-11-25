@@ -100,6 +100,9 @@ checks and Windows delivery evidence.
 - Jude can follow up with “same month in 2024” or “2024 年同期” from an
   existing date search. It changes only the date condition. Exact dates that
   do not occur in the requested year prompt for a new date range.
+- **Manage conversations** can find an older private thread by the visible
+  label derived from its first question. Submitting the search keeps the
+  active conversation and its unsent message in place.
 
 ## Earlier capability snapshot (historical)
 

@@ -670,6 +670,7 @@
   }
   function clearPhotos({cancelMemoryJobs=true}={}) {
     clearAnniversaries();
+    $('assistant-private-thread-query').value='';
     resetPhotoStacks();
     resetVideoMoments();
     clearPeopleReview({hide:true});
@@ -2536,7 +2537,7 @@
     for(const id of ['assistant-private-new','assistant-private-select','assistant-private-refresh','assistant-private-locale','assistant-private-voice-pace','assistant-private-delete','assistant-private-delete-confirm'])$(id).disabled=blocked;
     syncPrivateThreadPages(snapshot,blocked);
     const latest=$('assistant-private-continue-latest');
-    latest.hidden=!available||state.locked||snapshot.locked||Boolean(selected)||snapshot.threadPage>1||!snapshot.threads.length||Boolean(assistantStoryTarget);
+    latest.hidden=!available||state.locked||snapshot.locked||Boolean(selected)||snapshot.filteringThreads||snapshot.threadPage>1||!snapshot.threads.length||Boolean(assistantStoryTarget);
     latest.disabled=blocked||assistantState.busy;
     const reopened=available&&!state.locked&&!snapshot.locked&&snapshot.pendingTurn?.mode==='reopened';
     const recover=$('assistant-private-recover');
@@ -2579,9 +2580,23 @@
 
   Object.assign(words.zh,{assistantPrivateNewerThreads:'较新的对话',assistantPrivateOlderThreads:'较早的对话',assistantPrivateThreadPage:'第 {page} 页',assistantPrivateThreadsEmpty:'这一页没有对话'});
   Object.assign(words.en,{assistantPrivateNewerThreads:'Newer conversations',assistantPrivateOlderThreads:'Older conversations',assistantPrivateThreadPage:'Page {page}',assistantPrivateThreadsEmpty:'No conversations on this page'});
+  Object.assign(words.zh,{assistantPrivateThreadQuery:'按对话首问查找',assistantPrivateAllThreads:'全部对话',
+    assistantPrivateThreadMatches:'此页匹配 {count} 段对话',assistantPrivateNoThreadMatches:'没有匹配的对话'});
+  Object.assign(words.en,{assistantPrivateThreadQuery:'Find by first question',assistantPrivateAllThreads:'All conversations',
+    assistantPrivateThreadMatches:'{count} found on this page',assistantPrivateNoThreadMatches:'No matching conversations'});
   Object.assign(words.zh,{assistantPrivateVoicePace:'语音回复速度',assistantPrivateVoiceNormal:'正常',assistantPrivateVoiceSlow:'稍慢（0.85 倍）'});
   Object.assign(words.en,{assistantPrivateVoicePace:'Spoken reply speed',assistantPrivateVoiceNormal:'Normal',assistantPrivateVoiceSlow:'Slower (0.85×)'});
   function syncPrivateThreadPages(snapshot,blocked){
+    const form=$('assistant-private-thread-search'),clear=$('assistant-private-thread-clear');
+    const matches=$('assistant-private-thread-search-status'),filtering=snapshot?.filteringThreads===true;
+    form.hidden=snapshot?.capabilities?.thread_search!==true||snapshot.locked||state.locked;
+    $('assistant-private-thread-query').disabled=form.hidden||blocked;
+    $('assistant-private-thread-submit').disabled=form.hidden||blocked;
+    clear.hidden=form.hidden||!filtering;clear.disabled=clear.hidden||blocked;
+    matches.hidden=form.hidden||!filtering;
+    const count=filtering?snapshot.threads.length:0;
+    const matchesText=matches.hidden?'':count?t('assistantPrivateThreadMatches').replace('{count}',String(count)):t('assistantPrivateNoThreadMatches');
+    if(matches.textContent!==matchesText)matches.textContent=matchesText;
     const nav=$('assistant-private-thread-pages'),page=snapshot?.threadPage??1;
     const older=snapshot?.hasOlderThreads===true&&snapshot.threads.length>0,newer=page>1;
     nav.hidden=!snapshot||snapshot.locked||state.locked||(!older&&!newer);
@@ -2855,6 +2870,7 @@
   }
   function showAuth() {
     clearAnniversaries();
+    $('assistant-private-thread-query').value='';
     clearPeopleReview({hide:true});
     assistantState.transcribe=false;assistantState.speech=false;
     resetAssistant();$('assistant-form').hidden=true;
@@ -5767,7 +5783,7 @@
   $('assistant-private-continue-latest').addEventListener('click',async event=>{
     const action=event.currentTarget;
     const snapshot=privateAssistant?.state(),latest=snapshot?.threads[0];
-    if(action.hidden||action.disabled||!latest||snapshot.activeThread||state.locked||assistantStoryTarget)return;
+    if(action.hidden||action.disabled||!latest||snapshot.activeThread||snapshot.filteringThreads||state.locked||assistantStoryTarget)return;
     const epoch=state.generation,restoreFocus=document.activeElement===action;
     await readPrivateAssistant(latest.thread_id);
     const current=privateAssistant?.state();
@@ -5777,6 +5793,17 @@
     if(!target.disabled&&target.getClientRects().length)target.focus();
   });
   $('assistant-private-refresh').addEventListener('click',()=>void privateAssistantAction(()=>privateAssistant.list()));
+  $('assistant-private-thread-search').addEventListener('submit',event=>{
+    event.preventDefault();
+    const query=$('assistant-private-thread-query').value.trim();
+    if(query&&!event.currentTarget.hidden&&!$('assistant-private-thread-submit').disabled)void privateAssistantAction(()=>privateAssistant.list({query}));
+  });
+  $('assistant-private-thread-clear').addEventListener('click',async event=>{
+    if(event.currentTarget.disabled)return;
+    const epoch=state.generation;
+    await privateAssistantAction(async()=>{await privateAssistant.list({query:null});$('assistant-private-thread-query').value='';});
+    if(!stale(epoch)&&!privateAssistant?.state().filteringThreads&&document.activeElement===document.body)$('assistant-private-thread-query').focus();
+  });
   async function changePrivateThreadPage(direction,button){
     const controller=privateAssistant;
     if(button.disabled||!controller)return;

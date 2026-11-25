@@ -989,6 +989,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .assistant-private-heading h3 { margin:0 0 .4rem; }
 .assistant-private-heading .fine { margin:0; }
 .assistant-private-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin-top:1rem; }
+.assistant-private-thread-search{display:grid;gap:.35rem;margin-block:.75rem}
+.assistant-private-thread-search-actions{display:flex;flex-wrap:wrap;gap:.45rem}
+.assistant-private-thread-search-actions input{flex:1 1 12rem;min-width:0}
+.assistant-private-thread-search-actions button{min-height:44px;max-width:100%;white-space:normal}
+.assistant-private-thread-search-status{margin:0}
 .assistant-private-toolbar select { flex:1 1 12rem; min-width:0; max-width:100%; }
 .assistant-private-preferences { margin-top:.75rem; }
 .assistant-private-preferences label { display:block; margin:.75rem 0 .35rem; }

@@ -228,6 +228,7 @@ class ClosedBoundary:
                 ('GET', '/assistant/workspace/v1/saved-memory-segment-reading-capabilities'),
                 ('GET', '/assistant/workspace/v1/threads'),
                 ('POST', '/assistant/workspace/v1/threads'),
+                ('POST', '/assistant/workspace/v1/thread-search'),
                 ('GET', '/assistant/workspace/v1/preferences'),
                 ('PUT', '/assistant/workspace/v1/preferences'),
                 ('POST', '/assistant/workspace/v1/preferences/reset')}:

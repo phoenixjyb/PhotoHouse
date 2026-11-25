@@ -762,6 +762,30 @@ async function installSyntheticTransport(targetContext){
   await earlier.waitFor({state:'visible'});
   assert.equal(await picker.locator('option').filter({hasText:'较早的合成对话'}).count(),0);
   const beforePaging=turns().length;
+  const threadQuery=page.locator('#assistant-private-thread-query');
+  const threadQueryStatus=page.locator('#assistant-private-thread-search-status');
+  const threadSearches=()=>browserRequests.filter(item=>item.path.startsWith('/assistant/workspace/v1/thread-search'));
+  await threadQuery.fill('没有匹配的合成关键词');
+  assert.equal(threadSearches().length,0,'typing does not send a private conversation query');
+  await threadQuery.press('Enter');
+  await threadQueryStatus.getByText('没有匹配的对话',{exact:true}).waitFor();
+  assert.equal(await picker.inputValue(),refinementThreadId);
+  await threadQuery.fill('较早的合成');await threadQuery.press('Enter');
+  await threadQueryStatus.getByText('此页匹配 1 段对话',{exact:true}).waitFor();
+  assert.equal(await picker.locator(`option[value="${archived.thread_id}"]`).count(),1);
+  assert.equal(await picker.inputValue(),refinementThreadId,'label search keeps the current conversation selected');
+  assert.equal(turns().length,beforePaging);
+  assert.deepEqual(threadSearches().map(item=>[item.method,item.path,JSON.parse(item.body).query]),[
+    ['POST','/assistant/workspace/v1/thread-search','没有匹配的合成关键词'],
+    ['POST','/assistant/workspace/v1/thread-search','较早的合成']]);
+  const labelSearch=page.locator('#assistant-private-thread-search');
+  assert(await labelSearch.evaluate(el=>el.scrollWidth<=el.clientWidth),'label search fits in the mobile conversation panel');
+  await labelSearch.scrollIntoViewIfNeeded();
+  await labelSearch.screenshot({path:path.join(artifacts,'assistant-find-older-conversation-mobile-zh.png')});
+  await page.locator('#assistant-private-thread-clear').click();await earlier.waitFor({state:'visible'});
+  assert.equal(await threadQuery.inputValue(),'');
+  assert.equal(await picker.locator(`option[value="${archived.thread_id}"]`).count(),0);
+  checkpoint('Private label search finds an older conversation beyond the initial page without sending a turn or changing the active thread');
   await earlier.press('Enter');
   await pageLabel.getByText('第 2 页',{exact:true}).waitFor();
   assert.equal(await picker.inputValue(),refinementThreadId,'browsing keeps the active conversation');
@@ -800,11 +824,13 @@ async function installSyntheticTransport(targetContext){
   assert.equal(turns().length,beforePaging,'listing and reopening older threads submits no turn');
   checkpoint('Earlier conversations remain reachable from the private picker after the first 50');
 
+  await threadQuery.fill('合成：清理未提交的对话搜索');
   await page.locator('#assistant-workspace-lock').click();await page.locator('#auth').waitFor({state:'visible'});
   assert.equal(await page.locator('#assistant-search-refinements').count(),0,'logout removes account-scoped refinement controls');
   assert.equal(await page.locator('#assistant-private-submitted-text').textContent(),'');
   assert.equal(await pageLabel.textContent(),'','logout clears the conversation page');
   assert.equal(await picker.locator('option').count(),1,'logout clears cached private conversation labels');
+  assert.equal(await threadQuery.inputValue(),'','logout clears unsent private label search text');
   checkpoint('Logout clears protected recovery content and refinement controls');
   console.log('REFINEMENT_SCREENSHOTS '+refinementDesktop+' '+refinementPhone);
 

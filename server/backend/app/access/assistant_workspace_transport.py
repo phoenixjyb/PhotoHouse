@@ -26,8 +26,8 @@ from .assistant_memory_followup import (AssistantMemoryFollowupTool,
                                         parse_saved_memory_action)
 from .assistant_memory_discovery import AssistantMemoryDiscovery
 
-from .assistant_workspace_store import (AssistantWorkspaceStore, MAX_THREAD_TIMESTAMP,
-    WorkspaceStoreConflict, WorkspaceStoreMissing, WorkspaceStoreUnavailable)
+from .assistant_workspace_store import (AssistantWorkspaceStore, MAX_THREAD_LABEL_QUERY_BYTES, MAX_THREAD_TIMESTAMP,
+    WorkspaceStoreConflict, WorkspaceStoreMissing, WorkspaceStoreUnavailable, _text as _workspace_text)
 from .assistant_speech import (AssistantSpeechUnavailable, LocalAssistantTts,
                                valid_reply_wav)
 from .assistant_reading_segments import saved_reading_segments, MAX_SEGMENTS
@@ -2231,7 +2231,19 @@ async def capabilities(request: Request):
             raise AccessDenied()
     if _single(request, 'x-photohouse-pending-turn-version') == '1':
         value['discard_pending'] = bool(healthy)
+    if _single(request, 'x-photohouse-thread-search-version') == '1':
+        value['thread_search'] = bool(healthy)
     return JSONResponse(value, headers=PRIVACY_HEADERS)
+
+
+def _thread_list_position(value):
+    if type(value) is not str:
+        raise WorkspaceInvalid()
+    seconds, separator, thread_id = value.partition(',')
+    if (not separator or not seconds.isascii() or not seconds.isdecimal()
+            or len(seconds) > 12 or int(seconds) > MAX_THREAD_TIMESTAMP):
+        raise WorkspaceInvalid()
+    return int(seconds), _thread_id(thread_id)
 
 
 @router.get('/assistant/workspace/v1/threads')
@@ -2254,11 +2266,9 @@ async def list_threads(request: Request):
         include_labels = query['include_labels'] == 'true'
     before = None
     if 'before' in query:
-        seconds, separator, thread_id = query['before'].partition(',')
-        if (not paged or not separator or not seconds.isascii() or not seconds.isdecimal()
-                or len(seconds) > 12 or int(seconds) > MAX_THREAD_TIMESTAMP):
+        if not paged:
             raise WorkspaceInvalid()
-        before = int(seconds), _thread_id(thread_id)
+        before = _thread_list_position(query['before'])
     store = _workspace(request)
     items = await _call(store, 'list_threads', account, library, limit=limit + int(paged),
                         include_labels=include_labels, before=before)
@@ -2268,6 +2278,24 @@ async def list_threads(request: Request):
     if paged:
         result['has_more'] = len(items) > limit
     return JSONResponse(result, headers=PRIVACY_HEADERS)
+
+
+@router.post('/assistant/workspace/v1/thread-search')
+async def search_threads(request: Request):
+    body = await _body(request, {'library_id', 'query', 'before'}, required={'library_id', 'query'})
+    library = _library(body['library_id'])
+    account = await _principal(request, library)
+    try:
+        query = _workspace_text(body['query'], MAX_THREAD_LABEL_QUERY_BYTES)
+    except ValueError:
+        raise WorkspaceInvalid() from None
+    before = _thread_list_position(body['before']) if 'before' in body else None
+    items = await _call(_workspace(request), 'list_threads', account, library, limit=51,
+                        include_labels=True, before=before, label_query=query)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'threads': [_safe_thread(row) for row in items[:50]],
+                         'has_more': len(items) > 50}, headers=PRIVACY_HEADERS)
 
 
 @router.post('/assistant/workspace/v1/threads')
