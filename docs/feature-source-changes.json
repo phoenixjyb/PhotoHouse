@@ -39588,6 +39588,24 @@
         }
       ],
       "notes": "Expose the existing exact-version local refinement retry in the story reader."
+    },
+    {
+      "feature": "distinguish-photo-video-actions-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "c1bba5a3ca33475a5faddb227c609eb46c5ba8e152d39e706b6b87373c746989",
+          "sha256": "b969bf6c39fa8829215ab840587f4f9ba5a4c2614096bb90e9e175e1fb83b7b8"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "0c6f5c1f4716e5eba5fa892d563bae1c060032ef2a53ed37bb9369bc2e48bf80",
+          "sha256": "91633833655e271166fc599968f6cc45f64fc58ae66885ab574f03ad92fccb83"
+        }
+      ],
+      "notes": "Use media-specific result actions and exercise the exact viewer controls."
     }
   ]
 }

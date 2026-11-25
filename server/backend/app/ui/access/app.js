@@ -1735,6 +1735,8 @@
   Object.assign(words.en,{assistantRefineRange:'Change date range',assistantRefineUseRange:'Use these dates',assistantRefineRangeInvalid:'The end date must be on or after the start date.'});
   Object.assign(words.zh,{assistantWhyMatch:'为什么匹配？',assistantWhyMatchLabel:'第 {n} 项结果的匹配说明',assistantFollowupDraftReady:'请检查输入框中的问题，再发送。'});
   Object.assign(words.en,{assistantWhyMatch:'Why this match?',assistantWhyMatchLabel:'Why did result {n} match?',assistantFollowupDraftReady:'Review the question in the composer, then send it.'});
+  words.zh.assistantOpenVideo='打开视频';
+  words.en.assistantOpenVideo='Open video';
   function fillAssistantSearchDraft(text,readyKey='assistantRefineReady'){
     const composer=$('assistant-text');
     if(composer.value.trim()||privateAssistant?.state().draft?.trim()){
@@ -2261,7 +2263,8 @@
       if(turn.version===4){const rank=document.createElement('p');rank.className='assistant-scene-rank';rank.textContent=t('assistantSceneRank').replace('{rank}',String((turn.scene_rank_start||1)+turn.items.indexOf(item)));card.append(rank);}
       if(item.match&&typeof item.match.excerpt==='string'){const excerpt=document.createElement('p');excerpt.className='fine';excerpt.textContent=item.match.excerpt.slice(0,1200);card.append(excerpt);}
       if(Array.isArray(item.match_reasons)&&item.match_reasons.length){const reasons=document.createElement('ul');reasons.className='assistant-match-reasons';for(const reason of item.match_reasons){const label=assistantMatchReason(reason,turn);if(label){const entry=document.createElement('li');entry.textContent=label;reasons.append(entry);}}if(reasons.childElementCount)card.append(reasons);}
-      const button=document.createElement('button');button.type='button';button.className='quiet';button.textContent=t('assistantOpen');
+      const button=document.createElement('button');button.type='button';button.className='quiet';
+      button.textContent=t(item.kind==='video'?'assistantOpenVideo':'assistantOpen');
       button.addEventListener('click',()=>{
         if(stale(epoch)||state.locked||state.library!==assistantState.binding?.library)return;
         const frameSearch=assistantStoryTarget?assistantFrameSearchContext(turn,epoch,assistantState.items,button):null;
