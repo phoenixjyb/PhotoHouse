@@ -21,6 +21,11 @@ an Android build. GitHub Actions remain paused.
 5. Build, edit, review, and save using the existing story editor. Selecting or
    opening frames does not build, generate, save, publish, or play a story.
 
+Before selecting frames, you can ask “Why the first photo?” or
+“为什么是第一张照片？” to review the recorded match evidence. Use the number
+shown beside the item in the current list. The explanation keeps the same
+results and filters available for selection.
+
 A new or refined search clears the selection, including one that needs
 clarification. Switching conversations or accounts, changing libraries, losing
 access, and signing out also clear it. When you reload the history of the same
@@ -165,11 +170,12 @@ source/browser evidence; Windows delivery and household acceptance are separate.
 ## November 25 generated Search-to-story journey
 
 The generated browser starts a private Jude search, narrows the reviewed person
-query by date, and picks two frames across ordinary result pages. The editor
-keeps their click order. An explicit source choice adds a family-authored note
-to one chapter. The local test provider returns a proposal for review, and the
-author edits and saves it. Reopening verifies the frame order, chapters, adopted
-wording and original note through the protected source-review response.
+query by date, and asks why the first photo matched. The response cites the
+reviewed person and capture-date evidence. The author picks two frames across
+ordinary result pages, and the editor keeps their click order. An explicit
+source choice adds a family-authored note to one chapter. The local test provider
+returns a proposal for review, and the author edits and saves it. Reopening
+checks the frame order, chapters, adopted wording and original note.
 
 The journey uses disposable data and the existing in-memory provider fixture.
 It checks that searching, paging and arranging frames neither generate prose

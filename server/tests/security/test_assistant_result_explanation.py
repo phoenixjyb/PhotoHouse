@@ -82,6 +82,52 @@ class V2WhyResultHttpTests(unittest.TestCase):
         for hidden in ('note-101', 'PRIVATE', 'Family beach visit', 'revision'):
             self.assertNotIn(hidden, explained['reply'])
 
+    def test_typed_ordinal_questions_explain_the_current_photo_in_both_languages(self):
+        initial = self.turn('find photos containing "secret memory phrase"').json()
+        self.assertEqual([item['id'] for item in initial['items']], ['101'])
+        for words, explanation, source in (
+            ('Why the first photo?', 'Match explanation for result 1', 'saved photo memory'),
+            ('为什么是第一张照片？', '第1项的匹配说明', '照片回忆'),
+        ):
+            with self.subTest(words=words):
+                response = self.turn(words, context=initial['context'])
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual((result['kind'], result['effect']), ('results', None))
+                self.assertIn(explanation, result['reply'])
+                self.assertIn(source, result['reply'])
+                for key in ('context', 'filters', 'items'):
+                    self.assertEqual(result[key], initial[key])
+
+        for words, kind in (
+            ('why the first video?', 'clarification'),
+            ('为什么是第一个视频？', 'clarification'),
+            ('why the second photo?', 'clarification'),
+            ('why the first photo then open it', 'unsupported'),
+        ):
+            with self.subTest(words=words):
+                response = self.turn(words, context=initial['context'])
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual(result['kind'], kind)
+                self.assertIsNone(result['effect'])
+                self.assertEqual(result['context'], initial['context'])
+                self.assertEqual(result['items'], initial['items'])
+
+    def test_typed_ordinal_questions_explain_the_current_video_in_both_languages(self):
+        initial = self.turn('find videos').json()
+        self.assertEqual(initial['items'][0]['kind'], 'video')
+        for words, expected in (('why the first video?', 'Item type: video.'),
+                                ('为什么是第一段视频？', '项目类型为视频。')):
+            with self.subTest(words=words):
+                response = self.turn(words, context=initial['context'])
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual((result['kind'], result['effect']), ('results', None))
+                self.assertIn(expected, result['reply'])
+                self.assertEqual(result['context'], initial['context'])
+                self.assertEqual(result['items'], initial['items'])
+
     def test_context_binding_fingerprint_membership_library_and_source_are_revalidated(self):
         initial = self.turn('find photos in September 2032').json()
         context = initial['context']
@@ -115,7 +161,7 @@ class V3WhyResultHttpTests(unittest.TestCase):
         calls = list(self.planner.calls)
         expected_items = initial['items']
 
-        why = self.intent('why the first result', initial['context'])
+        why = self.intent('why the first photo?', initial['context'])
         self.assertEqual(why.status_code, 200, why.text)
         explained = why.json()
         self.assertEqual((explained['version'], explained['kind']), (3, 'results'))
