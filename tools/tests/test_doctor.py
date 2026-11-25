@@ -14,7 +14,7 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
-from tools import doctor
+from tools import check, doctor
 
 
 def python312():
@@ -30,6 +30,21 @@ def make_root(base: Path, lock: str = "alpha==1.2.3\n") -> Path:
 
 
 class DoctorTests(unittest.TestCase):
+    def test_web_check_detects_a_missing_suite_required_by_the_runner(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            missing = "server/tests/security/test_memory_groups_browser.cjs"
+            self.assertIn(missing, check.WEB_TESTS)
+            for suite in check.WEB_TESTS:
+                if suite != missing:
+                    path = root / suite
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.touch()
+            self.assertEqual(doctor._suite_check(root)["status"], "missing")
+            self.assertEqual(doctor._suite_check(root)["missing_count"], 1)
+            (root / missing).touch()
+            self.assertEqual(doctor._suite_check(root)["status"], "available")
+
     def test_lock_reads_includes_and_skips_inactive_platform_pins(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "repo"
@@ -87,9 +102,11 @@ class DoctorTests(unittest.TestCase):
                 encoding="utf-8",
             )
             home = Path(temporary) / "home with spaces"
-            gradle = home / ".gradle/wrapper/dists/gradle-8.10.2-bin/cache/gradle-8.10.2/bin/gradle"
+            slot = home / ".gradle/wrapper/dists/gradle-8.10.2-bin/a04bxjujx95o3nb99gddekhwo"
+            gradle = slot / "gradle-8.10.2/bin/gradle"
             gradle.parent.mkdir(parents=True)
             gradle.touch()
+            (slot / "gradle-8.10.2-bin.zip.ok").touch()
             java = Path(temporary) / "JDK 17 with spaces/bin/java"
             java.parent.mkdir(parents=True)
             java.touch()
@@ -320,9 +337,38 @@ class DoctorTests(unittest.TestCase):
                 "distributionSha256Sum=" + "a" * 64 + "\n",
                 encoding="utf-8",
             )
-            status, version = doctor._wrapper_check(root, "darwin")
+            status, wrapper = doctor._wrapper_check(root, "darwin")
             self.assertEqual("available", status["status"])
-            self.assertEqual("8.10.2", version)
+            self.assertEqual("8.10.2", wrapper.version)
+
+    def test_project_wrapper_ignores_home_cache_and_checks_the_exact_warm_slot(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary) / 'home'
+            root = make_root(Path(temporary) / 'repo')
+            android = root / 'clients/android/android'
+            (android / 'gradlew').touch()
+            (android / 'gradle/wrapper/gradle-wrapper.jar').touch()
+            (android / 'gradle/wrapper/gradle-wrapper.properties').write_text(
+                'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip\n'
+                'distributionSha256Sum=' + 'a' * 64 + '\n'
+                'distributionBase=PROJECT\ndistributionPath=.gradle/distributions\n'
+                'zipStoreBase=PROJECT\nzipStorePath=.gradle/distributions\n', encoding='utf-8')
+            status, wrapper = doctor._wrapper_check(root, 'darwin')
+            self.assertEqual('available', status['status'])
+            slot = Path('gradle-8.10.2-bin/a04bxjujx95o3nb99gddekhwo')
+            launcher = Path('gradle-8.10.2/bin/gradle')
+            marker = 'gradle-8.10.2-bin.zip.ok'
+            incorrect = home / '.gradle/wrapper/dists' / slot
+            (incorrect / launcher).parent.mkdir(parents=True)
+            (incorrect / launcher).touch()
+            (incorrect / marker).touch()
+            self.assertEqual('missing', doctor._gradle_cache_check(root, {}, home, 'darwin', wrapper)['status'])
+            expected = android / '.gradle/distributions' / slot
+            (expected / launcher).parent.mkdir(parents=True)
+            (expected / launcher).touch()
+            self.assertEqual('unverified', doctor._gradle_cache_check(root, {}, home, 'darwin', wrapper)['status'])
+            (expected / marker).touch()
+            self.assertEqual('available', doctor._gradle_cache_check(root, {}, home, 'darwin', wrapper)['status'])
 
     def test_playwright_node_engine_must_be_known_supported_and_satisfied(self):
         probe = lambda *_a, **_k: {

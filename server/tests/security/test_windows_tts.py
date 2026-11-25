@@ -44,9 +44,14 @@ def child_reply(audio):
         'audio_base64': base64.b64encode(audio).decode('ascii')}, separators=(',', ':')).encode()
 
 
+def child_languages(languages):
+    return json.dumps({'success': True, 'languages': languages}, separators=(',', ':')).encode()
+
+
 class FakeProcess:
     def __init__(self, stdout, *, persistent=False):
         self.stdin = InputCapture()
+        self.stdout_bytes = stdout
         self.stdout = io.BytesIO(stdout)
         self.returncode = None if persistent else 0
         self.kills = 0
@@ -144,6 +149,65 @@ class WindowsSpeechChildTests(unittest.TestCase):
         self.assertEqual(kwargs['shell'], False)
         request = json.loads(proc.stdin.captured.decode('utf-8'))
         self.assertEqual(request, {'operation': 'synthesize', **self.FIELDS})
+
+    def test_selected_voice_name_is_bounded_and_sent_only_in_stdin_json(self):
+        audio = wav_bytes()
+        process = FakeProcess(child_reply(audio))
+        child = tts.WindowsSystemSpeech(executable=SYNTHETIC_POWERSHELL,
+            en_voice='Microsoft Aria Desktop',
+            popen=lambda *_a, **_kw: process)
+        self.assertEqual(child.synthesize(self.FIELDS), audio)
+        request = json.loads(process.stdin.captured.decode('utf-8'))
+        self.assertEqual(request, {'operation': 'synthesize', **self.FIELDS,
+                                   'voice_name': 'Microsoft Aria Desktop'})
+        self.assertNotIn('Microsoft Aria Desktop', ' '.join(child._command()))
+        self.assertIn("$selected.Count -ne 1", tts._POWERSHELL)
+        self.assertIn("$_.VoiceInfo.Culture.Name -ceq $culture", tts._POWERSHELL)
+
+    def test_voice_name_validation_and_private_piped_availability_selection(self):
+        self.assertEqual(tts.validate_voice_name('Microsoft Aria Desktop'),
+                         'Microsoft Aria Desktop')
+        for bad in ('', ' Aria', 'Aria ', 'Aria\n', '猫' * 86, '\ud800'):
+            with self.subTest(bad=repr(bad)), self.assertRaises((ValueError, UnicodeError)):
+                tts.validate_voice_name(bad)
+
+        process = FakeProcess(child_languages(['zh', 'en']))
+        child = tts.WindowsSystemSpeech(executable=SYNTHETIC_POWERSHELL,
+            zh_voice='Microsoft Huihui Desktop', en_voice='Microsoft Aria Desktop',
+            popen=lambda *_a, **_kw: process)
+        self.assertEqual(child.languages(), {'zh', 'en'})
+        self.assertEqual(json.loads(process.stdin.captured.decode('utf-8')),
+                         {'operation': 'voices', 'zh_voice': 'Microsoft Huihui Desktop',
+                          'en_voice': 'Microsoft Aria Desktop'})
+        self.assertNotIn('Microsoft Huihui Desktop', process.stdout_bytes.decode())
+        self.assertNotIn('Microsoft Aria Desktop', process.stdout_bytes.decode())
+        self.assertIn("$selectedZh.Count -ne 1", tts._POWERSHELL)
+        self.assertIn("$selectedEn.Count -ne 1", tts._POWERSHELL)
+        self.assertIn("$_.VoiceInfo.Culture.Name -ceq 'zh-CN'", tts._POWERSHELL)
+        self.assertIn("$_.VoiceInfo.Culture.Name -ceq 'en-US'", tts._POWERSHELL)
+
+    def test_default_voice_availability_wire_stays_closed_and_failed_selection_is_generic(self):
+        # Default discovery never returns installed names, so unusual host names
+        # cannot make a previously supported no-options check fail in Python.
+        process = FakeProcess(child_languages(['zh', 'en']))
+        child = tts.WindowsSystemSpeech(executable=SYNTHETIC_POWERSHELL,
+            popen=lambda *_a, **_kw: process)
+        self.assertEqual(child.languages(), {'zh', 'en'})
+        self.assertEqual(json.loads(process.stdin.captured.decode('utf-8')),
+                         {'operation': 'voices'})
+        self.assertEqual(json.loads(process.stdout_bytes),
+                         {'success': True, 'languages': ['zh', 'en']})
+
+        failed = FakeProcess(b'{"success":false,"error":"voice_unavailable"}')
+        failed.returncode = 3
+        child = tts.WindowsSystemSpeech(executable=SYNTHETIC_POWERSHELL,
+            en_voice='Missing exact voice', popen=lambda *_a, **_kw: failed)
+        with self.assertRaises(tts.TtsFailure):
+            child.languages()
+        self.assertEqual(json.loads(failed.stdin.captured.decode('utf-8')),
+                         {'operation': 'voices', 'en_voice': 'Missing exact voice'})
+        self.assertEqual(json.loads(failed.stdout_bytes),
+                         {'success': False, 'error': 'voice_unavailable'})
 
     def test_failure_shape_oversized_stdout_and_bad_wav_fail_closed(self):
         for output, code in ((b'{"success":false,"error":"voice_unavailable"}', 1),
@@ -342,6 +406,49 @@ class WindowsTtsCliAndTokenTests(unittest.TestCase):
         load = tts._POWERSHELL.index('Add-Type -AssemblyName System.Speech')
         creation = tts._POWERSHELL.index('New-Object System.Speech.Synthesis.SpeechSynthesizer')
         self.assertLess(load, creation)
+
+    def test_qualify_pipes_exact_operator_voice_names_for_both_synthetic_phrases(self):
+        audio = wav_bytes()
+        outputs = [child_languages(['zh', 'en']), child_reply(audio), child_reply(audio)]
+        processes = []
+
+        def factory(*, zh_voice=None, en_voice=None):
+            def popen(*_args, **_kwargs):
+                process = FakeProcess(outputs[len(processes)])
+                processes.append(process)
+                return process
+            return tts.WindowsSystemSpeech(executable=SYNTHETIC_POWERSHELL,
+                zh_voice=zh_voice, en_voice=en_voice, popen=popen)
+
+        stdout = io.StringIO()
+        with patch.object(operator, 'WindowsSystemSpeech', side_effect=factory), \
+             patch('sys.stdout', stdout):
+            result = operator.main(['--qualify', '--zh-voice', 'Microsoft Huihui Desktop',
+                                    '--en-voice', 'Microsoft Aria Desktop'])
+        self.assertEqual(result, 0)
+        report = json.loads(stdout.getvalue())
+        self.assertEqual(set(report), {'qualification', 'wav_bytes', 'saved_audio'})
+        self.assertEqual(report['qualification'], 'passed')
+        self.assertEqual(json.loads(processes[0].stdin.captured), {
+            'operation': 'voices', 'zh_voice': 'Microsoft Huihui Desktop',
+            'en_voice': 'Microsoft Aria Desktop'})
+        zh_request = json.loads(processes[1].stdin.captured)
+        en_request = json.loads(processes[2].stdin.captured)
+        self.assertEqual((zh_request['language'], zh_request['voice_name']),
+                         ('zh', 'Microsoft Huihui Desktop'))
+        self.assertEqual((en_request['language'], en_request['voice_name']),
+                         ('en', 'Microsoft Aria Desktop'))
+
+    def test_check_rejects_voice_selection_without_starting_child(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'token.txt'
+            path.write_text(TOKEN, encoding='ascii')
+            path.chmod(0o600)
+            with patch.object(operator.WindowsSystemSpeech, '__init__',
+                              side_effect=AssertionError('child')):
+                with self.assertRaises(SystemExit):
+                    operator.main(['--check', '--token-file', str(path),
+                                   '--zh-voice', 'Microsoft Huihui Desktop'])
 
     def test_app_uses_same_strong_token_policy_as_file_loader(self):
         for invalid in ('x' * 31, 'x' * 32 + '!', 'x' * 257):

@@ -14,10 +14,13 @@ from fastapi.testclient import TestClient
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT/'scripts'), str(ROOT/'backend')]
 import semantic_siglip as adapter
+import _semantic_siglip_encoding as encoding
 import build_multilingual_image_index as indexer
 import serve_multilingual_semantic_text as serving
 import qualify_multilingual_pilot as pilot
+from app.access.search_policy_binding import capture_current_query_policy_binding
 from app.access.semantic_encoder import JointSpaceBinding, SemanticUnavailable, SemanticUnsupported
+import app.access.search_policy_binding as policy_binding
 from app.access.semantic_provider_transport import create_provider_app
 from app.access.visual_vector_loader import _read_vector
 
@@ -57,21 +60,21 @@ def model(monkeypatch, tmp_path):
     class Pin:
         def __init__(self, digest): self.sha256 = digest
     directory = tmp_path/'model'; directory.mkdir(mode=0o700)
-    real_import = adapter.importlib.import_module
-    monkeypatch.setattr(adapter, 'importlib', SimpleNamespace(import_module=
+    real_import = encoding.importlib.import_module
+    monkeypatch.setattr(encoding, 'importlib', SimpleNamespace(import_module=
         lambda name: Torch if name == 'torch' else real_import(name)))
-    monkeypatch.setattr(adapter.qualification, 'installed_versions', lambda: adapter.qualification.EXPECTED_PACKAGES)
-    monkeypatch.setattr(adapter.qualification, 'inspect_model_files',
-        lambda *_a: {n: Pin(v['sha256']) for n,v in adapter.qualification.OFFICIAL_ARTIFACTS.items()})
-    monkeypatch.setattr(adapter.qualification, 'load_model', lambda *_a:
+    monkeypatch.setattr(encoding.qualification, 'installed_versions', lambda: encoding.qualification.EXPECTED_PACKAGES)
+    monkeypatch.setattr(encoding.qualification, 'inspect_model_files',
+        lambda *_a: {n: Pin(v['sha256']) for n,v in encoding.qualification.OFFICIAL_ARTIFACTS.items()})
+    monkeypatch.setattr(encoding.qualification, 'load_model', lambda *_a:
         {'torch': Torch, 'processor': Processor(), 'model': Model(),
          'source_pins': {}, 'preprocessor_config': {'fixture': True}})
-    monkeypatch.setattr(adapter, '_source_pin', lambda _p: Pin('a'*64))
-    monkeypatch.setattr(adapter, '_current', lambda _p: None)
-    monkeypatch.setattr(adapter, 'verify_checkpoint', lambda _p: None)
+    monkeypatch.setattr(encoding, '_source_pin', lambda _p: Pin('a'*64))
+    monkeypatch.setattr(encoding, '_current', lambda _p: None)
+    monkeypatch.setattr(encoding, 'verify_checkpoint', lambda _p: None)
     return adapter.SiglipModel.load(model_directory=str(directory),
-        artifacts=adapter.qualification.OFFICIAL_ARTIFACTS,
-        package_versions=adapter.qualification.EXPECTED_PACKAGES)
+        artifacts=encoding.qualification.OFFICIAL_ARTIFACTS,
+        package_versions=encoding.qualification.EXPECTED_PACKAGES)
 
 
 def bind(model):
@@ -95,8 +98,8 @@ def index_configuration(tmp_path, *, reviewed=True):
             'reviewed':reviewed,'assets':assets}
     cp=private_json(tmp_path/'cohort.json',cohort)
     return private_json(tmp_path/'config.json',{'schema':'photohouse.multilingual_image_index_run.v1',
-        'model_directory':str(tmp_path/'model'),'artifacts':adapter.qualification.OFFICIAL_ARTIFACTS,
-        'package_versions':adapter.qualification.EXPECTED_PACKAGES,'cohort':str(cp),'max_elapsed_seconds':30})
+        'model_directory':str(tmp_path/'model'),'artifacts':encoding.qualification.OFFICIAL_ARTIFACTS,
+        'package_versions':encoding.qualification.EXPECTED_PACKAGES,'cohort':str(cp),'max_elapsed_seconds':30})
 
 
 def inspect(path, *, expected_library):
@@ -177,6 +180,44 @@ def test_binding_normalization_original_query_and_overflow_are_protected(model):
     assert model.receipt()['recipes']['text']['normalization']=='unicode_lowercase'
 
 
+def test_siglip_rechecks_cancellation_after_final_policy_source_read(model, monkeypatch):
+    bind(model)
+    original_read = policy_binding._read_source
+    source_reads = 0
+    expired = False
+
+    def observed_read(path):
+        nonlocal source_reads, expired
+        value = original_read(path)
+        source_reads += 1
+        if source_reads == 6:
+            expired = True
+        return value
+
+    monkeypatch.setattr(policy_binding, '_read_source', observed_read)
+    processor = model._handle['processor']
+    model_calls = []
+    original_text_features = model._handle['model'].get_text_features
+
+    def observed_text_features(**kwargs):
+        model_calls.append(kwargs)
+        return original_text_features(**kwargs)
+
+    monkeypatch.setattr(model._handle['model'], 'get_text_features', observed_text_features)
+
+    def check():
+        if expired:
+            raise RuntimeError('deadline expired during final policy-source read')
+
+    with pytest.raises(SemanticUnavailable):
+        model.encode('a quiet family garden', check=check)
+    assert source_reads == 6
+    assert processor.seen == []
+    assert model_calls == []
+    assert model._lock.acquire(blocking=False)
+    model._lock.release()
+
+
 def test_wrong_legacy_or_recipe_identity_cannot_bind(model):
     for image,text in [(replace(model.image_identity,dimension=512),replace(model.text_identity,dimension=512)),
         (model.image_identity,replace(model.text_identity,preprocessing_sha256='b'*64))]:
@@ -223,20 +264,20 @@ assert s.run(['--configuration','/private/no.json'])==2
 
 def test_serving_requires_secret_binding_and_pins_before_model_load(monkeypatch,tmp_path):
     value={'schema':'photohouse.multilingual_text_provider.v1','model_directory':str(tmp_path/'model'),
-        'artifacts':adapter.qualification.OFFICIAL_ARTIFACTS,'package_versions':adapter.qualification.EXPECTED_PACKAGES,
+        'artifacts':encoding.qualification.OFFICIAL_ARTIFACTS,'package_versions':encoding.qualification.EXPECTED_PACKAGES,
         'binding':None,'credential_file':None,'port':43871}
     p=private_json(tmp_path/'provider.json',value)
     with pytest.raises(ValueError):serving.configuration(p,serving=True)
-    monkeypatch.setattr(adapter.qualification,'installed_versions',lambda:{'torch':'wrong'})
-    monkeypatch.setattr(adapter.importlib,'import_module',lambda _n:pytest.fail('ML imported'))
+    monkeypatch.setattr(encoding.qualification,'installed_versions',lambda:{'torch':'wrong'})
+    monkeypatch.setattr(encoding.importlib,'import_module',lambda _n:pytest.fail('ML imported'))
     with pytest.raises(SemanticUnavailable):adapter.SiglipModel.load(model_directory=str(tmp_path),
-        artifacts=adapter.qualification.OFFICIAL_ARTIFACTS,package_versions=adapter.qualification.EXPECTED_PACKAGES)
+        artifacts=encoding.qualification.OFFICIAL_ARTIFACTS,package_versions=encoding.qualification.EXPECTED_PACKAGES)
 
 
 def test_explicit_serving_binds_only_loopback_with_bounded_server_options(model,monkeypatch):
     binding=JointSpaceBinding(model.image_identity,model.text_identity,'e'*64)
-    config={'schema':'photohouse.multilingual_text_provider.v1','model_directory':'/private/model','artifacts':adapter.qualification.OFFICIAL_ARTIFACTS,
-            'package_versions':adapter.qualification.EXPECTED_PACKAGES,'port':43871}
+    config={'schema':'photohouse.multilingual_text_provider.v1','model_directory':'/private/model','artifacts':encoding.qualification.OFFICIAL_ARTIFACTS,
+            'package_versions':encoding.qualification.EXPECTED_PACKAGES,'port':43871}
     monkeypatch.setattr(serving,'configuration',lambda _path,**_kwargs:(config,binding,'x'*40))
     monkeypatch.setattr(serving.SiglipModel,'load',lambda **_kwargs:model)
     calls=[]
@@ -248,6 +289,40 @@ def test_explicit_serving_binds_only_loopback_with_bounded_server_options(model,
     assert calls[0]['access_log']is False and calls[0]['proxy_headers']is False
     assert calls[0]['forwarded_allow_ips']==''
     assert calls[0]['limit_concurrency']==8 and calls[0]['backlog']==8
+
+
+@pytest.mark.parametrize('schema', [
+    'photohouse.multilingual_text_provider.v1',
+    'photohouse.multilingual_text_provider.v2',
+])
+def test_probe_reports_current_policy_separately_from_model_receipt_without_listener(
+        schema, model, monkeypatch, capsys):
+    inner = JointSpaceBinding(model.image_identity, model.text_identity, 'e'*64)
+    binding = inner
+    config = {'schema': schema}
+    if schema.endswith('.v1'):
+        binding = inner
+    else:
+        from semantic_bilingual_clothing import POLICY
+        recipe = serving.bilingual_recipe(inner)
+        binding = JointSpaceBinding(inner.image_identity,
+            replace(inner.text_identity, preprocessing_sha256=recipe['recipe_sha256']), 'f'*64)
+        config.update(inner_binding=asdict(inner), normalization_policy=POLICY)
+    config.update(model_directory='/private/model', artifacts=encoding.qualification.OFFICIAL_ARTIFACTS,
+        package_versions=encoding.qualification.EXPECTED_PACKAGES, port=43871)
+    monkeypatch.setattr(serving, 'configuration', lambda _path, **_kwargs: (config, binding, None))
+    monkeypatch.setattr(serving.SiglipModel, 'load', lambda **_kwargs: model)
+
+    assert serving.run(['probe', '--configuration', '/private/provider.json']) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report['model'] == model.receipt()
+    assert 'query_policy_binding' not in report['model']
+    assert report['query_policy_binding'] == capture_current_query_policy_binding()
+    assert report['query_policy_binding']['policy_version'] == 3
+    assert report['provider_binding'] == asdict(binding)
+    assert report['models_loaded'] is True
+    assert report['listener_started'] is False
+    assert report['activation_performed'] is False
 
 
 def test_protected_pilot_uses_only_new_fixture_db_and_exercises_gate_filters_corruption_and_revocation(model,tmp_path):
@@ -366,8 +441,8 @@ def test_bilingual_v2_run_serves_bound_original_query_after_normalization(model,
     credential=private_json(tmp_path/'credential.json',{'token':'x'*40})
     config=private_json(tmp_path/'provider.json',{
         'schema':'photohouse.multilingual_text_provider.v2','model_directory':str(tmp_path/'model'),
-        'artifacts':adapter.qualification.OFFICIAL_ARTIFACTS,
-        'package_versions':adapter.qualification.EXPECTED_PACKAGES,'port':43871,
+        'artifacts':encoding.qualification.OFFICIAL_ARTIFACTS,
+        'package_versions':encoding.qualification.EXPECTED_PACKAGES,'port':43871,
         'binding':asdict(outer),'inner_binding':asdict(inner),'normalization_policy':POLICY,
         'credential_file':str(credential)})
     monkeypatch.setattr(serving.SiglipModel,'load',lambda **_kwargs:model)

@@ -107,6 +107,101 @@ async function main(){
   await byClass(host,'memory-group-editor').dispatch('submit');await flush();
   assert.equal(editedBody.asset_ids,'102','editing may remove the current photo when another member remains');
   assert.equal(editedBody.source_story_ids,otherStory.id,'the other member note stays linked after removing the current photo');
-  console.log('PASS memory group stale reads, persistent exclusions, original-seed suggestions, source-ID writes, exact retry, and preserving edits');
+
+  const groupId='99999999-9999-4999-8999-999999999999';
+  const groupItem=(id,kind='image')=>({id,kind,width:320,height:240,duration_sec:null,taken_at:null,
+    thumbnail_url:`/assets/${id}/thumbnail?library=library-1`});
+  const listed={version:1,type:'memory_group',id:groupId,library_id:'library-1',revision:'4',theme:'trip',
+    asset_ids:['102','101'],excluded_asset_ids:[],source_story_ids:[story.id],
+    items:[groupItem('102','video'),groupItem('101')],sources:[story],can_edit:false};
+  const handoffHost=new Node('main');document.append(handoffHost);const handoffScope={...scope};const handoffCalls=[];
+  let finishExact;const handoffs=[];
+  const handoffUi=context.window.PhotoHouseMemoryGroups.create({scope:handoffScope,api:(path)=>{
+    handoffCalls.push(path);
+    if(path==='/memory-groups/capabilities')return Promise.resolve({version:1,enabled:true,manual:true,suggestions:false});
+    if(path==='/assets/101/memory-groups')return Promise.resolve({version:1,library_id:'library-1',asset_id:'101',items:[listed]});
+    if(path===`/memory-groups/${groupId}`)return new Promise(resolve=>finishExact=resolve);
+    throw new Error(`Unexpected handoff API call: ${path}`);
+  },onStory:(group,current)=>handoffs.push({group,current})});
+  handoffUi.mount(handoffHost,asset);const handoffDetails=handoffHost.querySelector('.memory-group-root');handoffDetails.open=true;await handoffDetails.dispatch('toggle');await flush();
+  const startButton=byClass(handoffHost,'memory-group-start-story');assert.ok(startButton);assert.equal(startButton.textContent,'开始写故事');
+  const firstClick=startButton.listeners.click[0]();const repeatedClick=startButton.listeners.click[0]();
+  assert.equal(handoffCalls.filter(path=>path===`/memory-groups/${groupId}`).length,1,'repeated handoffs share one exact group read');
+  finishExact({...listed});await Promise.all([firstClick,repeatedClick]);
+  assert.equal(handoffs.length,1,'one unchanged group opens one story handoff');
+  assert.deepEqual(JSON.parse(JSON.stringify(handoffs[0].group)),{
+    theme:'trip',assets:[groupItem('102','video'),groupItem('101')]
+  },'handoff preserves the saved member order and passes only theme and asset metadata');
+  assert.equal(JSON.stringify(handoffs[0].group).includes(story.text),false,'family original prose is not copied to the story handoff');
+  assert.equal(handoffs[0].current(),true,'callback can recheck that its originating scope remains current');
+  assert.equal(startButton.disabled,false,'successful handoff releases its in-flight guard');handoffUi.clear();handoffHost.remove();
+
+  async function refusesHandoff(label, exactResult, changeScopeAfterRead=false) {
+    const localScope={...scope};const localHost=new Node('main');document.append(localHost);const localCalls=[];let callbackCount=0;let resolveExact;
+    const ui=context.window.PhotoHouseMemoryGroups.create({scope:localScope,api:(path)=>{
+      localCalls.push(path);
+      if(path==='/memory-groups/capabilities')return Promise.resolve({version:1,enabled:true,manual:true,suggestions:false});
+      if(path==='/assets/101/memory-groups')return Promise.resolve({version:1,library_id:'library-1',asset_id:'101',items:[listed]});
+      if(path===`/memory-groups/${groupId}`)return new Promise(resolve=>resolveExact=resolve);
+      throw new Error(`Unexpected ${label} API call: ${path}`);
+    },onStory:()=>{callbackCount++;}});
+    ui.mount(localHost,asset);const details=localHost.querySelector('.memory-group-root');details.open=true;await details.dispatch('toggle');await flush();
+    const button=byClass(localHost,'memory-group-start-story');assert.ok(button,label+' shows story action only on the saved group');
+    const clickPromise=button.listeners.click[0]();
+    assert.equal(localCalls.filter(path=>path===`/memory-groups/${groupId}`).length,1,label+' reads the exact saved group');
+    if(changeScopeAfterRead)localScope.epoch++;
+    resolveExact(exactResult);await clickPromise;await flush();
+    assert.equal(callbackCount,0,label+' refuses callback');ui.clear();localHost.remove();
+  }
+  await refusesHandoff('stale revision',{...listed,revision:'5'});
+  await refusesHandoff('changed ordered member IDs',{...listed,asset_ids:['101','102'],items:[groupItem('101'),groupItem('102','video')]});
+  await refusesHandoff('late response after scope change',{...listed},true);
+
+  assert.equal(host.querySelector('.memory-group-start-story'),null,'the action is absent when the optional callback is not provided');
+  const coverageHost=new Node('main');document.append(coverageHost);const coverageCalls=[];
+  const coverageGroup={version:1,id:'ffffffff-ffff-4fff-8fff-ffffffffffff',library_id:'library-1',revision:'1',theme:'everyday',
+    asset_ids:['101','102','201','202'],excluded_asset_ids:[],source_story_ids:[],
+    items:[asset,other,groupItem('201'),groupItem('202')],sources:[],can_edit:true};
+  const coverageCandidate=(id,seed)=>({id,kind:'image',width:320,height:240,taken_at:'2025-06-01T09:10:00Z',
+    thumbnail_url:`/assets/${id}/thumbnail?library=library-1`,matched_seed_asset_id:seed,time_reason:'within_recorded_window'});
+  const defaultCoverageItems=Array.from({length:20},(_,index)=>coverageCandidate(String(1101+index),'101'));
+  const optCoverageItems=[coverageCandidate('1121','102'),coverageCandidate('1101','101'),
+    coverageCandidate('1122','201'),coverageCandidate('1123','202'),
+    ...Array.from({length:15},(_,index)=>coverageCandidate(String(1103+index),'101'))];
+  const coverageUi=context.window.PhotoHouseMemoryGroups.create({scope,api:async(path,options={})=>{
+    coverageCalls.push({path,options});
+    if(path==='/memory-groups/capabilities')return {version:1,enabled:true,manual:true,suggestions:true};
+    if(path==='/assets/101/memory-groups')return {version:1,library_id:'library-1',asset_id:'101',items:[coverageGroup]};
+    if(path===`/memory-groups/${coverageGroup.id}`)return coverageGroup;
+    if(path==='/memory-groups/proposals')return {version:1,library_id:'library-1',status:'ready',needs_review:true,
+      seed_asset_ids:['101','102','201','202'],cover_more_available:true,
+      ...(options.body.coverage_mode?{coverage_mode:'by_seed'}:{}),
+      items:options.body.coverage_mode?optCoverageItems:defaultCoverageItems};
+    throw new Error(`Unexpected coverage API call: ${path}`);
+  }});
+  const manualCoverageItem=coverageCandidate('1300','101');
+  coverageUi.mount(coverageHost,asset,[],[manualCoverageItem]);const coverageDetails=coverageHost.querySelector('.memory-group-root');coverageDetails.open=true;await coverageDetails.dispatch('toggle');await flush();
+  await click(coverageHost,'memory-group-edit');
+  const coverageButton=byClass(coverageHost,'memory-group-coverage');assert.ok(coverageButton?.hidden,'no opt-in is shown before the server confirms multiple eligible seeds');
+  const manualChoice=byClass(coverageHost,'memory-group-gallery-choice').querySelector('input');manualChoice.checked=true;await manualChoice.dispatch('change');
+  await click(coverageHost,'memory-group-suggest');await flush();
+  assert.equal(coverageButton.hidden,false,'opt-in appears when the protected result confirms coverage across seeds');
+  assert.equal(coverageHost.querySelectorAll('.memory-group-member').length,24,'default suggestions fill the selection cap');
+  assert.deepEqual(JSON.parse(JSON.stringify(coverageCalls.filter(call=>call.path==='/memory-groups/proposals')[0].options.body)),
+    {asset_ids:'101,102,201,202',excluded_asset_ids:''},'the default caller retains its two-field request');
+  const explicitlyUnselected=coverageHost.querySelectorAll('.memory-group-suggestion').find(label=>label.querySelector('input').value==='1102').querySelector('input');
+  explicitlyUnselected.checked=false;await explicitlyUnselected.dispatch('change');
+  await click(coverageHost,'memory-group-coverage');await flush();
+  const coverageRequests=coverageCalls.filter(call=>call.path==='/memory-groups/proposals');
+  assert.equal(coverageRequests[1].options.body.coverage_mode,'by_seed');
+  assert.equal(coverageRequests[1].options.body.excluded_asset_ids,'1102','an explicit unselection remains excluded');
+  assert.equal(byClass(coverageHost,'memory-group-suggestion').querySelector('input').value,'1121');
+  assert.equal(byClass(coverageHost,'memory-group-suggestion').querySelector('input').checked,true,'new coverage candidate is selected after old auto-checked suggestions release the cap');
+  assert.equal(coverageHost.querySelectorAll('.memory-group-member').length,24,'coverage replacement refills the same cap');
+  assert(coverageHost.querySelectorAll('.memory-group-member').some(member=>member.querySelector('img')?.src.includes('/1300/')),'manual selection survives coverage replacement');
+  assert.equal(coverageButton.textContent,'覆盖更多已选画面','coverage control localizes to the current UI language');
+  assert.equal(coverageButton.hidden,true,'coverage action hides after application');
+  coverageUi.clear();coverageHost.remove();
+  console.log('PASS memory group edits and retries; ordered, fresh story handoff; duplicate, stale revision, changed member, and late-scope refusal');
 }
 main().catch(error=>{console.error(error.stack);process.exitCode=1;});

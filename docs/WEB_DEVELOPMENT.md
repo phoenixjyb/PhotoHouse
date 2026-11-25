@@ -1,5 +1,17 @@
 # Optional synthetic Web browser checks
 
+The November 24 [design review](WEB_DESIGN_REVIEW_2026-11-24.md) records the
+Google Modern Web Guidance audit, responsive assistant redesign, measured
+accessibility checks and separate Windows delivery boundary.
+
+The owner can copy a registration link for a newly created invitation. The
+link carries only the existing one-time code in a same-origin `#invite=`
+fragment; startup removes that fragment from browser history. A signed-out
+visitor sees the existing registration form with the code filled in, then must
+still enter the phone number bound to the invitation, choose a password and
+submit. It does not register or sign in automatically. Links expire with the
+invitation after 24 hours and can be cancelled by the owner.
+
 The optional `web` profile runs the generated-data CommonJS browser suites
 listed in `tools/check.py`. It includes:
 

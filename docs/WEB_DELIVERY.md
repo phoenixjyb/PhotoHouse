@@ -12,18 +12,20 @@ python server/scripts/build_access_ui_overlay.py --commit <full-commit-id> --out
 ```
 
 The builder supports the unified repository's `server/` subdirectory. It reads
-only five regular Git blobs: the protected UI HTML, application script, story
-workspace, memory community and stylesheet. Its deterministic ZIP contains
-those five assets and a manifest. It excludes the backend, configuration,
+the ten regular Git blobs in its shared allowlist: HTML, application script,
+private-conversation controller, voice-session control and timing, story workspace
+and draft store, memory community and groups, and stylesheet. Its deterministic
+ZIP contains those ten assets and a format-v2 manifest. It excludes the backend, configuration,
 database, original media, icon and Git history, and refuses an existing output.
 
 `server/scripts/access_ui_overlay.py` is a binding primitive. A caller must
 supply the exact source commit and an independently reviewed manifest digest.
 It validates every file and the closed directory structure before changing the
 UI router's four static paths. The configured icon path stays unchanged.
-The nine synthetic tests cover both a separate application repository and the
-unified layout, tampering, unsupported members, failed-binding preservation and
-actual static responses with privacy headers.
+The current 12 synthetic builder/binding tests cover both a separate application
+repository and the unified layout, tampering, unsupported members, failed-binding
+preservation and actual static responses with privacy headers. They passed
+locally on November 24; this is not Windows acceptance.
 
 This primitive is not a service controller. A deployment still needs a pinned
 entry wrapper, exact runtime/configuration checks, a private immutable overlay,
@@ -31,6 +33,33 @@ current task/process evidence, bounded restart and rollback, operation authority
 and independent HTTPS readback. Backend/schema changes and family feature flags
 have separate gates. Follow [Web browser checks](WEB_DEVELOPMENT.md) and
 [source packaging](SOURCE_PACKAGING.md) for local qualification.
+
+
+## Separate UI and API provenance
+
+The backend overlay and static UI may come from different full Git commits.
+Keep their source identities separate in the launch plan: verify the backend
+module/native rosters against its API commit, and bind the static overlay
+against its own UI commit and manifest digest. Never relabel a UI archive as
+the backend revision merely to satisfy a shared equality check.
+
+A UI-only rollout must preserve the existing backend/native selectors, provider,
+schema and library/writer controls. If its task action or plan changes, update
+only the existing grouping guard's reviewed API-overlay references; retain its
+other identity and writer checks. Keep raw operational plans on Windows and
+return only necessary bounded status and hashes.
+
+After cutover, the accepted launcher, plan and UI overlay are **persistent
+production inputs**, including when they live on D:. They are not disposable
+operation scratch. Close experimental preflight/controller/transport resources,
+retain the active inputs and needed rollback set, and remove only exact owned
+temporary files after their closure is proven. A static UI change does not
+require another database rehearsal copy or model/native rebuild.
+
+The [November 24 design review](WEB_DESIGN_REVIEW_2026-11-24.md) records the
+local redesigned UI and its generated-browser checks. Its Windows rollout
+remains separate. GitHub Actions is still paused; use local checks and do not
+push changes that trigger it.
 
 
 ## October 12 prepared local overlay

@@ -1,4 +1,5 @@
 """Private, cohort-aware v2 search quality scorecard tests."""
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -12,6 +13,7 @@ from app.access import discovery as d
 from app.access.search_evaluation import evaluate_cases
 from app.access.service import AccessDenied
 from phone_discovery_fixture import TOKEN, NOW
+import test_assistant_scene_search as scene_fixture
 
 
 class FakeEngine:
@@ -30,7 +32,7 @@ class FakeEngine:
         raise AssertionError(operation)
 
 
-def case(ident, language=None, category=None, *, after=None, relevant=None):
+def case(ident, language=None, category=None, *, after=None, relevant=None, eligible=None):
     value = {'id': ident, 'text': 'private query ' + ident,
              'expect': {'kind': 'results'}}
     if language is not None:
@@ -41,12 +43,75 @@ def case(ident, language=None, category=None, *, after=None, relevant=None):
         value['after'] = after
     if relevant is not None:
         value['expect']['relevant_ids'] = relevant
+    if eligible is not None:
+        value['expect']['eligible_ids'] = eligible
     if category == 'no_match':
         value['expect']['total'] = 0
     return value
 
 
 class SearchQualityScorecardTests(unittest.TestCase):
+    def test_bilingual_semantic_scorecard_uses_negotiated_workspace_turns(self):
+        scenario = scene_fixture.AssistantSceneSearchTests(
+            'test_english_chinese_and_mixed_scene_wording_keeps_all_hard_filters')
+        scenario.setUp()
+        self.addCleanup(scenario.doCleanups)
+        base = scenario.scope('find photos of Sample Child in September 2032 containing "Family beach"')
+        capability = scenario.client.get(
+            '/assistant/workspace/v1/scene-search-capabilities?library_id=family-a',
+            headers=scenario.auth)
+        self.assertEqual(capability.status_code, 200, capability.text)
+        self.assertTrue(capability.json()['available'])
+        self.assertEqual(capability.json()['search_version'], 4)
+
+        scenes = (
+            ('english', 'en', 'a child flying a bright kite'),
+            ('chinese', 'zh', '孩子在桥旁放风筝'),
+            ('mixed', 'mixed', '孩子 beside a blue bridge 放风筝'),
+        )
+        document = {'version': 2, 'cases': [
+            {'id': ident, 'text': query, 'language': language, 'category': 'scene',
+             'expect': {'kind': 'results', 'filters': base['filters'], 'total': 1,
+                        'relevant_ids': ['101'], 'eligible_ids': ['101']}}
+            for ident, language, query in scenes
+        ]}
+        revision = 1
+
+        def negotiated_turn(_engine, _token, _library, words, _previous, _clock):
+            nonlocal revision
+            response = scenario.send(words, revision, scene=True)
+            self.assertEqual(response.status_code, 200, response.text)
+            revision += 1
+            return response.json()['result']
+
+        with patch('app.access.assistant._turn', side_effect=negotiated_turn):
+            report = evaluate_cases(FakeEngine(), TOKEN, 'family-a', document,
+                                    clock=lambda: NOW)
+
+        cohorts = report['scorecard']['cohorts']
+        for language in ('en', 'zh', 'mixed'):
+            with self.subTest(language=language):
+                self.assertEqual(cohorts[language]['denominator'], 1)
+                self.assertEqual(cohorts[language]['passed_count'], 1)
+                self.assertEqual(cohorts[language]['relevance_denominator'], 1)
+                self.assertEqual(cohorts[language]['hit_at_5'], 1)
+                self.assertEqual(cohorts[language]['hard_filter_eligibility_checked_count'], 1)
+                self.assertEqual(cohorts[language]['hard_filter_violation_count'], 0)
+        self.assertEqual(report['case_count'], 3)
+        self.assertEqual(report['failed_count'], 0)
+        self.assertEqual(len(scenario.pilot.calls), 3)
+        self.assertNotIn('"101"', json.dumps(report, ensure_ascii=False))
+
+    def test_partial_catalog_can_confirm_absence_inside_a_fully_ranked_scope(self):
+        document = {'version': 2, 'cases': [case('none', 'en', 'no_match')]}
+        result = {'version': 4, 'kind': 'results', 'items': [], 'total': 0, 'has_more': False,
+                  'semantic': {'coverage': 'complete_eligible_images',
+                               'coverage_details': {'state': 'partial', 'matched_omitted_images': 0}}}
+        with patch('app.access.assistant._turn', return_value=result):
+            report = evaluate_cases(FakeEngine(), TOKEN, 'family-a', document, clock=lambda: NOW)
+        self.assertEqual(report['scorecard']['cohorts']['en']['confirmed_no_match_count'], 1)
+        self.assertEqual(report['scorecard']['cohorts']['en']['no_match_inconclusive_count'], 0)
+
     def test_v2_cohort_denominators_misses_latency_and_privacy(self):
         engine = FakeEngine()
         document = {'version': 2, 'cases': [
@@ -57,7 +122,8 @@ class SearchQualityScorecardTests(unittest.TestCase):
             case('unassigned', category='text'),
         ]}
         document['cases'][0]['expect']['total'] = 99
-        document['cases'][0]['expect'].update(filters={'media': ['wrong']}, absent_ids=['999'])
+        document['cases'][0]['expect'].update(
+            filters={'media': ['wrong']}, absent_ids=['999'], eligible_ids=['999'])
         ids = [str(100 + index) for index in range(1, 7)]
 
         def turn(_engine, _token, _library, words, previous, _clock):
@@ -82,10 +148,13 @@ class SearchQualityScorecardTests(unittest.TestCase):
         self.assertEqual((score['en']['relevance_denominator'], score['en']['hit_at_5_count']), (1, 1))
         self.assertEqual(score['en']['labeled_recall_at_5'], .5)
         self.assertEqual(score['zh']['failed_dependency_count'], 1)
+        self.assertEqual(score['zh']['clarification_count'], 1)
         self.assertEqual(score['zh']['no_match_count'], 0)
         self.assertEqual(score['zh']['relevance_denominator'], 2)
         self.assertEqual(score['zh']['hit_at_5'], 0)
         self.assertEqual(score['mixed']['no_match_count'], 1)
+        self.assertEqual(score['mixed']['confirmed_no_match_count'], 1)
+        self.assertEqual(score['mixed']['no_match_false_positive_count'], 0)
         self.assertEqual(score['unassigned']['denominator'], 1)
         self.assertEqual(score['unassigned']['passed_count'], 1)
         self.assertAlmostEqual(score['zh']['elapsed_ms_median'], 20.0)
@@ -99,6 +168,8 @@ class SearchQualityScorecardTests(unittest.TestCase):
         self.assertEqual(score['en']['hard_filter_failed_count'], 1)
         self.assertEqual(score['en']['absence_checked_count'], 1)
         self.assertEqual(score['en']['absence_failed_count'], 1)
+        self.assertEqual(score['en']['hard_filter_eligibility_checked_count'], 1)
+        self.assertEqual(score['en']['hard_filter_violation_count'], 1)
         self.assertEqual(report['scorecard']['categories']['person']['denominator'], 2)
         self.assertEqual(report['scorecard']['categories']['person']['failed_count'], 2)
         self.assertEqual(report['scorecard']['categories']['date'],
@@ -163,6 +234,10 @@ class SearchQualityScorecardTests(unittest.TestCase):
         with self.assertRaises(d.DiscoveryInvalid):
             evaluate_cases(FakeEngine(), TOKEN, 'family-private',
                            {'version': 2, 'cases': [invalid]}, clock=lambda: NOW)
+        invalid['expect'].update(kind='clarification', total=0)
+        with self.assertRaises(d.DiscoveryInvalid):
+            evaluate_cases(FakeEngine(), TOKEN, 'family-private',
+                           {'version': 2, 'cases': [invalid]}, clock=lambda: NOW)
 
         document = {'version': 2, 'cases': [case('wrong_no_match', 'en', 'no_match')]}
         with patch('app.access.assistant._turn', return_value={
@@ -172,6 +247,19 @@ class SearchQualityScorecardTests(unittest.TestCase):
         self.assertFalse(report['cases'][0]['passed'])
         self.assertFalse(report['cases'][0]['checks']['total'])
         self.assertEqual(report['scorecard']['categories']['no_match']['failed_count'], 1)
+        score = report['scorecard']['cohorts']['en']
+        self.assertEqual(score['confirmed_no_match_count'], 0)
+        self.assertEqual(score['no_match_false_positive_count'], 1)
+
+    def test_total_above_complete_eligibility_set_is_a_violation_even_with_an_allowed_page(self):
+        document = {'version': 2, 'cases': [
+            case('allowed_page_impossible_total', 'en', 'date', eligible=['101', '102'])]}
+        with patch('app.access.assistant._turn', return_value={
+                'kind': 'results', 'context': {}, 'items': [{'id': '101'}],
+                'total': 3, 'filters': {}, 'has_more': True}):
+            report = evaluate_cases(FakeEngine(), TOKEN, 'family-private', document, clock=lambda: NOW)
+        self.assertFalse(report['cases'][0]['checks']['eligible_ids'])
+        self.assertEqual(report['scorecard']['cohorts']['en']['hard_filter_violation_count'], 1)
 
 
 if __name__ == '__main__':

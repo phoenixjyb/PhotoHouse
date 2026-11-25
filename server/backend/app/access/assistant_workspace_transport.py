@@ -6,8 +6,10 @@ Readback revalidates current source authorization and never replays effects.
 import asyncio
 import json
 import re
+import threading
 import unicodedata
 import uuid
+from contextlib import suppress
 from urllib.parse import parse_qsl
 
 from fastapi import APIRouter, Request
@@ -40,6 +42,9 @@ MAX_REVISION = (1 << 63) - 2
 MAX_RESPONSE_BYTES = 240 * 1024
 MAX_MEMORY_READER_RESPONSE_BYTES = 1024 * 1024
 MAX_MEMORY_READER_ORDINAL = 11
+MAX_AGENT_DIALOGUE_PAIRS = 4
+MAX_AGENT_DIALOGUE_TEXT_BYTES = 1024
+MAX_AGENT_DIALOGUE_BYTES = 4096
 
 
 class WorkspaceInvalid(ValueError):
@@ -59,6 +64,12 @@ class WorkspaceRoute(APIRoute):
             try:
                 _runtime(request, allow_query=request.method == 'GET')
                 version = _single(request, 'x-photohouse-search-version')
+                scene_reword = _single(request, 'x-photohouse-scene-reword-version')
+                if (scene_reword is not None and
+                        (scene_reword != '1' or request.method != 'GET' or
+                         re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]+',
+                                      request.url.path) is None)):
+                    raise TransportError(400, 'Scene reword projection is not supported on this endpoint')
                 if (version not in (None, '1', '2', '3', '4') or
                         (version in ('2', '3') and not assistant_engine._search_v2_endpoint(request)) or
                         (version == '4' and not assistant_engine._scene_endpoint(request))):
@@ -88,6 +99,8 @@ class WorkspaceRoute(APIRoute):
             except discovery_engine.DiscoveryBusy:
                 response = _failure(429, 'assistant_busy', 'Assistant busy')
                 response.headers['Retry-After'] = '2'
+            except discovery_engine.DiscoveryCancelled:
+                response = _failure(499, 'request_cancelled', 'Request cancelled')
             except JournalUnavailable:
                 response = _failure(503, 'tracking_unavailable', 'Request tracking unavailable')
             except JournalConflict:
@@ -284,6 +297,37 @@ def _canonical_revision(value, *, positive=False):
     return parsed
 
 
+def _agent_dialogue(exchanges):
+    """Project only bounded user/assistant text, newest complete pairs first."""
+    def bounded(text):
+        encoded = text.encode('utf-8', errors='strict')
+        if len(encoded) <= MAX_AGENT_DIALOGUE_TEXT_BYTES:
+            return text, False
+        clipped = encoded[:MAX_AGENT_DIALOGUE_TEXT_BYTES]
+        while clipped:
+            try:
+                return clipped.decode('utf-8'), True
+            except UnicodeDecodeError:
+                clipped = clipped[:-1]
+        return '', True
+
+    selected = []
+    used = 0
+    truncated = len(exchanges) > MAX_AGENT_DIALOGUE_PAIRS
+    for exchange in reversed(exchanges):
+        user, user_clipped = bounded(exchange['input_text'])
+        assistant, assistant_clipped = bounded(exchange['reply'])
+        pair_size = len(user.encode('utf-8')) + len(assistant.encode('utf-8'))
+        if len(selected) >= MAX_AGENT_DIALOGUE_PAIRS or used + pair_size > MAX_AGENT_DIALOGUE_BYTES:
+            truncated = True
+            break
+        selected.append({'user': user, 'assistant': assistant})
+        used += pair_size
+        truncated = truncated or user_clipped or assistant_clipped
+    selected.reverse()
+    return {'version': 1, 'turns': selected, 'truncated': truncated}
+
+
 def _create_owned_thread(store, account, library, selected):
     if selected is not None:
         try:
@@ -313,13 +357,13 @@ def _turn_text(value):
     return value
 
 
-def _turn_result(engine, token, library, summary, *, recovered):
+def _turn_result(engine, token, library, summary, *, recovered, cancelled=None):
     from .assistant_search import SearchRuntime
     from .assistant_scene_search import SceneSearchRuntime
     if summary['version'] == 4:
         if type(engine) is not SceneSearchRuntime:
             raise assistant_engine.AssistantChanged()
-        return engine.restore(token, library, summary)
+        return engine.restore(token, library, summary, cancelled=cancelled)
     if type(engine) is SceneSearchRuntime:
         engine = engine.base_engine({'search_version': summary['version'] if summary['version'] in (2, 3) else 2})
     if summary['version'] in (2, 3) and not isinstance(engine, SearchRuntime):
@@ -337,7 +381,7 @@ def _turn_result(engine, token, library, summary, *, recovered):
     items = []
     if context is not None:
         context = assistant_engine._context(context, library)
-        found = assistant_engine._context_result(engine, token, library, context)
+        found = assistant_engine._context_result(engine, token, library, context, cancelled)
         items = found['items']
     if summary['version'] in (2, 3):
         interpretation = found.get('interpretation') if context is not None else None
@@ -930,7 +974,7 @@ def _workspace_search_turn(engine, token, library, words, previous, clock, *, la
         interpretation = {key: value for key, value in presentation.items()
                           if key != 'version'}
         interpretation.update(people=[], tags=[], locations=[])
-        from .search_exclusions import exclusion_reply
+        from .search_policy import exclusion_reply
         reply = exclusion_reply(lang, continuation=True, expired=expired)
         context = previous if existing is not None else None
         return {'version': engine.search_version, 'kind': 'clarification',
@@ -1128,6 +1172,21 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
             journal_started = True
             await operation.call(journal.stage, ident.request_id, 'action_started')
         preferences = await operation.call(store.get_preferences, ident.account_id)
+        # Dialogue is read from the exact protected thread after reservation.
+        # Live checks on both sides bind it to the same account, library, lease,
+        # and revision; no cards, identifiers, or receipts enter the model.
+        await operation.call(live)
+        history = await operation.call(store.get_thread, ident.account_id,
+                                       ident.library_id, ident.thread_id)
+        thread_snapshot = history.get('thread') if type(history) is dict else None
+        if (type(thread_snapshot) is not dict or
+                thread_snapshot.get('thread_id') != ident.thread_id or
+                thread_snapshot.get('library_id') != ident.library_id or
+                thread_snapshot.get('revision') != ident.expected_revision or
+                type(history.get('exchanges')) is not list):
+            raise WorkspaceStoreConflict()
+        await operation.call(live)
+        dialogue = _agent_dialogue(history['exchanges'])
         tools = AgentTools(engine=engine, token=token, library=ident.library_id,
             words=ident.text, context=row['context'], pending_intent=row.get('pending_intent'),
             clock=access.clock, language=preferences['locale'], check=live,
@@ -1137,8 +1196,12 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
             return await operation.dispatch(tools, name, arguments)
 
         operation.runtime_started = True
+        bind_scope = getattr(operation.owner.runtime, 'bind_scope', None)
+        if bind_scope is not None:
+            bind_scope(operation.scope)
         runtime_task = operation.spawn(operation.owner.runtime.run(
-            {'version': 1, 'text': ident.text, 'locale': preferences['locale']},
+            {'version': 1, 'text': ident.text, 'locale': preferences['locale'],
+             'dialogue': dialogue},
             dispatch, operation.invalidation))
         selector = await operation.wait(runtime_task)
         outcome = await operation.call(tools.resolve, selector)
@@ -1738,6 +1801,377 @@ async def scene_search_capabilities(request: Request):
                          'search_version': 4, 'media': ['image']}, headers=PRIVACY_HEADERS)
 
 
+def _scene_page_runtime_ready(request, semantic, store, *, allow_query=False):
+    from .semantic_search import SemanticSearchRuntime
+    try:
+        access = _runtime(request, allow_query=allow_query)
+    except Exception:
+        return False
+    return (getattr(request.app.state, 'assistant_enabled', False) is True and
+            getattr(request.app.state, 'assistant_workspace_healthy', False) is True and
+            getattr(request.app.state, 'assistant_workspace_store', None) is store and
+            type(store) is AssistantWorkspaceStore and
+            getattr(request.app.state, 'assistant_semantic_search_enabled', False) is True and
+            type(semantic) is SemanticSearchRuntime and
+            getattr(request.app.state, 'semantic_search_runtime', None) is semantic and
+            getattr(request.app.state, 'discovery_runtime', None) is semantic.discovery and
+            semantic.discovery.access is access)
+
+
+def _result_page_runtime_ready(request, engine, store, *, allow_query=False):
+    from .assistant_search import SearchRuntime
+    from .discovery_transport import DiscoveryRuntime
+    try:
+        access = _runtime(request, allow_query=allow_query)
+    except Exception:
+        return False
+    discovery = getattr(request.app.state, 'discovery_runtime', None)
+    engine_matches = ((type(engine) is DiscoveryRuntime and engine is discovery) or
+                      (isinstance(engine, SearchRuntime) and engine.runtime is discovery))
+    return (getattr(request.app.state, 'assistant_enabled', False) is True and
+            getattr(request.app.state, 'assistant_workspace_healthy', False) is True and
+            getattr(request.app.state, 'assistant_workspace_store', None) is store and
+            type(store) is AssistantWorkspaceStore and
+            type(discovery) is DiscoveryRuntime and engine_matches and
+            discovery.access is access)
+
+
+def _current_result_runtime_ready(request, engine, store, version, *, allow_query=True):
+    if version == 4:
+        from .assistant_scene_search import SceneSearchRuntime
+        return (type(engine) is SceneSearchRuntime and
+                _scene_page_runtime_ready(request, engine.semantic, store,
+                                          allow_query=allow_query))
+    from .assistant_search import SearchRuntime
+    if version in (2, 3):
+        return (isinstance(engine, SearchRuntime) and engine.search_version == version and
+                _result_page_runtime_ready(request, engine, store, allow_query=allow_query))
+    from .discovery_transport import DiscoveryRuntime
+    return (type(engine) is DiscoveryRuntime and
+            _result_page_runtime_ready(request, engine, store, allow_query=allow_query))
+
+
+@router.get('/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/current-result')
+async def current_result(request: Request, thread_id: str, request_id: str):
+    query = _query(request, {'library_id', 'expected_revision'},
+                   {'library_id', 'expected_revision'})
+    library = _library(query['library_id'])
+    revision = _canonical_revision(query['expected_revision'])
+    selected_thread = _thread_id(thread_id)
+    selected_request = _thread_id(request_id)
+    version_header = _single(request, 'x-photohouse-search-version')
+    version = 1 if version_header in (None, '1') else int(version_header)
+    if version not in (1, 2, 3, 4):
+        raise WorkspaceInvalid()
+
+    account = await _principal(request, library)
+    store = _workspace(request)
+    access, engine = assistant_engine._engine(request)
+    if not _current_result_runtime_ready(request, engine, store, version):
+        raise WorkspaceStoreUnavailable()
+    if access is None:
+        raise WorkspaceStoreUnavailable()
+    token, _mode = credentials_from_request(request, allow_query=True)
+    source_reader = 'get_scene_page_source' if version == 4 else 'get_result_page_source'
+    source = await _call(store, source_reader, account, library,
+                         selected_thread, selected_request, revision)
+    summary = source['summary']
+    if (summary.get('version') != version or source['request'].get('revision') != revision or
+            source['request'].get('request_id') != selected_request):
+        raise WorkspaceStoreConflict()
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    if not _current_result_runtime_ready(request, engine, store, version):
+        raise discovery_engine.DiscoveryUnavailable()
+
+    cancelled = threading.Event()
+
+    async def watch_disconnect():
+        while not cancelled.is_set():
+            if await request.is_disconnected():
+                cancelled.set()
+                return
+            await asyncio.sleep(.025)
+
+    watcher = asyncio.create_task(watch_disconnect())
+    try:
+        def request_check():
+            if cancelled.is_set():
+                raise discovery_engine.DiscoveryCancelled()
+            if not _current_result_runtime_ready(request, engine, store, version):
+                raise discovery_engine.DiscoveryUnavailable()
+
+        request_check()
+        result = await run_in_threadpool(_turn_result, engine, token, library,
+                                         summary, recovered=True,
+                                         cancelled=cancelled.is_set)
+        request_check()
+        if version in (1, 2, 3):
+            context = assistant_engine._context(summary['context'], library)
+            await run_in_threadpool(engine.call, 'facets', token, library,
+                cancelled.is_set, {'facet': 'people', 'page': 1, 'page_size': 1,
+                                   'binding': context['binding']})
+            request_check()
+        current = await _call(store, source_reader, account, library,
+                              selected_thread, selected_request, revision)
+        if current['source_identity'] != source['source_identity']:
+            raise WorkspaceStoreConflict()
+        if await _principal(request, library) != account:
+            raise AccessDenied()
+        request_check()
+        response = JSONResponse({
+            'version': 1, 'thread_id': selected_thread, 'request_id': selected_request,
+            'status': 'completed', 'revision': revision, 'recovered': True,
+            'error': None, 'result': result,
+        }, headers=PRIVACY_HEADERS)
+        if len(response.body) > MAX_RESPONSE_BYTES:
+            raise WorkspaceStoreUnavailable()
+        request_check()
+        return response
+    finally:
+        cancelled.set()
+        watcher.cancel()
+        with suppress(asyncio.CancelledError):
+            await watcher
+
+
+@router.get('/assistant/workspace/v1/result-page-capabilities')
+async def result_page_capabilities(request: Request):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    store = _workspace(request)
+    from .discovery_transport import DiscoveryRuntime
+    engine = getattr(request.app.state, 'discovery_runtime', None)
+    available = _result_page_runtime_ready(request, engine, store, allow_query=True)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    available = available and _result_page_runtime_ready(request, engine, store, allow_query=True)
+    if type(engine) is not DiscoveryRuntime:
+        available = False
+    return JSONResponse({'version': 1, 'available': bool(available), 'page_size': 20},
+                        headers=PRIVACY_HEADERS)
+
+
+@router.post('/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/result-pages')
+async def result_page(request: Request, thread_id: str, request_id: str):
+    fields = {'version', 'library_id', 'expected_revision', 'page'}
+    body = await _body(request, fields, required=fields)
+    if type(body['version']) is not int or body['version'] != 1:
+        raise WorkspaceInvalid()
+    library = _library(body['library_id'])
+    selected_thread = _thread_id(thread_id)
+    selected_request = _thread_id(request_id)
+    revision = _revision(body['expected_revision'])
+    page = body['page']
+    if type(page) is not int or not 1 <= page <= 5000:
+        raise WorkspaceInvalid()
+
+    account = await _principal(request, library)
+    access, engine = assistant_engine._engine(request)
+    store = _workspace(request)
+    if not _result_page_runtime_ready(request, engine, store):
+        raise WorkspaceStoreUnavailable()
+    token, _mode = credentials_from_request(request)
+    source = await _call(store, 'get_result_page_source', account, library,
+                         selected_thread, selected_request, revision)
+    summary = source['summary']
+    context = assistant_engine._context(summary['context'], library)
+    from .assistant_search import SearchRuntime
+    from .discovery_transport import DiscoveryRuntime
+    selected_version = engine.search_version if isinstance(engine, SearchRuntime) else 1
+    if (summary['version'] != selected_version or
+            source['request']['request_id'] != selected_request or
+            source['request']['revision'] != revision or
+            type(engine) is not DiscoveryRuntime and not isinstance(engine, SearchRuntime)):
+        raise WorkspaceStoreConflict()
+    total = context['total']
+    page_count = (total + 19) // 20
+    if total <= 20 or page > page_count:
+        raise WorkspaceStoreConflict()
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    if not _result_page_runtime_ready(request, engine, store):
+        raise discovery_engine.DiscoveryUnavailable()
+
+    cancelled = threading.Event()
+
+    async def watch_disconnect():
+        while not cancelled.is_set():
+            if await request.is_disconnected():
+                cancelled.set()
+                return
+            await asyncio.sleep(.025)
+
+    watcher = asyncio.create_task(watch_disconnect())
+    try:
+        def request_check():
+            if cancelled.is_set():
+                raise discovery_engine.DiscoveryCancelled()
+            if not _result_page_runtime_ready(request, engine, store):
+                raise discovery_engine.DiscoveryUnavailable()
+
+        request_check()
+        found = await run_in_threadpool(engine.call, 'search', token, library,
+            cancelled.is_set, {'binding': context['binding'], 'filters': context['filters'],
+                               'fingerprint': context['fingerprint'], 'page': page,
+                               'page_size': 20})
+        request_check()
+        expected_items = min(20, max(0, total - (page - 1) * 20))
+        if (type(found) is not dict or found.get('binding') != context['binding'] or
+                found.get('fingerprint') != context['fingerprint'] or
+                found.get('page') != page or found.get('page_size') != 20 or
+                found.get('total') != total or type(found.get('has_more')) is not bool or
+                found.get('has_more') != (page * 20 < total) or
+                type(found.get('items')) is not list or len(found['items']) != expected_items):
+            raise discovery_engine.DiscoveryChanged()
+        items = assistant_engine._normalize_cards({'items': found['items']})['items']
+
+        # Revalidate the original source binding after paging. This is a fresh
+        # authorized read, not a parser/planner call or another result search.
+        await run_in_threadpool(engine.call, 'facets', token, library, cancelled.is_set,
+            {'facet': 'people', 'page': 1, 'page_size': 1, 'binding': context['binding']})
+        current = await _call(store, 'get_result_page_source', account, library,
+                              selected_thread, selected_request, revision)
+        if current['source_identity'] != source['source_identity']:
+            raise WorkspaceStoreConflict()
+        if await _principal(request, library) != account:
+            raise AccessDenied()
+        request_check()
+        response = JSONResponse({
+            'version': 1, 'library_id': library, 'thread_id': selected_thread,
+            'request_id': selected_request, 'revision': revision,
+            'search_version': selected_version, 'binding': context['binding'],
+            'fingerprint': context['fingerprint'], 'page': page, 'page_size': 20,
+            'total': total, 'has_more': found['has_more'], 'items': items,
+        }, headers=PRIVACY_HEADERS)
+        if len(response.body) > MAX_RESPONSE_BYTES:
+            raise discovery_engine.DiscoveryUnavailable()
+        request_check()
+        return response
+    finally:
+        cancelled.set()
+        watcher.cancel()
+        with suppress(asyncio.CancelledError):
+            await watcher
+
+
+@router.get('/assistant/workspace/v1/scene-page-capabilities')
+async def scene_page_capabilities(request: Request):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    store = _workspace(request)
+    from .semantic_search import SemanticSearchRuntime
+    semantic = getattr(request.app.state, 'semantic_search_runtime', None)
+    available = _scene_page_runtime_ready(request, semantic, store, allow_query=True)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    # A replacement while authorization was being checked must not be
+    # advertised as an available continuation runtime.
+    available = available and _scene_page_runtime_ready(request, semantic, store, allow_query=True)
+    return JSONResponse({'version': 1, 'available': bool(available), 'page_size': 20},
+                        headers=PRIVACY_HEADERS)
+
+
+@router.post('/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/scene-pages')
+async def scene_page(request: Request, thread_id: str, request_id: str):
+    body = await _body(request, {'version', 'library_id', 'expected_revision', 'page',
+                                 'ranking_sha256'},
+                       required={'version', 'library_id', 'expected_revision', 'page'})
+    if type(body['version']) is not int or body['version'] != 1:
+        raise WorkspaceInvalid()
+    library = _library(body['library_id'])
+    selected_thread = _thread_id(thread_id)
+    selected_request = _thread_id(request_id)
+    revision = _revision(body['expected_revision'])
+    page = body['page']
+    if type(page) is not int or not 1 <= page <= 5000:
+        raise WorkspaceInvalid()
+    ranking_sha256 = body.get('ranking_sha256')
+    if 'ranking_sha256' in body and (
+            type(ranking_sha256) is not str or
+            re.fullmatch(r'[0-9a-f]{64}', ranking_sha256) is None):
+        raise WorkspaceInvalid()
+
+    account = await _principal(request, library)
+    access, engine = assistant_engine._engine(request)
+    from .assistant_scene_search import SceneSearchRuntime
+    if type(engine) is not SceneSearchRuntime or not _scene_page_runtime_ready(
+            request, engine.semantic, getattr(request.app.state, 'assistant_workspace_store', None)):
+        raise WorkspaceStoreUnavailable()
+    token, _mode = credentials_from_request(request)
+    store = _workspace(request)
+    source = await _call(store, 'get_scene_page_source', account, library,
+                         selected_thread, selected_request, revision)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    if not _scene_page_runtime_ready(request, engine.semantic, store):
+        raise discovery_engine.DiscoveryUnavailable()
+
+    cancelled = threading.Event()
+    async def watch_disconnect():
+        while not cancelled.is_set():
+            if await request.is_disconnected():
+                cancelled.set()
+                return
+            await asyncio.sleep(.025)
+
+    watcher = asyncio.create_task(watch_disconnect())
+    try:
+        def release_check():
+            if not _scene_page_runtime_ready(request, engine.semantic, store):
+                raise discovery_engine.DiscoveryUnavailable()
+
+        request_check = engine.deadline(cancelled.is_set, release_check)
+        result = await run_in_threadpool(engine.page, token, library,
+            selected_request, revision, page, ranking_sha256, source,
+            cancelled.is_set, release_check, request_check)
+        current = await _call(store, 'get_scene_page_source', account, library,
+                              selected_thread, selected_request, revision)
+        if current['source_identity'] != source['source_identity']:
+            raise WorkspaceStoreConflict()
+        if await _principal(request, library) != account:
+            raise AccessDenied()
+        # The scene runtime may impose a stricter pilot-owner boundary than
+        # ordinary library membership. Recheck it after the final awaited
+        # source read so a role change during ranking cannot release cards.
+        request_check()
+        await run_in_threadpool(engine.semantic.authorize, token, library)
+        request_check()
+        # Reuse the same deadline/cancellation closure across ranking and the
+        # final awaited source/principal checks; a disconnect while either
+        # await is pending must still suppress the cards.
+        request_check()
+        response = JSONResponse(result, headers=PRIVACY_HEADERS)
+        if len(response.body) > min(MAX_RESPONSE_BYTES, engine.semantic.budget.response_bytes):
+            raise discovery_engine.DiscoveryUnavailable()
+        request_check()
+        return response
+    finally:
+        cancelled.set()
+        watcher.cancel()
+        with suppress(asyncio.CancelledError):
+            await watcher
+
+
+@router.get('/assistant/workspace/v1/agent-capabilities')
+async def agent_capabilities(request: Request):
+    query = _query(request, {'library_id'}, {'library_id'})
+    library = _library(query['library_id'])
+    account = await _principal(request, library)
+    store = _workspace(request)
+    await _call(store, 'get_preferences', account)
+    supervisor = getattr(request.app.state, 'assistant_agent_supervisor', None)
+    _access, engine = assistant_engine._engine(request)
+    available = bool(supervisor is not None and supervisor.healthy and not supervisor.closed
+                     and engine is not None and engine.search_version == 2)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'available': available,
+                         'profile': 'agent_media_search_v1'}, headers=PRIVACY_HEADERS)
+
+
 @router.get('/assistant/workspace/v1/capabilities')
 async def capabilities(request: Request):
     query = _query(request, {'library_id'}, {'library_id'})
@@ -1821,18 +2255,30 @@ async def create_thread(request: Request):
 async def read_thread(request: Request, thread_id: str):
     query = _query(request, {'library_id'}, {'library_id'})
     library = _library(query['library_id'])
+    search_version = _single(request, 'x-photohouse-search-version')
+    scene_reword_version = _single(request, 'x-photohouse-scene-reword-version')
+    if (scene_reword_version is not None and
+            (scene_reword_version != '1' or search_version not in (None, '4'))):
+        raise WorkspaceInvalid()
+    include_scene_reword = scene_reword_version == '1'
     account = await _principal(request, library)
     store = _workspace(request)
     selected = _thread_id(thread_id)
-    result = await _call(store, 'get_thread', account, library, selected)
+    result = await _call(store, 'get_thread', account, library, selected,
+                         include_scene_reword=include_scene_reword)
+    if include_scene_reword and await _principal(request, library) != account:
+        raise AccessDenied()
     latest = result.get('latest_request_id')
     all_rows = result['exchanges']
 
     def response(rows, has_older):
-        return {'version': 1, 'thread': _safe_thread(result['thread']),
-                'exchanges': [_safe_exchange(row) for row in rows],
-                'has_older_exchanges': has_older,
-                'latest_request_id': latest}
+        value = {'version': 1, 'thread': _safe_thread(result['thread']),
+                 'exchanges': [_safe_exchange(row) for row in rows],
+                 'has_older_exchanges': has_older,
+                 'latest_request_id': latest}
+        if include_scene_reword:
+            value['scene_reword'] = result['scene_reword']
+        return value
 
     selected_rows = all_rows[-20:]
     bounded, has_older = _bounded_exchange_rows(

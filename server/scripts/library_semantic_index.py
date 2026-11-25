@@ -28,7 +28,8 @@ from app.access.visual_candidates import (VectorRecord, VectorSpaceIdentity,
 from app.access.visual_vector_artifacts import (ImmutableVectorArtifact,
     identity_sha256, validate_artifact)
 from app.access.visual_vector_loader import _decode_npy, _read_vector
-from image_embedding_receipts import recipe_sha256, inspect_checkpoint, verify_checkpoint
+from image_embedding_receipts import (recipe_sha256, inspect_checkpoint, verify_checkpoint,
+    CheckpointPin, _checkpoint_path, _stat_identity, _open_pinned)
 from semantic_openclip import _source_pin
 
 
@@ -105,6 +106,61 @@ def _load_json(path: Path, limit: int):
             parse_constant=lambda _value: (_ for _ in ()).throw(LibraryIndexUnavailable()))
         _require(type(value) is dict and canonical(value) + b"\n" == path.read_bytes())
         verify_checkpoint(pin)
+        return value
+    except LibraryIndexUnavailable:
+        raise
+    except Exception:
+        raise LibraryIndexUnavailable() from None
+
+
+def _load_json_inspector(path: Path, limit: int, *, expected_sha256=None):
+    """Load canonical JSON once from a pinned descriptor for read-only audits.
+
+    The same bounded byte string is hashed, parsed, and compared with its
+    canonical encoding. A second independent digest/identity pass closes the
+    load race; resumable writer paths deliberately continue to use _load_json.
+    """
+    try:
+        _require(type(limit) is int and 0 < limit <= MAX_MANIFEST_BYTES)
+        if expected_sha256 is not None:
+            _require(type(expected_sha256) is str and _SHA.fullmatch(expected_sha256) is not None)
+        require_private_file(path)
+        checkpoint = _checkpoint_path(path)
+        before_info = checkpoint.lstat()
+        _require(stat.S_ISREG(before_info.st_mode) and not stat.S_ISLNK(before_info.st_mode)
+            and not (getattr(before_info, "st_file_attributes", 0) & 0x400)
+            and before_info.st_nlink == 1 and 0 < before_info.st_size <= limit)
+        identity = _stat_identity(before_info)
+        _require(type(identity) is tuple and len(identity) == 7
+            and all(type(item) is int for item in identity))
+        with _open_pinned(checkpoint, identity) as stream:
+            opened_info = os.fstat(stream.fileno())
+            _require(stat.S_ISREG(opened_info.st_mode)
+                and not (getattr(opened_info, "st_file_attributes", 0) & 0x400)
+                and opened_info.st_nlink == 1 and _stat_identity(opened_info) == identity)
+            raw = stream.read(limit + 1)
+            _require(type(raw) is bytes and 0 < len(raw) <= limit
+                and len(raw) == identity[3])
+            post_descriptor = os.fstat(stream.fileno())
+            _require(stat.S_ISREG(post_descriptor.st_mode)
+                and not (getattr(post_descriptor, "st_file_attributes", 0) & 0x400)
+                and post_descriptor.st_nlink == 1
+                and _stat_identity(post_descriptor) == identity)
+        post_path = _checkpoint_path(path)
+        post_path_info = post_path.lstat()
+        _require(post_path == checkpoint and stat.S_ISREG(post_path_info.st_mode)
+            and not stat.S_ISLNK(post_path_info.st_mode)
+            and not (getattr(post_path_info, "st_file_attributes", 0) & 0x400)
+            and post_path_info.st_nlink == 1 and _stat_identity(post_path_info) == identity)
+        require_private_file(path)
+        digest = hashlib.sha256(raw).hexdigest()
+        _require(expected_sha256 is None or digest == expected_sha256)
+        value = json.loads(raw, object_pairs_hook=_unique_pairs,
+            parse_constant=lambda _value: (_ for _ in ()).throw(LibraryIndexUnavailable()))
+        _require(type(value) is dict and canonical(value) + b"\n" == raw)
+        pin = CheckpointPin(str(checkpoint), digest, identity)
+        verify_checkpoint(pin)
+        require_private_file(path)
         return value
     except LibraryIndexUnavailable:
         raise
@@ -907,7 +963,7 @@ def inspect_library_index(path, *, expected_snapshot=None, verify_original_bytes
             root = preparation._canonical_path(target, directory=True)
             manifest_path = root / "index.json"
         require_private_directory(root)
-        manifest = _load_json(manifest_path, MAX_MANIFEST_BYTES)
+        manifest = _load_json_inspector(manifest_path, MAX_MANIFEST_BYTES)
         required = {"schema", "library_id", "snapshot_sha256", "snapshot_asset_count",
             "image_identity", "text_identity", "model_receipt", "model_receipt_sha256",
             "records", "failures", "record_count", "failure_count", "processing_complete", "complete",
@@ -946,8 +1002,8 @@ def inspect_library_index(path, *, expected_snapshot=None, verify_original_bytes
         _require(manifest["image_identity"] == asdict(image)
             and manifest["text_identity"] == asdict(text))
         identity_digest = identity_sha256(image)
-        run = _load_json(root / "run.json", MAX_DOCUMENT_BYTES)
-        frozen_snapshot = validate_snapshot(_load_json(root / "snapshot.json", MAX_MANIFEST_BYTES))
+        run = _load_json_inspector(root / "run.json", MAX_DOCUMENT_BYTES)
+        frozen_snapshot = validate_snapshot(_load_json_inspector(root / "snapshot.json", MAX_MANIFEST_BYTES))
         _require(set(run) == {"schema", "library_id", "snapshot_sha256", "asset_count",
                 "original_roots", "image_identity", "text_identity", "model_receipt",
                 "model_receipt_sha256"}
@@ -972,13 +1028,16 @@ def inspect_library_index(path, *, expected_snapshot=None, verify_original_bytes
         expected_batches = (manifest["snapshot_asset_count"] + BATCH_SIZE - 1) // BATCH_SIZE
         _require({item.name for item in checkpoint_dir.iterdir()} == {
             f"batch-{number:08d}.json" for number in range(expected_batches)})
+        # Establish complete checkpoint provenance before artifact I/O. Once
+        # the full summaries match the manifest, the record loop below performs
+        # one artifact-verification pass. Its protected readers still recheck
+        # file hashes/identity. Resume continues to use _verify_batch_files.
         checkpoint_records, checkpoint_failures = [], []
         for number in range(expected_batches):
-            batch = _load_json(_batch_path(root, number), MAX_DOCUMENT_BYTES)
+            batch = _load_json_inspector(_batch_path(root, number), MAX_DOCUMENT_BYTES)
             _verify_batch(batch, number, frozen_snapshot, manifest["snapshot_sha256"],
                 roots, image, identity_digest, manifest["model_receipt_sha256"],
                 lambda: None, verify_sources=False)
-            _verify_batch_files(root, batch, image)
             checkpoint_records.extend(result for result in batch["results"]
                 if result["status"] == "ready")
             checkpoint_failures.extend(result for result in batch["results"]
@@ -1025,14 +1084,16 @@ def inspect_library_index(path, *, expected_snapshot=None, verify_original_bytes
             record_id = _record_id(manifest["snapshot_sha256"], summary["asset_id"], identity_digest)
             _require(summary["record_id"] == record_id)
             metadata_path = index_dir / f"{record_id}.json"
-            metadata = _load_json(metadata_path, MAX_DOCUMENT_BYTES)
+            metadata = _load_json_inspector(metadata_path, MAX_DOCUMENT_BYTES,
+                expected_sha256=summary["metadata_sha256"])
             _require(hashlib.sha256(canonical(metadata) + b"\n").hexdigest()
                 == summary["metadata_sha256"])
             _require(set(metadata) == set(ImmutableVectorArtifact.__dataclass_fields__))
             record = ImmutableVectorArtifact(**metadata)
             _require(validate_artifact(record, image)
                 and record.record_id == record_id and record.asset_id == summary["asset_id"]
-                and record.source_sha256 == summary["source_sha256"])
+                and record.source_sha256 == summary["source_sha256"]
+                and record.relative_path == f"image-vectors/{identity_digest}/{record_id}.npy")
             pin = inspect_checkpoint(index_dir / f"{record_id}.npy", record.file_sha256)
             verify_checkpoint(pin)
             vector = _read_vector(root, record)

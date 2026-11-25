@@ -25,10 +25,15 @@ Preapproved people awaiting registration can be recorded in a separate private
 access plan with stable logical person IDs and empty login-account bindings.
 Registration alone or a matching display name must not activate that approval.
 
-All allowed accounts share the graph's selected perspective. Bare `妈妈` and
-`my mother` refer to that chosen center, not an inferred identity of the signed-in
-account. Clients must show the chosen center before enabling relative language;
-another perspective requires an explicit change and refreshed results.
+Schema 1 gives every allowed account the same explicit `perspective_id`. Schema 2
+is an opt-in per-account view: its `perspectives` object maps every allowed
+account ID to one logical person in this graph. The keys must exactly equal the
+account allowlist; omitted, extra or unknown accounts and missing person
+references invalidate the graph. A caller without an explicit mapping receives
+no perspective; the graph never falls back to a shared default. Bare `妈妈` and
+`my mother` resolve from the mapped person. Account mapping is configuration, not
+account provisioning or an identity inference. Clients must show the selected
+center before enabling relative language.
 
 The loader requires a private parent directory and file (POSIX owner-only modes;
 Windows real owner/DACL checks), no symlink/reparse traversal or hard-linked
@@ -40,8 +45,11 @@ encryption claim or a backup/disaster-recovery qualification.
 ## Graph contract
 
 Schema 1 has `graph_id`, `revision` (positive integer or bounded revision label),
-`perspective_id`, `scope`, `people` and `assertions`. Limits are 128 KiB, 256
-people, 2,048 assertions and 64 selected accounts. The canonical scope is:
+`perspective_id`, `scope`, `people` and `assertions`. Schema 2 uses the same
+fields except it replaces `perspective_id` with `perspectives`, an object from
+each authorized account ID to a person `id` in `people`. Schema 2 is opt-in;
+schema 1 remains the shared-perspective format. Limits are 128 KiB, 256 people,
+2,048 assertions and 64 selected accounts. The canonical scope is:
 
 ```json
 {"account_ids": ["fictional-account-one"], "library_id": "fictional-library"}
@@ -52,6 +60,13 @@ use an empty list and null library. Person records contain stable logical `id`,
 `name_en`, nullable `name_zh`, explicit `aliases` and optional `catalog_binding`.
 Do not guess Chinese characters from romanization. Rename/add aliases on the
 same logical person; do not create a second identity for an alternate name.
+
+In schema 2, a non-empty scope requires one `perspectives` entry for every
+`scope.account_ids` member and no others. An empty inactive draft uses an empty
+allowlist and empty mapping. Every mapping value must reference a person in this
+graph; that person must still bind uniquely to a current reviewed identity before
+its relative searches can return results. No perspective is selected for an
+unmatched account.
 
 Each assertion contains its own `id`, `subject_id`, typed `relation`, `object_id`
 and `source: "user"`. Current explicit relations cover mother/father, son/daughter,
@@ -83,13 +98,46 @@ people cannot silently collapse into one catalog person. Missing, ambiguous or
 stale bindings clarify without broadening the search. The graph cannot create a
 reviewed identity, approve face assignments or enable a disabled people index.
 
-The whole canonical graph digest (including scope, perspective and revision)
-joins the existing discovery source binding. Each graph-backed read reloads the
+The whole canonical graph digest (including scope, perspective mapping and
+revision) joins the existing discovery source binding. Schema 2 also binds each
+read's selected account into its view digest. Each graph-backed read reloads the
 file before returning to detect concurrent edits. Removing an account, changing
-perspective, editing/withdrawing a relationship, or deleting/unloading the graph
-invalidates previous contexts; current catalog/membership checks still apply.
+its perspective, editing/withdrawing a relationship, or deleting/unloading the
+graph invalidates previous contexts; current catalog/membership checks still apply.
 The graph is never included in media text retrieval, result cards, public
 capabilities, private chat transcripts or an automatically generated story.
+
+## Preparing a reviewed relationship revision
+
+`server/scripts/prepare_kinship_revision.py` creates a separate private draft
+from an existing owner-only graph and an owner-only, duplicate-free patch. Supply
+the base graph's canonical SHA-256 in the patch so stale edits refuse before a
+draft is created. The closed patch supports explicit assertion `add`,
+`replace` (retaining the assertion ID) and `remove` operations; each assertion
+must name existing logical people and use `source: "user"`. Use
+`replace_aliases` with a known `person_id` and the complete reviewed `aliases`
+list to update nicknames for that person. Supply a new revision value. A positive
+integer revision must increase. A string revision must differ from the existing
+string revision.
+
+```sh
+python server/scripts/prepare_kinship_revision.py \
+  --graph "$PRIVATE_GRAPH" \
+  --patch "$PRIVATE_RELATIONSHIP_PATCH" \
+  --out "$NEW_PRIVATE_DRAFT"
+```
+
+All paths must be absolute and outside the checkout; keep the inputs and new
+draft under owner-only private storage. The output must be absent. The tool
+validates the resulting graph with the runtime
+`KinshipGraph` rules, verifies the source bytes are unchanged, and writes the
+new draft exclusively with owner-only permissions. It never edits, activates,
+or selects the source graph. Edits preserve canonical names, catalog bindings,
+account scope and perspectives. The graph refuses contradictory links, cycles
+and repeated aliases for the same person.
+Review and separately select a draft through the existing supported runtime
+configuration workflow. This helper does not activate a graph or qualify any
+real-family relationship.
 
 ## Checks and delivery
 

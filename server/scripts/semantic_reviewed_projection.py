@@ -20,6 +20,12 @@ from app.access.semantic_encoder import (
     SemanticUnsupported,
     TextVector,
 )
+from app.access.search_policy import requires_semantic_clarification
+from app.access.search_policy_binding import (
+    QueryPolicyUnavailable,
+    capture_current_query_policy_binding,
+    verify_query_policy_binding,
+)
 from app.access.visual_candidates import (
     VectorRecord,
     _canonical_components,
@@ -242,6 +248,7 @@ class ReviewedSemanticProvider:
             inner_binding = inner.binding
             recipe = validate_projection_binding(inner_binding, projection, binding,
                                                  adapter_source_sha256)
+            query_policy_binding = capture_current_query_policy_binding()
         except Exception:
             raise ValueError("invalid_reviewed_semantic_provider") from None
         object.__setattr__(self, "_inner", inner)
@@ -250,6 +257,7 @@ class ReviewedSemanticProvider:
         object.__setattr__(self, "_binding", binding)
         object.__setattr__(self, "_recipe_sha256", recipe["recipe_sha256"])
         object.__setattr__(self, "_source_check", source_check)
+        object.__setattr__(self, "_query_policy_binding", query_policy_binding)
         object.__setattr__(self, "_lease", threading.Lock())
         object.__setattr__(self, "_sealed", True)
 
@@ -266,6 +274,13 @@ class ReviewedSemanticProvider:
     def inner_binding(self) -> JointSpaceBinding:
         return self._inner_binding
 
+    @property
+    def query_policy_binding(self) -> dict[str, object]:
+        try:
+            return dict(verify_query_policy_binding(self._query_policy_binding))
+        except QueryPolicyUnavailable:
+            raise SemanticUnavailable() from None
+
     def probe(self) -> dict[str, object]:
         return {
             "schema": _RECIPE_SCHEMA,
@@ -276,6 +291,7 @@ class ReviewedSemanticProvider:
             "entry_count": self._projection.entry_count,
             "inner_binding_sha256": self._inner_binding.binding_sha256,
             "binding_sha256": self._binding.binding_sha256,
+            "query_policy_binding": self.query_policy_binding,
             "activation_approved": False,
             "semantic_faithfulness_qualified": False,
         }
@@ -302,7 +318,10 @@ class ReviewedSemanticProvider:
 
     def _run_source_check(self) -> None:
         try:
+            verify_query_policy_binding(self._query_policy_binding)
             self._source_check()
+        except QueryPolicyUnavailable:
+            raise SemanticUnavailable() from None
         except Exception:
             raise SemanticUnavailable() from None
 
@@ -315,7 +334,11 @@ class ReviewedSemanticProvider:
             self._check_inner_binding()
             self._run_source_check()
             self._run_check(check)
+            if type(query) is str and requires_semantic_clarification(query):
+                raise SemanticUnsupported()
             model_input = self._projection.project(query)
+            if requires_semantic_clarification(model_input):
+                raise SemanticUnsupported()
             self._check_inner_binding()
             original_digest = hashlib.sha256(query.encode("utf-8")).hexdigest()
             derived_digest = hashlib.sha256(model_input.encode("ascii")).hexdigest()

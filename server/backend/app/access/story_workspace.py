@@ -87,9 +87,12 @@ def _related_selection(body):
     return ids, before_id
 
 
-def related_media(runtime, token, library, body):
+def related_media(runtime, token, library, body, media='all'):
     """Suggest a bounded page sharing a selected asset's recorded capture day."""
     seed_ids, before_id = _related_selection(body)
+    if media not in {'all', 'image', 'video'}:
+        raise TransportError(400, 'Invalid media filter')
+    mime_patterns = ('image/*', 'video/*') if media == 'all' else (media + '/*',)
     with runtime.connection_factory() as db:
         access = AccessService(db, clock=runtime.clock)
         with access._transaction():
@@ -127,11 +130,12 @@ def related_media(runtime, token, library, body):
 
             excluded = ','.join('?' for _ in seed_ids)
             day_predicate = ' OR '.join('a.taken_at LIKE ?' for _ in days)
+            mime_predicate = ' OR '.join('a.mime GLOB ?' for _ in mime_patterns)
             sql = '''SELECT a.id,a.mime,a.width,a.height,a.duration_sec,a.taken_at''' + SOURCE + '''
-                AND (a.mime GLOB 'image/*' OR a.mime GLOB 'video/*')
+                AND (''' + mime_predicate + ''')
                 AND a.id NOT IN (''' + excluded + ''')
                 AND (''' + day_predicate + ''')'''
-            args = [library, *seed_ids, *(day + '%' for day in days)]
+            args = [library, *mime_patterns, *seed_ids, *(day + '%' for day in days)]
             if before_id is not None:
                 sql += ' AND a.id<?'
                 args.append(before_id)
@@ -269,10 +273,10 @@ async def story_preview(request: Request):
 @router.post('/story-workspace/related-media')
 async def story_related_media(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
-    query = _query(request, {'library'})
+    query = _query(request, {'library', 'media'})
     body = await _body(request, {'asset_ids', 'before_id'}, max_body=4096)
     result = await run_in_threadpool(related_media, _memory_runtime(request, allow_query=True),
-                                     token, query['library'], body)
+                                     token, query['library'], body, query.get('media', 'all'))
     return JSONResponse(result)
 
 

@@ -1,5 +1,8 @@
 # Documentation map
 
+Maintained map. Dated release records describe their specific installed source
+and do not replace current source/runtime status.
+
 Start with the maintained summaries. Follow task contracts for implementation;
 use dated release/qualification records as evidence for their exact revision.
 
@@ -8,7 +11,10 @@ use dated release/qualification records as evidence for their exact revision.
 | Product and source setup | [Repository README](../README.md) |
 | What is delivered, enabled or still unaccepted | [Current project status](PROJECT_STATUS.md) |
 | Components, trust/data boundaries and stores | [Architecture](ARCHITECTURE.md) |
+| Jude conversation, voice controls and receipt recovery | [Assistant guide](JUDE_ASSISTANT.md) |
+| Story/assistant model roles, grounding and cloud-proofreading boundaries | [Role and privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md) |
 | Capabilities and acceptance | [Features](FEATURES.md) |
+| Bilingual product dashboard / 双语产品看板 | [Interactive roadmap](product-roadmap/index.html), [maintenance / 维护](product-roadmap/README.md) |
 | Active priorities and exit criteria | [Roadmap](ROADMAP.md) |
 | Architecture findings and maintenance decisions | [October 14 review](ARCHITECTURE_REVIEW_2026-10-14.md) |
 | Local development commands | [Development](DEVELOPMENT.md#cpu-quick-start), [environment doctor](DEVELOPMENT_ENVIRONMENT.md) |
@@ -16,7 +22,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Phone/TV entry | [Android README](../clients/android/README.md) |
 | Phone import progress and receipt/readiness meanings | [Import status contract](PHONE_IMPORT_STATUS.md) |
 | Own-upload server processing evidence | [Preparation read contract](UPLOAD_PREPARATION.md) |
-| Collapse and inspect similar photos | [Delivered page-local contract](SIMILAR_PHOTO_STACKS.md); [library-wide source increment](LIBRARY_PHOTO_STACKS.md) |
+| Collapse and inspect similar photos | [Delivery checklist and family journeys](PHOTO_STACK_DELIVERY.md); [page-local contract](SIMILAR_PHOTO_STACKS.md); [library-wide source increment](LIBRARY_PHOTO_STACKS.md) |
 | Family trial | [Delivered v70 import/upload guide](../clients/android/docs/PHONE_V70_TEST_GUIDE_ZH.md), [v70 release](../clients/android/docs/PHONE_V70_RELEASE_2026-10-17.md), [retained voice guide](../clients/android/docs/PHONE_V68_TEST_GUIDE_ZH.md), [proposal adoption guide](../clients/android/docs/PHONE_V66_TEST_GUIDE_ZH.md) |
 | Deployment/recovery workflow | [Operations](OPERATIONS.md), [source packaging](SOURCE_PACKAGING.md), [API package inspection](API_PACKAGE_INSPECTION.md) |
 | Replaceable models and infrastructure | [Provider architecture](MODEL_PROVIDER_ARCHITECTURE.md), [model directory](../models/README.md) |
@@ -29,6 +35,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Local reading-size controls | [Reading comfort](READER_TEXT_SIZE.md) |
 | First saved story and memoir | [Chinese getting-started guide](FIRST_STORY_GUIDE_ZH.md) |
 | Guided Web story creation | [Source flow and recovery contract](STORY_FIRST_GUIDE.md) |
+| Select assistant results for a story | [Ordered selection, ordinary paging and fresh editor handoff](SEARCH_TO_STORY.md) |
 | AI-assisted story completion | [Drafting handoff, recovery and remaining model gates](AI_STORY_COMPLETION.md) |
 | Link an accepted family memory to a story chapter | [Web chooser and protected metadata contract](CHAPTER_FAMILY_MEMORY_CHOOSER.md) |
 | Compare synthetic story output with its sources | [Private operator review page](MEMOIR_QUALITY_REVIEW.md) |
@@ -38,7 +45,7 @@ use dated release/qualification records as evidence for their exact revision.
 | Title from authored chapter wording | [Chapter-opening title contract](CHAPTER_OPENING_TITLE.md) |
 | Guided phone story creation | [Flow, draft boundary and trial](../clients/android/docs/PHONE_FIRST_STORY_GUIDE.md) |
 | Failed story/memoir images | [Preview recovery](READER_PREVIEW_RECOVERY.md) |
-| Current search delivery, capabilities and remaining gates | [October 22 combined-source release](SEARCH_RELEASE_2026-10-22.md), [October 20 guarded-search release](SEARCH_RELEASE_2026-10-20.md), [exclusion/clarification contract](SCENE_QUERY_REWORDING.md), [bilingual behavior](BILINGUAL_SEARCH_REQUIREMENTS.md) |
+| Current search delivery, capabilities and remaining gates | [Functional acceptance matrix](SEARCH_FUNCTIONAL_ACCEPTANCE.md), [protected scene-result paging](SCENE_RESULT_PAGING.md), [October 22 combined-source release](SEARCH_RELEASE_2026-10-22.md), [October 20 guarded-search release](SEARCH_RELEASE_2026-10-20.md), [exclusion/clarification contract](SCENE_QUERY_REWORDING.md), [bilingual behavior](BILINGUAL_SEARCH_REQUIREMENTS.md) |
 | Earlier natural-language search diagnosis | [October 15 search review](ASSISTANT_SEARCH_REVIEW_2026-10-15.md), [historical redesign handoff](NEXT_SESSION_SEARCH_REDESIGN_2026-10-15.md) |
 | Private search coverage, relevance cases and video dates | [Readiness and relevance](SEARCH_READINESS_AND_RELEVANCE.md) |
 | Installed bilingual intent model quality | [October 16 native trial](NATIVE_BILINGUAL_INTENT_TRIAL_2026-10-16.md) |
@@ -48,22 +55,23 @@ use dated release/qualification records as evidence for their exact revision.
 | Assistant saved-section narration | [Explicit segment reading](ASSISTANT_SEGMENT_READING.md) |
 | Long recording retention and withdrawal | [Intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md), [withdrawal prototype](ORAL_HISTORY_WITHDRAWAL.md), [generated qualification](ORAL_HISTORY_QUALIFICATION.md) |
 
-Latest phone release package/feed: **v75 / `0.75-gallery-search`**, independently published under
-[PR #104](https://github.com/phoenixjyb/PhotoHouse/pull/104). See the
-[v75 package and qualification record](../clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md);
-[v74 release details](../clients/android/docs/PHONE_V74_RELEASE_2026-10-20.md) are historical.
-Physical installation and family-device experience remain unaccepted. The
-[offline exclusion scorecard](SEMANTIC_EXCLUSION_QUALIFICATION.md) has generated-vector
-validation only; semantic search remains disabled.
-The [October 22 combined-source record](SEARCH_RELEASE_2026-10-22.md) covers PR #108 source and the
-verified R3 Windows API deployment. Phone v75 was independently published as a release package/feed
-through PR #104; physical installation and family-device experience remain unaccepted. PR #108 published
-no Android package. Semantic search and selected-story AI generation/providers remain OFF. API/Web deployment and client publication
-remain separate in [Project Status](PROJECT_STATUS.md).
+## Current delivery
 
-Earlier continuation: [October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and
-[v60 local candidate](../clients/android/docs/PHONE_V60_LOCAL_CANDIDATE_2026-10-15.md).
-These are source/package records, not publication notices.
+The [October 29 main/UI/voice release](RELEASE_2026-10-29.md) supersedes earlier
+runtime snapshots: Windows Search, library photo stacks, the new Jude Web UI,
+read-only model agent and selected-source story draft passed scoped checks.
+Actual local speech → Search → reply audio passed; physical microphone/speaker
+and family acceptance remain pending. Android/TV artifacts were not republished.
+
+Phone v75 / `0.75-gallery-search` is the last publication recorded here, under
+[PR #104](https://github.com/phoenixjyb/PhotoHouse/pull/104); see its
+[package record](../clients/android/docs/PHONE_V75_CANDIDATE_2026-10-20.md).
+This is a dated artifact claim, not a fresh installed-version check.
+
+GitHub Actions is cost-paused; use [local development](DEVELOPMENT.md) and
+[CI policy](CI.md). [October 22](SEARCH_RELEASE_2026-10-22.md),
+[October 15 handoff](NEXT_SESSION_HANDOFF_2026-10-15.md) and older qualification
+records retain their historical scope and do not define the active backlog.
 
 ## Document roles
 
@@ -107,3 +115,5 @@ Search quality and runtime preparation:
 - [Private quality scorecard](SEARCH_QUALITY_SCORECARD.md): language cohorts, relevance labels and measurement limits.
 - [Description clarification continuations](SEARCH_DESCRIPTION_CONTINUATIONS.md): retained search conditions and bounded answers.
 - [Semantic runtime configuration](SEMANTIC_RUNTIME_CONFIGURATION.md): explicit opt-in, private credentials and qualification boundaries.
+
+- [November 24 audit reconciliation and delivery plan](AUDIT_RECONCILIATION_2026-11-24.md)

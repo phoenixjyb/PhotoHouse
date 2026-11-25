@@ -57,7 +57,8 @@ class AccessRuntime:
             if action in {'login', 'register'}:
                 with Admission(service).attempt(source, args[0]):
                     return getattr(service, action)(*args, **kwargs)
-            if action not in {'profile', 'logout', 'accept_invitation', 'invite', 'cancel_invitation', 'list_memberships', 'revoke_membership'}:
+            if action not in {'profile', 'logout', 'accept_invitation', 'invite', 'cancel_invitation',
+                              'cancel_pending_invitations', 'list_memberships', 'revoke_membership'}:
                 raise AccessDenied('Access denied')
             return getattr(service, action)(*args, **kwargs)
 
@@ -157,7 +158,7 @@ def credentials_from_request(request, *, allow_query=False):
     return token, mode
 
 
-async def _body(request, fields, *, max_body=MAX_BODY):
+async def _body(request, fields, *, max_body=MAX_BODY, optional_fields=()):
     if _single(request, 'content-encoding') is not None:
         raise TransportError(400, 'Invalid request')
     if (_single(request, 'content-type') or '').split(';')[0].strip().lower() != 'application/json':
@@ -179,7 +180,9 @@ async def _body(request, fields, *, max_body=MAX_BODY):
         return result
     try:
         body = json.loads(raw, object_pairs_hook=unique)
-        if not isinstance(body, dict) or set(body) != set(fields):
+        required, optional = set(fields), set(optional_fields)
+        if (not isinstance(body, dict) or not required <= set(body)
+                or not set(body) - required <= optional):
             raise ValueError('Invalid fields')
         if any(not isinstance(value, str) for value in body.values()):
             raise ValueError('Invalid value')
@@ -274,6 +277,7 @@ async def session(request: Request):
     result = await run_in_threadpool(_runtime(request).call, 'profile', token)
     if mode == 'web':
         result['csrf_token'] = csrf_token(token)
+        return JSONResponse(result, headers={'X-PhotoHouse-Pending-Invite-Cancel': '1'})
     return JSONResponse(result)
 
 
@@ -312,6 +316,12 @@ async def invite(library_id: str, request: Request):
 @router.post('/libraries/{library_id}/invitations/cancel')
 async def cancel_invitation(library_id: str, request: Request):
     token, _ = credentials_from_request(request)
-    body = await _body(request, {'code'})
-    await run_in_threadpool(_runtime(request).call, 'cancel_invitation', token, library_id, body['code'])
+    body = await _body(request, set(), optional_fields={'code', 'phone'})
+    if set(body) == {'code'}:
+        action, target = 'cancel_invitation', body['code']
+    elif set(body) == {'phone'}:
+        action, target = 'cancel_pending_invitations', body['phone']
+    else:
+        raise TransportError(400, 'Invalid request')
+    await run_in_threadpool(_runtime(request).call, action, token, library_id, target)
     return JSONResponse({'ok': True})

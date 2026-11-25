@@ -37,6 +37,7 @@ MAX_FRAME_BYTES = 128 * 1024 * 1024
 MAX_LOG_BYTES = 64 * 1024
 MAX_SOURCE_BYTES = 16 * 1024**3
 MAX_RETRIES = 3
+MAX_KEYFRAME_SECONDS = 300
 SCHEMA_REVISIONS = {"a8d4c2e6f901", "c3f7a91d5e20", "d4a7e3c9b821", "e6b2f8a1c903", "f7c3a9d2e614", "a0c9d2e4f817", "b1d7e4a9c230", "c2e6b8a1d490", "d1f6a8c3e920", "e7c1a9d5b304", "f2a8c5d1e640"}
 MAX_PAYLOAD_BYTES = 2048
 ERROR_CODES = frozenset({
@@ -433,13 +434,26 @@ class ApprovedVideoWorker:
         temp = Path(tempfile.mkdtemp(prefix=f".{asset_id}-", dir=root))
         try:
             duration = float(asset.get("duration_sec") or 0.0)
-            interval = max(0.5, duration / MAX_KEYFRAMES if duration else 2.0)
-            run_command([self.ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
-                         "-threads", "1", "-protocol_whitelist", "file", "-i", asset["path"],
-                         "-map", "0:v:0", "-an", "-sn", "-dn",
-                         "-vf", f"fps=1/{interval:.6f},scale=1024:1024:force_original_aspect_ratio=decrease",
-                         "-frames:v", str(MAX_KEYFRAMES), str(temp / "frame_%05d.jpg")],
-                        timeout=300, output_dir=temp, free_ram_check=self._ram_check)
+            if not math.isfinite(duration) or not 0 < duration <= MAX_DURATION_SECONDS:
+                raise WorkerError("invalid_video_probe")
+            interval = max(0.5, duration / MAX_KEYFRAMES)
+            count = min(MAX_KEYFRAMES, math.ceil(duration / interval))
+            deadline = time.monotonic() + MAX_KEYFRAME_SECONDS
+            for index in range(count):
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise WorkerError("media_process_timeout")
+                # Input seeking decodes only the sampled GOP instead of the entire video.
+                target = temp / f"frame_{index + 1:05d}.jpg"
+                run_command([self.ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
+                             "-threads", "1", "-protocol_whitelist", "file",
+                             "-ss", f"{index * interval:.6f}", "-i", asset["path"],
+                             "-map", "0:v:0", "-an", "-sn", "-dn",
+                             "-vf", "scale=1024:1024:force_original_aspect_ratio=decrease",
+                             "-frames:v", "1", str(target)],
+                            timeout=min(30, remaining), output_dir=temp, free_ram_check=self._ram_check)
+                if not target.is_file() or target.is_symlink() or target.stat().st_size == 0:
+                    raise WorkerError("keyframe_output_invalid")
             frames = sorted(p for p in temp.glob("frame_*.jpg") if p.is_file() and not p.is_symlink())
             if not frames or len(frames) > MAX_KEYFRAMES:
                 raise WorkerError("keyframe_output_invalid")

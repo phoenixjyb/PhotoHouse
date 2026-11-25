@@ -93,3 +93,7 @@ It includes ImageHash, NumPy, PyWavelets and SciPy for generated CPU fixtures.
 Existing matching license artifacts are reused; additional release and bundled
 license texts are retained under `third_party/licenses/python-editorial-test/`.
 Wheels, model weights and installed environments are not included in source archives.
+
+The generated Rust bridge uses rust-anything under the MIT license; see
+[its license](third_party/licenses/rust-anything-MIT.txt). The optional vector
+wheel includes that notice, the PSF license and notices for its locked crates.

@@ -6,6 +6,7 @@ from starlette.routing import Match
 
 from .transport import PRIVACY_HEADERS, router as account_router
 from .media import router as media_router
+from .video_moments import router as video_moments_router
 from .library import router as library_router
 from .photo_stack_transport import router as photo_stack_router
 from .members import router as member_router
@@ -13,7 +14,9 @@ from .stories import router as story_router
 from .story_workspace import router as story_workspace_router
 from .selected_story_transport import router as selected_story_router
 from .memory_group_transport import router as memory_group_router
+from .oral_history_transport import router as oral_history_router
 from .memory_stories import router as memory_router
+from .story_cloud_transport import router as story_cloud_router
 from .memory_transport import router as memory_community_router
 from .memory_book_edition_transport import router as memory_edition_router
 from .people import router as people_router
@@ -30,7 +33,7 @@ from .annotations import router as annotation_router
 from .duplicates import router as duplicate_router
 from .captions import router as caption_router
 from .library_organization import router as organization_router
-from ..routers.ui import router as ui_router
+from ..routers.ui import UI_ASSET_PATHS, VERSIONED_UI_ASSET, oral_history_ui_router, router as ui_router
 from ..updates import router as updates_router
 
 
@@ -42,10 +45,10 @@ class ClosedBoundary:
         ('GET', '/auth/session'), ('POST', '/auth/logout'),
         ('POST', '/auth/invitations/accept'),
     }
-    UI = {'/ui', '/ui/app.js', '/ui/story-workspace.js', '/ui/story-draft-store.js', '/ui/memory-groups.js', '/ui/memory-community.js', '/ui/assistant-private-workspace.js', '/ui/voice-session-control.js', '/ui/voice-turn-timing.js', '/ui/styles.css', '/ui/photohouse-icon.svg', '/ui/search', '/ui/admin'}
+    UI = {'/ui', '/ui/search', '/ui/admin'} | UI_ASSET_PATHS
 
     REVIEWED = {(method, route.path, route.endpoint)
-                for router in (account_router, media_router, library_router, photo_stack_router, member_router, story_router, people_router, people_review_router, tag_router, album_router, story_workspace_router, selected_story_router, memory_group_router, memory_router, memory_community_router, memory_edition_router, ui_router, discovery_router, semantic_search_router, assistant_router, assistant_workspace_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
+                for router in (account_router, media_router, video_moments_router, library_router, photo_stack_router, member_router, story_router, people_router, people_review_router, tag_router, album_router, story_workspace_router, selected_story_router, memory_group_router, oral_history_router, memory_router, story_cloud_router, memory_community_router, memory_edition_router, ui_router, oral_history_ui_router, discovery_router, semantic_search_router, assistant_router, assistant_workspace_router, upload_router, upload_review_router, annotation_router, duplicate_router, caption_router, organization_router, updates_router)
                 for route in router.routes for method in route.methods}
 
     def __init__(self, app, routes):
@@ -66,10 +69,19 @@ class ClosedBoundary:
     def allowed(cls, method, path):
         if method == 'GET' and path == '/photo-stacks/gallery': return True
         if method == 'POST' and path == '/photo-stacks/preferences': return True
-        if method == 'GET' and path == '/memory-groups/capabilities': return True
-        if method == 'POST' and path in {'/memory-groups', '/memory-groups/proposals'}: return True
+        if method == 'GET' and path in {'/memory-groups', '/memory-groups/capabilities'}: return True
+        if method == 'POST' and path in {'/memory-groups', '/memory-groups/proposals', '/memory-groups/combine'}: return True
+        if method == 'POST' and re.fullmatch(r'/memory-groups/[0-9a-f-]{36}/split', path): return True
         if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-groups/[0-9a-f-]{36}', path): return True
         if method == 'GET' and re.fullmatch(r'/assets/[0-9]+/memory-groups', path): return True
+        oral = r'/oral-history/v1/libraries/[A-Za-z0-9_-]{1,128}/sessions'
+        if method in {'GET', 'POST'} and re.fullmatch(oral, path): return True
+        if method == 'GET' and re.fullmatch(oral+r'/completed', path): return True
+        session = oral+r'/[0-9a-f-]{36}'
+        if method == 'GET' and re.fullmatch(session+r'(?:/timeline)?', path): return True
+        if method == 'GET' and re.fullmatch(session+r'/sections/[^/]{1,12}', path): return True
+        if method in {'GET', 'PUT'} and re.fullmatch(session+r'/sections/[^/]{1,12}/reviewed-text', path): return True
+        if method == 'POST' and re.fullmatch(session+r'/(?:sections|complete|cancel|sections/[^/]{1,12}/transcription)', path): return True
         prefix = '/memory-community/v1'
         if method == 'GET' and path == prefix+'/capabilities': return True
         if method in {'GET','POST'} and path == prefix+'/books': return True
@@ -170,6 +182,8 @@ class ClosedBoundary:
         if method in {'GET', 'POST'} and path == '/memory-stories': return True
         if method in {'GET', 'PUT'} and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}', path): return True
         if method == 'GET' and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}/contribution-refs', path): return True
+        if method == 'POST' and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}/refinement', path): return True
+        if method == 'POST' and re.fullmatch(r'/memory-stories/[0-9a-f-]{36}/proofreading/(?:preview|confirm)', path): return True
         if method == 'POST' and path == '/library/search':
             return True
         if (method, path) in cls.ACCOUNT or (method == 'GET' and path in cls.UI):
@@ -188,6 +202,10 @@ class ClosedBoundary:
             return True
         if method == 'POST' and re.fullmatch(r'/libraries/[^/]+/discovery/v1/search', path):
             return True
+        if method == 'POST' and re.fullmatch(r'/libraries/[^/]+/video-moments/v1/search', path):
+            return True
+        if method == 'GET' and re.fullmatch(r'/libraries/[^/]+/video-moments/v1/capabilities', path):
+            return True
         if ((method == 'GET' and re.fullmatch(r'/assistant/v1/receipts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}', path))
                 or (method == 'POST' and re.fullmatch(r'/assistant/v1/receipts/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/(?:outcome|playback)', path))):
             return True
@@ -196,7 +214,10 @@ class ClosedBoundary:
             return True
         if (method, path) in {
                 ('GET', '/assistant/workspace/v1/capabilities'),
+                ('GET', '/assistant/workspace/v1/agent-capabilities'),
                 ('GET', '/assistant/workspace/v1/scene-search-capabilities'),
+                ('GET', '/assistant/workspace/v1/scene-page-capabilities'),
+                ('GET', '/assistant/workspace/v1/result-page-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-followup-capabilities'),
                 ('GET', '/assistant/workspace/v1/saved-memory-action-capabilities'),
@@ -213,6 +234,15 @@ class ClosedBoundary:
         if re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', path):
             return method in {'GET', 'DELETE'}
         if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/turns', path):
+            return True
+        if method == 'POST' and re.fullmatch(
+                r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/scene-pages', path):
+            return True
+        if method == 'POST' and re.fullmatch(
+                r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/result-pages', path):
+            return True
+        if method == 'GET' and re.fullmatch(
+                r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/current-result', path):
             return True
         if method == 'POST' and re.fullmatch(r'/assistant/workspace/v1/threads/[0-9a-f-]{36}/requests/[0-9a-f-]{36}/speech', path):
             return True
@@ -241,6 +271,12 @@ class ClosedBoundary:
                 if message['type'] == 'http.response.start':
                     message = dict(message)
                     privacy = {key.lower().encode(): value.encode() for key, value in PRIVACY_HEADERS.items()}
+                    # The UI handler marks a public file only after verifying its
+                    # content digest. Preserve that response's cache policy.
+                    if (message['status'] == 200 and scope['method'] == 'GET'
+                            and scope['path'] in UI_ASSET_PATHS and scope.get(VERSIONED_UI_ASSET) is True):
+                        privacy.pop(b'cache-control')
+                        privacy.pop(b'pragma')
                     message['headers'] = [(k, v) for k, v in message.get('headers', []) if k.lower() not in privacy]
                     message['headers'].extend(privacy.items())
                 elif message['type'] == 'http.response.body' and scope['method'] == 'HEAD':

@@ -204,6 +204,17 @@ Generated JVM store/transport tests and the QA-only Compose fixtures use fiction
 identities and results. A QA emulator render is distinct from a signed release,
 physical phone test, natural-scene model measurement or family acceptance.
 
+## Protected continuation pages
+
+The separate [workspace page contract](SCENE_RESULT_PAGING.md) adds explicit
+Next/Previous and fresh Return without changing the v4 turn/result schemas.
+It derives the query and hard conditions from the latest current server-owned
+scene result. Page actions can rerank; saved-result/history recovery remains
+model-free. Page cards stay separate from ordinal, conversation and narration
+scope, with current authorization/source/runtime checks and cancellation.
+Older servers keep the disclosed first-20 fallback. This source increment does
+not enable semantic serving or publish a phone client.
+
 ## Remaining delivery gates
 
 The generated HTTP/vector tests establish routing, hard-condition composition,

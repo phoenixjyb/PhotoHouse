@@ -407,19 +407,24 @@ async function openPrivateWorkspace(){
   // Unsupported scene details give usable literal-search guidance while the
   // existing result scope stays visible. A complete resubmission supplies all
   // intended filters explicitly, with no model or implicit pending scene slot.
+  const visibleClarification=page.locator('#assistant-turn-trail-list .assistant-turn-trail-entry > p:last-child').last();
   const unclear=await send('find photos of Sample Child in September 2032 purple dragon');
   assert.equal(unclear.response.result.kind,'clarification');
+  assert.match(unclear.response.result.reply,/No new result search was run/);
   assert.match(unclear.response.result.reply,/complete (?:query|search)/);
   assert.ok(unclear.response.result.reply.includes('containing "red kite"'));
   for(const key of ['context','filters','items'])assert.deepEqual(unclear.response.result[key],v2Answer.response.result[key]);
-  await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  assert.equal(await visibleClarification.textContent(),unclear.response.result.reply,'the active conversation shows the supported search example');
+  await visibleClarification.scrollIntoViewIfNeeded();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.screenshot({path:path.join(artifacts,'intent-v2-clarification-guidance-en-phone-390-font150.png'),fullPage:false});
   const unclearZh=await send('找示例儿童2032年9月紫色飞龙的照片');
   assert.equal(unclearZh.response.result.kind,'clarification');
+  assert.match(unclearZh.response.result.reply,/没有执行新的结果检索/);
   assert.match(unclearZh.response.result.reply,/完整查找句/);
   assert.ok(unclearZh.response.result.reply.includes('包含“红风筝”'));
-  await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  assert.equal(await visibleClarification.textContent(),unclearZh.response.result.reply);
+  await visibleClarification.scrollIntoViewIfNeeded();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.screenshot({path:path.join(artifacts,'intent-v2-clarification-guidance-zh-phone-390-font150.png'),fullPage:false});
   const clarified=await send('find photos of Sample Child in September 2032 containing "secret memory phrase"',{keyboard:true});

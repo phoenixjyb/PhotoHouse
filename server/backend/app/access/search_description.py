@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from typing import Callable, Mapping, Sequence
 
 from .search_text import NormalizedSource, normalize_text
-from .search_exclusions import requires_exclusion_clarification
+from .search_policy import requires_exclusion_clarification
 
 
 MAX_CONCEPTS = 6

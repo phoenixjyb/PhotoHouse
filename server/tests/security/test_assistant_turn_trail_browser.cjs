@@ -21,9 +21,18 @@ createInterface({input:bridge.stdout}).on('line',line=>{
 bridge.on('exit',code=>{if(code){readyReject(new Error(`Synthetic API bridge exited (${code})`));for(const call of pendingRpc.values())call.reject(new Error('Synthetic API bridge exited'));}});
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pendingRpc.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 function responseGate(){
+  const source=new Error().stack.split("\n").slice(2,4).join(" ");
   let arrive,release,finish;
-  const gate={cancelExpected:false,arrived:new Promise(resolve=>{arrive=resolve;}),released:new Promise(resolve=>{release=resolve;}),
-    finished:new Promise(resolve=>{finish=resolve;}),arrive:()=>arrive(),finish:()=>finish(),release:()=>{release();activeGates.delete(gate);}};
+  const arrived=new Promise(resolve=>{arrive=resolve;}),finished=new Promise(resolve=>{finish=resolve;});
+  const bounded=(pending,label)=>new Promise((resolve,reject)=>{
+    const timer=setTimeout(async()=>{
+      let state=null;try{state=await page?.evaluate(()=>({focus:document.activeElement?.id,text:document.querySelector('#assistant-text')?.value,sendDisabled:document.querySelector('#assistant-send')?.disabled,status:document.querySelector('#assistant-status')?.textContent,privateStatus:document.querySelector('#assistant-private-status')?.textContent,language:document.documentElement.lang}));}catch{}
+      reject(new Error(`Generated response gate ${label} (${source}) did not settle within 10 seconds: ${JSON.stringify(state)}`));
+    },10000);
+    pending.then(value=>{clearTimeout(timer);resolve(value);},error=>{clearTimeout(timer);reject(error);});
+  });
+  const gate={cancelExpected:false,get arrived(){return bounded(arrived,'arrival');},released:new Promise(resolve=>{release=resolve;}),
+    get finished(){return bounded(finished,'completion');},arrive:()=>arrive(),finish:()=>finish(),release:()=>{release();activeGates.delete(gate);}};
   activeGates.add(gate);return gate;
 }
 function turnResponse(body){
@@ -40,7 +49,7 @@ let browser,context,page;
   await ready;
   browser=await chromium.launch({headless:true,...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),
     args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
-  context=await browser.newContext({viewport:{width:1280,height:900},serviceWorkers:'block'});
+  context=await browser.newContext({viewport:{width:1280,height:900},serviceWorkers:'block'});context.setDefaultTimeout(15000);
   await context.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
     if(url.origin!=='https://photohouse.test'){externalOrigins.push(url.origin);await route.abort();return;}
@@ -154,6 +163,28 @@ let browser,context,page;
     assert(state.stable,`responsive page scroll/layout did not stabilize within 120 animation frames: ${JSON.stringify(state)}`);
     return state;
   };
+  const stableTrailViewport=()=>page.evaluate(()=>new Promise(resolve=>{
+    let previous=null,stableFrames=0,frames=0;
+    const sample=()=>{
+      const list=document.querySelector('#assistant-turn-trail-list'),rect=list.getBoundingClientRect();
+      const current={pageY:window.scrollY,documentScrollTop:document.documentElement.scrollTop,
+        documentScrollHeight:document.documentElement.scrollHeight,viewportWidth:window.innerWidth,viewportHeight:window.innerHeight,
+        list:{top:rect.top,bottom:rect.bottom,height:rect.height,scrollTop:list.scrollTop,scrollHeight:list.scrollHeight,clientHeight:list.clientHeight}};
+      frames++;
+      if(previous&&JSON.stringify(current)===JSON.stringify(previous))stableFrames++;else stableFrames=0;
+      if(stableFrames>=3){resolve({stable:true,frames,current});return;}
+      if(frames>=120){resolve({stable:false,frames,current,previous});return;}
+      previous=current;requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }));
+  const sampleTrailKeyboardState=async()=>{
+    const state=await stableTrailViewport();
+    assert(state.stable,`turn-trail viewport/list did not stabilize within 120 animation frames: ${JSON.stringify(state)}`);
+    return page.evaluate(viewport=>({viewport,focus:document.activeElement?.id,
+      keyEvents:window.__assistantTrailKeyEvents?.map(event=>({...event}))||[]}),state.current);
+  };
+  const pressTrailKeyAndSample=async key=>{await page.keyboard.press(key);return sampleTrailKeyboardState();};
   await page.setViewportSize({width:390,height:1024});
   await submit('<img src=x onerror="window.__trailXss=1">');
   assert.equal(await page.locator('#assistant-turn-trail-list img').count(),0,'HTML-looking user and assistant text creates no elements');
@@ -161,7 +192,7 @@ let browser,context,page;
   assert.equal(await page.evaluate(()=>window.__trailXss===1),false,'rendering the trail does not execute markup');
   for(let index=1;index<10;index++)await submit(`查找照片 ${index}`);
   assert.equal(await page.locator('#assistant-turn-trail').isVisible(),true);
-  assert.equal(await page.locator('#assistant-turn-trail-title').textContent(),'本页最近对话');
+  assert.equal(await page.locator('#assistant-turn-trail-title').textContent(),'对话');
   assert.equal(await page.locator('#assistant-turn-trail-list > li').count(),8,'trail retains no more than eight successful exchanges');
   const trail=await page.locator('#assistant-turn-trail-list').innerText();
   assert.equal(trail.includes('查找照片 2'),true,'oldest retained exchange is the third sent turn');
@@ -183,7 +214,7 @@ let browser,context,page;
   assert.equal(await page.locator('#assistant-turn-trail-latest').isVisible(),false,'no jump indicator appears before the held reply succeeds');
   await page.locator('#assistant-text').press('Tab');
   const heldCount=await page.locator('#assistant-turn-trail-list > li').count(),heldFocus=await page.evaluate(()=>document.activeElement.id),heldPageY=await page.evaluate(()=>window.scrollY);
-  assert.notEqual(heldFocus,'assistant-text','a deliberate keyboard focus move during a delayed request takes effect');
+  assert.equal(heldFocus,'assistant-cancel','Tab can reach Cancel during a delayed request');
   heldReply.release();await heldReply.finished;
   await page.waitForFunction(()=>{const entries=document.querySelectorAll('#assistant-turn-trail-list > li'),last=entries[entries.length-1];return entries.length===8&&last?.querySelector('.assistant-turn-trail-text')?.textContent==='repeat an identical reply while I read'&&last?.lastElementChild?.textContent==='Reply 10';});
   const afterHeld=await trailReadingPosition(),survivingAnchor=beforeHeld.visible[0];
@@ -194,7 +225,7 @@ let browser,context,page;
   assert.equal(await page.locator('#assistant-turn-trail-latest').textContent(),'跳到最新','Chinese jump control is localized');
   assert.equal(await page.locator('#assistant-turn-trail-list > li').evaluateAll(rows=>rows.at(-1).lastElementChild.textContent===rows.at(-2).lastElementChild.textContent),true,'the fixture returns two identical replies');
   assert.equal(await page.locator('#assistant-turn-trail-list > li').evaluateAll(rows=>rows.at(-1).dataset.assistantTurnId===rows.at(-2).dataset.assistantTurnId),false,'identical reply text does not collapse distinct exchanges');
-  assert.equal(await page.evaluate(()=>document.activeElement.id),heldFocus,'a delayed completion does not move keyboard focus');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','completion returns focus to the composer when Cancel disappears');
   assert.equal(await page.evaluate(()=>window.scrollY),heldPageY,'a delayed completion does not move the page');
   assert.equal(requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns').length,postsBeforeScroll+1,'scrolling itself did not add a send');
   await page.waitForFunction(()=>document.getElementById('assistant-cancel').hidden);
@@ -207,7 +238,11 @@ let browser,context,page;
   assert.equal(await page.locator('#assistant-turn-trail-latest').textContent(),'跳到最新','returning locale restores the Chinese control label');
   const afterChineseLocale=await trailReadingPosition();assert.equal(afterChineseLocale.visible[0].id,beforeLocale.visible[0].id,'round-trip locale render retains the same reading row');
   assert(Math.abs(afterChineseLocale.visible[0].offset-beforeLocale.visible[0].offset)<2,'round-trip locale render retains the reading offset');
-  const zhFonts=await scaleTrailText150();await page.locator('#assistant-turn-trail-title').evaluate(node=>node.scrollIntoView({block:'center',inline:'nearest'}));
+  await page.evaluate(()=>document.fonts.ready.then(()=>true));
+  const zhFonts=await scaleTrailText150();
+  await page.locator('#assistant-turn-trail-title').evaluate(node=>node.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}));
+  const zhSetupViewport=await stableTrailViewport();
+  assert(zhSetupViewport.stable,`Chinese trail setup did not stabilize before geometry checks: ${JSON.stringify(zhSetupViewport)}`);
   const zhLayout=await trailGeometry();
   assert.equal(zhLayout.width,390,'Chinese capture keeps the actual 390px viewport');
   assert(zhLayout.pageWidth<=390,'Chinese trail has no page overflow at 390px');
@@ -219,20 +254,43 @@ let browser,context,page;
   assert(zhLayout.entries.every(item=>item.rect.left>=0&&item.rect.right<=390&&item.scrollWidth<=item.clientWidth+1),'Chinese trail cards stay in bounds and wrap');
   const zhScaled=await page.evaluate(rows=>{const root=document.querySelector('#assistant-turn-trail'),nodes=[root,...root.querySelectorAll('*')].filter(node=>[...node.childNodes].some(child=>child.nodeType===Node.TEXT_NODE&&child.textContent.trim()));return rows.every(row=>Math.abs(parseFloat(getComputedStyle(nodes[row.index]).fontSize)-row.size*1.5)<0.2);},zhFonts);
   assert(zhScaled,'Chinese trail text is individually scaled to 150%');
-  await page.locator('#assistant-turn-trail-list').focus();
+  await page.locator('#assistant-turn-trail-list').evaluate(list=>list.focus({preventScroll:true}));
   assert.equal(await page.locator('#assistant-turn-trail-list').getAttribute('aria-labelledby'),'assistant-turn-trail-title','scroll region has a localized accessible name');
   assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-turn-trail-list','scroll region is keyboard focusable');
-  const zhKeyboardPageY=await page.evaluate(()=>window.scrollY);
-  await page.keyboard.press('Home');const zhTop=await page.locator('#assistant-turn-trail-list').evaluate(list=>list.scrollTop);
-  await page.keyboard.press('PageDown');const zhPageDown=await page.locator('#assistant-turn-trail-list').evaluate(list=>list.scrollTop);
+  await page.evaluate(()=>{
+    window.__assistantTrailKeyEvents=[];
+    window.addEventListener('keydown',event=>{
+      if(event.target?.id==='assistant-turn-trail-list'&&['Home','PageDown','End'].includes(event.key)){
+        const list=event.target;window.__assistantTrailKeyEvents.push({key:event.key,defaultPrevented:event.defaultPrevented,
+          target:event.target.id,focus:document.activeElement?.id,pageY:window.scrollY,listScrollTop:list.scrollTop});
+      }
+    });
+  });
+  const zhKeyboardSetup=await sampleTrailKeyboardState(),postsBeforeKeyboard=requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns').length;
+  const zhHome=await pressTrailKeyAndSample('Home'),zhTop=zhHome.viewport.list.scrollTop;
+  const zhDown=await pressTrailKeyAndSample('PageDown'),zhPageDown=zhDown.viewport.list.scrollTop;
   assert.equal(await page.locator('#assistant-turn-trail-latest').isVisible(),true,'keyboard scrolling through older rows preserves the jump indicator');
-  const zhCapture=path.join(artifacts,'assistant-turn-trail-zh-390px-text150.png');await page.screenshot({path:zhCapture,fullPage:false});fs.chmodSync(zhCapture,0o600);
-  await page.keyboard.press('End');const zhKeyboardEnd=await page.locator('#assistant-turn-trail-list').evaluate(list=>({scrollTop:list.scrollTop,
-    pageY:window.scrollY,focus:document.activeElement.id,latestBottom:list.lastElementChild.getBoundingClientRect().bottom,listBottom:list.getBoundingClientRect().bottom}));
-  assert(zhTop<=1&&zhPageDown>zhTop&&zhKeyboardEnd.scrollTop>=zhPageDown,'keyboard Home/PageDown/End scrolls the trail region');
-  assert(zhKeyboardEnd.latestBottom<=zhKeyboardEnd.listBottom+1,'keyboard End reveals the newest Chinese turn');
-  assert.equal(zhKeyboardEnd.focus,'assistant-turn-trail-list','keyboard scrolling retains focus in the trail');
-  assert.equal(zhKeyboardEnd.pageY,zhKeyboardPageY,'keyboard scrolling does not move the page');
+  const beforeCapture=await sampleTrailKeyboardState(),zhCapture=path.join(artifacts,'assistant-turn-trail-zh-390px-text150.png');
+  await page.screenshot({path:zhCapture,fullPage:false});fs.chmodSync(zhCapture,0o600);
+  const afterCapture=await sampleTrailKeyboardState(),zhEnd=await pressTrailKeyAndSample('End');
+  const zhKeyboardEnd=await page.locator('#assistant-turn-trail-list').evaluate(list=>({latestBottom:list.lastElementChild.getBoundingClientRect().bottom,listBottom:list.getBoundingClientRect().bottom}));
+  const keyboardDiagnostics={setup:zhKeyboardSetup,home:zhHome,pageDown:zhDown,beforeCapture,afterCapture,end:zhEnd,
+    events:zhEnd.keyEvents,postsBefore:postsBeforeKeyboard,postsAfter:requests.filter(item=>item.method==='POST'&&item.path==='/assistant/v1/turns').length};
+  assert(zhTop<=1&&zhPageDown>zhTop&&zhEnd.viewport.list.scrollTop>=zhPageDown,
+    `keyboard Home/PageDown/End scrolls the trail region: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert(zhKeyboardEnd.latestBottom<=zhKeyboardEnd.listBottom+1,`keyboard End reveals the newest Chinese turn: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(zhEnd.focus,'assistant-turn-trail-list',`keyboard scrolling retains focus in the trail: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.deepEqual(zhEnd.keyEvents.map(event=>({key:event.key,defaultPrevented:event.defaultPrevented,target:event.target})),
+    [{key:'Home',defaultPrevented:true,target:'assistant-turn-trail-list'},
+      {key:'PageDown',defaultPrevented:true,target:'assistant-turn-trail-list'},
+      {key:'End',defaultPrevented:true,target:'assistant-turn-trail-list'}],
+    `trail key handlers prevent document-level scrolling: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(zhHome.viewport.pageY,zhKeyboardSetup.viewport.pageY,`Home does not move the page: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(zhDown.viewport.pageY,zhKeyboardSetup.viewport.pageY,`PageDown does not move the page: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(beforeCapture.viewport.pageY,zhKeyboardSetup.viewport.pageY,`page remains stationary before screenshot: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(afterCapture.viewport.pageY,beforeCapture.viewport.pageY,`screenshot does not move the page: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(zhEnd.viewport.pageY,zhKeyboardSetup.viewport.pageY,`End does not move the page: ${JSON.stringify(keyboardDiagnostics)}`);
+  assert.equal(keyboardDiagnostics.postsAfter,postsBeforeKeyboard,`keyboard scrolling starts no assistant request: ${JSON.stringify(keyboardDiagnostics)}`);
   await page.waitForFunction(()=>document.querySelector('#assistant-turn-trail-latest').hidden===true);
   assert.equal(await page.locator('#assistant-turn-trail-latest').isVisible(),false,'natural keyboard End clears the jump indicator at the trail tail');
   await page.locator('#assistant-turn-trail-list').evaluate(list=>list.scrollTop=list.scrollHeight);
@@ -256,6 +314,7 @@ let browser,context,page;
   await page.locator('#assistant-text').press('Control+Enter');assert.equal(posts().length,shortcutBase+1,'a held request blocks a second shortcut submit');
   controlGate.release();await controlGate.finished;
   await page.waitForFunction(count=>{const rows=document.querySelectorAll('#assistant-turn-trail-list > li'),last=rows[rows.length-1];return rows.length===Math.min(count+1,8)&&last?.querySelector('.assistant-turn-trail-text')?.textContent==='Control Enter is an explicit send';},trailBase);
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','completion leaves existing composer focus in place');
   const metaBase=posts().length,metaTrailBase=await page.locator('#assistant-turn-trail-list > li').count();
   const metaResponse=page.waitForResponse(response=>response.request().method()==='POST'&&new URL(response.url()).pathname==='/assistant/v1/turns');
   await page.locator('#assistant-text').fill('Meta Enter is an explicit send');await page.locator('#assistant-text').press('Meta+Enter');await metaResponse;
@@ -352,7 +411,7 @@ let browser,context,page;
   assert(englishReading.length&&englishAfter.some(row=>row.id===englishReading[0].id),'English held response preserves the visible reading row');
   assert(Math.abs(englishAfter.find(row=>row.id===englishReading[0].id).offset-englishReading[0].offset)<2,'English held response preserves the row offset');
   assert.equal(await page.locator('#assistant-turn-trail-latest').textContent(),'Jump to latest','English jump control is localized');
-  assert.equal(await page.locator('#assistant-turn-trail-title').textContent(),'Recent turns on this page');
+  assert.equal(await page.locator('#assistant-turn-trail-title').textContent(),'Conversation');
   const enFonts=await scaleTrailText150();await page.locator('#assistant-turn-trail-title').evaluate(node=>node.scrollIntoView({block:'center',inline:'nearest'}));
   const enLayout=await trailGeometry();
   assert.equal(enLayout.width,390,'English capture keeps the actual 390px viewport');
@@ -374,38 +433,56 @@ let browser,context,page;
   assert.equal(englishJump.focus,'assistant-turn-trail-list','explicit jump leaves focus in the trail after hiding its control');
   assert.equal(await page.evaluate(()=>window.scrollY),pageYBeforeJump,'explicit jump does not move the page');
   console.log('EN_LAYOUT '+JSON.stringify(enLayout));
+  // The native modal uses the workspace pane, rather than the intrinsic list,
+  // as its scroll owner. Exercise actual rendering through the existing route.
+  await page.locator('#memory-assistant').click();await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
+  const modalPane=page.locator('#assistant-workspace-content');
+  const modalGeometry=()=>page.evaluate(()=>{const pane=document.getElementById('assistant-workspace-content'),list=document.getElementById('assistant-turn-trail-list'),p=pane.getBoundingClientRect(),tail=list.lastElementChild.getBoundingClientRect();return {top:p.top,bottom:p.bottom,tailBottom:tail.bottom,scrollTop:pane.scrollTop,scrollY:window.scrollY};});
+  const modalSend=async(text,reply)=>{
+    nextReplyOverride=reply;await page.locator('#assistant-text').fill(text);await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);
+    await page.locator('#assistant-send').click();await page.waitForFunction(value=>document.getElementById('assistant-reply').textContent===value,reply);
+    await page.waitForFunction(()=>!document.getElementById('assistant-private-new').disabled||document.getElementById('assistant-private').hidden);
+  };
+  await page.locator('#assistant-turn-trail-list').evaluate(list=>{list.focus({preventScroll:true});});
+  await page.keyboard.press('End');const modalTail=await modalGeometry();
+  await modalSend('modal tail follow','A generated modal reply. '.repeat(18));
+  const followed=await modalGeometry();assert(followed.tailBottom<=followed.bottom+2,'modal reveals the completed reply in its actual scroll pane');
+  assert.equal(followed.scrollY,modalTail.scrollY,'modal follow does not move the underlying page');
+  const anchor=await modalPane.evaluate(pane=>{const list=document.getElementById('assistant-turn-trail-list'),row=list.children[2],p=pane.getBoundingClientRect();pane.scrollTop+=row.getBoundingClientRect().top-p.top-24;return {id:row.dataset.assistantTurnId,offset:row.getBoundingClientRect().top-p.top};});
+  await modalSend('keep my reading position','Another generated reply. '.repeat(18));
+  const preserved=await modalPane.evaluate((pane,anchor)=>{const row=[...document.querySelectorAll('#assistant-turn-trail-list > li')].find(row=>row.dataset.assistantTurnId===anchor.id);return row.getBoundingClientRect().top-pane.getBoundingClientRect().top;},anchor);
+  assert(Math.abs(preserved-anchor.offset)<=3,'modal preserves a surviving older-message anchor when a reply arrives');
+  assert.equal(await page.locator('#assistant-turn-trail-latest').isVisible(),true,'reading older messages exposes the explicit latest control');
+  // Trigger the same real control without Playwright scrolling its offscreen
+  // button first; the handler itself must move only the owned conversation.
+  const pageBeforeModalJump=await page.evaluate(()=>window.scrollY);await page.locator('#assistant-turn-trail-latest').evaluate(button=>button.click());
+  const jumped=await modalGeometry();assert(jumped.tailBottom<=jumped.bottom+2,'modal jump reaches the latest reply');assert.equal(jumped.scrollY,pageBeforeModalJump,'modal jump leaves the page in place');
+  await page.keyboard.press('ArrowUp');assert((await modalGeometry()).scrollTop<jumped.scrollTop,'modal keyboard scrolling moves the actual pane');
+  await page.locator('#assistant-workspace-close').click();
+  console.log('PASS modal follows its real scroll pane, preserves older-message anchors, and supports explicit jump and keyboard scrolling');
   const reloadWithPrivateProbeHeld=async()=>{
-    const gate=responseGate();holdNextPrivateCapabilities=gate;await page.reload();await page.locator('#grid .asset').first().waitFor();await gate.arrived;
-    await page.locator('#assistant-panel').evaluate(element=>{element.open=true;});await page.locator('#assistant-form').waitFor({state:'visible'});
+    const gate=responseGate();holdNextPrivateCapabilities=gate;await page.reload();await page.locator('#grid .asset').first().waitFor();
+    // Capabilities are intentionally lazy: opening the assistant starts the
+    // deferred restore. A closed panel with no recovery pointer does not probe.
+    await page.locator('#assistant-panel > summary').click();await gate.arrived;await page.locator('#assistant-form').waitFor({state:'visible'});
     assert.equal(await page.locator('#assistant-turn-trail').isVisible(),false,'reload clears in-memory exchanges');
     return gate;
   };
-  const startDelayedTurn=async text=>{
-    const gate=responseGate();holdNextTurn=gate;await page.locator('#assistant-text').fill(text);
-    await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);await page.locator('#assistant-send').click();
-    assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','delayed focused submission leaves focus in the composer');
-    await gate.arrived;return gate;
-  };
-  const finishDelayedTurn=async(gate,text)=>{
-    gate.release();await gate.finished;
-    await page.waitForFunction(value=>{const rows=document.querySelectorAll('#assistant-turn-trail-list > li'),last=rows[rows.length-1];return last?.querySelector('.assistant-turn-trail-text')?.textContent===value;},text);
-  };
-  const postsBeforeReload=posts().length,restoreBeforeCompleted=await reloadWithPrivateProbeHeld();
-  const completedDuringRestore=await startDelayedTurn('completed before delayed restore ends');await finishDelayedTurn(completedDuringRestore,'completed before delayed restore ends');
-  const restoreResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/assistant/workspace/v1/capabilities');
-  restoreBeforeCompleted.release();await restoreResponse;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','a late restore after a new turn completed does not steal composer focus');
-  assert.equal(await page.locator('#assistant-receipt-status').textContent(),await page.evaluate(()=>document.documentElement.lang.startsWith('zh')?'服务器已完成此请求。':'The server completed this request.'),'late restore does not replace the completed live receipt with a recovery offer');
-  assert.equal(posts().length,postsBeforeReload+1,'reload restoration does not replay or duplicate the newly completed turn');
-
-  const restoreBeforePending=await reloadWithPrivateProbeHeld(),pendingDuringRestore=await startDelayedTurn('pending while restore finishes');
-  const pendingRestoreResponse=page.waitForResponse(response=>new URL(response.url()).pathname==='/assistant/workspace/v1/capabilities');
-  restoreBeforePending.release();await pendingRestoreResponse;await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
-  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','a late restore during a new pending turn does not steal composer focus');
-  assert.equal(await page.locator('#assistant-receipt-status').textContent(),await page.evaluate(()=>document.documentElement.lang.startsWith('zh')?'服务器是否收到请求尚未确认。网络恢复后可以再次查询。':'The server receipt is unknown. Check again when the connection is available.'),'late restore preserves the active turn receipt');
-  await finishDelayedTurn(pendingDuringRestore,'pending while restore finishes');
-  assert.equal(posts().length,postsBeforeReload+2,'restoration does not issue an automatic or duplicate turn request');
-  console.log('PASS English localization, narrow layout, reload clearing, no automatic replay, and delayed receipt restoration focus guards');
+  // The current account/library restore gate deliberately blocks submission.
+  // Earlier tests attempted a completed or pending turn before this gate ended;
+  // that race is no longer a reachable product state.
+  const postsBeforeReload=posts().length,restoreGate=await reloadWithPrivateProbeHeld();
+  await page.locator('#assistant-text').fill('draft while account context loads');await page.locator('#assistant-text').focus();
+  assert.equal(await page.locator('#assistant-send').isDisabled(),true,'context restoration blocks sending');
+  await page.locator('#assistant-text').press('Control+Enter');assert.equal(posts().length,postsBeforeReload,'shortcut cannot submit before context restoration');
+  const restored=page.waitForResponse(response=>new URL(response.url()).pathname==='/assistant/workspace/v1/capabilities');
+  restoreGate.release();await restored;await page.waitForFunction(()=>!document.getElementById('assistant-send').disabled);
+  assert.equal(await page.locator('#assistant-text').inputValue(),'draft while account context loads','restoring context preserves an edited draft');
+  assert.equal(await page.evaluate(()=>document.activeElement.id),'assistant-text','restoring context does not steal composer focus');
+  assert.equal(posts().length,postsBeforeReload,'context restoration neither sends nor replays a turn');
+  await submit('explicit turn after context restoration');
+  assert.equal(posts().length,postsBeforeReload+1,'only the later explicit action sends a turn');
+  console.log('PASS English localization, narrow layout, lazy restoration, draft preservation and no automatic replay');
 
   assert(currentAccountId,'synthetic authenticated profile exposes an account scope for the recovery fixture');
   const recoveryKey='photohouse.assistant.turn-recovery.v1',recoveryPointer=requestId=>({version:1,request_id:requestId,account_id:currentAccountId,library_id:'family-a'});

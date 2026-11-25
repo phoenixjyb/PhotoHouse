@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -49,6 +50,9 @@ import dev.photohouse.ota.PhotoHouseOtaControl
 import dev.photohouse.protocol.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 
@@ -108,7 +112,14 @@ internal class Words(val zh: Boolean) {
     }
 }
 
+internal fun pagePhotoStackNotice(scope: String?, groups: List<PhotoStackGroup>?, words: Words): String? =
+    if (scope == "page" && !groups.isNullOrEmpty()) words.t(
+        "Similar photos on this page. Cover and separation choices reset when you refresh or change pages. All originals are kept.",
+        "这是本页照片的建议分组。封面和单独显示设置只在本次查看中生效，刷新或翻页后会重置。原照片都会保留。",
+    ) else null
+
 private enum class UploadDestinationAction { DIRECT, BATCH }
+private data class BatchConnectionReview(val command: BatchUploadCommand, val target: String)
 private data class AnnotationWavSelection(
     val account: String, val generation: Long, val target: UploadAnnotationTarget,
     val language: String, val consent: String, val uri: Uri? = null,
@@ -137,7 +148,10 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
 }
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun ConnectedApp(store: ConnectedStore?, initialLanguage: String = "zh") {
+@Composable internal fun ConnectedApp(
+    store: ConnectedStore?, initialLanguage: String = "zh",
+    readUploadNetwork: (Context) -> UploadNetwork = ::uploadNetwork,
+) {
     var language by remember { mutableStateOf(initialLanguage) }
     var settings by remember { mutableStateOf(false) }
     val config = LocalConfiguration.current
@@ -189,6 +203,9 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val batchItems = batchQueue?.state?.collectAsState()?.value ?: emptyList()
     val batchActivity = batchQueue?.activity?.collectAsState()?.value
     var batchBackgroundUnavailable by remember(state.generation) { mutableStateOf(false) }
+    var batchConnectionReview by remember(store, state.generation, state.session?.account_id, state.library, state.covered) {
+        mutableStateOf<BatchConnectionReview?>(null)
+    }
     var importProgressExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var batchQueueExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var uploadHistoryExpanded by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
@@ -200,14 +217,29 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
         familyTagQuery = state.familyTags?.query.orEmpty()
     }
     val context = LocalContext.current
+    val batchFolderPersistence = remember(context) {
+        runCatching { KeystoreBatchFolderPersistence(context, BuildConfig.PHOTOHOUSE_ORIGIN) }.getOrNull()
+    }
+    var savedBatchFolder by remember(state.generation, state.session?.account_id) {
+        mutableStateOf(state.session?.account_id?.let { account ->
+            runCatching { batchFolderPersistence?.load(account) }.getOrNull()
+        })
+    }
+    var batchFolderError by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var uploadNotificationsAllowed by remember { mutableStateOf(android.os.Build.VERSION.SDK_INT < 33 ||
         context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) }
     val requestUploadNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         uploadNotificationsAllowed = it
     }
-    val runBatchInBackground: (BatchUploadCommand, String?) -> Unit = { command, target ->
-        batchBackgroundUnavailable = store == null ||
-            !BatchUploadForegroundRequests.start(context, store, command, target)
+    fun runBatchInBackground(command: BatchUploadCommand, target: String, connectionApproved: Boolean = false) {
+        val owner = store ?: return
+        val current = owner.state.value
+        if (current.covered || current.busy || current.generation != state.generation ||
+            current.session?.account_id != state.session?.account_id || current.library != state.library) return
+        val result = BatchUploadForegroundRequests.start(context, owner, command, connectionApproved, target, readUploadNetwork)
+        batchBackgroundUnavailable = result == BatchUploadLaunchResult.UNAVAILABLE
+        if (result == BatchUploadLaunchResult.NETWORK_REVIEW_REQUIRED)
+            batchConnectionReview = BatchConnectionReview(command, target)
     }
     val availableMemberships = state.session?.memberships?.filter { it.available }.orEmpty()
     LaunchedEffect(store, state.generation, state.library, state.covered) {
@@ -238,11 +270,25 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     var pendingUpload by remember { mutableStateOf<Pair<String, Uri>?>(null) }
     var batchPickerAccount by remember { mutableStateOf<String?>(null) }
     var batchUris by remember { mutableStateOf<BatchPickerSelection<List<Uri>>?>(null) }
-    var batchTree by remember { mutableStateOf<BatchPickerSelection<Uri>?>(null) }
+    var batchTree by remember { mutableStateOf<BatchPickerSelection<BatchTreeRequest>?>(null) }
+    var batchReviewTree by remember(state.generation, state.session?.account_id) {
+        mutableStateOf<BatchPickerSelection<BatchTreeRequest>?>(null)
+    }
     var batchReview by remember(state.generation, state.session?.account_id) { mutableStateOf<List<BatchUploadSource>>(emptyList()) }
     var batchReadGrantWarning by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var batchSkipped by remember(state.generation, state.session?.account_id) { mutableIntStateOf(0) }
+    var batchScanLimited by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
     var batchApproved by remember(state.generation, state.session?.account_id) { mutableStateOf(false) }
+
+    fun clearBatchReview() {
+        batchReview = emptyList()
+        batchReviewTree = null
+        batchReviewDestination = null
+        batchSkipped = 0
+        batchScanLimited = false
+        batchApproved = false
+    }
+
     var batchEnqueueIssue by remember(state.generation, state.session?.account_id, batchReview, batchItems,
         batchReviewDestination, selectedUploadLibrary) { mutableStateOf<BatchUploadEnqueueIssue?>(null) }
     var batchNetworkReviewRequired by remember(state.generation, state.session?.account_id, batchReview) { mutableStateOf(false) }
@@ -393,8 +439,10 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val pickBatchFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         batchTree = uri?.let { selected ->
             val retained = runCatching { context.contentResolver.takePersistableUriPermission(selected, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }.isSuccess
-            batchPickerAccount?.let { BatchPickerSelection(it, batchPickerDestination, selected, retained) }
+            batchPickerAccount?.let { account -> BatchPickerSelection(account, batchPickerDestination,
+                BatchTreeRequest(selected, account, batchPickerDestination, requirePersistedRead = retained), retained) }
         }
+        batchReviewTree = null
         batchPickerAccount = null; batchPickerDestination = null; batchApproved = false
     }
     val uploadLibraries = availableMemberships.map { it.library_id }.toSet()
@@ -404,26 +452,99 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
             uris.take(100).mapNotNull { runCatching { batchUploadSource(context, it) }.getOrNull() }
         } },
         onReady = { selected, sources ->
+            batchReviewTree = null
             var total = 0L
             val accepted = sources.filter { source ->
                 if (source.bytes > 64L * 1024 * 1024 * 1024 - total) false else { total += source.bytes; true }
             }
             batchReviewDestination = selected.destination
             batchReadGrantWarning = !selected.persistedReadAccess
+            batchScanLimited = false
             batchSkipped = selected.value.size - accepted.size; batchReview = accepted; batchUris = null
         },
-        onDiscard = { batchUris = null; batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null })
+        onDiscard = {
+            batchUris = null
+            clearBatchReview()
+        })
     BatchPickerSelectionEffect(batchTree, state.session?.account_id, state.covered, state.busy,
         state.generation, uploadLibraries,
-        load = { uri -> withContext(Dispatchers.IO) {
-            runCatching { batchUploadTree(context, uri) }.getOrElse { BatchTreeResult(emptyList(), 1, 0) }
+        load = { request -> withContext(Dispatchers.IO) {
+            val stillAuthorized = !state.covered && !state.busy &&
+                state.session?.account_id == request.account &&
+                request.treeUri.scheme == "content" &&
+                (request.destination == null || request.destination in uploadLibraries)
+            val grantAvailable = !request.requirePersistedRead || hasPersistedTreeReadGrant(context, request.treeUri)
+            if (!stillAuthorized || !grantAvailable) BatchTreeResult(emptyList(), 1, 0, persistedReadAccess = false)
+            else try {
+                val scanContext = currentCoroutineContext()
+                batchUploadTree(context, request.treeUri, checkActive = { scanContext.ensureActive() })
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                BatchTreeResult(emptyList(), 1, 0, persistedReadAccess = grantAvailable)
+            }
         } },
         onReady = { selected, result ->
             batchReviewDestination = selected.destination
-            batchReadGrantWarning = !selected.persistedReadAccess
-            batchSkipped = result.skipped; batchReview = result.sources; batchTree = null
+            batchReadGrantWarning = !selected.persistedReadAccess || !result.persistedReadAccess
+            batchScanLimited = result.scanLimited
+            batchSkipped = result.skipped; batchReview = result.sources
+            batchReviewTree = selected.takeIf { it.persistedReadAccess && result.persistedReadAccess }
+            batchTree = null
         },
-        onDiscard = { batchTree = null; batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null })
+        onDiscard = {
+            batchTree = null
+            clearBatchReview()
+        })
+    val rememberBatchFolder: () -> Unit = {
+        val selection = batchReviewTree
+        val account = state.session?.account_id
+        val request = selection?.value
+        val destination = selection?.destination
+        if (selection == null || request == null || account == null || state.covered || state.busy ||
+            selection.account != account || destination == null || destination !in uploadLibraries ||
+            !selection.persistedReadAccess || !hasPersistedTreeReadGrant(context, request.treeUri)) {
+            batchFolderError = true
+        } else try {
+            val value = RememberedBatchFolder(account, destination, request.treeUri.toString())
+            batchFolderPersistence?.save(value) ?: error("Folder persistence unavailable")
+            savedBatchFolder = value
+            batchFolderError = false
+        } catch (_: Exception) {
+            batchFolderError = true
+        }
+    }
+    val reviewSavedBatchFolder: () -> Unit = {
+        val account = state.session?.account_id
+        val saved = account?.let { current ->
+            savedBatchFolder?.takeIf { it.accountId == current }
+        }
+        val uri = saved?.let { runCatching { Uri.parse(it.treeUri) }.getOrNull() }
+        val allowed = canReviewRememberedBatchFolder(saved, account, state.covered, state.busy,
+            uploadLibraries, uri?.let { hasPersistedTreeReadGrant(context, it) } == true)
+        if (!allowed || saved == null || uri == null) {
+            batchFolderError = true
+        } else {
+            batchFolderError = false
+            clearBatchReview()
+            batchTree = BatchPickerSelection(account, saved.destinationLibraryId,
+                BatchTreeRequest(uri, account, saved.destinationLibraryId, requirePersistedRead = true),
+                persistedReadAccess = true)
+        }
+    }
+    val forgetSavedBatchFolder: () -> Unit = {
+        val account = state.session?.account_id
+        val saved = account?.let { current -> savedBatchFolder?.takeIf { it.accountId == current } }
+        if (account == null || saved == null || state.covered || state.busy) {
+            batchFolderError = true
+        } else try {
+            batchFolderPersistence?.forget(account) ?: error("Folder persistence unavailable")
+            savedBatchFolder = null
+            batchFolderError = false
+        } catch (_: Exception) {
+            batchFolderError = true
+        }
+    }
     LaunchedEffect(pendingUpload, state.covered, state.session?.account_id, state.busy) {
         val pending = pendingUpload ?: return@LaunchedEffect
         if (state.covered || state.busy) return@LaunchedEffect
@@ -441,14 +562,14 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
     val enqueueReviewedBatch: (String) -> Unit = { destination ->
         val queue = batchQueue
         if (queue == null) batchEnqueueIssue = BatchUploadEnqueueIssue.ACCOUNT_UNAVAILABLE
-        else if (batchUploadStartDecision(uploadNetwork(context), batchApproved, confirmationVisible = false)
+        else if (batchUploadStartDecision(readUploadNetwork(context), batchApproved, confirmationVisible = false)
             != BatchUploadStartDecision.START) batchNetworkReviewRequired = true
         else try {
             val queued = queue.enqueue(batchReview, destination)
             if (queued.isNotEmpty()) {
-                runBatchInBackground(BatchUploadCommand.RESUME, null)
+                runBatchInBackground(BatchUploadCommand.RESUME, queued.first(), batchApproved)
                 importProgressExpanded = true
-                batchReview = emptyList(); batchSkipped = 0; batchReviewDestination = null; batchApproved = false
+                clearBatchReview()
             }
         } catch (rejected: BatchUploadEnqueueRejected) {
             // Keep the reviewed selection; a changed queue or membership must not crash or start work.
@@ -550,6 +671,26 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                 onPlayAudio = { store?.loadUploadAnnotationAudio(target.library, it) },
                 onRetryAudioPlayback = { store?.loadUploadAnnotationAudio(target.library, it) },
                 onRefresh = { if (target.readAssetId.isNotEmpty()) store?.loadUploadAnnotations(target.library, target.readAssetId) })
+        }
+        batchConnectionReview?.let { review ->
+            AlertDialog(
+                modifier = Modifier.testTag("batch-connection-review"),
+                onDismissRequest = { batchConnectionReview = null },
+                title = { Text(t("Use this connection?", "使用当前网络？")) },
+                text = { Text(t("This connection may use mobile data. Your choice applies to this upload run.",
+                    "当前网络可能使用移动流量。此选择仅对本次上传有效。")) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        batchConnectionReview = null
+                        runBatchInBackground(review.command, review.target, connectionApproved = true)
+                    }, modifier = Modifier.testTag("batch-connection-confirm")) { Text(t("Use this connection", "使用当前网络")) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { batchConnectionReview = null }, modifier = Modifier.testTag("batch-connection-cancel")) {
+                        Text(t("Cancel", "取消"))
+                    }
+                },
+            )
         }
         if (destinationDialogAction != null && state.session != null && !state.covered) AlertDialog(
             modifier = Modifier.testTag("upload-destination-dialog"),
@@ -1152,13 +1293,35 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                 pickBatch.launch(arrayOf("image/jpeg", "image/png", "video/mp4", "video/quicktime"))
                                             }, enabled = !state.busy, modifier = Modifier.testTag("batch-pick")) { Text(t("Choose files", "选择文件")) }
                                             if (batchQueue != null) OutlinedButton(onClick = { batchPickerAccount = state.session?.account_id; batchPickerDestination = selectedUploadLibrary; pickBatchFolder.launch(null) }, enabled = !state.busy, modifier = Modifier.testTag("batch-pick-folder")) { Text(t("Choose folder", "选择文件夹")) }
+                                            if (batchQueue != null && savedBatchFolder?.accountId == state.session?.account_id) {
+                                                OutlinedButton(onClick = reviewSavedBatchFolder,
+                                                    enabled = !state.busy && !state.covered,
+                                                    modifier = Modifier.testTag("batch-review-saved-folder")) {
+                                                    Text(t("Review saved folder", "检查已保存的文件夹"))
+                                                }
+                                                TextButton(onClick = forgetSavedBatchFolder,
+                                                    enabled = !state.covered,
+                                                    modifier = Modifier.testTag("batch-forget-saved-folder")) {
+                                                    Text(t("Forget saved folder", "忘记已保存的文件夹"))
+                                                }
+                                            }
                                         }
+                                        if (savedBatchFolder?.accountId == state.session?.account_id) {
+                                            Text(t("Saved folders open only when you choose Review saved folder. Nothing scans or uploads automatically.",
+                                                "已保存的文件夹仅在你选择“检查已保存的文件夹”时打开；不会自动扫描或上传。"),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                modifier = Modifier.testTag("batch-saved-folder-disclosure"))
+                                        }
+                                        if (batchFolderError) Text(t("The saved folder could not be used or stored. Choose it again and check the destination.",
+                                            "无法使用或保存该文件夹。请重新选择文件夹并确认目标资料库。"),
+                                            color = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.testTag("batch-saved-folder-error"))
                                     }
                                 } }
                                 if (batchBackgroundUnavailable) Text(t("Background upload could not start. Keep the app open and try Resume again; your queue is saved.",
                                     "暂时无法启动后台上传。请保持相册打开后再点继续，上传队列已保留。"),
                                     color = MaterialTheme.colorScheme.error, modifier = Modifier.testTag("batch-background-unavailable"))
-                                if (batchReview.isNotEmpty() || batchSkipped > 0) {
+                                if (batchReview.isNotEmpty() || batchSkipped > 0 || batchScanLimited) {
                                     if (batchReadGrantWarning) Text(t("This file provider did not grant lasting access. If Android ends the app, you may need to select unfinished files again.",
                                         "文件提供方未授予长期读取权限。若系统结束应用，可能需要重新选择未完成的文件。"),
                                         style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("batch-read-grant-warning"))
@@ -1168,16 +1331,25 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     val issue = batchEnqueueIssue ?: batchQueue?.enqueueIssue(batchReview, destination)
                                         ?: if (batchQueue == null) BatchUploadEnqueueIssue.ACCOUNT_UNAVAILABLE else null
                                     val needsNetworkConfirmation = !batchApproved && (batchNetworkReviewRequired ||
-                                        uploadNetwork(context) != UploadNetwork.UNMETERED)
+                                            readUploadNetwork(context) != UploadNetwork.UNMETERED)
                                     BatchUploadReviewCard(
                                         selectedCount = batchReview.size, selectedBytes = batchReview.sumOf { it.bytes },
                                         skippedCount = batchSkipped,
+                                        folderScanLimited = batchScanLimited,
                                         availableSlots = (100 - batchItems.count { it.record.status !in setOf("complete", "cancelled") }).coerceAtLeast(0),
                                         destinationLabel = batchDestination, issue = issue,
                                         needsNetworkConfirmation = needsNetworkConfirmation,
+                                        canRememberFolder = batchReviewTree?.let { selected ->
+                                            selected.account == state.session?.account_id &&
+                                                selected.destination in uploadLibraries && selected.persistedReadAccess &&
+                                                batchFolderPersistence != null
+                                        } == true,
+                                        folderRemembered = batchReviewTree?.value?.treeUri?.toString() ==
+                                            savedBatchFolder?.takeIf { it.accountId == state.session?.account_id }?.treeUri,
                                         zh = words.zh,
+                                        onRememberFolder = rememberBatchFolder,
                                         onStart = {
-                                            when (batchUploadStartDecision(uploadNetwork(context), batchApproved, needsNetworkConfirmation)) {
+                                            when (batchUploadStartDecision(readUploadNetwork(context), batchApproved, needsNetworkConfirmation)) {
                                                 BatchUploadStartDecision.REQUIRE_NETWORK_REVIEW -> batchNetworkReviewRequired = true
                                                 BatchUploadStartDecision.ACKNOWLEDGE_NETWORK_REVIEW -> {
                                                     batchApproved = true; batchNetworkReviewRequired = false
@@ -1188,7 +1360,7 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                 }
                                             }
                                         },
-                                        onDiscard = { batchReview = emptyList(); batchReviewDestination = null; batchSkipped = 0; batchApproved = false },
+                                        onDiscard = ::clearBatchReview,
                                     )
                                 }
                                 key(state.generation, state.session?.account_id) {
@@ -1435,6 +1607,13 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                     }
                                     state.gallery?.let { gallery ->
                                         if (gallery.items.isEmpty()) item { Text(t("No matching items on this page", "此页暂无符合条件的内容")) }
+                                        pagePhotoStackNotice(state.photoStackScope, state.photoStacks, words)?.let { notice ->
+                                            item {
+                                                Text(notice, style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.testTag("photo-stack-page-notice"))
+                                            }
+                                        }
                                         if (state.photoStackScope == "library") item {
                                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                                 Text(t("Cover and separate choices are saved for your account", "封面和单独显示设置已保存到你的账户"),
@@ -1465,15 +1644,14 @@ private fun readAnnotationWav(context: Context, uri: Uri): ByteArray? {
                                                 Column(Modifier.padding(start = 14.dp, end = 10.dp, top = 10.dp, bottom = 6.dp)) {
                                                     Text(words.date(asset), style = MaterialTheme.typography.titleSmall,
                                                         maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.SpaceBetween) {
-                                                        Text(t("${if (asset.kind == "video") "Video" else "Photo"} · No. ${asset.id}",
-                                                            "${if (asset.kind == "video") "视频" else "照片"} · 编号 ${asset.id}"),
-                                                            style = MaterialTheme.typography.labelSmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                                                        TextButton(onClick = { store.openAsset(asset) }, modifier = Modifier.testTag("details-${asset.id}")) {
-                                                            Text(t("Details", "详情"))
-                                                        }
+                                                    Text(t("${if (asset.kind == "video") "Video" else "Photo"} · No. ${asset.id}",
+                                                        "${if (asset.kind == "video") "视频" else "照片"} · 编号 ${asset.id}"),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                                                    TextButton(onClick = { store.openAsset(asset) },
+                                                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("details-${asset.id}")) {
+                                                        Text(t("Details", "详情"), textAlign = TextAlign.Center,
+                                                            modifier = Modifier.fillMaxWidth().testTag("details-label-${asset.id}"))
                                                     }
                                                     stackGroups.firstOrNull { (state.photoStackCoverOverrides[it.id] ?: it.coverAssetId) == asset.id }?.let { group ->
                                                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,

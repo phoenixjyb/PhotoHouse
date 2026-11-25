@@ -1,0 +1,5 @@
+{"fn": "group_items", "args": ["{\"items\": [[\"ffffffffffffffff\", \"-1\", true, null, null, null, false], [\"ffffffffffffffff\", \"-1\", true, null, null, null, false]], \"maximum_comparisons\": 1}"]}
+{"fn": "group_items", "args": ["{\"items\": [[\"ffffffffffffffff\", \"-1\", true, null, null, null, false], [\"ffffffffffffffff\", \"-1\", true, null, null, null, false]], \"maximum_comparisons\": 0}"]}
+{"fn": "group_items", "args": [""]}
+{"fn": "group_items", "args": ["{}"]}
+{"fn": "group_items", "args": ["null"]}

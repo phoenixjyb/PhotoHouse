@@ -4,11 +4,14 @@ The application starts closed. Deployment must explicitly supply reviewed access
 and media runtimes; no environment/database discovery or legacy fallback exists.
 """
 import asyncio
+import ntpath
 from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 from starlette.concurrency import run_in_threadpool
-from .access.transport import router as account_router
+from .access.transport import AccessRuntime, router as account_router
 from .access.media import router as media_router
+from .access.video_moments import (VideoMomentCatalog,
+                                  router as video_moments_router)
 from .access.library import router as library_router
 from .access.photo_stack_transport import router as photo_stack_router
 from .access.members import router as member_router
@@ -16,7 +19,9 @@ from .access.stories import router as story_router
 from .access.story_workspace import router as story_workspace_router
 from .access.selected_story_transport import router as selected_story_router
 from .access.memory_group_transport import router as memory_group_router, GroupVectorConfiguration
+from .access.oral_history_transport import router as oral_history_router
 from .access.memory_stories import router as memory_router
+from .access.story_cloud_transport import router as story_cloud_router
 from .access.memory_transport import router as memory_community_router
 from .access.memory_book_edition_transport import router as memory_edition_router
 from .access.people import router as people_router
@@ -35,15 +40,19 @@ from .access.annotations import router as annotation_router
 from .access.duplicates import router as duplicate_router
 from .access.captions import router as caption_router
 from .access.library_organization import router as organization_router
-from .routers.ui import router as ui_router
+from .routers.ui import oral_history_ui_router, router as ui_router
+from .product_roadmap import (attach_routes as attach_roadmap_routes,
+                              default_roadmap_root)
 from .updates import router as updates_router
 
 
 def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=None,
+               video_moment_catalog=None,
                upload_runtime=None, upload_review_runtime=None, semantic_search_runtime=None,
                annotation_intake_enabled=False, assistant_enabled=False,
                memory_collaboration_enabled=False, memory_originals_enabled=False,
                memory_generation_enabled=False, memory_editorial_enabled=False,
+               memory_auto_refinement_enabled=False,
                memory_editions_enabled=False, family_note_erasure_enabled=False,
                assistant_asr=None, assistant_tts=None, assistant_journal=None,
                assistant_workspace_store=None, assistant_kinship_provider=None, assistant_intent_planner=None, update_root=None,
@@ -52,18 +61,45 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                assistant_semantic_search_enabled=False,
                assistant_agent_runtime=None, assistant_agent_budget=None,
                selected_story_provider=None, selected_story_drafts_enabled=False,
-               selected_story_ui_enabled=False):
+               selected_story_ui_enabled=False,
+               oral_history_intake_enabled=False, oral_history_transcription_enabled=False,
+               oral_history_reviewed_text_enabled=False,
+               story_cloud_proofreading_enabled=False, story_cloud_proofreading_provider=None):
+    from .access.story_cloud_proofreading import CloudProofreading
+    cloud_proofreading = CloudProofreading(enabled=story_cloud_proofreading_enabled,
+        provider=story_cloud_proofreading_provider)
+    if story_cloud_proofreading_enabled and (access_runtime is None or not memory_collaboration_enabled):
+        raise ValueError("Cloud proofreading requires an explicit collaboration runtime")
     if semantic_search_runtime is not None and (
             type(semantic_search_runtime) is not SemanticSearchRuntime or
             semantic_search_runtime.access is not access_runtime or
             semantic_search_runtime.discovery is not discovery_runtime):
         raise ValueError('Explicit matching semantic search runtime required')
+    if video_moment_catalog is not None:
+        from .access.media import MediaRuntime
+        from .access.prepared_video import PreparedVideos
+        if (type(video_moment_catalog) is not VideoMomentCatalog or
+                access_runtime is None or type(media_runtime) is not MediaRuntime or
+                type(media_runtime.prepared_videos) is not PreparedVideos):
+            raise ValueError('Video moments require an explicit catalog and prepared playback runtime')
     if (type(assistant_semantic_search_enabled) is not bool or
             (assistant_semantic_search_enabled and
              (not assistant_enabled or semantic_search_runtime is None))):
         raise ValueError('Explicit assistant and semantic runtime opt-in required')
     if type(memory_groups_enabled) is not bool:
         raise ValueError('Explicit memory group opt-in required')
+    if (type(oral_history_intake_enabled) is not bool or
+            (oral_history_intake_enabled and not isinstance(access_runtime, AccessRuntime))):
+        raise ValueError('Oral history intake requires explicit protected access opt-in')
+    if type(oral_history_transcription_enabled) is not bool:
+        raise ValueError('Explicit recording transcription opt-in required')
+    if oral_history_transcription_enabled:
+        from .access.assistant_speech import LocalAssistantAsr
+        if not oral_history_intake_enabled or not isinstance(assistant_asr, LocalAssistantAsr):
+            raise ValueError('Recording transcription requires recording intake and a local speech provider')
+    if (type(oral_history_reviewed_text_enabled) is not bool or
+            (oral_history_reviewed_text_enabled and not oral_history_intake_enabled)):
+        raise ValueError('Recording review requires explicit recording intake opt-in')
     if memory_group_vectors is not None and (not memory_groups_enabled or
             type(memory_group_vectors) is not GroupVectorConfiguration):
         raise ValueError('Explicit enabled memory group vector configuration required')
@@ -123,6 +159,35 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     if (type(selected_story_ui_enabled) is not bool or
             (selected_story_ui_enabled and not selected_story_drafts_enabled)):
         raise ValueError('Explicit selected-story UI and API opt-in required')
+    if (type(memory_auto_refinement_enabled) is not bool or
+            (memory_auto_refinement_enabled and
+             (not memory_collaboration_enabled or access_runtime is None))):
+        raise ValueError('Automatic story refinement requires an explicit protected runtime')
+    refinement_narrator = None
+    if memory_auto_refinement_enabled:
+        from .access.selected_story_process import ProcessSelectedStoryProvider, ProcessSavedStoryProvider
+        from .access.memory_processing import OwnedSavedStoryNarrator
+        if (type(selected_story_provider) is not ProcessSelectedStoryProvider or
+                selected_story_provider.host_admission is None):
+            raise ValueError('Automatic refinement requires the shared owned model admission')
+        if (selected_story_provider.enabled is not True or
+                selected_story_provider.host_admission.enabled is not True):
+            raise ValueError('Automatic refinement requires an enabled owned model provider')
+        scripts = [argument for argument in selected_story_provider.launch.argv
+                   if argument.lower().endswith('.py')]
+        worker_name = (ntpath.basename(scripts[0].replace('/', '\\')).lower()
+                       if len(scripts) == 1 else '')
+        # This selects the closed dispatcher contract; the deployed source and
+        # package hash must still be verified by the Windows rollout.
+        if worker_name != 'household_gguf_worker.py':
+            raise ValueError('Automatic refinement requires the household GGUF worker launch')
+        def refinement_provider():
+            original = selected_story_provider
+            return ProcessSavedStoryProvider(original.launch, original.model,
+                kernel_factory=original.kernel_factory, enabled=original.enabled,
+                timeout=180, cleanup_seconds=original.cleanup_seconds,
+                host_admission=original.host_admission, exchange_root=original.exchange_root)
+        refinement_narrator = OwnedSavedStoryNarrator(refinement_provider, timeout=180)
     selected_story_lifecycle = None
     if selected_story_provider is not None:
         if not memory_collaboration_enabled:
@@ -135,6 +200,7 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
         maintenance = None
         memory_maintenance = None
         workspace_maintenance = None
+        refinement_worker = None
         journal = app.state.assistant_journal
         workspace = app.state.assistant_workspace_store
         try:
@@ -182,11 +248,50 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
                         except Exception:
                             app.state.memory_retention_healthy = False
                 memory_maintenance = asyncio.create_task(prune_memory_history())
+            if refinement_narrator is not None:
+                from functools import partial
+                from .access.memory_processing import process_job
+                from .access.story_refinement_context import resolve
+                story_context = partial(resolve, discovery_runtime=discovery_runtime,
+                    kinship_provider=assistant_kinship_provider)
+                def refine_one():
+                    with access_runtime.connection_factory() as db:
+                        return process_job(db, narrator=refinement_narrator,
+                            clock=access_runtime.clock,
+                            memory_groups_enabled=memory_groups_enabled,
+                            saved_story_only=True, story_refinement_context=story_context)
+                async def refine_stories():
+                    work = None
+                    try:
+                        while True:
+                            if app.state.memory_retention_healthy:
+                                work = asyncio.create_task(asyncio.to_thread(refine_one))
+                                try:
+                                    await asyncio.shield(work)
+                                    app.state.memory_refinement_healthy = True
+                                except Exception:
+                                    app.state.memory_refinement_healthy = False
+                                finally:
+                                    if work.done():
+                                        work = None
+                            await asyncio.sleep(5)
+                    finally:
+                        refinement_narrator.cancel()
+                        if work is not None:
+                            await asyncio.shield(work)
+                refinement_worker = asyncio.create_task(refine_stories())
             yield
         finally:
             try:
-                if app.state.selected_story_lifecycle is not None:
-                    await app.state.selected_story_lifecycle.close()
+                try:
+                    if refinement_worker is not None:
+                        refinement_narrator.cancel()
+                        refinement_worker.cancel()
+                        with suppress(asyncio.CancelledError):
+                            await refinement_worker
+                finally:
+                    if app.state.selected_story_lifecycle is not None:
+                        await app.state.selected_story_lifecycle.close()
             finally:
                 if app.state.assistant_agent_supervisor is not None:
                     await app.state.assistant_agent_supervisor.close()
@@ -217,15 +322,23 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.story_title_suggester = story_title_suggester
     app.state.story_title_lock = Lock()
     app.state.media_runtime = media_runtime
+    app.state.video_moment_catalog = video_moment_catalog
     app.state.discovery_runtime = discovery_runtime
     app.state.semantic_search_runtime = semantic_search_runtime
     app.state.assistant_semantic_search_enabled = assistant_semantic_search_enabled
     app.state.assistant_enabled = assistant_enabled
     app.state.memory_groups_enabled = memory_groups_enabled
+    app.state.oral_history_intake_enabled = oral_history_intake_enabled
+    app.state.oral_history_transcription_enabled = oral_history_transcription_enabled
+    app.state.oral_history_transcription_lock = Lock() if oral_history_transcription_enabled else None
+    app.state.oral_history_reviewed_text_enabled = oral_history_reviewed_text_enabled
     app.state.memory_group_vectors = memory_group_vectors
     app.state.memory_collaboration_enabled = memory_collaboration_enabled
     app.state.memory_originals_enabled = memory_originals_enabled
     app.state.memory_generation_enabled = memory_generation_enabled
+    app.state.story_cloud_proofreading = cloud_proofreading
+    app.state.memory_auto_refinement_enabled = memory_auto_refinement_enabled
+    app.state.memory_refinement_healthy = True
     app.state.memory_editorial_enabled = memory_editorial_enabled
     app.state.memory_editions_enabled = memory_editions_enabled
     app.state.family_note_erasure_enabled = family_note_erasure_enabled
@@ -247,6 +360,8 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.state.update_root = update_root
     app.include_router(account_router)
     app.include_router(media_router)
+    if video_moment_catalog is not None:
+        app.include_router(video_moments_router)
     app.include_router(library_router)
     app.include_router(photo_stack_router)
     app.include_router(member_router)
@@ -254,7 +369,11 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(story_workspace_router)
     app.include_router(selected_story_router)
     app.include_router(memory_group_router)
+    if oral_history_intake_enabled:
+        app.include_router(oral_history_router)
+        app.include_router(oral_history_ui_router)
     app.include_router(memory_router)
+    app.include_router(story_cloud_router)
     app.include_router(memory_edition_router)
     app.include_router(memory_community_router)
     app.include_router(people_router)
@@ -275,6 +394,9 @@ def create_app(*, access_runtime=None, media_runtime=None, discovery_runtime=Non
     app.include_router(organization_router)
     app.include_router(updates_router)
     app.add_middleware(ClosedBoundary, routes=app.routes)
+    # Public project metadata has its own fixed-file boundary. All household
+    # routes continue through the unchanged, default-deny access boundary.
+    attach_roadmap_routes(app, default_roadmap_root())
     return app
 
 

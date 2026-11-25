@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 import uuid
 
 from alembic import command
@@ -151,6 +152,30 @@ class MemoryGroupTests(unittest.TestCase):
         with self.assertRaises(TransportError) as reused:
             self.save(self.owner, {**body, 'theme': 'trip'})
         self.assertEqual(reused.exception.status, 409)
+
+    def test_split_preserves_saved_order_and_rolls_back_if_sibling_cannot_be_written(self):
+        self.f.mutate("INSERT INTO assets(id,path,hash_sha256,status,mime,width,height) VALUES "
+                      "(12345,'synthetic/extra.jpg','generated-extra','active','image/jpeg',16,16)")
+        self.f.mutate("INSERT INTO access_asset_libraries VALUES(12345,'family-a')")
+        saved = self.save(self.owner, self.body(assets='102,101,12345'))
+        body = {'asset_ids': '12345,102', 'revision': saved['revision'],
+                'mutation_id': self.body()['mutation_id']}
+        record = MemoryGroups._record
+
+        def fail_new_revision(ops, group_id, library, actor, revision, mutation, digest, content):
+            if revision == 0:
+                raise RuntimeError('Synthetic sibling failure')
+            return record(ops, group_id, library, actor, revision, mutation, digest, content)
+
+        with patch.object(MemoryGroups, '_record', fail_new_revision):
+            with self.assertRaisesRegex(RuntimeError, '^Synthetic sibling failure$'):
+                self.domain('split', self.owner, body, saved['id'])
+        self.assertEqual(self.domain('get', self.owner, saved['id']), saved)
+        result = self.domain('split', self.owner, body, saved['id'])
+        child = self.domain('get', self.owner, result['created_id'])
+        self.assertEqual(child['asset_ids'], ['102', '12345'])
+        self.assertEqual(self.domain('split', self.owner, body | {'asset_ids':'102,12345'},
+                                     saved['id']), result)
 
     def test_story_text_is_read_through_and_deleted_source_is_omitted(self):
         note = self.note()

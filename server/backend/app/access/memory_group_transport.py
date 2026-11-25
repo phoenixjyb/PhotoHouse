@@ -7,7 +7,8 @@ from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from .library import LibraryRoute, _integer, _query
-from .memory_groups import MemoryGroups, MEMORY_GROUP_FIELDS, _csv
+from .memory_groups import (MemoryGroups, MEMORY_GROUP_FIELDS, MEMORY_GROUP_SPLIT_FIELDS,
+                            MEMORY_GROUP_COMBINE_FIELDS, _csv)
 from .memory_group_schema import GROUP_REVISIONS, verify_memory_group_schema
 from .service import AccessService
 from .stories import _uuid
@@ -39,8 +40,9 @@ def capabilities(runtime, token, library, enabled, vectors):
             versions=[tuple(row) for row in db.execute('SELECT version_num FROM alembic_version')]
             ready = (enabled and len(versions)==1 and versions[0][0] in GROUP_REVISIONS
                 and verify_memory_group_schema(db))
-            return {'version': 1, 'enabled': bool(ready),
-                    'manual': bool(ready and member['role'] in {'owner', 'contributor'}),
+            manual = bool(ready and member['role'] in {'owner', 'contributor'})
+            return {'version': 1, 'enabled': bool(ready), 'manual': manual, 'split': manual,
+                    'recent': bool(ready), 'combine': manual,
                     'suggestions': bool(ready and vectors is not None),
                     'max_members': 24, 'needs_review': True}
 
@@ -51,6 +53,9 @@ def call(runtime, action, *args):
 
 
 def proposal(runtime, token, library, body, vectors):
+    coverage_mode = body.get('coverage_mode', 'default')
+    if coverage_mode not in ('default', 'by_seed'):
+        raise TransportError(400, 'Invalid group selection')
     seeds = tuple(str(value) for value in _csv(body['asset_ids'], 'asset_ids',
         maximum=24, required=True))
     excluded = tuple(str(value) for value in _csv(body['excluded_asset_ids'],
@@ -67,7 +72,8 @@ def proposal(runtime, token, library, body, vectors):
             result = None
         else:
             result = VisualVectorReads(access, vectors.vector_root, vectors.identity).memory_group_items(
-                token, library, seeds, excluded_ids=excluded)
+                token, library, seeds, excluded_ids=excluded,
+                coverage_mode=coverage_mode)
         if isinstance(result, dict):
             return result
         return {'version': 1, 'status': 'unavailable', 'library_id': library,
@@ -105,7 +111,8 @@ async def group_capabilities(request: Request):
 @router.post('/memory-groups/proposals')
 async def group_proposal(request: Request):
     runtime, token, library = await scope(request)
-    body = await _body(request, {'asset_ids', 'excluded_asset_ids'}, max_body=24576)
+    body = await _body(request, {'asset_ids', 'excluded_asset_ids'},
+        optional_fields={'coverage_mode'}, max_body=24576)
     return response(await run_in_threadpool(proposal, runtime, token, library, body,
         request.app.state.memory_group_vectors))
 
@@ -115,6 +122,11 @@ async def asset_groups(asset_id: str, request: Request):
     runtime, token, library = await scope(request)
     return response(await run_in_threadpool(call, runtime, 'list_for_asset', token,
         library, _integer(asset_id, 2**63 - 1)))
+
+@router.get('/memory-groups')
+async def recent_groups(request: Request):
+    runtime, token, library = await scope(request)
+    return response(await run_in_threadpool(call, runtime, 'list_recent', token, library))
 
 
 @router.get('/memory-groups/{group_id}')
@@ -130,8 +142,22 @@ async def create_group(request: Request):
     return response(await run_in_threadpool(call, runtime, 'save', token, library, body), status=201)
 
 
+@router.post('/memory-groups/combine')
+async def combine_groups(request: Request):
+    runtime, token, library = await scope(request)
+    body = await _body(request, MEMORY_GROUP_COMBINE_FIELDS, max_body=2048)
+    return response(await run_in_threadpool(call, runtime, 'combine', token, library, body), status=201)
+
+
 @router.put('/memory-groups/{group_id}')
 async def update_group(group_id: str, request: Request):
     runtime, token, library = await scope(request)
     body = await _body(request, MEMORY_GROUP_FIELDS, max_body=24576)
     return response(await run_in_threadpool(call, runtime, 'save', token, library, body, _uuid(group_id)))
+
+
+@router.post('/memory-groups/{group_id}/split')
+async def split_group(group_id: str, request: Request):
+    runtime, token, library = await scope(request)
+    body = await _body(request, MEMORY_GROUP_SPLIT_FIELDS, max_body=2048)
+    return response(await run_in_threadpool(call, runtime, 'split', token, library, body, _uuid(group_id)))

@@ -4,6 +4,7 @@ from contextlib import closing
 from pathlib import Path
 import hashlib
 import io
+import json
 import sqlite3
 import tempfile
 import threading
@@ -14,7 +15,7 @@ import wave
 
 import test_access_foundation as foundation
 from app.access.service import AccessService, AccessDenied
-from app.access.oral_history_intake import OralHistoryIntake
+from app.access.oral_history_intake import OralHistoryIntake, _digest
 from app.access.oral_history_schema import (
     SESSION, SECTION, MUTATION, STATEMENTS, MAX_SESSIONS_PER_AUTHOR,
     MAX_SECTION_BYTES, install_fixture_schema, assert_schema)
@@ -84,7 +85,8 @@ class OralHistoryIntakeTests(unittest.TestCase):
     def body(self, **changes):
         return {'request_id': str(uuid.uuid4()), 'title': '外婆说起那年春天',
                 'subject_label': '外婆', 'narrator_label': '家人的讲述',
-                'language': 'zh', 'processing_consent': True, **changes}
+                'language': 'zh', 'retention_consent': True,
+                'processing_consent': True, **changes}
 
     def create(self, body=None):
         return self.intake.create(self.member, 'family-a', body or self.body())
@@ -107,17 +109,31 @@ class OralHistoryIntakeTests(unittest.TestCase):
                      for t in (SESSION, SECTION, MUTATION))
 
     def test_saved_sections_and_original_receipts_survive_reopen_and_completion(self):
-        body = self.body(); created = self.create(body); args = self.append_args(created)
+        body = self.body(processing_consent=False)
+        created = self.create(body); args = self.append_args(created)
         first = self.append(created, args)
+        # Model a committed append whose response was lost: resume from a new
+        # SQLite connection before the recorder sends its next section.
+        self.db.close(); self.db = self.connect()
+        self.intake = OralHistoryIntake(AccessService(self.db, clock=lambda: foundation.NOW), enabled=True)
+        status = self.intake.status(self.member, 'family-a', created['session_id'])
+        self.assertEqual((status['state'], status['revision'], status['section_count'],
+                          status['next_ordinal'], status['total_bytes'], status['total_frames'],
+                          status['retention_consent'], status['processing_consent'],
+                          status['manifest_sha256']),
+                         ('open', first['revision'], 1, 1, len(args['audio']), 1600,
+                          True, False,
+                          first['manifest_sha256']))
+        self.assertEqual(self.intake.audio(self.member, 'family-a', created['session_id'], 0), args['audio'])
+        self.assertEqual(self.counts(), (1, 1, 2))
+        self.assertEqual(self.create(body), created)
+        self.assertEqual(self.append(created, args), first)
+        self.assertEqual(self.counts(), (1, 1, 2))
         second = self.append(first, self.append_args(first, audio=wav(320000)))
         self.db.close(); self.db = self.connect()
         self.intake = OralHistoryIntake(AccessService(self.db, clock=lambda: foundation.NOW), enabled=True)
-        self.assertEqual(self.create(body), created)
-        self.assertEqual(self.append(created, args), first)
-        status = self.intake.status(self.member, 'family-a', created['session_id'])
-        self.assertEqual(status['next_ordinal'], 2)
-        self.assertEqual(status['total_frames'], 321600)
-        self.assertEqual(self.intake.audio(self.member, 'family-a', created['session_id'], 0), args['audio'])
+        self.assertEqual(self.intake.status(self.member, 'family-a', created['session_id'])['next_ordinal'], 2)
+        self.assertEqual(self.counts(), (1, 2, 3))
         self.assertNotIn('audio', status)
         close = {'request_id': str(uuid.uuid4()), 'expected_revision': second['revision']}
         ended = self.intake.close(self.member, 'family-a', created['session_id'], **close)
@@ -130,7 +146,8 @@ class OralHistoryIntakeTests(unittest.TestCase):
 
     def test_changed_retry_and_cross_scope_reuse_conflict_without_new_source(self):
         body = self.body(); record = self.create(body)
-        for update in ({'title':'不同标题'}, {'processing_consent':False}, {'narrator_label':'别人'}):
+        for update in ({'title':'不同标题'}, {'processing_consent':False},
+                       {'retention_consent':False}, {'narrator_label':'别人'}):
             self.refusal(409, lambda update=update: self.create({**body, **update}))
         self.refusal(409, lambda: self.intake.create(self.member, 'family-b', body))
         args = self.append_args(record); self.append(record, args)
@@ -197,13 +214,80 @@ class OralHistoryIntakeTests(unittest.TestCase):
 
     def test_consent_is_explicit_immutable_and_never_queues_asr(self):
         record=self.create(self.body(processing_consent=False));self.append(record)
-        self.assertFalse(self.intake.status(self.member,'family-a',record['session_id'])['processing_consent'])
+        status=self.intake.status(self.member,'family-a',record['session_id'])
+        self.assertTrue(status['retention_consent'])
+        self.assertFalse(status['processing_consent'])
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute(f'UPDATE {SESSION} SET retention_consent=0 WHERE id=?',(record['session_id'],))
+        self.db.rollback()
         with self.assertRaises(sqlite3.IntegrityError):
             self.db.execute(f'UPDATE {SESSION} SET processing_consent=1 WHERE id=?',(record['session_id'],))
         self.db.rollback()
         names={r[0] for r in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         self.assertNotIn('access_annotation_derivations',names)
         self.refusal(422,lambda:self.create(self.body(processing_consent=1)))
+
+    def test_declining_retention_creates_no_session_audio_or_receipt(self):
+        body=self.body(retention_consent=False)
+        before=self.counts()
+        self.refusal(422,lambda:self.create(body))
+        self.assertEqual(self.counts(),before)
+        self.assertEqual(self.db.execute(f'SELECT count(*) FROM {SESSION}').fetchone()[0],0)
+        self.assertEqual(self.db.execute(f'SELECT count(*) FROM {SECTION}').fetchone()[0],0)
+        self.assertEqual(self.db.execute(f'SELECT count(*) FROM {MUTATION}').fetchone()[0],0)
+        # A refused request leaves no receipt, so a later affirmative choice can use that ID.
+        accepted={**body,'retention_consent':True}
+        self.assertTrue(self.create(accepted)['retention_consent'])
+
+    def test_prior_experimental_schema_without_retention_fails_closed(self):
+        for table in (MUTATION, SECTION, SESSION):
+            self.db.execute(f'DROP TABLE {table}')
+        prior_statements=[]
+        for statement in STATEMENTS:
+            prior_statements.append(statement.replace(
+                '        retention_consent INTEGER NOT NULL CHECK(retention_consent=1),\n',''
+            ).replace('        OR NEW.language IS NOT OLD.language OR NEW.retention_consent IS NOT OLD.retention_consent\n',
+                      '        OR NEW.language IS NOT OLD.language\n'))
+        for statement in prior_statements:
+            self.db.execute(statement)
+        legacy_id=str(uuid.uuid4())
+        legacy_manifest=_digest({'version':1,'id':legacy_id,'library':'family-a',
+            'author':self.actor,'title':'Legacy generated session','subject':'',
+            'narrator':'','language':'zh','consent':False})
+        self.db.execute(f'''INSERT INTO {SESSION}
+            (id,library_id,author_id,title,subject_label,narrator_label,language,processing_consent,
+             state,revision,section_count,total_bytes,total_frames,manifest_sha256,created_at)
+            VALUES (?,'family-a',?,'Legacy generated session','','','zh',0,'open',1,0,0,0,?,?)''',
+            (legacy_id,self.actor,legacy_manifest,foundation.NOW))
+        legacy_body={'request_id':str(uuid.uuid4()),'title':'Legacy generated session',
+            'subject_label':'','narrator_label':'','language':'zh','processing_consent':False}
+        legacy_receipt={'version':1,'session_id':legacy_id,'library_id':'family-a',
+            'author_id':self.actor,'title':'Legacy generated session','subject_label':'',
+            'narrator_label':'','language':'zh','processing_consent':False,'state':'open',
+            'revision':1,'section_count':0,'next_ordinal':0,'total_bytes':0,'total_frames':0,
+            'duration_ms':0,'manifest_sha256':legacy_manifest,'request_id':legacy_body['request_id'],
+            'operation':'create'}
+        legacy_receipt_json=json.dumps(legacy_receipt,sort_keys=True,separators=(',',':'))
+        legacy_receipt_hash=hashlib.sha256(legacy_receipt_json.encode()).hexdigest()
+        legacy_request_hash=_digest(['create','family-a',legacy_body])
+        self.db.execute(f'''INSERT INTO {MUTATION}
+            (author_id,request_id,session_id,operation,request_digest,receipt_json,receipt_sha256)
+            VALUES (?, ?, ?, 'create', ?, ?, ?)''',
+            (self.actor,legacy_body['request_id'],legacy_id,legacy_request_hash,
+             legacy_receipt_json,legacy_receipt_hash))
+        self.db.commit()
+        sql=self.db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+                            (SESSION,)).fetchone()[0]
+        self.assertNotIn('retention_consent',sql)
+        with self.assertRaises(ValueError):
+            self.db.execute('BEGIN IMMEDIATE')
+            install_fixture_schema(self.db)
+        self.db.rollback()
+        self.refusal(503,lambda:self.intake.status(self.member,'family-a',legacy_id))
+        self.assertEqual(self.db.execute(f'SELECT manifest_sha256 FROM {SESSION} WHERE id=?',
+                                         (legacy_id,)).fetchone()[0],legacy_manifest)
+        self.assertEqual(self.db.execute(f'SELECT receipt_sha256 FROM {MUTATION} WHERE author_id=? AND request_id=?',
+            (self.actor,legacy_body['request_id'])).fetchone()[0],legacy_receipt_hash)
 
     def test_receipt_or_commit_failure_rolls_back_audio_counters_and_audit(self):
         record=self.create();args=self.append_args(record);before=self.counts()

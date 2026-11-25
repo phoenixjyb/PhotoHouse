@@ -1,0 +1,30 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../../server/backend/app/access",
+  "unit": "photo_stack_reference/",
+  "language": "python",
+  "kind": "pyo3",
+  "crate_name": "photo-stack-core",
+  "exports": [
+    {
+      "name": "group_items",
+      "file": "photo_stack_reference/__init__.py",
+      "line": 10,
+      "params": [
+        {
+          "name": "payload",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}

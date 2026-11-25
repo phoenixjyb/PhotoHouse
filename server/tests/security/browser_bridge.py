@@ -285,7 +285,7 @@ try:
                 (originals/'105.mp4').write_bytes(b'ftyp synthetic protected-video fixture')
                 fixture.mutate('UPDATE assets SET path=? WHERE id=105',(str(originals/'105.mp4'),))
                 Image.open(derived/'thumbnails/256/101.jpg').save(derived/'thumbnails/256/105.jpg')
-            elif scenario=='prepared-video-ready':
+            elif scenario in {'prepared-video-ready', 'prepared-video-moments'}:
                 from app.access.media import MediaRuntime
                 from app.access.prepared_video import PreparedVideos
                 raw=Path(__file__).resolve().parent/'fixtures'/'home-video.mp4'
@@ -297,12 +297,49 @@ try:
                 digest=hashlib.sha256(output.read_bytes()).hexdigest();chunks=[digest]
                 chunk_file=folder/'video.chunks.json';chunk_raw=json.dumps(chunks,separators=(',',':')).encode();chunk_file.write_bytes(chunk_raw)
                 info=source.stat();video_raw=output.read_bytes()
-                metadata={'state':'ready','mime':'video/mp4','video_codec':'h264','audio_codec':'aac','width':320,'height':180,'duration_ms':1000,'bytes':len(video_raw),'sha256':digest,'chunks_sha256':hashlib.sha256(chunk_raw).hexdigest()}
+                metadata={'state':'ready','mime':'video/mp4','video_codec':'h264','audio_codec':'aac','width':320,'height':180,'duration_ms':500,'bytes':len(video_raw),'sha256':digest,'chunks_sha256':hashlib.sha256(chunk_raw).hexdigest()}
                 index_value={'version':1,'assets':[{'id':105,'source_identity':[info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns],'directory':folder.name,'video':metadata}]}
                 index_raw=json.dumps(index_value,separators=(',',':')).encode();index=(derived.parent/'prepared-video-index.json').resolve();index.write_bytes(index_raw)
                 fixture.client.close();fixture.client=build_client()
                 provider=PreparedVideos(index,hashlib.sha256(index_raw).hexdigest(),prepared_root)
-                fixture.client.app.state.media_runtime=MediaRuntime((originals,),derived,prepared_videos=provider)
+                media = MediaRuntime((originals,), derived, prepared_videos=provider)
+                if scenario == 'prepared-video-moments':
+                    from app.access.video_moments import VideoMoment, VideoMomentCatalog
+                    from app.main import create_app
+                    state = fixture.client.app.state
+                    catalog = VideoMomentCatalog((VideoMoment(
+                        105, 'Second half', .25, .45, tuple(index_value['assets'][0]['source_identity']),
+                        metadata['duration_ms'], digest),))
+                    app = create_app(access_runtime=state.access_runtime,
+                                     discovery_runtime=state.discovery_runtime,
+                                     media_runtime=media, video_moment_catalog=catalog)
+                    fixture.client.close()
+                    fixture.client = TestClient(app, base_url='https://photohouse.test',
+                                                client=('192.0.2.20', 23456))
+                else:
+                    fixture.client.app.state.media_runtime = media
+            elif scenario=='oral-history-enabled':
+                import httpx
+                from app.access.assistant_speech import LocalAssistantAsr
+                from app.access.oral_history_schema import install_fixture_schema, install_fixture_review_schema
+                from app.main import create_app
+                with fixture.connection() as db:
+                    db.execute('BEGIN IMMEDIATE')
+                    install_fixture_schema(db)
+                    install_fixture_review_schema(db)
+                    db.commit()
+                state = fixture.client.app.state
+                asr = LocalAssistantAsr(url='http://127.0.0.1:19001/transcribe', model='synthetic',
+                    transport=httpx.MockTransport(lambda _request: httpx.Response(
+                        200, json={'text': 'We saw a heron by the lake. <private draft>'})))
+                app = create_app(access_runtime=state.access_runtime,
+                    discovery_runtime=state.discovery_runtime, media_runtime=state.media_runtime,
+                    oral_history_intake_enabled=True, oral_history_transcription_enabled=True,
+                    oral_history_reviewed_text_enabled=True,
+                    assistant_asr=asr)
+                fixture.client.close()
+                fixture.client = TestClient(app, base_url='https://photohouse.test',
+                    client=('192.0.2.20', 23456))
             elif scenario=='memory-concurrent-edit':
                 fixture.mutate("UPDATE access_memory_stories SET revision=revision+1 WHERE library_id='family-a'")
             elif scenario=='memory-concurrent-reorder':
@@ -336,6 +373,21 @@ try:
                         'language':'zh','byline':'讲述人：家人','mutation_id':str(__import__('uuid').uuid4())},asset_id=101)
                 fixture.client.close()
                 fixture.client=build_client()
+            elif scenario=='memory-group-day-media':
+                samples = [(1100, 'video/mp4', '2026-01-01T23:45:00-08:00', 'family-a')]
+                samples.extend((aid, 'image/jpeg', '2026-01-01', 'family-a') for aid in range(1101, 1121))
+                samples.extend(((1160, 'video/mp4', '2026-01-02', 'family-a'),
+                                (1161, 'video/mp4', '2026-01-01', 'family-b')))
+                with fixture.connection() as db:
+                    for aid, mime, capture, library in samples:
+                        db.execute('''INSERT INTO assets(id,path,hash_sha256,status,mime,width,height,duration_sec,taken_at)
+                            VALUES(?,?,?,'active',?,240,135,?,?)''',
+                            (aid, f'synthetic/{aid}', f'fixture-{aid}', mime, 8 if mime.startswith('video/') else None, capture))
+                        db.execute('INSERT INTO access_asset_libraries VALUES (?,?)', (aid, library))
+                    db.commit()
+                for aid, mime, _, _ in samples:
+                    Image.new('RGB', (240,135), '#9cb5aa' if mime.startswith('video/') else '#d3bb97').save(
+                        derived/f'thumbnails/256/{aid}.jpg')
             elif scenario=='related-day-seed':
                 fixture.mutate("UPDATE assets SET taken_at='2025-06-01T23:30:00+08:00' WHERE id=101")
                 fixture.mutate("UPDATE assets SET taken_at=NULL,path='private-synthetic/微信图片_20250601.jpg' WHERE id=102")

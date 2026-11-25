@@ -13,7 +13,7 @@ from pathlib import Path
 import re
 import sys
 
-from semantic_siglip import SiglipModel
+from semantic_siglip import SiglipModel, query_policy_binding_for
 import qualify_multilingual_scenes as qualification
 from qualify_semantic_pair import quiet_dependencies
 from app.access.model_deployment import _load_private_document
@@ -126,6 +126,7 @@ def run(argv=None):
             if args.operation == 'probe':
                 print(json.dumps({'model': model.receipt(),
                     'provider_binding': asdict(provider.binding) if provider.binding else None,
+                    'query_policy_binding': query_policy_binding_for(provider),
                     'models_loaded': True,
                     'listener_started': False, 'activation_performed': False}, sort_keys=True))
                 return 0

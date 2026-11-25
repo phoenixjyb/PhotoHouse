@@ -250,8 +250,12 @@ const wav=()=>{const frames=48000,data=Buffer.alloc(frames*2),out=Buffer.alloc(4
     assert(await memoirFontGroup.isVisible(),'memoir text-size group is available beside the open child story');
     assert(await memoirFontGroup.locator('button').evaluateAll(nodes=>nodes.every(node=>node.getBoundingClientRect().width>=48&&node.getBoundingClientRect().height>=48)),'memoir text-size buttons meet the48px target at390px/150%');
     await memoirFontLarger.focus();
-    const memoirScrollBeforePreset=await memoirReader.evaluate(node=>node.scrollTop);
-    await memoirFontLarger.click();
+    const memoirScrollBeforePreset=await memoirReader.evaluate(node=>{
+      node.scrollTop=Math.min(120,node.scrollHeight-node.clientHeight);
+      return node.scrollTop;
+    });
+    assert(memoirScrollBeforePreset>0,'the memoir reader is scrolled before keyboard activation');
+    await page.keyboard.press('Enter');
     assert.equal(await memoirFontLarger.getAttribute('aria-pressed'),'true','larger memoir preset is selected');
     assert.equal(await memoirFontDefault.getAttribute('aria-pressed'),'false');
     await page.waitForFunction(()=>getComputedStyle(document.querySelector('#memory-book-reader .memory-book-font-presets button[aria-pressed="true"]')).backgroundColor==='rgb(203, 182, 149)','selected preset fill finishes its CSS transition');

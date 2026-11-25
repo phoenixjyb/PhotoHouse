@@ -399,7 +399,7 @@ does not authorize enabling the feature.
 
 ## Language/interruption slate: activity-witness refusal, 2026-10-22
 
-The next isolated qualification retained runtime source `8055183`, its 275-file
+The October 22 qualification retained runtime source `8055183`, its 275-file
 package, model/backend/context/options, two CPU threads, zero GPU layers and
 4 GiB native limit. The private observer added request-bound successful native
 decode/sample evidence and an exclusive completion-exit marker. The marker
@@ -445,10 +445,11 @@ reviewed owner pins. All 125 public report assets passed trusted-TLS, byte-count
 and hash checks before and after. These checks do not establish continuous
 availability or family/browser acceptance.
 
-This qualifies the model-free operator gate and its observed containment, not
-Chinese/mixed generation or active-inference cancellation/expiry. The earlier
-single English result remains the accepted generation checkpoint. Both AI
-switches and the live provider remain off. This qualification made no production
+The model-free gate and its containment checks passed for these trial pins.
+Chinese/mixed generation and active-inference cancellation and expiry remained
+unqualified in this slate. The earlier English result was the accepted
+generation checkpoint. Both AI switches and the live provider were off during
+the trial. This qualification made no production
 service/task/configuration, database, family-media, GPU, activation or deployment
 change; reports and failed-attempt artifacts remain private and are not replayed.
 
@@ -476,6 +477,6 @@ Before/after checks preserved the current source, tasks, service processes,
 runtime roster and all 125 report assets. An independent final check found zero
 owned Python/control observers before the slot was explicitly released. No
 model, inference backend, database or family media was opened by this probe.
-Chinese/mixed generation and active cancellation/expiry remain unqualified;
-new observer integration and Windows qualification are separate next checks.
-Both AI switches and the live provider remain off, with deployment separate.
+Chinese/mixed generation and active cancellation/expiry remained unqualified
+for those pins. Observer integration and native qualification remained separate
+work. Both AI switches and the live provider were off during this probe.

@@ -17,6 +17,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import dev.photohouse.connected.core.BatchUploadQueue
 import dev.photohouse.connected.core.ConnectedStore
+import dev.photohouse.connected.core.UploadNetwork
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -43,10 +44,14 @@ internal object PhoneUploadRuntime {
 }
 
 internal enum class BatchUploadCommand { RESUME, RETRY, RETRY_BATCH }
+internal enum class BatchUploadLaunchResult { STARTED, NETWORK_REVIEW_REQUIRED, UNAVAILABLE }
 
 /** Credentials/locators never enter an Intent or a notification. Tickets are memory-only. */
 internal object BatchUploadForegroundRequests {
-    data class Request(val store: ConnectedStore, val command: BatchUploadCommand, val target: String?, val ticket: String)
+    data class Request(
+        val store: ConnectedStore, val command: BatchUploadCommand, val target: String?,
+        val ticket: String, val connectionAllowed: () -> Boolean,
+    )
     private val pending = linkedMapOf<String, Request>()
     private val latest = java.util.IdentityHashMap<ConnectedStore, String>()
     fun take(ticket: String?) = ticket?.let(pending::remove)
@@ -54,20 +59,26 @@ internal object BatchUploadForegroundRequests {
     fun hasPending(store: ConnectedStore) = pending.values.any { it.store === store }
     fun isLatest(store: ConnectedStore, ticket: String?) = ticket != null && latest[store] == ticket
 
-    fun start(context: Context, store: ConnectedStore, command: BatchUploadCommand, target: String? = null): Boolean {
-        if (pending.isNotEmpty() || !store.beginBackgroundBatchUploads()) return false
+    fun start(
+        context: Context, store: ConnectedStore, command: BatchUploadCommand, connectionApproved: Boolean,
+        target: String? = null, readNetwork: (Context) -> UploadNetwork = ::uploadNetwork,
+    ): BatchUploadLaunchResult {
+        val application = context.applicationContext
+        val connectionAllowed = { connectionApproved || readNetwork(application) == UploadNetwork.UNMETERED }
+        if (!connectionAllowed()) return BatchUploadLaunchResult.NETWORK_REVIEW_REQUIRED
+        if (pending.isNotEmpty() || !store.beginBackgroundBatchUploads()) return BatchUploadLaunchResult.UNAVAILABLE
         val ticket = UUID.randomUUID().toString()
-        pending[ticket] = Request(store, command, target, ticket)
+        pending[ticket] = Request(store, command, target, ticket, connectionAllowed)
         latest[store] = ticket
         return try {
-            checkNotNull(context.applicationContext.startForegroundService(Intent(context, BatchUploadForegroundService::class.java)
+            checkNotNull(application.startForegroundService(Intent(application, BatchUploadForegroundService::class.java)
                 .setAction(BatchUploadForegroundService.START).putExtra(BatchUploadForegroundService.TICKET, ticket)))
-            true
+            BatchUploadLaunchResult.STARTED
         } catch (_: RuntimeException) {
             pending.remove(ticket)
             latest.remove(store)
             store.endBackgroundBatchUploads()
-            false
+            BatchUploadLaunchResult.UNAVAILABLE
         }
     }
 }
@@ -119,20 +130,24 @@ class BatchUploadForegroundService : Service() {
             val notification = notification(request.store.batchUploads)
             if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
             else startForeground(NOTIFICATION, notification)
+            if (!request.connectionAllowed()) {
+                finish(paused = true)
+                return START_NOT_STICKY
+            }
             if (startedAt == 0L) startedAt = SystemClock.elapsedRealtime()
             notifications.cancel(PAUSED_NOTIFICATION)
             renewWakeLock()
             val queue = request.store.batchUploads ?: error("Upload queue unavailable")
             when (request.command) {
-                BatchUploadCommand.RESUME -> queue.resume(request.target)
-                BatchUploadCommand.RETRY -> request.target?.let(queue::retry)
-                BatchUploadCommand.RETRY_BATCH -> request.target?.let(queue::retryBatch)
+                BatchUploadCommand.RESUME -> queue.resume(request.target, request.connectionAllowed)
+                BatchUploadCommand.RETRY -> request.target?.let { queue.retry(it, request.connectionAllowed) }
+                BatchUploadCommand.RETRY_BATCH -> request.target?.let { queue.retryBatch(it, request.connectionAllowed) }
             }
             monitor?.cancel()
             monitor = PhoneUploadRuntime.scope.launch {
                 try {
                 while (owner === request.store) {
-                    if (!request.store.backgroundBatchUploadsActive() ||
+                    if (!request.store.backgroundBatchUploadsActive() || !request.connectionAllowed() ||
                         SystemClock.elapsedRealtime() - startedAt >= MAX_SESSION_MILLIS) {
                         finish(paused = true)
                         break

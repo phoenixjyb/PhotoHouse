@@ -296,7 +296,8 @@ def _run_inference(frames, stage, args, checkpoint, deadline):
             '--stage', str(stage), '--model-version', args.model_version]
     for frame in frames:
         argv.extend(('--frame', str(frame)))
-    image_worker.run_supervised(argv, env=image_worker._child_environment(args.device, checkpoint),
+    image_worker.run_supervised(argv, env=image_worker._child_environment(
+        args.device, checkpoint, getattr(args, 'expected_gpu_uuid', None)),
         derived=args.derived_root, deadline=deadline)
     vector_path, receipt_path = stage / 'vector.npy', stage / 'receipt.json'
     if (not vector_path.is_file() or vector_path.is_symlink() or vector_path.stat().st_size > MAX_VECTOR_BYTES

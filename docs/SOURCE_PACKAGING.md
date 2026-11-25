@@ -35,6 +35,21 @@ file count. The only allowed checkout/ZIP byte normalization is the declared
 the checked-out and packaged file uses CRLF. Other working-tree/blob byte
 mismatches are refused.
 
+Python files are checked out with LF through the repository's `.gitattributes`,
+including on Windows with `core.autocrlf=true`. Policy bindings and encoder
+receipts hash exact source bytes. Checkout conversion must not change those
+bytes; runtime verification does not normalize line endings or accept a second
+digest. The generated Git-checkout regression proves both canonical imports and
+refusal after an on-disk CRLF rewrite.
+
+The query-policy byte reader compares device, inode, size and modification time
+across pathname and open-handle observations. It also requires Windows birthtime
+or POSIX ctime, matching the private-storage identity contract. Missing Windows
+birthtime refuses the read. This avoids comparing incompatible Windows ctime
+representations while retaining source replacement and mutation guards. A change
+to the verifier still changes its separate query-policy binding; it does not
+rewrite the indexed encoder receipt.
+
 Inspect package contents and complete the repository's separate privacy and
 release reviews before sharing an archive. A valid source package does not
 establish live-service, migration, device, model or family acceptance.

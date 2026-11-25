@@ -666,21 +666,22 @@ remaining request processing/validation/scoring cost; finer profiling is still
 needed before attributing the delay to a specific function. No controlled
 speedup ratio is claimed against earlier different/uncontrolled runs.
 
-The serving canary's synthetic catalog intentionally contains only the 23,696
-ready artifacts. It does not prove serving behavior for the actual catalog's
-65 missing embeddings. Current semantic ranking refuses a candidate set that
-contains an image without a compatible ready vector; narrowing ordinary
-`ReviewedIndex` scope would alter or invalidate normal discovery rather than
-provide a semantic-only coverage policy. The shared `indexed_ids` field is not
-such a policy. A reviewed, library/source-bound semantic eligibility cohort and
-visible partial-coverage/failure receipt are still needed before a pilot can
-serve incomplete coverage. Ordinary discovery scope and privacy gates must
-remain intact; benchmark success must not be treated as resolving this gap.
-The [proposed eligibility and coverage contract](SEMANTIC_ELIGIBILITY_DESIGN.md)
-records the now locally implemented coverage contract. The
-[full-catalog qualification follow-up](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md)
-retains all omissions and adds private request timing; its October 22 native
-canary passed all 15 protection checks, as recorded at the start of this document.
+The earlier ready-vector-only canary's synthetic catalog contained only the
+23,696 ready artifacts; it did not qualify serving behavior for the 65 omitted
+images. The subsequent [eligibility and coverage contract](SEMANTIC_ELIGIBILITY_DESIGN.md)
+is implemented in source and preserves ordinary discovery scope. Its full-catalog
+qualification retains all 23,761 entries and discloses the 65 omissions; these
+omissions are approved **only for isolated qualification**.
+
+An actual owner pilot still needs a separately authorized library/source-bound
+serving policy, visible runtime coverage receipt, provider lifecycle and
+refresh/swap/retirement/rollback qualification. Source support and a synthetic
+canary do not approve that policy or narrow ordinary discovery. The
+[full-catalog qualification record](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md)
+contains the successful R60 result. The later R63 attempt hit its fixed child
+timeout without a completed measurement; see the
+[current latency record](SEMANTIC_REQUEST_LATENCY.md). It does not supersede
+R60's last successful native timing or authorize activation.
 
 Semantic remains **OFF**. No production API, task, configuration, database write,
 account creation, index publication or activation is included. Remaining gates

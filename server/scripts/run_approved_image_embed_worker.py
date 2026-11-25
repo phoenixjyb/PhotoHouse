@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import sqlite3
@@ -323,7 +324,7 @@ def _lock_windows(stream, locker, *, blocking):
             time.sleep(0.2)
 
 
-def _child_environment(device, checkpoint):
+def _child_environment(device, checkpoint, expected_gpu_uuid=None):
     keep = {
         'PATH', 'SYSTEMROOT', 'WINDIR', 'TEMP', 'TMP', 'USERPROFILE', 'LOCALAPPDATA',
         'APPDATA', 'PROGRAMDATA', 'VIRTUAL_ENV', 'PATHEXT', 'NUMBER_OF_PROCESSORS',
@@ -331,13 +332,22 @@ def _child_environment(device, checkpoint):
         'CUDA_PATH', 'CUDA_PATH_V12_0', 'CUDA_PATH_V12_1', 'CUDA_PATH_V12_2',
         'CUDA_PATH_V12_3', 'CUDA_PATH_V12_4', 'CUDA_PATH_V12_5', 'CUDA_PATH_V12_6',
         'CUDA_PATH_V12_8', 'CUDNN_PATH',
+        'PROGRAMFILES', 'PROGRAMFILES(X86)', 'PROGRAMW6432',
+        'TMPDIR', 'SQLITE_TMPDIR', 'XDG_CACHE_HOME', 'HF_HOME', 'HF_HUB_CACHE',
+        'HUGGINGFACE_HUB_CACHE', 'TRANSFORMERS_CACHE', 'TORCH_HOME',
+        'MPLCONFIGDIR', 'CUDA_CACHE_PATH',
     }
     env = {key: value for key, value in os.environ.items() if key in keep}
+    if device != 'cpu' and not re.fullmatch(
+            r'GPU-[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}',
+            expected_gpu_uuid or ''):
+        raise RuntimeError('gpu_device_unverifiable')
     env.update({
         'PHOTOHOUSE_NO_DOTENV': '1', 'PHOTOHOUSE_STRICT_INFERENCE': '1',
         'PHOTOHOUSE_IMAGE_EMBEDDING_CHECKPOINT': str(checkpoint),
         'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
-        'HF_HUB_DISABLE_TELEMETRY': '1', 'CUDA_VISIBLE_DEVICES': '' if device == 'cpu' else device.split(':')[1],
+        'HF_HUB_DISABLE_TELEMETRY': '1',
+        'CUDA_VISIBLE_DEVICES': '' if device == 'cpu' else expected_gpu_uuid,
         'OPENBLAS_NUM_THREADS': '1', 'OMP_NUM_THREADS': '1', 'MKL_NUM_THREADS': '1',
         'NUMEXPR_NUM_THREADS': '1',
     })
@@ -518,7 +528,7 @@ def _probe_provider(args, checkpoint, *, deadline):
                 '--checkpoint-sha256', args.checkpoint_sha256,
                 '--device', 'cpu' if args.device == 'cpu' else 'cuda:0',
                 '--receipt', str(receipt)]
-        run_supervised(argv, env=_child_environment(args.device, checkpoint),
+        run_supervised(argv, env=_child_environment(args.device, checkpoint, getattr(args, 'expected_gpu_uuid', None)),
                        derived=args.derived_root, deadline=deadline)
         raw = receipt.read_bytes()
         if len(raw) > 8192:
@@ -619,7 +629,7 @@ def _run_embed_child(image, stage, args, checkpoint, deadline):
             '--image-model', args.image_model,
             '--device', 'cpu' if args.device == 'cpu' else 'cuda:0',
             '--model-version', args.model_version, '--receipt', str(receipt)]
-    run_supervised(argv, env=_child_environment(args.device, checkpoint),
+    run_supervised(argv, env=_child_environment(args.device, checkpoint, getattr(args, 'expected_gpu_uuid', None)),
                    derived=args.derived_root, deadline=deadline)
     if (not vector_path.is_file() or vector_path.is_symlink()
             or vector_path.stat().st_size > MAX_VECTOR_BYTES):

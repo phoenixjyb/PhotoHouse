@@ -24,7 +24,7 @@ if str(BACKEND) not in sys.path:
 
 from app.access.windows_tts import (  # noqa: E402
     MAX_FORM_BYTES, TtsBusy, TtsFailure, WindowsSystemSpeech, read_private_token,
-    valid_reply_wav, valid_token,
+    validate_voice_name, valid_reply_wav, valid_token,
 )
 
 HOST = '127.0.0.1'
@@ -140,6 +140,13 @@ def _plan():
     return 0
 
 
+def _voice_argument(value):
+    try:
+        return validate_voice_name(value)
+    except (ValueError, UnicodeError):
+        raise argparse.ArgumentTypeError('Invalid installed voice name') from None
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_mutually_exclusive_group()
@@ -148,16 +155,25 @@ def main(argv=None):
     modes.add_argument('--qualify', action='store_true', help='Synthesize fixed synthetic test phrases')
     parser.add_argument('--token-file', type=Path,
         help='Private file containing the service bearer token; never printed')
+    parser.add_argument('--zh-voice', type=_voice_argument,
+        help='Exact installed zh-CN System.Speech voice name')
+    parser.add_argument('--en-voice', type=_voice_argument,
+        help='Exact installed en-US System.Speech voice name')
     args = parser.parse_args(argv)
     if not (args.check or args.serve or args.qualify):
         if args.token_file is not None:
             parser.error('--token-file requires --check or --serve')
+        if args.zh_voice is not None or args.en_voice is not None:
+            parser.error('Voice selection requires --serve or --qualify')
         return _plan()
+    if args.check and (args.zh_voice is not None or args.en_voice is not None):
+        parser.error('Voice selection requires --serve or --qualify; --check starts no child')
     if args.qualify:
         if args.token_file is not None:
             parser.error('--token-file is not accepted with --qualify')
         try:
-            synthesizer = WindowsSystemSpeech()
+            synthesizer = WindowsSystemSpeech(zh_voice=args.zh_voice,
+                                               en_voice=args.en_voice)
             languages = synthesizer.languages()
             outputs = {}
             for language, phrase in (('zh', '这是本地语音合成测试。'),
@@ -183,7 +199,8 @@ def main(argv=None):
         print(json.dumps({'configuration': 'valid', 'listener_started': False,
                           'child_started': False, 'voices_enumerated': False}, separators=(',', ':')))
         return 0
-    synthesizer = WindowsSystemSpeech()
+    synthesizer = WindowsSystemSpeech(zh_voice=args.zh_voice,
+                                      en_voice=args.en_voice)
     try:
         if synthesizer.languages() != {'zh', 'en'}:
             raise TtsFailure('Required local voices unavailable')

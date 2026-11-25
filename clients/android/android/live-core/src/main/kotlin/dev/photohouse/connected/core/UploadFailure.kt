@@ -28,6 +28,14 @@ fun uploadFailureCode(error: Exception): String = when (error) {
 
 /** Maps only known codes to user-safe copy; legacy or arbitrary strings become unknown. */
 fun uploadFailureMessage(code: String?, zh: Boolean): String = when (code) {
+    "upload:cancel-connection" -> if (zh)
+        "请连接网络并登录，再重试取消。"
+    else "Connect and sign in to retry cancellation."
+
+    "upload:cancel-unconfirmed" -> if (zh)
+        "服务器尚未确认取消。请查看服务器记录或重试取消。"
+    else "Cancellation is unconfirmed. Check the server records or retry cancellation."
+
     "upload:offline" -> if (zh)
         "网络连接中断。已确认的进度已保留，请检查网络后重试。"
     else "Network connection was interrupted. Confirmed progress is kept; check your connection and retry."

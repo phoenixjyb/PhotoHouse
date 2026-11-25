@@ -18,6 +18,7 @@ from app.access.semantic_encoder import (  # noqa: E402
     SemanticUnavailable,
     TextVector,
 )
+from app.access.search_policy import requires_semantic_clarification  # noqa: E402
 from app.access.visual_candidates import (  # noqa: E402
     VectorSpaceIdentity,
     canonical_vector_checksum,
@@ -111,6 +112,7 @@ def scene_case():
     entries = []
     vectors_by_text = {}
     for case_index in range(2):
+        scene_label = ("alpha", "beta")[case_index]
         queries = {
             "en": f"English scene {case_index}",
             "zh": f"中文场景 {case_index}",
@@ -120,7 +122,9 @@ def scene_case():
         cases.append({"id": case_id, "relevant_images": [f"image-{case_index}"],
                       "queries": queries})
         for language, original in queries.items():
-            model_input = f"described scene number {case_index} language {language}"
+            model_input = f"described scene {scene_label} language {language}"
+            assert not requires_semantic_clarification(original)
+            assert not requires_semantic_clarification(model_input)
             entries.append({"original": original, "model_input": model_input})
             vectors_by_text[model_input] = _unit(case_index)
             vectors_by_text[original] = _unit(case_index)

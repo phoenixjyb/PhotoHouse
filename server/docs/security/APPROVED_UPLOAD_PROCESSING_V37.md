@@ -36,3 +36,18 @@ child. See [Approved worker memory lifetime](APPROVED_WORKER_MEMORY_LIFETIME.md)
 for admission rules, the model-free native qualifier and separate recovery /
 service acceptance gates. This source contract does not assert that an existing
 private Windows deployment has been switched.
+
+## Media tool and sampling configuration
+
+Video captioning resolves `FFMPEG_EXE`, when configured as an existing absolute
+executable, or discovers `ffmpeg` on the worker's `PATH`. A missing executable
+fails before caption scratch is allocated. The optional
+`approved_media_environment.bind_media_tools` helper verifies operator-supplied
+SHA-256 bindings for existing ffmpeg/ffprobe binaries before exposing their
+directories to a restricted worker environment; it does not install tools or
+change machine environment settings.
+
+Approved video preparation samples by seeking before decoding each frame.
+Sampling retains the 32-frame, 128 MiB output and 300-second total limits, with
+at most 30 seconds for each seek. Publication still rechecks the approved
+source and library mapping before recording success or queuing downstream work.

@@ -1,5 +1,203 @@
 # Product roadmap
 
+## Interactive product view / 交互式产品视图
+
+[English / 中文 dashboard](product-roadmap/index.html) · [Maintenance / 维护](product-roadmap/README.md).
+
+The bilingual snapshot separates recorded delivery, source-ready work, gaps and next steps.
+双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows route: `/roadmap/` (deployment is tracked separately).
+
+
+Reviewed **2026-11-25** against current source and recorded Windows results.
+Use [Project Status](PROJECT_STATUS.md) and the dated
+[release record](RELEASE_2026-10-29.md) for delivery evidence. Older entries
+retain the date and scope of their original evidence.
+
+## Current capability and evidence
+
+- **Web design:** the November 24 local redesign consolidates the assistant
+  surface, gives the conversation its actual scroll owner, and checks native
+  dialog keyboard access, contrast, touch controls and narrow/text-resized
+  layouts. Explicit language changes can resume freshly authorized idle private
+  conversation text and an unsent draft without replay. This is generated browser evidence, not a new Windows release
+  ([design review](WEB_DESIGN_REVIEW_2026-11-24.md)).
+- **Story review:** selected-source proposals now offer an explicit original-wording
+  disclosure beside the editable chapter text, using the existing volatile snapshot.
+  From selected assistant results, the author can also explicitly copy the latest
+  user message as optional writing direction. The focused local generated journey
+  passed 18 checkpoints; save remains explicit
+  ([editor contract](SELECTED_SOURCE_STORY_UI.md)).
+- **Source:** ordinary result paging and selected-frame handoff are integrated.
+  The latest generated-browser increment can keep the selected frames when
+  reloading the active conversation on the same page after exact current-result
+  validation. The selection clears on a full reload or scope change
+  ([details](SEARCH_TO_STORY.md)).
+- **Conversation and tools:** account/library-scoped assistant threads, bounded
+  history and request recovery are implemented. The PH-A1 v1 media-search tool
+  profile is a versioned regression fixture, not a permanent three-tool product
+  limit. Future profiles can add reviewed, task-specific domain operations;
+  none grants generic shell, file, browser, network, deployment or coding-agent
+  powers. See the [household AI plan](LOCAL_AGENT_DEVELOPMENT_PLAN.md) and
+  [assistant architecture](ARCHITECTURE.md#conversation-and-refinement).
+- **Stories:** selected-source drafting returns an unsaved proposal marked for
+  review. The October 30 HTTPS run checked one authorized-source, nonempty,
+  unsaved `needs_review` draft; it does not prove saved-story refinement,
+  broader agent behavior, prose quality, or family acceptance. Saved-story
+  refinement remains a separate source and runtime qualification path
+  ([refinement contract](STORY_REFINEMENT.md)).
+- **Deployment and acceptance:** source checks, a narrow dated service result,
+  broader rollout, installed phone/TV clients and family review are separate
+  evidence. The October 29 release and October 30 API/Web status remain dated
+  records, not claims about current service state. No new Android/TV delivery or
+  broad household acceptance is claimed here. The November 24 startup failure
+  and rollback remain historical failures. The qualified task-query revision is
+  now used by the recovered Windows API/UI, and the bilingual `/roadmap/` is
+  externally browser-verified and confirmed by the owner. The final Windows
+  result passed 16 existing HTTPS checks and nine roadmap checks; native Jobs,
+  controller cleanup, offline audit and explicit release completed after recovery
+  of a lost transport response. No service replay was needed to recover that result.
+
+- **Windows Search:** the November 25 fix preserves structured filters when
+  supplemental text exceeds the row allowance. A live HTTPS date search kept its
+  date when the media type changed and kept its media type when the month changed.
+  The 100,000-asset stress check used generated data.
+  [Audit evidence](AUDIT_RECONCILIATION_2026-11-24.md#generated-search-request-timing).
+- **Grouping and automatic importing:** existing groups were visible after the
+  Search rollout. The scheduled SYSTEM refresh returned `REFRESH_DEFERRED` with
+  zero updates. A complete refresh on this build remains open. A scheduled
+  Family intake run succeeded after an earlier HTTP 503 with the same task
+  definition.
+
+Installed Android and TV clients still need separate acceptance. GitHub
+Actions remains cost-paused.
+
+Search relevance on real household material, story quality, and in-home
+interaction need family review. Generated fixtures establish software behavior,
+not those product outcomes.
+
+## Active priorities
+
+### 1. Make an assistant conversation useful from question to follow-up
+
+Search, supported refinements, clarification and bounded conversation history
+already exist. The next gap is a family-reviewed conversation that explains
+what visible, authorized evidence supports an answer, distinguishes an
+observation from an inference, and says when the source cannot support a claim.
+Refinements must preserve only intended filters; ambiguous or unsupported
+conditions must not broaden the search. Keep domain operations versioned,
+read-only unless a separate explicit action is chosen, and checked by the
+application on every use. Evolve capability profiles around reviewed family
+tasks; retain PH-A1 v1 as a regression fixture.
+
+**Deliver:** a small bilingual set of realistic tasks covering find, explain,
+clarify, refine and explicitly open or select a result. For example, after a
+September search is refined to Jane, ask what supports a “by the river” claim:
+the assistant should cite visible authorized evidence or say it cannot tell.
+For each family-reviewed task, record evidence correctness, lost conditions,
+user corrections and unsupported-claim refusals with relevant source references.
+Generated fixtures remain software evidence, not full-library relevance; do not
+invent a global pass threshold before measuring representative cases.
+
+### 2. Resume safely and make cancellation understandable
+
+Normal conversation reopening can recover the latest valid result. Complete the
+remaining pending and uncertain-turn experience without reviving stale cards or
+hidden context: revalidate account, library, source revisions and authorization,
+and ask for a fresh search when the old scope cannot be restored. Define an
+explicit cancel action and its visible outcome for an in-flight assistant turn.
+Navigation, closing a view and a lost connection must not silently mean either
+“cancelled” or “completed”; preserve the existing owner through reconciliation.
+
+**Deliver:** generated browser/API journeys for reopen, pending and uncertain
+requests, stale or revoked scope, explicit cancel, disconnect/navigation, and a
+late response. Show the submitted request, its current receipt state and the
+next available action without duplicating a turn or restoring unauthorized
+cards. Keep search, story and speech cancellation semantics distinct where
+their owners differ.
+
+### 3. Complete the reviewable story path
+
+Keep selected-result handoff, selected-source drafting and saved-story
+refinement as distinct steps. The local source carries selected frames across
+result pages and opens the existing editor after a fresh current-result check,
+but selections are page-only and do not return when a conversation is reopened.
+Add safe resumption bound to the same current result and scope, clearing choices
+after a refined search or changed thread, account, library or source revision.
+The selected-source editor now has an explicit original-wording disclosure and
+editable direction handoff; next, keep source attribution, uncertain wording
+and current revisions clear in review. The author must explicitly adopt or
+reject a proposal; saving, publishing, sharing or changing access never follows
+from generation alone.
+
+**Deliver:** first test selection resumption and stale source/revision refusal
+with generated data. Reconcile the saved-story refinement's last recorded
+transport and native-quality gates against the intended runtime, then prepare
+one requested story proposal for family review. Record the original and
+proposal separately, note names, facts and style the reviewer accepts or
+corrects, and preserve explicit adoption. Do not turn one story's feedback into
+a claim of general quality or a background rewrite of other stories.
+
+### 4. Check usefulness with the household before widening scope
+
+After the software paths above are reviewable, invite a bounded family trial of
+those same tasks on the intended client and library. Capture the user's task
+outcome, correction/retry, whether the cited material was the right memory, and
+whether a suggested story change preserved the family's meaning and voice. Use
+the findings to choose the next slice. Keep phone, TV, Web, local tests, service
+delivery and physical use as separate evidence; do not infer acceptance from
+another client's release or a successful API request.
+
+Grouped browsing remains a separate capability: explain how page-local
+similar-photo suggestions, library-wide stacks and activity/shared-memory
+groups differ, and report source/coverage for the group actually shown. Resume
+that work when a concrete import, grouping or device journey needs it. Investigate
+caption work only from a current, attributable failure; historical counts are
+not a current backlog.
+
+## Product and operating guardrails
+
+- The physical microphone/speaker trial remains deferred by the user. If
+  resumed, use the existing visible Start/Pause/End consent and record
+  scenario-specific recognition, reply, playback and interruption observations.
+  Do not introduce background capture. Natural speech/cloud options remain
+  separate opt-in previews; cloud proofreading stays off until each request is
+  shown and explicitly approved ([story grounding and cloud proofreading](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md)).
+- Keep Rust an optional, isolated fast path for a measured hot operation. Python
+  remains the authority for product policy and unsupported-input behavior;
+  require exact parity on qualified cases and do not use component benchmark
+  ratios as household latency claims ([literal-search Rust boundary](LITERAL_SEARCH_RUST.md)).
+- Put new Windows bulk scratch and generated work on the admitted D: work
+  volume. Reuse shared caches only after checking their source/version and
+  retention; keep cache copies bounded, avoid indefinite duplicate backup sets,
+  and preserve known-good rollback and failed/uncertain evidence under the
+  [storage policy](STORAGE_POLICY.md).
+- GitHub Actions remains cost-paused. Use focused local checks for source work;
+  do not enable, trigger or rerun GitHub workflows.
+- Keep public examples free of household endpoints, credentials, private
+  configuration and runtime paths. Source changes, host operations and
+  family/device acceptance remain separate decisions and evidence.
+
+## Historical implementation and delivery notes
+
+The earlier chronological notes below retain their revision and acceptance
+context. Their old “next”, “pending” and “live” claims do not override the
+active priorities above or current Project Status.
+
+<details>
+<summary>Expand earlier roadmap and release notes</summary>
+
+### Superseded maintained priorities through October 25
+
+
+**October 25 delivery priority:** complete the existing photo-grouping path and
+its paired client experience. The [delivery checklist](PHOTO_STACK_DELIVERY.md)
+separates implemented source from private-copy qualification, live schema/index
+activation, recurring refresh, Web/APK delivery and family acceptance. Preserve
+the current search and AI work. Search timings are advisory diagnostics for this
+product milestone; older frozen thresholds/results remain unchanged, and access,
+data, resource and owned-cleanup checks still apply. TV grouping and missed-pair
+calibration remain explicit product work rather than assumed delivery.
+
 **October 20 local-agent plan, source only:** the
 [household AI revision](LOCAL_AGENT_DEVELOPMENT_PLAN.md) targets several
 independent family conversations with bounded shared inference scheduling.
@@ -364,11 +562,12 @@ introduction uses fictional examples/cartoon illustrations, never family media.
 
 **Source progress:** the [intake foundation](ORAL_HISTORY_INTAKE_FOUNDATION.md)
 implements bounded ordered WAV sections and exact receipts with generated
-reopen/concurrency/rollback evidence. It stays internal and default-off; no
-transport, migration or recorder is delivered. Withdrawal, journal replay and the
-internal V3→V4 writer-fenced upgrade primitive are implemented and tested. The
-remaining sequence is operator/native upgrade qualification, production admission
-and erasure, then a client pilot that clearly distinguishes saved and retrying.
+reopen, concurrency and rollback evidence. The explicitly enabled Web
+recorder resumes unfinished sessions and plays author-owned completed sections
+on demand. Standard configuration leaves it off. Withdrawal, journal replay
+and the internal V3→V4 writer-fenced upgrade primitive have local tests.
+Operator and native upgrade qualification, production admission, erasure and
+the physical client pilot remain open.
 
 October 15 source work implements author-only retained-source withdrawal and
 V4 journal prefix replay with generated fixtures. Qualify an operator upgrade
@@ -399,14 +598,7 @@ separate gates. Do not republish or activate an optional feature as a side effec
 of editing documentation. Historical video errors need independent sources or a
 separately reviewed salvage plan; resume only unfinished conversion work.
 
-## Historical implementation and delivery notes
 
-The earlier chronological notes below retain their revision and acceptance
-context. Their old “next”, “pending” and “live” claims do not override the
-active priorities above or current Project Status.
-
-<details>
-<summary>Expand earlier roadmap and release notes</summary>
 
 ## October 14 delivered: conversational story actions
 
@@ -493,8 +685,8 @@ API/Web source `5f92b94` was live; phone v53 was published with the original ico
 and certificate. Native full APK and independent Mac complete range verification
 passed, five upload workers were restored, and ASR/TTS remain running. TV remains
 v30. The earlier v52 package stays unpublished and preserved. See the
-[delivery record](../clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md) for
-the Mac single-connection download limitation and separate device acceptance.
+[delivery record](../clients/android/docs/PHONE_V53_RELEASE_2026-10-13.md) and
+retain separate device acceptance evidence.
 
 Next: verify family phone updates and actual listen → reply → listen behavior;
 then improve retrieval across saved stories and memoirs with visible evidence,

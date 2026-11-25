@@ -6,6 +6,8 @@ import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.compose.ui.test.*
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dev.photohouse.connected.core.*
@@ -671,12 +673,18 @@ class ConnectedUiTest {
             store.authenticate("+12025550123", "synthetic-password-only")
         }
         awaitLibrary(store); click("Libraries"); click("Open library")
+        reveal(hasTestTag("photo-stack-page-notice"))
+        rule.onNodeWithTag("photo-stack-page-notice").assertTextEquals(
+            "Similar photos on this page. Cover and separation choices reset when you refresh or change pages. All originals are kept.")
         reveal(hasTestTag("media-1")); reveal(hasTestTag("photo-stack-toggle-1"))
         rule.onNodeWithText("Same upload · 3 photos").assertIsDisplayed()
         rule.onNodeWithTag("photo-stack-toggle-1").assertIsDisplayed()
         capture("photo-stacks-en-150")
         val reads = api.photoStackReads
         click("简体中文")
+        reveal(hasTestTag("photo-stack-page-notice"))
+        rule.onNodeWithTag("photo-stack-page-notice").assertTextEquals(
+            "这是本页照片的建议分组。封面和单独显示设置只在本次查看中生效，刷新或翻页后会重置。原照片都会保留。")
         reveal(hasTestTag("media-1")); reveal(hasTestTag("photo-stack-toggle-1"))
         rule.onNodeWithText("同次上传 · 3 张相似照片").assertIsDisplayed()
         rule.onNodeWithTag("photo-stack-toggle-1").assertIsDisplayed()
@@ -696,7 +704,27 @@ class ConnectedUiTest {
         rule.onNodeWithTag("media-2").assertIsDisplayed()
         rule.onNodeWithTag("media-3").assertIsDisplayed()
         assertEquals("Dissolving a stack is local view state", reads, api.photoStackReads)
+        fun assertReadableDetails(label: String) {
+            for (id in listOf("1", "2", "3")) {
+                reveal(hasTestTag("details-$id"))
+                rule.onNodeWithTag("details-$id").assertIsDisplayed().assertHasClickAction()
+                val layouts = mutableListOf<TextLayoutResult>()
+                rule.onNodeWithTag("details-label-$id", useUnmergedTree = true)
+                    .assertTextEquals(label)
+                    .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                assertEquals("One laid-out details label for card $id", 1, layouts.size)
+                assertEquals("Details must not wrap vertically in a narrow card", 1, layouts.single().lineCount)
+                val layout = layouts.single()
+                assertFalse("The complete details label must fit: id=$id label=$label size=${layout.size} " +
+                    "paragraph=${layout.multiParagraph.width}x${layout.multiParagraph.height} " +
+                    "widthOverflow=${layout.didOverflowWidth} heightOverflow=${layout.didOverflowHeight}",
+                    layout.hasVisualOverflow)
+            }
+        }
+        assertReadableDetails("详情")
         capture("photo-stacks-separated-zh-150")
+        click("English")
+        assertReadableDetails("Details")
     }
     @Test fun libraryPhotoStackResetIsVisibleEvenWhenNoGroupsRemain() {
         val indexRevision = "123e4567-e89b-42d3-a456-426614174000"
@@ -712,6 +740,7 @@ class ConnectedUiTest {
         }
         awaitLibrary(store); click("Libraries"); click("Open library")
         reveal(hasTestTag("photo-stack-reset-preferences"))
+        rule.onNodeWithTag("photo-stack-page-notice").assertDoesNotExist()
         rule.onNodeWithText("Cover and separate choices are saved for your account").assertIsDisplayed()
         clickTag("photo-stack-reset-preferences")
         rule.waitUntil(5000) { api.photoStackPreferenceWrites.size == 1 && !store.state.value.photoStackPreferenceBusy }

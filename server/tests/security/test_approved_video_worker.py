@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 import tempfile
 import unittest
-from contextlib import redirect_stderr
+from contextlib import closing, redirect_stderr
 from io import StringIO
 from unittest.mock import patch
 
@@ -76,10 +76,10 @@ class ApprovedVideoWorkerTests(unittest.TestCase):
         self.assertEqual(worker_module.SCHEMA_REVISIONS,
                          {"a8d4c2e6f901", "c3f7a91d5e20", "d4a7e3c9b821", "e6b2f8a1c903", "f7c3a9d2e614", "a0c9d2e4f817", "b1d7e4a9c230", "c2e6b8a1d490", "d1f6a8c3e920", "e7c1a9d5b304", "f2a8c5d1e640"})
         for revision in ('c3f7a91d5e20', 'a8d4c2e6f901', 'd4a7e3c9b821', 'e6b2f8a1c903', 'f7c3a9d2e614', 'a0c9d2e4f817', 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920'):
-            with self.subTest(revision=revision), sqlite3.connect(self.db_path) as db:
+            with self.subTest(revision=revision), closing(sqlite3.connect(self.db_path)) as db, db:
                 db.execute('UPDATE alembic_version SET version_num=?', (revision,))
             self.assertEqual(self.worker().schema_revision, revision)
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db, db:
             db.execute("UPDATE alembic_version SET version_num='unknown'")
         with self.assertRaisesRegex(ValueError, 'schema_revision_mismatch'):
             self.worker()
@@ -109,7 +109,7 @@ class ApprovedVideoWorkerTests(unittest.TestCase):
         db.commit(); db.close()
 
         def fake_run(args, *, output_dir=None, **kwargs):
-            output_dir.joinpath("frame_00001.jpg").write_bytes(b"frame")
+            Path(args[-1]).write_bytes(b"frame")
             return "", ""
         with patch.object(worker_module, "run_command", side_effect=fake_run):
             self.assertTrue(self.worker().run_once())
@@ -120,6 +120,47 @@ class ApprovedVideoWorkerTests(unittest.TestCase):
         self.assertEqual(set(db.execute("SELECT type FROM tasks WHERE id>2").fetchall()),
                          {("video_embed",), ("caption",)})
         db.close()
+
+    def test_long_video_samples_by_input_seek_with_the_same_frame_and_time_budgets(self):
+        with closing(sqlite3.connect(self.db_path)) as db, db:
+            db.execute("UPDATE assets SET duration_sec=3600 WHERE id=1")
+            db.execute("UPDATE tasks SET type='video_keyframes' WHERE id=1")
+        calls = []
+        def extract(args, **kwargs):
+            calls.append((args, kwargs))
+            Path(args[-1]).write_bytes(b'frame')
+            return '', ''
+        with patch.object(worker_module, 'run_command', side_effect=extract):
+            self.assertTrue(self.worker().run_once())
+        self.assertEqual(len(calls), worker_module.MAX_KEYFRAMES)
+        seeks = []
+        for args, options in calls:
+            self.assertLess(args.index('-ss'), args.index('-i'))
+            self.assertEqual(args[args.index('-frames:v') + 1], '1')
+            self.assertNotIn('fps=', args[args.index('-vf') + 1])
+            self.assertLessEqual(options['timeout'], 30)
+            seeks.append(float(args[args.index('-ss') + 1]))
+        self.assertEqual(seeks[0], 0)
+        self.assertLess(seeks[-1], 3600)
+        self.assertEqual(len(set(seeks)), worker_module.MAX_KEYFRAMES)
+
+    def test_sampling_deadline_does_not_publish_a_partial_frame_set(self):
+        with closing(sqlite3.connect(self.db_path)) as db, db:
+            db.execute("UPDATE assets SET duration_sec=3600 WHERE id=1")
+            db.execute("UPDATE tasks SET type='video_keyframes' WHERE id=1")
+        def extract(args, **kwargs):
+            Path(args[-1]).write_bytes(b'frame')
+            return '', ''
+        candidate = self.worker()
+        with patch.object(worker_module.time, 'monotonic', side_effect=[0, 0, 301]), \
+                patch.object(worker_module, 'run_command', side_effect=extract) as run:
+            self.assertTrue(candidate.run_once())
+        self.assertEqual(run.call_count, 1)
+        with closing(sqlite3.connect(self.db_path)) as db, db:
+            self.assertEqual(db.execute('SELECT state,last_error FROM tasks WHERE id=1').fetchone(),
+                             ('pending', 'media_process_timeout'))
+            self.assertEqual(db.execute("SELECT count(*) FROM tasks WHERE type IN ('video_embed','caption')").fetchone()[0], 0)
+        self.assertEqual(list((self.derived / 'video_frames').iterdir()), [])
 
     def test_changed_source_is_retried_then_dead_without_leaking_path(self):
         self.source.write_bytes(b"changed")

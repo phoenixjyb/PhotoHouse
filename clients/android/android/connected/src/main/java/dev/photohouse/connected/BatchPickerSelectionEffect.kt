@@ -6,6 +6,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
+internal fun canReviewRememberedBatchFolder(
+    saved: RememberedBatchFolder?, account: String?, covered: Boolean, busy: Boolean,
+    availableLibraries: Set<String>, persistedReadGrant: Boolean,
+): Boolean = saved != null && account == saved.accountId && !covered && !busy &&
+    saved.destinationLibraryId in availableLibraries && persistedReadGrant
+
 /** Opaque picker result; no filenames or bytes are read until access is revalidated. */
 internal data class BatchPickerSelection<T>(val account: String, val destination: String?, val value: T,
     val persistedReadAccess: Boolean = true)

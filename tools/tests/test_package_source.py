@@ -21,9 +21,10 @@ class PackageSourceTests(unittest.TestCase):
         self.root = self.base / "repo"
         self.root.mkdir()
         self._git("init", "-q")
+        self._git("config", "core.autocrlf", "false")
         self._git("config", "user.email", "fixture@example.invalid")
         self._git("config", "user.name", "Fixture")
-        (self.root / "README.md").write_text("tracked source\n", encoding="utf-8")
+        (self.root / "README.md").write_bytes(b"tracked source\n")
         self._commit()
         self.output = self.base / "packages" / "candidate"
         self.output.parent.mkdir()
@@ -65,7 +66,9 @@ class PackageSourceTests(unittest.TestCase):
         script = self.root / "run.sh"
         script.write_bytes(b"#!/bin/sh\nexit 0\n")
         script.chmod(0o755)
-        self._commit()
+        self._git("add", "run.sh")
+        self._git("update-index", "--chmod=+x", "run.sh")
+        self._git("commit", "-qm", "fixture executable mode")
         self._package()
         with zipfile.ZipFile(self.output / "source.zip") as archive:
             mode = archive.getinfo("run.sh").external_attr >> 16
@@ -137,7 +140,7 @@ class PackageSourceTests(unittest.TestCase):
     def test_declared_gradlew_crlf_is_only_allowed_normalization(self):
         path = self.root / "clients/android/android"
         path.mkdir(parents=True)
-        (path / ".gitattributes").write_text("*.bat text eol=crlf\n", encoding="utf-8")
+        (path / ".gitattributes").write_bytes(b"*.bat text eol=crlf\n")
         batch = path / "gradlew.bat"
         batch.write_bytes(b"@echo off\necho fixture\n")
         self._commit()

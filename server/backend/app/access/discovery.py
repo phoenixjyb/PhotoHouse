@@ -6,7 +6,7 @@ No SQL writes, filesystem/index loading, models, HTTP routes or original grants.
 from collections import Counter, defaultdict
 from contextlib import contextmanager
 from copy import copy
-from dataclasses import asdict, replace
+from dataclasses import fields, replace
 from datetime import date, datetime
 import hashlib
 import json
@@ -15,11 +15,13 @@ import re
 import sqlite3
 import threading
 from time import monotonic
+from types import MappingProxyType
 import unicodedata
+from urllib.parse import urlencode
 
 from .credentials import session_digest
 from .discovery_provider import ProjectedIndex, RefreshingPlaceIndex, RefreshingPeopleIndex, RegionRule, ReviewedIndex, ReviewedPerson, ReviewedFace, ReviewedPlace, NamedPlace
-from .library import _asset
+from .library import _asset_projection
 from .service import AccessService, AccessDenied
 
 POLICY = 'protected-discovery-service-1'
@@ -28,6 +30,14 @@ SOURCES = {'manual':'manual', 'cap':'caption', 'img':'image', 'cap+img':'caption
 MAX_ID = 2**63-1
 _TEXT_CONTROLS = re.compile(r'[\x00-\x08\x0b-\x1f]')
 SCOPE = " JOIN assets a ON a.id=x.asset_id JOIN access_asset_libraries m ON m.asset_id=a.id WHERE m.library_id=? AND (a.status='active' OR a.status IS NULL)"
+SCOPED_TEXT_CAPTIONS_SQL = (
+    'SELECT x.id,x.asset_id,CASE WHEN length(CAST(x.text AS BLOB))<=4096 THEN x.text END,'
+    'length(CAST(x.text AS BLOB)),length(CAST(x.text AS BLOB)),x.user_edited,x.superseded '
+    'FROM captions x WHERE x.id IN ('
+    'SELECT c.id FROM access_asset_libraries m JOIN assets a ON a.id=m.asset_id '
+    'CROSS JOIN captions c ON c.asset_id=a.id '
+    "WHERE m.library_id=? AND (a.status='active' OR a.status IS NULL)) "
+    'AND x.superseded=0 ORDER BY x.id')
 
 
 class DiscoveryInvalid(ValueError):
@@ -36,6 +46,8 @@ class DiscoveryChanged(Exception):
     def __init__(self): super().__init__('Refresh discovery state')
 class DiscoveryUnavailable(Exception):
     def __init__(self): super().__init__('Discovery unavailable')
+class DiscoverySourceRowLimit(DiscoveryUnavailable):
+    """The cumulative source-row allowance was exceeded."""
 class DiscoveryQueryUnsupported(Exception):
     def __init__(self): super().__init__('Scene query unsupported')
 class DiscoveryBusy(Exception):
@@ -165,6 +177,16 @@ class ReadBudget:
             require(type(search_seconds) in (int, float) and math.isfinite(search_seconds) and search_seconds > 0)
         self.search_seconds = seconds if search_seconds is None else search_seconds
         self.slots=threading.BoundedSemaphore(concurrency)
+        self._request_source_snapshot = None
+
+    def with_request_source_snapshot(self, snapshot):
+        """Return a budget view bound to one private synchronous request."""
+        from .semantic_request_snapshot import is_request_source_snapshot
+        if not is_request_source_snapshot(snapshot):
+            raise ValueError('private request snapshot capability required')
+        view = copy(self)
+        view._request_source_snapshot = snapshot
+        return view
 
     def search_view(self):
         """Use an explicit text allowance while retaining the SAME admission pool.
@@ -181,8 +203,16 @@ class ReadBudget:
     @contextmanager
     def attempt(self, connection, cancelled):
         if not self.slots.acquire(blocking=False): raise DiscoveryBusy()
+        snapshot = self._request_source_snapshot
+        attempt = None
         try:
             start=self.clock(); count=0; size=0
+            if snapshot is not None:
+                try:
+                    attempt = snapshot.begin_attempt(connection, rows_limit=self.rows,
+                        bytes_limit=self.source_bytes)
+                except sqlite3.Error:
+                    raise DiscoveryUnavailable() from None
             def check():
                 if cancelled(): raise DiscoveryCancelled()
                 now=self.clock()
@@ -192,12 +222,19 @@ class ReadBudget:
                 except (DiscoveryUnavailable,DiscoveryCancelled): return 1
             def read(sql, args):
                 nonlocal count,size
-                check(); result=[]; cursor=connection.execute(sql,args)
+                if (snapshot is not None
+                        and snapshot.owns_attempt(attempt, connection)):
+                    return snapshot.read(attempt, sql, args, check=check)
+                check()
+                if count>self.rows: raise DiscoverySourceRowLimit()
+                result=[]
+                cursor=connection.execute(sql,args)
                 while True:
-                    chunk=cursor.fetchmany(128)
+                    # Read at most one extra row to distinguish an exact fit from overflow.
+                    chunk=cursor.fetchmany(min(128,self.rows-count+1))
                     if not chunk: break
                     check(); count+=len(chunk)
-                    if count>self.rows: raise DiscoveryUnavailable()
+                    if count>self.rows: raise DiscoverySourceRowLimit()
                     chunk_size = _packed_chunk_size(chunk, self.source_bytes - size)
                     if chunk_size is None:
                         for row in chunk:
@@ -210,12 +247,21 @@ class ReadBudget:
                         result.extend(chunk)
                 return result
             check(); connection.set_progress_handler(progress,1000)
-            try: yield check,read
+            successful = False
+            try:
+                yield check,read
+                successful = True
             except sqlite3.Error:
                 check(); raise DiscoveryUnavailable() from None
         finally:
-            try: connection.set_progress_handler(None,0)
-            finally: self.slots.release()
+            try:
+                connection.set_progress_handler(None,0)
+            finally:
+                try:
+                    if snapshot is not None:
+                        snapshot.end_attempt(connection, attempt, success=locals().get('successful', False))
+                finally:
+                    self.slots.release()
 
 
 def scoped_source(library, read):
@@ -381,6 +427,22 @@ def validate_region_rule(rule):
     require(not (rule.west == 180 and rule.east == -180))
 
 
+def _index_document(index):
+    """Preserve asdict's wire value after validate, without copying ID tuples.
+
+    The accepted index types contain frozen records and validated primitive
+    tuples only. Expand their nested records while retaining those immutable
+    tuples; JSON bytes, byte admission and continuation bindings stay identical.
+    This is per-call materialization, never a validation or authorization cache.
+    """
+    result = {field.name: getattr(index, field.name) for field in fields(index)}
+    for name in ('people', 'assignments', 'places', 'region_rules'):
+        if name in result:
+            result[name] = tuple({field.name: getattr(item, field.name)
+                                  for field in fields(item)} for item in result[name])
+    return result
+
+
 def region_contains(rule, lat, lon):
     longitude = (rule.west <= lon <= rule.east if rule.west < rule.east
                  else lon >= rule.west or lon <= rule.east)
@@ -465,19 +527,21 @@ class DiscoveryReads:
                 if index is None: raise DiscoveryUnavailable()
                 try:
                     people,places=validate(index,library,self.budget.rows)
-                    if len(packed(asdict(index)))>self.budget.index_bytes: raise DiscoveryUnavailable()
+                    index_document = _index_document(index)
+                    if len(packed(index_document))>self.budget.index_bytes: raise DiscoveryUnavailable()
                 except (DiscoveryInvalid,TypeError,KeyError,RecursionError): raise DiscoveryUnavailable() from None
                 source=index_source(index,read);check()
                 if type(index) is RefreshingPeopleIndex:
                     validate_people_source(index, source)
                 if type(index) in (RefreshingPlaceIndex, RefreshingPeopleIndex):
                     index=refreshed_index(index,source,check,self.budget.rows)
-                    if len(packed(asdict(index)))>self.budget.index_bytes: raise DiscoveryUnavailable()
+                    index_document = _index_document(index)
+                    if len(packed(index_document))>self.budget.index_bytes: raise DiscoveryUnavailable()
                     check()
                 if tuple(str(r[0]) for r in source['assets'])!=index.scope_ids or digest(source)!=index.source_digest: raise DiscoveryChanged()
                 extra = self._extra_source(index, source, read, check)
                 binding=digest({'policy':POLICY,'library':library,'session':session_digest(token),'account':member['account_id'],
-                                'membership':member['revision'],'originals':member['originals'],'index':asdict(index),
+                                'membership':member['revision'],'originals':member['originals'],'index':index_document,
                                 **({'extension': digest(extra)} if extra else {})})
                 if expected is not None:
                     require(hashed(expected))
@@ -489,14 +553,24 @@ class DiscoveryReads:
                 return result
 
     def _facts(self,index,source,people,places,check):
-        assets={}
-        for r in source['assets']:
-            check(); fields=list(r[:6])
-            try: text(fields[1],256)
-            except DiscoveryInvalid: fields[1]=None
+        assets = {}
+        captured_days = {}
+        library_query = urlencode({'library': index.library_id})
+        for row in source['assets']:
+            check()
+            fields = list(row[:6])
+            try:
+                text(fields[1], 256)
+            except DiscoveryInvalid:
+                fields[1] = None
             # Never expose a truncated/invalid recorded date as valid native metadata.
-            if taken_day(fields[5]) is None: fields[5]=None
-            assets[str(r[0])]=_asset(fields,index.library_id)
+            asset_id = str(row[0])
+            day = taken_day(fields[5])
+            if day is None:
+                fields[5] = None
+            else:
+                captured_days[asset_id] = day
+            assets[asset_id] = _asset_projection(fields, library_query)
         captions=defaultdict(list);person_links=defaultdict(set);regions=defaultdict(set)
         for row in source['captions']:captions[str(row[1])].append(row)
         faces={str(r[0]):(str(r[1]),str(r[2]),r[3]) for r in source['faces']}
@@ -517,17 +591,29 @@ class DiscoveryReads:
                 try: text(tag_defs[tid]['label'],256)
                 except DiscoveryInvalid: continue
                 tag_links[aid][tid]=SOURCES.get(rows[0][3],'unknown')
-        rows={}
+        rows = {}
+        counts = {field: Counter() for field in ('people', 'locations', 'tags')}
+        provenance = defaultdict(Counter)
+        covered = dict.fromkeys((field for field in index.enabled if field != 'media'), 0)
+        no_links = frozenset()
+        no_tags = MappingProxyType({})
         for aid in index.indexed_ids:
-            check();rows[aid]={'people':person_links[aid],'locations':regions[aid],'tags':tag_links[aid],
-                              'date':taken_day(assets[aid]['taken_at']),'caption':current_caption(captions[aid])}
-        counts={f:Counter() for f in ('people','locations','tags')}; provenance=defaultdict(Counter)
-        for row in rows.values():
             check()
-            for f in counts:counts[f].update(row[f].keys() if f=='tags' else row[f])
-            for tid,kind in row['tags'].items():provenance[tid][kind]+=1
-        total=len(assets)
-        coverage={f:{'with_values':sum(bool(row[f]) for row in rows.values()) if f in index.enabled else 0} for f in FIELDS if f!='media'}
+            row = {'people': person_links.get(aid, no_links), 'locations': regions.get(aid, no_links),
+                   'tags': tag_links.get(aid, no_tags), 'date': captured_days.get(aid),
+                   'caption': current_caption(captions.get(aid, ()))}
+            rows[aid] = row
+            for field, count in counts.items():
+                values = row[field]
+                if values:
+                    count.update(values.keys() if field == 'tags' else values)
+            for tag, source_kind in row['tags'].items():
+                provenance[tag][source_kind] += 1
+            for field in covered:
+                if row[field]:
+                    covered[field] += 1
+        total = len(assets)
+        coverage = {field: {'with_values': covered.get(field, 0)} for field in FIELDS if field != 'media'}
         coverage['media']={'with_values':total}
         for value in coverage.values():value['without_values']=total-value['with_values']
         used_tags=set(counts['tags'])

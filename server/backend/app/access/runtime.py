@@ -19,6 +19,7 @@ from .family_note_identity_schema import IDENTITY_REVISION, IDENTITY_TABLES
 from .memory_group_schema import GROUP_REVISIONS, TABLE as GROUP_TABLE, REVISION_TABLE as GROUP_HISTORY
 
 from .photo_stack_schema import REVISION as PHOTO_STACK_REVISION, TABLES as PHOTO_STACK_TABLES
+from .semantic_request_snapshot import RequestSnapshotConnection, RequestSourceSnapshot
 
 REQUIRED_REVISION = 'a0c9d2e4f817'
 EDITORIAL_REVISION = 'b1d7e4a9c230'
@@ -167,6 +168,92 @@ class ExistingDatabase:
                 connection.rollback()
             connection.close()
 
+    @contextmanager
+    def source_snapshot(self):
+        """Open a fresh, guarded read-only connection for one semantic request."""
+        connection = None
+        try:
+            before = self.path.lstat()
+            if (not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(before.st_mode)
+                    or before.st_nlink != 1 or self.path.resolve(strict=True) != self.path):
+                raise RuntimeUnavailable('Access unavailable')
+            from .semantic_request_snapshot import path_identity
+            before_identity = path_identity(self.path)
+            if before_identity is None:
+                raise RuntimeUnavailable('Access unavailable')
+            connection = sqlite3.connect(self.path.as_uri() + '?mode=ro', uri=True,
+                timeout=self.timeout, factory=RequestSnapshotConnection)
+            connection.original_deletions = self.original_deletions
+            after = self.path.lstat()
+            after_identity = path_identity(self.path)
+            if ((before.st_dev, before.st_ino) != (after.st_dev, after.st_ino)
+                    or after_identity is None
+                    or before_identity[0] != after_identity[0]
+                    or (before_identity[1][0][1] is not None
+                        and before_identity[1][0] != after_identity[1][0])):
+                raise RuntimeUnavailable('Access unavailable')
+            connection.execute('PRAGMA foreign_keys=ON')
+            connection.execute('PRAGMA trusted_schema=OFF')
+            connection.execute('PRAGMA query_only=ON')
+            if connection.execute('PRAGMA foreign_keys').fetchone()[0] != 1:
+                raise RuntimeUnavailable('Access unavailable')
+            versions = connection.execute('SELECT version_num FROM alembic_version').fetchall()
+            if len(versions) != 1 or versions[0][0] not in COMPATIBLE_REVISIONS:
+                raise RuntimeUnavailable('Access unavailable')
+            tables = {row[0] for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            if not required_tables_for_revision(versions[0][0]) <= tables:
+                raise RuntimeUnavailable('Access unavailable')
+            if versions[0][0] == PHOTO_STACK_REVISION:
+                from .photo_stack_schema import available as photo_stack_schema_available
+                if not photo_stack_schema_available(connection):
+                    raise RuntimeUnavailable('Access unavailable')
+            if versions[0][0] in GROUP_REVISIONS:
+                from .memory_group_schema import verify_memory_group_schema
+                if not verify_memory_group_schema(connection):
+                    raise RuntimeUnavailable('Access unavailable')
+            if versions[0][0] in IDENTITY_REVISIONS:
+                from .family_note_identity import verify_family_note_identity_schema
+                from .transport import TransportError
+                try:
+                    verify_family_note_identity_schema(connection)
+                except TransportError:
+                    raise RuntimeUnavailable('Access unavailable') from None
+            key = connection.execute(
+                'SELECT typeof(secret),length(secret) FROM access_admission_key WHERE id=1').fetchone()
+            if key != ('blob', 32):
+                raise RuntimeUnavailable('Access unavailable')
+            if (versions[0][0] in COLLABORATION_REVISIONS and self.original_deletions is None
+                    and connection.execute(
+                        'SELECT count(*) FROM access_original_deletion_state').fetchone()[0]):
+                raise RuntimeUnavailable('Access unavailable')
+            if self.original_deletions is not None:
+                try:
+                    self.original_deletions.assert_current(connection)
+                except RuntimeError:
+                    raise RuntimeUnavailable('Access unavailable') from None
+            checked_identity = path_identity(self.path)
+            from .semantic_request_snapshot import _stable_during_sqlite_setup
+            if (checked_identity is None or checked_identity[0] != after_identity[0]
+                    or not _stable_during_sqlite_setup(before_identity, checked_identity)):
+                raise RuntimeUnavailable('Access unavailable')
+            connection.seal_read_only_environment()
+            opened_identity = path_identity(self.path)
+            if (opened_identity is None
+                    or not _stable_during_sqlite_setup(checked_identity, opened_identity)):
+                raise RuntimeUnavailable('Access unavailable')
+            connection.bind_open_identity(self.path, opened_identity)
+        except (OSError, sqlite3.Error, ValueError, RuntimeUnavailable):
+            if connection is not None:
+                connection.close()
+            raise RuntimeUnavailable('Access unavailable') from None
+        try:
+            yield connection
+        finally:
+            if connection.in_transaction:
+                connection.rollback()
+            connection.close()
+
 
 @dataclass(frozen=True, repr=False)
 class RuntimeConfiguration:
@@ -185,6 +272,9 @@ class RuntimeConfiguration:
     memory_collaboration_enabled: bool = False
     memory_originals_enabled: bool = False
     memory_generation_enabled: bool = False
+    memory_auto_refinement_enabled: bool = False
+    story_cloud_proofreading_enabled: bool = False
+    story_cloud_proofreading_provider: object = None
     memory_editorial_enabled: bool = False
     memory_editions_enabled: bool = False
     family_note_erasure_enabled: bool = False
@@ -212,6 +302,7 @@ class RuntimeConfiguration:
     assistant_intent_timeout_seconds: float = 20
     semantic_configuration_path: Path | None = None
     assistant_semantic_search_enabled: bool = False
+    assistant_agent_runtime: object = None
     selected_story_provider: object = None
     selected_story_drafts_enabled: bool = False
     selected_story_ui_enabled: bool = False
@@ -232,7 +323,7 @@ class RuntimeConfiguration:
             feature_enabled=self.story_title_suggestions_enabled, rollback=rollback)
         return replace(self, **projection.bind_fields(vars(self)))
 
-    def build_app(self, *, clock=time.time):
+    def build_app(self, *, clock=time.time, prepared_videos=None, video_moment_catalog=None):
         """Build only; catalog storage opens lazily in the request worker.
 
         An explicitly selected journal is validated here; no file is created.
@@ -252,6 +343,11 @@ class RuntimeConfiguration:
         here, which refuses an incoming root that overlaps an original root — the invariant
         that keeps an unassigned upload unservable.
         """
+        if self.assistant_agent_runtime is not None and (
+                not self.assistant_enabled or self.assistant_workspace_path is None
+                or not self.discovery_indexes or
+                not callable(getattr(self.assistant_agent_runtime, 'run', None))):
+            raise ValueError('Agent requires explicit assistant, workspace, discovery and runtime')
         # Validate this boundary before storage is opened or optional providers
         # are constructed. This mirrors create_app while keeping this a pure
         # object-injection point.
@@ -261,6 +357,10 @@ class RuntimeConfiguration:
         if (type(self.selected_story_ui_enabled) is not bool or
                 (self.selected_story_ui_enabled and not self.selected_story_drafts_enabled)):
             raise ValueError('Explicit selected-story UI and API opt-in required')
+        if (type(self.memory_auto_refinement_enabled) is not bool or
+                (self.memory_auto_refinement_enabled and
+                 (not self.memory_collaboration_enabled or self.selected_story_provider is None))):
+            raise ValueError('Automatic refinement requires the explicit owned story provider')
         if type(self.memory_collaboration_enabled) is not bool:
             raise ValueError('Explicit memory opt-in required')
         if self.selected_story_provider is not None and not self.memory_collaboration_enabled:
@@ -290,7 +390,7 @@ class RuntimeConfiguration:
             raise ValueError('Explicit family note erasure opt-in required')
         if (self.original_deletion_journal_path is None) != (self.original_deletion_namespace is None):
             raise ValueError('Deletion journal and namespace must be selected together')
-        if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_editorial_enabled or self.memory_editions_enabled or self.family_note_erasure_enabled) and self.original_deletion_journal_path is None:
+        if (self.annotation_intake_enabled or self.memory_originals_enabled or self.memory_generation_enabled or self.memory_auto_refinement_enabled or self.memory_editorial_enabled or self.memory_editions_enabled or self.family_note_erasure_enabled) and self.original_deletion_journal_path is None:
             raise ValueError('Original intake and generation require a deletion journal')
         original_deletions = None
         if self.original_deletion_journal_path is not None:
@@ -308,7 +408,8 @@ class RuntimeConfiguration:
             original_deletions.require_family_format()
         database = ExistingDatabase(self.database, original_deletions=original_deletions)
         access = AccessRuntime(database, self.web_origin, clock=clock)
-        media = MediaRuntime(self.original_roots, self.derived_root, self.photo_cache)
+        media = MediaRuntime(self.original_roots, self.derived_root, self.photo_cache,
+                             prepared_videos=prepared_videos)
         discovery = None
         if self.discovery_indexes:
             from .discovery_index import runtime as discovery_runtime
@@ -443,6 +544,7 @@ class RuntimeConfiguration:
             review = UploadReviewRuntime(upload, self.photo_cache)
         from ..main import create_app
         return create_app(access_runtime=access, media_runtime=media, discovery_runtime=discovery,
+                          video_moment_catalog=video_moment_catalog,
                           upload_runtime=upload, upload_review_runtime=review,
                           annotation_intake_enabled=self.annotation_intake_enabled,
                           assistant_enabled=self.assistant_enabled,
@@ -451,6 +553,9 @@ class RuntimeConfiguration:
                           memory_collaboration_enabled=self.memory_collaboration_enabled,
                           memory_originals_enabled=self.memory_originals_enabled,
                           memory_generation_enabled=self.memory_generation_enabled,
+                          memory_auto_refinement_enabled=self.memory_auto_refinement_enabled,
+                          story_cloud_proofreading_enabled=self.story_cloud_proofreading_enabled,
+                          story_cloud_proofreading_provider=self.story_cloud_proofreading_provider,
                           memory_editorial_enabled=self.memory_editorial_enabled,
                           memory_editions_enabled=self.memory_editions_enabled,
                           family_note_erasure_enabled=self.family_note_erasure_enabled,
@@ -464,6 +569,7 @@ class RuntimeConfiguration:
                           assistant_saved_memory_cards_enabled=self.assistant_saved_memory_cards_enabled,
                           semantic_search_runtime=semantic_search_runtime,
                           assistant_semantic_search_enabled=self.assistant_semantic_search_enabled,
+                          assistant_agent_runtime=self.assistant_agent_runtime,
                           selected_story_provider=self.selected_story_provider,
                           selected_story_drafts_enabled=self.selected_story_drafts_enabled,
                           selected_story_ui_enabled=self.selected_story_ui_enabled,

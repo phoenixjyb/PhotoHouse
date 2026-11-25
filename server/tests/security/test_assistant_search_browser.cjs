@@ -15,7 +15,7 @@ bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
 createInterface({input:bridge.stdout}).on('line',line=>{const result=JSON.parse(line);if(result.ready){readyResolve();return;}const call=pendingRpc.get(result.id);if(call){pendingRpc.delete(result.id);call.resolve(result);}});
 bridge.on('exit',code=>{if(code){readyReject(new Error(`Browser bridge exited (${code})`));for(const call of pendingRpc.values())call.reject(new Error('Browser bridge exited'));}});
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pendingRpc.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
-const browserRequests=[],pageErrors=[],checkpoints=[],blockedOrigins=[];
+const browserRequests=[],pageErrors=[],checkpoints=[],blockedOrigins=[],timings=[];
 let loseNextTurn=false,loseNextTurnBeforeServer=false,loseNextCreationBeforeServer=false,holdNextTurn=null,releaseHeldTurn=null;
 function gateTurn(){let arrive,release;const seen=new Promise(resolve=>{arrive=resolve;});const released=new Promise(resolve=>{release=resolve;});releaseHeldTurn=release;holdNextTurn={arrive,released};return {seen,release:()=>{releaseHeldTurn=null;release();}};}
 function checkpoint(text){checkpoints.push(text);console.log('PASS '+text);}
@@ -67,7 +67,19 @@ async function installSyntheticTransport(targetContext){
   await page.locator('#assistant-private-new').click();
   await page.waitForFunction(()=>document.querySelector('#assistant-private-select')?.value&&!document.querySelector('#assistant-private-new').disabled);
   const turns=()=>browserRequests.filter(x=>x.method==='POST'&&/\/threads\/[0-9a-f-]+\/turns$/.test(new URL(x.path,'https://photohouse.test').pathname));
-  const send=async text=>{const n=turns().length;await page.locator('#assistant-text').fill(text);const response=page.waitForResponse(r=>r.request().method()==='POST'&&/\/threads\/[0-9a-f-]+\/turns$/.test(new URL(r.url()).pathname));response.catch(()=>{});await page.locator('#assistant-send').click();await response;await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);assert.equal(turns().length,n+1);const entry=turns().at(-1);assert.equal(entry.status,200,JSON.stringify(entry.response));assert.equal(entry.headers['x-photohouse-search-version'],'2');return entry.response;};
+  const submit=async()=>{
+    const n=turns().length;
+    const response=page.waitForResponse(r=>r.request().method()==='POST'&&/\/threads\/[0-9a-f-]+\/turns$/.test(new URL(r.url()).pathname));response.catch(()=>{});
+    const start=performance.now();await page.locator('#assistant-send').click();await response;
+    await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
+    const elapsed=performance.now()-start;
+    assert.equal(turns().length,n+1);const entry=turns().at(-1);assert.equal(entry.status,200,JSON.stringify(entry.response));assert.equal(entry.headers['x-photohouse-search-version'],'2');
+    timings.push({kind:entry.response.result.kind,elapsed_ms:Math.round(elapsed),turn_posts:turns().length-n});return entry.response;
+  };
+  const send=async text=>{
+    await page.locator('#assistant-text').fill(text);
+    return submit();
+  };
   const result=await send('找示例儿童和妈妈在海边的照片');
   assert.equal(result.result.version,2);assert.deepEqual(result.result.filters.people,{ids:['301','302'],match:'all'});
   assert.deepEqual(result.result.items.map(x=>x.id),['101','102']);
@@ -129,6 +141,35 @@ async function installSyntheticTransport(targetContext){
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
   await page.locator('#assistant-results').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(artifacts,'search-phone-evidence-en-150.png'),fullPage:false});
   checkpoint('Keyboard submission and Chinese/English 390px enlarged layouts retain readable conditions and generated-evidence labels');
+  // These descriptions must ask for evidence, without inventing visual matches.
+  const anchored=await send('find Sample Child photos in 2026');
+  const vague=await send('the photos where we were celebrating indoors');
+  assert.equal(vague.result.kind,'clarification');assert.match(vague.result.reply,/searchable evidence/);assert.match(vague.result.reply,/\?/);
+  for(const key of ['context','filters','items','total'])assert.deepEqual(vague.result[key],anchored.result[key]);
+  const videos=await send('only videos and keep the same people');assert.deepEqual(videos.result.filters.people,anchored.result.filters.people);assert.deepEqual(videos.result.filters.date,anchored.result.filters.date);assert.deepEqual(videos.result.filters.media,['video']);
+  assert.equal(videos.result.total,0,'generated fixture has no video match; the assistant must not broaden it');
+  const earlier=await send('再早一点');assert.equal(earlier.result.kind,'clarification');assert.match(earlier.result.reply,/哪段更早的时间？/);
+  for(const key of ['context','filters','items','total'])assert.deepEqual(earlier.result[key],videos.result[key]);
+  checkpoint('Vague wording asks for evidence; video and ambiguous-date follow-ups retain the exact person and date, including empty results');
+  await page.setViewportSize({width:390,height:845});await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'clarification-phone-zh-150.png'),fullPage:false});
+
+  const held=gateTurn(),beforePending=turns().length;
+  await page.locator('#assistant-text').fill('only photos');const pendingStart=performance.now();await page.locator('#assistant-send').click();
+  await page.waitForFunction(()=>document.querySelector('#assistant-send').disabled&&!document.querySelector('#assistant-cancel').hidden);
+  const pendingMs=performance.now()-pendingStart;
+  await held.seen;assert.equal(await page.locator('#assistant-results .assistant-result').count(),0,'old result cards are withheld while pending');
+  await page.locator('#assistant-send').evaluate(button=>button.click());assert.equal(turns().length,beforePending+1,'disabled Send cannot duplicate the pending request');
+  await page.locator('#assistant-cancel').click();
+  await page.waitForFunction(()=>document.querySelector('#assistant-text').value==='only photos');
+  held.release();await page.locator('#assistant-private-recover').waitFor({state:'visible'});
+  const beforeRecovery=turns().length;await page.locator('#assistant-private-recover').click();
+  await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled&&document.querySelectorAll('#assistant-results .assistant-result').length>0);
+  assert.equal(turns().length,beforeRecovery,'cancelled wait recovers through GET only');
+  const recovered=browserRequests.filter(entry=>entry.method==='GET'&&entry.path.includes('/requests/')&&entry.response?.status==='completed').at(-1).response.result;
+  assert.deepEqual(recovered.filters.people,videos.result.filters.people);assert.deepEqual(recovered.filters.date,videos.result.filters.date);assert.deepEqual(recovered.filters.media,['image']);
+  timings.push({kind:'pending_feedback',elapsed_ms:Math.round(pendingMs),turn_posts:1,recovery_turn_posts:0});
+  checkpoint('Pending feedback appears before completion, duplicate Send is blocked, and cancellation preserves the draft and exact context for GET-only recovery');
   // A no-match result describes the evidence boundary without relaxing people.
   const empty=await send('find Sample Child and Sample Adult photos in 2099');
   assert.equal(empty.result.total,0);assert.deepEqual(empty.result.items,[]);
@@ -146,9 +187,76 @@ async function installSyntheticTransport(targetContext){
   await page.setViewportSize({width:320,height:845});
   await page.locator('#assistant-reply').scrollIntoViewIfNeeded();
   await page.screenshot({path:path.join(artifacts,'people-scope-phone-zh-150-320.png'),fullPage:false});
-  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
+  const overflow320=await page.evaluate(()=>({width:innerWidth,page:document.documentElement.scrollWidth,
+    elements:Array.from(document.querySelectorAll('body *')).filter(node=>{const r=node.getBoundingClientRect();return r.width>0&&r.right>innerWidth+1;}).slice(0,12).map(node=>({tag:node.tagName,id:node.id,className:typeof node.className==='string'?node.className:'',right:node.getBoundingClientRect().right,width:node.getBoundingClientRect().width}))}));
+  assert.equal(overflow320.page<=overflow320.width+1,true,JSON.stringify(overflow320));
   checkpoint('Reviewed-person scope stays visible in enlarged English/Chinese empty replies without changing joint filters, context or opening media');
+  const anyPerson=page.locator('#assistant-search-refinements').getByRole('button',{name:'Any person',exact:true});
+  await anyPerson.waitFor();
+  const beforeClear=turns().length;
+  await page.locator('#assistant-text').fill('My existing draft');
+  await anyPerson.click();
+  assert.equal(await page.locator('#assistant-text').inputValue(),'My existing draft');
+  await page.locator('#assistant-text').fill('');
+  await anyPerson.press('Enter');
+  assert.equal(await page.locator('#assistant-text').inputValue(),'anyone');
+  assert.equal(turns().length,beforeClear,'preparing a change leaves the active filters in place');
+  const cleared=await submit();
+  const {people,...retained}=empty.result.filters;
+  assert.deepEqual(cleared.result.filters,retained);
+  assert.equal(turns().length,beforeClear+1);
+  await anyPerson.waitFor({state:'detached'});
+  checkpoint('Any person preserves the composer draft and clears only the people filter after explicit submission');
+
+  const placeCases=[
+    {language:'en',query:'find Sample Child and Sample Adult photos in Example region in 2026 containing "beach"',
+      button:'Any place',instruction:'anywhere',place:'Example region',caption:'beach',width:1440},
+    {language:'zh',query:'找示例儿童和示例成人在示例地区的照片，2026年，包含"海边"',
+      button:'不限地点',instruction:'不限地点',place:'示例地区',caption:'海边',width:390},
+  ];
+  for(const {language,query,button,instruction,place,caption,width} of placeCases){
+    await page.setViewportSize({width,height:845});
+    if(language==='zh'){
+      const capabilities=page.waitForResponse(r=>new URL(r.url()).pathname==='/assistant/workspace/v1/capabilities'&&r.status()===200);
+      capabilities.catch(()=>{});
+      await page.locator('#language').click();
+      await capabilities;
+      await page.waitForFunction(()=>document.documentElement.lang==='zh-CN'&&!document.querySelector('#assistant-private-new').disabled);
+    }
+    const located=await send(query);
+    assert.equal(located.result.kind,'results',JSON.stringify(located.result));
+    assert.deepEqual(located.result.filters,{
+      media:['image'],date:{from:'2026-01-01',to:'2026-12-31'},
+      people:{ids:['301','302'],match:'all'},locations:['601'],text:caption,
+    });
+    assert.deepEqual(located.result.items.map(item=>item.id),['101']);
+    const searchSummary=page.locator('#assistant-search-summary');
+    const anyPlace=searchSummary.getByRole('button',{name:button,exact:true});
+    await anyPlace.waitFor({timeout:5000});
+    const beforePlace=turns().length;
+    const composer=page.locator('#assistant-text');
+    await composer.fill('My unsent draft');
+    await anyPlace.click();
+    assert.equal(await composer.inputValue(),'My unsent draft');
+    await composer.fill('');
+    await anyPlace.press('Enter');
+    assert.equal(await composer.inputValue(),instruction);
+    assert((await searchSummary.innerText()).includes(place));
+    assert.equal(turns().length,beforePlace,'preparing the place change sends no turn');
+    await anyPlace.scrollIntoViewIfNeeded();
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+    await page.screenshot({path:path.join(artifacts,'any-place-'+language+'.png'),fullPage:false});
+    const updated=await submit();
+    const {locations,...expected}=located.result.filters;
+    assert.deepEqual(updated.result.filters,expected);
+    assert.deepEqual(updated.result.items.map(item=>item.id).sort(),['101','102']);
+    assert.equal(updated.result.effect,null);
+    assert.equal(turns().length,beforePlace+1);
+    await anyPlace.waitFor({state:'detached'});
+    assert(!(await searchSummary.innerText()).includes(place));
+  }
+  checkpoint('English and Chinese place controls preserve drafts and clear only place after Send');
   assert.deepEqual(pageErrors,[]);assert.deepEqual(blockedOrigins,[]);
-  fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,pageErrors,blockedOrigins,syntheticBackend:true,externalRequests:0},null,2));
+  fs.writeFileSync(path.join(artifacts,'result.json'),JSON.stringify({checkpoints,pageErrors,blockedOrigins,syntheticBackend:true,externalRequests:0,timings,timing_scope:'Generated ASGI bridge + browser click-to-render; not native or provider latency'},null,2));
   console.log(`Search browser checks: ${checkpoints.length} passed. Artifacts: ${artifacts}`);
 })().catch(async error=>{console.error(error);try{console.error(await page?.evaluate(()=>({send:document.querySelector('#assistant-send')?.disabled,status:document.querySelector('#assistant-status')?.textContent,privateStatus:document.querySelector('#assistant-private-status')?.textContent,lang:document.documentElement.lang}))); await page?.screenshot({path:path.join(artifacts,'failure.png'),fullPage:false});console.error(JSON.stringify(browserRequests.slice(-6).map(x=>({method:x.method,path:x.path,status:x.status,response:x.response})),null,2));}catch{}process.exitCode=1;}).finally(async()=>{await context?.close();await browser?.close();try{bridge.stdin.write(JSON.stringify({command:'quit'})+'\n');}catch{}bridge.kill();});

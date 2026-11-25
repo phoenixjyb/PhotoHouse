@@ -1,5 +1,12 @@
 # Private search quality scorecard
 
+The November 14 [search-to-story and continuity work](SEARCH_TO_STORY.md) has a
+separate generated browser diagnostic. It records click-to-render timings,
+pending feedback and turn-request counts for typed English/Chinese journeys.
+It is not a relevance scorecard, native-service benchmark, or pass of the frozen
+semantic latency target. Do not pool those samples with the private evaluator
+metrics described below.
+
 `check_private_search.py --cases` accepts the existing version 1 envelope and
 the version 2 envelope. Both run the same bounded, read-only search turns and
 retain source and membership checks. If authorization, readiness, source
@@ -16,7 +23,11 @@ Version 2 adds two optional fields to each case:
       "text": "private query text",
       "language": "en",
       "category": "person",
-      "expect": {"kind": "results", "relevant_ids": ["101"]}
+      "expect": {
+        "kind": "results",
+        "relevant_ids": ["101"],
+        "eligible_ids": ["101"]
+      }
     }
   ]
 }
@@ -29,20 +40,29 @@ the `unassigned` cohort. The report always includes every named language and
 category cohort, including empty cohorts, so missing or failing coverage stays
 visible. The legacy aggregate is descriptive; it does not establish a pooled
 qualification grade. Category values use a fixed vocabulary; only those fixed
-bucket names are exposed, never free-form category labels. A `no_match` case must
-expect `total: 0`; its ordinary expected checks must also pass for the case to
-pass.
+bucket names are exposed, never free-form category labels. A `no_match` case
+expects a successful `results` response with `total: 0`, a complete empty
+page and coverage of the requested scope. An empty semantic result with
+unindexed images that match the active filters counts as inconclusive.
+Clarifications count separately.
 
 The v2 report keeps the existing case counts and relevance summary, then adds
 `scorecard.cohorts` and `scorecard.categories`. Each language cohort includes
-its case denominator and pass/fail counts, annotated no-match and failed
-dependency counts, hard-filter and absence check counts and failures, relevance
+its case denominator and pass/fail counts, annotated and confirmed no-match
+counts, false positives and inconclusive no-match cases, clarifications, failed dependencies,
+hard-filter and absence check counts and failures, relevance
 denominator, hit@5 count and rate, labeled recall@5, MRR@20, executed count,
 latency sample count, and median/p95 local elapsed milliseconds. Category
 cohorts expose fixed-category denominators and pass/fail counts. These
 hard-filter and absence counts cover only cases that supplied those checks; they
-do not measure all possible mistakes. A relevance case is a case with supplied
-`relevant_ids`.
+do not measure all possible mistakes. `eligible_ids` is an optional complete
+case label for the IDs allowed by its hard constraints. When supplied, the
+evaluator checks every returned first-page ID and verifies that the total
+fits inside the complete eligible set. It reports
+`hard_filter_eligibility_checked_count` and `hard_filter_violation_count` per
+language cohort. This checks observed results against supplied labels; it does
+not establish that the labels cover the full library. A relevance case is a
+case with supplied `relevant_ids`.
 Clarifications, empty pages, and failed dependencies with relevance labels are
 misses. Failed dependencies remain in the case denominator. The no-match count
 is based on the explicit `no_match` category annotation. Dependency cases that
@@ -59,8 +79,9 @@ qualification, activation, or access authority.
 
 Version 1 continues to emit its prior report version and keys, including its
 existing hit@20 and MRR@20 relevance summary. For both versions, `absent_ids`
-checks pass only against a complete page; a page with more results does not
-prove absence.
+checks require a complete result page and coverage of the active filters. A
+partial index can support a narrower absence check when its verified policy
+records zero unindexed images matching those filters.
 
 The current private CLI constructs the deterministic v2 search runtime. Its
 language cohorts measure those supplied queries only; they do not exercise
@@ -68,3 +89,11 @@ the v3 intent model, workspace-owned pending conversations, or v4 semantic
 ranking. Those paths require separate authenticated journey and model-pair
 qualification evidence. No score from this runner qualifies a multilingual
 encoder or proves dialect recognition.
+
+The generated scorecard regression test also sends English, Chinese, and mixed
+scene queries through the authenticated workspace's negotiated v4 turn route,
+using generated SQLite/vector fixtures and the existing synthetic encoder. It
+records one labeled positive per language and verifies that inherited
+date/person/text filters remain unchanged and no returned ID falls outside the
+fixture's eligible label. This is a source test of that generated fixture path;
+it makes no claim about model quality, production coverage, or family relevance.

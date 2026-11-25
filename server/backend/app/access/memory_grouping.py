@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 import math
 import re
+import struct
 from typing import Literal
 
 from .visual_candidates import (
@@ -24,6 +25,8 @@ from .visual_candidates import (
     _canonical_components,
     _score,
     _valid_identity,
+    _visual_backend,
+    _native_rank,
 )
 
 
@@ -48,6 +51,8 @@ class GroupCandidate:
 class GroupProposal:
     status: Literal["ready", "unavailable"]
     candidates: tuple[GroupCandidate, ...]
+    coverage_available: bool = False
+    coverage_mode: Literal["default", "by_seed"] = "default"
 
 
 UNAVAILABLE = GroupProposal("unavailable", ())
@@ -83,10 +88,10 @@ def _time_match(left, right, max_gap_seconds: int):
     right_aware = right_value.utcoffset() is not None
     if left_aware != right_aware:
         return None
-    if left_aware:
-        left_value = left_value.astimezone(timezone.utc)
-        right_value = right_value.astimezone(timezone.utc)
     try:
+        if left_aware:
+            left_value = left_value.astimezone(timezone.utc)
+            right_value = right_value.astimezone(timezone.utc)
         gap = abs((left_value - right_value).total_seconds())
     except (OverflowError, TypeError):
         return None
@@ -106,6 +111,32 @@ def _bounded_ids(values, maximum, *, allow_set=False):
     return items
 
 
+
+def _eligible_native_rank(native, seeds, candidates, eligible, dimension, minimum):
+    # Temporal policy stays in Python. A batch contains only rows with exactly
+    # the same eligible seed set; no ineligible pair reaches native scoring.
+    buckets = {}
+    reasons = {}
+    for candidate_id, matches in eligible:
+        keys = tuple(seed_id for seed_id, _ in matches)
+        buckets.setdefault(keys, {})[candidate_id] = candidates[candidate_id]
+        reasons[candidate_id] = dict(matches)
+    ranked = []
+    for keys, cohort in buckets.items():
+        selected = {key: seeds[key] for key in keys}
+        if len(keys) == 1:
+            seed = keys[0]
+            matches = [(_score(seeds[seed], value), int(key), key, seed)
+                       for key, value in cohort.items()]
+        else:
+            matches = _native_rank(native, selected, cohort, dimension)
+        for score, numeric_id, candidate_id, seed_id in matches:
+            if score >= minimum:
+                ranked.append((score, numeric_id, candidate_id, seed_id,
+                               reasons[candidate_id][seed_id]))
+    return ranked
+
+
 def propose_memory_group(
     authorization,
     *,
@@ -116,6 +147,7 @@ def propose_memory_group(
     expected_identity,
     capture_times,
     excluded_ids=(),
+    coverage_mode="default",
     minimum_similarity=0.9,
     max_gap_seconds=21600,
 ) -> GroupProposal:
@@ -137,6 +169,7 @@ def propose_memory_group(
                 or type(candidate_vectors) not in (tuple, list)
                 or len(candidate_vectors) > MAX_CANDIDATES
                 or not _valid_identity(expected_identity)
+                or coverage_mode not in ("default", "by_seed")
                 or type(minimum_similarity) not in (int, float)
                 or not math.isfinite(float(minimum_similarity))
                 or not 0 < float(minimum_similarity) <= 1
@@ -201,23 +234,47 @@ def propose_memory_group(
             if matches:
                 eligible.append((candidate_id, matches))
 
-        ranked = []
-        for candidate_id, matches in eligible:
-            best_score = None
-            best_seed = None
-            best_reason = None
-            for seed_id, reason in matches:
-                score = _score(canonical_seeds[seed_id], canonical_candidates[candidate_id])
-                if (score >= minimum_similarity and
-                        (best_score is None or score > best_score or
-                         score == best_score and int(seed_id) < int(best_seed))):
-                    best_score, best_seed, best_reason = score, seed_id, reason
-            if best_seed is not None:
-                ranked.append((best_score, int(candidate_id), candidate_id, best_seed, best_reason))
+        native = _visual_backend()
+        if native is None or len(seeds) == 1:
+            ranked = []
+            for candidate_id, matches in eligible:
+                best_score = None
+                best_seed = None
+                best_reason = None
+                for seed_id, reason in matches:
+                    score = _score(canonical_seeds[seed_id], canonical_candidates[candidate_id])
+                    if (score >= minimum_similarity and
+                            (best_score is None or score > best_score or
+                             score == best_score and int(seed_id) < int(best_seed))):
+                        best_score, best_seed, best_reason = score, seed_id, reason
+                if best_seed is not None:
+                    ranked.append((best_score, int(candidate_id), candidate_id, best_seed, best_reason))
+        else:
+            ranked = _eligible_native_rank(native, canonical_seeds, canonical_candidates,
+                                           eligible, expected_identity.dimension, minimum_similarity)
         ranked.sort(key=lambda item: (-item[0], item[1]))
         limit = min(MAX_RESULTS, max(0, 24 - len(seeds)))
+        default_seed_count = len({item[3] for item in ranked[:limit]})
+        top_per_seed = {}
+        for item in ranked:
+            top_per_seed.setdefault(item[3], item)
+        coverage_ranked = []
+        coverage_ids = set()
+        for seed_id in seeds:
+            item = top_per_seed.get(seed_id)
+            if item is not None and item[2] not in coverage_ids:
+                coverage_ranked.append(item)
+                coverage_ids.add(item[2])
+            if len(coverage_ranked) >= limit:
+                break
+        coverage_ranked.extend(item for item in ranked if item[2] not in coverage_ids)
+        coverage_seed_count = len({item[3] for item in coverage_ranked[:limit]})
+        coverage_available = coverage_seed_count > default_seed_count
+        effective_mode = "by_seed" if coverage_mode == "by_seed" and coverage_available else "default"
+        if effective_mode == "by_seed":
+            ranked = coverage_ranked
         result = tuple(GroupCandidate(asset_id, seed_id, reason)
                        for _score_value, _numeric_id, asset_id, seed_id, reason in ranked[:limit])
-        return GroupProposal("ready", result)
-    except (TypeError, ValueError, OverflowError, RecursionError, AttributeError):
+        return GroupProposal("ready", result, coverage_available, effective_mode)
+    except (TypeError, ValueError, OverflowError, RecursionError, AttributeError, struct.error):
         return UNAVAILABLE

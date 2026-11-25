@@ -1,5 +1,390 @@
 # Current project status
 
+> **25 November 2026 update:** The bilingual roadmap and fullscreen Web viewer
+> are live on Windows. The integration also includes the qualified Rust
+> components and the conversational Search, authored chapter, and Jude recovery
+> fixes described below. See the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md)
+> for source progress, installed-runtime evidence and open device checks.
+
+## November 25 merged source
+
+The recent-group viewer, prepared-video startup and the Web assistant's **Any
+date** control are on main at `79bcc94`. The exact candidate passed 3,885 API
+tests and 4,594 subtests with six skips, plus all 47 Web suites. The generated
+video comparison used fixed delays, with the median first frame going from 326
+ms to 177 ms. [PR #133](https://github.com/phoenixjyb/PhotoHouse/pull/133)
+
+The next source update adds an unsaved story draft from one or two saved
+groups and verifies their selected order in Chromium. Native Windows Android
+checks select a reusable cache on a fixed data volume. Storage placement is
+covered by local tests, with a native Windows run pending.
+[Storage policy](STORAGE_POLICY.md)
+
+[PR #130](https://github.com/phoenixjyb/PhotoHouse/pull/130) added explicit
+same-day photo and video choices and memory-group splitting, Android consent
+before metered or unknown-network retries, and coverage-aware Search negatives.
+Its backend passed 3,853 API tests and 4,582 subtests with six skips. All 47 Web
+suites passed on the final source. The Android upload checks passed 21 focused
+JVM tests and five API 36 emulator tests. This is a merged source milestone.
+The Windows installation below records the delivered runtime and Web assets.
+
+## November 25 fullscreen and local integration
+
+Windows serves the fullscreen Web viewer from `85eb866` with the existing
+`c7a28ef` API. Photos fill the available screen with touch-friendly Previous,
+Next and Exit controls, pinch zoom and panning. Prepared videos can fullscreen
+in the browser's player. HTTPS shell and asset checks passed, including a
+direct LAN request from a Mac using the trusted hostname. Physical phone and
+tablet checks remain open. [Fullscreen PR](https://github.com/phoenixjyb/PhotoHouse/pull/118)
+
+The merged Search integration includes bilingual date and media follow-ups,
+generated semantic hard-filter evaluation, stable thumbnail placeholders, and
+saved-story reopening checks. The local API profile passed 3,771 tests and
+4,544 subtests, with six skips. GitHub Actions remains cost-paused.
+[Audit PR](https://github.com/phoenixjyb/PhotoHouse/pull/119)
+
+Family navigation, Android cancel/retry, short-video preview processing and
+account-specific relationship perspectives are also merged. The local API
+profile at the reviewed head passed 3,776 tests and 4,553 subtests, with six
+skips. The generated recovery demo and Android phone debug build passed.
+[Family reliability PR](https://github.com/phoenixjyb/PhotoHouse/pull/120)
+
+The source integration also includes ordered saved-group-to-story creation,
+reviewed video moments and same-page Jude selection recovery. PR #122 adds
+stable filmstrip thumbnails, phone-bound registration links and stronger Search
+scorecard checks. [Story PR](https://github.com/phoenixjyb/PhotoHouse/pull/121) ·
+[Family and relevance PR](https://github.com/phoenixjyb/PhotoHouse/pull/122)
+
+The next reviewed source, `213ba28`, adds a default-off Web recorder,
+encrypted Android upload-folder review, clearer pending video preparation
+and faster structured Search on generated data. The exact candidate passed
+3,824 API tests and 4,566 subtests with six skips, 68 Chromium gallery
+checks and 14 Android 36 emulator tests. The debug build used no production
+origin. [Recording, mobile and Search PR](https://github.com/phoenixjyb/PhotoHouse/pull/123)
+
+The recorder can also reopen completed sessions and play individual sections
+on explicit author request. The new optional local transcription preview
+requires separate processing consent and keeps the draft unsaved. Generated
+Web and API checks use synthetic audio and a simulated speech provider.
+Windows feature activation, signed client delivery and household acceptance
+are tracked in the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md).
+
+## November 24 current delivery
+
+PR #115 merged as `c7a28ef`, including Rust PR #114. The bilingual roadmap is
+live and owner-confirmed. Windows also serves the four reviewed application-file
+fixes: exact-place follow-up, month correction retaining the active year,
+preservation of authored text under empty suggestions, and explicit Jude reopen
+after transient capability failures. Existing base runtime, Rust binaries,
+model/provider settings and Family importing are retained.
+
+The corrected deployment passed the actual bounded preflight, four synthetic
+Search assertions, 16 trusted HTTPS checks and nine roadmap checks. The natural
+SYSTEM grouping run drained its native Job and closed handles, returning
+`REFRESH_DEFERRED`, zero updates. This is continuity evidence, not a full sweep.
+Cleanup, source/ownership audits and 180 seconds offline completed before the
+operation was explicitly released. The earlier timeout and verified rollback
+remain preserved. See [the delivery record](RELEASE_2026-11-24_FUNCTIONAL_FIXES.md).
+
+## Historical October 29–30 snapshot
+
+
+Maintained **2026-10-30** against merged source `e808e30` and the accepted
+October 29 and October 30 Windows delivery records. The later deployed `daa7e14`
+increment is not yet merged into main. This update reads retained operation
+results; it performs no additional server probe. Earlier snapshots retain their original scope.
+
+| Area | Last verified delivery | Still open |
+| --- | --- | --- |
+| Main/API/Web | PR #111 merged; new Jude UI served on Windows; four served UI hashes matched the release | Portable repeatable installation remains separate from this household rollout |
+| Search | English/Chinese protected HTTPS samples returned 20 authorized cards each; clarification, privacy and recovery contracts retained | Broader family relevance and semantic/vector coverage; physical client use |
+| Library photo stacks | F2 `f2a8c5d1e640`, two group pages, first SYSTEM refresh and two subsequent successful refreshes on the 15-minute cadence | Family grouping quality and installed phone/TV integration; not activity/shared-memory grouping |
+| Jude agent | `agent_media_search_v1` real model/tool search returned 20 cards; owned request GET recovery and anonymous denial passed | Broader task profiles and full conversational/device journeys |
+| Voice and UI | New Web conversation layout; actual local TTS → ASR → receipt → Search → reply WAV passed in 28.688 s (ASR 10.297 s) | Physical browser microphone/speaker confirmation explicitly deferred by user |
+| Selected-source story | Valid authorized-source, nonempty, unsaved `needs_review` draft passed on Windows | Subjective prose quality deferred; family review and explicit adoption/save remain required |
+| Android/TV | Existing published artifacts retained; PR #111/this UI rollout did not publish a replacement | Installed versions, microphones, playback and family acceptance require their own evidence |
+| Caption/media processing | Existing caption tasks/configuration were preserved during the rollout | No claim that the entire caption backlog or historical media failures are resolved |
+| CI | GitHub Actions cost-paused; source tests run locally | Resume GitHub CI only on explicit instruction; do not assume GitLab routing exists |
+
+See [October 29 delivery](RELEASE_2026-10-29.md) for exact source and acceptance
+scope, [Features](FEATURES.md) for contracts and [Roadmap](ROADMAP.md) for next work.
+Public examples remain opt-in/default-off; one enabled installation does not
+change repository defaults or grant activation to another host.
+
+The October 29 work window closed at 22:00 Asia/Shanghai. All admitted
+experimental scopes were explicitly released, cleanup was clear, production
+services were intentionally retained, and the follow-up heartbeat was deleted.
+Physical microphone/speaker acceptance is **pending**, not failed.
+
+## October 30 delivery and remaining increments
+
+The compact UI and bounded conversational context are deployed on Windows from
+`daa7e14`. The root transport timed out after launch; one bounded metadata
+recovery read verified the saved successful native result. The original timeout
+is retained, and both operation scopes were explicitly released.
+
+| Increment | Observed outcome | Remaining work |
+| --- | --- | --- |
+| Compact chat and context | Served UI hashes match; two protected model/tool turns, history, same-request recovery and anonymous denial passed | Physical microphone/speaker and family interaction remain pending |
+| Chinese dates and follow-ups | HTTPS “找去年九月份的照片 → 只看视频” preserved September 2025 and changed only media type; returned authorized cards | Three-turn voice acceptance failed. A local fix makes a bare month refinement retain an unambiguous prior year; it is not deployed yet |
+| Grouping continuity | New source-bound 15-minute SYSTEM refresh completed its first `REFRESH_READY` sweep | This does not establish every subsequent refresh or family grouping quality |
+| Existing AI draft | Actual authorized-source, nonempty, unsaved `needs_review` draft passed in 57.172 seconds | This is the existing selected-source flow, not saved-story automatic refinement |
+| Saved-story refinement | Local source adds optional revision-bound background proposals, preserving original text/audio | Not deployed; the requested household story has not been refined by this path |
+| Natural bilingual speech | Candidate failed during dependency acquisition before activation | Underlying dependency error is unknown; existing speech service remains selected |
+
+The actual voice failure returned HTTP 200 before a strict search-filter
+predicate refused acceptance. Its failing turn/transcript was not retained;
+the local year-inheritance reproduction is a concrete bug, not definitive
+attribution of the live failure. No physical voice outcome is claimed.
+
+See [Jude](JUDE_ASSISTANT.md#october-30-conversation-and-refinement) for the
+user flow and [Architecture](ARCHITECTURE.md#conversation-and-refinement)
+for context and original/proposal separation.
+
+## Validation scope
+
+The tested source tree later merged unchanged into `e808e30` passed **3,590 API
+tests and 4,321 subtests**, with one local skip because the `llama_cpp` grammar
+backend was unavailable. The generated no-listener demo, voice/workspace browser
+fixtures, mobile 390px/150% layouts and source-provenance checks passed.
+These checks do not replace the separate Windows or physical-device results.
+
+## Historical source and delivery records
+
+The following entries are historical. Their “current”, “OFF” and “pending” labels
+apply to the dated revisions they describe, not the latest deployment above.
+
+<details>
+<summary>Earlier source qualifications and deployment snapshots</summary>
+
+
+**October 25 functional-completion priority (local source / semantic OFF):**
+current work follows the [functional acceptance matrix](SEARCH_FUNCTIONAL_ACCEPTANCE.md):
+correct retrieval, privacy, clarification, recovery, API/Web integration and
+reviewable delivery. Latency is diagnostic for this work. Earlier frozen
+2-second qualification contracts and their failures remain unchanged; they are
+not a circular prerequisite for completing these functional journeys.
+
+The reviewed refusal-reopen source change restores a confirmed unsupported scene request's
+private wording and reword guidance when a thread is reopened. Its negotiated
+metadata read uses existing private storage, hides older cards and requires an
+explicit fresh scope review before a corrected search. It adds no model call,
+sharing permission, database migration or browser persistence. Targeted source,
+API, controller and browser evidence belongs to the final reviewed head; this
+entry does not claim deployment or activation.
+
+The new [protected scene-page source increment](SCENE_RESULT_PAGING.md) adds
+Next/Previous and fresh Return in the private Web conversation. It derives the
+query and reviewed conditions from the latest completed server record, checks
+current source/access/runtime/revision and full-rank continuity, and keeps page
+cards out of conversation/voice scope. Generated checks passed 12 API tests /
+14 subtests, 32 controller tests and 12 browser checkpoints over 46 eligible and
+65 omitted synthetic images, including English/Chinese at 390px and 150% text.
+Serving remains OFF; current-head hosted checks and delivery are separate.
+
+Predecessor `7bdca5a` passed both hosted Windows CPU, API, Android and private-reader
+jobs, plus Android fixture and security checks. One Web job passed; another
+failed when Chromium exited with SIGSEGV while launching the intent fixture,
+after all nine scene checkpoints passed. The failed job is retained without a
+manual rerun or inferred application assertion failure. Those results do not
+validate the later page source.
+
+The later isolated Windows component on `7910852` completed two full audits,
+15 protection cases and nine English/Chinese/mixed HTTPS samples. Recovered
+measurement copies and the native completion component were reaccepted. Raw
+warm timings were **4.718 s median / 5.094 s maximum**, with all nine above the
+historical 2 s target. Full qualification remains failed: historical local
+family scans were partial, and later readback hit the staged source archive's
+file-size guard after the Windows query ran; no successful readback/offline
+pair was returned. An explicit supplemental release covers current known owned
+scopes only. It neither repairs historical receipts nor establishes Windows
+inventory, global host freedom, relevance, serving or family/device acceptance.
+The earlier entries below retain their dated evidence scope.
+
+**October 25 exclusion phrase repair (source only / OFF):** policy 3 requests
+clarification for additional explicit English/Chinese/mixed prohibition,
+exception and omission phrases before vectors or model calls. Eight generated
+endpoint misses were reproduced; 132 focused tests / 423 subtests passed after
+the repair. Supported quoted literal text and positive lexical controls remain
+usable. This is later source than the full API and native results below, and
+is no ASR/dialect or model-negation qualification. See the
+[admission repair](SEMANTIC_EXCLUSION_QUALIFICATION.md#october-25-admission-phrase-repair-policy-3-source-only).
+
+**October 25 earlier semantic checkpoint (R94 / OFF / undeployed):**
+application source `4254107` ran against the isolated synthetic-account fixture
+with the reviewed frozen catalog and prepared family vectors: 23,761 catalog
+entries, 23,696 vectors and 65 qualification-only omissions. Both full audits
+and all 15 protection cases ran. Nine warm English/Chinese/mixed HTTPS samples
+measured **5.250 s median / 5.703 s maximum**; cold latency was **12.953 s**.
+Every warm sample exceeded the unchanged 2 s target. These are native/provider/
+loopback-network measurements, not production, phone/WAN or family relevance
+acceptance. R92 previously measured 6.469 / 7.203 s; separate shared-host runs
+do not establish a causal saving from the intervening changes.
+
+The native Job closed, but the required offline-collection pair was not completed.
+Whole qualification therefore remains failed, and the second observation was not
+run. A separately reviewed one-shot observer and exact native-handle cleanup
+stopped only the identified reader, preserved its parent, and verified its empty
+owned scope. After 192.824 s offline and a fresh local audit, the coordinator
+explicitly released that limited scope. Original failures and the incomplete pair
+remain; cleanup does not qualify the feature or establish that the whole shared
+host is free. No replay or activation occurred.
+
+**Current local source validation:** the exact image-only facts and immutable
+SQL-cohort grammar optimizations retain all fresh SQL, authorization, source,
+policy and file checks. Source `ab89fbd` passed **3,447 API tests / 4,138 subtests**
+and the generated demo. Its 295 runtime payloads are byte-identical to R94's
+`4254107` archive. The later `605ff8d` qualification-only
+[result observer](SEMANTIC_RESULT_OBSERVATION.md) passed 66 focused checks and
+then **3,475 API tests / 4,138 subtests** plus the generated demo on a clean,
+unchanged checkout. It captures bounded private rankings for future bilingual
+comparisons. It has no actual-family relevance result and does not change the default measurement
+report or enable serving. The
+[readiness checkpoint](SEMANTIC_SEARCH_READINESS_2026-10-24.md) records current
+performance, coverage, omission-policy and release gates. Earlier entries below
+retain their historical source and acceptance scope.
+
+**October 25 generated full-request profile (R127 / source only / OFF):** local
+source `001a039` compared the same native read-only SQLite factory with the
+request-local snapshot flag off/on, using a generated 23,696-eligible-row,
+768D WAL fixture, 65 qualification-only omissions and fixed 418 ms
+`MockTransport`.
+Nine warm English/Chinese/mixed pairs averaged **2.369 s baseline / 2.133 s
+candidate** (9.99% lower); medians were 2.348 / 2.025 s. Eight of nine pairs
+were faster, but the candidate maximum was **2.757 s** and only **2/9** samples
+met the 2 s target. All 13 cold/warm/page-two pairs matched complete API JSON,
+full ranked IDs and score bits, and charged rows/bytes. The candidate performed
+nine physical source reads plus nine final-pass replays per request, versus 18
+physical reads in baseline. At that checkpoint the latest actual Windows result was R94 at
+**5.250 s median / 5.703 s max**, with all nine warm samples above target and
+whole qualification false; R127 does not update that result. The local source
+candidate is unmerged and undeployed. No native-performance, family relevance,
+language-quality or activation claim follows from this generated profile. The
+record confirms configured resource limits but does not serialize exact peak
+RSS or separate setup/profile durations.
+See the [profile detail](SEMANTIC_REQUEST_SNAPSHOT.md#generated-full-request-profile-r127).
+
+**October 23 bounded metadata reader (R69, source only):** the read-only index
+inspector now parses and canonical-checks one bounded descriptor read, then
+retains a second complete digest/identity verification. Metadata is bound to its
+manifest SHA; private-file checks, link/reparse/identity guards, writer/resume
+behavior, source checks, vector validation and both full audits remain. All
+**41 focused tests** passed, and independent code review found no blocking
+regression. Exact code `c534805` passed **3,405 API tests / 4,037 subtests** and
+the generated demo with a clean, unchanged checkout. This change was **not**
+in the R68 Windows run below; it has no native timing or
+activation acceptance. Semantic search stays **OFF**.
+
+**October 23 complete semantic qualification (R68, isolated / undeployed):**
+exact source `13a94dd` completed its bounded Windows CPU run in **1,582.750 s**.
+Both independent full audits and all **15 protection checks** passed against
+23,761 catalog entries, 23,696 vectors and the same 65 omissions approved for
+qualification only. Nine English/Chinese/mixed loopback HTTPS/TCP samples measured
+**8.000 s median / 8.438 s maximum**; cold latency was **15.594 s**. The 2-second
+backend target remains unmet; semantic search stays **OFF**.
+
+Independent readback verified all 12 staged inputs, exact source/model/index
+bindings, measurement/sample profiles, Job limits and 322 closed diagnostic
+checkpoints. No owned test Python process or test listener remained. The fresh
+postflight baseline preserved the live API, stores, tasks, catalog, models/index,
+permissions and semantic-off policy. All 83 preservation pins, 12 report trees
+and 200 current furniture-report assets passed before/after checks, including
+trusted HTTPS. These checks do not establish continuous uptime or phone/WAN use.
+After 185.668 seconds without host access, independent local closure review
+passed and the Windows window was explicitly released before expiry. No queued
+dispatch or owned local SSH/SFTP process remained.
+
+R66 did not complete staging its archive and started no model/native test. R67
+staged all 12 inputs but correctly refused a native start after its time reserve
+expired. Both stages were preserved and explicitly released after closure. R68
+reused only the verified identical source archive through a fresh, no-overwrite
+private copy; all remaining inputs, admission, both audits and native checks were fresh.
+The compressed archive is 1,412,632 bytes, 73.21% smaller than the earlier
+5,272,648-byte package; its 295 source payloads and manifest are identical.
+See [the complete native record](SEMANTIC_PARTIAL_CATALOG_QUALIFICATION.md#latest-complete-native-result-october-23-2026).
+
+**October 23 audit optimization (R65, source only / unmerged):** the full-index
+inspector now validates complete checkpoint coverage and its exact agreement with
+the manifest before one artifact-verification pass. Resume/index construction,
+the protected JSON reader, vector checkpoint/hash/identity checks, canonical
+components, source checks and both independent qualification audits remain.
+
+The focused index/vector/checkpoint suites passed **54 tests / 4 subtests**.
+A generated 515-image Mac comparison returned identical manifests, artifacts and
+identities: vector read/decode calls fell from 1,030 to 515, JSON loads from 1,098
+to 583 and checkpoint inspections from 2,128 to 1,098 per audit. Three alternating
+pairs measured a median 1,453.685 ms before / 827.143 ms after. These are local
+model-free audit measurements, not native query latency or qualification.
+Exact code commit `13a94dd` passed **3,389 API tests / 4,037 subtests** and the
+generated demo with a clean, unchanged checkout. The matching runtime archive
+contains 295 verified source files. The later R68 run above completed native qualification of this exact code;
+semantic search stays **OFF**. No production deployment or
+activation is included.
+
+R65 started no model run and staged no candidate. Read-only admission initially
+refused a scheduled task state transition; a later host admission passed after
+natural task completion. The local final gate then refused an incorrect
+comparison between two different catalog digest contracts. That checker was
+repaired and the refused seal/evidence retained. The later R68 result above
+supersedes R65's incomplete acquisition and qualification. The last metadata read
+at that time preserved the current 200-file report and all 12 retained report
+trees; a later trusted-TLS check still verified all 200 public report files.
+These dated observations do not prove current Windows
+state or new native latency.
+See [the audit optimization contract](SEMANTIC_REQUEST_LATENCY.md#r65-audit-artifact-pass).
+
+
+**October 22 durable semantic diagnostics (R64, unmerged / undeployed):**
+source `8fbffd8` adds opt-in setup profiling and durable private phase checkpoints.
+The exact source passed **3,375 API tests / 4,037 subtests** plus the generated
+demo; both hosted Source checks and Android UI qualification passed. PR
+[#111](https://github.com/phoenixjyb/PhotoHouse/pull/111) remains draft.
+
+One isolated Windows attempt reached the unchanged **1,800-second child limit**
+during its final full audit. Independent readback validated **365 checkpoints**
+and all 295 extracted source files. The model-load marker recorded 56.172 s;
+the initial audit completed in 1,238.686 s, bulk-vector construction in 19.171 s,
+and the canary phase in 193.860 s. These are setup/phase costs, not per-query
+latencies. Twelve phases completed, but the journal was unclosed and no completed
+measurement/report survived. This does **not** qualify the source, establish new
+latency or prove the full protected result. No automatic retry occurred.
+
+Postflight preserved the live API, 73 file pins, four stores, model/index/catalog
+and ACL evidence, and the semantic-off policy. A separate authorized report
+publisher replaced the site task/process pair during the attempt, adding a home
+page and navigation; the original unchanged-baseline gate correctly refused.
+Separate verification preserved the newer 148-file site, all retained releases
+and trusted HTTPS. The original preflight was not restamped or restored.
+Candidate-owned process counts were zero; recorded test ports were lost on the
+hard stop, so direct per-port closure was not established.
+
+Semantic search remains **OFF**. Next: reduce repeated immutable-artifact
+verification within each full audit while retaining both independent audits,
+then repeat the bounded protected qualification. Keep setup profiling, interactive
+latency, relevance/coverage policy and device/WAN acceptance separate.
+See [durable diagnostic contract and result](SEMANTIC_REQUEST_LATENCY.md#r64-durable-qualification-diagnostics).
+
+**October 22 semantic latency increment (R63, unmerged / undeployed):** source
+`95b7f7f` reuses only a pure proof for exact freshly copied typed metadata; full
+file hashing and fresh source/policy/authorization checks remain intact. Focused
+suites passed 69 tests / 53 subtests, and the full API recheck passed **3,346 tests /
+4,037 subtests** plus the generated demo. Separate Mac warm-snapshot measurements
+were 49.16 ms before / 21.86 ms after with identical exact ranking; these do not
+establish native request latency.
+
+The single frozen Windows attempt hit its fixed **1,800-second child timeout**.
+No completed measurement or full protection result was produced, and no model
+retry occurred. The latest successful native timing remains `e85c6e4`: 7.860 s
+warm median / 8.328 s maximum / 14.843 s cold. Independent after-checks preserved
+106 tasks, 28 runtime identities, 55 file pins, 293 live API files, model/index/
+catalog/ACL state, phone v75 / TV v30 and all 125 trusted-TLS site assets. Owned
+candidate processes were zero; Windows was explicitly released after 272 seconds
+of offline cleanup. No production change or activation occurred.
+Semantic stays **OFF**. Next: preserve aggregate progress on timeout, profile
+full-index audit/setup cost, then repeat bounded qualification. Relevance,
+coverage-policy/lifecycle and device/WAN acceptance remain separate gates.
+See [latency contract and evidence](SEMANTIC_REQUEST_LATENCY.md).
+
 **October 22 combined-source release:** PR [#108](https://github.com/phoenixjyb/PhotoHouse/pull/108)
 merged as `a6dfe31f7df1149170a01fc5a171867b2aea0584`; the merge tree is identical to reviewed
 source `c5dd85018a36e9f574acabcd9ecaf47db609e051`. Hosted functional API, browser, Windows CPU,
@@ -154,8 +539,8 @@ This is not complete searchable coverage: 64 inputs failed preparation and one
 source is missing. All failure records remain; 27 earlier preparation copies are
 retained separately and 36 later copies remain in the index scratch directory.
 No original was deleted, repaired or overwritten. The native completion receipt,
-final manifest and process closure were independently read back; the Mac transport
-itself timed out, so terminal success comes from the Windows receipts.
+final manifest and process closure were independently read back; Windows
+receipts establish terminal success.
 
 A fresh read-only catalog comparison found **no added or removed photos and no
 changed source hashes**; its complete catalog digest matches the frozen roster.
@@ -366,8 +751,7 @@ Earlier delivery snapshots below retain their dated scope.
 The follow-through independently verified all original hashes and both preview
 sizes for the received batch. One missing preview pair was repaired without
 resetting its failed task. Vector and face processing finished; person identity
-was not assigned automatically. Caption tasks remain pending and the configured
-caption service was unreachable at the latest read-only check. The
+was not assigned automatically. Caption tasks remain pending. The
 [receipt-selected caption candidate](../server/docs/security/RELEASED_CAPTION_WORKER.md)
 now has generated-media, mock-HTTP and bound-journal qualification. Native package
 qualification also [passed on Windows](NATIVE_CAPTION_QUALIFICATION_2026-10-18.md)
@@ -515,7 +899,7 @@ only a valid explicit QuickTime capture timestamp, preserve its local day and
 leave unknown dates unknown; the worker fills null dates only. No historical
 backfill, production write, model or permission activation occurred. The
 [operator guide](SEARCH_READINESS_AND_RELEVANCE.md) records limitations and commands.
-The focused search/source/storage cohort passes **131 tests / 81 subchecks**.
+The focused search/source/storage cohort passes **132 tests / 81 subchecks**.
 The video cohort passes **12 tests / 13 subchecks**, including a generated MP4
 through real FFmpeg/ffprobe. Later full release profiles and native Windows,
 real-library relevance and family/device acceptance remain open. The Android
@@ -812,5 +1196,7 @@ changes, same-thread revision refresh and zero turn/transcription/capture side
 effects. The transient holder clears with account/library/protection scope or
 assistant-host closure. This does not add persistence or silently choose a
 conversation for an unsent request.
+
+</details>
 
 </details>

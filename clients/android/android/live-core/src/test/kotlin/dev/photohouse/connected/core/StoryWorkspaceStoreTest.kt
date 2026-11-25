@@ -23,6 +23,9 @@ class StoryWorkspaceStoreTest {
         override val assistantEnabled = true
         var transcriptText = "ASR words"
         var transcriptions = 0
+        var assistantReply = AssistantTurn("results", "Found frames.", null, null, emptyList(), 0, false, null)
+        var assistantGate: CompletableDeferred<AssistantTurn>? = null
+        val assistantRequests = mutableListOf<Triple<String, String, JsonObject?>>()
         var capabilityGate: CompletableDeferred<Unit>? = null
         override suspend fun assistantCapabilities(token: Bearer, library: String): AssistantCapabilities {
             capabilityGate?.let { gate -> withContext(NonCancellable) { gate.await() }; capabilityGate = null }
@@ -31,6 +34,11 @@ class StoryWorkspaceStoreTest {
         override suspend fun assistantTranscribe(token: Bearer, library: String, wav: ByteArray, requestId: String): AssistantTranscript {
             transcriptions++
             return AssistantTranscript(transcriptText, "en", AssistantRequestReceipt(requestId, "enabled", "succeeded"))
+        }
+        override suspend fun assistantTurn(token: Bearer, library: String, text: String, context: JsonObject?): AssistantTurn {
+            assistantRequests += Triple(library, text, context)
+            val gate = assistantGate ?: return assistantReply
+            return withContext(NonCancellable) { gate.await() }
         }
         override suspend fun login(phone: String, password: String) = SessionToken(86400, "T".repeat(43), "Bearer")
         override suspend fun register(phone: String, password: String, code: String) = login(phone, password)
@@ -46,11 +54,12 @@ class StoryWorkspaceStoreTest {
     }
 
     private fun preview(ids: List<String>, revision: String = "a".repeat(64), evidenceId: String = "caption-101",
-                        chunkSize: Int = 4) : ByteArray {
+                        chunkSize: Int = 4, kinds: Map<String, String> = emptyMap()) : ByteArray {
         val items = ids.mapIndexed { index, id ->
             val sourceId = if (index == 0) evidenceId else "caption-$id"
             val evidence = "[{\"id\":\"$sourceId\",\"source\":\"ai\",\"title\":\"\",\"text\":\"A family day.\"}]"
-            """{"id":"$id","kind":"image","width":800,"height":600,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/$id/thumbnail?library=family-a","date_hint":null,"evidence":$evidence}"""
+            val kind = kinds[id] ?: "image"
+            """{"id":"$id","kind":"$kind","width":800,"height":600,"duration_sec":null,"taken_at":null,"thumbnail_url":"/assets/$id/thumbnail?library=family-a","date_hint":null,"evidence":$evidence}"""
         }.joinToString(",")
         val chapters = ids.chunked(chunkSize).mapIndexed { index, group ->
             val assets = group.joinToString(",") { "\"$it\"" }
@@ -77,17 +86,21 @@ class StoryWorkspaceStoreTest {
         val updateFailures = ArrayDeque<ApiFailure>()
         var updateResponse: ByteArray? = null
         var sourceCapabilityBody = """{"version":1,"source_policy":"chapter_sources_v1","max_sources_per_chapter":12,"needs_review":true}""".toByteArray()
+        var sourceCapabilityFailure: ApiFailure? = null
         var idsForPreview = listOf("1")
         val previewReplies = ArrayDeque<ByteArray>()
         val previewFailures = ArrayDeque<ApiFailure>()
+        val previewRequests = mutableListOf<String>()
         override suspend fun storyPreview(token: Bearer, library: String, json: String): ByteArray {
+            previewRequests += json
             previewGate?.await()
             if (previewFailures.isNotEmpty()) throw previewFailures.removeFirst()
             if (previewReplies.isNotEmpty()) return previewReplies.removeFirst()
             return preview(idsForPreview)
         }
         override suspend fun storyTitleCapabilities(token: Bearer, library: String) = capabilityBody
-        override suspend fun storySourceCapabilities(token: Bearer, library: String) = sourceCapabilityBody
+        override suspend fun storySourceCapabilities(token: Bearer, library: String) =
+            sourceCapabilityFailure?.let { throw it } ?: sourceCapabilityBody.copyOf()
         override suspend fun storyTitles(token: Bearer, library: String, json: String): ByteArray =
             suggestionGates.removeFirst().await()
         override suspend fun storyTitles(token: Bearer, library: String, json: String, sourceReview: Boolean): ByteArray =
@@ -691,6 +704,53 @@ class StoryWorkspaceStoreTest {
         assertEquals("Edited saved title", Json.parseToJsonElement(frozen).jsonObject.getValue("title").jsonPrimitive.content)
     }
 
+    @Test fun savedStoryFrameAppendUsesFreshItemsAndRevisionButKeepsContributionLinks() = runTest {
+        var current = binding()
+        val api = Fake().apply {
+            updateResponse = savedReply(listOf("1", "2")).decodeToString()
+                .replace("\"revision\":\"1\"", "\"revision\":\"5\"")
+                .replace("\"version\":1,", "\"version\":1,\"source_policy\":\"chapter_sources_v1\",")
+                .toByteArray()
+        }
+        val assistant = DictationApi().apply {
+            assistantReply = AssistantTurn("results", "One new moment.", null, null,
+                listOf(asset("2", "image")), 1, false, null)
+        }
+        val store = StoryWorkspaceStore(repo(api) { current }, this, { current }, dictationApi = assistant,
+            currentAccount = { "member-a" },
+            uuidSupplier = { mutation })
+        val base = savedEditStory()
+        val contributionId = "77777777-7777-4777-8777-777777777777"
+        val references = SavedMemoryStoryContributionReferences(base.id, base.libraryId, base.revision,
+            listOf(SavedMemoryChapterContributionReferences("chapter-1", listOf(contributionId))))
+        assertTrue(store.seedSavedStoryForEdit(base, references))
+        assertTrue(store.openChapterFrameSearch("chapter-1"))
+        assertTrue(store.findChapterFrames("a later moment")); runCurrent()
+        assertTrue(store.toggleChapterFrame("2"))
+        api.previewReplies += preview(listOf("1", "2"), "d".repeat(64))
+        assertTrue(store.appendChapterFrames(keepSearching = false)); runCurrent()
+        assertNull(store.state.value.frameSearch)
+        assertEquals(listOf("1", "2"), store.state.value.selectedAssetIds)
+        assertEquals("Original saved narration", store.state.value.editableChapters.single().narration)
+        assertTrue(store.state.value.sourceReviewEnabled)
+        assertTrue(store.confirmReviewed(true))
+        assertTrue(store.editTitle("Extended saved story"))
+        assertTrue(store.confirmReviewed(true))
+        assertTrue(store.save()); runCurrent()
+
+        assertEquals(listOf(base.id), api.updateTargets)
+        assertEquals(listOf(true to true), api.updateProfiles)
+        val body = Json.parseToJsonElement(api.updateBodies.single()).jsonObject
+        assertEquals("4", body.getValue("revision").jsonPrimitive.content)
+        assertEquals("1,2", body.getValue("asset_ids").jsonPrimitive.content)
+        val chapterJson = Json.parseToJsonElement(body.getValue("chapters").jsonPrimitive.content).jsonArray
+        assertEquals(listOf("1", "2"), chapterJson.single().jsonObject.getValue("asset_ids").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals("Original saved narration", chapterJson.single().jsonObject.getValue("narration").jsonPrimitive.content)
+        val refs = Json.parseToJsonElement(body.getValue("contribution_refs").jsonPrimitive.content).jsonArray
+        assertEquals("chapter-1", refs.single().jsonObject.getValue("chapter_id").jsonPrimitive.content)
+        assertEquals(listOf(contributionId), refs.single().jsonObject.getValue("contribution_ids").jsonArray.map { it.jsonPrimitive.content })
+    }
+
     @Test fun reviewedProposalAdoptionChangesOnlySelectedWordingAndKeepsLinksWithoutWriting() = runTest {
         var current = binding()
         val api = Fake()
@@ -1074,6 +1134,126 @@ class StoryWorkspaceStoreTest {
         assertNotNull(store.state.value.draft)
         assertFalse(store.state.value.sourcesReloaded)
     }
+
+    @Test fun chapterFrameSearchExplicitlyLooksUpAndAppendsFreshFramesWithoutSaving() = runTest {
+        var current = binding()
+        val api = DictationApi()
+        val storyApi = Fake()
+        val store = StoryWorkspaceStore(repo(storyApi) { current }, this, { current }, dictationApi = api,
+            currentAccount = { "member-a" })
+        readyForEdit(store)
+        assertTrue(store.editTitle("A hand-authored story"))
+        assertTrue(store.editChapterTitle(0, "The first chapter"))
+        assertTrue(store.editChapterNarration(0, "We walked beside the lake."))
+        assertTrue(store.enableSourceReview()); runCurrent()
+        assertTrue(store.chapterFrameSearchAvailable)
+        assertTrue(store.openChapterFrameSearch("chapter-1"))
+        api.assistantReply = AssistantTurn("results", "Two frames.", null, null,
+            listOf(asset("2", "image"), asset("3", "video")), 2, false, null)
+        assertTrue(store.findChapterFrames("  a kite by the lake  "))
+        runCurrent()
+        assertEquals(listOf(Triple("family-a", "a kite by the lake", null)), api.assistantRequests)
+        assertEquals(listOf("2", "3"), store.state.value.frameSearch?.results?.map { it.id })
+        assertTrue(store.toggleChapterFrame("2"))
+        assertTrue(store.toggleChapterFrame("3"))
+        storyApi.previewReplies += preview(listOf("1", "2", "3"), "b".repeat(64), kinds = mapOf("3" to "video"))
+        assertTrue(store.appendChapterFrames(keepSearching = true))
+        runCurrent()
+
+        val state = store.state.value
+        assertEquals(StoryWorkspaceStoreStatus.EDITING, state.status)
+        assertEquals(listOf("1", "2", "3"), state.selectedAssetIds)
+        assertEquals("A hand-authored story", state.title)
+        assertEquals("The first chapter", state.editableChapters.single().title)
+        assertEquals("We walked beside the lake.", state.editableChapters.single().narration)
+        assertEquals(listOf("caption-101"), state.editableChapters.single().evidenceIds)
+        assertEquals(listOf("1", "2", "3"), state.draft?.items?.map { it.asset.id })
+        assertEquals(1, state.draft?.chapters?.size)
+        assertTrue(state.sourceReviewEnabled)
+        assertEquals(emptyList<String>(), state.frameSearch?.selectedAssetIds)
+        assertEquals(listOf("2", "3"), state.frameSearch?.results?.map { it.id })
+        assertEquals(0, storyApi.saveBodies.size)
+        assertEquals("1,2,3", Json.parseToJsonElement(storyApi.previewRequests.last()).jsonObject
+            .getValue("asset_ids").jsonPrimitive.content)
+    }
+
+    @Test fun chapterFrameSearchRejectsWrongKindAndFailedPreviewWithoutReplacingDraft() = runTest {
+        var current = binding()
+        val api = DictationApi()
+        val storyApi = Fake()
+        val store = StoryWorkspaceStore(repo(storyApi) { current }, this, { current }, dictationApi = api,
+            currentAccount = { "member-a" })
+        readyForEdit(store)
+        assertTrue(store.openChapterFrameSearch("chapter-1"))
+        api.assistantReply = AssistantTurn("results", "One video.", null, null,
+            listOf(asset("2", "video")), 1, false, null)
+        assertTrue(store.findChapterFrames("video")); runCurrent()
+        assertTrue(store.toggleChapterFrame("2"))
+        storyApi.previewReplies += preview(listOf("1", "2"), "c".repeat(64)) // The protected preview reports image, not video.
+        val before = store.state.value.draft
+        assertTrue(store.appendChapterFrames(keepSearching = true)); runCurrent()
+        assertSame(before, store.state.value.draft)
+        assertEquals(listOf("1"), store.state.value.selectedAssetIds)
+        assertTrue(store.state.value.frameSearch?.error == true)
+
+        store.closeChapterFrameSearch()
+        assertTrue(store.openChapterFrameSearch("chapter-1"))
+        api.assistantReply = AssistantTurn("results", "One photo.", null, null,
+            listOf(asset("2", "image")), 1, false, null)
+        assertTrue(store.findChapterFrames("photo")); runCurrent()
+        assertTrue(store.toggleChapterFrame("2"))
+        storyApi.previewFailures += ApiFailure(FailureKind.OFFLINE)
+        val beforeFailure = store.state.value.draft
+        assertTrue(store.appendChapterFrames(keepSearching = false)); runCurrent()
+        assertSame(beforeFailure, store.state.value.draft)
+        assertEquals(listOf("1"), store.state.value.selectedAssetIds)
+        assertTrue(store.state.value.frameSearch?.error == true)
+        assertEquals(0, storyApi.saveBodies.size)
+    }
+
+    @Test fun chapterFrameBrowseDoesNotProbeProfileButAppendSurfacesUnsupportedProfile() = runTest {
+        var current = binding()
+        val api = DictationApi().apply {
+            assistantReply = AssistantTurn("results", "One photo.", null, null,
+                listOf(asset("2", "image")), 1, false, null)
+        }
+        val storyApi = Fake().apply { sourceCapabilityFailure = ApiFailure(FailureKind.HTTP, 404) }
+        val store = StoryWorkspaceStore(repo(storyApi) { current }, this, { current }, dictationApi = api,
+            currentAccount = { "member-a" })
+        readyForEdit(store)
+        assertTrue(store.openChapterFrameSearch("chapter-1"))
+        assertTrue(store.findChapterFrames("a sunny moment")); runCurrent()
+        assertTrue(store.toggleChapterFrame("2"))
+        val previewsBefore = storyApi.previewRequests.size
+        assertTrue(store.appendChapterFrames(keepSearching = false)); runCurrent()
+        assertEquals(previewsBefore, storyApi.previewRequests.size)
+        assertEquals(listOf("1"), store.state.value.selectedAssetIds)
+        assertTrue(store.state.value.frameSearch?.error == true)
+        assertEquals(StoryWorkspaceStoreStatus.EDITING, store.state.value.status)
+    }
+
+    @Test fun closingChapterFrameSearchFencesLateAssistantReply() = runTest {
+        var current = binding()
+        val api = DictationApi()
+        val storyApi = Fake()
+        val store = StoryWorkspaceStore(repo(storyApi) { current }, this, { current }, dictationApi = api,
+            currentAccount = { "member-a" })
+        readyForEdit(store)
+        assertTrue(store.openChapterFrameSearch("chapter-1"))
+        val gate = CompletableDeferred(AssistantTurn("results", "Late.", null, null,
+            listOf(asset("2", "image")), 1, false, null))
+        api.assistantGate = gate
+        assertTrue(store.findChapterFrames("late result")); runCurrent()
+        store.closeChapterFrameSearch()
+        gate.complete(AssistantTurn("results", "Late.", null, null,
+            listOf(asset("2", "image")), 1, false, null)); runCurrent()
+        assertNull(store.state.value.frameSearch)
+        assertEquals(listOf("1"), store.state.value.selectedAssetIds)
+        assertEquals(listOf("1"), store.state.value.draft?.items?.map { it.asset.id })
+    }
+
+    private fun asset(id: String, kind: String) = Asset(id, kind, 800, 600, null, null,
+        "/assets/$id/thumbnail?library=family-a")
 
     @Test fun pendingSaveStateCannotReloadSourcesOrRetryInitialPreview() = runTest {
         var current = binding()

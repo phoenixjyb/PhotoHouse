@@ -382,7 +382,8 @@ class StagingConfiguration:
             feature_enabled=self.story_title_suggestions_enabled, rollback=rollback)
         return replace(self, **projection.bind_fields(vars(self)))
 
-    def build_app(self):
+    def build_app(self, *, prepared_index=None, prepared_root=None, prepared_sha256=None,
+                  video_moment_catalog=None, video_moment_sha256=None):
         # Deliberate source root; no .env, legacy config or model entry point.
         sys.path.insert(0, str(ROOT/'backend'))
         from app.access.runtime import RuntimeConfiguration
@@ -434,6 +435,19 @@ class StagingConfiguration:
             memory_groups_enabled=self.memory_groups_enabled,
             memory_group_vectors=memory_group_vectors)
         try:
+            if video_moment_catalog is not None or video_moment_sha256 is not None:
+                delivery_paths(self, prepared_index=prepared_index, prepared_root=prepared_root,
+                               prepared_sha256=prepared_sha256, video_moment_catalog=video_moment_catalog,
+                               video_moment_sha256=video_moment_sha256)
+                from app.access.prepared_video import PreparedVideos
+                from app.access.video_moments import load_reviewed_catalog
+                from app.home_feed import Refused
+                try:
+                    provider = PreparedVideos(prepared_index, prepared_sha256, prepared_root)
+                    catalog = load_reviewed_catalog(video_moment_catalog, video_moment_sha256, provider)
+                except (OSError, Refused, ValueError, TypeError, RecursionError):
+                    raise InvalidConfiguration() from None
+                return runtime.build_app(prepared_videos=provider, video_moment_catalog=catalog)
             return runtime.build_app()
         except WorkspaceStoreUnavailable:
             raise InvalidConfiguration() from None
@@ -564,12 +578,23 @@ def load_configuration(path):
         raise InvalidConfiguration() from None
 
 
-def delivery_paths(config, photo_cache=None, prepared_index=None, prepared_root=None, prepared_sha256=None):
-    selected = [p for p in (photo_cache, prepared_index, prepared_root) if p is not None]
+def delivery_paths(config, photo_cache=None, prepared_index=None, prepared_root=None, prepared_sha256=None,
+                   video_moment_catalog=None, video_moment_sha256=None):
+    selected = [p for p in (photo_cache, prepared_index, prepared_root, video_moment_catalog) if p is not None]
     if any(_path(str(p)) != p for p in selected): raise InvalidConfiguration()
     if any(v is not None for v in (prepared_index, prepared_root, prepared_sha256)):
         if (prepared_index is None or prepared_root is None or type(prepared_sha256) is not str
                 or not re.fullmatch('[0-9a-f]{64}', prepared_sha256)):
+            raise InvalidConfiguration()
+    if video_moment_catalog is not None or video_moment_sha256 is not None:
+        if (video_moment_catalog is None or prepared_index is None or type(video_moment_sha256) is not str
+                or not re.fullmatch('[0-9a-f]{64}', video_moment_sha256)):
+            raise InvalidConfiguration()
+        private = (config.assistant_journal_path, config.assistant_workspace_path,
+                   config.assistant_kinship_path, config.semantic_configuration_path,
+                   config.original_deletion_journal_path)
+        if any(video_moment_catalog.is_relative_to(other) or other.is_relative_to(video_moment_catalog)
+               for other in private if other is not None):
             raise InvalidConfiguration()
     protected = (*config.original_roots, config.derived_root, config.database,
         config.tls_certificate, config.tls_private_key, *config.discovery_indexes,
@@ -583,9 +608,15 @@ def delivery_paths(config, photo_cache=None, prepared_index=None, prepared_root=
 
 
 def serve(config, *, server_run=None, photo_cache=None, prepared_index=None,
-          prepared_root=None, prepared_sha256=None):
-    delivery_paths(config, photo_cache, prepared_index, prepared_root, prepared_sha256)
-    app = config.build_app()
+          prepared_root=None, prepared_sha256=None, video_moment_catalog=None, video_moment_sha256=None):
+    delivery_paths(config, photo_cache, prepared_index, prepared_root, prepared_sha256,
+                   video_moment_catalog, video_moment_sha256)
+    if video_moment_catalog is None:
+        app = config.build_app()
+    else:
+        app = config.build_app(prepared_index=prepared_index, prepared_root=prepared_root,
+                               prepared_sha256=prepared_sha256, video_moment_catalog=video_moment_catalog,
+                               video_moment_sha256=video_moment_sha256)
     if photo_cache is not None:
         from dataclasses import replace
         from app.photo_delivery import PhotoCache
@@ -593,7 +624,7 @@ def serve(config, *, server_run=None, photo_cache=None, prepared_index=None,
         app.state.media_runtime = replace(app.state.media_runtime, photo_cache=cache)
         if app.state.upload_review_runtime is not None:
             app.state.upload_review_runtime = replace(app.state.upload_review_runtime, photo_cache=cache)
-    if prepared_index is not None:
+    if prepared_index is not None and video_moment_catalog is None:
         from dataclasses import replace
         from app.access.prepared_video import PreparedVideos
         provider = PreparedVideos(prepared_index, prepared_sha256, prepared_root)
@@ -611,22 +642,27 @@ def main(argv=None):
     parser.add_argument('--prepared-index', type=Path)
     parser.add_argument('--prepared-root', type=Path)
     parser.add_argument('--prepared-sha256')
+    parser.add_argument('--video-moment-catalog', type=Path)
+    parser.add_argument('--video-moment-sha256')
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument('--check-config', action='store_true')
     mode.add_argument('--serve', action='store_true')
     args = parser.parse_args(argv)
     try:
         config = load_configuration(args.config)
-        delivery_paths(config, args.photo_cache, args.prepared_index, args.prepared_root, args.prepared_sha256)
+        delivery_paths(config, args.photo_cache, args.prepared_index, args.prepared_root, args.prepared_sha256,
+                       args.video_moment_catalog, args.video_moment_sha256)
         if any(args.config.is_relative_to(p) or p.is_relative_to(args.config)
-               for p in (args.photo_cache, args.prepared_index, args.prepared_root) if p is not None):
+               for p in (args.photo_cache, args.prepared_index, args.prepared_root,
+                         args.video_moment_catalog) if p is not None):
             raise InvalidConfiguration()
         if args.check_config:
             print(json.dumps({'configuration_syntax': 'valid', 'storage_checked': False,
                 'certificate_checked': False, 'network_checked': False, 'listener_started': False}))
         else:
             serve(config, photo_cache=args.photo_cache, prepared_index=args.prepared_index,
-                  prepared_root=args.prepared_root, prepared_sha256=args.prepared_sha256)
+                  prepared_root=args.prepared_root, prepared_sha256=args.prepared_sha256,
+                  video_moment_catalog=args.video_moment_catalog, video_moment_sha256=args.video_moment_sha256)
         return 0
     except InvalidConfiguration:
         print('Invalid staging configuration', file=sys.stderr)

@@ -23,11 +23,11 @@ Chinese/mixed, active-cancellation or expiry result. Both application flags stay
 off. See the [corrected-grammar checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#corrected-grammar-first-generated-english-case-2026-10-22)
 for measured evidence and the earlier retained failures.
 
-A later language/interruption slate passed its 92-check model-free Windows gate
-with zero skips, then stopped on the first Chinese case because the parent could
-not validate its native activity witness. No draft was retained and the other
-three cases did not run. Cleanup and preservation passed; the witness failure
-does not establish a model-language failure or qualify cancellation/expiry.
+On October 22, the language/interruption slate passed its 92-check model-free
+Windows gate with zero skips. The parent stopped the first Chinese case because
+it could not validate the native activity witness. No draft was retained and
+the other three cases did not run. Cleanup and preservation passed. The trial
+left the model-language outcome and interruption qualification unresolved.
 See the [activity-witness checkpoint](SELECTED_SOURCE_STORY_CPU_CANDIDATE.md#languageinterruption-slate-activity-witness-refusal-2026-10-22).
 
 The default-off synthetic application, protected prepare/cancel, review/save and

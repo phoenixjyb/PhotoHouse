@@ -15,7 +15,12 @@ import re
 import threading
 from typing import Callable
 
-from app.access.search_exclusions import requires_semantic_clarification
+from app.access.search_policy import requires_semantic_clarification
+from app.access.search_policy_binding import (
+    QueryPolicyUnavailable,
+    capture_current_query_policy_binding,
+    verify_query_policy_binding,
+)
 from app.access.semantic_encoder import (
     JointSpaceBinding,
     SemanticInvalid,
@@ -190,6 +195,10 @@ class BilingualClothingProvider:
         self._binding = binding
         self._recipe = recipe
         self._source_check = source_check
+        try:
+            self._query_policy_binding = capture_current_query_policy_binding()
+        except QueryPolicyUnavailable:
+            raise ValueError("invalid_bilingual_clothing_provider") from None
         self._lease = threading.BoundedSemaphore(1)
 
     @property
@@ -204,6 +213,13 @@ class BilingualClothingProvider:
     def recipe(self) -> dict[str, object]:
         return deepcopy(self._recipe)
 
+    @property
+    def query_policy_binding(self) -> dict[str, object]:
+        try:
+            return dict(verify_query_policy_binding(self._query_policy_binding))
+        except QueryPolicyUnavailable:
+            raise SemanticUnavailable() from None
+
     def _check_binding(self) -> None:
         current = getattr(self._inner, "binding", None)
         if (type(current) is not JointSpaceBinding or current is not self._inner_binding
@@ -214,8 +230,12 @@ class BilingualClothingProvider:
         if not callable(check):
             raise SemanticUnavailable()
         try:
+            verify_query_policy_binding(self._query_policy_binding)
             self._source_check()
             check()
+            verify_query_policy_binding(self._query_policy_binding)
+        except QueryPolicyUnavailable:
+            raise SemanticUnavailable() from None
         except Exception:
             raise SemanticUnavailable() from None
 

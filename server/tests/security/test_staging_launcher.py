@@ -168,8 +168,29 @@ class StagingLauncherTests(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             self.assertEqual(staging_app.main(['--config',str(self.path),'--check-config',
                 '--photo-cache',str(self.root/'photo-cache'), '--prepared-index',str(self.root/'index.json'),
-                '--prepared-root',str(self.root/'prepared'), '--prepared-sha256','a'*64]),0)
+                '--prepared-root',str(self.root/'prepared'), '--prepared-sha256','a'*64,
+                '--video-moment-catalog',str(self.root/'moments.json'),
+                '--video-moment-sha256','b'*64]),0)
         self.assertEqual(list(self.root.iterdir()),[self.path])
+
+    def test_moments_require_both_pins_and_disjoint_storage_before_serving(self):
+        self.write()
+        catalog = str(self.root/'moments.json')
+        prepared = ['--prepared-index', str(self.root/'index.json'),
+                    '--prepared-root', str(self.root/'prepared'), '--prepared-sha256', 'a'*64]
+        for arguments in (
+            prepared + ['--video-moment-catalog', catalog],
+            prepared + ['--video-moment-sha256', 'b'*64],
+            ['--video-moment-catalog', catalog, '--video-moment-sha256', 'b'*64],
+            prepared + ['--video-moment-catalog', catalog, '--video-moment-sha256', 'bad'],
+            prepared + ['--video-moment-catalog', str(self.path), '--video-moment-sha256', 'b'*64],
+            prepared + ['--video-moment-catalog', str(self.root/'prepared'/'moments.json'),
+                        '--video-moment-sha256', 'b'*64],
+        ):
+            with self.subTest(arguments=arguments), redirect_stderr(io.StringIO()):
+                with patch.object(staging_app, 'serve', side_effect=AssertionError('Serving forbidden')):
+                    self.assertEqual(staging_app.main(['--config', str(self.path), '--serve',
+                                                       *arguments]), 2)
 
     def test_mocked_serve_constructs_only_explicit_protected_app_with_tls(self):
         config = staging_app.parse_configuration(self.value)

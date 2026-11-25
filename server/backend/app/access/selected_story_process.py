@@ -29,14 +29,22 @@ from .selected_story_operations import PreparationScope
 REQUEST_ENV = 'PHOTOHOUSE_NATIVE_STORY_REQUEST'
 RESPONSE_ENV = 'PHOTOHOUSE_NATIVE_STORY_RESPONSE'
 MAX_REQUEST_BYTES = 128 * 1024
+_WORKER_PHASES = frozenset({
+    'exchange', 'backend_memory', 'backend_architecture', 'backend_dependency',
+    'request', 'model_pin', 'backend_load', 'generation', 'output_validation',
+    'unchanged_narration', 'model_close', 'tokenize', 'context', 'grammar',
+    'completion', 'narrative', 'source_recheck', 'response_write',
+})
 
 
 class ProcessSelectedStoryError(RuntimeError):
-    def __init__(self, category):
+    def __init__(self, category, *, worker_phase=None):
         self.category = category if category in {
             'disabled', 'closed', 'busy', 'invalid_input', 'cancelled',
             'worker', 'invalid_response', 'cleanup',
         } else 'worker'
+        self.worker_phase = (worker_phase if type(worker_phase) is str and
+                             worker_phase in _WORKER_PHASES else None)
         super().__init__('Process selected-story provider unavailable')
 
 
@@ -144,10 +152,11 @@ class ProcessSelectedStoryProvider:
 
     def __init__(self, launch, model, *, kernel_factory, enabled=False, timeout=45,
                  cleanup_seconds=5, host_admission=None, exchange_root=None):
+        max_timeout = 180 if type(self) is ProcessSavedStoryProvider else 60
         if (type(launch) is not NativeStoryLaunch or not callable(kernel_factory)
                 or type(model) is not str or not _MODEL.fullmatch(model) or '://' in model
                 or type(enabled) is not bool or type(timeout) not in (int, float)
-                or not math.isfinite(timeout) or not 0 < timeout <= 60
+                or not math.isfinite(timeout) or not 0 < timeout <= max_timeout
                 or len(launch.environment) > 62
                 or {REQUEST_ENV, RESPONSE_ENV} & {k.upper() for k in launch.environment}):
             raise ValueError('Invalid process selected-story configuration')
@@ -177,6 +186,19 @@ class ProcessSelectedStoryProvider:
     def _check(scope):
         if scope.cancelled():
             raise ProcessSelectedStoryError('cancelled')
+
+    def _validate_input_bundle(self, bundle, scope):
+        clean = _validate_bundle(bundle, allow_draft=True)
+        if (clean['version'] != 3 or clean['target']['id'] != scope.operation_id
+                or self._last_settled_scope is not None and
+                self._last_settled_scope.operation_id == scope.operation_id):
+            raise ValueError('Invalid scope')
+        return clean
+
+    def _build_request_payload(self, clean, scope):
+        return _json_bytes({'version': 1, 'operation_id': scope.operation_id,
+            'generation': _generation_payload(clean, 'narrative', self.model)},
+            'process generation request', MAX_REQUEST_BYTES)
 
     def _setup(self, call, payload):
         self._check(call.scope)
@@ -238,14 +260,8 @@ class ProcessSelectedStoryProvider:
             raise ProcessSelectedStoryError('busy')
         try:
             self._check(scope)
-            clean = _validate_bundle(bundle, allow_draft=True)
-            if (clean['version'] != 3 or clean['target']['id'] != scope.operation_id
-                    or self._last_settled_scope is not None and
-                    self._last_settled_scope.operation_id == scope.operation_id):
-                raise ValueError('Invalid scope')
-            payload = _json_bytes({'version': 1, 'operation_id': scope.operation_id,
-                'generation': _generation_payload(clean, 'narrative', self.model)},
-                'process generation request', MAX_REQUEST_BYTES)
+            clean = self._validate_input_bundle(bundle, scope)
+            payload = self._build_request_payload(clean, scope)
             remaining = min(self.timeout, scope.deadline_monotonic - scope._clock())
             if not math.isfinite(remaining) or remaining <= 0:
                 raise ProcessSelectedStoryError('cancelled')
@@ -283,7 +299,9 @@ class ProcessSelectedStoryProvider:
         except (ValueError, TypeError, UnicodeError, RecursionError, OverflowError):
             raise ProcessSelectedStoryError('invalid_response') from None
         except NativeStoryOwnerError as error:
-            raise ProcessSelectedStoryError('cancelled' if error.category == 'cancelled' else 'worker') from None
+            raise ProcessSelectedStoryError(
+                'cancelled' if error.category == 'cancelled' else 'worker',
+                worker_phase=error.worker_phase) from None
         except Exception:
             raise ProcessSelectedStoryError('worker') from None
         finally:
@@ -360,3 +378,21 @@ class ProcessSelectedStoryProvider:
             return True
         # Caller must first fence/cancel active prepare through operation lifecycle.
         return await self.stop_and_reconcile(call.scope)
+
+
+class ProcessSavedStoryProvider(ProcessSelectedStoryProvider):
+    """Owned process transport for a saved story narrative proposal."""
+
+    def _validate_input_bundle(self, bundle, scope):
+        clean = _validate_bundle(bundle)
+        if (clean['version'] not in {1, 4} or clean['target']['type'] != 'story'
+                or clean['target']['id'] == scope.operation_id
+                or self._last_settled_scope is not None and
+                self._last_settled_scope.operation_id == scope.operation_id):
+            raise ValueError('Invalid saved story scope')
+        return clean
+
+    def _build_request_payload(self, clean, scope):
+        return _json_bytes({'version': 1, 'kind': 'saved_story_narrative_v1',
+            'operation_id': scope.operation_id, 'bundle': clean},
+            'saved story narrative request', MAX_REQUEST_BYTES)

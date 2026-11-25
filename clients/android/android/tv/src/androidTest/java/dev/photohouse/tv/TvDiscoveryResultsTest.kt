@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.view.KeyEvent
 import androidx.activity.compose.setContent
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
@@ -20,15 +22,34 @@ class TvDiscoveryResultsTest {
     @Before fun remoteInput() { InstrumentationRegistry.getInstrumentation().setInTouchMode(false) }
     @After fun finish() { scope.cancel() }
     private fun fixture(name: String) = InstrumentationRegistry.getInstrumentation().context.assets.open(name).use { it.readBytes() }
-    private inner class Api(var empty: Boolean = false, var failure: HomeError? = null) : HomeApi {
+    private inner class Api(var empty: Boolean = false, var failure: HomeError? = null, var multiplePages: Boolean = false) : HomeApi {
         override val catalogVersion = 2
         override val retryRevisionChanges = false
         var reads = 0
+        val requestedPages = mutableListOf<Int>()
         val sources = mutableListOf<HomeVideoReader>()
-        override suspend fun feed(page: Int): HomeFeed {
-            reads++; failure?.let { throw HomeFailure(it) }
+        fun syntheticFeed(page: Int): HomeFeed {
+            require(page in 1..2)
             val feed = CatalogWire.feed(fixture("catalog-v2.json"), 1)
-            return if (empty) feed.copy(total = 0, items = emptyList()) else feed
+            return when {
+                empty -> feed.copy(total = 0, items = emptyList())
+                multiplePages -> feed.copy(
+                    page = page,
+                    total = 51,
+                    hasMore = page == 1,
+                    items = if (page == 1) {
+                        feed.items + (1000..1047).map { id ->
+                            HomeAsset(id = id, caption = "Unavailable test item", grid = null, display = null,
+                                kind = AssetKind.UNSUPPORTED)
+                        }
+                    } else listOf(feed.items.last()),
+                )
+                else -> feed
+            }
+        }
+        override suspend fun feed(page: Int): HomeFeed {
+            reads++; requestedPages += page; failure?.let { throw HomeFailure(it) }
+            return syntheticFeed(page)
         }
         override suspend fun preview(asset: HomeAsset, variant: Variant, revision: Int) = fixture("home-8x8.jpg")
         override fun video(asset: HomeAsset, revision: Int, failed: (Exception) -> Unit): HomeVideoSource {
@@ -53,7 +74,7 @@ class TvDiscoveryResultsTest {
     private fun install(base: Api, gateway: Gateway): Pair<HomeStore, DiscoveryController> {
         val browse = HomeStore(base, scope)
         val controller = DiscoveryController(gateway, browse, scope)
-        rule.runOnUiThread { rule.activity.setContent { TvApp(browse, controller) }; browse.foreground() }
+        rule.runOnUiThread { rule.activity.setContent { TvApp(browse, controller, initialLanguage = "en") }; browse.foreground() }
         rule.waitForIdle(); return browse to controller
     }
     private fun search() {
@@ -96,6 +117,77 @@ class TvDiscoveryResultsTest {
         rule.showAction("clear-results")
         rule.onNodeWithTag("clear-results").performScrollTo().performClick()
         rule.onNodeWithTag("applied-search").assertDoesNotExist(); assertEquals(2, base.reads)
+    }
+
+    @Test fun selectionReviewKeepsOrderRemovesPicksAndOpensOnlyThroughTheViewer() {
+        val base = Api(); val result = Api(); val gateway = Gateway(result)
+        install(base, gateway); search()
+        rule.onNodeWithTag("refine-search").assertExists()
+        rule.onNodeWithTag("refine-search").performClick()
+        rule.onNodeWithTag("discovery").assertExists()
+        key(KeyEvent.KEYCODE_BACK)
+        rule.waitUntil(10000) { rule.onAllNodes(hasTestTag("refine-search") and isFocused()).fetchSemanticsNodes().size == 1 }
+        rule.onNodeWithTag("select-moments").performClick()
+        rule.onNodeWithTag("asset-102").performSemanticsAction(SemanticsActions.RequestFocus).assertIsFocused()
+        key(KeyEvent.KEYCODE_DPAD_CENTER)
+        rule.onNodeWithTag("asset-101").performClick()
+        rule.onNodeWithTag("asset-102").performClick() // deselect
+        rule.onNodeWithTag("asset-102").performClick() // reselect at the end
+        rule.onNodeWithTag("selection-count").assertTextEquals("2/24")
+        rule.onNodeWithTag("review-selection").performClick()
+        rule.waitUntil(10000) {
+            rule.onAllNodes(hasTestTag("selection-open-101") and isFocused()).fetchSemanticsNodes().size == 1
+        }
+        rule.onNodeWithTag("selection-open-101").assertIsFocused()
+        rule.onNodeWithTag("selection-label-101").assertTextContains("1.", substring = true)
+        rule.onNodeWithTag("selection-label-102").assertTextContains("2.", substring = true)
+        val review = rule.onNodeWithTag("selection-review").captureToImage().asAndroidBitmap()
+        File(rule.activity.filesDir, "discovery-selection-review.png").outputStream().use {
+            review.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        rule.onNodeWithTag("selection-open-102").performClick()
+        rule.waitUntil(15000) { rule.onAllNodes(hasTestTag("video-play") and isEnabled()).fetchSemanticsNodes().size == 1 }
+        key(KeyEvent.KEYCODE_BACK); assertTrue(result.sources.single().isClosed)
+        key(KeyEvent.KEYCODE_BACK)
+        rule.onNodeWithTag("asset-102").assertIsFocused()
+        rule.onNodeWithTag("review-selection").performClick()
+        rule.onNodeWithTag("selection-remove-101").performClick()
+        rule.onNodeWithTag("selection-item-101").assertDoesNotExist()
+        rule.onNodeWithTag("selection-review-close").performClick()
+        rule.onNodeWithTag("selection-count").assertTextEquals("1/24")
+    }
+
+    @Test fun changingTheResultsPageDropsPageScopedPicks() {
+        val base = Api(); val result = Api(multiplePages = true); val gateway = Gateway(result)
+        val (_, controller) = install(base, gateway); search()
+        val pageOne = result.syntheticFeed(1)
+        val pageTwo = result.syntheticFeed(2)
+        assertEquals(50, pageOne.pageSize)
+        assertEquals(50, pageOne.items.size)
+        assertEquals(51, pageOne.total)
+        assertTrue(pageOne.hasMore)
+        assertEquals(1, pageTwo.items.size)
+        assertEquals(51, pageTwo.total)
+        assertFalse(pageTwo.hasMore)
+        rule.waitUntil(10000) { controller.state.value.results?.state?.value?.feed?.page == 1 }
+        val resultsStore = requireNotNull(controller.state.value.results)
+        rule.onNodeWithTag("select-moments").performClick()
+        rule.onNodeWithTag("asset-101").performClick()
+        rule.onNodeWithTag("page-next").performScrollTo().performClick()
+        rule.waitUntil(10000) {
+            resultsStore.state.value.feed?.page == 2 || resultsStore.state.value.problem != null
+        }
+        val finalResults = resultsStore.state.value
+        assertEquals(
+            "request pages=${result.requestedPages}, busy=${finalResults.busy}, problem=${finalResults.problem}, " +
+                "feedPage=${finalResults.feed?.page}, feedRevision=${finalResults.feed?.revision}",
+            2,
+            finalResults.feed?.page,
+        )
+        assertEquals(listOf(1, 2), result.requestedPages.takeLast(2))
+        rule.onNodeWithTag("select-moments").assertExists()
+        rule.onNodeWithTag("review-selection").assertDoesNotExist()
+        rule.onNodeWithTag("asset-101").assertExists()
     }
     @Test fun emptyAndChangedSearchNeverFallBackAndEditingRefreshesMetadata() {
         val base = Api(); val result = Api(empty = true); val gateway = Gateway(result)

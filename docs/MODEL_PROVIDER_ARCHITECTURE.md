@@ -9,6 +9,27 @@ qualified, enabled, installed, or is live. Source catalog membership and an offl
 manifest validation are separate from a running process, native inference, and
 human quality review.
 
+## Historical installed example: October 29
+
+The [accepted Windows release](RELEASE_2026-10-29.md) enabled a bounded Jude
+read-only media-search agent and selected-source story drafting using the
+Qwen2.5-1.5B-Instruct Q4_K_M / llama-cpp-python 0.3.36 runtime,
+CPU two-thread/context 8192/GPU-layer 0 profile. This is a historical shared
+model profile; it does not describe the current source's separate story role.
+It is distinct from caption,
+face and embedding workers and from ASR/TTS services; no provider switch or
+GPU-placement claim for those roles follows from it. Real local speech and
+protected reply audio passed separately. The catalog remains descriptive and
+public examples default off. A future installation must select its own explicit,
+compatible provider and resource configuration; do not download these weights
+or enable a role merely because it appears in this historical record.
+
+The current source defines separate story-refinement and Search/assistant roles.
+See the [story role and privacy contract](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md)
+for their model pins, shared resource profile and native qualification. The new
+roles and related UI are not live because the current Windows rollout was blocked
+before effects. This is not an installed-model inventory or live-runtime check.
+
 ## Inventory and configuration
 
 [`models/catalog.json`](../models/catalog.json) is an offline inventory of provider
@@ -169,6 +190,16 @@ also requires a caller-supplied processing opt-in. Titles use
 Their own URL/model fields and at most 30-second timeout cannot inherit memory
 worker settings. These feature flags are
 independent and the bridge never changes them.
+
+The optional Windows speech bridge flags `--zh-voice` and `--en-voice` select an
+exact installed `zh-CN` or `en-US` System.Speech voice. The bridge checks the
+selected voice on startup and selects it again for each request. An unavailable
+selection refuses synthesis rather than trying a different voice. Omit both
+flags to keep the operating system's default choices. Run `--qualify` to render
+the fixed synthetic phrases in memory, without an HTTP listener. `--check`
+checks the token file only. The local tests exercise child-process request and
+response handling. Windows listening quality and the choice of a live voice
+still need a separate native check.
 
 The source API requires the intended application-host platform explicitly and
 refuses a selected runtime on another host. Schema-1 and native schema-2 runtimes

@@ -30,6 +30,8 @@ const MEMBER='+12025550102';
 let hold=null,abortLogout=false,loseStorySave=false,loseStoryDelete=false;
 let loseFaceSave=false;
 let loseAlbumSave=false;
+let loseOralSection=false;
+const oralSections=[];
 let failNextPath=null,rejectNextDiscoverySearch=false;
 let failNextMoveRefreshPath=null;
 let failNextPlaybackGet=false;
@@ -38,6 +40,8 @@ const playbackOverrides=[];
 let assignmentPosts=0;
 let authorProfileOverride,authorSaveBodies=[];
 const external=[],errors=[],checks=[],browserRequests=[],browserResponses=[];let syntheticFetchMetadata=0;
+let loseSectionReview=false;
+const oralReviewReceipts=[];
 function checkpoint(name){checks.push(name);console.log('PASS '+name);}
 function delayNext(predicate){
   let release,arrived;
@@ -50,7 +54,9 @@ async function context(browser){
   ctx.on('response',response=>{const url=new URL(response.url());if(url.origin==='https://photohouse.test'&&(url.pathname.startsWith('/assets/105/')||url.pathname==='/assets/101/thumbnail')){const headers=response.headers();browserResponses.push({status:response.status(),method:response.request().method(),path:url.pathname+url.search,contentType:headers['content-type']||'',contentRange:headers['content-range']||'',contentLength:headers['content-length']||'',acceptRanges:headers['accept-ranges']||'',etag:headers.etag||''});}});
   await ctx.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
-    browserRequests.push({method:request.method(),path:url.pathname+url.search});
+    const observation={method:request.method(),path:url.pathname+url.search};
+    if(url.pathname==='/library-catalogue')observation.catalogueView=request.headers()['x-photohouse-catalogue-view'];
+    browserRequests.push(observation);
     if(url.origin!=='https://photohouse.test'){external.push(url.origin);await route.abort();return;}
     const galleryThumbnail=/^\/assets\/([1-9][0-9]*)\/thumbnail$/.exec(url.pathname);
     if(request.method()==='GET'&&galleryThumbnail&&failGalleryThumbnailIds.has(galleryThumbnail[1])){await route.fulfill({status:503,headers:{'cache-control':'no-store'},body:''});return;}
@@ -82,6 +88,15 @@ async function context(browser){
     if(request.method()==='POST'&&url.pathname.endsWith('/assignment'))assignmentPosts++;
     if(loseFaceSave&&request.method()==='POST'&&(/\/(assignment|unassign|new-person)$/.test(url.pathname))){loseFaceSave=false;await route.abort();return;}
     if(loseAlbumSave&&request.method()==='POST'&&url.pathname==='/admin/albums'){loseAlbumSave=false;await route.abort();return;}
+    if(request.method()==='POST'&&url.pathname.startsWith('/oral-history/')&&url.pathname.endsWith('/sections')){
+      oralSections.push({id:headers['x-photohouse-request-id'],ordinal:headers['x-photohouse-ordinal'],status:response.status});
+      if(loseOralSection){loseOralSection=false;await route.abort();return;}
+    }
+    if(request.method()==='PUT'&&url.pathname.startsWith('/oral-history/')&&url.pathname.endsWith('/reviewed-text')){
+      oralReviewReceipts.push({status:response.status,
+        revision:response.status===200?JSON.parse(Buffer.from(response.body,'base64')).review_revision:null});
+      if(loseSectionReview&&response.status===200){loseSectionReview=false;await route.abort();return;}
+    }
     if(hold&&hold.predicate(url,request)) {const delayed=hold;hold=null;delayed.arrived();await delayed.gate;}
     const outputHeaders={...response.headers};if(request.method()!=='HEAD')delete outputHeaders['content-length'];delete outputHeaders['content-encoding'];
     try {await route.fulfill({status:response.status,headers:outputHeaders,body:Buffer.from(response.body,'base64')});}
@@ -103,13 +118,548 @@ async function auth(page,phone=MEMBER,code){
   assert.equal(await page.locator('#library').isVisible(),true,await page.locator('#status').textContent());
   await page.locator('.asset').first().waitFor();
 }
+async function videoMomentJourney(page){
+  await mutate('prepared-video-moments');
+  const filters=page.locator('#discovery-panel');
+  if(!await filters.evaluate(element=>element.open))await filters.locator('summary').click();
+  await page.locator('#discovery-media').selectOption('video');
+  const form=page.locator('#video-moments-form');
+  await form.waitFor();
+  await form.locator('input').fill('Second half');
+  await form.locator('button').click();
+  const moment=page.locator('#video-moments-results button');
+  await moment.waitFor();
+  assert.match(await moment.textContent(),/Second half/);
+  let from=browserRequests.length;
+  await moment.click();
+  try{
+    await page.waitForFunction(()=>{
+      const video=document.querySelector('#viewer-media video');
+      return video?.readyState>=1&&!video.seeking&&video.paused&&Math.abs(video.currentTime-.25)<.04;
+    },null,{timeout:5000});
+  }catch(error){
+    const player=await page.evaluate(()=>{
+      const v=document.querySelector('#viewer-media video');
+      return v?{time:v.currentTime,duration:v.duration,ready:v.readyState,seeking:v.seeking,paused:v.paused,error:v.error?.code}:
+        {message:document.getElementById('view-quality').textContent};
+    });
+    throw new Error(JSON.stringify({player,responses:browserResponses.slice(-14)}),{cause:error});
+  }
+  const playback=browserRequests.slice(from).filter(item=>item.path.startsWith('/assets/105/playback?'));
+  assert(playback.some(item=>item.method==='HEAD'));
+  assert(playback.some(item=>item.method==='GET'));
+  assert(playback.every(item=>/^[0-9a-f]{64}$/.test(new URL(item.path,'https://photohouse.test').searchParams.get('playback_revision'))));
+  await page.locator('#close-viewer').click();
+
+  from=browserRequests.length;playbackOverrides.push({status:409,headers:{}});
+  await moment.click();
+  await page.waitForFunction(()=>document.getElementById('view-quality').textContent.includes('has changed'));
+  assert.equal(await page.locator('#viewer-media video').count(),0);
+  assert(browserRequests.slice(from).every(item=>item.method!=='GET'||!item.path.startsWith('/assets/105/playback?')));
+  await page.locator('#close-viewer').click();
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>document.documentElement.style.fontSize='150%');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await moment.screenshot({path:path.join(artifacts,'video-moment-phone.png')});
+  await page.evaluate(()=>document.documentElement.style.fontSize='');
+  await page.setViewportSize({width:1200,height:900});
+  await page.locator('#discovery-media').selectOption('all');
+  await page.locator('#video-moments-panel').waitFor({state:'hidden'});
+  checkpoint('A reviewed video moment seeks to the matched time and refuses stale prepared playback');
+}
+async function captionDecoupling(page,{staleCaptionText='caption-101'}={}){
+  const pixelsReady=async()=>page.waitForFunction(()=>{
+    const image=document.querySelector('#viewer-media .viewer-surface img');
+    return Boolean(image?.complete&&image.naturalWidth>0);
+  },null,{timeout:1500}).then(()=>true,()=>false);
+  const open=async id=>page.locator(`.asset[data-asset-id="${id}"]`).click();
+  const descriptions=page.locator('.ai-descriptions > summary');
+  const captionReads=id=>browserRequests.filter(request=>request.method==='GET'&&
+    request.path.startsWith(`/assets/${id}/captions?`)).length;
+
+  const readsBeforeOpen=captionReads('102');
+  await open('102');
+  assert.equal(await pixelsReady(),true,'photo pixels are available with the description panel collapsed');
+  assert.equal(captionReads('102'),readsBeforeOpen,'a collapsed panel must not request descriptions');
+  let held=delayNext(url=>url.pathname==='/assets/102/captions');
+  try{
+    await descriptions.click();await held.seen;
+    assert.equal(await pixelsReady(),true);
+    assert.deepEqual(await page.locator('#viewer-media .viewer-surface img').evaluate(img=>[img.naturalWidth,img.naturalHeight]),[400,300]);
+    assert.equal(await page.locator('#captions [role="status"]').isVisible(),true);
+  }finally{
+    held.release();
+  }
+  const description102=page.locator('#captions p').filter({hasText:'caption-102'});
+  await description102.waitFor();
+  await descriptions.click();
+  await description102.waitFor({state:'hidden'});
+  await descriptions.click();
+  await description102.waitFor();
+  assert.equal(captionReads('102'),readsBeforeOpen+1,'reopening the same panel reuses the visible description');
+  await page.locator('#close-viewer').click();
+
+  held=delayNext(url=>url.pathname==='/assets/101/captions');
+  await open('101');await descriptions.click();await held.seen;
+  assert.equal(await pixelsReady(),true,'the next photo also renders while its captions are pending');
+  await page.locator('#close-viewer').click();await open('102');
+  await descriptions.click();await description102.waitFor();
+  held.release();await pause(150);
+  assert.match(await page.locator('#viewer-title').textContent(),/102/);
+  assert.equal((await page.locator('#captions').textContent()).includes('caption-102'),true);
+  assert.equal((await page.locator('#captions').textContent()).includes(staleCaptionText),false);
+  await page.locator('#close-viewer').click();
+
+  held=delayNext(url=>url.pathname==='/assets/101/captions');
+  await open('101');await descriptions.click();await held.seen;await page.locator('#close-viewer').click();
+  held.release();await pause(150);
+  assert.equal(await page.locator('#viewer').isVisible(),false);
+  assert.equal(await page.locator('#captions').textContent(),'');
+
+  const readsBeforeRetry=captionReads('102');
+  failNextPath='/assets/102/captions';
+  await open('102');await descriptions.click();
+  const retry=page.getByRole('button',{name:'Retry description',exact:true});
+  await retry.waitFor();
+  assert.equal(await pixelsReady(),true,'an unavailable description must not hide the photo');
+  assert.equal(captionReads('102'),readsBeforeRetry+1);
+  await page.locator('#captions').screenshot({path:path.join(artifacts,'description-retry.png')});
+  await retry.press('Enter');await description102.waitFor();
+  assert.equal(await descriptions.evaluate(summary=>summary===document.activeElement),true);
+  assert.equal(captionReads('102'),readsBeforeRetry+2);
+  await page.locator('#close-viewer').click();
+  assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
+  checkpoint('Descriptions load on demand, retry explicitly, and stay bound to the open photo');
+}
 async function ids(page){return page.locator('.asset-label').allTextContents();}
+async function checkFullscreenPhotoLayout(page){
+  await page.waitForFunction(()=>{
+    const stage=document.getElementById('viewer-media').getBoundingClientRect();
+    const photo=document.querySelector('#viewer-media img').getBoundingClientRect();
+    return stage.x===0&&stage.y===0&&stage.width===innerWidth&&stage.height===innerHeight&&
+      photo.width<=stage.width+1&&photo.height<=stage.height+1&&
+      Math.abs(Math.max(photo.width/stage.width,photo.height/stage.height)-1)<0.002;
+  });
+  assert.equal(await page.locator('#viewer-sequence').isHidden(),true);
+  assert.equal(await page.locator('#viewer-controls').isHidden(),true);
+}
+async function checkFullscreenPhotoTouch(page){
+  const stage=page.locator('#viewer-media'),image=stage.locator('.viewer-surface img');
+  await page.locator('#photo-viewer').evaluate(frame=>Object.defineProperty(frame,'requestFullscreen',{value:undefined,configurable:true}));
+  await page.locator('#view-fullscreen').click();
+  assert.equal(await page.evaluate(()=>document.fullscreenElement),null);
+  await checkFullscreenPhotoLayout(page);
+  const targets=await page.locator('#viewer-fullscreen-controls button:not([hidden])').evaluateAll(buttons=>buttons.map(button=>button.getBoundingClientRect().toJSON()));
+  assert.equal(targets.length,3);
+  assert(targets.every(target=>target.width>=44&&target.height>=44));
+  await page.screenshot({path:path.join(artifacts,'viewer-mobile-fullscreen-fit.png')});
+  const touch=await page.context().newCDPSession(page);
+  try{
+    await touch.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:2});
+    const dispatch=(type,touchPoints)=>touch.send('Input.dispatchTouchEvent',{type,touchPoints});
+    const photoWidth=await image.evaluate(photo=>photo.getBoundingClientRect().width);
+    await dispatch('touchStart',[{x:155,y:420,id:1},{x:235,y:420,id:2}]);
+    await dispatch('touchMove',[{x:82,y:420,id:1},{x:308,y:420,id:2}]);
+    await dispatch('touchEnd',[]);
+    assert(await image.evaluate(photo=>photo.getBoundingClientRect().width)>photoWidth*2,'two touches zoom the photo');
+    assert.equal(await page.evaluate(()=>visualViewport.scale),1,'pinching does not zoom the whole page');
+    const beforePan=await stage.evaluate(element=>element.scrollLeft);
+    await dispatch('touchStart',[{x:210,y:420,id:1}]);
+    await dispatch('touchMove',[{x:155,y:420,id:1}]);
+    await dispatch('touchEnd',[]);
+    assert(await stage.evaluate(element=>element.scrollLeft)>beforePan,'one touch pans the zoomed photo');
+    await page.screenshot({path:path.join(artifacts,'viewer-mobile-fullscreen-pinch.png')});
+  }finally{
+    await touch.send('Emulation.setTouchEmulationEnabled',{enabled:false});
+    await touch.detach();
+  }
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#viewer').evaluate(dialog=>dialog.open),true);
+  assert.equal(await page.locator('#viewer-fullscreen-controls').isHidden(),true);
+  await page.locator('#photo-viewer').evaluate(frame=>delete frame.requestFullscreen);
+}
 let browser;
 (async()=>{
   await ready;
   browser=await chromium.launch({headless:true,
     ...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),
     args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
+  if(process.env.PH_BROWSER_INVITE_LINK==='1'){
+    const ownerContext=await context(browser);await ownerContext.grantPermissions(['clipboard-read','clipboard-write'],{origin:'https://photohouse.test'});
+    await ownerContext.addInitScript(()=>{
+      window.inviteShareCalls=[];
+      Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{
+        window.inviteShareCalls.push({data,activated:navigator.userActivation.isActive});
+        if(window.inviteShareError)throw new DOMException('Generated share refusal',window.inviteShareError);
+      }});
+    });
+    const owner=await ownerContext.newPage();await auth(owner,'+12025550100');
+    await owner.locator('#owner-panel summary').click();await owner.locator('#invite-phone').fill('+12025550103');await owner.locator('#invite-form button[type=submit]').click();
+    await owner.locator('#created-code').waitFor({state:'visible'});
+    const code=await owner.locator('#created-code').inputValue();assert.match(code,/^[a-f0-9]{8}(-[a-f0-9]{8}){3}$/);
+    const beforeCopy=browserRequests.length;await owner.locator('#copy-invite-link').click();
+    const link=await owner.evaluate(()=>navigator.clipboard.readText());
+    assert.equal(link,`https://photohouse.test/ui#invite=${code}`);
+    assert(browserRequests.slice(beforeCopy).length===0,'copy action must not send a request');
+    assert.equal(await owner.evaluate(()=>window.inviteShareCalls.length),0);
+    await owner.setViewportSize({width:390,height:850});
+    const share=owner.locator('#share-invite-link'),beforeShare=browserRequests.length;
+    await share.click();
+    const payloads=await owner.evaluate(()=>window.inviteShareCalls);
+    assert.equal(payloads.length,1);
+    assert.equal(payloads[0].activated,true);
+    assert.deepEqual(Object.keys(payloads[0].data).sort(),['title','url']);
+    assert.equal(payloads[0].data.url,link);
+    await owner.evaluate(()=>{window.inviteShareError='AbortError';});
+    const noticeBeforeCancel=await owner.locator('#status').textContent();
+    await share.click();
+    assert.equal(await owner.locator('#status').textContent(),noticeBeforeCancel);
+    await owner.evaluate(()=>{window.inviteShareError='NotAllowedError';});
+    await share.click();
+    await owner.locator('#status').filter({hasText:/share menu is unavailable|暂时无法打开分享菜单/}).waitFor();
+    assert.equal(await owner.locator('#copy-invite-link').isVisible(),true);
+    assert.equal(await owner.evaluate(()=>navigator.clipboard.readText()),link);
+    assert.equal(browserRequests.slice(beforeShare).length,0,'sharing does not contact PhotoHouse or a third-party service');
+    await owner.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+    assert.equal(await owner.locator('.invite-actions').evaluate(actions=>
+      actions.scrollWidth<=actions.clientWidth&&[...actions.querySelectorAll('button')].every(
+        button=>button.getBoundingClientRect().height>=44)),true);
+    await owner.locator('#invitation-result').screenshot({path:path.join(artifacts,'family-invitation-mobile.png'),
+      mask:[owner.locator('#created-code')],maskColor:'#e9ece9'});
+    checkpoint('Supported browsers offer an explicit native share action, preserving copy after cancellation and unavailability');
+    const joinedContext=await context(browser),joined=await joinedContext.newPage();
+    const beforeOpen=browserRequests.length;await joined.goto(link);await joined.locator('#auth').waitFor({state:'visible'});
+    assert.equal(await joined.evaluate(()=>location.hash),'');assert.equal(await joined.evaluate(()=>location.search),'');
+    assert.equal(await joined.locator('#register-tab').getAttribute('aria-pressed'),'true');
+    assert.equal(await joined.locator('#code').inputValue(),code);assert.equal(await joined.locator('#password').inputValue(),'');
+    assert(!browserRequests.slice(beforeOpen).some(request=>request.method==='POST'&&request.path==='/auth/register'));
+    assert.deepEqual(external,[]);
+    checkpoint('Owner copies a same-origin invitation link only on click; signed-out registration prefill is fragment-scoped and never automatic');
+    const malformed=await joinedContext.newPage();await malformed.goto('https://photohouse.test/ui#invite=not-a-token');await malformed.locator('#auth').waitFor({state:'visible'});
+    await malformed.waitForFunction(()=>location.hash==='');assert.equal(await malformed.locator('#register-tab').getAttribute('aria-pressed'),'false');assert.equal(await malformed.locator('#code').inputValue(),'');
+    const signedIn=await ownerContext.newPage(),signedInStart=browserRequests.length;await signedIn.goto(link);await signedIn.locator('.asset').first().waitFor();
+    assert.equal(await signedIn.evaluate(()=>location.hash),'');assert.equal(await signedIn.locator('#registration-fields').isHidden(),true);assert.equal(await signedIn.locator('#code').inputValue(),'');
+    assert(!browserRequests.slice(signedInStart).some(request=>request.method==='POST'&&request.path==='/auth/register'));
+    await joined.locator('#phone').fill('+12025550103');await joined.locator('#password').fill(PASSWORD);await joined.locator('#name').fill('Synthetic invited member');
+    await joined.locator('#auth-submit').click();await joined.locator('.asset').first().waitFor();
+    assert.equal(await joined.locator('#owner-panel').isVisible(),false);assert.equal(await joined.locator('.asset').count(),2);
+    await owner.evaluate(()=>Object.defineProperty(navigator,'share',{configurable:true,value:undefined}));
+    await owner.locator('#invite-phone').fill('+12025550104');
+    const laterInvitation=owner.waitForResponse(response=>response.request().method()==='POST'&&
+      new URL(response.url()).pathname.endsWith('/invitations'));
+    await owner.locator('#invite-form button[type=submit]').click();
+    assert.equal((await laterInvitation).status(),201);
+    await share.waitFor({state:'hidden'});
+    assert.equal(await owner.locator('#copy-invite-link').isVisible(),true);
+    assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
+    checkpoint('Malformed and signed-in invitation fragments are scrubbed without prefill; explicit phone-bound signup succeeds');
+    await ownerContext.close();await joinedContext.close();return;
+  }
+  if(process.env.PH_BROWSER_ORAL_HISTORY==='1'){
+    const ctx=await context(browser);
+    await ctx.addInitScript(()=>{
+      let processor;
+      window.syntheticMic={opened:0,stopped:0,emit(){
+        const samples=new Float32Array(3200).fill(.03);
+        processor.onaudioprocess({inputBuffer:{getChannelData:()=>samples}});
+      }};
+      const media=navigator.mediaDevices||{};
+      Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:media});
+      Object.defineProperty(media,'getUserMedia',{configurable:true,value:async()=>{
+        window.syntheticMic.opened++;
+        return {getTracks:()=>[{stop(){window.syntheticMic.stopped++;}}]};
+      }});
+      class SyntheticAudioContext{
+        constructor(){this.sampleRate=16000;this.destination={};}
+        createMediaStreamSource(){return {connect(){},disconnect(){}};}
+        createScriptProcessor(){processor={onaudioprocess:null,connect(){},disconnect(){}};return processor;}
+        async resume(){}
+        async close(){}
+      }
+      Object.defineProperty(window,'AudioContext',{configurable:true,value:SyntheticAudioContext});
+    });
+    const page=await ctx.newPage();
+    const title='Synthetic interview';
+    const panel=page.locator('#oral-history-panel'), status=panel.locator('#oral-history-status');
+    const create=panel.locator('#oral-history-create'), active=panel.locator('#oral-history-active');
+    const start=panel.locator('#oral-history-record'), stop=panel.locator('#oral-history-stop');
+    const save=panel.locator('#oral-history-save'), sections=panel.locator('#oral-history-sections');
+    async function openInEnglish(){
+      await page.locator('.asset').first().waitFor();
+      if(await page.locator('html').getAttribute('lang')!=='en')await page.locator('#language').click();
+      await panel.locator('summary').click();
+      await create.waitFor({state:'visible'});
+    }
+    async function recordSection(){
+      await start.click();
+      await stop.waitFor({state:'visible'});
+      await page.evaluate(()=>window.syntheticMic.emit());
+      await stop.click();
+      await save.waitFor({state:'visible'});
+    }
+    await auth(page);
+    assert.equal(await panel.isHidden(),true);
+    assert(!browserRequests.some(request=>request.path.startsWith('/oral-history')||request.path.startsWith('/ui/oral-history.js')));
+    const optIn=await mutate('oral-history-enabled');assert.equal(optIn.ok,true);
+    await page.reload();await openInEnglish();
+    await create.locator('[name=title]').fill(title);
+    await create.locator('[name=subject]').fill('Synthetic subject');
+    await create.locator('[name=narrator]').fill('Synthetic narrator');
+    const before=browserRequests.length;
+    await create.locator('button').click();
+    assert.equal(browserRequests.slice(before).filter(r=>r.method==='POST'&&r.path.startsWith('/oral-history')).length,0);
+    await create.locator('[name=retention]').check();
+    assert.equal(await create.locator('[name=processing]').isChecked(),false);
+    await create.locator('[name=processing]').check();
+    await create.locator('button').click();await active.waitFor({state:'visible'});
+    assert.equal(await page.evaluate(()=>window.syntheticMic.opened),0);
+    await recordSection();
+    assert.equal(oralSections.length,0);
+    const preview=panel.locator('#oral-history-preview');
+    assert.match(await preview.getAttribute('src'),/^blob:https:\/\/photohouse\.test\//);
+    assert.equal(await preview.evaluate(audio=>audio.paused),true);
+    await page.setViewportSize({width:390,height:850});
+    await panel.screenshot({path:path.join(artifacts,'oral-history-section-review.png')});
+    loseOralSection=true;await save.click();
+    await status.getByText('The server did not confirm this action. Try the same action again.').waitFor();
+    await save.click();await sections.getByText('Saved sections · 1').waitFor();
+    assert.equal(await preview.getAttribute('src'),null);
+    assert.equal(oralSections.length,2);
+    assert.deepEqual(oralSections[0],oralSections[1]);
+    assert.equal(oralSections[1].status,200);
+    assert.equal(await page.evaluate(()=>window.syntheticMic.stopped),1);
+    checkpoint('Oral history requires retention consent, records only on click, and retries the exact section after a lost reply');
+    await page.reload();await openInEnglish();
+    await panel.getByRole('button',{name:title}).click();
+    await sections.getByText('Saved sections · 1').waitFor();
+    await start.click();await stop.waitFor({state:'visible'});
+    await page.evaluate(()=>{
+      window.syntheticMic.emit();
+      Object.defineProperty(document,'hidden',{configurable:true,value:true});
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.waitForFunction(()=>window.syntheticMic.stopped===1);
+    assert.equal(await active.isHidden(),true);
+    assert.equal(oralSections.length,2);
+    await page.evaluate(()=>{
+      Object.defineProperty(document,'hidden',{configurable:true,value:false});
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await openInEnglish();await panel.getByRole('button',{name:title}).click();
+    await sections.getByText('Saved sections · 1').waitFor();
+    await recordSection();await save.click();
+    await sections.getByText('Saved sections · 2').waitFor();
+    assert.equal(oralSections[2].ordinal,'1');
+    await panel.locator('#oral-history-finish').click();
+    await status.getByText('Recording finished. The saved audio stays private.').waitFor();
+    assert.equal(await active.isHidden(),true);
+    assert.equal(await panel.getByRole('button',{name:title}).count(),0);
+    checkpoint('Reload discovers the author’s unfinished recording and finishes on the correct next section');
+
+    await page.reload();await openInEnglish();
+    const readbackStart=browserRequests.length;
+    await panel.getByRole('button',{name:'Review finished recordings'}).click();
+    await panel.getByRole('button',{name:title}).click();
+    const review=panel.locator('#oral-history-review');
+    const sectionPicker=review.getByLabel('Recorded section');
+    const player=review.getByLabel('Play the saved section');
+    const loadAudio=review.getByRole('button',{name:'Load audio'});
+    const loadTranscript=review.getByRole('button',{name:'Transcribe locally'});
+    const transcript=review.locator('#oral-history-transcript');
+    const transcriptText='We saw a heron by the lake. <private draft>';
+    const transcriptRead=entry=>entry.method==='POST'&&entry.path.startsWith('/oral-history/')&&entry.path.endsWith('/transcription');
+    const reviewedWrite=entry=>entry.method==='PUT'&&entry.path.endsWith('/reviewed-text');
+    const reviewedText=review.getByLabel('Your reviewed text');
+    const reviewedWords='We spotted a heron beside the lake.';
+    await review.waitFor({state:'visible'});
+    assert.equal(await review.locator('#oral-history-review-attribution').textContent(),
+      'Narrated by Synthetic narrator · About Synthetic subject');
+    assert.deepEqual(await sectionPicker.locator('option').allTextContents(),
+      ['Section 1 · 0:00','Section 2 · 0:00.200']);
+    const audioRead=entry=>entry.method==='GET'&&entry.path.startsWith('/oral-history/')&&/\/sections\/\d+$/.test(entry.path);
+    assert.equal(browserRequests.slice(readbackStart).filter(audioRead).length,0);
+    await sectionPicker.selectOption('1');await loadAudio.click();
+    await status.getByText('Audio ready to play.').waitFor();
+    assert.equal(browserRequests.slice(readbackStart).filter(audioRead).length,1);
+    assert.match(browserRequests.slice(readbackStart).find(audioRead).path,/\/sections\/1$/);
+    assert.equal(await player.evaluate(audio=>audio.paused),true);
+    assert.equal(await player.evaluate(async audio=>{audio.muted=true;await audio.play();audio.pause();return audio.duration;}),0.2);
+    assert.equal(browserRequests.slice(readbackStart).filter(transcriptRead).length,0);
+    await loadTranscript.click();
+    await status.getByText('A draft transcript is ready to review.').waitFor();
+    assert.equal(await transcript.locator('#oral-history-transcript-text').textContent(),transcriptText);
+    assert.equal(await transcript.locator('private').count(),0);
+    assert.equal(browserRequests.slice(readbackStart).filter(transcriptRead).length,1);
+    assert.match(browserRequests.slice(readbackStart).find(transcriptRead).path,/\/sections\/1\/transcription$/);
+    assert.equal(await player.evaluate(audio=>audio.paused),true);
+    await review.getByRole('button',{name:'Review text',exact:true}).press('Enter');
+    await reviewedText.waitFor();
+    assert.equal(await reviewedText.inputValue(),transcriptText);
+    assert.equal(await reviewedText.evaluate(field=>document.activeElement===field),true);
+    await reviewedText.fill(reviewedWords);
+    page.once('dialog',dialog=>{void dialog.dismiss();});
+    await sectionPicker.selectOption('0');
+    assert.equal(await sectionPicker.inputValue(),'1');
+    assert.equal(await reviewedText.inputValue(),reviewedWords);
+    assert.equal(browserRequests.slice(readbackStart).filter(reviewedWrite).length,0);
+    const saveReviewed=review.getByRole('button',{name:'Save reviewed text privately'});
+    loseSectionReview=true;
+    await saveReviewed.click();
+    await status.getByText('The server did not confirm this action. Try the same action again.').waitFor();
+    assert.equal(browserRequests.slice(readbackStart).filter(reviewedWrite).length,1);
+    assert.equal(await reviewedText.inputValue(),reviewedWords);
+    await saveReviewed.click();
+    await status.getByText('Reviewed text saved for this section.').waitFor();
+    assert.equal(browserRequests.slice(readbackStart).filter(reviewedWrite).length,2);
+    assert.deepEqual(oralReviewReceipts,[{status:200,revision:1},{status:200,revision:1}]);
+    assert.match(browserRequests.slice(readbackStart).find(reviewedWrite).path,/\/sections\/1\/reviewed-text$/);
+    assert.equal(await transcript.locator('#oral-history-transcript-text').textContent(),transcriptText);
+    await page.setViewportSize({width:390,height:850});
+    await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+    assert.equal(await reviewedText.evaluate(field=>{
+      const area=field.getBoundingClientRect(), parent=field.parentElement.getBoundingClientRect();
+      return area.width>parent.width-2&&area.right<=innerWidth&&
+        document.querySelector('#oral-history-save-text').getBoundingClientRect().height>=44;
+    }),true);
+    await panel.screenshot({path:path.join(artifacts,'oral-history-completed-review.png')});
+    await sectionPicker.selectOption('0');
+    assert.equal(await player.getAttribute('src'),null);
+    assert.equal(await transcript.isHidden(),true);
+    assert.equal(await transcript.locator('#oral-history-transcript-text').textContent(),'');
+    assert.equal(await reviewedText.isHidden(),true);
+    const held=delayNext((url,req)=>req.method()==='GET'&&url.pathname.startsWith('/oral-history/')&&url.pathname.endsWith('/sections/0'));
+    try{
+      await loadAudio.click();await held.seen;
+      await panel.locator('summary').click();
+      await page.waitForFunction(()=>document.getElementById('oral-history-playback').getAttribute('src')===null&&
+        document.getElementById('oral-history-review-title').textContent==='');
+    }finally{held.release();}
+    await openInEnglish();
+    assert.equal(await player.getAttribute('src'),null);
+    assert.equal(await review.isHidden(),true);
+    await panel.getByRole('button',{name:'Review finished recordings'}).click();
+    await panel.getByRole('button',{name:title}).click();
+    const lateTranscript=delayNext((url,req)=>req.method()==='POST'&&url.pathname.endsWith('/sections/0/transcription'));
+    try{
+      await loadTranscript.click();await lateTranscript.seen;
+      await panel.locator('summary').click();
+      await page.waitForFunction(()=>document.getElementById('oral-history-review-title').textContent==='');
+    }finally{lateTranscript.release();}
+    await openInEnglish();
+    assert.equal(await review.isHidden(),true);
+    assert.equal(await transcript.isHidden(),true);
+    assert.equal(await transcript.locator('#oral-history-transcript-text').textContent(),'');
+    assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),title),false);
+    assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),transcriptText),false);
+    await panel.getByRole('button',{name:'Review finished recordings'}).click();
+    const lateTimeline=delayNext((url,req)=>req.method()==='GET'&&url.pathname.endsWith('/timeline'));
+    try{
+      await panel.getByRole('button',{name:title}).click();await lateTimeline.seen;
+      await panel.locator('summary').click();
+    }finally{lateTimeline.release();}
+    await openInEnglish();
+    assert.equal(await review.isHidden(),true);
+    assert.equal(await review.locator('#oral-history-review-attribution').textContent(),'');
+    await page.reload();await openInEnglish();
+    const reopenedReviewStart=browserRequests.length;
+    await panel.getByRole('button',{name:'Review finished recordings'}).click();
+    await panel.getByRole('button',{name:title}).click();
+    await sectionPicker.selectOption('1');
+    await review.getByRole('button',{name:'Review text',exact:true}).click();
+    await reviewedText.waitFor();
+    assert.equal(await reviewedText.inputValue(),reviewedWords);
+    assert.equal(browserRequests.slice(reopenedReviewStart).filter(transcriptRead).length,0);
+    assert.equal(browserRequests.slice(reopenedReviewStart).filter(reviewedWrite).length,0);
+    assert.equal(await page.evaluate(expected=>JSON.stringify({...localStorage,...sessionStorage}).includes(expected),reviewedWords),false);
+    assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
+    checkpoint('Recording review identifies the narrator and subject and shows verified elapsed offsets. Late timelines are discarded after close');
+    checkpoint('Finished sections survive reload, load only on click, decode without autoplay, and are cleared when review closes');
+    checkpoint('Explicit local transcription shows only the chosen machine draft and clears it on section changes and late responses after close');
+    checkpoint('Author separately reviews and saves text for the selected section; reload recovers it without rerunning ASR or rewriting audio');
+    await ctx.close();return;
+  }
+  if(process.env.PH_BROWSER_VIDEO_MOMENTS==='1'){
+    const ctx=await context(browser),page=await ctx.newPage();
+    await auth(page);await mutate('prepared-video-unavailable');
+    await videoMomentJourney(page);
+    assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
+    await ctx.close();return;
+  }
+  if(process.env.PH_BROWSER_CAPTION_DECOUPLE==='1'){
+    const ctx=await context(browser),page=await ctx.newPage();
+    await auth(page);
+    await captionDecoupling(page);
+    await ctx.close();return;
+  }
+  if(process.env.PH_BROWSER_MEDIA_FULLSCREEN==='1'){
+    const ctx=await context(browser),page=await ctx.newPage();
+    await auth(page);
+    const openAsset=async id=>{
+      await page.locator(`.asset[data-asset-id="${id}"]`).click();
+      await page.locator('#photo-viewer').waitFor({state:'visible'});
+    };
+    const image=page.locator('#viewer-media .viewer-surface img');
+    await openAsset('102');
+    await image.evaluate(element=>element.decode());
+    await page.locator('#view-fullscreen').click();
+    await page.waitForFunction(()=>document.fullscreenElement?.id==='photo-viewer');
+    await checkFullscreenPhotoLayout(page);
+    assert.equal(await page.locator('#view-full-previous').isDisabled(),true);
+    await page.locator('#view-full-next').click();
+    await page.waitForFunction(()=>document.getElementById('viewer-title').textContent.includes('101'));
+    await image.evaluate(element=>element.decode());
+    assert.equal(await page.locator('#view-full-next').isDisabled(),true);
+    await checkFullscreenPhotoLayout(page);
+    await page.screenshot({path:path.join(artifacts,'viewer-desktop-fullscreen.png')});
+    await page.locator('#view-full-previous').click();
+    await page.waitForFunction(()=>document.getElementById('viewer-title').textContent.includes('102'));
+    await image.evaluate(element=>element.decode());
+    await page.locator('#view-full-exit').click();
+    await page.waitForFunction(()=>!document.fullscreenElement&&document.activeElement?.id==='view-fullscreen');
+    checkpoint('Native photo fullscreen fills the screen, preserves image fit, and keeps bounded navigation and focus');
+    await page.setViewportSize({width:390,height:844});
+    await checkFullscreenPhotoTouch(page);
+    await page.locator('#close-viewer').click();
+    checkpoint('Phone viewport fallback fills the display; real touch events pinch the photo and pan without page zoom');
+    await mutate('prepared-video-unavailable');
+    await page.locator('#refresh').click();
+    await openAsset('105');
+    await page.locator('#viewer-media').getByRole('button',{name:'Retry video'}).waitFor();
+    assert.equal(await page.locator('#view-video-fullscreen').isHidden(),true);
+    await page.locator('#close-viewer').click();
+    await mutate('prepared-video-ready');
+    const playbackPath='/assets/105/playback';
+    const detailPath='/assets/detail/105';
+    const preparedFrom=browserRequests.length;
+    const heldDetail=delayNext(url=>url.pathname===detailPath);
+    const readiness=page.waitForResponse(response=>response.request().method()==='HEAD'&&
+      new URL(response.url()).pathname===playbackPath,{timeout:2500}).then(response=>response.status(),()=>null);
+    try{
+      await openAsset('105');await heldDetail.seen;
+      assert.equal(await readiness,200,'the protected readiness request should complete while asset detail is held');
+      assert.equal(await page.locator('#viewer-media video').count(),0);
+      assert(!browserRequests.slice(preparedFrom).some(request=>request.method==='GET'&&request.path.startsWith(playbackPath)));
+    }finally{
+      heldDetail.release();
+    }
+    const video=page.locator('#viewer-media video');
+    await page.locator('#view-video-fullscreen').click();
+    await page.waitForFunction(()=>document.fullscreenElement===document.querySelector('#viewer-media video'));
+    await video.evaluate(async player=>{player.muted=true;await player.play();});
+    await page.waitForFunction(()=>document.querySelector('#viewer-media video').currentTime>0);
+    await page.screenshot({path:path.join(artifacts,'viewer-native-video-fullscreen.png')});
+    await page.evaluate(()=>document.exitFullscreen());
+    assert.equal(await page.locator('#viewer').evaluate(dialog=>dialog.open),true);
+    assert(browserRequests.some(request=>request.method==='HEAD'&&request.path.startsWith('/assets/105/playback?')));
+    assert(browserRequests.some(request=>request.method==='GET'&&request.path.startsWith('/assets/105/playback?')));
+    assert(!browserRequests.some(request=>request.method==='GET'&&/^\/assets\/(101|102|105)\/(media|original)\b/.test(request.path)));
+    assert.deepEqual(external,[]);
+    assert.deepEqual(errors,[]);
+    checkpoint('Prepared video readiness overlaps the exact detail read; playback waits for both checks');
+    checkpoint('Prepared video plays in native fullscreen; unavailable video offers retry through the protected route');
+    await ctx.close();
+    return;
+  }
   if(process.env.PH_BROWSER_STORY_AUTHOR_DEFAULTS==='1'){
     const ctx=await context(browser),owner=await ctx.newPage();
     await mutate('story-author-chosen-name');await auth(owner,'+12025550100');
@@ -181,6 +731,8 @@ let browser;
   await page.locator('#auth').waitFor({state:'visible'});
   assert.match(shell.headers()['content-security-policy'],/frame-ancestors 'none'/);
   assert.equal(await page.locator('.asset').count(),0);
+  const deferredPanel=/^\/ui\/(?:story-workspace|story-draft-store|memory-community|memory-groups|assistant-private-workspace)\.js(?:\?|$)/;
+  assert(!browserRequests.some(row=>deferredPanel.test(row.path)),'sign-in does not download deferred panels');
   await page.screenshot({path:path.join(artifacts,'sign-in-desktop.png'),fullPage:true});
   checkpoint('Public sign-in shell has CSP and no anonymous photos');
   assert.equal(await page.locator('html').getAttribute('lang'),'zh-CN');
@@ -191,7 +743,22 @@ let browser;
   assert.match(await page.locator('.paper-stack').textContent(),/OUR EVERYDAY/);
   assert.match(await page.locator('#phone-help').textContent(),/China \(\+86\)/);
   await mutate('china-login');
-  await auth(page,'10000000000');
+  const galleryStart=browserRequests.length,assistantStartup=delayNext(url=>url.pathname==='/assistant/v1/capabilities');
+  try {
+    await auth(page,'10000000000');
+    await page.locator('#memory-home').waitFor({state:'visible'});
+    const startup=browserRequests.slice(galleryStart);
+    assert.equal(startup.find(row=>row.path==='/library-catalogue')?.catalogueView,'navigation');
+    const galleryRequest=startup.findIndex(row=>/^\/(?:photo-stacks\/gallery|assets)\?/.test(row.path));
+    assert(galleryRequest>=0);
+    assert(startup.findIndex(row=>deferredPanel.test(row.path))>galleryRequest);
+    assert(!startup.some(row=>/^\/(?:ui\/(?:memory-groups|assistant-private-workspace)\.js|assistant\/v1\/capabilities)/.test(row.path)));
+    await page.locator('#assistant-panel > summary').click();
+    await assistantStartup.seen;
+    assert(await page.locator('#grid .asset button').first().isEnabled());
+  } finally {assistantStartup.release();}
+  await page.locator('#assistant-panel > summary').click();
+  checkpoint('Gallery is ready while Assistant waits, and story code starts after the gallery');
   assert.equal(await page.locator('#account-label').textContent(),'+8610000000000');
   await page.waitForFunction(()=>!document.getElementById('auth-submit').disabled);
   const logoutResponse=page.waitForResponse(response=>response.url().endsWith('/auth/logout'));await page.locator('#logout').click();await logoutResponse;await page.locator('#auth').waitFor({state:'visible'});
@@ -207,17 +774,20 @@ let browser;
   await auth(page);
   assert.equal(await page.locator('.asset').count(),2);
   const photoFallback=page.locator('.asset[data-asset-id="101"]'),photoThumbImage=photoFallback.locator('img');
-  await photoFallback.locator('.asset-preview-fallback').waitFor({state:'visible'});
+  const photoFallbackMessage=photoFallback.locator('.asset-preview-fallback');
+  await photoFallbackMessage.waitFor({state:'visible'});
   assert.equal(await photoThumbImage.isVisible(),false,'failed photo thumbnail hides the broken image');
-  assert.equal(await photoFallback.locator('.asset-preview-fallback').textContent(),'Preview unavailable');
-  assert.equal((await photoFallback.locator('span').allTextContents()).at(-1),'Photo 101 · 2026-01-01','preview fallback preserves the photo label');
-  assert.equal(await page.getByRole('button',{name:/Preview unavailable.*Photo 101/}).count(),1,'photo card has one screen-reader title plus the visible fallback');
+  assert.equal(await photoFallbackMessage.textContent(),'Preview unavailable');
+  assert.equal(await photoFallback.locator('.asset-label').textContent(),'Photo 101 · 2026-01-01','preview fallback preserves the photo label');
+  const photoOpen=photoFallback.getByRole('button',{name:'Photo 101 · 2026-01-01',exact:true});
+  assert.equal(await photoOpen.getAttribute('aria-describedby'),await photoFallbackMessage.getAttribute('id'),'photo button describes the visible fallback');
   await page.evaluate(()=>{const image=document.querySelector('.asset[data-asset-id="101"] img');window.__galleryPreviewEvents={initial:{src:image.getAttribute('src'),complete:image.complete,naturalWidth:image.naturalWidth},reassignments:[]};new MutationObserver(records=>{for(const record of records)if(record.type==='attributes')window.__galleryPreviewEvents.reassignments.push(image.getAttribute('src'));}).observe(image,{attributes:true,attributeFilter:['src']});});
   await pause(150);const photoPreviewEvents=await page.evaluate(()=>window.__galleryPreviewEvents);assert(photoPreviewEvents.initial.src.endsWith('/assets/101/thumbnail?library=family-a')&&photoPreviewEvents.initial.complete&&photoPreviewEvents.initial.naturalWidth===0,'current card image records the synthetic failure');assert.equal(photoPreviewEvents.reassignments.length,0,'failed thumbnail source is not reassigned by the product; browser-native retries do not count as app retries');
   const photoFailureResponses=browserResponses.slice(photoThumbResponsesBefore).filter(item=>item.method==='GET'&&item.path.startsWith('/assets/101/thumbnail'));assert(photoFailureResponses.length>=1,'synthetic thumbnail request reached Edge');assert(photoFailureResponses.every(item=>item.status===503),'persistent fixture rejects any stale or current thumbnail request');
   await page.waitForFunction(()=>!document.getElementById('auth-submit').disabled);
-  const photoOpenStart=browserRequests.length;await photoFallback.focus();assert(await photoFallback.evaluate(node=>node===document.activeElement),'photo card receives desktop keyboard focus');await photoFallback.press('Enter');
+  const photoOpenStart=browserRequests.length;await photoOpen.focus();assert(await photoOpen.evaluate(node=>node===document.activeElement),'photo button receives desktop keyboard focus');await photoOpen.press('Enter');
   await page.locator('#viewer').waitFor({state:'visible'});assert((await page.locator('#viewer-title').textContent()).includes('101'),'fallback card remains keyboard-openable');
+  assert(await page.locator('#viewer-story-pick').isHidden(),'the standard gallery viewer has no story-selection action');
   assert.equal(browserRequests.slice(photoOpenStart).some(item=>item.path==='/assets/101/original?library=family-a'),false,'opening a failed preview does not fetch the original');
   await page.locator('#close-viewer').click();
   await page.screenshot({path:path.join(artifacts,'gallery-preview-fallback-desktop.png'),fullPage:true});
@@ -226,6 +796,7 @@ let browser;
   await page.locator('.asset[data-asset-id="101"] .asset-preview-fallback').waitFor({state:'visible'});
   await page.setViewportSize({width:390,height:844});await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
   assert.equal(await page.locator('.asset[data-asset-id="101"] .asset-preview-fallback').textContent(),'预览暂不可用');
+  assert.equal(await photoFallback.locator('.asset-open').getAttribute('aria-describedby'),await photoFallbackMessage.getAttribute('id'),'the rerendered Chinese fallback stays associated');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Chinese large-text gallery fits a narrow viewport');
   const fallbackFontSize=await page.locator('.asset[data-asset-id="101"] .asset-preview-fallback').evaluate(node=>({size:parseFloat(getComputedStyle(node).fontSize),root:parseFloat(getComputedStyle(document.documentElement).fontSize)}));assert(fallbackFontSize.size>=fallbackFontSize.root,'fallback text follows root text size: '+JSON.stringify(fallbackFontSize));
   const mobileFallbackHeight=await page.locator('.asset[data-asset-id="101"] .asset-preview-fallback').evaluate(node=>node.getBoundingClientRect().height);
@@ -285,28 +856,22 @@ let browser;
   await mutate('caption-html');
   const importedNotesStart=browserRequests.length;
   await page.locator('.asset').filter({hasText:'101'}).click();
-  await page.locator('#captions p').waitFor({state:'attached'});
+  const memberDescriptions=page.locator('#viewer-descriptions');
+  await memberDescriptions.locator('summary').waitFor();
+  assert.equal(await memberDescriptions.getAttribute('open'),null);
+  assert.equal(browserRequests.slice(importedNotesStart).some(item=>item.path.startsWith('/assets/101/captions?')),false);
+  await memberDescriptions.locator('summary').click();
+  await page.locator('#captions p').waitFor();
   assert.equal(browserRequests.slice(importedNotesStart).some(item=>item.path==='/assets/detail/101?library=family-a&upload_notes=1'),true);
   assert.equal(browserRequests.slice(importedNotesStart).some(item=>item.path.startsWith('/upload-annotations?')),false);
   assert.match(await page.locator('#captions').textContent(),/<img src=x/);
   assert.equal(await page.locator('#captions img').count(),0);assert.equal(await page.evaluate(()=>window.syntheticXSS),undefined);
+  assert.equal(await page.locator('#captions form').count(),0,'existing captions leave the one-time form unavailable');
   assert.equal(await page.locator('#original').isVisible(),false);
   assert.equal(await page.locator('#face-panel').isVisible(),false);
   await page.locator('#close-viewer').click();
   checkpoint('Captions render as text and viewer cannot download originals');
-  const oldViewer=delayNext(url=>url.pathname==='/assets/101/captions');
-  await page.locator('.asset').filter({hasText:'101'}).click();await oldViewer.seen;
-  await page.locator('#close-viewer').click();await page.locator('.asset').filter({hasText:'102'}).click();
-  await page.locator('#captions p').waitFor({state:'attached'});oldViewer.release();await pause(150);
-  assert.equal(await page.locator('#captions p').textContent(),'caption-102');
-  // The describe control is offered only where a photo has no description, and every fixture
-  // asset has one, so opening this photo must show its caption and no form. The write path
-  // itself is covered by the source tests; this only pins that the control is not offered
-  // where the route would refuse it.
-  assert.equal(await page.locator('#captions form').count(),0);
-  assert.equal(await page.locator('#captions input').count(),0);
-  await page.locator('#close-viewer').click();
-  checkpoint('Delayed closed viewer cannot overwrite a newer asset');
+  await captionDecoupling(page,{staleCaptionText:'<img src=x'});
   await page.setViewportSize({width:390,height:844});await page.locator('#language').click();
   await page.locator('.asset').first().waitFor();assert.equal(await page.locator('#logout').textContent(),'退出登录');
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -412,14 +977,21 @@ let browser;
   await photoStage.evaluate(s=>{const r=s.getBoundingClientRect();for(let i=0;i<20;i++)s.dispatchEvent(new WheelEvent('wheel',{deltaY:1000,clientX:r.left+r.width/2,clientY:r.top+r.height/2,cancelable:true}));});
   assert.equal(await owner.locator('#view-scale').textContent(),'1%');assert.equal(await owner.locator('#view-out').isDisabled(),true);
   await photoStage.focus();await photoStage.press('0');assert.equal(await owner.locator('#view-fit').getAttribute('aria-pressed'),'true');
-  await owner.locator('#view-fullscreen').click();await owner.waitForFunction(()=>document.fullscreenElement?.id==='photo-viewer');await owner.waitForFunction(()=>document.getElementById('view-fullscreen').textContent.includes('Exit fullscreen'));
+  await owner.locator('#view-fullscreen').click();
+  await owner.waitForFunction(()=>document.fullscreenElement?.id==='photo-viewer');
+  await checkFullscreenPhotoLayout(owner);
   await owner.screenshot({path:path.join(artifacts,'viewer-desktop-fullscreen.png')});
-  await owner.locator('#view-fullscreen').click();await owner.waitForFunction(()=>!document.fullscreenElement);
+  await owner.locator('#view-full-exit').click();
+  await owner.waitForFunction(()=>!document.fullscreenElement&&!document.getElementById('viewer').hasAttribute('data-view-presentation'));
+  await owner.waitForFunction(()=>document.getElementById('view-fullscreen')===document.activeElement);
   await owner.locator('#close-viewer').click();await owner.locator('.asset').filter({hasText:'102'}).click();await owner.locator('#photo-viewer').waitFor({state:'visible'});await photoStage.locator('.viewer-surface img').evaluate(img=>img.decode());
   assert.equal(await owner.locator('#view-fit').getAttribute('aria-pressed'),'true');assert.equal(await owner.locator('#view-scale').textContent(),`${await owner.evaluate(()=>{const s=document.getElementById('viewer-media'),i=s.querySelector('img');return Math.round(Math.min(s.clientWidth/i.naturalWidth,s.clientHeight/i.naturalHeight)*100);})}%`);
   await owner.locator('#close-viewer').click();await owner.setViewportSize({width:390,height:844});await owner.locator('#language').click();await owner.locator('.asset').filter({hasText:'102'}).click();await owner.locator('#photo-viewer').waitFor({state:'visible'});await photoStage.locator('.viewer-surface img').evaluate(img=>img.decode());
   assert(await owner.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert(await owner.locator('#viewer').evaluate(d=>d.scrollWidth<=d.clientWidth));
-  await owner.screenshot({path:path.join(artifacts,'viewer-mobile-zh.png')});await owner.locator('#close-viewer').click();await owner.locator('#language').click();await owner.setViewportSize({width:1200,height:900});await owner.locator('.asset').filter({hasText:'102'}).click();await owner.locator('#face-panel summary').click();
+  await owner.screenshot({path:path.join(artifacts,'viewer-mobile-zh.png')});
+  await checkFullscreenPhotoTouch(owner);
+  assert.equal(await owner.locator('#view-full-exit').getAttribute('aria-label'),'退出全屏');
+  await owner.locator('#close-viewer').click();await owner.locator('#language').click();await owner.setViewportSize({width:1200,height:900});await owner.locator('.asset').filter({hasText:'102'}).click();await owner.locator('#face-panel summary').click();
   checkpoint('Viewer fit modes preserve aspect ratio, native actual pixels, bounded zoom/pan, fullscreen, reset and narrow Chinese layout');
 
   const face=owner.locator('[data-face-id="200"]');await face.waitFor();
@@ -559,7 +1131,7 @@ let browser;
   await owner.locator('#language').click();await owner.setViewportSize({width:1200,height:900});await owner.locator('.asset').first().waitFor();
   checkpoint('Album stale edits are refused; empty albums retain ownership; Chinese mobile editor fits');
   await owner.locator('#owner-panel summary').click();
-  await owner.locator('#invite-phone').fill('+12025550103');await owner.locator('#invite-form button').click();
+  await owner.locator('#invite-phone').fill('+12025550103');await owner.locator('#invite-form button[type=submit]').click();
   await owner.locator('#created-code').waitFor({state:'visible'});
   const code=await owner.locator('#created-code').inputValue();assert.match(code,/^[a-f0-9]{8}(-[a-f0-9]{8}){3}$/);
   const joinedContext=await context(browser),joined=await joinedContext.newPage();await auth(joined,'+12025550103',code);
@@ -582,10 +1154,24 @@ let browser;
   assert.equal(await joined.locator('.asset').count(),0);
   checkpoint('Owner revocation requires fresh review and stops the member next read');
   await owner.locator('#owner-panel summary').click();
-  await owner.locator('#invite-phone').fill('+12025550104');await owner.locator('#invite-form button').click();
+  await owner.locator('#invite-phone').fill('+12025550104');await owner.locator('#invite-form button[type=submit]').click();
   await owner.waitForFunction(previous=>document.getElementById('created-code').value!==previous,code);
-  const cancelled=await owner.locator('#created-code').inputValue();await owner.locator('#cancel-invite').click();
-  await owner.locator('#invitation-result').waitFor({state:'hidden'});
+  const cancelled=await owner.locator('#created-code').inputValue();
+  const returningOwner=await owner.context().newPage();
+  await returningOwner.setViewportSize({width:390,height:844});
+  await returningOwner.goto('https://photohouse.test/ui');
+  await returningOwner.locator('#owner-panel summary').waitFor({state:'visible'});
+  await returningOwner.locator('#owner-panel summary').click();
+  const cancelPending=returningOwner.locator('#cancel-invite-phone');
+  await cancelPending.waitFor({state:'visible'});
+  assert.equal(await returningOwner.locator('#created-code').inputValue(),'');
+  await returningOwner.locator('#invite-phone').fill('+1 (202) 555-0104');
+  const cancellation=returningOwner.waitForResponse(response=>
+    new URL(response.url()).pathname==='/libraries/family-a/invitations/cancel'&&response.request().method()==='POST');
+  await cancelPending.click();
+  assert.equal((await cancellation).status(),200);
+  await returningOwner.waitForFunction(()=>/cancelled|已撤销/.test(document.getElementById('status').textContent));
+  await returningOwner.close();
   await joined.locator('#logout').click();await joined.locator('#auth').waitFor({state:'visible'});
   await joined.setViewportSize({width:390,height:844});
   await joined.locator('#register-tab').click();await joined.locator('#phone').fill('+12025550104');await joined.locator('#password').fill(PASSWORD);await joined.locator('#name').fill('Cancelled invite member');await joined.locator('#code').fill(cancelled);await joined.locator('#auth-submit').click();
@@ -597,7 +1183,7 @@ let browser;
   assert(authButtonBox&&authFeedbackBox&&authFeedbackBox.y>=authButtonBox.y&&authFeedbackBox.y<844);
   await joined.screenshot({path:path.join(artifacts,'registration-error-mobile.png'),fullPage:true});
   assert.equal(await joined.locator('.asset').count(),0);
-  checkpoint('Cancelled invitation cannot register or disclose photos');
+  checkpoint('An owner returning without the link can cancel it by phone; the old link cannot register or disclose photos');
   await joined.locator('#language').click();
   assert.match(await joined.locator('#auth-feedback').textContent(),/无法确认/);
   await joined.locator('#login-tab').click();
@@ -785,10 +1371,14 @@ let browser;
   checkpoint('Gallery sequence exposes current-page order, position, and previous/next bounds');
   await page.locator('#view-actual').click();
   await page.locator('#view-fullscreen').click();await page.waitForFunction(()=>document.fullscreenElement?.id==='photo-viewer');
-  await page.locator('#view-next').click();await page.locator('.viewer-surface img').evaluate(img=>img.decode());
+  await page.locator('#view-full-next').click();await page.locator('.viewer-surface img').evaluate(img=>img.decode());
   assert.equal(await page.evaluate(()=>document.fullscreenElement?.id),'photo-viewer');
   assert.equal(await page.locator('#view-fit').getAttribute('aria-pressed'),'true');
-  await page.locator('#view-fullscreen').click();await page.waitForFunction(()=>!document.fullscreenElement);
+  assert.equal(await page.locator('#view-full-next').isDisabled(),true);
+  await page.locator('#view-full-previous').click();await page.locator('.viewer-surface img').evaluate(img=>img.decode());
+  assert.equal(await page.locator('#view-full-previous').isDisabled(),true);
+  await page.locator('#view-full-next').click();await page.locator('.viewer-surface img').evaluate(img=>img.decode());
+  await page.locator('#view-full-exit').click();await page.waitForFunction(()=>!document.fullscreenElement);
   checkpoint('Manual navigation resets fit mode and retains fullscreen across a step');
   // The filmstrip mirrors the legacy strip over the same loaded order, and reuses the
   // gallery grid's already-authorized 256 URL rather than escalating to a larger variant.
@@ -800,11 +1390,15 @@ let browser;
   assert.equal(await filmstrip.locator('button').first().getAttribute('aria-label'),'Photo 1 / 2');
   await filmstrip.locator('img').first().evaluate(img=>img.decode());
   assert((await filmstrip.locator('img').first().evaluate(img=>img.naturalWidth))>0);
+  const displayedThumbnails=await filmstrip.locator('img').elementHandles();
   await filmstrip.locator('button').first().click();
   await page.locator('.viewer-surface img').evaluate(img=>img.decode());
   assert.match(await page.locator('#viewer-title').textContent(),/102/);
   assert.equal(await page.locator('#view-position').textContent(),'This page · 1 / 2');
   assert.equal(await filmstrip.locator('button[aria-current="true"]').getAttribute('data-viewer-index'),'0');
+  for(const [index, thumbnail] of displayedThumbnails.entries()){
+    assert.equal(await thumbnail.evaluate((node,i)=>node===document.querySelectorAll('#viewer-filmstrip img')[i],index),true);
+  }
   assert.equal(await page.locator('#view-play').getAttribute('aria-pressed'),'false');
   checkpoint('Viewer filmstrip mirrors the loaded order, marks the current item, and jumps to it');
   await page.locator('#close-viewer').click();
@@ -1201,8 +1795,10 @@ let browser;
   await page.screenshot({path:path.join(artifacts,'unified-gallery-filter-phone-150.png'),fullPage:true});
   await page.evaluate(()=>{document.documentElement.style.fontSize='';});
   await page.setViewportSize({width:1200,height:900});
-  // Read-only by construction: one form, one select, and nothing that could write.
-  assert.equal(await page.locator('#discovery-panel form').count(),2);
+  // The ordinary filters expose two visible read-only forms. Moment search
+  // stays hidden until the app confirms an enabled video catalog.
+  assert.equal(await page.locator('#discovery-panel form:visible').count(),2);
+  assert.equal(await page.locator('#video-moments-panel').isHidden(),true);
   assert.equal(await page.locator('#discovery-panel select').count(),1);
   assert.equal(await page.locator('#discovery-panel input[type="file"]').count(),0);
   assert.equal(await page.locator('#people-panel').isVisible(),false);
@@ -1273,11 +1869,13 @@ let browser;
   await owner.locator('#refresh').click();
   await owner.locator('.asset').filter({hasText:'105'}).waitFor();
   const videoFallback=owner.locator('.asset[data-asset-id="105"]');
-  await videoFallback.locator('.asset-preview-fallback').waitFor({state:'visible'});
-  assert.equal((await videoFallback.locator('span').allTextContents()).at(-1),'Video 105 · 2027-01-01','preview fallback preserves the video label');
-  assert.equal(await owner.getByRole('button',{name:/Preview unavailable.*Video 105/}).count(),1,'video card screen-reader title includes its visible fallback and one media label');
+  const videoFallbackMessage=videoFallback.locator('.asset-preview-fallback');
+  await videoFallbackMessage.waitFor({state:'visible'});
+  assert.equal(await videoFallback.locator('.asset-label').textContent(),'Video 105 · 2027-01-01','preview fallback preserves the video label');
+  const videoOpen=videoFallback.getByRole('button',{name:'Video 105 · 2027-01-01',exact:true});
+  assert.equal(await videoOpen.getAttribute('aria-describedby'),await videoFallbackMessage.getAttribute('id'),'video button describes the visible fallback');
   const videoRequestsStart=browserRequests.length;
-  await videoFallback.click();
+  await videoOpen.click();
   await owner.waitForFunction(()=>document.getElementById('view-quality').textContent.includes('unavailable'));
   assert.equal(await owner.locator('#viewer-media video').count(),0);
   assert.equal(await owner.locator('#viewer-media').getByRole('button',{name:'Retry video',exact:true}).count(),1);
@@ -1309,6 +1907,8 @@ let browser;
   const video=owner.locator('#viewer-media video');try{await owner.waitForFunction(()=>document.querySelector('#viewer-media video')||document.querySelector('#viewer-media button'),null,{timeout:10000});}catch(error){const diagnostic={viewerOpen:await owner.locator('#viewer').evaluate(node=>node.open),quality:await owner.locator('#view-quality').textContent(),retry:await owner.locator('#viewer-media button').allTextContents(),requests:browserRequests.slice(readyPlaybackStart).filter(item=>item.path.includes('/assets/105/'))};fs.writeFileSync(path.join(artifacts,'prepared-video-ready-diagnostic.json'),JSON.stringify(diagnostic,null,2));throw new Error('Synthetic prepared video produced no player or retry: '+JSON.stringify(diagnostic));}if(await video.count()!==1){const diagnostic={quality:await owner.locator('#view-quality').textContent(),retry:await owner.locator('#viewer-media button').allTextContents(),requests:browserRequests.slice(readyPlaybackStart).filter(item=>item.path.includes('/assets/105/playback'))};fs.writeFileSync(path.join(artifacts,'prepared-video-ready-diagnostic.json'),JSON.stringify(diagnostic,null,2));assert.fail('Synthetic prepared video was not accepted: '+JSON.stringify(diagnostic));}await video.waitFor();
   try{await owner.waitForFunction(()=>document.querySelector('#viewer-media video')?.readyState>=1||document.querySelector('#viewer-media button'),null,{timeout:10000});}catch(error){const diagnostic=await video.evaluate(element=>({readyState:element.readyState,networkState:element.networkState,currentSrc:element.currentSrc,error:element.error?{code:element.error.code,message:element.error.message}:null,canPlay:element.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')})).catch(()=>({removed:true}));const detail={video:diagnostic,quality:await owner.locator('#view-quality').textContent(),retry:await owner.locator('#viewer-media button').allTextContents(),requests:browserRequests.slice(readyPlaybackStart).filter(item=>item.path.includes('/assets/105/')),responses:browserResponses.filter(item=>item.path.includes('/assets/105/'))};fs.writeFileSync(path.join(artifacts,'prepared-video-ready-diagnostic.json'),JSON.stringify(detail,null,2));throw new Error('Synthetic prepared video never reached metadata readiness: '+JSON.stringify(detail));}
   if(await video.count()!==1){const detail={quality:await owner.locator('#view-quality').textContent(),retry:await owner.locator('#viewer-media button').allTextContents(),responses:browserResponses.filter(item=>item.path.includes('/assets/105/'))};fs.writeFileSync(path.join(artifacts,'prepared-video-ready-diagnostic.json'),JSON.stringify(detail,null,2));assert.fail('Synthetic prepared video failed before metadata readiness: '+JSON.stringify(detail));}
+  await owner.locator('#view-video-fullscreen').click();
+  await owner.waitForFunction(()=>document.fullscreenElement===document.querySelector('#viewer-media video'));
   await video.evaluate(async element=>{element.muted=true;await element.play();});
   await owner.waitForFunction(()=>document.querySelector('#viewer-media video')?.currentTime>0);
   const duration=await video.evaluate(element=>element.duration);assert(duration>0);
@@ -1318,13 +1918,26 @@ let browser;
   const playbackRequests=browserRequests.slice(videoRequestsStart);
   assert(playbackRequests.some(item=>item.method==='HEAD'&&item.path==='/assets/105/playback?library=family-a'));
   assert(playbackRequests.some(item=>item.method==='GET'&&item.path==='/assets/105/playback?library=family-a'));
-  await owner.screenshot({path:path.join(artifacts,'prepared-video-playing.png'),fullPage:true});
+  await owner.screenshot({path:path.join(artifacts,'prepared-video-playing.png')});
+  await owner.evaluate(()=>document.exitFullscreen());
+  assert.equal(await owner.locator('#viewer').evaluate(dialog=>dialog.open),true);
   await owner.locator('#close-viewer').click();
   checkpoint('Prepared video passes HEAD metadata validation, native decode/play, and seek against synthetic MP4');
   failNextPlaybackGet=true;await owner.locator('.asset').filter({hasText:'105'}).click();
   await owner.locator('#viewer-media').getByRole('button',{name:'Retry video',exact:true}).waitFor();
   assert.equal(await owner.locator('#viewer-media video').count(),0);await owner.locator('#close-viewer').click();
   checkpoint('Native playback failure releases the video source and offers a fresh retry');
+  const pendingPlaybackStart=browserRequests.length;
+  playbackOverrides.push({status:202,headers:{'content-type':'application/json'}});
+  await owner.locator('.asset').filter({hasText:'105'}).click();
+  await owner.waitForFunction(()=>document.getElementById('view-quality').textContent.includes('still being prepared'));
+  assert.equal(await video.count(),0);
+  const pendingPlaybackPath='/assets/105/playback?library=family-a';
+  assert.deepEqual(browserRequests.slice(pendingPlaybackStart).filter(item=>item.path===pendingPlaybackPath).map(item=>item.method),['HEAD']);
+  await owner.locator('#viewer-media').getByRole('button',{name:'Retry video',exact:true}).click();
+  await owner.waitForFunction(()=>document.querySelector('#viewer-media video')?.readyState>=1);
+  await owner.locator('#close-viewer').click();
+  checkpoint('Pending preparation offers manual retry without fetching playback before the user acts');
   const expectPlaybackError=async(status,headers,text)=>{
     playbackOverrides.push({status,headers});
     await owner.locator('.asset').filter({hasText:'105'}).click();
@@ -1342,6 +1955,7 @@ let browser;
   playbackOverrides.push({status:200,headers:{'content-type':'text/plain'}});await owner.locator('.asset').filter({hasText:'105'}).click();await owner.waitForFunction(()=>document.getElementById('view-quality').textContent.includes('unavailable'));assert.equal(await owner.locator('#viewer-media video').count(),0);await owner.locator('#close-viewer').click();
   await expectPlaybackError(403,{},'');
   checkpoint('Prepared playback rejects 404, 409, 429 seconds/date waits, malformed success metadata, and 403 without fallback');
+  await videoMomentJourney(owner);
   await mutate('library-organization');
   await owner.locator('#refresh').click();await owner.locator('[data-transfer-id="9501"]').waitFor();
   assert.equal(await owner.locator('#library-select option[value="documents"]').textContent(),'Documents');

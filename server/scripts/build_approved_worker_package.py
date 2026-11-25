@@ -22,7 +22,7 @@ DEFAULT_SCHEMA_REVISION = 'a0c9d2e4f817'
 TARGET_SCHEMA_REVISIONS = (DEFAULT_SCHEMA_REVISION, 'b1d7e4a9c230', 'c2e6b8a1d490', 'd1f6a8c3e920', 'e7c1a9d5b304', 'f2a8c5d1e640')
 FILES = tuple(sorted([
     *('backend/app/' + name + '.py' for name in (
-        '__init__', 'config', 'image_utils', 'vector_index',
+        '__init__', 'config', 'runtime_paths', 'image_utils', 'vector_index',
         'face_detection_service', 'face_embedding_service', 'metrics',
         'scoped_face_worker')),
     *('backend/app/access/' + name + '.py' for name in (

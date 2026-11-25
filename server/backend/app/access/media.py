@@ -136,6 +136,19 @@ class MediaRuntime:
             return raw
         finally: opened.close()
 
+def verified_prepared_video_provider(media):
+    """Return the prepared provider only when its root and index stay isolated."""
+    from .prepared_video import PreparedVideos
+    provider = getattr(media, 'prepared_videos', None)
+    if not isinstance(provider, PreparedVideos):
+        raise TransportError(503, 'Prepared playback unavailable')
+    roots = (*media.original_roots, media.derived_root)
+    for path in (provider.root, provider.index):
+        if any(path.is_relative_to(root.resolve(strict=True)) or
+               root.resolve(strict=True).is_relative_to(path) for root in roots):
+            raise TransportError(503, 'Prepared playback unavailable')
+    return provider
+
 
 MIME = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
         '.webp': 'image/webp', '.gif': 'image/gif', '.avif': 'image/avif',
@@ -186,10 +199,12 @@ class _FileLease:
 
 
 class AuthorizedMediaResponse(Response):
-    def __init__(self, request, token, library, object_id, variant, size, download):
+    def __init__(self, request, token, library, object_id, variant, size, download,
+                 playback_revision=None):
         super().__init__()
         self.request, self.token, self.library = request, token, library
         self.object_id, self.variant, self.size, self.download = object_id, variant, size, download
+        self.playback_revision = playback_revision
 
     async def __call__(self, scope, receive, send):
         opened = None
@@ -283,7 +298,7 @@ class AuthorizedMediaResponse(Response):
 
 
     async def playback(self, media, access, lease, scope):
-        from .prepared_video import PreparedVideos, pin
+        from .prepared_video import pin
         from ..home_catalog import CHUNK_BYTES
         provider = media.prepared_videos
 
@@ -297,14 +312,25 @@ class AuthorizedMediaResponse(Response):
             return pin(info)
 
         source_pin = await run_in_threadpool(authorize)
-        if not isinstance(provider, PreparedVideos):
-            raise TransportError(503, 'Prepared playback unavailable')
-        # Reject a provider that could expose files from originals/cache trees.
-        roots = (*media.original_roots, media.derived_root)
-        for path in (provider.root, provider.index):
-            if any(path.is_relative_to(root.resolve(strict=True)) or root.resolve(strict=True).is_relative_to(path) for root in roots):
-                raise TransportError(503, 'Prepared playback unavailable')
+        provider = verified_prepared_video_provider(media)
+        # A moment result pins the exact prepared output hash. Check it against
+        # the current prepared index before opening a reader or sending success.
+        provider.current()
+        prepared = provider.entries.get(self.object_id)
+        if prepared is None:
+            from .upload_preparation import approved_video_probe_state
+            state = await run_in_threadpool(approved_video_probe_state, access,
+                self.token, self.library, self.object_id)
+            if state in {'pending', 'running'}:
+                return Response(status_code=202, headers=PRIVACY_HEADERS)
+            raise TransportError(404, 'Video not prepared')
+        if (self.playback_revision is not None and
+                prepared['video']['sha256'] != self.playback_revision):
+            raise TransportError(409, 'Prepared playback changed')
         reader, = await run_in_threadpool(lambda: lease.accept((provider.open(self.object_id, source_pin),)))
+        if (self.playback_revision is not None and
+                reader.meta['sha256'] != self.playback_revision):
+            raise TransportError(409, 'Prepared playback changed')
         length = reader.meta['bytes']
         lower, upper, status = 0, length, 200
         headers = dict(PRIVACY_HEADERS, **{'Accept-Ranges': 'bytes',
@@ -351,7 +377,14 @@ class AuthorizedMediaResponse(Response):
 def media_response(request, object_id, variant):
     token, _ = credentials_from_request(request, allow_query=True)
     parameters = request.query_params
-    allowed = {'library', 'download'} if variant == 'original' else {'library'} if variant in {'display', 'playback'} else {'library', 'size'}
+    if variant == 'original':
+        allowed = {'library', 'download'}
+    elif variant == 'playback':
+        allowed = {'library', 'playback_revision'}
+    elif variant == 'display':
+        allowed = {'library'}
+    else:
+        allowed = {'library', 'size'}
     if (set(parameters) - allowed or any(len(parameters.getlist(k)) != 1 for k in parameters)
             or not parameters.get('library') or len(parameters['library']) > 128):
         raise TransportError(400, 'Invalid request')
@@ -361,8 +394,13 @@ def media_response(request, object_id, variant):
     download = parameters.get('download', 'false')
     if download not in {'true', 'false'}:
         raise TransportError(400, 'Invalid request')
+    playback_revision = parameters.get('playback_revision')
+    if (playback_revision is not None and
+            re.fullmatch(r'[0-9a-f]{64}', playback_revision) is None):
+        raise TransportError(400, 'Invalid request')
     return AuthorizedMediaResponse(request, token, parameters['library'], object_id,
-                                   variant, int(size), download == 'true')
+                                   variant, int(size), download == 'true',
+                                   playback_revision=playback_revision)
 
 
 class MediaRoute(AccessRoute):

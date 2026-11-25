@@ -61,6 +61,45 @@ class BackgroundUploadForegroundTest {
     @Test fun notificationPauseThenExplicitResumeReusesServerOffset() = exercise(true)
     @Test fun staleNotificationPauseCannotCancelNewerResume() = exercise(false, stalePause = true)
 
+    @Test fun connectionChangeBeforeDispatchReleasesLeaseWithoutUploading() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        check(context.packageName == "dev.photohouse.connected.qa" && Build.HARDWARE in setOf("ranchu", "goldfish"))
+        val api = UploadApi()
+        val source = BatchUploadSource("synthetic.png", 8, UploadKind.IMAGE,
+            { ByteArrayInputStream(ByteArray(8)) }, "synthetic:photo")
+        lateinit var store: ConnectedStore
+        main {
+            store = ConnectedStore(api, PhoneUploadRuntime.scope,
+                batchPersistence = InMemoryUploadQueuePersistence(), batchSource = { source })
+            store.authenticate("+12025550123", "synthetic-password-only")
+        }
+        try {
+            waitFor { store.state.value.session != null && !store.state.value.busy }
+            main { PhoneUploadRuntime.installQaStore(store) }
+            ActivityScenario.launch(MainActivity::class.java).use {
+                var reads = 0
+                main {
+                    val id = store.batchUploads!!.enqueue(listOf(source), "family").single()
+                    val launched = BatchUploadForegroundRequests.start(context, store, BatchUploadCommand.RESUME,
+                        connectionApproved = false, target = id, readNetwork = {
+                            if (reads++ == 0) UploadNetwork.UNMETERED else UploadNetwork.UNKNOWN
+                        })
+                    assertEquals(BatchUploadLaunchResult.STARTED, launched)
+                }
+                waitFor { !store.backgroundBatchUploadsActive() }
+                main {
+                    assertTrue(reads >= 2)
+                    assertEquals("needs_hash", store.batchUploads!!.state.value.single().record.status)
+                    assertEquals(0, api.creates)
+                    assertTrue(api.offsets.isEmpty())
+                }
+            }
+        } finally {
+            main { store.endBackgroundBatchUploads(); PhoneUploadRuntime.installQaStore(null) }
+            context.getSystemService(NotificationManager::class.java).cancel(3102)
+        }
+    }
+
     private fun exercise(pause: Boolean, stalePause: Boolean = false) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -86,7 +125,8 @@ class BackgroundUploadForegroundTest {
             scenario = activity
             main {
                 store.batchUploads!!.enqueue(listOf(source),"family")
-                assertTrue(BatchUploadForegroundRequests.start(context,store,BatchUploadCommand.RESUME))
+                assertEquals(BatchUploadLaunchResult.STARTED,
+                    BatchUploadForegroundRequests.start(context, store, BatchUploadCommand.RESUME, connectionApproved = true))
             }
             runBlocking { withTimeout(20000) { api.secondChunk.await() } }
             val manager = context.getSystemService(NotificationManager::class.java)
@@ -98,7 +138,8 @@ class BackgroundUploadForegroundTest {
             }
             if (stalePause) {
                 val oldPause = manager.activeNotifications.single { it.id == 3101 }.notification.actions.single().actionIntent
-                main { assertTrue(BatchUploadForegroundRequests.start(context,store,BatchUploadCommand.RESUME)) }
+                main { assertEquals(BatchUploadLaunchResult.STARTED,
+                    BatchUploadForegroundRequests.start(context, store, BatchUploadCommand.RESUME, connectionApproved = true)) }
                 oldPause.send()
             }
             activity.moveToState(Lifecycle.State.CREATED)
@@ -110,7 +151,8 @@ class BackgroundUploadForegroundTest {
                 activity.moveToState(Lifecycle.State.RESUMED)
                 waitFor { !store.state.value.covered && !store.state.value.busy }
                 api.releaseSecond.complete(Unit)
-                main { assertTrue(BatchUploadForegroundRequests.start(context,store,BatchUploadCommand.RESUME)) }
+                main { assertEquals(BatchUploadLaunchResult.STARTED,
+                    BatchUploadForegroundRequests.start(context, store, BatchUploadCommand.RESUME, connectionApproved = true)) }
             } else api.releaseSecond.complete(Unit)
             waitFor { store.batchUploads!!.state.value.single().record.status == "complete" }
             waitFor { !store.backgroundBatchUploadsActive() }

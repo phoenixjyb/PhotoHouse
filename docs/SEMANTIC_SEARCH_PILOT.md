@@ -73,6 +73,18 @@ No vector components, original prose, local paths or model qualification
 documents are returned. Existing text/person/date match reasons retain their
 original meanings; a semantic score is not presented as literal text evidence.
 
+All candidates are ranked using the original full-precision scores before
+presentation. The card boundary accepts only exact built-in integers/floats
+with finite values. It preserves every in-range score unchanged; an endpoint
+overshoot is clamped only when it is at most 16 binary64 ULPs beyond `-1` or
+`1` (about `3.55e-15`), and larger/nonfinite/invalid values refuse the result.
+This explicit presentation guard is far narrower than the `1e-3` vector norm
+tolerance and is not a pruning certificate or a change to the numerical ranking
+kernel. The raw score order and numeric-ID tie-break stay intact, so distinct
+raw scores can display as equal endpoint values. `score_presentation_policy` is
+part of the opaque source binding; a prior binding is stale and rejected before
+encoding.
+
 The opaque binding covers the exact query, reviewed metadata, current image
 source hashes, immutable vector manifests and joint-space configuration.
 Page sizes and filters participate in the fingerprint. Membership and source
@@ -83,6 +95,35 @@ HTTP admission and body receipt have separate bounds. Checks are
 cooperative; a synchronous provider socket operation can wait for its phase
 timeout before the next deadline/cancellation check. No provider cancellation
 acknowledgement is claimed.
+
+## Current query-policy binding
+
+Policy-3 exclusion and strict-composition admission applies on every supported
+query path: the semantic-search runtime, the authenticated text-provider route,
+the public SigLIP/OpenCLIP adapters, and the LocalSemanticEncoder and reviewed
+text wrappers. The check runs before provider or model text work; a request
+header cannot select the private diagnostic purpose. The explicitly invoked,
+private multilingual exclusion evaluator remains a separate diagnostic path
+and does not create a serving binding, publish an index or authorize activation.
+
+The current policy implementation is `app.access.search_policy`. The old
+`app.access.search_exclusions` path is retained only for the byte-identical
+indexed SigLIP encoder dependency. Application code importing the current
+policy helper must use the new `search_policy` module; this internal Python
+import-path change does not change the public SigLIP adapter or its historical
+model receipt.
+
+`query_policy_binding` is separate metadata from the model receipt. It binds
+the policy version and exact policy bytes, the public SigLIP guard source, and
+the binding verifier source. Supported encoders and wrapper probes expose this
+binding; qualification reports preserve it beside the unchanged model receipt.
+Semantic-search request fingerprints include it, and fresh source checks refuse
+a stale or missing binding. Encoders recheck after parsing a provider response,
+including an unsupported-query refusal, before returning a vector or refusal;
+the provider boundary rechecks after its encoder completes before releasing a
+200 response or opted-in 422 refusal. This source binding does not qualify model
+identity or relevance. The separate multilingual exclusion evaluator uses its
+explicit private diagnostic path and makes no serving-policy qualification claim.
 
 ## Explicit encoder qualification
 

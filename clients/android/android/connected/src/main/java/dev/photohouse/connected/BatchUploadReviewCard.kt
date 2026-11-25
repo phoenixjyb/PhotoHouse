@@ -20,6 +20,10 @@ internal fun BatchUploadReviewCard(
     zh: Boolean,
     onStart: () -> Unit,
     onDiscard: () -> Unit,
+    canRememberFolder: Boolean = false,
+    folderRemembered: Boolean = false,
+    onRememberFolder: () -> Unit = {},
+    folderScanLimited: Boolean = false,
 ) {
     fun t(en: String, cn: String) = if (zh) cn else en
     val explanation = when (issue) {
@@ -53,12 +57,22 @@ internal fun BatchUploadReviewCard(
             Text(t("JPEG/PNG up to 256 MiB; MP4/MOV up to 16 GiB per file.",
                 "支持 JPEG/PNG 照片（每个最多 256 MiB）及 MP4/MOV 视频（每个最多 16 GiB）。"),
                 style = MaterialTheme.typography.bodySmall)
-            if (skippedCount > 0) Text(t("$skippedCount unsupported or unknown-size files were skipped.",
-                "已跳过 $skippedCount 个不支持或大小未知的文件。"), color = MaterialTheme.colorScheme.error)
+            if (skippedCount > 0) Text(t("Skipped $skippedCount unsupported or unreadable entries.",
+                "已跳过 $skippedCount 个不支持或无法读取的项目。"), color = MaterialTheme.colorScheme.error)
+            if (folderScanLimited) Text(t(
+                "This review reached a folder or batch limit. Choose a smaller folder to check the rest.",
+                "本次检查已达到文件夹或批次上限。请选择较小的文件夹继续。"),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag("batch-folder-scan-limit"))
             if (explanation != null) Text(explanation, color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.testTag("batch-review-problem"))
             if (needsNetworkConfirmation) Text(t("This connection may incur data charges. Continue only after review.",
                 "当前网络可能产生流量费用，请确认后继续。"), modifier = Modifier.testTag("batch-network-review"))
+            if (canRememberFolder) TextButton(onClick = onRememberFolder,
+                modifier = Modifier.testTag("batch-remember-folder")) {
+                Text(if (folderRemembered) t("Folder remembered", "已保存此文件夹")
+                    else t("Remember this folder", "记住此文件夹"))
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onStart, enabled = selectedCount > 0 && issue == null,
                     modifier = Modifier.testTag("batch-start")) {

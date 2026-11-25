@@ -79,7 +79,35 @@ checks passed for the 274-file package. See the
 [eligibility contract](SEMANTIC_ELIGIBILITY_DESIGN.md) and
 [library qualification record](SEMANTIC_LIBRARY_SCALE.md).
 
-## Latest optimized native result, October 22, 2026
+## Latest complete native result, October 23, 2026
+
+R68 qualified exact code `13a94dd` in one isolated Windows CPU run under the
+unchanged 1,800-second child limit, 8 GiB / four-process Job and two CPU intra-op
+threads. Both independent full audits and all 15 protection cases passed for
+23,761 catalog entries, 23,696 vectors and the same 65 qualification-only
+omissions. The complete run took **1,582.750 seconds**.
+
+Nine English/Chinese/mixed loopback HTTPS/TCP samples measured **8.000 seconds
+median / 8.438 seconds maximum**; the cold request took **15.594 seconds**.
+There were zero individual NPY query reads. This does not improve on the previous
+7.860-second median and does not establish phone/WAN or concurrent-load latency.
+The per-phase evidence is in [the latency record](SEMANTIC_REQUEST_LATENCY.md).
+
+Independent completion readback verified all 12 staged files, the exact source,
+model/index/catalog and review bindings, saved measurement hash, sample/profile
+ordinals, both audits, Job limits and a closed 322-checkpoint journal. No owned
+test Python process or recorded test-port listener remained. The fresh postflight
+baseline preserved live source, stores, task/process identities, model/index,
+catalog, permissions and semantic-off configuration. All 83 preservation pins,
+12 retained report trees and 200 current furniture-report assets passed, including
+normal certificate-verified HTTPS. Sampled checks do not prove continuous uptime.
+
+Semantic remains **OFF**. The 2-second backend target, production omission
+approval, family relevance, phone/WAN, concurrency, refresh/retirement and a
+concrete owner-only activation proposal remain separate gates. No production
+service/configuration change, index publication or family activation occurred.
+
+## Earlier optimized native result, October 22, 2026
 
 The frozen `e85c6e4` source completed a new one-shot Windows CPU canary with the
 same 23,761-entry catalog, 23,696 vectors, 65 qualification-only omissions and

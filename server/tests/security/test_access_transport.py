@@ -358,6 +358,29 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(self.client.post('/auth/register', json={'phone': NEW, 'password': PASSWORD, 'code': code, 'transport': 'native',
             'name': 'Synthetic Member'}).status_code, 401)
 
+    def test_pending_invitation_cancellation_is_owner_and_phone_scoped(self):
+        owner = self.bearer(self.owner_token)
+        invitations = '/libraries/family-a/invitations'
+        cancel = invitations + '/cancel'
+        invited_other = '+12025550199'
+        first = self.client.post(invitations, headers=owner, json={'phone': NEW}).json()['code']
+        other = self.client.post(invitations, headers=owner, json={'phone': invited_other}).json()['code']
+        self.assertEqual(self.client.post(cancel, headers=self.bearer(), json={'phone': NEW}).status_code, 401)
+        self.assertEqual(self.client.post('/libraries/family-b/invitations/cancel', headers=owner,
+                                          json={'phone': NEW}).status_code, 401)
+        for payload in ({}, {'phone': NEW, 'code': first}):
+            self.assertEqual(self.client.post(cancel, headers=owner, json=payload).status_code, 400)
+        accepted = self.client.post(cancel, headers=owner, json={'phone': NEW})
+        self.assertEqual(accepted.status_code, 200)
+        for target in (NEW, MEMBER):
+            later = self.client.post(cancel, headers=owner, json={'phone': target})
+            self.assertEqual((later.status_code, later.json()), (200, {'ok': True}))
+        self.assertEqual(accepted.json(), later.json())
+        self.assertEqual(self.client.get('/auth/session', headers=self.bearer()).json()['memberships'][0]['status'], 'approved')
+        child = {'password': PASSWORD, 'transport': 'native', 'name': 'Synthetic Member'}
+        self.assertEqual(self.client.post('/auth/register', json=child | {'phone': NEW, 'code': first}).status_code, 401)
+        self.assertEqual(self.client.post('/auth/register', json=child | {'phone': invited_other, 'code': other}).status_code, 201)
+
     def test_existing_member_accepts_fresh_invitation_only_after_login(self):
         self.mutate("UPDATE access_memberships SET status='revoked',revision=revision+1 WHERE account_id=?", (self.member_id,))
         code = self.client.post('/libraries/family-a/invitations', headers=self.bearer(self.owner_token), json={'phone': MEMBER}).json()['code']

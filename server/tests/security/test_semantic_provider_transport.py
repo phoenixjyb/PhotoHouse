@@ -227,6 +227,30 @@ class SemanticProviderTransportTests(unittest.TestCase):
             client1.close()
             client2.close()
 
+    def test_explicit_cpu_budget_allows_work_beyond_default_deadline(self):
+        class SlowProvider(FakeProvider):
+            def encode(self, query, *, check=lambda: None):
+                time.sleep(2.1)
+                return super().encode(query, check=check)
+        for budget, expected in ((None, 504), (15.0, 200)):
+            with self.subTest(budget=budget):
+                provider = SlowProvider()
+                kwargs = {} if budget is None else {"seconds": budget}
+                app = create_provider_app(provider, bearer_token=TOKEN, port=PORT, **kwargs)
+                with TestClient(app, base_url=f"http://127.0.0.1:{PORT}",
+                                client=("127.0.0.1", 50000)) as client:
+                    response = client.post("/v1/encode-text", headers={
+                        "authorization": f"Bearer {TOKEN}"}, json={
+                        "version": 1, "binding_sha256": provider.binding.binding_sha256,
+                        "query": "slow CPU request"})
+                    self.assertEqual(response.status_code, expected)
+
+    def test_explicit_budget_remains_finite_positive_and_bounded(self):
+        for budget in (True, 0, -1, float("nan"), float("inf"), 30.01, "15"):
+            with self.subTest(budget=budget), self.assertRaises(ValueError):
+                create_provider_app(self.provider, bearer_token=TOKEN, port=PORT, seconds=budget)
+        create_provider_app(self.provider, bearer_token=TOKEN, port=PORT, seconds=30.0)
+
     def test_timed_out_worker_keeps_lease_and_late_exception_is_consumed(self):
         release = threading.Event()
         provider = FakeProvider(delay=release, failure=True)

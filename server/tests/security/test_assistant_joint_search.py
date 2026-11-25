@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 import wave
+from unittest.mock import Mock, patch
 
 import httpx
 
@@ -18,7 +19,7 @@ sys.path.insert(0, str(ROOT / 'tests' / 'security'))
 from fastapi.testclient import TestClient
 from app.access import discovery as d
 from app.access.discovery_provider import MemoryIndexProvider, ProjectedIndex, ReviewedPerson
-from app.access.assistant_search import name_hits
+from app.access.assistant_search import SearchRuntime, name_hits
 from app.access.assistant_speech import LocalAssistantAsr
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.transport import AccessRuntime
@@ -72,10 +73,10 @@ class AssistantJointSearchTests(unittest.TestCase):
         finally:
             db.close()
 
-    def install(self, index):
+    def install(self, index, *, budget=None):
         self.index = index
         provider = MemoryIndexProvider((index,))
-        runtime = DiscoveryRuntime(self.access, provider, d.ReadBudget())
+        runtime = DiscoveryRuntime(self.access, provider, budget if budget is not None else d.ReadBudget())
         self.discovery_runtime = runtime
         app = create_app(access_runtime=self.access, discovery_runtime=runtime,
                          assistant_enabled=True)
@@ -128,6 +129,57 @@ class AssistantJointSearchTests(unittest.TestCase):
                 self.assertIsNone(body['context'])
                 self.assertIsNone(body['effect'])
 
+    def test_vague_visual_requests_explain_the_available_text_evidence_route(self):
+        for words in ('the photos where we were celebrating indoors',
+                      '找室内庆祝时的照片'):
+            with self.subTest(words=words):
+                response = self.turn(words)
+                self.assertEqual(response.status_code, 200, response.text)
+                body = response.json()
+                self.assertEqual(body['kind'], 'clarification', body)
+                self.assertIsNone(body['context'])
+                self.assertEqual(body['items'], [])
+                self.assertIsNone(body['effect'])
+                if words.startswith('找'):
+                    self.assertIn('可检索证据', body['reply'])
+                    self.assertIn('没有执行新的结果检索', body['reply'])
+                    self.assertIn('说明原文', body['reply'])
+                else:
+                    self.assertIn('searchable evidence', body['reply'])
+                    self.assertIn('No new result search was run', body['reply'])
+                    self.assertIn('exact caption words', body['reply'])
+
+    def test_ambiguous_visual_followup_revalidates_scope_without_running_a_new_result_search(self):
+        calls = []
+        original_call = SearchRuntime.call
+
+        def counted_call(runtime, operation, token, library, cancelled, values):
+            calls.append(operation)
+            return original_call(runtime, operation, token, library, cancelled, values)
+
+        with patch.object(SearchRuntime, 'call', new=counted_call):
+            initial = self.turn('find示例儿童2032年9月的photos').json()
+            self.assertEqual(initial['kind'], 'results', initial)
+            self.assertEqual(calls, ['entities', 'search'])
+
+            calls.clear()
+            refined = self.turn('只看视频', context=initial['context']).json()
+            self.assertEqual(refined['kind'], 'results', refined)
+            self.assertEqual(refined['filters'], {**initial['filters'], 'media': ['video']})
+            self.assertEqual(calls, ['search', 'entities', 'search'])
+
+            calls.clear()
+            followup = self.turn('only the videos where we were celebrating indoors',
+                                 context=refined['context']).json()
+            self.assertEqual(followup['kind'], 'clarification', followup)
+            self.assertEqual(followup['filters'], refined['filters'])
+            self.assertEqual(followup['context'], refined['context'])
+            self.assertEqual(followup['items'], refined['items'])
+            self.assertIn('No new result search was run', followup['reply'])
+            # One search replays the saved scope for authorization/source
+            # revalidation; no second search is run for the ambiguous wording.
+            self.assertEqual(calls, ['search', 'entities'])
+
     def test_mixed_refinement_preserves_people_and_date(self):
         initial = self.turn('find示例儿童2032年9月的photos').json()
         self.assertEqual(initial['kind'], 'results', initial)
@@ -142,6 +194,8 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertEqual(unresolved['kind'], 'clarification', unresolved)
         self.assertEqual(unresolved['filters'], initial['filters'])
         self.assertEqual(unresolved['context'], initial['context'])
+        self.assertEqual(unresolved['items'], initial['items'])
+        self.assertEqual(unresolved['total'], initial['total'])
         self.assertIsNone(unresolved['effect'])
 
     def test_reviewed_people_answers_retain_the_other_current_conditions(self):
@@ -412,6 +466,21 @@ class AssistantJointSearchTests(unittest.TestCase):
         self.assertNotIn('Family beach visit', response.text)
         self.assertNotIn('在海边玩', response.text)
 
+    def test_literal_query_tokens_are_prepared_once_per_search_and_never_shared_between_turns(self):
+        from app.access import search_text
+        original = search_text._tokens
+        for words, phrase, expected in (
+                ('找包含“海边”的照片', '海边', ['103', '101']),
+                ('找包含“海边”的照片', '海边', ['103', '101']),
+                ('find photos containing "Family beach"', 'family beach', ['101'])):
+            with patch.object(search_text, '_tokens', wraps=original) as calls:
+                response = self.turn(words)
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual([item['id'] for item in response.json()['items']], expected)
+            self.assertEqual(sum(call.args == (phrase,) for call in calls.call_args_list), 1)
+            self.assertNotIn('_entry', response.text)
+            self.assertNotIn('token_coverage', response.text)
+
     def test_two_character_unicode_text_and_quoted_mixed_language_phrase(self):
         chinese = self.turn('找包含“海边”的照片')
         self.assertEqual(chinese.status_code, 200, chinese.text)
@@ -495,23 +564,95 @@ class AssistantJointSearchTests(unittest.TestCase):
             headers=self.auth | {'X-PhotoHouse-Search-Version': '3'})
         self.assertEqual(rejected.status_code, 400, rejected.text)
 
-    def test_projected_media_date_index_still_uses_current_caption_text(self):
-        with closing(sqlite3.connect(self.database)) as db:
-            db.execute('PRAGMA query_only=ON')
-            def read(sql, args):
-                return db.execute(sql, args).fetchall()
-            source = d.projected_source('family-a', read, ('date', 'media'))
+    def date_media_index(self):
+        with self.connection() as db:
+            source = d.projected_source('family-a', lambda sql, args: db.execute(sql, args).fetchall(),
+                                        ('date', 'media'))
         record = asdict(self.index)
         record.update(enabled=('date', 'media'), people=(), pinned_ids=(), assignments=(),
                       places=(), regions=(), source_digest=d.digest(source))
-        index = ProjectedIndex(**record)
-        self.install(index)
+        return ProjectedIndex(**record)
+
+    def test_projected_media_date_index_still_uses_current_caption_text(self):
+        self.install(self.date_media_index())
         response = self.turn('找包含“Family beach”的照片')
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
         self.assertEqual(body['kind'], 'results', body)
         self.assertEqual(body['filters'], {'media': ['image'], 'text': 'Family beach'})
         self.assertEqual([item['id'] for item in body['items']], ['101'])
+
+    def test_projected_search_refines_at_row_limit_and_explains_unavailable_text(self):
+        self.mutate("UPDATE assets SET taken_at='2032-09-03' WHERE id=102")
+        index = self.date_media_index()
+        self.install(index, budget=d.ReadBudget(rows=len(index.scope_ids)))
+        context = None
+        for words, media, ids in (('find photos in September 2032', 'image', ['103', '101']),
+                                  ('only videos', 'video', ['102'])):
+            response = self.turn(words, context=context)
+            self.assertEqual(response.status_code, 200, response.text)
+            result = response.json()
+            self.assertEqual(result['kind'], 'results', result)
+            self.assertEqual(result['filters'], {'media': [media],
+                'date': {'from': '2032-09-01', 'to': '2032-09-30'}})
+            self.assertEqual([item['id'] for item in result['items']], ids)
+            self.assertEqual(result['total'], len(ids))
+            context = result['context']
+
+        planner = Mock()
+        self.app.state.assistant_intent_planner = planner
+        for words, version, message in (
+            ('find photos containing "Family beach"', '2', 'too large to check all captions'),
+            ('找包含“Family beach”的照片', '2', '无法完整检查照片说明和留言'),
+            ('find photos playing in snow', '3', 'too large to check all captions'),
+        ):
+            with self.subTest(version=version, words=words):
+                response = self.client.post('/assistant/v1/turns',
+                    json={'library_id': 'family-a', 'text': words, 'context': None},
+                    headers=self.auth | {'X-PhotoHouse-Search-Version': version})
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()
+                self.assertEqual(result['kind'], 'clarification', result)
+                self.assertIn(message, result['reply'])
+                self.assertEqual(result['items'], [])
+                self.assertIsNone(result['context'])
+                self.assertIsNone(result['effect'])
+        planner.propose.assert_not_called()
+
+        runtime = SearchRuntime(self.discovery_runtime)
+        with self.assertRaises(d.DiscoveryInvalid):
+            runtime.call('search', TOKEN, 'family-a', lambda: False,
+                         {'binding': context['binding'], 'filters': {'text': 'Family beach'}})
+        with self.assertRaises(d.DiscoverySourceRowLimit):
+            runtime.call('readiness', TOKEN, 'family-a', lambda: False, {})
+
+    def test_notes_exceeding_row_limit_invalidate_a_complete_text_context(self):
+        index = self.date_media_index()
+        # The assets, three captions and one live note fit exactly.
+        self.install(index, budget=d.ReadBudget(rows=len(index.scope_ids) + 4))
+        self.mutate("UPDATE access_stories SET deleted=1 WHERE id='note-103'")
+        text_query = 'find photos containing "Family beach"'
+        response = self.turn(text_query)
+        self.assertEqual(response.status_code, 200, response.text)
+        full = response.json()
+        self.assertEqual([item['id'] for item in full['items']], ['101'])
+
+        self.mutate("UPDATE access_stories SET deleted=0 WHERE id='note-103'")
+        expired = self.turn('describe these results', context=full['context'])
+        self.assertEqual(expired.status_code, 409, expired.text)
+        self.assertEqual(self.turn(text_query).json()['kind'], 'clarification')
+        reduced = self.turn('find photos in September 2032').json()
+        self.assertEqual(reduced['total'], 2, reduced)
+
+        self.mutate("UPDATE access_stories SET deleted=1 WHERE id='note-103'")
+        expired = self.turn('only videos', context=reduced['context'])
+        self.assertEqual(expired.status_code, 409, expired.text)
+        self.assertEqual(self.turn(text_query).json()['context'], full['context'])
+
+    def test_row_limit_in_reviewed_source_still_returns_unavailable(self):
+        self.install(self.index, budget=d.ReadBudget(rows=len(self.index.scope_ids)))
+        response = self.turn('find photos in September 2032')
+        self.assertEqual(response.status_code, 503, response.text)
 
     def test_people_any_all_text_date_and_media_remain_joint_hard_filters(self):
         together = self.turn('找示例儿童和示例成人一起在海边玩的2032年9月照片')

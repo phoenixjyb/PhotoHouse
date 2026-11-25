@@ -15,14 +15,16 @@ function largeScene(total=100000){const value=scene(),ids=Array.from({length:20}
 const env=(result,id=rid,recovered=false)=>({version:1,thread_id:tid,request_id:id,status:'completed',revision:result.version===4?2:1,recovered,error:null,result});
 const failed=(id=rid,recovered=false,code='scene_query_unsupported',revision=1)=>({version:1,thread_id:tid,request_id:id,status:'failed',revision,recovered,error:code,result:null});
 const error=(status,code='unavailable')=>Object.assign(new Error(code),{status,code});
-function setup({probe=sceneCaps,turn=null,read=null,detail=null}={}){
+function setup({probe=sceneCaps,pageProbe={version:1,available:true,page_size:20},turn=null,read=null,detail=null,page=null}={}){
  const calls=[],scope={account:'fictional',library,generation:1,locked:false};let n=0;
  const request=async(path,options)=>{calls.push({path,...options});
   if(path.includes('/scene-search-capabilities?')){if(probe instanceof Error)throw probe;return typeof probe==='function'?probe():probe;}
+  if(path.includes('/scene-page-capabilities?'))return typeof pageProbe==='function'?pageProbe():pageProbe;
   if(path.includes('/capabilities?'))return caps;
   if(path.endsWith('/threads')&&options.method==='POST')return {version:1,thread:thread(0)};
   if(path.includes('/threads/')&&options.method==='DELETE')return {deleted:true,thread_id:tid};
   if(path.endsWith('/turns')){if(options.extraHeaders?.['X-PhotoHouse-Search-Version']==='4'){if(turn) return turn(options);return env(scene(),options.body.request_id);}return env(ordinary(),options.body.request_id);}
+  if(path.includes('/scene-pages'))return page? page(path,options):null;
   if(path.includes('/requests/'))return read?read(path,options):env(scene(),path.split('/requests/')[1].split('?')[0],true);
   if(path.includes('/threads/'))return detail?detail(path,options):{version:1,thread:thread(2),exchanges:[],latest_request_id:rid};
   throw Error('unexpected fixture request');
@@ -43,6 +45,57 @@ test('v4 requires explicit negotiation and validates complete scope, scores and 
  assert.equal(Private.validateResult(ordinary(),library,true,false,false,4).version,3);
  const mutations=[v=>v.effect={type:'open_asset',asset_id:'101'},v=>v.kind='clarification',v=>v.items[0].kind='video',v=>v.items[0].semantic_score=Infinity,v=>v.items[0].semantic_score=.5,v=>v.context.scene.scores=[1.01],v=>v.context.scene.scope.library_id='other',v=>v.context.scene.scope.search_version=4,v=>v.context.scene.query='x\ny',v=>v.context.scene.query='中'.repeat(171),v=>v.context.scene.extra=true,v=>v.filters.people.ids=['302'],v=>v.interpretation.people[0].id='302',v=>v.semantic.needs_review=false,v=>v.semantic.candidate_count=2,v=>v.semantic.coverage='partial',v=>v.semantic.extra=true,v=>v.context.scene.scope.filters.media=['video'],v=>v.context.scene.scope.filters.descriptive={version:1,concepts:[{surface:'beach',alternatives:['beach']}]},v=>v.items[0].thumbnail_url='/assets/101/thumbnail?library=other'];
  for(const mutate of mutations){const bad=scene();mutate(bad);assert.throws(()=>Private.validateResult(bad,library,false,false,false,4));}
+});
+test('scene page controller pins the digest, preserves the saved result and requires a fresh explicit return',async()=>{
+ const digest='d'.repeat(64),pageReply=(path,options)=>{const body=options.body,page=body.page,items=Array.from({length:20},(_,i)=>{const id=String(101+(page-1)*20+i);return {...structuredClone(item),id,thumbnail_url:`/assets/${id}/thumbnail?library=${library}`,semantic_score:.75};});return {version:1,thread_id:tid,request_id:rid,revision:2,page,page_size:20,total:100000,has_more:true,binding:hash,fingerprint:fp,ranking_sha256:digest,items,semantic:{mode:'text_to_image',score_kind:'cosine',candidate_count:100000,coverage:'complete_eligible_images',needs_review:true}};};
+ const f=setup({read:()=>env(largeScene(),rid,true),page:pageReply});await f.c.capabilities();await f.c.sceneCapabilities();await f.c.scenePageCapabilities();await f.c.read(tid);
+ const saved=f.c.state().currentResult;assert.equal(saved.total,100000);assert.equal(f.c.state().sceneRequestId,rid);
+ const second=await f.c.scenePage(2);assert.equal(second.page,2);assert.equal(f.c.state().currentResult,saved);assert.equal(f.c.state().scenePageResult,second);
+ assert.equal(f.calls.filter(c=>c.path.includes('/scene-pages'))[0].body.ranking_sha256,undefined);
+ await assert.rejects(f.c.send('do not send from a continuation page'),e=>e.code==='conflict');
+ const third=await f.c.scenePage(3);assert.equal(third.page,3);assert.equal(f.calls.filter(c=>c.path.includes('/scene-pages')).at(-1).body.ranking_sha256,digest);
+ await f.c.scenePage(2);assert.equal(f.calls.filter(c=>c.path.includes('/scene-pages')).at(-1).body.ranking_sha256,digest);
+ const detail=await f.c.returnSceneResults();assert.equal(detail.current_result.version,4);assert.equal(f.c.state().scenePageResult,null);assert.equal(f.c.state().currentResult.version,4);
+ const pageCalls=f.calls.filter(c=>c.path.includes('/scene-pages'));assert.equal(pageCalls.length,3);assert.ok(f.calls.filter(c=>c.path.includes('/threads/')&&c.method==='GET').length>=2);f.c.close();
+});
+test('scene page validator rejects ordering, typed-digest, policy and saved-result mismatches',async()=>{
+ const digest='d'.repeat(64),valid=(path,options)=>{const body=options.body,page=body.page,items=Array.from({length:20},(_,i)=>{const id=String(101+(page-1)*20+i);return {...structuredClone(item),id,thumbnail_url:`/assets/${id}/thumbnail?library=${library}`,semantic_score:.75};});return {version:1,thread_id:tid,request_id:rid,revision:2,page,page_size:20,total:100000,has_more:true,binding:hash,fingerprint:fp,ranking_sha256:digest,items,semantic:{mode:'text_to_image',score_kind:'cosine',candidate_count:100000,coverage:'complete_eligible_images',needs_review:true}};};
+ const corruptions=[
+  v=>{v.items[0].semantic_score=.5;},
+  v=>{v.total=100001;v.semantic.candidate_count=100001;},
+  v=>{v.binding=[hash];},
+  v=>{v.fingerprint=[fp];},
+  v=>{v.ranking_sha256=[digest];},
+  v=>{v.semantic.coverage_details={version:1,policy_sha256:[hash],state:'complete',catalog_images:100,searchable_images:100,omitted_images:0,matched_omitted_images:0};},
+  v=>{v.total=99999;v.semantic.candidate_count=99999;},
+  v=>{v.binding='c'.repeat(64);},
+  v=>{v.fingerprint='c'.repeat(64);}
+ ];
+ for(const corrupt of corruptions){const f=setup({read:()=>env(largeScene(),rid,true),page:(path,options)=>{const value=valid(path,options);corrupt(value);return value;}});await f.c.capabilities();await f.c.sceneCapabilities();await f.c.scenePageCapabilities();await f.c.read(tid);await assert.rejects(f.c.scenePage(2));assert.equal(f.c.state().scenePageResult,null);assert.equal(f.c.state().scenePageActive,true);f.c.close();}
+});
+test('scene continuation stays gated until explicit fresh return succeeds and remains gated on read failure',async()=>{
+ const digest='d'.repeat(64),page=(path,options)=>{const p=options.body.page,items=Array.from({length:20},(_,i)=>{const id=String(101+(p-1)*20+i);return {...structuredClone(item),id,thumbnail_url:`/assets/${id}/thumbnail?library=${library}`,semantic_score:.75};});return {version:1,thread_id:tid,request_id:rid,revision:2,page:p,page_size:20,total:100000,has_more:true,binding:hash,fingerprint:fp,ranking_sha256:digest,items,semantic:{mode:'text_to_image',score_kind:'cosine',candidate_count:100000,coverage:'complete_eligible_images',needs_review:true}};};
+ let failDetail=false,releaseDetail=null,arriveDetail=null;const f=setup({read:()=>env(largeScene(),rid,true),page,detail:()=>{if(failDetail)throw error(503);if(releaseDetail)return new Promise(resolve=>{arriveDetail=()=>resolve({version:1,thread:thread(2),exchanges:[],latest_request_id:rid});});return {version:1,thread:thread(2),exchanges:[],latest_request_id:rid};}});
+ await f.c.capabilities();await f.c.sceneCapabilities();await f.c.scenePageCapabilities();await f.c.read(tid);await f.c.scenePage(2);failDetail=true;await assert.rejects(f.c.returnSceneResults());assert.equal(f.c.state().scenePageActive,true);assert.equal(f.c.state().scenePageLoading,false);assert.equal(f.c.state().scenePageResult,null);await assert.rejects(f.c.send('blocked while return is unverified'),e=>e.code==='conflict');
+ failDetail=false;releaseDetail=true;const returning=f.c.returnSceneResults();await new Promise(resolve=>setImmediate(resolve));assert.equal(f.c.state().scenePageActive,true);assert.equal(f.c.state().scenePageLoading,true);await assert.rejects(f.c.send('blocked during fresh return'),e=>e.code==='conflict');arriveDetail();await returning;assert.equal(f.c.state().scenePageActive,false);assert.equal(f.c.state().currentResult.version,4);f.c.close();
+});
+test('an aborted Return cannot reactivate paging state after account or library cleanup',async()=>{
+ let finishDetail,blockDetail=false;const page=(_path,options)=>{const p=options.body.page;return {version:1,thread_id:tid,request_id:rid,revision:2,page:p,page_size:20,total:100000,has_more:true,binding:hash,fingerprint:fp,ranking_sha256:'d'.repeat(64),items:Array.from({length:20},(_,i)=>({...structuredClone(item),id:String(101+(p-1)*20+i),thumbnail_url:`/assets/${101+(p-1)*20+i}/thumbnail?library=${library}`,semantic_score:.75})),semantic:{mode:'text_to_image',score_kind:'cosine',candidate_count:100000,coverage:'complete_eligible_images',needs_review:true}};};
+ const f=setup({read:()=>env(largeScene(),rid,true),page,detail:()=>blockDetail?new Promise(resolve=>finishDetail=resolve):{version:1,thread:thread(2),exchanges:[],latest_request_id:rid}});
+ await f.c.capabilities();await f.c.sceneCapabilities();await f.c.scenePageCapabilities();await f.c.read(tid);await f.c.scenePage(2);
+ blockDetail=true;const returning=f.c.returnSceneResults();await new Promise(resolve=>setImmediate(resolve));assert.equal(f.c.state().scenePageLoading,true);assert.equal(typeof finishDetail,'function');
+ f.scope.library='other';f.scope.generation++;assert.equal(f.c.state().scenePageActive,false);assert.equal(f.c.state().scenePageLoading,false);
+ finishDetail({version:1,thread:thread(2),exchanges:[],latest_request_id:rid});await assert.rejects(returning);
+ assert.equal(f.c.state().scenePageActive,false);assert.equal(f.c.state().scenePageLoading,false);assert.equal(f.c.state().scenePageResult,null);assert.equal(f.c.state().currentResult,null);f.c.close();
+});
+test('capability probes are ordered and an in-flight page cannot publish after capability revocation',async()=>{
+ const digest='d'.repeat(64);let releasePage=null,arrivePage=null,probeCount=0,resolveOldProbe=null;const page=(path,options)=>new Promise(resolve=>{releasePage=()=>resolve({version:1,thread_id:tid,request_id:rid,revision:2,page:options.body.page,page_size:20,total:100000,has_more:true,binding:hash,fingerprint:fp,ranking_sha256:digest,items:Array.from({length:20},(_,i)=>{const id=String(121+i);return {...structuredClone(item),id,thumbnail_url:`/assets/${id}/thumbnail?library=${library}`,semantic_score:.75};}),semantic:{mode:'text_to_image',score_kind:'cosine',candidate_count:100000,coverage:'complete_eligible_images',needs_review:true}});arrivePage=()=>{};});
+ const f=setup({read:()=>env(largeScene(),rid,true),pageProbe:()=>{probeCount++;if(probeCount===1)return {version:1,available:true,page_size:20};if(probeCount===2)return new Promise(resolve=>{resolveOldProbe=()=>resolve({version:1,available:true,page_size:20});});return {version:1,available:false,page_size:20};},page});
+ await f.c.capabilities();await f.c.sceneCapabilities();await f.c.scenePageCapabilities();await f.c.read(tid);const pendingPage=f.c.scenePage(2);await new Promise(resolve=>setImmediate(resolve));const oldProbe=f.c.scenePageCapabilities(),newerProbe=f.c.scenePageCapabilities();await newerProbe;resolveOldProbe();await oldProbe;assert.equal(f.c.state().scenePageAvailable,false);releasePage();await assert.rejects(pendingPage);assert.equal(f.c.state().scenePageResult,null);assert.equal(f.c.state().scenePageActive,true);f.c.close();
+});
+test('a late error from an old page cannot clear the replacement read and page result',async()=>{
+ const digest='d'.repeat(64);let first=true,releaseOld=null;const page=(path,options)=>{if(first){first=false;return new Promise((_resolve,reject)=>{releaseOld=()=>reject(error(503));});}const p=options.body.page,items=Array.from({length:20},(_,i)=>{const id=String(101+(p-1)*20+i);return {...structuredClone(item),id,thumbnail_url:`/assets/${id}/thumbnail?library=${library}`,semantic_score:.75};});return {version:1,thread_id:tid,request_id:rid,revision:2,page:p,page_size:20,total:100000,has_more:true,binding:hash,fingerprint:fp,ranking_sha256:digest,items,semantic:{mode:'text_to_image',score_kind:'cosine',candidate_count:100000,coverage:'complete_eligible_images',needs_review:true}};};
+ const f=setup({read:()=>env(largeScene(),rid,true),page});await f.c.capabilities();await f.c.sceneCapabilities();await f.c.scenePageCapabilities();await f.c.read(tid);const old=f.c.scenePage(2);await new Promise(resolve=>setImmediate(resolve));await f.c.read(tid);const current=await f.c.scenePage(2);releaseOld();await assert.rejects(old);assert.equal(f.c.state().scenePageResult,current);assert.equal(f.c.state().scenePageActive,true);assert.equal(f.c.state().scenePageLoading,false);f.c.close();
 });
 test('semantic coverage details are optional, exact, bounded and cross-validated',()=>{
  const legacy=Private.validateResult(scene(),library,false,false,false,4);assert.deepEqual(Object.keys(legacy.semantic),['mode','score_kind','candidate_count','coverage','needs_review']);
@@ -97,6 +150,72 @@ test('durable unsupported scene failure clears results, keeps both drafts, and o
  const sent=f.calls.filter(c=>c.path.endsWith('/turns')).at(-1);assert.equal(sent.body.text,'reword typed before reload');assert.deepEqual(sent.body.accepts,['scene_search_v1']);
  assert.equal(sent.body.expected_revision,1);assert.equal(f.c.state().draft,'unsent ordinary conditions');assert.equal(f.c.state().sceneDraft,'');
  assert.equal(f.calls.filter(c=>c.path.includes('/requests/')).length,1);assert.equal(f.calls.filter(c=>c.method==='GET').length-getsBeforeReload,3);f.c.close();
+});
+test('opt-in thread read restores only the newest refusal cue and never hydrates the older result',async()=>{
+ const cue={version:1,request_id:rid,revision:1,query:'a dog not on grass'};
+ const f=setup({turn:options=>failed(options.body.request_id),
+  read:path=>({...env(scene(),path.split('/requests/')[1].split('?')[0],true),revision:1}),
+  detail:()=>({version:1,thread:thread(1),exchanges:[],latest_request_id:rid,scene_reword:cue})});
+ await ready(f);f.c.setDraft('ordinary draft');f.c.setSceneDraft(query);await f.c.sendScene();
+ f.c.setSceneDraft('');
+ const before=f.calls.filter(c=>c.path.includes('/requests/')).length;
+ const restored=await f.c.read(tid);
+ const threadRead=f.calls.filter(c=>c.path.includes('/threads/')&&!c.path.includes('/requests/')).at(-1);
+ assert.equal(threadRead.extraHeaders['X-PhotoHouse-Search-Version'],undefined);
+ assert.equal(threadRead.extraHeaders['X-PhotoHouse-Scene-Reword-Version'],'1');
+ assert.equal(restored.scene_reword.query,cue.query);assert.equal(f.c.state().sceneDraft,cue.query);
+ assert.equal(f.c.state().sceneRewordRequired,true);assert.equal(f.c.state().currentResult,null);
+ assert.equal(f.c.state().contextState,'requires_search');
+ assert.equal(f.calls.filter(c=>c.path.includes('/requests/')).length,before);
+ const posts=f.calls.filter(c=>c.path.endsWith('/turns')).length;
+ f.c.setSceneDraft('reword typed after reload');
+ await f.c.read(tid,{sceneReloadGuard:true});
+ assert.equal(f.c.state().sceneDraft,'reword typed after reload');
+ assert.equal(f.c.state().sceneRewordRequired,false);assert.equal(f.c.state().currentResult.version,4);
+ assert.equal(f.calls.filter(c=>c.path.endsWith('/turns')).length,posts);
+ await f.c.sendScene();
+ assert.equal(f.calls.filter(c=>c.path.endsWith('/turns')).at(-1).body.text,'reword typed after reload');
+ assert.equal(f.c.state().draft,'ordinary draft');f.c.close();
+});
+test('opt-in thread read rejects malformed refusal projection without publishing it',async()=>{
+ for(const scene_reword of [
+  {version:1,request_id:rid,revision:0,query:'a dog not on grass'},
+  {version:1,request_id:rid,revision:1,query:'bad\nquery'},
+  {version:1,request_id:rid,revision:1,query:'a'.repeat(513)},
+  {version:1,request_id:rid,revision:1,query:'a dog not on grass',extra:true}
+ ]){
+  const f=setup({detail:()=>({version:1,thread:thread(1),exchanges:[],latest_request_id:null,scene_reword})});
+  await ready(f);await assert.rejects(f.c.read(tid),error=>error.code==='invalid_response');
+  assert.equal(f.c.state().sceneDraft,'');assert.equal(f.c.state().sceneRewordRequired,false);f.c.close();
+ }
+});
+test('thread-read confirmation binds the cue identity as well as revision and completed pointer',async()=>{
+ for(const guarded of [false,true]){
+  const firstCue={version:1,request_id:rid,revision:1,query:'a dog not on grass'};
+  const secondCue={version:1,request_id:'33333333-3333-4333-8333-333333333333',revision:1,query:'a phone not in a house'};
+  let details=0;
+  const f=setup({turn:options=>failed(options.body.request_id),
+   read:path=>({...env(scene(),path.split('/requests/')[1].split('?')[0],true),revision:1}),
+   detail:()=>({version:1,thread:thread(1),exchanges:[],latest_request_id:rid,scene_reword:++details===1?firstCue:secondCue})});
+  await ready(f);await f.c.sendScene(query);f.c.setSceneDraft('edited draft survives cue change');
+  const posts=f.calls.filter(c=>c.path.endsWith('/turns')).length;
+  await assert.rejects(f.c.read(tid,{sceneReloadGuard:guarded}),error=>error.code==='conflict');
+  assert.equal(details,2);assert.equal(f.c.state().sceneDraft,'edited draft survives cue change');
+  assert.equal(f.c.state().sceneRewordRequired,true);assert.equal(f.c.state().currentResult,null);
+  assert.equal(f.c.state().contextState,'requires_search');
+  assert.equal(f.calls.filter(c=>c.path.endsWith('/turns')).length,posts);f.c.close();
+ }
+});
+test('refusal draft is retained as read-only guidance when scene capability is unavailable',async()=>{
+ const cue={version:1,request_id:rid,revision:1,query:'a dog not on grass'};
+ const f=setup({probe:{...sceneCaps,available:false},detail:()=>({version:1,thread:thread(1),exchanges:[],latest_request_id:rid,scene_reword:cue})});
+ await f.c.capabilities();assert.equal(await f.c.sceneCapabilities(),false);await f.c.create();
+ const detail=await f.c.read(tid);
+ const threadRead=f.calls.filter(c=>c.path.includes('/threads/')&&!c.path.includes('/requests/')).at(-1);
+ assert.equal(threadRead.extraHeaders['X-PhotoHouse-Scene-Reword-Version'],'1');
+ assert.equal(f.c.state().sceneAvailable,false);assert.equal(f.c.state().sceneDraft,cue.query);
+ assert.equal(f.c.state().sceneRewordRequired,true);assert.equal(f.c.state().sceneReady,false);
+ assert.equal(f.c.state().currentResult,null);assert.equal(detail.scene_reword.query,cue.query);f.c.close();
 });
 test('lost unsupported scene response is resolved by one v4 GET and preserves a newer draft edit',async()=>{
  const f=setup({turn:()=>{throw error(503);},read:path=>path.includes('/requests/')?failed(path.split('/requests/')[1].split('?')[0],true):env(ordinary(),rid,true)});

@@ -286,6 +286,56 @@ class SearchRefinementTests(unittest.TestCase):
             self.assertEqual(result.status, 'ready', (words, result))
             self.assertEqual(result.filters, {k: v for k, v in PREVIOUS.items() if k not in {'date', 'people'}})
 
+    def test_closed_media_only_refinement_replaces_only_media_slot(self):
+        cases = {
+            'videos only': {**PREVIOUS, 'media': ['video']},
+            'only videos': {**PREVIOUS, 'media': ['video']},
+            'Refine the last search to videos only': {**PREVIOUS, 'media': ['video']},
+            'Refine my last search to videos only': {**PREVIOUS, 'media': ['video']},
+            'Refine last search to videos only': {**PREVIOUS, 'media': ['video']},
+            'Refine the last search to show videos only': {**PREVIOUS, 'media': ['video']},
+            'Refine my last search to show videos only': {**PREVIOUS, 'media': ['video']},
+            'only photos': PREVIOUS,
+            'photos only': PREVIOUS,
+            '只看视频': {**PREVIOUS, 'media': ['video']},
+            '只看照片': PREVIOUS,
+            '只看影片': {**PREVIOUS, 'media': ['video']},
+            '只看图片': PREVIOUS,
+        }
+        for words, expected in cases.items():
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words), 'refine')
+                result = plan(words)
+                self.assertEqual(result.status, 'ready', result)
+                self.assertEqual(result.filters, expected)
+
+        dated = {**PREVIOUS, 'media': ['image'],
+                 'date': {'from': '2025-09-01', 'to': '2025-09-30'}}
+        video_only = plan('Refine the last search to videos only', previous=dated)
+        self.assertEqual(video_only.status, 'ready', video_only)
+        self.assertEqual(video_only.filters, {**dated, 'media': ['video']})
+        october = plan('October 2025', previous=video_only.filters)
+        self.assertEqual(october.status, 'ready', october)
+        self.assertEqual(october.filters, {
+            **video_only.filters, 'date': {'from': '2025-10-01', 'to': '2025-10-31'}})
+
+    def test_media_only_refinement_stays_closed_around_negation_quotes_and_residue(self):
+        for words in ('videos only without a hat', 'only videos with an unknown scene',
+                      'videos only at Mars',
+                      'Refine the last search to videos only without a hat',
+                      'Refine the last search to videos only at Mars',
+                      'Refine my last search to videos only and no people'):
+            with self.subTest(words=words):
+                result = plan(words)
+                self.assertEqual(result.status, 'clarification', result)
+                self.assertEqual(result.filters, PREVIOUS)
+
+        words = 'containing "videos only"'
+        self.assertIsNone(query_mode(words))
+        result = plan(words)
+        self.assertEqual(result.status, 'ready', result)
+        self.assertEqual(result.filters, {**PREVIOUS, 'text': 'videos only'})
+
     def test_conflicting_replacement_unknown_conditions_and_negation_clarify(self):
         for words in ('any date, only September 2032', 'only September 2032, any date',
                       'anyone, only Sample Child', 'any text containing "海边"',
@@ -535,6 +585,24 @@ class SearchRefinementHttpTests(unittest.TestCase):
         self.fixture = fixtures.AssistantJointSearchTests('test_text_union_dedup_reasons_and_authored_first_order')
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
+
+    def test_a_weekend_followup_keeps_the_reviewed_people_media_and_text(self):
+        initial = self.fixture.turn(
+            'find Sample Child and Sample Adult photos in September 2032 containing "海边"').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.assertEqual([item['id'] for item in initial['items']], ['103'])
+        # The fixed HTTP clock is 2033-05-18 UTC; the earlier search date is
+        # deliberately different to prove the new relative date uses that clock.
+        expected = {**initial['filters'], 'date': {'from': '2033-05-14', 'to': '2033-05-15'}}
+        for words in ('last weekend', '上週末', '改成 last weekend'):
+            with self.subTest(words=words):
+                result = self.fixture.turn(words, context=initial['context']).json()
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual(result['filters'], expected)
+                self.assertEqual(result['items'], [])
+                self.assertEqual(result['total'], 0)
+        denied = self.fixture.turn('上週末', context=initial['context'], token=OTHER)
+        self.assertNotEqual(denied.status_code, 200)
 
     def test_removing_date_keeps_joint_people_and_literal_over_http(self):
         initial = self.fixture.turn('找2031年9月示例儿童和示例成人包含“海边”的照片').json()

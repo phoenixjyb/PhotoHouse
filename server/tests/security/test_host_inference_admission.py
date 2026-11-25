@@ -1,5 +1,6 @@
 """Generated-only host claim, crash retention and provider cleanup checks."""
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace, astuple
 from contextlib import closing
 import json
@@ -9,6 +10,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from unittest.mock import patch
@@ -68,6 +70,46 @@ class HostAdmissionTests(HostFixture,unittest.TestCase):
         self.assertTrue(permit.finish(reconciled=True))
         self.assertTrue(permit.finish(reconciled=True))
         self.assertTrue(self.other(host).acquire(OTHER).finish(reconciled=True))
+
+    def test_proven_release_waits_for_a_brief_reader_and_retains_maintenance(self):
+        host = self.host()
+        permit = host.acquire(OP)
+        host.set_maintenance(True)
+        connect = sqlite3.connect
+        commit_attempted = threading.Event()
+
+        def trace_commit(*args, **kwargs):
+            db = connect(*args, **kwargs)
+            db.set_trace_callback(lambda sql: commit_attempted.set() if sql == 'COMMIT' else None)
+            return db
+
+        with closing(connect(host.path)) as observer, ThreadPoolExecutor(max_workers=1) as worker:
+            self.assertEqual(observer.execute('PRAGMA journal_mode').fetchone(), ('delete',))
+            observer.execute('BEGIN')
+            self.assertEqual(observer.execute('SELECT count(*) FROM claim').fetchone(), (1,))
+            with patch('sqlite3.connect', side_effect=trace_commit):
+                released = worker.submit(permit.finish, reconciled=True)
+                try:
+                    self.assertTrue(commit_attempted.wait(2), 'Exact claim release reached COMMIT')
+                    with self.assertRaises(TimeoutError):
+                        released.result(timeout=0.05)
+                    self.assertEqual(observer.execute('SELECT count(*) FROM claim').fetchone(), (1,))
+                finally:
+                    observer.rollback()
+                self.assertTrue(released.result(timeout=2))
+            self.assertEqual(observer.execute('SELECT count(*) FROM claim').fetchone(), (0,))
+        self.reason('maintenance', host.acquire, OTHER)
+
+    def test_persistent_reader_keeps_exact_claim_until_a_proven_retry(self):
+        host = self.host()
+        permit = host.acquire(OP)
+        with closing(sqlite3.connect(host.path)) as observer:
+            observer.execute('BEGIN')
+            self.assertEqual(observer.execute('SELECT count(*) FROM claim').fetchone(), (1,))
+            self.reason('busy', permit.finish, reconciled=True)
+            self.assertEqual(observer.execute('SELECT operation FROM claim').fetchone(), (OP,))
+            observer.rollback()
+        self.assertTrue(permit.finish(reconciled=True))
 
     def test_maintenance_does_not_clear_active_or_stale_claim(self):
         host=self.host();permit=host.acquire(OP)

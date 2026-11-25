@@ -5,6 +5,20 @@ instruction to execute a service change. Windows owns live data, models and GPU
 runtimes; the source checkout contains application code, contracts and tools.
 [Project Status](PROJECT_STATUS.md) is the dated installation snapshot.
 
+## Current operating reference
+
+[October 29 release](RELEASE_2026-10-29.md) records the Windows main/UI/voice
+rollout and 15-minute SYSTEM photo-stack refresh. It is dated evidence, not an
+instruction to restart a service or reuse an old claim. The October 29 work
+window is closed; production services were retained and experimental cleanup
+completed. Physical microphone/speaker testing was deferred by the user.
+
+GitHub Actions remains cost-paused. Use local checks and [the CI policy](CI.md);
+this documentation task authorizes no push, deployment, migration or task change.
+For a UI-only release, bind the selected API commit **and** its complete manifest
+in all startup/refresh controls; preserve the separate grouping-worker identity.
+Keep rollback available until actual API, Search, grouping and refresh checks pass.
+
 ## Release sequence
 
 1. **Pin source and artifacts.** Record repository/branch/commit, clean/dirty state,
@@ -49,10 +63,51 @@ Consult [source packaging](SOURCE_PACKAGING.md), [native assistant qualification
 contracts before preparing a specific operation. Backups of one SQLite file do
 not establish recovery of the complete multi-store system.
 
+## Browser access on the home network
+
+Use the same HTTPS PhotoHouse URL on the home network and away from home. On a
+router or local DNS server you manage, point the existing PhotoHouse hostname at
+the Windows server's LAN address. Home devices that use that DNS server can
+then connect directly while keeping the same sign-in and certificate hostname.
+
+An operator can check the direct route before changing DNS. Replace the example
+values with the already configured hostname, HTTPS port and LAN address.
+
+```sh
+curl -q --noproxy '*' --fail --connect-timeout 5 --max-time 15 \
+  --resolve 'photos.example.net:8443:192.168.1.20' \
+  'https://photos.example.net:8443/ui'
+```
+
+Open the regular PhotoHouse URL on a phone or tablet after the local DNS change
+and confirm that it resolves to the LAN address on that network. Certificate
+validation should succeed throughout. Removing the local DNS record restores
+the normal hostname resolution for that network.
+
+## Reviewed video moments
+
+The protected staging launcher can load an operator-reviewed video-moment
+catalog alongside prepared playback. Leave the catalog flags unset to keep
+moment search off. Set both `--video-moment-catalog` and
+`--video-moment-sha256` alongside the existing `--prepared-index`,
+`--prepared-root` and `--prepared-sha256` flags to select an exact catalog.
+
+Use a direct private file outside the application config, prepared media,
+originals and database. The UTF-8 JSON object has `version` set to `1` and a
+`moments` array with up to 32 reviewed rows. Each row contains the numeric
+`asset_id`, `label`, `start_sec` and `end_sec` in playback seconds, and the
+matching prepared entry's `source_identity`, `duration_ms` and
+`playback_sha256`. The catalog may occupy up to 64 KiB. `--check-config`
+validates flag syntax and path separation. `--serve` verifies the catalog
+hash and prepared-entry bindings before opening the listener. Only current
+library members with playback access can retrieve an interval. Treat catalog
+replacement as a new reviewed configuration.
+
 ## Reboot, tasks and workers
 
-The v58 deployment preserves the approved 30-second API startup trigger. The
-October 14 snapshot shows five upload workers and ASR/TTS running. Home TV has
+The October 29 rollout preserved existing task contracts and verified the new
+SYSTEM refresh after selection. Earlier v58/October 14 startup and worker counts
+are historical, not a current process inventory. Home TV has
 an interactive desktop dependency and was Ready; feed/APK publication does not
 make that media listener available. Validate the relevant identity and startup
 path after reboot rather than starting every old task.

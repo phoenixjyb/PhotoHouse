@@ -12,18 +12,20 @@ import struct
 import unicodedata
 import uuid
 
-from .oral_history_schema import (SESSION, SECTION, MUTATION, MAX_SECTIONS,
+from .oral_history_schema import (SESSION, SECTION, MUTATION, REVIEW, MAX_SECTIONS,
     MAX_SECTION_FRAMES, MAX_SECTION_BYTES, MAX_TOTAL_BYTES, MAX_TOTAL_FRAMES,
-    MAX_SESSIONS_PER_AUTHOR, assert_schema)
+    MAX_SESSIONS_PER_AUTHOR, MAX_REVIEW_TEXT_BYTES, MAX_REVIEW_REVISION,
+    assert_schema, assert_review_schema)
 from .service import AccessDenied
 from .original_deletions import OriginalDeletionError
 from .transport import TransportError
 
 LANGUAGES = {'zh', 'en', 'mixed', 'und'}
 CREATE_FIELDS = {'request_id', 'title', 'subject_label', 'narrator_label',
-                 'language', 'processing_consent'}
+                 'language', 'retention_consent', 'processing_consent'}
 STATUS_FIELDS = {'version', 'session_id', 'library_id', 'author_id', 'title',
-                 'subject_label', 'narrator_label', 'language', 'processing_consent',
+                 'subject_label', 'narrator_label', 'language', 'retention_consent',
+                 'processing_consent',
                  'state', 'revision', 'section_count', 'next_ordinal', 'total_bytes',
                  'total_frames', 'duration_ms', 'manifest_sha256'}
 
@@ -79,10 +81,12 @@ def wav_frames(audio):
 
 
 def _seed(row):
-    return _digest({'version': 1, 'id': row['id'], 'library': row['library_id'],
+    return _digest({'version': 2, 'id': row['id'], 'library': row['library_id'],
                     'author': row['author_id'], 'title': row['title'],
                     'subject': row['subject_label'], 'narrator': row['narrator_label'],
-                    'language': row['language'], 'consent': bool(row['processing_consent'])})
+                    'language': row['language'],
+                    'retention_consent': bool(row['retention_consent']),
+                    'processing_consent': bool(row['processing_consent'])})
 
 
 def _next(head, ordinal, start, frames, size, source):
@@ -96,7 +100,7 @@ def _one(db, sql, args):
     return dict(zip((c[0] for c in cursor.description),row)) if row is not None else None
 
 
-def session_snapshot(db, actor, library, ident, *, allow_withdrawn=False):
+def session_snapshot(db, actor, library, ident, *, allow_withdrawn=False, include_timeline=False):
     """Internal bounded metadata verifier; caller owns its authorization/transaction."""
     row = _one(db, f'SELECT * FROM {SESSION} WHERE id=? AND library_id=? AND author_id=?',
                            (ident, library, actor))
@@ -108,7 +112,8 @@ def session_snapshot(db, actor, library, ident, *, allow_withdrawn=False):
         _text(row['title'],512,required=True)
         _text(row['subject_label'],512)
         _text(row['narrator_label'],256)
-        if (row['language'] not in LANGUAGES or row['processing_consent'] not in (0,1)
+        if (row['language'] not in LANGUAGES or row['retention_consent'] != 1
+                or row['processing_consent'] not in (0,1)
                 or row['state'] not in {'open','completed','cancelled','withdrawn'}):
             raise ValueError()
         for key, maximum in (('revision',MAX_SECTIONS+3),('section_count',MAX_SECTIONS),
@@ -143,6 +148,9 @@ def session_snapshot(db, actor, library, ident, *, allow_withdrawn=False):
             != (len(parts), frames, size, head)
             or row['revision'] != 1 + len(parts) + int(logical_state != 'open') + int(row['state']=='withdrawn')):
         raise TransportError(503, 'Recording storage unavailable')
+    if include_timeline:
+        row['timeline'] = [{'ordinal': part[0], 'start_frame': part[1], 'frames': part[2]}
+                           for part in parts]
     return row
 
 
@@ -172,20 +180,21 @@ class OralHistoryIntake:
         self._ready()
         return member
 
-    def _session(self, actor, library, ident):
+    def _session(self, actor, library, ident, *, include_timeline=False):
         if self.access.original_deletions is not None:
             try:
                 self.access.original_deletions.assert_recording_available(self.db, ident)
             except OriginalDeletionError:
                 raise TransportError(503, 'Recording storage unavailable') from None
-        return session_snapshot(self.db,actor,library,ident)
+        return session_snapshot(self.db, actor, library, ident, include_timeline=include_timeline)
 
     @staticmethod
     def _status(row):
-        return {'version': 1, 'session_id': row['id'], 'library_id': row['library_id'],
+        return {'version': 2, 'session_id': row['id'], 'library_id': row['library_id'],
                 'author_id': row['author_id'], 'title': row['title'],
                 'subject_label': row['subject_label'], 'narrator_label': row['narrator_label'],
-                'language': row['language'], 'processing_consent': bool(row['processing_consent']),
+                'language': row['language'], 'retention_consent': bool(row['retention_consent']),
+                'processing_consent': bool(row['processing_consent']),
                 'state': row['state'], 'revision': row['revision'],
                 'section_count': row['section_count'], 'next_ordinal': row['section_count'],
                 'total_bytes': row['total_bytes'], 'total_frames': row['total_frames'],
@@ -210,7 +219,7 @@ class OralHistoryIntake:
             keys = STATUS_FIELDS
             extra = {'ordinal', 'section_sha256'} if operation == 'append' else set()
             if (type(result) is not dict or set(result) != keys | {'request_id','operation'} | extra
-                    or result['version'] != 1 or result['session_id'] != prior['session_id']
+                    or result['version'] != 2 or result['session_id'] != prior['session_id']
                     or result['author_id'] != actor or result['request_id'] != request
                     or result['operation'] != operation):
                 raise ValueError()
@@ -222,7 +231,9 @@ class OralHistoryIntake:
             for key in ('library_id','title','subject_label','narrator_label','language'):
                 if type(result[key]) is not str or result[key] != parent[key]:
                     raise ValueError()
-            if (type(result['version']) is not int or type(result['processing_consent']) is not bool
+            if (type(result['version']) is not int or type(result['retention_consent']) is not bool
+                    or result['retention_consent'] != bool(parent['retention_consent'])
+                    or type(result['processing_consent']) is not bool
                     or result['processing_consent'] != bool(parent['processing_consent'])
                     or result['state'] != ('completed' if operation=='complete' else
                         'cancelled' if operation=='cancel' else 'open')):
@@ -275,6 +286,7 @@ class OralHistoryIntake:
         _text(body['subject_label'], 512)
         _text(body['narrator_label'], 256)
         if (type(body['language']) is not str or body['language'] not in LANGUAGES
+                or type(body['retention_consent']) is not bool
                 or type(body['processing_consent']) is not bool):
             raise TransportError(422, 'Invalid recording options')
         digest = _digest(['create', library, body])
@@ -284,16 +296,20 @@ class OralHistoryIntake:
             if prior is not None:
                 self._session(actor, library, prior['session_id'])
                 return prior
+            if not body['retention_consent']:
+                raise TransportError(422, 'Explicit source retention consent required')
             count = self.db.execute(f'SELECT count(*) FROM {SESSION} WHERE author_id=?', (actor,)).fetchone()[0]
             if count >= MAX_SESSIONS_PER_AUTHOR:
                 raise TransportError(409, 'Recording storage quota reached')
             row = {**body, 'id': str(uuid.uuid4()), 'author_id': actor, 'library_id': library}
             self.db.execute(f'''INSERT INTO {SESSION}
-                (id,library_id,author_id,title,subject_label,narrator_label,language,processing_consent,
+                (id,library_id,author_id,title,subject_label,narrator_label,language,retention_consent,
+                 processing_consent,
                  state,revision,section_count,total_bytes,total_frames,manifest_sha256,created_at)
-                VALUES (?,?,?,?,?,?,?,?,'open',1,0,0,0,?,?)''',
+                VALUES (?,?,?,?,?,?,?,?,?,'open',1,0,0,0,?,?)''',
                 (row['id'], library, actor, body['title'], body['subject_label'], body['narrator_label'],
-                 body['language'], int(body['processing_consent']), _seed(row), self.access._now()))
+                 body['language'], int(body['retention_consent']), int(body['processing_consent']),
+                 _seed(row), self.access._now()))
             return self._record(actor, request, 'create', digest, self._session(actor, library, row['id']))
 
     def append(self, token, library, ident, *, request_id, expected_revision, ordinal, audio):
@@ -333,6 +349,60 @@ class OralHistoryIntake:
             actor = self._member(token, library)['account_id']
             return self._status(self._session(actor, library, ident))
 
+    def _list_state(self, token, library, state):
+        _text(library,128,required=True)
+        if state not in {'open','completed'}:
+            raise ValueError('Unsupported recording list state')
+        with self.access._transaction():
+            actor = self._member(token, library)['account_id']
+            rows = self.db.execute(
+                f'SELECT id FROM {SESSION} WHERE author_id=? AND library_id=? AND state=? '
+                'ORDER BY created_at DESC,id DESC LIMIT ?',
+                (actor, library, state, MAX_SESSIONS_PER_AUTHOR + 1)).fetchall()
+            if len(rows) > MAX_SESSIONS_PER_AUTHOR:
+                raise TransportError(503, 'Recording storage unavailable')
+            items = []
+            for (ident,) in rows:
+                row = self._session(actor, library, ident)
+                if row['state'] != state:
+                    raise TransportError(503, 'Recording storage unavailable')
+                items.append(self._status(row))
+            return {'version': 2, 'library_id': library, 'items': items}
+
+    def list_open(self, token, library):
+        """List only this author's bounded open-session status for one library."""
+        return self._list_state(token, library, 'open')
+
+    def list_completed(self, token, library):
+        """List only this author's bounded completed-session status for one library."""
+        return self._list_state(token, library, 'completed')
+
+    def _verified_section_audio(self, ident, ordinal):
+        metadata = self.access._one(f'''SELECT byte_count,
+            CASE WHEN typeof(audio)='blob' THEN length(audio) END AS stored_bytes,sha256,frames
+            FROM {SECTION} WHERE session_id=? AND ordinal=?''', (ident, ordinal))
+        if metadata is None:
+            raise AccessDenied('Access denied')
+        # session_snapshot has already verified this immutable manifest row and
+        # aggregate bound in the same transaction. Check the actual SQLite blob
+        # length before asking the driver to materialize the raw audio bytes.
+        if (type(metadata['byte_count']) is not int or not 46 <= metadata['byte_count'] <= MAX_SECTION_BYTES
+                or type(metadata['stored_bytes']) is not int
+                or metadata['stored_bytes'] != metadata['byte_count']
+                or type(metadata['frames']) is not int
+                or metadata['byte_count'] != 44 + metadata['frames'] * 2):
+            raise TransportError(503, 'Recording source unavailable')
+        row = self.access._one(f'SELECT audio FROM {SECTION} WHERE session_id=? AND ordinal=?',
+                               (ident, ordinal))
+        try:
+            audio = bytes(row['audio'])
+            if (len(audio) != metadata['byte_count'] or wav_frames(audio) != metadata['frames']
+                    or hashlib.sha256(audio).hexdigest() != metadata['sha256']):
+                raise ValueError()
+        except (ValueError, TypeError, TransportError):
+            raise TransportError(503, 'Recording source unavailable') from None
+        return audio
+
     def audio(self, token, library, ident, ordinal):
         _text(library,128,required=True)
         ident = _uuid(ident)
@@ -340,17 +410,98 @@ class OralHistoryIntake:
         with self.access._transaction():
             actor = self._member(token, library)['account_id']
             self._session(actor, library, ident)
-            row = self.access._one(f'SELECT audio,sha256,frames FROM {SECTION} WHERE session_id=? AND ordinal=?',
-                                   (ident, ordinal))
-            if row is None:
-                raise AccessDenied('Access denied')
-            try:
-                audio = bytes(row['audio'])
-                if wav_frames(audio) != row['frames'] or hashlib.sha256(audio).hexdigest() != row['sha256']:
-                    raise ValueError()
-            except (ValueError, TypeError, TransportError):
-                raise TransportError(503, 'Recording source unavailable') from None
-            return audio
+            return self._verified_section_audio(ident, ordinal)
+
+    @staticmethod
+    def _completed_coordinates(library, ident, ordinal, expected_revision):
+        _text(library,128,required=True)
+        return (_uuid(ident), _integer(ordinal, MAX_SECTIONS - 1),
+                _integer(expected_revision, MAX_SECTIONS + 2, minimum=1))
+
+    def _completed_session(self, token, library, ident, revision, *, include_timeline=False):
+        actor = self._member(token, library)['account_id']
+        session = self._session(actor, library, ident, include_timeline=include_timeline)
+        if session['state'] != 'completed':
+            raise TransportError(409, 'Recording is not completed')
+        if session['revision'] != revision:
+            raise TransportError(409, 'Recording changed; refresh before reading')
+        return session
+
+    def completed_timeline(self, token, library, ident, *, expected_revision):
+        """Project the verified section offsets from the current author-owned manifest."""
+        _text(library, 128, required=True)
+        ident = _uuid(ident)
+        revision = _integer(expected_revision, MAX_SECTIONS + 2, minimum=1)
+        with self.access._transaction():
+            session = self._completed_session(token, library, ident, revision, include_timeline=True)
+            return {'version': 1, 'session_id': ident, 'revision': revision,
+                    'manifest_sha256': session['manifest_sha256'], 'sample_rate': 16000,
+                    'sections': session['timeline']}
+
+    def _completed_section(self, token, library, ident, ordinal, revision, *, for_transcription=False):
+        session = self._completed_session(token, library, ident, revision)
+        if for_transcription and not session['processing_consent']:
+            raise TransportError(403, 'Recording transcription was not authorized')
+        return self._verified_section_audio(ident, ordinal)
+
+    def completed_audio(self, token, library, ident, ordinal, *, expected_revision,
+                        for_transcription=False):
+        """Read one verified section only from this author's current completed snapshot."""
+        ident, ordinal, revision = self._completed_coordinates(library, ident, ordinal, expected_revision)
+        with self.access._transaction():
+            return self._completed_section(token, library, ident, ordinal, revision,
+                                           for_transcription=for_transcription)
+
+    def _read_section_review(self, ident, ordinal, revision, source_sha256):
+        unavailable = TransportError(503, 'Recording review unavailable')
+        try:
+            assert_review_schema(self.db)
+        except ValueError:
+            raise unavailable from None
+        metadata = self.access._one(f'''SELECT revision,source_revision,source_sha256,text_sha256,
+            CASE WHEN typeof(text)='text' THEN length(CAST(text AS BLOB)) END AS text_bytes
+            FROM {REVIEW} WHERE session_id=? AND ordinal=?''', (ident, ordinal))
+        if metadata is None:
+            return 0, None
+        if (metadata['source_revision'] != revision or metadata['source_sha256'] != source_sha256
+                or type(metadata['revision']) is not int or not 1 <= metadata['revision'] <= MAX_REVIEW_REVISION
+                or type(metadata['text_bytes']) is not int or not 1 <= metadata['text_bytes'] <= MAX_REVIEW_TEXT_BYTES):
+            raise unavailable
+        text = self.access._one(f'SELECT text FROM {REVIEW} WHERE session_id=? AND ordinal=?',
+                                (ident, ordinal))['text']
+        try:
+            _text(text, MAX_REVIEW_TEXT_BYTES, required=True)
+        except TransportError:
+            raise unavailable from None
+        if hashlib.sha256(text.encode('utf-8')).hexdigest() != metadata['text_sha256']:
+            raise unavailable
+        return metadata['revision'], text
+
+    def reviewed_section(self, token, library, ident, ordinal, *, expected_revision,
+                         text=None, expected_review_revision=None):
+        """Read or explicitly save the author's separate reviewed text."""
+        ident, ordinal, revision = self._completed_coordinates(library, ident, ordinal, expected_revision)
+        if expected_review_revision is not None:
+            _integer(expected_review_revision, MAX_REVIEW_REVISION)
+            _text(text, MAX_REVIEW_TEXT_BYTES, required=True)
+        with self.access._transaction(write=expected_review_revision is not None):
+            audio = self._completed_section(token, library, ident, ordinal, revision)
+            source_sha256 = hashlib.sha256(audio).hexdigest()
+            review_revision, reviewed = self._read_section_review(ident, ordinal, revision, source_sha256)
+            if expected_review_revision is not None and text != reviewed:
+                if review_revision != expected_review_revision or review_revision >= MAX_REVIEW_REVISION:
+                    raise TransportError(409, 'Reviewed text changed; reopen before saving')
+                review_revision += 1
+                self.db.execute(f'''INSERT INTO {REVIEW}
+                    (session_id,ordinal,source_revision,source_sha256,revision,text,text_sha256)
+                    VALUES (?,?,?,?,?,?,?)
+                    ON CONFLICT(session_id,ordinal) DO UPDATE SET revision=excluded.revision,
+                        text=excluded.text,text_sha256=excluded.text_sha256''',
+                    (ident, ordinal, revision, source_sha256, review_revision, text,
+                     hashlib.sha256(text.encode('utf-8')).hexdigest()))
+                reviewed = text
+            return {'version': 1, 'session_id': ident, 'ordinal': ordinal, 'source_revision': revision,
+                    'review_revision': review_revision, 'text': reviewed}
 
     def close(self, token, library, ident, *, request_id, expected_revision, cancel=False):
         _text(library,128,required=True)

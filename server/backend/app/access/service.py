@@ -30,7 +30,7 @@ class AccessService:
     SESSION_SECONDS = 86400
 
     def __init__(self, connection: sqlite3.Connection, *, clock=time.time,
-                 memory_groups_enabled=False):
+                 memory_groups_enabled=False, story_refinement_context=None):
         if type(memory_groups_enabled) is not bool:
             raise ValueError('Explicit memory group opt-in required')
         if connection.in_transaction:
@@ -40,6 +40,9 @@ class AccessService:
         self.db = connection
         self.clock = clock
         self.memory_groups_enabled = memory_groups_enabled
+        if story_refinement_context is not None and not callable(story_refinement_context):
+            raise ValueError('Invalid story refinement context resolver')
+        self.story_refinement_context = story_refinement_context
         self.original_deletions = getattr(connection, 'original_deletions', None)
 
     def _now(self):
@@ -161,6 +164,16 @@ class AccessService:
             owner = self._member(owner_token, library_id, owner=True)
             self.db.execute('UPDATE access_invitations SET cancelled=1 WHERE digest=? AND library_id=?',
                             (digest, library_id))
+            self._audit(owner['account_id'], 'cancel_invitation', library_id)
+
+    def cancel_pending_invitations(self, owner_token: str, library_id: str, phone: str):
+        """Revoke unused invitations without recovering their original codes."""
+        canonical = phone_login(phone)
+        with self._transaction(write=True):
+            owner = self._member(owner_token, library_id, owner=True)
+            self.db.execute('''UPDATE access_invitations SET cancelled=1
+                WHERE library_id=? AND target_phone=? AND consumed=0
+                    AND cancelled=0 AND expires_at>?''', (library_id, canonical, self._now()))
             self._audit(owner['account_id'], 'cancel_invitation', library_id)
 
     def _invitation(self, canonical, digest):

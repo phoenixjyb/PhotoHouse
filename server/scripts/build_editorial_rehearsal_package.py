@@ -15,10 +15,16 @@ from pathlib import Path, PurePosixPath
 import re
 import stat
 import subprocess
+import sys
 import zipfile
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'backend'))
+from app import work_storage as storage
 
 BASELINE_SHA256 = 'c3d04af1fa60ff1e8aacf5aab71e4c73814676d6a70656a6feda9b9a47fade51'
 ADDITIONS = (
+    'backend/app/work_storage.py',
+    'backend/app/access/private_storage.py',
     'backend/requirements-editorial-test.in',
     'backend/requirements-editorial-test.lock',
     'scripts/bounded_windows_job.py',
@@ -96,6 +102,7 @@ def source_files(repo: Path, commit: str, baseline: Path) -> dict[str, bytes]:
 
 
 def build(repo: Path, commit: str, baseline: Path, output: Path) -> dict:
+    storage.direct(output)
     if not output.is_absolute() or output.exists() or not output.parent.is_dir():
         raise ValueError('new_absolute_output_required')
     files = source_files(repo, commit, baseline)
@@ -106,13 +113,15 @@ def build(repo: Path, commit: str, baseline: Path, output: Path) -> dict:
                 'task_or_service_control': False, 'client_publication': False,
                 'private_configuration_included': False, 'original_media_included': False,
                 'files': {name: hashlib.sha256(data).hexdigest() for name, data in sorted(files.items())}}
-    with output.open('xb') as stream, zipfile.ZipFile(stream, 'w', compression=zipfile.ZIP_STORED) as z:
-        values = dict(files, **{'manifest.json': (json.dumps(manifest, sort_keys=True, indent=2) + '\n').encode()})
-        for name, data in sorted(values.items()):
-            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
-            info.create_system = 3
-            info.external_attr = (stat.S_IFREG | 0o644) << 16
-            z.writestr(info, data)
+    values = dict(files, **{'manifest.json': (json.dumps(manifest, sort_keys=True, indent=2) + '\n').encode()})
+    maximum = sum(len(data) + 2 * len(name.encode('utf-8')) + 256 for name, data in values.items()) + 4096
+    with storage.operation([output], [(output, 'source archive', maximum)]):
+        with output.open('xb') as stream, zipfile.ZipFile(stream, 'w', compression=zipfile.ZIP_STORED) as z:
+            for name, data in sorted(values.items()):
+                info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+                info.create_system = 3
+                info.external_attr = (stat.S_IFREG | 0o644) << 16
+                z.writestr(info, data)
     return {'source_commit': commit, 'members': len(files), 'bytes': output.stat().st_size,
             'sha256': hashlib.sha256(output.read_bytes()).hexdigest(), 'execution_enabled': False}
 
@@ -122,10 +131,11 @@ def main() -> int:
     parser.add_argument('--repo', type=Path, required=True)
     parser.add_argument('--commit', required=True)
     parser.add_argument('--baseline', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     try:
-        print(json.dumps(build(args.repo, args.commit, args.baseline, args.output), sort_keys=True))
+        output = args.output if args.output is not None else storage.new_run() / 'editorial.zip'
+        print(json.dumps(build(args.repo, args.commit, args.baseline, output), sort_keys=True))
         return 0
     except (OSError, ValueError, subprocess.SubprocessError, zipfile.BadZipFile):
         print(json.dumps({'status': 'refused', 'existing_output_overwritten': False}))

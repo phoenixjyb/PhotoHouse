@@ -1,9 +1,88 @@
+from contextlib import nullcontext
 from pathlib import Path
+from types import SimpleNamespace
 import tempfile
 import unittest
 from unittest import mock
+import uuid
 
-from tools import check
+from tools import check, check_windows_storage
+
+
+class WindowsLeanStorageTests(unittest.TestCase):
+    def test_local_windows_missing_work_root_still_uses_guard(self):
+        with mock.patch.object(check_windows_storage.os, "name", "nt"), \
+                mock.patch.object(check_windows_storage.os.path, "lexists", return_value=False), \
+                mock.patch.dict(check_windows_storage.os.environ, {}, clear=True):
+            self.assertTrue(check_windows_storage.enabled())
+
+    def test_retention_selects_only_the_oldest_verified_success(self):
+        runs = [Path.cwd() / str(uuid.UUID(int=index)) for index in range(1, 6)]
+        closed = [{"finished_ns": index} for index in range(1, 5)]
+        storage = SimpleNamespace(direct=mock.Mock())
+        privacy = SimpleNamespace(require_private_directory=mock.Mock())
+        with mock.patch.object(check_windows_storage, "RUNS", SimpleNamespace(iterdir=lambda: iter(runs))), \
+                mock.patch.object(check_windows_storage.os.path, "lexists", return_value=False), \
+                mock.patch.object(check_windows_storage, "_closed_success", side_effect=[*closed, None]), \
+                mock.patch.object(check_windows_storage, "_retire") as retire:
+            check_windows_storage._prune(storage, privacy)
+        retire.assert_called_once_with(runs[0], closed[0], storage, privacy)
+
+    def test_android_reuses_the_gradle_home_and_places_tmp_for_the_child_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            project = root / "android"
+            project.mkdir()
+            cache = root / "android-gradle"
+            storage = SimpleNamespace(direct=mock.Mock(side_effect=Path), volume=mock.Mock(),
+                work_root=mock.Mock(return_value=root),
+                private_mkdir=mock.Mock(side_effect=lambda path: path.mkdir(mode=0o700)))
+            privacy = SimpleNamespace(require_private_directory=mock.Mock())
+            original_env = {"TMP": "original", "PATH": "existing-toolchain"}
+            with mock.patch.object(check_windows_storage, "_components",
+                    return_value=(storage, privacy, None)), \
+                    mock.patch.dict(check_windows_storage.os.environ, original_env, clear=True):
+                first = None
+                for _ in range(2):
+                    with check_windows_storage.android_environment(project) as child:
+                        temporary = Path(child["TMP"])
+                        self.assertTrue(temporary.is_dir())
+                        self.assertEqual(temporary.parent, cache)
+                        self.assertNotEqual(temporary, first)
+                        self.assertEqual(child["TEMP"], child["TMPDIR"])
+                        self.assertEqual(child["GRADLE_USER_HOME"], str(cache))
+                        self.assertEqual(child["PATH"], original_env["PATH"])
+                        self.assertEqual(dict(check_windows_storage.os.environ), original_env)
+                        first = temporary
+                    self.assertFalse(temporary.exists())
+            self.assertTrue(cache.is_dir())
+            storage.private_mkdir.assert_called_once_with(cache)
+
+    def test_android_rejects_system_project_before_creating_a_cache(self):
+        storage = SimpleNamespace(volume=mock.Mock(side_effect=ValueError("system_volume_refused")),
+                                  work_root=mock.Mock(), private_mkdir=mock.Mock())
+        with mock.patch.object(check_windows_storage, "_components", return_value=(storage, None, None)):
+            with self.assertRaisesRegex(SystemExit, "checkout on a fixed data volume"):
+                with check_windows_storage.android_environment(Path.cwd()):
+                    self.fail("a refused project cannot start Gradle")
+        storage.work_root.assert_not_called()
+        storage.private_mkdir.assert_not_called()
+
+    def test_android_uses_an_existing_configured_cache_without_initializing_another(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            storage = SimpleNamespace(direct=mock.Mock(side_effect=Path), volume=mock.Mock(),
+                work_root=mock.Mock(), private_mkdir=mock.Mock())
+            privacy = SimpleNamespace(require_private_directory=mock.Mock())
+            with mock.patch.object(check_windows_storage, "_components",
+                    return_value=(storage, privacy, None)), \
+                    mock.patch.dict(check_windows_storage.os.environ,
+                        {"GRADLE_USER_HOME": str(cache)}, clear=True):
+                with check_windows_storage.android_environment(Path.cwd()) as child:
+                    self.assertEqual(child["GRADLE_USER_HOME"], str(cache))
+                    self.assertEqual(Path(child["TEMP"]).parent, cache)
+            storage.work_root.assert_not_called()
+            storage.private_mkdir.assert_not_called()
 
 
 class AndroidCommandTests(unittest.TestCase):
@@ -20,6 +99,7 @@ class AndroidCommandTests(unittest.TestCase):
         (self.project / wrapper).touch()
         with mock.patch.object(check, "ROOT", self.root), \
                 mock.patch.object(check.sys, "platform", platform), \
+                mock.patch.object(check_windows_storage, "enabled", return_value=False), \
                 mock.patch.object(check, "run") as run:
             check.android()
         return run
@@ -32,6 +112,20 @@ class AndroidCommandTests(unittest.TestCase):
              *check.ANDROID_TASKS],
             cwd=self.project,
         )
+
+    def test_native_windows_dispatch_passes_the_selected_storage_to_gradle(self):
+        (self.project / "gradlew.bat").touch()
+        child = {"GRADLE_USER_HOME": "synthetic-data-cache", "TMP": "synthetic-run-temp"}
+        with mock.patch.object(check, "ROOT", self.root), \
+                mock.patch.object(check.sys, "platform", "win32"), \
+                mock.patch.object(check_windows_storage, "enabled", return_value=True), \
+                mock.patch.object(check_windows_storage, "android_environment",
+                                  return_value=nullcontext(child)) as storage, \
+                mock.patch.object(check, "run") as run:
+            check.android()
+        storage.assert_called_once_with(self.project)
+        run.assert_called_once_with(check.android_command(self.project, "win32"),
+                                    cwd=self.project, env=child)
 
     def test_unix_dispatch_uses_shell_wrapper(self):
         run = self._dispatch("linux", "gradlew")
@@ -87,8 +181,10 @@ class CpuEnvironmentTests(unittest.TestCase):
 
     def test_indexed_photo_stack_checks_are_in_the_api_profile(self):
         self.assertIn("test_photo_stack_index.py", check.API_TESTS)
+        self.assertIn("test_photo_stack_rust.py", check.API_TESTS)
         self.assertIn("test_library_photo_stacks.py", check.API_TESTS)
         self.assertIn("test_photo_stack_index.py", check.WINDOWS_CPU_TESTS)
+        self.assertIn("test_photo_stack_rust.py", check.WINDOWS_CPU_TESTS)
         self.assertIn("test_library_photo_stacks.py", check.WINDOWS_CPU_TESTS)
         self.assertIn("test_library_photo_stacks_qualification.py", check.API_TESTS)
         self.assertIn("test_library_photo_stacks_qualification.py", check.WINDOWS_CPU_TESTS)

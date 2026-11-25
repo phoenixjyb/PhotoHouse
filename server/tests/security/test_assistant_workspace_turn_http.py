@@ -14,6 +14,7 @@ sys.path.insert(0, str(ROOT / 'backend'))
 from fastapi.testclient import TestClient
 from app.access import discovery as d
 from app.access import assistant as assistant_module
+from app.access.assistant_search import SearchRuntime
 from app.access.discovery_provider import MemoryIndexProvider
 from app.access.discovery_transport import DiscoveryRuntime
 from app.access.assistant_journal import initialize as initialize_journal
@@ -117,6 +118,59 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
                 revision INTEGER, title TEXT, text TEXT, updated_at INTEGER, deleted INTEGER)''')
         return self.auth | {'X-PhotoHouse-Search-Version': '2'}
 
+    def test_three_turn_month_refinement_preserves_context_and_is_recoverable(self):
+        from datetime import datetime, timezone
+        self.now[0] = datetime(2026, 10, 30, 12, tzinfo=timezone.utc).timestamp()
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        cases = (
+            ('找去年九月份的照片', 'image', '2025-09-01', '2025-09-30'),
+            ('只看视频', 'video', '2025-09-01', '2025-09-30'),
+            ('改成十月份', 'video', '2025-10-01', '2025-10-31'),
+        )
+        for revision, (words, media, start, end) in enumerate(cases):
+            rid = new_id()
+            response = self.turn(tid, rid, revision, words, headers=headers)
+            self.assertEqual(response.status_code, 200, response.text)
+            value = response.json()
+            self.assertEqual(value['revision'], revision + 1)
+            self.assertEqual(value['result']['kind'], 'results')
+            self.assertEqual(value['result']['filters'], {'media': [media], 'date': {'from': start, 'to': end}})
+            recovered = self.request('GET', f'/threads/{tid}/requests/{rid}?library_id=family-a', headers=headers)
+            self.assertEqual(recovered.status_code, 200, recovered.text)
+            self.assertEqual(recovered.json()['result'], value['result'])
+
+    def test_english_and_mixed_last_month_journeys_keep_refinements_in_owned_turns(self):
+        from datetime import datetime, timezone
+        self.now[0] = datetime(2026, 10, 30, 12, tzinfo=timezone.utc).timestamp()
+        headers = self.enable_search()
+        journeys = (
+            ('Find photos from last September', 'only videos', 'make it October'),
+            ('Find photos from last  year September', 'only videos', 'make it October'),
+            ('find去年September的photos', '只看 videos', 'October'),
+        )
+        expected = (
+            {'media': ['image'], 'date': {'from': '2025-09-01', 'to': '2025-09-30'}},
+            {'media': ['video'], 'date': {'from': '2025-09-01', 'to': '2025-09-30'}},
+            {'media': ['video'], 'date': {'from': '2025-10-01', 'to': '2025-10-31'}},
+        )
+        for journey in journeys:
+            with self.subTest(journey=journey):
+                tid = self.thread()['thread_id']
+                for revision, (words, filters) in enumerate(zip(journey, expected)):
+                    response = self.turn(tid, revision=revision, text=words, headers=headers)
+                    self.assertEqual(response.status_code, 200, response.text)
+                    result = response.json()
+                    self.assertEqual(result['revision'], revision + 1)
+                    self.assertEqual(result['result']['kind'], 'results')
+                    self.assertEqual(result['result']['filters'], filters)
+
+        for words in ('Find photos from lastSeptember', 'Find photos from last九月'):
+            with self.subTest(words=words):
+                malformed = self.turn(self.thread()['thread_id'], text=words, headers=headers)
+                self.assertEqual(malformed.status_code, 200, malformed.text)
+                self.assertEqual(malformed.json()['result']['kind'], 'clarification')
+
     def test_bilingual_year_ranges_use_capture_dates_in_owned_recoverable_turns(self):
         self.enable_search()
         self.update("UPDATE assets SET mime='video/mp4',taken_at='2019-01-01 00:00:00.000000' WHERE id=101")
@@ -219,8 +273,18 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         opened = self.turn(tid, opened_id, revision=1, text='打开第二个', headers=headers)
         self.assertEqual(opened.status_code, 200, opened.text)
         self.assertEqual(opened.json()['result']['effect'], {'type': 'open_asset', 'asset_id': '101'})
-        restored = self.request('GET', f'/threads/{tid}/requests/{opened_id}?library_id=family-a', headers=headers)
+        engine_calls = []
+        original_call = SearchRuntime.call
+
+        def counted_call(runtime, operation, token, library, cancelled, values):
+            engine_calls.append(operation)
+            return original_call(runtime, operation, token, library, cancelled, values)
+
+        with patch.object(SearchRuntime, 'call', new=counted_call):
+            restored = self.request(
+                'GET', f'/threads/{tid}/requests/{opened_id}?library_id=family-a', headers=headers)
         self.assertEqual(restored.status_code, 200, restored.text)
+        self.assertEqual(engine_calls, ['search'])  # Current source/scope revalidation only.
         self.assertTrue(restored.json()['recovered'])
         self.assertEqual(restored.json()['result']['version'], 2)
         self.assertEqual(restored.json()['result']['kind'], 'results')
@@ -291,6 +355,43 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
         self.assertEqual(unrelated.status_code, 200, unrelated.text)
         self.assertEqual(unrelated.json()['result']['kind'], 'clarification')
         self.assertIsNone(unrelated.json()['result']['context'])
+
+    def test_bilingual_keep_people_followups_apply_other_slots_without_guessing(self):
+        headers = self.enable_search()
+        thread = self.thread()['thread_id']
+        first = self.turn(thread, text='find photos of Sample Child in September 2025', headers=headers)
+        self.assertEqual(first.status_code, 200, first.text)
+        initial = first.json()['result']
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.assertEqual(initial['filters']['people'], {'ids': ['301'], 'match': 'any'})
+        media = {**initial['filters'], 'media': ['video']}
+        october = {**media, 'date': {'from': '2025-10-01', 'to': '2025-10-31'}}
+        for revision, words, expected in (
+                (1, 'only videos and keep the same people', media),
+                (2, '改成十月份，保留人物条件', october),
+                (3, '保留人物条件。', october)):
+            with self.subTest(words=words):
+                response = self.turn(thread, revision=revision, text=words, headers=headers)
+                self.assertEqual(response.status_code, 200, response.text)
+                result = response.json()['result']
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual(result['filters'], expected)
+                self.assertEqual(result['context']['filters'], expected)
+                self.assertIsNone(result['effect'])
+
+        conflict = self.turn(thread, revision=4, text='keep the same people and Sample Adult',
+                             headers=headers).json()['result']
+        self.assertEqual(conflict['kind'], 'clarification', conflict)
+        self.assertEqual(conflict['filters'], october)
+
+        other_thread = self.thread()['thread_id']
+        without_people = self.turn(other_thread, text='find photos in September 2025',
+                                   headers=headers).json()['result']
+        no_person = self.turn(other_thread, revision=1, text='keep the same people',
+                              headers=headers).json()['result']
+        self.assertEqual(no_person['kind'], 'clarification', no_person)
+        self.assertEqual(no_person['filters'], without_people['filters'])
+        self.assertNotIn('people', no_person['filters'])
 
     def test_bilingual_corrections_keep_owned_scope_and_recover_exact_request(self):
         headers = self.enable_search()

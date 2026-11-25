@@ -19,6 +19,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import prepare_access_database as small
+from app import work_storage as storage
 
 QUARANTINE_TABLES = {'access_accounts', 'access_libraries', 'access_sessions',
     'access_invitations', 'access_admission_key', 'access_attempts', 'access_kdf_slot'}
@@ -162,6 +163,18 @@ def copy(source, destination, budget):
 
 
 def snapshot(source_path, out, budget):
+    try:
+        storage.direct(out)
+        if os.path.lexists(out):
+            raise FileExistsError('output_must_be_absent')
+        with storage.operation([out], [(out, purpose, budget.max_bytes) for purpose in
+                ('snapshot database', 'snapshot journal', 'snapshot sort and temporary')]):
+            return _snapshot(source_path, out, budget)
+    except storage.StorageRefused as error:
+        raise small.Refused(str(error)) from None
+
+
+def _snapshot(source_path, out, budget):
     with read_source(source_path, budget) as source:
         revision = validate(source, budget)
         tables = schema(source)
@@ -204,6 +217,16 @@ def upgrade_copy(db, budget):
 
 
 def rehearse(source_path, out, restored, digest, budget):
+    try:
+        components = [(path, purpose, budget.max_bytes) for path in (out, restored)
+                      for purpose in ('database copy', 'journal allowance', 'sort and temporary')]
+        with storage.operation([out, restored], components):
+            return _rehearse(source_path, out, restored, digest, budget)
+    except storage.StorageRefused as error:
+        raise small.Refused(str(error)) from None
+
+
+def _rehearse(source_path, out, restored, digest, budget):
     if not re.fullmatch('[0-9a-f]{64}', digest):
         raise small.Refused('Reviewed snapshot digest required')
     from app.access.recovery import _quarantine_access_state, _assert_quarantined
@@ -230,6 +253,7 @@ def rehearse(source_path, out, restored, digest, budget):
                 raise small.Refused('Pre-existing data changed')
             full_schema = schema(output)
             migrated, _ = fingerprint(output, full_schema, budget)
+            storage.check_space([(restored, 'later restore phase', 3 * budget.max_bytes)])
             with new_database(restored, budget, budget.size(output)) as restore:
                 copy(output, restore, budget)
                 if validate(restore, budget) != current or fingerprint(restore, full_schema, budget)[0] != migrated:
@@ -245,7 +269,7 @@ def main(argv=None):
     parser = small.Parser(description=__doc__, allow_abbrev=False)
     parser.add_argument('command', choices=('snapshot', 'rehearse'))
     parser.add_argument('--database', type=Path, required=True)
-    parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--out', type=Path, help='new output; defaults to a private work run')
     parser.add_argument('--restore-out', type=Path)
     parser.add_argument('--reviewed-snapshot-digest')
     parser.add_argument('--max-bytes', type=int, required=True)
@@ -253,6 +277,10 @@ def main(argv=None):
     try:
         args = parser.parse_args(argv)
         budget = Budget(args.max_bytes, args.timeout_seconds)
+        if args.out is None:
+            args.out = storage.new_run() / 'snapshot.sqlite' if args.command == 'snapshot' else storage.new_run() / 'candidate.sqlite'
+        if args.command == 'rehearse' and args.restore_out is None:
+            args.restore_out = args.out.parent / 'restored.sqlite'
         if args.command == 'snapshot':
             if args.restore_out is not None or args.reviewed_snapshot_digest is not None:
                 raise small.Refused('Unexpected snapshot arguments')
@@ -261,7 +289,7 @@ def main(argv=None):
             if args.restore_out is None or args.reviewed_snapshot_digest is None:
                 raise small.Refused('Explicit restore and review required')
             result = rehearse(args.database, args.out, args.restore_out, args.reviewed_snapshot_digest, budget)
-        print(json.dumps(dict(completed=True, command=args.command, **result)))
+        print(json.dumps(dict(completed=True, command=args.command, output=str(args.out), **result)))
         return 0
     except KeyboardInterrupt:
         print('Interrupted; retain and inspect partial outputs.', file=sys.stderr)

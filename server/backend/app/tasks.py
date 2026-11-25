@@ -52,6 +52,14 @@ FACE_CLUSTER_DIST_THRESHOLD = 0.35  # default; overridden by settings
 FACE_ASSIGNMENT_TASK_TYPES = ('person_cluster', 'person_recluster', 'person_label_propagate')
 
 
+def _caption_ffmpeg():
+    configured = os.environ.get('FFMPEG_EXE')
+    executable = configured or shutil.which('ffmpeg')
+    if not executable or not Path(executable).is_absolute() or not Path(executable).is_file():
+        raise RuntimeError('Video captioning requires ffmpeg on PATH or an absolute FFMPEG_EXE.')
+    return str(executable)
+
+
 def _run_bounded_media_process(args, *, timeout, output_dir):
     """Run one owned media child with bounded logs and deterministic cleanup."""
     flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
@@ -382,6 +390,7 @@ class TaskExecutor:
                 return safe_exif_transpose(im).convert('RGB')
 
         # Video captioning path: extract a representative frame with ffmpeg.
+        ffmpeg = _caption_ffmpeg()
         tmp_dir = os.getenv('VLM_TMP_DIR') or tempfile.gettempdir()
         os.makedirs(tmp_dir, exist_ok=True)
         with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False, dir=tmp_dir) as tmp:
@@ -398,7 +407,7 @@ class TaskExecutor:
         last_err = None
         try:
             for seek in seek_candidates:
-                cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y']
+                cmd = [ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-y']
                 if seek > 0.0:
                     cmd += ['-ss', f"{seek:.3f}"]
                 cmd += ['-i', path, '-frames:v', '1', frame_path]
@@ -1070,17 +1079,23 @@ class TaskExecutor:
             raise ValueError('video source missing')
         probe = probe_video_metadata(src, timeout_sec=10, strict=True)
         interval = max(0.5, float(getattr(self.settings, 'video_keyframe_interval_sec', 2.0)))
-        duration = float(probe.get('duration_sec') or 0.0)
-        sample_rate = max(1.0 / interval, 1.0 / max(duration, 1.0))
+        duration = float(probe['duration_sec'])
+        # A one-second sample period can emit no frames for a sub-second clip.
+        filter_chain = 'scale=1024:1024:force_original_aspect_ratio=decrease'
+        frame_limit = 1
+        if duration >= 1.0:
+            sample_rate = max(1.0 / interval, 1.0 / duration)
+            filter_chain = f'fps={sample_rate:.6f},{filter_chain}'
+            frame_limit = VIDEO_KEYFRAME_LIMIT
         parent_dir = DERIVED_DIR / 'video_frames'
         parent_dir.mkdir(parents=True, exist_ok=True)
         out_dir = Path(tempfile.mkdtemp(prefix=f'.{asset_id}-', dir=parent_dir))
         cmd = ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-nostdin', '-y',
                '-threads', '1', '-protocol_whitelist', 'file', '-i', src,
                '-map', '0:v:0', '-an', '-sn', '-dn', '-vf',
-               f'fps={sample_rate:.6f},scale=1024:1024:force_original_aspect_ratio=decrease',
+               filter_chain,
                '-pix_fmt', 'yuvj420p',
-               '-frames:v', str(VIDEO_KEYFRAME_LIMIT), str(out_dir / 'frame_%05d.jpg')]
+               '-frames:v', str(frame_limit), str(out_dir / 'frame_%05d.jpg')]
         try:
             _run_bounded_media_process(cmd, timeout=120, output_dir=out_dir)
             frames = sorted(out_dir.glob('frame_*.jpg'))

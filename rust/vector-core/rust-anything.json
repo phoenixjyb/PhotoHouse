@@ -1,0 +1,30 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../../server/backend/app/access/vector_kernel_reference",
+  "unit": "__init__.py",
+  "language": "python",
+  "kind": "pyo3",
+  "crate_name": "vector-core",
+  "exports": [
+    {
+      "name": "run_batch",
+      "file": "__init__.py",
+      "line": 29,
+      "params": [
+        {
+          "name": "payload",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}

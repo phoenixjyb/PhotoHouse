@@ -46,8 +46,10 @@ runtime operations or turn these dated results into a fresh service probe.
 
 ## Explicit emulator instrumentation
 
-Build the unconfigured QA variant with `-PphotohousePhoneUiQa=true`; its app ID
-is `dev.photohouse.connected.qa`, separate from the installed family app.
+Build the unconfigured phone QA variant with `-PphotohousePhoneUiQa=true`
+(`dev.photohouse.connected.qa`). Build the TV QA variant with
+`-PphotohouseTvUiQa=true` (`dev.photohouse.tv.qa`), then pass `--client tv`
+to the emulator runner. These variants use separate application IDs.
 Do not run broad Gradle `connected*AndroidTest` tasks on a Mac with physical
 phones attached: they can select and remove apps from those devices.
 
@@ -781,6 +783,23 @@ at 30 seconds, that 91 seconds is refused in cold-start mode, and that nonfinite
 boolean or invalid mode values fail closed. These tests do not contact a model.
 
 ## CPU quick start
+
+On the PhotoHouse Windows workstation, `tools/check.py api`, `memory`,
+`windows-cpu`, and `web` use generated scratch under
+`D:\PhotoHouseWork\tests\check-runs-v1`. The launcher uses a native Windows
+Job and D: storage admission. It sets temporary and cache paths for the check
+process and its children. Local Windows checks refuse a missing D: work root.
+Hosted GitHub checks remain portable. On another Windows machine without the
+PhotoHouse work root, set `PHOTOHOUSE_PORTABLE_WINDOWS_CHECKS=1` to select the
+portable profile explicitly.
+
+Allow up to 256 MiB per database with its journals, 1 GiB per run, and 4 GiB
+across the test root. The launcher retains the three most recent successful
+payloads and preserves their summaries separately. Failed or uncertain
+payloads stay in place and count toward the limits. If a run is refused,
+inspect the named evidence before starting another check. Use generated data
+or an approved compact fixture. Full live database copies require a separate
+recovery procedure.
 
 The private [review worksheet](MODEL_QUALIFICATION.md#enter-human-judgments-with-a-private-worksheet)
 has nine standard-library tests for exact source/case/rubric bindings, explicit
@@ -2836,3 +2855,174 @@ external requests on Node 22.17.0, Playwright Core 1.55.0, Chromium 140.0.7339.1
 and Python 3.12.12. Desktop and bilingual enlarged phone renders were inspected.
 These are local source/browser results. No Windows runtime,
 production migration, Android artifact or physical-device acceptance is implied.
+
+## November 3 native Windows R20 focused continuation
+
+Source `918013d` closes the assistant workspace initializer's SQLite connection
+after its existing transaction context. The native fixtures close their direct
+connections, retain the POSIX mode check on POSIX, await owned refusal cleanup
+before testing another request, and start the short commit-timeout window at
+its commit barrier. Production deadlines, schema and authorization are unchanged.
+The added regression retains every initialization connection and verifies that
+all are closed before the initializer returns.
+
+On native Windows CPython 3.12.10 with hash-locked development dependencies,
+the final affected agent/store cohort passed **44 tests**. The initial focused
+run retained failures; its **67** pure planner/refinement cases passed. Those
+failed receipts are not qualification passes. The final focused Edge conflict
+journey passed seven checkpoints, including 390 px / 150% text, keyboard focus,
+no automatic replay, no external requests and no page errors. Its desktop and
+enlarged phone renders were inspected. The original-title refinement journey
+and both generated grouping journeys passed separately in installed Edge.
+
+A bounded SYSTEM-owned attempt verified 315 current runtime files, then refused
+the first turn with `503 workspace_unavailable` after one real model inference.
+Its receipts confirm restoration of the prior admission profile, session
+revocation, provider closure, drained native Job and deletion of its temporary
+task, with production task definitions and protected configuration bytes
+unchanged. This is a refusal, not two-turn R20 acceptance or deployment. The
+separately retained R18 story generation/cancellation/expiry evidence remains
+bound to its own source and approved recipe. No new story was generated and
+no cloud proofreading or GitHub Actions operation was performed.
+
+The subsequent content-free native diagnostic at the same runtime source verified
+current-checkout imports and identified a five-second discovery deadline during
+the caption join (`SQLITE_INTERRUPT`). Its profile, session, provider, Job and
+temporary-task cleanup receipts passed; it remains a refused qualification.
+
+Source `0fac6ee` drives the assistant's current-caption join from the authorized
+library, using the existing caption asset-ID index and retaining the exact
+projection and ID order. The request-snapshot allowlist admits only that exact
+query shape. It also materializes the validated immutable index without deep
+copying its large ID tuples. Canonical JSON bytes, byte thresholds, bindings,
+source revalidation, Search ordering and resource limits are unchanged.
+
+The scoped-caption/index/joint-search cohort passed 46 cases. The final affected
+Search/semantic cohort ran 52 cases: 49 passed and three were explicit platform
+skips. Two POSIX file-swap fixtures were reproduced failing on Windows with
+`WinError 32` before adaptation; their original assertions remain on POSIX, and
+a separate Windows case verifies that an actual open-handle replacement refusal
+withholds the response. Adjacent accounting/text/media checks passed 26 cases
+and 411 subtests. The final R20 planner/refinement/agent cohort passed all 95
+cases, and the generated Edge Search journey passed six checkpoints, including
+GET-only recovery and bilingual enlarged phone layouts. These cohorts overlap.
+
+Generated query checks retain exact legacy rows/bytes and stay below 10,000
+SQLite VM steps with 20,000 foreign-library captions. A generated large-index
+measurement produced identical 628,127-byte JSON; median serialization was
+0.0414 seconds before and 0.007 seconds after across five local samples. These
+are bounded synthetic observations, not a live latency guarantee. The frozen
+315-file native candidate retains the accepted story-worker bytes and model
+recipe; its fresh two-turn native acceptance and live birthday proposal identity
+check remain separate gates. No deployment is claimed by these local checks.
+
+The subsequent native attempt at `0fac6ee` also refused its first turn with
+`503 workspace_unavailable` after one actual inference. Content-free tracing
+again observed the five-second discovery deadline and SQLite interruption.
+Profile restoration, session revocation, provider/Job closure, temporary-task
+deletion and unchanged protected configurations were verified. A separate
+read-only native query-plan/timing probe is prepared; no result from that probe
+has yet been reconciled. Do not infer two-turn acceptance from the source tests.
+The authorized live birthday GET found a ready, review-required proposal, but
+its content differs from the retained Qwen3-qualified proposal. Those GETs left
+the original content unchanged; no generation, adoption or deployment occurred.
+
+Source `27ddd45` completes the staging builder's fixed allowlist with the eight
+story modules, grounding data and data license already present in the frozen
+315-file runtime. Batched Git metadata/body reads replace per-blob subprocesses;
+each size, total expanded size, exact object identity and bounded output remain
+checked. The attestor retains its thirty-second total inspection deadline and
+ten-second child deadline. Native fixture preparation preserves committed LF
+bytes and handles read-only loose objects without requesting more privileges.
+The focused package/attestation cohort ran 43 tests: 39 passed and four explicitly
+skipped POSIX permissions or unavailable Windows symlink privileges. Isolated
+archive imports and fixed grounding-data loads passed. The complete source-only
+archive was independently attested in 0.766 seconds on native Windows with no
+extraction, packaged-code execution, database access, model or service operation.
+Its 315 runtime-file hashes match the frozen `0fac6ee` candidate exactly.
+
+The separate SYSTEM-owned read-only probe completed with zero model calls,
+sessions or admission-profile changes. Both caption query plans used the
+existing asset-ID index and a temporary sort for full projected rows. The first
+query hit its five-second budget; the subsequent legacy query completed in
+2.218 seconds. Sequential cache effects prevent treating those timings as a
+query-speed comparison. Protected configuration bytes, production task
+definitions and owned Job/task cleanup all passed their checks.
+
+Source `11be975` selects scoped caption IDs first, then fetches the unchanged
+caption projection in primary-key order. It avoids sorting complete text rows
+without changing schema, authorization, row/byte limits, deadlines or output
+order. Exact-row/accounting, foreign-library VM-step and no-full-text-sort
+fixtures passed. The caption/index/planner/refinement/agent/store cohort passed
+116 cases. The Search/semantic/turn cohort ran 74 cases: 71 passed and three
+explicit platform skips. Seventeen adjacent media/snapshot/socket-guard checks
+passed, and the generated Edge Search journey passed six checkpoints; its
+enlarged phone render was inspected. These cohorts overlap. An initial test
+command named a nonexistent module, and a broader gallery fixture run exposed
+its Windows asyncio wakeup socket being blocked. The gallery fixture now uses
+the existing bounded stdlib socketpair guard; its six cases pass with external
+network operations still denied. Those earlier failed receipts are retained.
+
+The complete 315-file `11be975` source-only package was independently attested
+in 0.781 seconds. A fresh native qualification packet is frozen with a read-only
+query preflight before model/profile/session work, unchanged two-turn prompts
+and acceptance oracle, tracing disabled and timing only at existing bounded
+read calls. The native two-turn result and deployment remain separate gates.
+
+The subsequent complete-request diagnosis used the actual Search-v2 readiness
+path without constructing providers or invoking models. It retained the shared
+five-second deadline, source limits and native Job bounds. Its temporary member
+session was revoked; protected configurations, production task definitions and
+owned Job/task cleanup were verified. The read-only standalone caption preflight
+was not an equivalent measurement of this complete request path.
+
+Source `f056189` moves the current-caption predicate to the outer primary-key
+lookup. The inner authorized caption-ID lookup now uses the existing covering
+asset-ID index, avoiding a second caption-row read. Rows, ordering, canonical
+bytes, source bindings, authorization, schema and resource limits are unchanged.
+The bounded retained-copy comparison verified identical rows and hashes in both
+query forms and fewer read operations/bytes with the covering plan. Its ordered
+timings show cache effects and are not a guaranteed latency improvement.
+
+The focused caption/accounting/request-snapshot/semantic cohort passed 70 tests
+and 33 subtests with five explicit platform skips. A cross-platform substituted
+file-identity case retains refusal before replay; the POSIX physical replacement
+case remains intact, and the existing native Windows open-handle replacement
+refusal case passed separately within this cohort. The generated Edge Search
+journey passed six checkpoints; desktop and bilingual enlarged phone renders
+were inspected. Initial sandbox/temp-path, Windows path-length and POSIX-rename
+fixture failures, plus an interrupted sandbox invocation, remain retained.
+
+Fresh qualification requires two complete bounded readiness reads before any
+model/profile work, then the unchanged real two-turn oracle. These source and
+diagnostic checks do not establish that acceptance, a cutover or a live proposal
+import. GitHub Actions and cloud proofreading remain unused.
+
+
+## November 4 temporary assistant search budget
+
+At the owner's explicit request, source `396abf2` raises the default Search-v2
+read allowance from five to thirty seconds while performance work is deferred.
+Explicit caller-supplied budgets remain authoritative. Row/byte/index/response
+limits, the shared admission pool and cancellation checks are unchanged. Model
+request and enclosing native Job deadlines are separate and unchanged.
+
+The affected index/caption cohort passed eleven tests and seven subtests,
+including a generated read after six seconds, refusal after thirty seconds,
+retained cancellation, shared slots, explicit-budget preservation and exact
+caption output parity. This is source evidence; native model acceptance,
+deployment and proposal import retain their independent gates.
+
+## Optional vector acceleration
+
+The default CPU application retains Python/NumPy. For the separate Rust vector
+kernel, build and validate the opt-in extension with the commands and exact
+compatibility boundaries in [RUST_VECTOR_KERNEL.md](RUST_VECTOR_KERNEL.md).
+Multi-photo visual ranking and grouping proposals have a separate opt-in
+selector; see [RUST_VISUAL_SCORING.md](RUST_VISUAL_SCORING.md) for the scoring
+boundary, focused checks and measured limits.
+Local measurements do not activate a Windows runtime; GitHub Actions stays paused.
+
+The subsequent [literal text-search optimization](LITERAL_SEARCH_PERFORMANCE.md)
+removes repeated query tokenization and per-character regex calls in Python.
+It retains existing literal/Unicode behavior and introduces no native dependency.

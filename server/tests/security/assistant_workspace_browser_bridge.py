@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 import time
 import uuid
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'backend'))
@@ -31,6 +32,7 @@ import prepare_access_discovery_index as producer
 from contextlib import closing
 scene_fixture = os.environ.get('PH_SCENE_FIXTURE') == '1'
 scene_coverage_fixture = scene_fixture and os.environ.get('PH_SCENE_COVERAGE') == '1'
+scene_pages_fixture = scene_fixture and os.environ.get('PH_SCENE_PAGES') == '1'
 search_fixture = os.environ.get('PH_SEARCH_FIXTURE') == '1' or scene_fixture
 scene_calls = []
 scene_encoder_off = False
@@ -51,6 +53,15 @@ if scene_fixture:
     with closing(sqlite3.connect(fixture.path)) as db, db:
         for aid, in db.execute('SELECT id FROM assets').fetchall():
             db.execute('UPDATE assets SET hash_sha256=? WHERE id=?', (hashlib.sha256(str(aid).encode()).hexdigest(), aid))
+        if scene_pages_fixture:
+            page_assets = range(2000, 2044)
+            db.executemany('''INSERT INTO assets
+                (id,path,hash_sha256,status,mime,width,height,taken_at)
+                VALUES (?,?,?,'active','image/jpeg',640,480,'2026-01-01')''',
+                [(aid, f'synthetic-pages/{aid}.jpg', hashlib.sha256(str(aid).encode()).hexdigest())
+                 for aid in page_assets])
+            db.executemany('INSERT INTO access_asset_libraries VALUES(?,?)',
+                           [(aid, 'family-a') for aid in page_assets])
         if scene_coverage_fixture:
             db.executemany('''INSERT INTO assets
                 (id,path,hash_sha256,status,mime,width,height,taken_at)
@@ -63,7 +74,11 @@ if scene_fixture:
                            [(2000 + aid, aid, 'generated omitted photos') for aid in range(1000, 1065)])
         create_visual_vector_schema(db)
         holder = SimpleNamespace(db=db, root=vector_root)
-        for aid, vector in ((101, (0.0, 1.0)), (102, (1.0, 0.0))):
+        vectors = [(101, (0.0, 1.0)), (102, (1.0, 0.0))]
+        if scene_pages_fixture:
+            vectors.extend((aid, (1.0, 0.0) if aid % 2 == 0 else (0.0, 1.0))
+                           for aid in range(2000, 2044))
+        for aid, vector in vectors:
             path, _ = VisualVectorLoaderTests.add_vector(holder, aid, vector, source_hash=hashlib.sha256(str(aid).encode()).hexdigest())
             vector_files.append(path)
     pair = JointSpaceBinding(IDENTITY, replace(IDENTITY, artifact_sha256='c'*64, preprocessing_sha256='d'*64, model_version='text-v1'), 'e'*64)
@@ -93,6 +108,11 @@ if search_fixture:
             (id,asset_id,person_id,bbox_x,bbox_y,bbox_w,bbox_h,label_source)
             VALUES(?,?,?,0,0,1,1,'manual')''',
             [(1,101,301), (2,101,302), (3,102,301), (4,102,302)])
+        if scene_pages_fixture:
+            db.executemany('''INSERT INTO face_detections
+                (id,asset_id,person_id,bbox_x,bbox_y,bbox_w,bbox_h,label_source)
+                VALUES(?,?,?,0,0,1,1,'manual')''',
+                [(5000 + aid, aid, 301) for aid in range(2000, 2044)])
         db.execute("UPDATE captions SET text='海边 beach synthetic evidence',user_edited=0 WHERE id IN (101,102)")
         db.execute('''INSERT INTO access_stories
             (id,asset_id,library_id,author_id,revision,title,text,language,byline,created_at,updated_at,deleted)
@@ -102,14 +122,19 @@ with closing(producer.open_read_only(fixture.path.resolve(), time.monotonic())) 
     index, _catalog = producer.derive(db, producer.library('family-a'), producer.revision('1'))
     if search_fixture:
         from app.access import discovery as d
-        from app.access.discovery_provider import ReviewedIndex, ReviewedPerson, ReviewedFace
+        from app.access.discovery_provider import ReviewedIndex, ReviewedPerson, ReviewedFace, ReviewedPlace
         source = d.scoped_source('family-a', lambda sql, args: db.execute(sql, args).fetchall())
         scope = tuple(str(row[0]) for row in source['assets'])
+        assignments = [(1,101,301), (2,101,302), (3,102,301), (4,102,302)]
+        if scene_pages_fixture:
+            assignments.extend((5000 + aid, aid, 301) for aid in range(2000, 2044))
         search_index = ReviewedIndex('family-a', '1', scope, scope, d.digest(source),
             people=(ReviewedPerson('family-a','301','Sample Child / 示例儿童',('示例儿童','Sample Child')),
                     ReviewedPerson('family-a','302','Sample Adult / 示例成人',('示例成人','Sample Adult'))),
             assignments=tuple(ReviewedFace(str(fid),str(aid),str(pid)) for fid,aid,pid in
-                [(1,101,301), (2,101,302), (3,102,301), (4,102,302)]))
+                assignments),
+            places=(ReviewedPlace('family-a', '601', 'Example region / 示例地区'),),
+            regions=(('101', '601'),))
 if scene_coverage_fixture:
     with closing(sqlite3.connect(fixture.path)) as db, db:
         db.execute("UPDATE access_memberships SET role='owner' WHERE account_id=? AND library_id='family-a'",
@@ -121,11 +146,17 @@ producer.write_new(index_path, json.dumps(asdict(index), sort_keys=True, ensure_
 # Initialization is confined to this disposable synthetic test directory.
 workspace_path = root / 'assistant-workspace-v2.sqlite'
 initialize_v2(workspace_path, clock=lambda: fixture.now)
-client = TestClient(RuntimeConfiguration(fixture.path.resolve(), 'https://photohouse.test',
+application = RuntimeConfiguration(fixture.path.resolve(), 'https://photohouse.test',
     (originals,), derived, discovery_indexes=(index_path,), assistant_enabled=True,
-    assistant_workspace_path=workspace_path).build_app(clock=lambda: fixture.now),
+    assistant_workspace_path=workspace_path).build_app(clock=lambda: fixture.now)
+client = TestClient(application,
     base_url='https://photohouse.test', client=('192.0.2.25', 23462))
 fixture.addCleanup(client.close)
+if application.state.selected_story_ui_enabled:
+    # The opt-in story fixture needs its in-memory operation owner started.
+    with patch('app.access.memory_jobs.maintenance', lambda _runtime: None):
+        client.__enter__()
+    fixture.addCleanup(client.__exit__, None, None, None)
 fixture.client = client
 fixture.client.headers['Sec-Fetch-Site'] = 'same-origin'
 discovery = client.app.state.discovery_runtime
@@ -274,6 +305,5 @@ try:
         print(json.dumps({'id': message['id'], 'status': response.status_code,
             'headers': dict(response.headers), 'body': base64.b64encode(response.content).decode()}), flush=True)
 finally:
-    client.close()
     fixture.doCleanups()
     LibraryReadTests.tearDownClass()

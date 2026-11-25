@@ -34,17 +34,17 @@ function wavBlob(){
   return new Blob([bytes],{type:'audio/wav'});
 }
 function makeController({supported=3,unsupported=[],capabilityError=null,turnError=false,requestConflict=false,hydrateResults=async value=>value}={}){
-  const calls=[],scope={account:'synthetic-account',library,generation:1,locked:false};let requestCounter=0;
+  const calls=[],scope={account:'synthetic-account',library,generation:1,locked:false};let requestCounter=0,conflictNextTurn=false;
   const request=async(path,options={})=>{
-    const header=options.extraHeaders?.['X-PhotoHouse-Search-Version']??null;
-    calls.push({path,method:options.method,header,body:options.body});
+    const header=options.extraHeaders?.['X-PhotoHouse-Search-Version']??null,parentRequestId=options.extraHeaders?.['X-PhotoHouse-Parent-Request-Id']??null;
+    calls.push({path,method:options.method,header,parentRequestId,body:options.body});
     if(path.includes('/capabilities?')){
       if(capabilityError)throw capabilityError;
       if(unsupported.includes(header))throw httpError(400,'search_version_unsupported');
       return capabilities(supported);
     }
     if(path==='/assistant/workspace/v1/threads'&&options.method==='POST')return {version:1,thread:thread(0)};
-    if(path===`/assistant/workspace/v1/threads/${threadId}/turns`){if(turnError)throw httpError(503,'unavailable');return envelope(threadId,options.body.request_id,{revision:1,turn:result()});}
+    if(path===`/assistant/workspace/v1/threads/${threadId}/turns`){if(conflictNextTurn){conflictNextTurn=false;throw httpError(409,'context_changed');}if(turnError)throw httpError(503,'unavailable');return envelope(threadId,options.body.request_id,{revision:1,turn:result()});}
     if(path.endsWith('/speech')){
       const rid=options.extraHeaders['X-PhotoHouse-Request-Id'];
       options.onResponse({ok:true,status:200,headers:responseHeaders({
@@ -61,7 +61,7 @@ function makeController({supported=3,unsupported=[],capabilityError=null,turnErr
   };
   const ids=[threadId,requestId,speechId];
   const controller=PrivateAssistant.createController({scope:()=>scope,request,newUUID:()=>ids[requestCounter++]||'44444444-4444-4444-8444-444444444444',hydrateResults});
-  return {controller,calls,scope};
+  return {controller,calls,scope,conflictNextTurn:()=>{conflictNextTurn=true;}};
 }
 async function expectNegotiation({supported,unsupported=[],headers}){
   const {controller,calls}=makeController({supported,unsupported});
@@ -116,12 +116,21 @@ async function expectNegotiation({supported,unsupported=[],headers}){
 
   {
     const {controller,calls}=makeController();await controller.capabilities();await controller.create();
-    const sent=await controller.send('孩子在海边');assert.equal(sent.result.version,3);
+    const parentRequestId='11111111-1111-4111-8111-111111111111';
+    const sent=await controller.send('孩子在海边',{parentRequestId});assert.equal(sent.result.version,3);
     const turnCall=calls.find(call=>call.path.endsWith('/turns'));
     assert.equal(turnCall.header,'3','v3 turns retain the negotiated version header');
+    assert.equal(turnCall.parentRequestId,parentRequestId,'a bound ASR parent is carried only as the protected turn header');
+    assert.deepEqual(turnCall.body,{library_id:library,request_id:requestId,expected_revision:0,text:'孩子在海边'},'ASR provenance never changes the private turn JSON body');
     assert.equal(controller.state().currentResult.filters.descriptive.concepts[0].surface,'孩子在海边玩耍');
     const audio=await controller.speakReply();assert.equal(audio.type,'audio/wav');
     assert.equal(calls.find(call=>call.path.endsWith('/speech')).header,'3','v3 reply speech retains the negotiated version header');
+    controller.close();
+  }
+  {
+    const {controller,calls}=makeController();await controller.capabilities();await controller.create();
+    await assert.rejects(controller.send('孩子在海边',{parentRequestId:'not-a-request-id'}),error=>error.code==='invalid_input');
+    assert.equal(calls.filter(call=>call.path.endsWith('/turns')).length,0,'invalid ASR receipt IDs cannot reach the private turn route');
     controller.close();
   }
   {
@@ -140,6 +149,21 @@ async function expectNegotiation({supported,unsupported=[],headers}){
     const {controller}=makeController({requestConflict:true});await controller.capabilities();
     const read=await controller.read(threadId);assert.equal(read.context_state,'requires_search');
     assert.equal(controller.state().currentResult,null,'a source-changed readback does not retain old search context');controller.close();
+  }
+  {
+    const {controller,calls,conflictNextTurn}=makeController();await controller.capabilities();await controller.create();
+    await controller.send('Find photos');
+    assert.equal(controller.state().currentResult.kind,'results');
+    controller.setDraft('Find videos');conflictNextTurn();
+    await assert.rejects(controller.send('Find videos'),error=>error.code==='context_changed'&&error.status===409);
+    const state=controller.state();
+    assert.equal(state.currentResult,null,'a POST 409 removes the previous result from controller state');
+    assert.equal(state.contextState,'requires_search');
+    assert.equal(state.pendingTurn.status,'uncertain','the submitted request remains recoverable rather than being retried or discarded');
+    assert.equal(state.pendingTurn.text,'Find videos');
+    assert.equal(state.draft,'Find videos','the submitted text remains available');
+    assert.equal(calls.filter(call=>call.path.endsWith('/turns')).length,2,'the 409 never triggers a second POST');
+    controller.close();
   }
   console.log('Private assistant search-v3 client checks: negotiation, strict filters, readback, source-change recovery, turn and speech headers passed.');
 })().catch(error=>{console.error(error.stack||error);process.exitCode=1;});

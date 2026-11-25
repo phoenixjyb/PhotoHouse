@@ -70,6 +70,21 @@ def graph_document(*, revision='revision-1', perspective='child', scope=None):
     }
 
 
+def per_account_graph_document(*, perspectives=None):
+    document = graph_document(scope={
+        'account_ids': ['account-one', 'account-two'], 'library_id': 'library-one'})
+    document['schema'] = 2
+    document.pop('perspective_id')
+    document['perspectives'] = perspectives or {
+        'account-one': 'child', 'account-two': 'father'}
+    for person in document['people']:
+        if person['id'] == 'father':
+            person.update(name_en='Other Person', name_zh='示例人物二')
+        elif person['id'] == 'paternal-grandmother':
+            person.update(name_en='Parent Two', name_zh='示例家长二')
+    return document
+
+
 class KinshipGraphTests(unittest.TestCase):
     def setUp(self):
         self.graph = KinshipGraph(graph_document())
@@ -221,6 +236,51 @@ class PrivateKinshipProviderTests(unittest.TestCase):
         self.assertIsNone(provider.get('account-one', 'library-two'))
         self.write(graph_document(scope={'account_ids': [], 'library_id': None}))
         self.assertIsNone(provider.get('account-one', 'library-one'))
+
+    def test_schema_v2_binds_each_account_to_its_own_named_perspective(self):
+        document = per_account_graph_document()
+        self.write(document)
+        provider = PrivateKinshipProvider(self.path, source_root=SOURCE_ROOT)
+        first = provider.get('account-one', 'library-one')
+        second = provider.get('account-two', 'library-one')
+        reviewed = (
+            ReviewedPerson('library-one', '301', 'Child One', (), True),
+            ReviewedPerson('library-one', '302', 'Parent One', (), True),
+            ReviewedPerson('library-one', '303', 'Parent Two', (), True),
+        )
+
+        self.assertEqual(first.perspective_id, 'child')
+        self.assertEqual(second.perspective_id, 'father')
+        for phrase in ('妈妈', 'my mother'):
+            with self.subTest(account='account-one', phrase=phrase):
+                targets = first.resolve(phrase)
+                self.assertEqual(targets, {'mother'})
+                self.assertEqual(first.catalog_ids(targets, reviewed), {'302'})
+            with self.subTest(account='account-two', phrase=phrase):
+                targets = second.resolve(phrase)
+                self.assertEqual(targets, {'paternal-grandmother'})
+                self.assertEqual(second.catalog_ids(targets, reviewed), {'303'})
+
+        self.assertNotEqual(first.digest, second.digest)
+        self.assertNotEqual(first.digest, KinshipGraph(document).digest)
+        changed = per_account_graph_document()
+        changed['perspectives']['account-two'] = 'child'
+        self.write(changed)
+        self.assertNotEqual(first.digest, provider.get('account-one', 'library-one').digest)
+        self.assertIsNone(provider.get('account-three', 'library-one'))
+        self.assertIsNone(provider.get('account-one', 'library-two'))
+
+    def test_schema_v2_requires_exact_account_coverage_and_valid_perspective_refs(self):
+        provider = PrivateKinshipProvider(self.path, source_root=SOURCE_ROOT)
+        for perspectives in (
+            {'account-one': 'child'},
+            {'account-one': 'child', 'account-two': 'father', 'account-three': 'child'},
+            {'account-one': 'missing-person', 'account-two': 'father'},
+        ):
+            with self.subTest(perspectives=perspectives):
+                self.write(per_account_graph_document(perspectives=perspectives))
+                with self.assertRaises(KinshipUnavailable):
+                    provider.get('account-one', 'library-one')
 
     def test_owner_only_file_and_parent_are_required(self):
         provider = PrivateKinshipProvider(self.path, source_root=SOURCE_ROOT)

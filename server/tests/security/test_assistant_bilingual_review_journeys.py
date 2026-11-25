@@ -88,7 +88,7 @@ class AssistantBilingualReviewJourneys(unittest.TestCase):
                 self.assertIsNone(result['effect'])
 
     def test_ambiguous_relative_date_followup_requests_clarification(self):
-        phrases = ('再早一点', 'a bit earlier', 'earlier please',
+        phrases = ('再早一点', 'earlier', 'a bit earlier', 'earlier please',
                    'a bit earlier please', 'earlier一点')
         for phrase in phrases:
             with self.subTest(phrase=phrase):
@@ -103,10 +103,14 @@ class AssistantBilingualReviewJourneys(unittest.TestCase):
                 self.assertEqual(ambiguous['filters'], initial['filters'])
                 self.assertEqual(ambiguous['context'], initial['context'])
                 self.assertIsNone(ambiguous['effect'])
-                if phrase == '再早一点' or phrase == 'earlier一点':
-                    self.assertIn('请提供明确的年份、月份或日期', ambiguous['reply'])
+                if phrase in ('再早一点', 'earlier一点'):
+                    self.assertIn('想查哪段更早的时间？', ambiguous['reply'])
+                    self.assertIn('其他筛选条件会保留', ambiguous['reply'])
+                elif phrase == 'earlier':
+                    self.assertIn('Which earlier year, month, or date?', ambiguous['reply'])
+                    self.assertIn('other filters will stay in place', ambiguous['reply'])
                 else:
-                    self.assertIn('Give a year, month, or date', ambiguous['reply'])
+                    self.assertIn('Which earlier year, month, or date?', ambiguous['reply'])
 
                 resolved = self.search('2024年', ambiguous['context'])
                 self.assertEqual(resolved['kind'], 'results', resolved)

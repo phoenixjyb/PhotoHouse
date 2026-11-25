@@ -3,9 +3,11 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import runpy
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -14,9 +16,78 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'scripts'))
 import build_staging_package as package
 
 
+def working_tree_package_files():
+    repository = package.ROOT.parent
+    return {name: (repository / package.SOURCE_BY_PACKAGE[name]).read_bytes()
+            for name in package.FILES}
+
+
+def committed_package_builder(commit):
+    """Load the package allowlist that belongs to the exact source commit under test."""
+    source = package.git('show', f'{commit}:server/scripts/build_staging_package.py')
+    module = types.ModuleType('photohouse_committed_staging_package')
+    module.__file__ = str(package.ROOT / 'scripts' / 'build_staging_package.py')
+    exec(compile(source, module.__file__, 'exec'), module.__dict__)
+    # The checked-out test harness supplies Git access, while every selected source
+    # blob and its fixed allowlist come from the immutable committed builder above.
+    module.ROOT = package.ROOT
+    return module
+
+
 class StagingPackageTests(unittest.TestCase):
+    def test_packaged_roadmap_download_matches_bilingual_source(self):
+        repository = package.ROOT.parent
+        exporter = runpy.run_path(str(repository / 'tools/export_product_roadmap.py'))
+        download = repository / package.SOURCE_BY_PACKAGE['backend/app/product-roadmap/roadmap.md']
+        self.assertEqual(download.read_bytes(), exporter['export']().encode('utf-8'))
+
+    def test_packaged_optional_kernels_import_and_keep_python_fallback(self):
+        """A release archive must contain transitive adapter/reference packages."""
+        files = working_tree_package_files()
+        raw = package.package_bytes('a' * 40, files)
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary).resolve()
+            with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+                archive.extractall(destination)
+            program = '''import json, os, struct, sys
+sys.path.insert(0, sys.argv[1])
+from app.access.photo_stack_index import build_library_photo_stacks
+from app.access.vector_kernel_reference import run_batch
+from app.access.vector_acceleration import backend
+from app.access.search_text import TextQueryCache
+rows = [(i, 'image/jpeg', 'generated', 1, 1, '2026-10-22T08:00:00Z',
+         '0000000000000000', None, None) for i in (1, 2)]
+assert build_library_photo_stacks(rows)[0]['asset_ids'] == ['1', '2']
+assert backend() is None
+assert TextQueryCache()._native is None
+assert 'photohouse_literal_kernel' not in sys.modules
+try:
+    TextQueryCache(engine='rust')
+except RuntimeError as error:
+    assert str(error) == 'literal_text_kernel_unavailable'
+else:
+    raise AssertionError('source-only archive silently enabled literal native code')
+one = struct.pack('<dd', 1, 0).hex()
+assert bytes.fromhex(run_batch(json.dumps({'op':'score', 'dimension':2,
+    'byteorder':'little', 'data':one, 'query':one}))) == struct.pack('<d', 1)
+os.environ['PHOTOHOUSE_PHOTO_STACK_ENGINE'] = 'rust'
+try:
+    build_library_photo_stacks(rows)
+except RuntimeError as error:
+    assert 'selected but unavailable' in str(error)
+else:
+    raise AssertionError('source-only archive silently enabled a native dependency')
+print('packaged-adapters-and-fallback-pass')
+'''
+            result = subprocess.run(
+                [sys.executable, '-I', '-S', '-B', '-c', program,
+                 str(destination / 'backend')],
+                capture_output=True, text=True, timeout=20, check=True)
+            self.assertEqual(result.stdout.strip(), 'packaged-adapters-and-fallback-pass')
+
     def test_curated_runtime_dependency_and_contract_closure_is_allowlisted(self):
         required = {
+            'backend/app/work_storage.py',
             'backend/app/access/assistant_search.py',
             'backend/app/access/assistant_query_plan.py',
             'backend/app/access/search_explanation.py',
@@ -27,9 +98,14 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/search_intent_local.py',
             'backend/app/access/search_pending.py',
             'backend/app/access/search_exclusions.py',
+            'backend/app/access/search_policy.py',
+            'backend/app/access/search_policy_binding.py',
             'backend/app/access/search_evaluation.py',
             'backend/app/access/kinship.py',
             'backend/app/access/photo_stacks.py',
+            'backend/app/access/photo_stack_acceleration.py',
+            'backend/app/access/photo_stack_reference/__init__.py',
+            'backend/app/access/photo_stack_reference/algorithm.py',
             'backend/app/access/upload_preparation.py',
             'backend/app/access/assistant_journal.py',
             'backend/app/access/assistant_workspace_store.py',
@@ -53,6 +129,7 @@ class StagingPackageTests(unittest.TestCase):
             'scripts/semantic_scene_translation_fidelity.py',
             'scripts/qualify_multilingual_scenes.py',
             'scripts/semantic_siglip.py',
+            'scripts/_semantic_siglip_encoding.py',
             'scripts/build_multilingual_image_index.py',
             'scripts/serve_multilingual_semantic_text.py',
             'scripts/qualify_multilingual_pilot.py',
@@ -76,6 +153,7 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/inference_admission.py',
             'backend/app/access/host_inference_admission.py',
             'backend/app/access/windows_story_capacity.py',
+            'backend/app/access/windows_story_service_capacity.py',
             'backend/app/access/selected_story_snapshot.py',
             'backend/app/access/selected_story_operations.py',
             'backend/app/access/selected_story_lifecycle.py',
@@ -85,6 +163,8 @@ class StagingPackageTests(unittest.TestCase):
             'backend/app/access/selected_story_process.py',
             'backend/app/access/selected_story_grammar.py',
             'scripts/selected_story_native_owner.py',
+            'scripts/selected_story_service_recipe.py',
+            'scripts/serve_library_semantic_text.py',
             'scripts/qualify_selected_story.py',
             'scripts/selected_story_gguf_worker.py',
             'backend/app/access/captions.py',
@@ -203,13 +283,30 @@ class StagingPackageTests(unittest.TestCase):
                          'backend/app/access/semantic_configuration.py',
                          'backend/app/access/semantic_streaming.py',
                          'backend/app/access/semantic_eligibility.py',
+                         'backend/app/access/semantic_request_snapshot.py',
                          'scripts/multilingual_index_collection.py',
                          'scripts/semantic_bilingual_clothing.py',
                          'backend/app/access/people_review.py',
                          'scripts/export_visual_people_review.py',
                          'scripts/inspect_reviewed_people_readiness.py',
                          'scripts/reviewed_people_source.py'})
+        required.update({'backend/app/access/' + name for name in (
+            'story_cloud_proofreading.py', 'story_cloud_transport.py',
+            'story_name_grounding.py', 'story_refinement_context.py',
+            'data/PINYIN-DATA-LICENSE.txt', 'data/pinyin-readings.json',
+            'data/story-grounding-provenance.json', 'data/story-public-names.json')})
+        required.update({
+            'backend/app/product_roadmap.py',
+            'backend/app/product-roadmap/index.html',
+            'backend/app/product-roadmap/styles.css',
+            'backend/app/product-roadmap/app.js',
+            'backend/app/product-roadmap/data.js',
+            'backend/app/product-roadmap/roadmap.md',
+        })
         self.assertTrue(required <= set(package.FILES), required - set(package.FILES))
+        self.assertEqual({name: package.SOURCE_BY_PACKAGE[name]
+                          for name in package.ROADMAP_ASSET_SOURCES},
+                         package.ROADMAP_ASSET_SOURCES)
 
     def test_extracted_actual_api_imports_without_checkout_fallback(self):
         commit = package.git('rev-parse', 'HEAD').decode().strip()
@@ -219,21 +316,31 @@ class StagingPackageTests(unittest.TestCase):
             with zipfile.ZipFile(io.BytesIO(package.package_bytes(commit, files))) as archive:
                 archive.extractall(root)
             program = (
+                "import os; os.environ.pop('PHOTOHOUSE_PHOTO_STACK_ENGINE', None)\n"
                 'import sys\nfrom pathlib import Path\n'
                 f'root=Path({str(root)!r})\n'
                 "sys.path[:0]=[str(root/'scripts'),str(root/'backend')]\n"
                 'from staging_app import load_configuration\n'
+                'from rust_overlay_selection import validate_rust_overlay_selection\n'
                 'from app.access.runtime import RuntimeConfiguration\n'
                 'from app.access.model_binding import project_configuration\n'
                 'from app.access.model_deployment import validate_deployment\n'
                 'from app.access.model_qualification import validate_qualification\n'
                 'from app.main import create_app\n'
+                'from app.product_roadmap import FILES as roadmap_files\n'
+                'from app.access.photo_stack_index import build_library_photo_stacks\n'
+                "rows=[(i,'image/jpeg','generated',1,1,'2026-10-22T08:00:00Z','0'*16,None,None) for i in (1,2)]\n"
+                "assert build_library_photo_stacks(rows)[0]['asset_ids']==['1','2']\n"
+                "assert 'photohouse_photo_stack' not in sys.modules\n"
                 'from app.access.selected_story_lifecycle import SelectedStoryLifecycle\n'
                 'from app.access.selected_story_local import LocalSelectedStoryProvider\n'
                 'from app.access.selected_story_native import NativeStoryLaunch\n'
                 'from app.access.selected_story_grammar import bounded_schema_to_gbnf\n'
-                'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider\n'
+                'from selected_story_native_owner import windows_story_process_owner, windows_story_process_provider, windows_story_service_provider\n'
+                'from selected_story_service_recipe import strict_recipe, build_recipe_provider\n'
+                'from serve_library_semantic_text import run as library_provider_run\n'
                 'import qualify_selected_story, selected_story_gguf_worker, json\n'
+                'from app import work_storage\nimport rehearse_fullsize_database\n'
                 "assert 'llama_cpp' not in sys.modules\n"
                 "manifest=json.loads((root/'manifest.json').read_text())\nassert qualify_selected_story._source_identity(manifest['source_commit'])==manifest['source_commit']\n"
                 "assert not hasattr(qualify_selected_story, 'WindowsAPI')\n"
@@ -245,6 +352,12 @@ class StagingPackageTests(unittest.TestCase):
                 "except ValueError: pass\nelse: raise AssertionError('non-Windows path accepted')\n"
                 "provider=LocalSelectedStoryProvider('http://127.0.0.1:11434', 'synthetic-local-model')\nassert provider.enabled is False\n"
                 'from app.access.story_titles import validate_bundle, validate_suggestions\n'
+                'from app.access import story_cloud_proofreading, story_cloud_transport, story_refinement_context\n'
+                'from app.access.story_name_grounding import _packaged_data, _validate_catalog, _validate_readings\n'
+                'catalog,readings=_packaged_data()\n'
+                'assert _validate_catalog(catalog) and _validate_readings(readings)\n'
+                "assert (root/'backend/app/access/data/PINYIN-DATA-LICENSE.txt').is_file()\n"
+                "assert (root/'backend/app/access/data/story-grounding-provenance.json').is_file()\n"
                 'from app.access.visual_vector_loader import VisualVectorReads\n'
                 'from app.access.visual_vector_artifacts import ImmutableVectorArtifact, identity_sha256\n'
                 'from app.access.visual_vector_schema import sqlite_visual_vector_contract\n'
@@ -260,11 +373,14 @@ class StagingPackageTests(unittest.TestCase):
                 'import check_private_search\n'
                 'import export_visual_people_review, inspect_reviewed_people_readiness, reviewed_people_source\n'
                 'from app.access.search_evaluation import evaluate_cases\n'
-                'from app.access.search_exclusions import requires_exclusion_clarification\n'
+                'from app.access.search_policy import requires_exclusion_clarification\n'
                 "assert requires_exclusion_clarification('不在grass上的dog')\n"
+                'from app.access.search_policy_binding import capture_current_query_policy_binding\n'
+                'assert capture_current_query_policy_binding()["policy_version"] == 3\n'
                 'from app.access.semantic_configuration import load_semantic_runtime\n'
                 'from app.access.semantic_streaming import SemanticServingLimits\n'
                 'from app.access.semantic_eligibility import SemanticEligibilityStore\n'
+                'from app.access.semantic_request_snapshot import RequestSourceSnapshot\n'
                 'import multilingual_index_collection, semantic_bilingual_clothing\n'
                 'import semantic_coverage_qualification, semantic_request_profile\n'
                 'from app.access.oral_history_intake import OralHistoryIntake\n'
@@ -274,8 +390,10 @@ class StagingPackageTests(unittest.TestCase):
                 'assert len(sqlite_visual_vector_contract()) == 5\n'
                 'assert callable(build_photo_stacks) and callable(UploadPreparation)\n'
                 'app=create_app()\nassert app.state.access_runtime is None\n'
+                "assert set(roadmap_files)=={'index.html','styles.css','app.js','data.js','roadmap.md'}\n"
+                "assert (root/'backend/app/product-roadmap/index.html').is_file()\n"
                 "for name,module in tuple(sys.modules.items()):\n"
-                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker', 'qualify_selected_story', 'selected_story_gguf_worker'):\n"
+                " if name=='app' or name.startswith('app.') or name in ('staging_app', 'qualify_oral_history', 'check_private_search', 'export_visual_people_review', 'inspect_reviewed_people_readiness', 'reviewed_people_source', 'selected_story_native_owner', 'selected_story_service_recipe', 'serve_library_semantic_text', 'bounded_windows_job', 'apply_library_photo_stack_schema', 'run_photo_stack_worker', 'qualify_selected_story', 'selected_story_gguf_worker'):\n"
                 "  origin=getattr(module,'__file__',None)\n"
                 "  if origin: assert Path(origin).resolve().is_relative_to(root),(name,origin)\n"
                 "  else:\n"
@@ -304,7 +422,7 @@ class StagingPackageTests(unittest.TestCase):
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 "assert not {'torch','torchvision','open_clip','transformers','numpy','PIL'} & set(sys.modules)\n"
                 'import io,json\nfrom contextlib import redirect_stdout\n'
-                'import semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness\n'
+                'import semantic_siglip,_semantic_siglip_encoding,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness\n'
                 'for module in (semantic_siglip,build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot,multilingual_library_coverage,semantic_loopback_network,semantic_provider_readiness):\n'
                 ' assert Path(module.__file__).resolve().is_relative_to(root)\n'
                 'for module in (build_multilingual_image_index,serve_multilingual_semantic_text,qualify_multilingual_pilot):\n'
@@ -337,10 +455,11 @@ class StagingPackageTests(unittest.TestCase):
 
     def test_extracted_api_prepares_and_serves_synthetic_a0_without_migration_to_package_head(self):
         commit = package.git('rev-parse', 'HEAD').decode().strip()
-        files = package.source_files(commit)
+        selected_package = committed_package_builder(commit)
+        files = selected_package.source_files(commit)
         with tempfile.TemporaryDirectory() as selected:
             root = Path(selected).resolve()
-            with zipfile.ZipFile(io.BytesIO(package.package_bytes(commit, files))) as archive:
+            with zipfile.ZipFile(io.BytesIO(selected_package.package_bytes(commit, files))) as archive:
                 archive.extractall(root)
             fixture = Path(__file__).resolve().with_name('package_smoke.py')
             result = subprocess.run([sys.executable, '-I', '-B', str(fixture), str(root)],
@@ -350,9 +469,11 @@ class StagingPackageTests(unittest.TestCase):
             self.assertEqual(report['package_smoke'], 'pass')
             self.assertEqual(report['synthetic_migration_revision'], 'a0c9d2e4f817')
             self.assertFalse(report['application_listeners_opened'])
+            self.assertFalse(report['child_processes_started'])
             self.assertFalse(report['live_data_accessed'])
             self.assertEqual(report['database_preparation_commands'], 9)
             self.assertEqual(report['saved_story_checks'], 7)
+            self.assertEqual(report['owner_upload_checks'], 10)
 
     def test_archive_is_deterministic_complete_and_contains_no_private_discovery(self):
         files={name:('synthetic source '+name).encode() for name in package.FILES}
@@ -422,6 +543,41 @@ class StagingPackageTests(unittest.TestCase):
         with patch.object(package,'git',side_effect=[b'commit\n',
                 b'120000 blob '+b'b'*40+b'\tserver/backend/app/main.py\0']):
             with self.assertRaises(ValueError): package.source_files('a'*40)
+
+    def test_batch_source_checks_sizes_before_bodies_and_verifies_blob_identity(self):
+        body = b'one\0source\n'
+        oid = hashlib.sha1(b'blob ' + str(len(body)).encode() + b'\0' + body).hexdigest()
+        entries = {'one': oid, 'same': oid}
+        metadata = (oid + ' blob ' + str(len(body)) + '\n').encode()
+        with patch.object(package, 'FILES', tuple(entries)), patch.object(package, 'git',
+                side_effect=[metadata, metadata + body + b'\n']) as git:
+            self.assertEqual(package._read_blobs(entries), {'one': body, 'same': body})
+            self.assertEqual(git.call_count, 2)
+            self.assertEqual(git.call_args_list[0].kwargs['input_data'], (oid + '\n').encode())
+        for invalid in (b'', metadata + metadata, metadata.replace(b'blob', b'tree'),
+                        metadata.replace(oid.encode(), b'0' * 40),
+                        (oid + ' missing\n').encode(),
+                        (oid + ' blob -1\n').encode(),
+                        (oid + ' blob 2000001\n').encode()):
+            with self.subTest(metadata=invalid), patch.object(package, 'git', return_value=invalid) as git:
+                with self.assertRaises(ValueError):
+                    package._read_blobs(entries)
+                self.assertEqual(git.call_count, 1)
+        for invalid in (metadata + body, metadata + body[:-1] + b'\n',
+                        metadata + b'X' * len(body) + b'\n',
+                        metadata + body + b'\nextra', metadata.replace(b'blob', b'tree') + body + b'\n'):
+            with self.subTest(body=invalid), patch.object(package, 'FILES', tuple(entries)), \
+                    patch.object(package, 'git', side_effect=[metadata, invalid]):
+                with self.assertRaises(ValueError):
+                    package._read_blobs(entries)
+
+    def test_duplicate_blob_paths_still_charge_total_expanded_budget(self):
+        oid = 'a' * 40
+        entries = {str(i): oid for i in range(9)}
+        with patch.object(package, 'git', return_value=(oid + ' blob 2000000\n').encode()) as git:
+            with self.assertRaises(ValueError):
+                package._read_blobs(entries)
+            self.assertEqual(git.call_count, 1)
 
 
 if __name__=='__main__': unittest.main()

@@ -70,6 +70,27 @@ class AndroidProfileTests(unittest.TestCase):
         with self.assertRaises(profile.Refused):
             profile.validate_profile('tv', raw({**data,'photohouseTvUpdateOrigin':'http://192.168.50.20:8080'}), gradle('tv'))
 
+    def test_tv_story_approval_requires_explicit_https_origin_and_keeps_legacy_defaults(self):
+        enabled = {**values('tv'), 'photohouseTvStoryApprovalEnabled':'true',
+            'photohouseTvStoryOrigin':'https://stories.synthetic.invalid:8443'}
+        report = profile.validate_profile('tv', raw(enabled), gradle('tv'))
+        self.assertIn('photohouseTvStoryApprovalEnabled', report['property_keys'])
+        self.assertTrue(report['boolean_choices']['photohouseTvStoryApprovalEnabled'])
+        legacy = {k:v for k,v in values('tv').items() if k not in profile.TV_PROFILE_DEFAULTS}
+        report = profile.validate_profile('tv', raw(legacy), gradle('tv'))
+        self.assertFalse(report['boolean_choices']['photohouseTvStoryApprovalEnabled'])
+        self.assertFalse(report['boolean_choices']['photohouseTvUiQa'])
+        for change in (
+            {'photohouseTvStoryApprovalEnabled':'true'},
+            {'photohouseTvStoryOrigin':'https://stories.synthetic.invalid'},
+            {'photohouseTvStoryApprovalEnabled':'true','photohouseTvStoryOrigin':'https://stories.synthetic.invalid/path'},
+            {'photohouseTvStoryApprovalEnabled':'true','photohouseTvStoryOrigin':'http://stories.synthetic.invalid'},
+            {'photohouseTvStoryApprovalEnabled':'true','photohouseTvStoryOrigin':'https://user@stories.synthetic.invalid'},
+            {'photohouseTvUiQa':'true'},
+        ):
+            with self.subTest(change=change), self.assertRaises(profile.Refused):
+                profile.validate_profile('tv', raw({**values('tv'), **change}), gradle('tv'))
+
     def test_feature_dependencies_fixture_and_catalog_refused(self):
         changes = [('phone',{'photohousePhoneUploadEnabled':'true'}),
             ('phone',{'photohousePhonePreparedBrowseEnabled':'true'}),

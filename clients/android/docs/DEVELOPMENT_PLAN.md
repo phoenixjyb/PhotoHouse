@@ -129,6 +129,12 @@ not rewrite captions
 or filter away media with another language. Preserve original text and label AI
 output; do not promise that all older captions are already refreshed.
 
+The selected-folder upload review can remember a folder after explicit consent.
+The shortcut belongs to the selected account, server origin, and destination
+library. Reopening it rechecks the Android persistent read grant and opens
+the ordinary per-file review. Removing the shortcut affects only its saved
+preference. The upload queue keeps its own access to previously selected files.
+
 Deferred: automatic phone backup/upload, permanent offline albums, public sharing,
 destructive library management, photo printing/export workflows, advanced themed
 album generation, always-listening voice, and speakers. Theme browsing and existing

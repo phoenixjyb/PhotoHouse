@@ -17,12 +17,17 @@ from .transport import TransportError
 FIELDS = {'asset_ids', 'excluded_asset_ids', 'source_story_ids', 'theme',
           'revision', 'mutation_id'}
 MEMORY_GROUP_FIELDS = FIELDS
+MEMORY_GROUP_SPLIT_FIELDS = {'asset_ids', 'revision', 'mutation_id'}
+MEMORY_GROUP_COMBINE_FIELDS = {'group_ids', 'group_revisions', 'source_story_ids',
+                               'source_story_revisions', 'theme', 'mutation_id'}
 THEMES = {'trip', 'growing_up', 'birthday', 'grandparents',
           'year_in_review', 'everyday'}
 MAX_ASSETS = 24
 MAX_EXCLUDED = 512
 MAX_SOURCE_STORIES = 12
 MAX_GROUPS_PER_ASSET = 8
+MAX_RECENT_GROUPS = 8
+MAX_RECENT_GROUP_CANDIDATES = 64
 MAX_RESPONSE_BYTES = 1024 * 1024
 
 
@@ -68,16 +73,7 @@ def _body(body):
         raise TransportError(422, 'Included and excluded assets must be distinct')
     if body['theme'] not in THEMES:
         raise TransportError(422, 'Unsupported memory group theme')
-    try:
-        mutation_id = _uuid(body['mutation_id'])
-    except (TypeError, AttributeError):
-        raise TransportError(400, 'Invalid memory group identifier') from None
-    if body['revision'] == '0':
-        revision = 0
-    else:
-        revision = _integer(body['revision'], 2**63 - 2)
-        if str(revision) != body['revision']:
-            raise TransportError(400, 'Invalid memory group revision')
+    revision, mutation_id = _mutation_identity(body)
     content = {
         'theme': body['theme'],
         'asset_ids': assets,
@@ -85,6 +81,23 @@ def _body(body):
         'source_story_ids': sources,
     }
     return content, revision, mutation_id
+
+
+def _revision(value):
+    revision = 0 if value == '0' else _integer(value, 2**63 - 2)
+    if str(revision) != value:
+        raise TransportError(400, 'Invalid memory group revision')
+    return revision
+
+
+def _mutation_identity(body):
+    mutation = _uuid(body['mutation_id'])
+    return _revision(body['revision']), mutation
+
+
+def _request_digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=True,
+                                    separators=(',', ':')).encode()).hexdigest()
 
 
 def _stored(row):
@@ -195,6 +208,30 @@ class MemoryGroups:
             self._ready()
             return self._present(token, self._row(ident, library), library, member)
 
+    def list_recent(self, token, library):
+        with self.access._transaction():
+            self.access._require(token, library, 'library.read')
+            self._ready()
+            rows = self.db.execute(f'''SELECT * FROM {TABLE} WHERE library_id=?
+                ORDER BY updated_at DESC,id DESC LIMIT ?''',
+                (library, MAX_RECENT_GROUP_CANDIDATES))
+            names = tuple(column[0] for column in rows.description)
+            items = []
+            for values in rows:
+                row = dict(zip(names, values))
+                content = _stored(row)
+                try:
+                    members = self._assets(token, library, content['asset_ids'])
+                except AccessDenied:
+                    continue
+                # Verify the whole group even though only its cover is shown.
+                items.append({'id': row['id'], 'revision': str(row['revision']),
+                              'theme': content['theme'], 'count': len(members),
+                              'cover': members[0]})
+                if len(items) == MAX_RECENT_GROUPS:
+                    break
+            return {'version': 1, 'library_id': library, 'items': items}
+
     def list_for_asset(self, token, library, asset_id):
         if type(asset_id) is not int or asset_id < 1:
             raise TransportError(400, 'Invalid asset identifier')
@@ -242,9 +279,7 @@ class MemoryGroups:
                 raise TransportError(400, 'Invalid memory group revision')
         elif revision != 0:
             raise TransportError(400, 'New memory group revision must be zero')
-        digest = hashlib.sha256(json.dumps(
-            [library, ident, revision, content], sort_keys=True,
-            ensure_ascii=True, separators=(',', ':')).encode()).hexdigest()
+        digest = _request_digest([library, ident, revision, content])
         with self.access._transaction(write=True):
             member = self.access._require(token, library, 'story.write')
             self._ready()
@@ -252,9 +287,7 @@ class MemoryGroups:
             if row is not None and not self._can_edit(member, row):
                 raise AccessDenied('Access denied')
             actor = member['account_id']
-            prior = self.access._one(f'''SELECT group_id,request_digest
-                FROM {REVISION_TABLE} WHERE editor_id=? AND mutation_id=?''',
-                (actor, mutation))
+            prior = self._mutation(actor, mutation)
             if prior is not None:
                 if prior['request_digest'] != digest:
                     raise TransportError(409, 'Memory group request identifier already used')
@@ -271,26 +304,157 @@ class MemoryGroups:
                 raise TransportError(409, 'Memory group changed; reload before saving')
 
             group_id = ident or str(uuid.uuid4())
-            next_revision = revision + 1
-            now = self.access._now()
-            fields = (content['theme'], json.dumps(content['asset_ids'], separators=(',', ':')),
-                      json.dumps(content['excluded_asset_ids'], separators=(',', ':')),
-                      json.dumps(content['source_story_ids'], separators=(',', ':')))
-            if row is None:
-                self.db.execute(f'''INSERT INTO {TABLE}
-                    (id,library_id,author_id,revision,theme,asset_ids_json,
-                     excluded_asset_ids_json,source_story_ids_json,created_at,updated_at)
-                    VALUES(?,?,?,1,?,?,?,?,?,?)''',
-                    (group_id, library, actor, *fields, now, now))
-            else:
-                self.db.execute(f'''UPDATE {TABLE} SET revision=?,theme=?,asset_ids_json=?,
-                    excluded_asset_ids_json=?,source_story_ids_json=?,updated_at=? WHERE id=?''',
-                    (next_revision, *fields, now, group_id))
-            self.db.execute(f'''INSERT INTO {REVISION_TABLE}
-                (group_id,revision,editor_id,mutation_id,request_digest,theme,asset_ids_json,
-                 excluded_asset_ids_json,source_story_ids_json,occurred_at)
-                VALUES(?,?,?,?,?,?,?,?,?,?)''',
-                (group_id, next_revision, actor, mutation, digest, *fields, now))
-            self.access._audit(actor, 'memory.group_create' if row is None
-                               else 'memory.group_edit', library)
+            self._record(group_id, library, actor, revision, mutation, digest, content)
             return self._present(token, self._row(group_id, library), library, member)
+
+    def _mutation(self, actor, mutation):
+        return self.access._one(f'''SELECT group_id,request_digest
+            FROM {REVISION_TABLE} WHERE editor_id=? AND mutation_id=?''', (actor, mutation))
+
+    def _record(self, group_id, library, actor, revision, mutation, digest, content):
+        next_revision = revision + 1
+        now = self.access._now()
+        fields = (content['theme'], json.dumps(content['asset_ids'], separators=(',', ':')),
+                  json.dumps(content['excluded_asset_ids'], separators=(',', ':')),
+                  json.dumps(content['source_story_ids'], separators=(',', ':')))
+        if revision == 0:
+            self.db.execute(f'''INSERT INTO {TABLE}
+                (id,library_id,author_id,revision,theme,asset_ids_json,
+                 excluded_asset_ids_json,source_story_ids_json,created_at,updated_at)
+                VALUES(?,?,?,1,?,?,?,?,?,?)''',
+                (group_id, library, actor, *fields, now, now))
+        else:
+            self.db.execute(f'''UPDATE {TABLE} SET revision=?,theme=?,asset_ids_json=?,
+                excluded_asset_ids_json=?,source_story_ids_json=?,updated_at=? WHERE id=?''',
+                (next_revision, *fields, now, group_id))
+        self.db.execute(f'''INSERT INTO {REVISION_TABLE}
+            (group_id,revision,editor_id,mutation_id,request_digest,theme,asset_ids_json,
+             excluded_asset_ids_json,source_story_ids_json,occurred_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?)''',
+            (group_id, next_revision, actor, mutation, digest, *fields, now))
+        self.access._audit(actor, 'memory.group_create' if revision == 0
+                           else 'memory.group_edit', library)
+
+    def split(self, token, library, body, ident):
+        """Commit both reviewed groups together with one replayable mutation."""
+        if (type(body) is not dict or set(body) != MEMORY_GROUP_SPLIT_FIELDS
+                or any(type(value) is not str for value in body.values())):
+            raise TransportError(400, 'Invalid memory group request')
+        ident = _uuid(ident)
+        revision, mutation = _mutation_identity(body)
+        if revision < 1:
+            raise TransportError(400, 'Invalid memory group revision')
+        moved = set(_csv(body['asset_ids'], 'asset_ids', maximum=MAX_ASSETS, required=True))
+        sibling_mutation = str(uuid.uuid5(uuid.UUID(mutation), 'photohouse-memory-group-split-sibling-v1'))
+        digest = _request_digest(['split-v1', library, ident, revision, sorted(moved)])
+        with self.access._transaction(write=True):
+            member = self.access._require(token, library, 'story.write')
+            self._ready()
+            row = self._row(ident, library)
+            if not self._can_edit(member, row):
+                raise AccessDenied('Access denied')
+            actor = member['account_id']
+            prior = self._mutation(actor, mutation)
+            sibling = self._mutation(actor, sibling_mutation)
+            if prior is not None or sibling is not None:
+                if (prior is None or sibling is None or prior['group_id'] != ident
+                        or sibling['group_id'] == ident or prior['request_digest'] != digest
+                        or sibling['request_digest'] != digest):
+                    raise TransportError(409, 'Memory group request identifier already used')
+                created_id = sibling['group_id']
+                created = self._row(created_id, library)
+                self._assets(token, library, _stored(row)['asset_ids'])
+                self._assets(token, library, _stored(created)['asset_ids'])
+            else:
+                if row['revision'] != revision:
+                    raise TransportError(409, 'Memory group changed; reload before splitting')
+                content = _stored(row)
+                assets = content['asset_ids']
+                if not moved < set(assets):
+                    raise TransportError(422, 'Move some assets and leave at least one')
+                self._assets(token, library, assets)
+                retained = [asset_id for asset_id in assets if asset_id not in moved]
+                transferred = [asset_id for asset_id in assets if asset_id in moved]
+                exclusions = content['excluded_asset_ids']
+                if len(exclusions) + max(len(retained), len(transferred)) > MAX_EXCLUDED:
+                    raise TransportError(422, 'Review the group exclusions before splitting')
+                retained_sources, moved_sources = [], []
+                for story_id in content['source_story_ids']:
+                    try:
+                        source, _ = self.stories._story(token, library, story_id)
+                    except AccessDenied:
+                        raise TransportError(409, 'Review the available family notes before splitting') from None
+                    if source['deleted'] or source['asset_id'] not in assets:
+                        raise TransportError(409, 'Review the available family notes before splitting')
+                    target = moved_sources if source['asset_id'] in moved else retained_sources
+                    target.append(story_id)
+                created_id = str(uuid.uuid4())
+                self._record(ident, library, actor, revision, mutation, digest,
+                    {'theme': content['theme'], 'asset_ids': retained,
+                     'excluded_asset_ids': exclusions + transferred, 'source_story_ids': retained_sources})
+                self._record(created_id, library, actor, 0, sibling_mutation, digest,
+                    {'theme': content['theme'], 'asset_ids': transferred,
+                     'excluded_asset_ids': exclusions + retained, 'source_story_ids': moved_sources})
+            return {'version': 1, 'library_id': library, 'source_id': ident, 'created_id': created_id}
+
+    def combine(self, token, library, body):
+        """Create one group from two reviewed revisions, preserving both originals."""
+        if (type(body) is not dict or set(body) != MEMORY_GROUP_COMBINE_FIELDS
+                or any(type(value) is not str for value in body.values())):
+            raise TransportError(400, 'Invalid memory group request')
+        groups = _csv(body['group_ids'], 'group_ids', maximum=2, identifiers=True)
+        revision_fields = body['group_revisions'].split(',')
+        if len(groups) != 2 or len(revision_fields) != 2:
+            raise TransportError(422, 'Select exactly two memory groups')
+        revisions = [_revision(value) for value in revision_fields]
+        if 0 in revisions:
+            raise TransportError(400, 'Invalid memory group revision')
+        notes = _csv(body['source_story_ids'], 'source_story_ids',
+                     maximum=MAX_SOURCE_STORIES, identifiers=True)
+        note_revision_fields = body['source_story_revisions'].split(',') if body['source_story_revisions'] else []
+        if len(note_revision_fields) != len(notes):
+            raise TransportError(400, 'Invalid family note revisions')
+        note_revisions = [_revision(value) for value in note_revision_fields]
+        if 0 in note_revisions:
+            raise TransportError(400, 'Invalid family note revision')
+        theme = body['theme']
+        if theme not in THEMES:
+            raise TransportError(422, 'Unsupported memory group theme')
+        mutation = _uuid(body['mutation_id'])
+        digest = _request_digest(['combine-v1', library, groups, revisions,
+                                  notes, note_revisions, theme])
+
+        with self.access._transaction(write=True):
+            member = self.access._require(token, library, 'story.write')
+            self._ready()
+            rows = [self._row(ident, library) for ident in groups]
+            actor = member['account_id']
+            prior = self._mutation(actor, mutation)
+            if prior is not None:
+                if prior['request_digest'] != digest:
+                    raise TransportError(409, 'Memory group request identifier already used')
+                created_id = prior['group_id']
+                self._assets(token, library, _stored(self._row(created_id, library))['asset_ids'])
+            else:
+                if [row['revision'] for row in rows] != revisions:
+                    raise TransportError(409, 'Memory groups changed; review them before combining')
+                parts = [_stored(row) for row in rows]
+                assets = list(dict.fromkeys(asset for part in parts for asset in part['asset_ids']))
+                included = set(assets)
+                exclusions = list(dict.fromkeys(asset for part in parts for asset in part['excluded_asset_ids']
+                                                if asset not in included))
+                if len(assets) > MAX_ASSETS or len(exclusions) > MAX_EXCLUDED:
+                    raise TransportError(422, 'The combined group exceeds the media selection limits')
+                self._assets(token, library, assets)
+                current_notes = {note['id']: note['revision'] for part in parts
+                                 for note in self._sources(token, library, part)[1]}
+                if len(current_notes) > MAX_SOURCE_STORIES:
+                    raise TransportError(422, 'The combined group exceeds the family note limit')
+                if list(current_notes.items()) != list(zip(notes, note_revisions, strict=True)):
+                    raise TransportError(409, 'Review the current family notes before combining')
+                created_id = str(uuid.uuid4())
+                self._record(created_id, library, actor, 0, mutation, digest,
+                    {'theme': theme, 'asset_ids': assets, 'excluded_asset_ids': exclusions,
+                     'source_story_ids': notes})
+            return {'version': 1, 'library_id': library, 'source_group_ids': groups,
+                    'created_id': created_id}

@@ -18,7 +18,13 @@ import re
 from image_embedding_receipts import (inspect_checkpoint, verify_checkpoint,
     recipe_sha256, _checkpoint_path, _stat_identity)
 from app.access.semantic_encoder import (JointSpaceBinding, SemanticInvalid,
-    SemanticUnavailable, TextVector, _valid_query)
+    SemanticUnavailable, SemanticUnsupported, TextVector, _valid_query)
+from app.access.search_policy import requires_semantic_clarification
+from app.access.search_policy_binding import (
+    QueryPolicyUnavailable,
+    capture_current_query_policy_binding,
+    verify_query_policy_binding,
+)
 from app.access.visual_candidates import (VectorRecord, _canonical_components,
                                          canonical_vector_checksum)
 
@@ -44,6 +50,23 @@ def _current(pin):
 
 
 class OpenClipTextModel:
+    def __init__(self):
+        self._query_policy_binding = capture_current_query_policy_binding()
+
+    def _verify_query_policy(self, check=lambda: None):
+        try:
+            return verify_query_policy_binding(self._query_policy_binding, check=check)
+        except QueryPolicyUnavailable:
+            raise SemanticUnavailable() from None
+        except (SemanticInvalid, SemanticUnavailable):
+            raise
+        except Exception:
+            raise SemanticUnavailable() from None
+
+    @property
+    def query_policy_binding(self):
+        return dict(self._verify_query_policy())
+
     @classmethod
     def load(cls, *, checkpoint, checkpoint_sha256, bpe, bpe_sha256,
              architecture, device, package_versions):
@@ -58,6 +81,7 @@ class OpenClipTextModel:
                     or any(type(v) is not str or not 1 <= len(v) <= 120
                            for v in package_versions.values())):
                 raise SemanticUnavailable()
+            policy_binding = capture_current_query_policy_binding()
             checkpoint_pin = inspect_checkpoint(checkpoint, checkpoint_sha256)
             if Path(checkpoint_pin.path).suffix not in ('.pt', '.pth', '.bin', '.safetensors'):
                 raise SemanticUnavailable()
@@ -138,6 +162,7 @@ class OpenClipTextModel:
                 'output': 'float32_unit_l2', 'package_versions': installed,
                 'source_digests': {name: pin.sha256 for name, pin in source_pins.items()}}
             result = cls()
+            result._query_policy_binding = policy_binding
             result._model, result._torch, result._tokenizer = model, torch, tokenizer
             result._pins = (checkpoint_pin, bpe_pin, *source_pins.values())
             result._checkpoint_sha256 = checkpoint_pin.sha256
@@ -145,6 +170,7 @@ class OpenClipTextModel:
             result._device, result._binding = device, None
             result._cache_baseline = dict(tokenizer.cache)
             result._lock = threading.Lock()
+            result._verify_query_policy()
             return result
         except SemanticUnavailable:
             raise
@@ -156,6 +182,7 @@ class OpenClipTextModel:
         return self._binding
 
     def bind(self, binding):
+        self._verify_query_policy()
         if (self._binding is not None or type(binding) is not JointSpaceBinding
                 or binding.text_identity.artifact_sha256 != self._checkpoint_sha256
                 or binding.image_identity.artifact_sha256 != self._checkpoint_sha256
@@ -205,24 +232,37 @@ class OpenClipTextModel:
         return vector
 
     def probe(self):
+        self._verify_query_policy()
         if not self._lock.acquire(blocking=False):
             raise SemanticUnavailable()
         try:
             vector = self._vector('a red circle', lambda: None)
+            self._verify_query_policy()
             return {'schema': 'photohouse.semantic_text_probe.v1',
                 'architecture': ARCHITECTURE, 'checkpoint_sha256': self._checkpoint_sha256,
                 'text_preprocessing_sha256': self._recipe_sha256, 'recipe': self._recipe,
                 'dimension': DIMENSION, 'device': self._device,
                 'probe_vector_checksum': canonical_vector_checksum(vector),
+                'query_policy_binding': self.query_policy_binding,
                 'relevance_measured': False}
         finally:
             self._lock.release()
 
     def encode(self, query, *, check=lambda: None):
+        if not _valid_query(query) or any(0x7f <= ord(c) < 0xa0 for c in query):
+            raise SemanticInvalid()
+        self._verify_query_policy()
+        if requires_semantic_clarification(query):
+            raise SemanticUnsupported()
         if self._binding is None or not self._lock.acquire(blocking=False):
             raise SemanticUnavailable()
         try:
-            vector = self._vector(query, check)
+            def checked():
+                check()
+                self._verify_query_policy()
+
+            vector = self._vector(query, checked)
+            self._verify_query_policy()
             checksum = canonical_vector_checksum(vector)
             _canonical_components(VectorRecord('1', self.binding.text_identity, vector, checksum),
                                   self.binding.text_identity)

@@ -65,13 +65,15 @@ class VisualVectorReads:
         """Read qualified vectors and propose capture-proximate group members."""
         return self._read(token, library_id, seed_ids, grouping=True, excluded_ids=excluded_ids)
 
-    def memory_group_items(self, token, library_id, seed_ids, *, excluded_ids=()):
+    def memory_group_items(self, token, library_id, seed_ids, *, excluded_ids=(),
+                           coverage_mode='default'):
         """Hydrate proposal thumbnails in the same authorization snapshot."""
         return self._read(token, library_id, seed_ids, grouping=True,
-                          excluded_ids=excluded_ids, present_items=True)
+                          excluded_ids=excluded_ids, present_items=True,
+                          coverage_mode=coverage_mode)
 
     def _read(self, token, library_id, seed_ids, *, grouping=False, excluded_ids=(),
-              present_items=False):
+              present_items=False, coverage_mode='default'):
         from .memory_grouping import UNAVAILABLE as GROUP_UNAVAILABLE, propose_memory_group
         unavailable = GROUP_UNAVAILABLE if grouping else UNAVAILABLE
         capture_column = ",a.taken_at" if grouping else ""
@@ -187,7 +189,7 @@ class VisualVectorReads:
                         seed_ids=tuple(seed_ids), seed_vectors=seed_vector_records,
                         candidate_ids=candidate_ids, candidate_vectors=candidate_vector_records,
                         expected_identity=self.expected_identity, capture_times=capture_times,
-                        excluded_ids=excluded_ids,
+                        excluded_ids=excluded_ids, coverage_mode=coverage_mode,
                     )
                     if not present_items or result.status != 'ready':
                         return result
@@ -203,7 +205,9 @@ class VisualVectorReads:
                                     time_reason=candidate.time_reason)
                         items.append(item)
                     return {'version': 1, 'status': 'ready', 'library_id': library_id,
-                            'needs_review': True, 'seed_asset_ids': list(seed_ids), 'items': items}
+                            'needs_review': True, 'seed_asset_ids': list(seed_ids), 'items': items,
+                            'cover_more_available': result.coverage_available,
+                            **({'coverage_mode': 'by_seed'} if result.coverage_mode == 'by_seed' else {})}
                 return rank_visual_candidates(
                     AuthorizationSnapshot(library_id=library_id, photo_ids=authorized_ids),
                     seed_ids=tuple(seed_ids),

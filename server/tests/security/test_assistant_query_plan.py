@@ -46,6 +46,42 @@ def plan(words, *, entities=None, previous=None, refine=False):
 
 
 class AssistantQueryPlanTests(unittest.TestCase):
+    def test_explicit_weekends_are_two_calendar_days_in_each_language(self):
+        for words, media, start, end in (
+                ('find photos from last weekend', 'image', '2032-09-11', '2032-09-12'),
+                ('找上个周末的照片', 'image', '2032-09-11', '2032-09-12'),
+                ('find 上週末的photos', 'image', '2032-09-11', '2032-09-12'),
+                ('show videos this weekend', 'video', '2032-09-18', '2032-09-19'),
+                ('找本周末的视频', 'video', '2032-09-18', '2032-09-19')):
+            with self.subTest(words=words):
+                result = plan(words)
+                self.assertEqual(result.status, 'ready', result)
+                self.assertEqual(result.filters, {
+                    'media': [media], 'date': {'from': start, 'to': end}})
+        across_year = plan_query('find photos from last weekend', now=datetime(2032, 1, 1),
+                                 entities=resolved_entities(''), previous_filters=None,
+                                 refine=False)
+        self.assertEqual(across_year.filters['date'], {'from': '2031-12-27', 'to': '2031-12-28'})
+        quoted = plan('find photos containing "last weekend"')
+        self.assertEqual(quoted.filters, {'media': ['image'], 'text': 'last weekend'})
+        conflicting = plan('find photos from last weekend and this month')
+        self.assertEqual(conflicting.status, 'clarification', conflicting)
+
+    def test_month_refinement_keeps_the_prior_year_but_explicit_dates_override(self):
+        prior = {'media': ['video'], 'date': {'from': '2031-09-01', 'to': '2031-09-30'}}
+        for words in ('改成十月份', '换成10月', 'only October'):
+            with self.subTest(words=words):
+                self.assert_ready(words, {**prior, 'date': {'from': '2031-10-01', 'to': '2031-10-31'}},
+                                  previous=prior, refine=True)
+        for words, year in (('改成今年十月份', 2032), ('改成2030年10月', 2030)):
+            self.assert_ready(words, {**prior, 'date': {'from': f'{year}-10-01', 'to': f'{year}-10-31'}},
+                              previous=prior, refine=True)
+        self.assert_ready('找十月份照片', {'media': ['image'], 'date': {'from': '2032-10-01', 'to': '2032-10-31'}})
+        multiple = {**prior, 'date': {'from': '2030-09-01', 'to': '2031-09-30'}}
+        self.assert_clarifies('改成十月份', 'conflicting_dates', previous=multiple, refine=True)
+        self.assert_ready('改成今年十月份', {**prior, 'date': {'from': '2032-10-01', 'to': '2032-10-31'}},
+                          previous=multiple, refine=True)
+
     def test_reviewed_labels_cannot_silently_become_date_or_media_conditions(self):
         for label in ('May', 'September', '今天', 'videos'):
             with self.subTest(label=label):
@@ -264,6 +300,44 @@ class AssistantQueryPlanTests(unittest.TestCase):
             with self.subTest(words=words):
                 self.assert_ready(words, expected)
 
+    def test_chinese_month_suffix_is_consumed_as_part_of_the_month(self):
+        now = datetime(2026, 10, 30, 12, 0)
+        cases = {
+            '找去年九月份的照片': {'media': ['image'], 'date': {'from': '2025-09-01', 'to': '2025-09-30'}},
+            '找去年9月份的照片': {'media': ['image'], 'date': {'from': '2025-09-01', 'to': '2025-09-30'}},
+            '找2025年9月份的照片': {'media': ['image'], 'date': {'from': '2025-09-01', 'to': '2025-09-30'}},
+            '找九月份的照片': {'media': ['image'], 'date': {'from': '2026-09-01', 'to': '2026-09-30'}},
+        }
+        for words, expected in cases.items():
+            with self.subTest(words=words):
+                result = plan_query(words, now=now, entities=resolved_entities(words),
+                                    previous_filters=None, refine=False)
+                self.assertEqual((result.status, result.filters), ('ready', expected), result)
+                self.assertEqual(query_mode(words.removeprefix('找').removesuffix('的照片')),
+                                 'refine')
+        for words in ('去年13月份', '2025年13月份'):
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words),
+                                 'refine' if words.startswith('2025') else None)
+                result = plan_query('找' + words + '的照片', now=now,
+                                    entities=resolved_entities(words), previous_filters=None,
+                                    refine=False)
+                self.assertEqual((result.status, result.reason), ('clarification', 'invalid_date'))
+
+        for words in ('2025年9份', '2025年9份照片'):
+            with self.subTest(words=words):
+                self.assertIsNone(query_mode(words))
+                result = plan_query('找' + words, now=now, entities=resolved_entities(words),
+                                    previous_filters=None, refine=False)
+                self.assertNotEqual(result.status, 'ready', result)
+
+        self.assert_ready('find photos containing "月份"',
+                          {'media': ['image'], 'text': '月份'})
+        collision = {**ENTITIES,
+                     'groups': {'people': ['301'], 'tags': [], 'locations': []},
+                     'labels': ['九月份']}
+        self.assert_clarifies('find photos 九月份', 'ambiguous_date_entity', entities=collision)
+
     def test_bilingual_date_ranges_are_inclusive_and_keep_other_conditions(self):
         cases = {
             'find photos from March to June 2024': ('2024-03-01', '2024-06-30'),
@@ -406,6 +480,9 @@ class AssistantQueryPlanTests(unittest.TestCase):
              {'media': ['image'], 'text': '2032-09-03 videos Sample Child'}),
             ('找包含“不要海边”的照片', {'media': ['image'], 'text': '不要海边'}),
             ('find photos containing "妈妈"', {'media': ['image'], 'text': '妈妈'}),
+            ('找包含“不要改变人物条件”的照片', {'media': ['image'], 'text': '不要改变人物条件'}),
+            ('find photos containing "keep the person filter"',
+             {'media': ['image'], 'text': 'keep the person filter'}),
         )
         for words, expected in cases:
             with self.subTest(words=words):
@@ -471,6 +548,30 @@ class AssistantQueryPlanTests(unittest.TestCase):
         self.assert_clarifies('only videos', 'refine_without_context', refine=True)
         self.assert_clarifies('only videos', 'invalid_previous_filters',
                               previous={'people': {'ids': ['301'], 'match': 'unknown'}}, refine=True)
+
+    def test_keep_person_filter_directive_preserves_only_an_existing_reviewed_filter(self):
+        previous = {
+            'media': ['image'], 'people': {'ids': ['301'], 'match': 'all'},
+            'date': {'from': '2032-09-01', 'to': '2032-09-30'},
+        }
+        october = {**previous, 'date': {'from': '2032-10-01', 'to': '2032-10-31'}}
+        self.assertEqual(query_mode('不要改变人物条件'), 'refine')
+        self.assertEqual(query_mode('keep the person filter'), 'refine')
+        self.assert_ready('改成十月份，不要改变人物条件', october,
+                          previous=previous, refine=True)
+        self.assert_ready('make it October, keep the person filter', october,
+                          previous=previous, refine=True)
+        self.assert_ready('不要改变人物条件', previous, previous=previous, refine=True)
+        self.assert_clarifies('不要改变人物条件', 'refine_without_context', refine=True)
+        self.assert_clarifies('keep the person filter', 'people_reference_unavailable',
+                              previous={'media': ['image']}, refine=True)
+
+        other_person = {**ENTITIES, 'groups': {'people': ['302'], 'tags': [], 'locations': []},
+                        'labels': ['Sample Adult']}
+        self.assert_clarifies(
+            'make it October, keep the person filter for Sample Adult',
+            'conflicting_people_reference', entities=other_person,
+            previous=previous, refine=True)
 
     def test_previous_filters_accept_all_current_discovery_date_shapes(self):
         previous = {

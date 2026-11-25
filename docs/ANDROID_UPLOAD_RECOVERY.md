@@ -39,6 +39,21 @@ These are intake constraints, not decode or playback acceptance. HEIC and other
 formats are not silently converted. The app shows the batch format/size limits
 on the review card.
 
+## Bounded folder review
+
+The current source scans the selected folder and its subfolders with at most
+one directory cursor open. It reads metadata in batches from the document
+provider and uses a per-file lookup only when the directory is missing a
+required value. The displayed byte count is the sum of the selected upload
+records. The queue independently rechecks each file before transferring it.
+
+A large folder may reach the existing 1,000-entry scan, 100-file or 64 GiB batch
+limits. The review tells you when it reached a limit so you can choose a smaller
+folder. It counts unsupported or unreadable entries separately. Closing or
+changing the selection discards the partial scan. Opening a remembered folder
+still requires the current account, destination and saved read permission, and
+uploading requires an explicit Start.
+
 ## Returning from Android’s folder picker
 
 The folder/file picker backgrounds PhotoHouse, which covers private content and
@@ -68,6 +83,14 @@ committed offset, destination and other metadata are preserved. Restore does
 not read source bytes, hash files or contact the server. The user explicitly
 resumes; the existing remote-offset/completion checks reconcile progress before
 sending further data. Other terminal/cancellation states retain their contracts.
+
+Resume and Retry ask for consent when the network is metered or unknown.
+Consent applies to that batch run and is kept only in memory. Starting a newly
+reviewed batch runs just that batch. A run started on an unmetered connection
+checks the network again before service dispatch and before further transfer
+requests. If it loses that connection, it pauses with its queue and confirmed
+offset intact. An already-started request may finish. The next Resume checks
+the connection again and reconciles the server's offset before sending data.
 
 ## Incident diagnosis and acceptance
 

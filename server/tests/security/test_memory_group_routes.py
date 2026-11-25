@@ -62,11 +62,51 @@ class MemoryGroupRouteTests(unittest.TestCase):
         self.assertEqual(caps.status_code, 200, caps.text)
         self.assertFalse(caps.json()['enabled'])
         self.assertEqual(self.request('GET', '/assets/101/memory-groups', client=off).status_code, 503)
+        self.assertEqual(self.request('GET', '/memory-groups', client=off).status_code, 503)
+        self.assertEqual(self.request('GET', '/memory-groups', headers={}).status_code, 401)
         self.assertEqual(self.request('GET', '/memory-groups/capabilities', headers={}).status_code, 401)
         self.assertEqual(self.request('GET', '/memory-groups/capabilities', library='family-b').status_code, 401)
         manual = self.request('GET', '/memory-groups/capabilities', client=self.build()).json()
         self.assertTrue(manual['manual'])
+        self.assertTrue(manual['split'])
+        self.assertTrue(manual['combine'])
         self.assertFalse(manual['suggestions'])
+
+    def test_recent_groups_are_bounded_and_check_every_asset_before_showing_a_cover(self):
+        note = self.base.note()
+        groups = [self.base.save(self.base.owner, self.base.body(assets='102'))
+                  for _ in range(9)]
+        newest = self.base.save(self.base.owner, self.base.body(sources=note['id'], theme='birthday'))
+        groups.append(newest)
+        with self.f.connection() as db:
+            db.executemany('UPDATE access_memory_groups SET updated_at=? WHERE id=?',
+                           [(ordinal, group['id']) for ordinal, group in enumerate(groups, 1)])
+            db.commit()
+
+        self.f.trace.clear()
+        response = self.request('GET', '/memory-groups', headers=self.member_headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+        document = response.json()
+        self.assertEqual(set(document), {'version', 'library_id', 'items'})
+        self.assertEqual(document['library_id'], 'family-a')
+        self.assertEqual([item['id'] for item in document['items']],
+                         [group['id'] for group in reversed(groups[-8:])])
+        first = document['items'][0]
+        self.assertEqual(set(first), {'id', 'revision', 'theme', 'count', 'cover'})
+        self.assertEqual(first['count'], 2)
+        self.assertEqual(first['cover']['id'], '101')
+        self.assertEqual(first['cover']['thumbnail_url'], '/assets/101/thumbnail?library=family-a')
+        self.assertNotIn(note['id'], response.text)
+        self.assertFalse(any(sql.lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE'))
+                             for sql in self.f.trace))
+        self.assertEqual(self.request('GET', '/memory-groups', library='family-b').status_code, 401)
+
+        # The cover can still be read, but the other member is no longer visible.
+        self.f.mutate("DELETE FROM access_asset_libraries WHERE asset_id=102 AND library_id='family-a'")
+        after = self.request('GET', '/memory-groups', headers=self.member_headers)
+        self.assertEqual(after.status_code, 200, after.text)
+        self.assertEqual(after.json()['items'], [])
 
     def test_group_opt_in_uses_request_local_runtime_copies(self):
         enabled = create_app(access_runtime=self.runtime, memory_groups_enabled=True)
@@ -105,6 +145,64 @@ class MemoryGroupRouteTests(unittest.TestCase):
         self.f.mutate("UPDATE assets SET taken_at='2026-01-03T11:00:00+08:00' WHERE id=102")
         self.assertEqual(self.request('POST', '/memory-groups/proposals', body).json()['items'], [])
 
+    def test_seed_coverage_is_opt_in_bounded_and_requires_exact_request_shape(self):
+        self.install_vectors()
+        with self.f.connection() as db:
+            db.execute("UPDATE assets SET hash_sha256=?,taken_at=?,mime='image/jpeg' WHERE id=999",
+                       ('4' * 64, '2026-01-01T10:00:00+08:00'))
+            db.execute("INSERT INTO access_asset_libraries VALUES (999,'family-a')")
+            for asset_id in range(1101, 1123):
+                db.execute('''INSERT INTO assets(id,path,hash_sha256,mime,status,taken_at)
+                              VALUES (?,?,?,?,?,?)''',
+                           (asset_id, f'synthetic/coverage-{asset_id}.jpg', '4' * 64,
+                            'image/jpeg', 'active', '2026-01-01T10:00:00+08:00'))
+                db.execute('INSERT INTO access_asset_libraries VALUES (?,?)',
+                           (asset_id, 'family-a'))
+            db.commit()
+            helper = SimpleNamespace(db=db, root=self.root)
+            vectors.VisualVectorLoaderTests.add_vector(helper, 999, (0.0, 1.0))
+            for asset_id in range(1101, 1122):
+                vectors.VisualVectorLoaderTests.add_vector(helper, asset_id, (1.0, 0.0))
+            vectors.VisualVectorLoaderTests.add_vector(helper, 1122, (0.0, 1.0))
+
+        body = {'asset_ids': '101,999', 'excluded_asset_ids': ''}
+        self.f.trace.clear()
+        default = self.request('POST', '/memory-groups/proposals', body)
+        self.assertEqual(default.status_code, 200, default.text)
+        default_items = default.json()['items']
+        self.assertEqual([str(asset_id) for asset_id in range(1101, 1121)],
+                         [item['id'] for item in default_items])
+        self.assertTrue(default.json()['cover_more_available'])
+        self.assertNotIn('1122', [item['id'] for item in default_items])
+        self.assertTrue(all(item['matched_seed_asset_id'] == '101' for item in default_items))
+        self.assertNotIn(str(self.root), default.text)
+        self.assertNotIn('synthetic-space', default.text)
+        self.assertFalse(any(sql.lstrip().upper().startswith(('INSERT', 'UPDATE', 'DELETE'))
+                             for sql in self.f.trace))
+
+        covered = self.request('POST', '/memory-groups/proposals',
+            dict(body, coverage_mode='by_seed'))
+        self.assertEqual(covered.status_code, 200, covered.text)
+        self.assertEqual('by_seed', covered.json()['coverage_mode'])
+        self.assertEqual([('1101', '101'), ('1122', '999')], [
+            (item['id'], item['matched_seed_asset_id']) for item in covered.json()['items'][:2]
+        ])
+        self.assertEqual(['1101', '1122', *map(str, range(1102, 1120))],
+                         [item['id'] for item in covered.json()['items']])
+        self.assertNotIn(str(self.root), covered.text)
+        self.assertNotIn('synthetic-space', covered.text)
+
+        excluded = self.request('POST', '/memory-groups/proposals',
+            {'asset_ids': '101,999', 'excluded_asset_ids': '1122', 'coverage_mode': 'by_seed'})
+        self.assertFalse(excluded.json()['cover_more_available'])
+        self.assertNotIn('1122', [item['id'] for item in excluded.json()['items']])
+        self.assertEqual(400, self.request('POST', '/memory-groups/proposals',
+            dict(body, coverage_mode='unknown')).status_code)
+        self.assertEqual(400, self.request('POST', '/memory-groups/proposals',
+            dict(body, unexpected='value')).status_code)
+        self.assertEqual(400, self.request('POST', '/memory-groups/proposals',
+            {'asset_ids': '101,999', 'coverage_mode': 'by_seed'}).status_code)
+
     def test_unavailable_still_checks_all_seeds_and_never_saves_a_group(self):
         self.f.trace.clear()
         body = {'asset_ids': '101', 'excluded_asset_ids': ''}
@@ -139,6 +237,104 @@ class MemoryGroupRouteTests(unittest.TestCase):
         self.assertEqual(repeat.json()['revision'], updated.json()['revision'])
         stale = dict(body, mutation_id=self.base.body()['mutation_id'])
         self.assertEqual(self.request('PUT', '/memory-groups/' + group['id'], stale).status_code, 409)
+
+    def test_split_moves_reviewed_members_and_linked_notes_atomically_and_retries(self):
+        note = self.base.note(asset=101)
+        created = self.request('POST', '/memory-groups',
+                               self.base.body(excluded='504', sources=note['id']))
+        self.assertEqual(created.status_code, 201, created.text)
+        original = created.json()
+        parent = '/memory-groups/' + original['id']
+        body = {'asset_ids': '101', 'revision': original['revision'],
+                'mutation_id': self.base.body()['mutation_id']}
+        self.assertEqual(self.request('POST', parent+'/split', body, headers=self.member_headers).status_code, 401)
+        self.assertEqual(self.request('POST', parent+'/split', body, library='family-b').status_code, 401)
+        self.assertEqual(self.request('POST', parent+'/split', body | {'asset_ids':'101,102'}).status_code, 422)
+        self.assertEqual(self.request('POST', parent+'/split', body | {'asset_ids':'201'}).status_code, 422)
+        self.assertEqual(self.request('GET', parent).json(), original)
+
+        result = self.request('POST', parent+'/split', body)
+        self.assertEqual(result.status_code, 200, result.text)
+        sibling = '/memory-groups/' + result.json()['created_id']
+        self.assertEqual(result.json(), {'version':1, 'library_id':'family-a',
+            'source_id':original['id'], 'created_id':sibling.rsplit('/',1)[1]})
+        retained = self.request('GET', parent).json()
+        moved = self.request('GET', sibling, headers=self.member_headers).json()
+        self.assertEqual((retained['asset_ids'], retained['excluded_asset_ids'], retained['sources']),
+                         (['102'], ['504','101'], []))
+        self.assertEqual((moved['asset_ids'], moved['excluded_asset_ids'], moved['source_story_ids']),
+                         (['101'], ['504','102'], [note['id']]))
+        self.assertEqual(moved['sources'][0]['text'], note['text'])
+        repeated = self.request('POST', parent+'/split', body)
+        self.assertEqual(repeated.json(), result.json())
+        self.assertEqual(self.request('POST', parent+'/split', body | {'asset_ids':'102'}).status_code, 409)
+        stale = body | {'mutation_id':self.base.body()['mutation_id']}
+        self.assertEqual(self.request('POST', parent+'/split', stale).status_code, 409)
+        self.assertEqual(self.request('GET', parent).json(), retained)
+        self.assertEqual(self.request('GET', '/assets/101/memory-groups').json()['items'][0]['id'],
+                         moved['id'])
+
+    def test_combine_keeps_order_originals_and_current_note_links_on_exact_retry(self):
+        note = self.base.note(asset=101)
+        group_a = self.base.save(self.base.owner,
+            self.base.body(assets='102,101', excluded='504', sources=note['id']))
+        group_b = self.base.save(self.base.owner,
+            self.base.body(assets='101', excluded='102,504', sources=note['id']))
+        path = '/memory-groups/combine'
+        body = {'group_ids': group_a['id'] + ',' + group_b['id'], 'group_revisions': '1,1',
+                'source_story_ids': note['id'], 'source_story_revisions': str(note['revision']),
+                'theme': 'birthday', 'mutation_id': self.base.body()['mutation_id']}
+        viewer_caps = self.request('GET', '/memory-groups/capabilities', headers=self.member_headers)
+        self.assertFalse(viewer_caps.json()['combine'])
+        self.assertEqual(self.request('POST', path, body, headers=self.member_headers).status_code, 401)
+        self.assertEqual(self.request('POST', path, body, library='family-b').status_code, 401)
+        self.assertEqual(self.request('POST', path, body, client=self.build(enabled=False)).status_code, 503)
+        cookie = {'Cookie': COOKIE + '=' + self.base.owner}
+        self.assertEqual(self.request('POST', path, body, headers=cookie).status_code, 403)
+        cookie.update(Origin='https://photohouse.test', **{'X-CSRF-Token': csrf_token(self.base.owner)})
+        saved = self.request('POST', path, body, headers=cookie)
+        self.assertEqual(saved.status_code, 201, saved.text)
+        self.assertEqual(saved.headers['cache-control'], 'no-store')
+        receipt = saved.json()
+        self.assertEqual(set(receipt), {'version', 'library_id', 'source_group_ids', 'created_id'})
+        self.assertEqual(receipt['source_group_ids'], [group_a['id'], group_b['id']])
+        self.assertNotIn(receipt['created_id'], receipt['source_group_ids'])
+        self.assertNotIn(note['text'], saved.text)
+
+        result = self.request('GET', '/memory-groups/' + receipt['created_id']).json()
+        self.assertEqual(result['asset_ids'], ['102', '101'])
+        self.assertEqual(result['excluded_asset_ids'], ['504'])
+        self.assertEqual(result['source_story_ids'], [note['id']])
+        self.assertEqual(result['sources'][0]['text'], note['text'])
+        self.assertEqual(result['theme'], 'birthday')
+        self.assertEqual(self.request('POST', path, body).json(), receipt)
+        self.assertEqual(self.request('POST', path, body | {'theme': 'trip'}).status_code, 409)
+        for group in (group_a, group_b):
+            self.assertEqual(self.request('GET', '/memory-groups/' + group['id']).json(), group)
+        self.assertEqual(len(self.request('GET', '/memory-groups').json()['items']), 3)
+
+    def test_combine_refuses_changed_revisions_and_withdrawn_media_with_no_write(self):
+        note = self.base.note(asset=102)
+        group_a = self.base.save(self.base.owner, self.base.body(assets='101'))
+        group_b = self.base.save(self.base.owner, self.base.body(assets='102', sources=note['id']))
+        path = '/memory-groups/combine'
+        body = {'group_ids': group_a['id'] + ',' + group_b['id'], 'group_revisions': '1,1',
+                'source_story_ids': note['id'], 'source_story_revisions': str(note['revision']),
+                'theme': 'everyday', 'mutation_id': self.base.body()['mutation_id']}
+        bad = dict(body, group_ids=','.join([group_a['id']] * 2))
+        self.assertEqual(self.request('POST', path, bad).status_code, 422)
+        self.assertEqual(self.request('POST', path, body | {'group_revisions': '01,1'}).status_code, 400)
+        self.base.save(self.base.owner, self.base.body(assets='101', theme='trip', revision='1'), group_a['id'])
+        self.assertEqual(self.request('POST', path, body).status_code, 409)
+        body['group_revisions'] = '2,1'
+        revised = self.base.edit_note(note, revision=note['revision'], title='Revised', text='Current family words')
+        self.assertEqual(self.request('POST', path, body).status_code, 409)
+        body['source_story_revisions'] = str(revised['revision'])
+        self.f.mutate("DELETE FROM access_asset_libraries WHERE asset_id=102 AND library_id='family-a'")
+        self.assertEqual(self.request('POST', path, body).status_code, 401)
+        with self.f.connection() as db:
+            self.assertEqual(db.execute('SELECT count(*) FROM access_memory_groups').fetchone()[0], 2)
+            self.assertEqual(db.execute('SELECT count(*) FROM access_memory_group_revisions').fetchone()[0], 3)
 
     def test_csrf_revocation_and_whole_group_authorization(self):
         body = self.base.body()
