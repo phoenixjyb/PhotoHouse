@@ -4,6 +4,7 @@ Only migrated metadata and explicit asset mappings are read. No ORM/configuratio
 media bytes, vector index, model or processing side effects are imported.
 Optional prepared browsing reads only the pinned catalog identity after authorization.
 """
+from datetime import date
 from urllib.parse import urlencode
 import json
 
@@ -33,6 +34,13 @@ HINT_FIELDS = FIELDS + ''',a.path,
 GALLERY_ORDER = ''' ORDER BY COALESCE(a.taken_at,
     (SELECT datetime(u.created_at,'unixepoch') FROM access_uploads u
      WHERE u.asset_id=a.id)) DESC,a.id DESC'''
+# Compare the civil day recorded on the asset, even when the timestamp has an
+# offset. Filename and receipt hints cannot stand in for a capture date.
+ANNIVERSARY_FILTER = ''' AND a.taken_at >= '0001-01-01' AND a.taken_at < ?
+    AND substr(a.taken_at,6,5) = ?
+    AND date(substr(a.taken_at,1,10),'+0 days') = substr(a.taken_at,1,10)
+    AND substr(a.taken_at,11,1) IN ('',' ','T') AND datetime(a.taken_at) IS NOT NULL
+    AND (a.mime GLOB 'image/*' OR a.mime GLOB 'video/*')'''
 # Shared mobile response budget, measured with the actual JSON wire serializer.
 CAPTION_RESPONSE_BYTES = 512 * 1024
 
@@ -58,13 +66,15 @@ class LibraryReads:
         self.prepared = prepared
 
     def gallery(self, token, library_id, *, page=1, page_size=50, media='all', date_hints=False,
-                photo_stacks=False):
+                photo_stacks=False, anniversary=None):
         if type(page) is not int or not 1 <= page <= 100000 or type(page_size) is not int or not 1 <= page_size <= 100:
             raise ValueError('Invalid pagination')
         if type(media) is not str or media not in {'all', 'image', 'video', 'prepared_video'}:
             raise ValueError('Invalid media')
         if type(photo_stacks) is not bool:
             raise ValueError('Invalid photo stack option')
+        if anniversary is not None and type(anniversary) is not date:
+            raise ValueError('Invalid anniversary day')
         with self.access._transaction():
             member = self.access._require(token, library_id, 'library.read')
             db = self.access.db
@@ -80,6 +90,11 @@ class LibraryReads:
                 self.prepared.current()
                 media_sql += ' AND a.id IN (SELECT value FROM json_each(?))'
                 media_arg += (json.dumps(list(self.prepared.entries)),)
+            order = GALLERY_ORDER
+            if anniversary is not None:
+                media_sql += ANNIVERSARY_FILTER
+                media_arg += (anniversary.replace(month=1, day=1).isoformat(), anniversary.isoformat()[5:])
+                order = ' ORDER BY a.taken_at DESC,a.id DESC'
             total = db.execute('SELECT count(*)' + SOURCE + media_sql,
                                (library_id,) + media_arg).fetchone()[0]
             projection = HINT_FIELDS if date_hints else FIELDS
@@ -90,7 +105,7 @@ class LibraryReads:
                     (SELECT u.account_id FROM access_uploads u WHERE u.asset_id=a.id LIMIT 1),
                     (SELECT u.batch FROM access_uploads u WHERE u.asset_id=a.id LIMIT 1)'''
             rows = db.execute('SELECT ' + projection + SOURCE +
-                media_sql + GALLERY_ORDER + ' LIMIT ? OFFSET ?',
+                media_sql + order + ' LIMIT ? OFFSET ?',
                 (library_id,) + media_arg + (page_size, (page - 1) * page_size)).fetchall()
             if media == 'prepared_video':
                 self.prepared.current()
@@ -181,18 +196,26 @@ def _integer(value, maximum):
 @router.get('/assets')
 async def gallery(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
-    query = _query(request, {'library', 'page', 'page_size', 'media', 'date_hints', 'photo_stacks'})
+    query = _query(request, {'library', 'page', 'page_size', 'media', 'date_hints', 'photo_stacks', 'anniversary'})
     if query.get('media', 'all') not in {'all', 'image', 'video', 'prepared_video'}:
         raise TransportError(400, 'Invalid request')
     if query.get('date_hints', '0') not in {'0', '1'}:
         raise TransportError(400, 'Invalid request')
     if query.get('photo_stacks', '0') not in {'0', '1'}:
         raise TransportError(400, 'Invalid request')
+    anniversary = None
+    if 'anniversary' in query:
+        try:
+            anniversary = date.fromisoformat(query['anniversary'])
+        except ValueError:
+            raise TransportError(400, 'Invalid request') from None
+        if anniversary.isoformat() != query['anniversary']:
+            raise TransportError(400, 'Invalid request')
     result = await run_in_threadpool(_read, _runtime(request, allow_query=True), 'gallery', token,
         query['library'], page=_integer(query.get('page', '1'), 100000),
         page_size=_integer(query.get('page_size', '50'), 100), media=query.get('media', 'all'),
         date_hints=query.get('date_hints') == '1',
-        photo_stacks=query.get('photo_stacks') == '1',
+        photo_stacks=query.get('photo_stacks') == '1', anniversary=anniversary,
         prepared=getattr(getattr(request.app.state, 'media_runtime', None), 'prepared_videos', None))
     return JSONResponse(result)
 

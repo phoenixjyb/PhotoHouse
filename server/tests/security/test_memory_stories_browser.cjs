@@ -16,13 +16,14 @@ createInterface({input:bridge.stdout}).on('line',line=>{const result=JSON.parse(
 bridge.on('exit',code=>{if(code){readyReject(new Error('Bridge failed'));for(const item of pending.values())item.reject(new Error('Bridge failed'));}});
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 let browser,ctx,hold=null,releaseHold,arrivedHold;const errors=[],external=[],checks=[];let dropSave=false;const saveBodies=[],storyWriteBodies=[];let savedStoryPayload=null,proposalFixture=null;
-const titleSearches=[];
+const titleSearches=[],anniversaryDates=[];
+let heldAnniversary=null;
 const syntheticContribution={id:'a0000000-0000-4000-8000-000000000001',kind:'text',state:'accepted',author_id:'synthetic-family-member',byline:'测试家人',text:'合成贡献：湖边散步时，大家一起唱了歌。',chapter_id:null,processing_consent:true,created_at:1,updated_at:1};
 const pass=name=>{checks.push(name);console.log('PASS '+name);};
 (async()=>{
   await ready;
   browser=await chromium.launch({headless:true,...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
-  ctx=await browser.newContext({viewport:{width:1280,height:960},serviceWorkers:'block',acceptDownloads:true});
+  ctx=await browser.newContext({viewport:{width:1280,height:960},timezoneId:'Asia/Shanghai',serviceWorkers:'block',acceptDownloads:true});
   await ctx.addInitScript(()=>{let Constructor;Object.defineProperty(window,'PhotoHouseStoryWorkspace',{configurable:true,get:()=>Constructor,set:value=>{Constructor=config=>{let language=null;const originalScope=config.scope;const instance=value({...config,scope:()=>({...originalScope(),...(language?{language}:{})})});window.__storyWorkspaceTest=instance;window.__setStoryWorkspaceTestLanguage=next=>{language=next;instance.translate();};return instance;};}});});
   await ctx.route('**/*',async route=>{
     const req=route.request(),url=new URL(req.url());
@@ -42,12 +43,15 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
     if(!headers['sec-fetch-site'])headers['sec-fetch-site']=new URL(req.frame().url()).origin===url.origin?'same-origin':'none';
     if(url.pathname==='/memory-stories'&&req.method()==='POST')saveBodies.push(req.postData());
     if(url.pathname==='/memory-stories/search')titleSearches.push({method:req.method(),query:url.search,body:req.postDataJSON()});
+    const anniversary=url.pathname==='/assets'&&url.searchParams.get('anniversary');
+    if(anniversary)anniversaryDates.push(anniversary);
     if(/^\/memory-stories\/[0-9a-f-]{36}$/.test(url.pathname)&&['POST','PUT'].includes(req.method()))storyWriteBodies.push({method:req.method(),body:req.postData()});
     const result=await rpc({method:req.method(),path:url.pathname+url.search,headers,body:(req.postDataBuffer()||Buffer.alloc(0)).toString('base64')});
     if(req.method()==='GET'&&/^\/memory-stories\/[0-9a-f-]{36}$/.test(url.pathname)&&result.status===200)savedStoryPayload=JSON.parse(Buffer.from(result.body,'base64').toString());
     if(proposalFixture&&req.method()==='GET'&&url.pathname==='/memory-community/v1/jobs/'+proposalFixture.job.id){await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(proposalFixture.job)});return;}
     if(dropSave&&url.pathname==='/memory-stories'&&req.method()==='POST'){dropSave=false;await route.abort('failed');return;}
     if(hold&&url.pathname==='/story-workspace/preview'){const gate=hold;hold=null;arrivedHold();await gate;}
+    if(anniversary&&heldAnniversary){const gate=heldAnniversary;heldAnniversary=null;gate.arrived();await gate.release;}
     const output={...result.headers};delete output['content-length'];delete output['content-encoding'];
     try{await route.fulfill({status:result.status,headers:output,body:Buffer.from(result.body,'base64')});}catch(error){if(!/closed|handled|cancel|Invalid InterceptionId/.test(error.message))throw error;}
   });
@@ -214,6 +218,50 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
   pass('Contribution-only source loss is confirmed before adoption, reviewed in the editor, and only explicit save uses the current story contract');
   await page.locator('#story-reader-contribute').click();await page.locator('#viewer').waitFor({state:'visible'});
   pass('Contribute action opens the current protected asset for its family memory');
+  await page.locator('#close-viewer').click();
+  assert.deepEqual(anniversaryDates,[],'the collapsed shelf reads nothing');
+  await rpc({command:'mutate',scenario:'related-day-seed'});
+  // The browser is already on June 1 while UTC is still in May.
+  await page.clock.setFixedTime(new Date('2026-05-31T18:00:00Z'));
+  const anniversary=page.locator('#anniversary-shelf'),anniversaryToggle=anniversary.locator('summary');
+  const archiveCards=anniversary.locator('li button');
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>{document.documentElement.style.zoom='150%';});
+  await anniversaryToggle.focus();await anniversaryToggle.press('Enter');
+  await archiveCards.first().waitFor();
+  assert.equal(await archiveCards.count(),8);
+  assert.deepEqual(anniversaryDates,['2026-06-01']);
+  assert.equal(await archiveCards.first().locator('time').getAttribute('datetime'),'2025-06-01');
+  assert.match(await archiveCards.first().getAttribute('aria-label'),/^照片/);
+  assert.match(await archiveCards.nth(1).getAttribute('aria-label'),/^视频/);
+  assert(await anniversary.evaluate(el=>el.scrollWidth<=el.clientWidth),'anniversary shelf fits at 390px and 150%');
+  await anniversary.screenshot({path:path.join(artifacts,'on-this-day-mobile-150-zh.png')});
+  await page.locator('#anniversary-next').click();
+  await page.waitForFunction(()=>document.querySelector('#anniversary-status').textContent.includes('第 2'));
+  assert.equal(await archiveCards.count(),8);
+  await archiveCards.first().click();await page.locator('#viewer').waitFor({state:'visible'});
+  assert.match(await page.locator('#viewer-title').textContent(),/2025-06-01/);
+  assert(await page.locator('#close-viewer').evaluate(element=>{
+    const rect=element.getBoundingClientRect();
+    return rect.left>=0&&rect.right<=innerWidth&&rect.top>=0&&rect.bottom<=innerHeight;
+  }),'enlarged mobile viewer keeps its Close action on-screen');
+  await page.locator('#close-viewer').click();
+  pass('On this day uses the browser civil date, pages past the first eight memories and opens the protected viewer');
+  await page.evaluate(()=>{document.documentElement.style.zoom='';});
+  await page.locator('#language').click();
+  await page.waitForFunction(()=>document.documentElement.lang==='en'&&!document.querySelector('#anniversary-shelf').open);
+  assert.equal(await anniversaryToggle.textContent(),'On this day');
+  let acknowledgeAnniversary,releaseAnniversary;
+  const requestedAnniversary=new Promise(resolve=>{acknowledgeAnniversary=resolve;});
+  heldAnniversary={arrived:acknowledgeAnniversary,release:new Promise(resolve=>{releaseAnniversary=resolve;})};
+  const anniversaryRequest=page.waitForRequest(request=>new URL(request.url()).searchParams.get('anniversary')==='2026-06-01');
+  await anniversaryToggle.click();await anniversaryRequest;await requestedAnniversary;
+  try{await page.locator('#logout').click();await page.locator('#auth').waitFor();}
+  finally{releaseAnniversary();}
+  assert.equal(await archiveCards.count(),0);
+  assert.equal(await page.locator('#anniversary-status').textContent(),'');
+  assert.equal(await anniversary.getAttribute('open'),null);
+  pass('The English shelf loads on demand and drops a delayed response when the account signs out');
   assert.equal(await page.evaluate(()=>localStorage.length+sessionStorage.length),0);assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
   fs.writeFileSync(path.join(artifacts,'checks.json'),JSON.stringify({checks,errors,external,fixture:'synthetic ASGI; lost reply, concurrent edit, and ready narrative job intercepted for contribution-source adoption review'},null,2));console.log('ARTIFACTS '+artifacts);
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(ctx)await ctx.close();if(browser)await browser.close();bridge.stdin.end();});

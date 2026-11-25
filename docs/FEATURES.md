@@ -86,6 +86,15 @@ follows. Current installed-client and voice acceptance remain separate.
 See the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md) for generated
 checks and Windows delivery evidence.
 
+## November 26 local candidate
+
+- Open **On this day** on the Web library home to browse photos and videos
+  with the same recorded capture month and day in earlier years. The shelf
+  uses the browser's local calendar and opens items in the protected viewer.
+  Browsing stays within the selected library.
+- The Web photo viewer keeps its Close button inside the viewport at enlarged
+  text sizes. These changes await Windows rollout and household review.
+
 ## Earlier capability snapshot (historical)
 
 | Area | Current state | Acceptance boundary / next gate |

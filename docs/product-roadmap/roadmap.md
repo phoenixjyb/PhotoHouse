@@ -153,6 +153,7 @@ Browse authorized photos and videos through Web and client surfaces. / 通过网
 
 - Gallery, detail and protected playback routes are implemented. / 已实现相册、详情和受保护播放入口。
 - Local Web checks verified on-demand descriptions and faster prepared-video startup under fixed response delays. / 本地网页测试验证了按需加载照片描述，并在固定响应延迟下缩短了已准备视频的启动时间。
+- The Web home has an on-demand **On this day** shelf for photos and videos captured on this date in earlier years. The enlarged viewer keeps its Close button reachable. / 网页首页可按需打开「往年今日」，浏览往年这一天拍摄的照片和视频。放大后的浏览窗口仍可关闭。
 
 **Gaps / 差距**
 
@@ -160,7 +161,7 @@ Browse authorized photos and videos through Web and client surfaces. / 通过网
 
 **Next / 下一步:** Keep navigation, loading and playback errors consistent across screens. / 统一不同屏幕上的导航、加载与播放错误体验。
 
-**Delivery / 交付背景:** Fullscreen browsing is live on Windows. The newer loading improvements have local evidence and await release. / Windows 已上线全屏浏览。较新的加载改进已完成本地验证，仍待交付。
+**Delivery / 交付背景:** Fullscreen browsing is live on Windows. The newer loading, enlarged viewer and On this day changes have local evidence and await release. / Windows 已上线全屏浏览。本地已验证加载改进、放大浏览窗口和「往年今日」，仍待交付。
 
 **Acceptance / 验收背景:** No physical device result is inferred from an API check. / API 检查不能替代物理设备结果。
 

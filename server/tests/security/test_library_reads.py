@@ -110,6 +110,35 @@ class LibraryReadTests(unittest.TestCase):
         self.assertEqual(result['items'][0]['thumbnail_url'],'/assets/102/thumbnail?library=family-a')
         self.assertEqual(set(result['items'][0]),{'id','kind','width','height','duration_sec','taken_at','thumbnail_url'})
 
+    def test_anniversary_uses_recorded_civil_day_in_prior_years_before_paging(self):
+        for asset, stamp in [(101, '2020-02-29T23:59:00-07:00'), (102, '2024-02-29'),
+                             (103, '2024-02-29'), (201, '2024-02-29'), (999, '2024-02-29')]:
+            self.mutate('UPDATE assets SET taken_at=? WHERE id=?', (stamp,asset))
+        self.mutate("UPDATE assets SET mime='video/mp4' WHERE id=102")
+        with self.connection() as db:
+            for asset, stamp, mime in [(104, '2028-02-29','image/jpeg'), (105, '2023-02-29','image/jpeg'),
+                    (106, '2024-02-28','image/jpeg'), (107, '2024-02-29 invalid','image/jpeg'),
+                    (108, '2024-02-29','text/plain'), (109, None,'image/jpeg'),
+                    (110, '0000-02-29','image/jpeg'), (111, '2032-02-29','image/jpeg')]:
+                db.execute('INSERT INTO assets(id,path,hash_sha256,status,mime,taken_at) VALUES (?,?,?,\'active\',?,?)',
+                           (asset, f'private-synthetic/{asset}/20240229_083305.jpg', str(asset), mime, stamp))
+                db.execute("INSERT INTO access_asset_libraries VALUES (?,'family-a')", (asset,))
+            db.commit()
+        path = '/assets?library=family-a&anniversary=2028-02-29&page_size=1'
+        first = self.get(path)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.headers['cache-control'], 'no-store')
+        self.assertEqual(first.json()['total'], 2)
+        self.assertEqual([(item['id'], item['kind']) for item in first.json()['items']], [('102', 'video')])
+        self.assertEqual([item['id'] for item in self.get(path+'&page=2').json()['items']], ['101'])
+        self.assertEqual(self.get(path+'&page=3').json()['items'], [])
+        self.assertEqual(self.get(path+'&media=image').json()['total'], 1)
+        self.assertNotIn('private-synthetic', first.text)
+        self.assertEqual([item['id'] for item in self.get(path+'&photo_stacks=1').json()['items']], ['102'])
+        self.trace.clear()
+        self.assertEqual(self.get(path.replace('family-a', 'family-b')).status_code, 401)
+        self.assertFalse(any('FROM assets a' in sql for sql in self.trace))
+
     def test_opt_in_date_hint_labels_filename_without_changing_capture_date(self):
         self.mutate('UPDATE assets SET path=?,taken_at=NULL WHERE id=102',
                     ('private-synthetic/微信图片_2025-03-28_141543_035.png',))
@@ -209,7 +238,10 @@ class LibraryReadTests(unittest.TestCase):
         for query in ('','library=family-a&token=secret','library=family-a&library=family-b',
                 'library=family-a&page=0','library=family-a&page=-1','library=family-a&page_size=101',
                 'library=family-a&page=100001','library=family-a&page=1.0','library=family-a&q=private',
-                'library=family-a&size=256','library='+'a'*129,'library=family-a&page='+'9'*2000):
+                'library=family-a&size=256','library='+'a'*129,'library=family-a&page='+'9'*2000,
+                'library=family-a&anniversary=', 'library=family-a&anniversary=2025-02-29',
+                'library=family-a&anniversary=20240229','library=family-a&anniversary=2024-W09-4',
+                'library=family-a&anniversary=0000-01-01','library=family-a&anniversary=2024-02-29&anniversary=2028-02-29'):
             self.assertEqual(self.get('/assets?'+query).status_code,400)
         for path in ('/assets/detail/0?library=family-a','/assets/9223372036854775808/captions?library=family-a'):
             self.assertEqual(self.get(path).status_code,400)

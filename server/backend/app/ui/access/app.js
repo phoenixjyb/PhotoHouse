@@ -669,6 +669,7 @@
     $('original').removeAttribute('href'); $('original').hidden=true;
   }
   function clearPhotos({cancelMemoryJobs=true}={}) {
+    clearAnniversaries();
     resetPhotoStacks();
     resetVideoMoments();
     clearPeopleReview({hide:true});
@@ -2824,6 +2825,7 @@
     }
   }
   function showAuth() {
+    clearAnniversaries();
     clearPeopleReview({hide:true});
     assistantState.transcribe=false;assistantState.speech=false;
     resetAssistant();$('assistant-form').hidden=true;
@@ -2855,6 +2857,74 @@
   function libraryPath(path,extra={}) {return path+'?'+new URLSearchParams({library:state.library,...extra});}
   function assetLabel(item) {return `${t(item.kind==='image'?'photo':item.kind)} ${item.id}${item.taken_at?' · '+String(item.taken_at).slice(0,10):''}`;}
   function safeMediaURL(id,variant,extra={}) {return libraryPath(`/assets/${id}/${variant}`,extra);}
+  const anniversaries={controller:null,day:null,page:1};
+  function clearAnniversaries(){
+    anniversaries.controller?.abort();
+    anniversaries.controller=null;
+    anniversaries.day=null;
+    anniversaries.page=1;
+    $('anniversary-shelf').open=false;
+    $('anniversary-items').replaceChildren();
+    $('anniversary-items').removeAttribute('aria-busy');
+    $('anniversary-status').textContent='';
+    $('anniversary-pages').hidden=true;
+  }
+  async function loadAnniversaries(page=1){
+    const library=state.library,account=state.profile?.account_id,epoch=state.generation;
+    const shelf=$('anniversary-shelf'),list=$('anniversary-items'),notice=$('anniversary-status');
+    const pages=$('anniversary-pages'),previous=$('anniversary-previous'),next=$('anniversary-next');
+    const current=()=>!stale(epoch)&&!state.locked&&shelf.open&&state.library===library&&state.profile?.account_id===account;
+    if(!library||!account||!current()||anniversaries.controller)return;
+    if(!anniversaries.day){
+      const today=new Date();
+      const month=String(today.getMonth()+1).padStart(2,'0'),day=String(today.getDate()).padStart(2,'0');
+      anniversaries.day=`${String(today.getFullYear()).padStart(4,'0')}-${month}-${day}`;
+    }
+    const day=anniversaries.day,pageSize=8,controller=new AbortController();
+    anniversaries.controller=controller;
+    list.replaceChildren();
+    list.setAttribute('aria-busy','true');
+    previous.disabled=next.disabled=true;
+    notice.textContent=t('loading');
+    try{
+      const result=await request(libraryPath('/assets',{anniversary:day,page:String(page),page_size:String(pageSize)}),{epoch,signal:controller.signal});
+      if(!current()||anniversaries.controller!==controller)return;
+      const items=result?.items,total=result?.total;
+      if(result?.library_id!==library||result.page!==page||result.page_size!==pageSize||
+         !Number.isSafeInteger(total)||total<0||!Array.isArray(items)||
+         items.length!==Math.max(0,Math.min(pageSize,total-(page-1)*pageSize))||
+         items.some(item=>typeof item?.id!=='string'||!/^[1-9]\d{0,18}$/.test(item.id)||
+           !['image','video'].includes(item.kind)||typeof item.taken_at!=='string'||
+           item.taken_at.slice(0,4)>=day.slice(0,4)||item.taken_at.slice(5,10)!==day.slice(5)))throw new Error('Invalid anniversary page');
+      for(const item of items){
+        const entry=document.createElement('li'),button=document.createElement('button');
+        button.type='button';button.className='quiet';
+        button.setAttribute('aria-label',assetLabel(item));
+        const image=document.createElement('img');image.alt='';image.loading='lazy';
+        image.src=safeMediaURL(item.id,'thumbnail');
+        const label=document.createElement('span'),kind=document.createElement('span'),captured=document.createElement('time');
+        label.className='anniversary-item-label';
+        kind.textContent=t(item.kind==='image'?'photo':'video');
+        captured.dateTime=captured.textContent=item.taken_at.slice(0,10);
+        label.append(kind,captured);
+        button.append(image,label);entry.append(button);list.append(entry);
+        button.addEventListener('click',()=>{if(current()&&button.isConnected)void openAsset(item,{sequence:items,origin:'anniversary'});});
+      }
+      anniversaries.page=page;
+      const lastPage=Math.ceil(total/pageSize);
+      previous.disabled=page===1;
+      next.disabled=page>=lastPage;
+      pages.hidden=page===1&&lastPage<=1;
+      notice.textContent=items.length?t('anniversarySummary').replace('{page}',page).replace('{pages}',lastPage):
+        t(total===0?'anniversaryEmpty':'anniversaryEmptyPage');
+    }catch(error){
+      if(!current()||anniversaries.controller!==controller||error.name==='AbortError')return;
+      if(error.status===401||error.status===403)await failure(error,epoch);
+      else{pages.hidden=true;notice.textContent=t('anniversaryUnavailable');}
+    }finally{
+      if(anniversaries.controller===controller){anniversaries.controller=null;list.removeAttribute('aria-busy');}
+    }
+  }
   function setViewQuality(message,showInPresentation=false){
     $('view-quality').textContent=t(message);
     $('photo-viewer').toggleAttribute('data-show-view-status',showInPresentation);
@@ -5300,12 +5370,18 @@
     storyPanelLoading:'Loading stories…',storyPanelLoadFailed:'Stories could not load. Try refreshing this panel or reloading PhotoHouse.',
     assistantCapabilitiesRetry:'Jude couldn’t load. Return and reopen Jude to try again.',
     assistantPanelLoadFailed:'The Assistant could not load. Reopen this panel or reload PhotoHouse.',
-    memoryGroupsRetry:'Retry memory groups',recentMemoryGroups:'Saved memory groups',viewMemoryGroup:'Memory group'});
+    memoryGroupsRetry:'Retry memory groups',recentMemoryGroups:'Saved memory groups',viewMemoryGroup:'Memory group',
+    anniversaryTitle:'On this day',anniversarySummary:'Captured on this date in earlier years · Page {page} of {pages}',
+    anniversaryEmpty:'No photos or videos with this recorded capture date in earlier years.',anniversaryEmptyPage:'No memories on this page.',
+    anniversaryUnavailable:'These memories couldn’t load. Close and reopen this section to try again.'});
   Object.assign(words.zh,{
     storyPanelLoading:'正在加载故事…',storyPanelLoadFailed:'故事暂时无法加载，请刷新此面板或重新加载 PhotoHouse。',
     assistantCapabilitiesRetry:'暂时无法打开小贾。请返回，再打开小贾重试。',
     assistantPanelLoadFailed:'助手暂时无法加载，请重新打开此面板或重新加载 PhotoHouse。',
-    memoryGroupsRetry:'重试回忆组',recentMemoryGroups:'已保存的回忆组',viewMemoryGroup:'回忆组'});
+    memoryGroupsRetry:'重试回忆组',recentMemoryGroups:'已保存的回忆组',viewMemoryGroup:'回忆组',
+    anniversaryTitle:'往年今日',anniversarySummary:'往年这一天拍摄 · 第 {page} / {pages} 页',
+    anniversaryEmpty:'没有记录为往年这一天拍摄的照片或视频。',anniversaryEmptyPage:'此页暂无回忆。',
+    anniversaryUnavailable:'暂时无法加载这些回忆。请收起后重新打开。'});
   async function loadStoryWorkspace(epoch){
     if(stale(epoch)||state.locked||!state.library)return null;
     if(storyWorkspace)return storyWorkspace;
@@ -5388,6 +5464,12 @@
     if(event.currentTarget.open)void showRecentMemoryGroups();
   });
   $('recent-groups-refresh').addEventListener('click',()=>void showRecentMemoryGroups());
+  $('anniversary-shelf').addEventListener('toggle',event=>{
+    if(event.currentTarget.open)void loadAnniversaries();
+    else clearAnniversaries();
+  });
+  $('anniversary-previous').addEventListener('click',()=>void loadAnniversaries(anniversaries.page-1));
+  $('anniversary-next').addEventListener('click',()=>void loadAnniversaries(anniversaries.page+1));
   $('assistant-prompts').addEventListener('click',event=>{const kind=event.target.dataset.assistantPrompt;if(!kind||state.locked||assistantState.busy)return;$('assistant-text').value=t({photos:'assistantFindPhotos',videos:'assistantFindVideos',open:'assistantOpenFirst'}[kind]);focusAssistant();});
   Object.assign(words.zh,{memoryNavigation:'回忆导航',memoryNavHome:'首页',memoryNavPhotos:'照片',memoryNavFamily:'家庭',memoryFamilyHeading:'家庭相册库',memoryNavStories:'故事',memoryNavMemoirs:'回忆集',memoryNavJude:'小贾',memoryMediaRegion:'照片与视频'});
   Object.assign(words.en,{memoryNavigation:'Memory navigation',memoryNavHome:'Home',memoryNavPhotos:'Photos',memoryNavFamily:'Family',memoryFamilyHeading:'Family library',memoryNavStories:'Stories',memoryNavMemoirs:'Memoirs',memoryNavJude:'Jude',memoryMediaRegion:'Photos and videos'});

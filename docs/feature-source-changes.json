@@ -39634,6 +39634,54 @@
         }
       ],
       "notes": "Use the configured Chromium executable in four existing Web fixtures."
+    },
+    {
+      "feature": "on-this-day-library-home",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "67596c572e671f85a86dc97a39ccafde2ffccc8e62e4b2b35efdbe1a6afa9f1a",
+          "sha256": "7fcf1dd2a852ce3b8e477b11d516c9d2aaf9e21bf8deb73247a203a5e66d64f6"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "6810193f48653c8a525674dffbbbd612a22af2676d53ae7ef47c56f5f7ce4cad",
+          "sha256": "d8da170e04663a547bc2c33cab6cf22e07c48945f383e6aa19b597bb32f899c3"
+        },
+        {
+          "path": "server/backend/app/access/library.py",
+          "before_sha256": "a44b80bbb326947fc049f38ba018507fea37450091e0d5f2fd1e0b30c8ade0b0",
+          "sha256": "e300d71e6d77c92464f24248c3dcf858b4e699ee3617c496ad0e58b55542efc7"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "b969bf6c39fa8829215ab840587f4f9ba5a4c2614096bb90e9e175e1fb83b7b8",
+          "sha256": "9a3881585d018636a863a1669336b5fb06fd9d68d5221c0b58765f6d32684022"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "5ec3186c6917d7015cf71efec1a584fbf7c34bf8a9113ca5cb2d4e6de10a9cfa",
+          "sha256": "7f9851ebda2e011de65c2ac1d5fa423c7ba81772281178278f5cd34373ca4958"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "b26b7d0a925388f179e7652943993d6b15202d829436f616b980d5afb37b31b0",
+          "sha256": "68401ab2e16644a95512c97f745aa91ddec5e9443ad1a3eaf770163d941f4460"
+        },
+        {
+          "path": "server/tests/security/test_library_reads.py",
+          "before_sha256": "02591d0c068fb20ce5ceca92900a62ec775f7c4eea079c7bf4ce0673dbc0d94f",
+          "sha256": "4b5ad6ca7bd121727b8869fc8ca959ee93a4a3fd1fb84203ecd69e15f76e2a3e"
+        },
+        {
+          "path": "server/tests/security/test_memory_stories_browser.cjs",
+          "before_sha256": "3bab3b6eed99850b29568e71622bbc68a86bb4253dfa621806ee558dfe2955c0",
+          "sha256": "0600e8c90e6f20c8ece7b30174f023244760c7085ab012751bf605dd0b5cb573"
+        }
+      ],
+      "notes": "Add a private On this day shelf and keep its protected viewer reachable at enlarged text size."
     }
   ]
 }
