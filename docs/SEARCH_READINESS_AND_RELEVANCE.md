@@ -113,7 +113,7 @@ evidence of household relevance.
 The production factory and operator CLI explicitly allow up to 64 MiB of
 serialized search-v2 source, while legacy discovery retains its 16 MiB limit.
 Both use the same admission semaphore and retain the 100,000-row, index,
-response and cancellation limits. Search v2 has a fixed five-second per-read
+response and cancellation limits. Search v2 has a 30-second per-attempt
 deadline; legacy discovery retains two seconds. This bounds the larger text
 projection without changing the legacy allowance. An explicitly supplied budget
 inherits its own source/deadline limits unless its caller selects separate
@@ -122,6 +122,13 @@ at SQL selection time, so historical caption revisions cannot consume the
 current-text projection. Current caption edits, supersession and ambiguity
 still invalidate the source binding. The allowance is bounded capacity, not a
 claim that every library fits or that a query meets a user latency target.
+
+Ordinary Search v2/v3 can use fully verified library filters when supplemental
+captions or photo notes exceed the shared row allowance. Text and description
+conditions receive a clarification until the full projection fits. Search
+contexts bind to their projection, so crossing that limit in either direction
+requires a fresh search. Operator readiness and semantic scene search still
+require their complete inputs.
 
 ## Private operator command
 

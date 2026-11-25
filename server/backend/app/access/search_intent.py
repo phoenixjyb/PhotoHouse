@@ -322,6 +322,8 @@ def _compile_plan(words, *, now, entities, previous_search, hard_previous,
                                       entities.get('labels', []))
     if _vague_date_hits(age_surface):
         return QueryPlan(3, 'clarification', kept, 'intent_date')
+    if entities.get('text_source_limited') is True:
+        return QueryPlan(3, 'clarification', kept, 'text_unavailable')
     if planner is None:
         return QueryPlan(3, 'clarification', kept, 'intent_unavailable')
     try:

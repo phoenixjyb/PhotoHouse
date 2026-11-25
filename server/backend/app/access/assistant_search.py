@@ -56,7 +56,8 @@ def name_hits(words, label, aliases=(), *, person=False):
 
 class AssistantSearchReads(d.DiscoveryReads):
     def __init__(self, access, provider, budget, *, kinship=None, facts_cache=None,
-                 description_enabled=False, text_projection_required=True):
+                 description_enabled=False, text_projection_required=True,
+                 allow_structured_on_text_limit=False):
         super().__init__(access, provider,
                          budget.search_view() if isinstance(budget, d.ReadBudget) else budget)
         d.require(type(description_enabled) is bool)
@@ -65,6 +66,8 @@ class AssistantSearchReads(d.DiscoveryReads):
         self._facts_cache = facts_cache
         self.description_enabled = description_enabled
         self._text_projection_required = text_projection_required
+        self._allow_structured_on_text_limit = allow_structured_on_text_limit
+        self._text_source_limited = False
         self._quality_by_id = {}
         self._check = lambda: None
         self._prepared_description = None
@@ -72,33 +75,41 @@ class AssistantSearchReads(d.DiscoveryReads):
         self._text_query_cache = search_text.TextQueryCache()
 
     def _extra_source(self, index, source, read, check):
-        # Scope only IDs first, then read captions in primary-key order. This
-        # avoids sorting complete text rows while keeping projection/order.
-        # Filter superseded rows at the outer lookup, so the inner asset-ID
-        # index scan never loads caption text rows merely to select their IDs.
-        captions = source['captions'] if 'caption' in index.enabled else read(
-            d.SCOPED_TEXT_CAPTIONS_SQL, (index.library_id,))
-        # Same child AND parent scope as Stories.search; no revisions/history,
-        # annotation drafts, saved multi-image stories, or assistant receipts.
-        notes = read('''SELECT s.id,s.asset_id,s.revision,
-            CASE WHEN length(CAST(s.title AS BLOB))<=512 THEN s.title END,
-            CASE WHEN length(CAST(s.text AS BLOB))<=65536 THEN s.text END,
-            s.author_id,s.updated_at
-            FROM access_stories s JOIN assets a ON a.id=s.asset_id
-            JOIN access_asset_libraries m ON m.asset_id=a.id
-            WHERE m.library_id=? AND s.library_id=m.library_id AND s.deleted=0
-            AND (a.status='active' OR a.status IS NULL) ORDER BY s.id''', (index.library_id,))
+        self._text_source_limited = False
+        try:
+            # Scope caption IDs before reading current text in primary-key order.
+            captions = source['captions'] if 'caption' in index.enabled else read(
+                d.SCOPED_TEXT_CAPTIONS_SQL, (index.library_id,))
+            # Same child AND parent scope as Stories.search; no history or drafts.
+            notes = read('''SELECT s.id,s.asset_id,s.revision,
+                CASE WHEN length(CAST(s.title AS BLOB))<=512 THEN s.title END,
+                CASE WHEN length(CAST(s.text AS BLOB))<=65536 THEN s.text END,
+                s.author_id,s.updated_at
+                FROM access_stories s JOIN assets a ON a.id=s.asset_id
+                JOIN access_asset_libraries m ON m.asset_id=a.id
+                WHERE m.library_id=? AND s.library_id=m.library_id AND s.deleted=0
+                AND (a.status='active' OR a.status IS NULL) ORDER BY s.id''', (index.library_id,))
+        except d.DiscoverySourceRowLimit:
+            if self._allow_structured_on_text_limit is not True:
+                raise
+            # The reviewed source was fully validated before these reads.
+            # Drop both text sources and bind structured results separately.
+            captions, notes = [], []
+            self._text_source_limited = True
         return {'text_projection_version': 3, 'ranking_policy': search_text.SEARCH_TEXT_POLICY_VERSION,
                 'text_captions': captions, 'photo_notes': notes,
+                **({'text_source_limited': True} if self._text_source_limited else {}),
                 **({'description_policy': search_description.SEARCH_DESCRIPTION_POLICY_VERSION}
                    if self.description_enabled else {}),
                 **({'kinship_digest': self.kinship.digest} if self.kinship is not None else {})}
 
+    def _supplemental_search_fields(self):
+        if self._text_source_limited:
+            return ()
+        return ('text', 'descriptive') if self.description_enabled else ('text',)
+
     def _search_fields(self, index):
-        fields = super()._search_fields(index) | {'text'}
-        if self.description_enabled:
-            fields.add('descriptive')
-        return fields
+        return super()._search_fields(index).union(self._supplemental_search_fields())
 
     def _normalize_content_filter(self, name, value):
         if name == 'descriptive':
@@ -299,18 +310,17 @@ class AssistantSearchReads(d.DiscoveryReads):
                     if any(d.fold(a) in d.fold(b) or d.fold(b) in d.fold(a)
                            for a in first_hits for b in name_hits(working_words, second.label, second.aliases, person=True)):
                         ambiguous = True
-            enabled = list(index.enabled) + ['text']
-            if self.description_enabled:
-                enabled.append('descriptive')
-            return {'binding': context, 'enabled': enabled,
+            return {'binding': context, 'enabled': [*index.enabled, *self._supplemental_search_fields()],
                     'groups': groups, 'labels': labels, 'ambiguous': ambiguous,
+                    **({'text_source_limited': True} if self._text_source_limited else {}),
                     **self._search_presentation(facts[2], {})}
         return self._run(token, library, binding, action, cancelled)
 
 
 class SearchRuntime:
     """Internal adapter selected only by explicit transport negotiation."""
-    def __init__(self, runtime, kinship_provider=None, *, search_version=2, intent_planner=None):
+    def __init__(self, runtime, kinship_provider=None, *, search_version=2, intent_planner=None,
+                 allow_structured_on_text_limit=True):
         if type(search_version) is not int or search_version not in (2, 3):
             raise ValueError('Supported assistant search versions are 2 and 3')
         self.runtime = runtime
@@ -318,6 +328,7 @@ class SearchRuntime:
         self.search_version = search_version
         self.descriptive_enabled = search_version == 3
         self.intent_planner = intent_planner
+        self._allow_structured_on_text_limit = allow_structured_on_text_limit
 
     @contextmanager
     def turn_scope(self):
@@ -351,7 +362,10 @@ class SearchRuntime:
             cache = entry[1] if entry is not None and entry[0] is self else None
             reader = AssistantSearchReads(access, self.runtime.provider, self.runtime.budget,
                                           kinship=kinship, facts_cache=cache,
-                                          description_enabled=self.descriptive_enabled)
+                                          description_enabled=self.descriptive_enabled,
+                                          allow_structured_on_text_limit=(
+                                              self._allow_structured_on_text_limit is True
+                                              and operation != 'readiness'))
             reader.search_version = self.search_version
             methods = {'entities': reader.entities, 'search': reader.search,
                        'facets': reader.facets, 'assistant_asset': reader.assistant_asset,

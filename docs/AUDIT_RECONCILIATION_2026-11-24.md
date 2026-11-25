@@ -200,6 +200,18 @@ scan. Structured turns still bind current captions and photo notes so later
 turns can validate their context. The two-second attempt budget and the scope
 checks were in effect. This establishes a limit for this generated fixture.
 
+The follow-up fix recovered the same **100,000-asset** conversation with the
+same row and time allowances. In three generated protected API trials, the
+initial September photo search and the two follow-ups all returned HTTP 200
+with the expected totals of **25,001**, **24,999** and **24,999**. Their local
+median request times were **1.19 s**, **1.63 s** and **1.62 s**.
+
+When the reviewed source fits and the supplemental captions or photo notes
+exceed the row allowance, Search v2/v3 can still use the reviewed filters. It
+clarifies requests that need unavailable caption, note or scene-description
+matches. A saved search from a complete text projection must be restarted if
+that projection no longer fits. Native Windows testing remains open.
+
 ### Generated photo-viewer timing
 
 Eight runs per source alternated the same generated photo and a fixed 250 ms
