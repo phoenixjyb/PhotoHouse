@@ -39193,6 +39193,29 @@
         }
       ],
       "notes": "Carry only the chapters selected during saved-story refinement review into the unsaved editor."
+    },
+    {
+      "feature": "overnight-roadmap-snapshot-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "dc2d49cb2b8699582b4c44199a484e07181d8dec1ab6426c93162363307a0d6e",
+          "sha256": "23afcd07eac1518484eaa12a8e007d590d75dece66ad3a3d06ca4b1e901ef781"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "859271e72990ce963068e91c355085c8625a1fa2797dced455ddaaefaa1786e8",
+          "sha256": "80bb071a233ea08c546b667d71d7b752ce096260a77d2e46bfc73d0e0341863f"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "86ab3cebbfd30f784a0a2ae71977680e4cbac2d3856291a93460c7f263628f2a",
+          "sha256": "cdddc662967a947abad0a691af959e2a91b8786b879cfb9980aeb46e98236bfc"
+        }
+      ],
+      "notes": "Record verified local changes in both languages and retain dated Windows acceptance boundaries."
     }
   ]
 }

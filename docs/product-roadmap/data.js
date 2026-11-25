@@ -1,10 +1,10 @@
 /* Public product records only. No runtime polling or household data. */
 window.PHOTOHOUSE_ROADMAP = {
   "schema_version": 1,
-  "updated_at": "2026-11-25",
+  "updated_at": "2026-11-26",
   "snapshot_label": {
-    "en": "25 November 2026 · reviewed snapshot",
-    "zh": "2026 年 11 月 25 日 · 回顾快照"
+    "en": "26 November 2026 · reviewed snapshot",
+    "zh": "2026 年 11 月 26 日 · 回顾快照"
   },
   "runtime_notice": {
     "severity": "info",
@@ -13,8 +13,8 @@ window.PHOTOHOUSE_ROADMAP = {
       "zh": "部署与集成回顾记录"
     },
     "body": {
-      "en": "Windows delivery records cover the bilingual roadmap, fullscreen viewer and the 25 November Search fix. A live date search preserved filters through two follow-ups. Newer Web improvements await release. Broader Search relevance, story quality and household device checks remain open.",
-      "zh": "双语路线图、全屏浏览器和 11 月 25 日的搜索修复已有 Windows 交付记录。真实日期搜索在两轮追问中保留了相应筛选条件。较新的网页改进仍待发布，更全面的搜索相关性、故事质量和家庭设备验证仍待完成。"
+      "en": "Windows delivery records cover the bilingual roadmap, fullscreen viewer and the 25 November Search fix. The 26 November local build improves Jude recovery, saved memory groups and story review. Those changes await Windows rollout and household review.",
+      "zh": "双语路线图、全屏浏览和 11 月 25 日搜索修复已有 Windows 交付记录。11 月 26 日的本地版本改进了小贾的请求恢复、已保存回忆组和故事审阅，仍待 Windows 发布与家庭试用。"
     }
   },
   "areas": [
@@ -718,27 +718,27 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "Current-page result selection and task handoff are implemented.",
-          "zh": "已实现当前页面结果选择与任务传递。"
+          "en": "Choose story frames across result pages. After a reload in the same tab, reopening the conversation can recover the selection after checking the exact current result and selected pages.",
+          "zh": "可跨结果页选择故事画面。同一标签页重新加载后，再打开对话并核实原结果与相关页，即可恢复选择。"
         }
       ],
       "gaps": [
         {
-          "en": "Selection resumption after reopening a conversation remains incomplete.",
-          "zh": "重新打开对话后的选择恢复仍未完成。"
+          "en": "Windows delivery and use on household devices remain open for this resumption path.",
+          "zh": "恢复选择功能仍待 Windows 发布与家庭设备验证。"
         }
       ],
       "next_step": {
-        "en": "Revalidate library, account and revisions before restoring a selection.",
-        "zh": "恢复选择前重新校验相册库、账户与版本。"
+        "en": "Try selecting, reloading, reopening the conversation and starting an unsaved story on the installed Web client.",
+        "zh": "在已安装网页客户端上试用选择画面、重新加载、打开原对话与创建未保存故事的完整流程。"
       },
       "delivery_note": {
-        "en": "Existing handoff is source-backed; durable resumption remains a separate increment.",
-        "zh": "现有传递已有源码支持；持久恢复是独立增量。"
+        "en": "The same-tab Web journey passed with generated results and a fresh authorization check.",
+        "zh": "使用合成数据通过了同一标签页的网页流程，并重新校验了访问权限。"
       },
       "acceptance_note": {
-        "en": "A remembered title must never grant access to a stale result.",
-        "zh": "记住一个标题不能赋予对旧结果的访问权限。"
+        "en": "The saved selection needs the same account, library, result and current source revisions.",
+        "zh": "恢复选择须与账户、相册库、搜索结果及当前来源版本一致。"
       },
       "evidence": [
         {
@@ -749,6 +749,15 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-24",
           "state": "partial"
+        },
+        {
+          "kind": "local",
+          "label": {
+            "en": "Generated Web check · select across pages and recover",
+            "zh": "合成网页测试 · 跨页选择与恢复"
+          },
+          "at": "2026-11-26",
+          "state": "verified"
         }
       ]
     },
@@ -878,8 +887,8 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "The Web editor can add same-day photos or videos and split a saved group. Stories can reopen a recent group, start an unsaved draft, or review and save two groups as a new group while keeping both originals.",
-          "zh": "网页编辑器可添加同日照片或视频，也可拆分已保存的回忆组。「故事」可打开近期回忆组、创建未保存的草稿，或审阅两个回忆组并保存为新组，同时保留两组原记录。"
+          "en": "The Web editor can add same-day media or split a group. Stories can load older saved groups, keep choices across pages, and start an unsaved story or review a combined group.",
+          "zh": "网页编辑器可添加同日媒体或拆分回忆组。「故事」可查看较早保存的组，跨页保留选择，再开启未保存故事或审核合并组。"
         }
       ],
       "gaps": [
@@ -893,8 +902,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "用一小组可审阅的家庭活动试用可编辑的回忆组。"
       },
       "delivery_note": {
-        "en": "Generated browser checks covered adding items, splitting, ordered drafts and saving a combined group once after a lost response. Windows release remains open for the optional activity group editor.",
-        "zh": "合成浏览器测试覆盖添加项目、拆分、有序草稿和保存合并组。保存响应丢失后，重试只创建一个新组。可选的活动回忆组编辑器仍待 Windows 交付。"
+        "en": "Generated checks covered older pages, group order, revoked media and duplicate-free combine retries. The optional editor remains a separate Windows release.",
+        "zh": "合成测试覆盖了旧组分页、分组顺序、已撤回媒体及合并重试去重。可选编辑器仍待单独发布到 Windows。"
       },
       "acceptance_note": {
         "en": "Family usefulness must be evaluated directly.",
@@ -918,6 +927,15 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-25",
           "state": "verified"
+        },
+        {
+          "kind": "local",
+          "label": {
+            "en": "Generated API and Web checks · older private groups",
+            "zh": "合成 API 与网页测试 · 较早的私密回忆组"
+          },
+          "at": "2026-11-26",
+          "state": "verified"
         }
       ]
     },
@@ -936,23 +954,23 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "Story editing, contributions and source/chapter links are implemented.",
-          "zh": "已实现故事编辑、家庭贡献与来源／章节关联。"
+          "en": "Story editing and source links are available. Selected-source drafts show the original wording and let the author keep it for one chapter while reviewing the rest.",
+          "zh": "已有故事编辑和来源关联。使用所选资料生成的草稿可与原文对照，可保留某一章原文并继续审核其余章节。"
         }
       ],
       "gaps": [
         {
-          "en": "Comparison, uncertain wording and adoption need clearer review interactions.",
-          "zh": "对照、不确定表达与采纳仍需更清晰的审阅交互。"
+          "en": "The chapter review flow needs deployed Web and family acceptance.",
+          "zh": "逐章审阅流程仍待网页发布与家庭验收。"
         }
       ],
       "next_step": {
-        "en": "Offer a readable original-versus-draft review with explicit adoption.",
-        "zh": "提供易读的原文／草稿对照与明确采纳操作。"
+        "en": "Try keeping one original chapter, editing a second one and reopening the saved result.",
+        "zh": "试用保留一章原文、编辑另一章，并再次打开已保存故事的流程。"
       },
       "delivery_note": {
-        "en": "Existing story UI and user-reviewed drafts establish an available foundation.",
-        "zh": "已有故事界面及用户审阅草稿，说明基础能力可用。"
+        "en": "The underlying story editor has recorded delivery. The new chapter controls passed generated-data browser checks.",
+        "zh": "基础故事编辑器已有交付记录。新的逐章操作通过了使用合成数据的浏览器测试。"
       },
       "acceptance_note": {
         "en": "AI edits remain proposals; originals and ownership are preserved.",
@@ -967,6 +985,15 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-23",
           "state": "partial"
+        },
+        {
+          "kind": "local",
+          "label": {
+            "en": "Generated Web check · keep original wording by chapter",
+            "zh": "合成网页测试 · 逐章保留原文"
+          },
+          "at": "2026-11-26",
+          "state": "verified"
         }
       ]
     },
@@ -985,8 +1012,8 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "Draft generation and refinement source paths exist; a household draft was reviewed.",
-          "zh": "已有草稿生成与润色源码；家庭草稿曾由用户审阅。"
+          "en": "Saved Stories can open a prepared AI draft directly. The author can choose which chapters enter the editor and explicitly save the review result.",
+          "zh": "可从「已保存的故事」直接打开待核对的 AI 草稿。作者可选择带入编辑的章节，并在核实后明确保存。"
         }
       ],
       "gaps": [
@@ -1000,8 +1027,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "结合本地姓名依据，进行保留事实、可审阅且表达不确定性的润色。"
       },
       "delivery_note": {
-        "en": "An existing draft is not acceptance of the improved name-grounded pipeline.",
-        "zh": "已有草稿不代表改进后的姓名依据处理流程已验收。"
+        "en": "The new review controls passed generated browser checks. Local model quality and the new Windows build still need direct acceptance.",
+        "zh": "新的审阅操作通过了合成浏览器测试。本地模型质量以及新的 Windows 版本仍待直接验收。"
       },
       "acceptance_note": {
         "en": "Do not invent facts or silently replace the original story.",
@@ -1016,6 +1043,15 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-24",
           "state": "partial"
+        },
+        {
+          "kind": "local",
+          "label": {
+            "en": "Generated API and Web checks · open and choose draft chapters",
+            "zh": "合成 API 与网页测试 · 打开草稿并选择章节"
+          },
+          "at": "2026-11-26",
+          "state": "verified"
         }
       ]
     },
@@ -1181,27 +1217,27 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "Private conversation records and request recovery are implemented in part.",
-          "zh": "已部分实现私密对话记录与请求恢复。"
+          "en": "Jude can open the latest conversation in one step, show an admitted pending request and check its result. An explicit discard prevents that reply from entering the conversation.",
+          "zh": "小贾可一步打开上次对话，查看服务器已接收的待处理请求，并核实结果。明确丢弃可阻止该回复写入对话。"
         }
       ],
       "gaps": [
         {
-          "en": "Durable selections, late replies, disconnects and cancellation need clearer reconciliation.",
-          "zh": "持久选择、延迟回复、断连与取消仍需更清楚的状态协调。"
+          "en": "The new recovery interaction needs Windows and household acceptance, including a real interrupted session.",
+          "zh": "新的恢复交互仍待 Windows 与家庭验收，包括实际中断后的继续使用。"
         }
       ],
       "next_step": {
-        "en": "Show pending, completed, cancelled and uncertain states with safe resume.",
-        "zh": "明确展示等待、完成、取消和不确定状态，并支持安全继续。"
+        "en": "Try reopening an interrupted conversation, then recover its reply or discard it while keeping earlier messages.",
+        "zh": "试用重新打开中断对话，恢复或丢弃待处理回复，并保留之前的消息。"
       },
       "delivery_note": {
-        "en": "This is application-managed context, not unlimited model memory.",
-        "zh": "这是应用管理的上下文，并非模型拥有无限记忆。"
+        "en": "Generated API and browser checks covered a late completion and a reply that finished before discard.",
+        "zh": "合成 API 与浏览器测试覆盖了迟到的回复，以及在丢弃操作之前已完成的回复。"
       },
       "acceptance_note": {
-        "en": "Recheck access and revisions before continuing remembered work.",
-        "zh": "继续历史任务前重新检查访问权限与版本。"
+        "en": "The app checks the account, library, conversation and exact request before showing or discarding a pending reply.",
+        "zh": "显示或丢弃待处理回复前，应用核实账户、相册库、对话和具体请求。"
       },
       "evidence": [
         {
@@ -1212,6 +1248,15 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-24",
           "state": "partial"
+        },
+        {
+          "kind": "local",
+          "label": {
+            "en": "Generated API and Web checks · reopen, recover and discard",
+            "zh": "合成 API 与网页测试 · 重开、恢复与丢弃请求"
+          },
+          "at": "2026-11-26",
+          "state": "verified"
         }
       ]
     },
