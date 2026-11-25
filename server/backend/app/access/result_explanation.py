@@ -15,6 +15,8 @@ _ZH_ORDINALS = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
                 '六': 6, '七': 7, '八': 8, '九': 9, '十': 10}
 _MAX_REPLY_BYTES = 600
 _MAX_QUERY_BYTES = 512
+_MAX_ORDINAL = 20
+_VISIBLE_NUMBER = r'(?:[1-9]|1[0-9]|20)'
 
 
 def _query_text(value):
@@ -35,7 +37,7 @@ def _query_text(value):
 def _ordinal(value):
     if value.isascii() and value.isdecimal():
         number = int(value)
-        return number if 1 <= number <= 10 else None
+        return number if 1 <= number <= _MAX_ORDINAL else None
     return _ZH_ORDINALS.get(value, _EN_ORDINALS.get(value))
 
 
@@ -49,8 +51,12 @@ def parse_why_result_query(words):
     elif normalized.startswith('请'):
         normalized = normalized[len('请'):].strip()
 
+    match = re.fullmatch(rf'why result ({_VISIBLE_NUMBER})', normalized)
+    if match:
+        return {'ordinal': _ordinal(match.group(1)), 'kind': None}
+
     match = re.fullmatch(
-        r'why (?:(?:the )?(first|second|third|fourth|fifth|[1-9]|10)|this) (result|photo|video)',
+        rf'why (?:(?:the )?(first|second|third|fourth|fifth|{_VISIBLE_NUMBER})|this) (result|photo|video)',
         normalized)
     if match:
         number, media = match.groups()
@@ -58,7 +64,7 @@ def parse_why_result_query(words):
         return {'ordinal': _ordinal(number) if number is not None else None, 'kind': kind}
 
     match = re.fullmatch(
-        r'为什么(?:是)?第(10|[1-9]|十|[一二三四五六七八九])'
+        rf'为什么(?:是)?第({_VISIBLE_NUMBER}|十|[一二三四五六七八九])'
         r'((?:项|个|张)?结果|项|个|张(?:照片)?|(?:个|段)视频)', normalized)
     if match:
         number, media = match.groups()
@@ -137,7 +143,7 @@ def explain_result(item, ordinal, filters, interpretation, language):
     zh = language == 'zh'
     if type(item) is not dict:
         item = {}
-    if type(ordinal) is not int or not 1 <= ordinal <= 10:
+    if type(ordinal) is not int or not 1 <= ordinal <= _MAX_ORDINAL:
         ordinal = 1
     filters = filters if type(filters) is dict else {}
     interpretation = interpretation if type(interpretation) is dict else {}

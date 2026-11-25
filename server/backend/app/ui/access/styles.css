@@ -1128,6 +1128,7 @@ dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
 .assistant-result p{line-height:1.6}
 .assistant-result button{min-block-size:44px}
 .assistant-match-reasons{color:var(--muted);font-size:.8125rem;line-height:1.55}
+.assistant-result-actions button{min-height:44px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
 .assistant-receipt{border-color:var(--line);background:#f6f8f7;border-radius:12px;color:var(--muted)}
 
 /* Native modal shell: the conversation normally scrolls independently; crowded

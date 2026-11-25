@@ -287,6 +287,7 @@ Refine a search across turns instead of repeatedly starting over. / 跨轮次细
 **Implemented / 已实现**
 
 - Generated English, Chinese and mixed-language turns retain reviewed people while changing the month or media. The Web assistant can prepare Any date or Any person for review and Send. / 合成的中英文及混合语言流程可更改月份或媒体类型，同时保留已核对的人物条件。网页助手可填入「不限日期」或「不限人物」，供用户确认后发送。
+- Why this match? prepares a question about a visible result. The reply cites the available evidence and keeps the current filters and results. / 「为什么匹配？」可为当前可见结果准备提问。回复会说明已有的匹配依据，并保留现有筛选条件和结果。
 
 **Gaps / 差距**
 
@@ -302,6 +303,7 @@ Refine a search across turns instead of repeatedly starting over. / 跨轮次细
 
 - 2026-11-25 · Audit reconciliation · generated Search journeys / 审计对照记录 · 合成搜索流程
 - 2026-11-25 · Live Windows date search with two follow-ups / Windows 真实日期搜索与两轮追问
+- 2026-11-26 · Generated Web check · explain a result and continue to a story / 合成网页测试 · 解释匹配结果并继续创建故事
 
 <a id="search-result-handoff"></a>
 

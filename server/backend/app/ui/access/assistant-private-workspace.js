@@ -646,8 +646,26 @@
         assertCurrent(t.base,t.token);if(nonce!==scenePageProbeNonce)return scenePageAvailable;scenePageAvailable=value.available;if(!value.available){scenePageResult=null;scenePageLoading=false;invalidateSceneStorySelection();}publish();return scenePageAvailable;
       }catch(error){const safe=safeFailure(error);if(safe.code==='scope_changed'||safe.code==='closed'||safe.status===401)throw safe;assertCurrent(t.base,t.token);if(nonce!==scenePageProbeNonce)return scenePageAvailable;scenePageAvailable=false;scenePageResult=null;scenePageLoading=false;invalidateSceneStorySelection();publish();return false;}
     }
-    async function resultPageCapabilitiesRead(){
-      const t=begin(),nonce=++resultPageProbeNonce;resultPageAvailable=false;publish();
+    let activeResultPageProbe=null;
+    async function resultPageCapabilitiesRead({reuse=false}={}){
+      const t=begin();
+      if(activeResultPageProbe?.token===t.token&&activeResultPageProbe.capabilities===capabilities&&
+          (activeResultPageProbe.pending||reuse))
+        return activeResultPageProbe.promise;
+      // Workspace initialization and a reopened selection can ask together.
+      const probe={token:t.token,capabilities,pending:true,promise:probeResultPageCapabilities(t)};
+      activeResultPageProbe=probe;
+      try{
+        if(await probe.promise)return true;
+        if(activeResultPageProbe===probe)activeResultPageProbe=null;
+        return false;
+      }catch(error){
+        if(activeResultPageProbe===probe)activeResultPageProbe=null;
+        throw error;
+      }finally{probe.pending=false;}
+    }
+    async function probeResultPageCapabilities(t){
+      const nonce=++resultPageProbeNonce;resultPageAvailable=false;publish();
       const disablePageMode=()=>{
         if(resultPageActive){invalidateStorySelection();clearResultPage();currentResult=null;contextState='requires_search';}
         else if(storyResultSource?.version!==4&&storySelection.some(entry=>entry.page>1)){storySelection=storySelection.filter(entry=>entry.page===1);storySelectionNonce++;}
@@ -679,7 +697,9 @@
     async function restoreStoryPicks(record,source,t,readTicket){
       const pages=new Map([[1,source.result.items]]);
       const laterPages=[...new Set(record.picks.map(pick=>pick.page))].filter(page=>page>1);
-      const selectionTicket=storySelectionNonce,capabilityNonce=resultPageProbeNonce;
+      const selectionTicket=storySelectionNonce;
+      if(laterPages.length&&!resultPageAvailable)await resultPageCapabilitiesRead({reuse:true});
+      const capabilityNonce=resultPageProbeNonce;
       const checkCurrent=()=>{
         assertCurrent(t.base,t.token);
         if(readTicket!==readGeneration||selectionTicket!==storySelectionNonce||storyResultSource!==source||

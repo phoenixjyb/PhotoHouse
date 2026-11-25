@@ -1726,6 +1726,17 @@
   words.en.assistantRefineAnyPerson='Any person';
   words.zh.assistantRefineAnyPlace='不限地点';
   words.en.assistantRefineAnyPlace='Any place';
+  Object.assign(words.zh,{assistantWhyMatch:'为什么匹配？',assistantWhyMatchLabel:'第 {n} 项结果的匹配说明',assistantFollowupDraftReady:'请检查输入框中的问题，再发送。'});
+  Object.assign(words.en,{assistantWhyMatch:'Why this match?',assistantWhyMatchLabel:'Why did result {n} match?',assistantFollowupDraftReady:'Review the question in the composer, then send it.'});
+  function fillAssistantSearchDraft(text,readyKey='assistantRefineReady'){
+    const composer=$('assistant-text');
+    if(composer.value.trim()||privateAssistant?.state().draft?.trim()){
+      $('assistant-status').textContent=t('assistantRefineDraftFirst');composer.focus();return;
+    }
+    endAssistantVoice();composer.value=text;privateAssistant?.setDraft(text);
+    composer.dispatchEvent(new Event('input',{bubbles:true}));composer.focus();
+    $('assistant-status').textContent=t(readyKey);syncAssistantControls();
+  }
   function renderAssistantRefinements(turn,epoch){
     $('assistant-search-refinements')?.remove();
     const summary=$('assistant-search-summary');
@@ -1735,11 +1746,7 @@
     const actions=document.createElement('div');actions.className='assistant-actions';box.append(actions);
     const current=()=>!stale(epoch)&&!state.locked&&!assistantState.busy&&!privateAssistantBusy&&
       $('assistant-results').__assistantRenderedTurn===turn&&(!privateAssistant||(!privateAssistant.state().pendingTurn&&!privateAssistant.state().pendingCreation));
-    const fill=text=>{
-      if(!current())return;
-      if($('assistant-text').value.trim()||privateAssistant?.state().draft?.trim()){$('assistant-status').textContent=t('assistantRefineDraftFirst');$('assistant-text').focus();return;}
-      endAssistantVoice();$('assistant-text').value=text;privateAssistant?.setDraft(text);$('assistant-text').dispatchEvent(new Event('input',{bubbles:true}));$('assistant-text').focus();$('assistant-status').textContent=t('assistantRefineReady');syncAssistantControls();
-    };
+    const fill=text=>{if(current())fillAssistantSearchDraft(text);};
     const button=(key,action)=>{const b=document.createElement('button');b.type='button';b.className='quiet';b.dataset.i18n=key;b.textContent=t(key);b.addEventListener('click',action);actions.append(b);return b;};
     button('assistantRefinePhotos',()=>fill(state.language==='zh'?'只看照片':'only photos'));
     button('assistantRefineVideos',()=>fill(state.language==='zh'?'只看视频':'only videos'));
@@ -2200,7 +2207,7 @@
         root.append(card);
       }
     }
-    for(const item of turn.items) {
+    for(const [index,item] of turn.items.entries()) {
       const card=document.createElement('article');card.className='assistant-result';card.dataset.assetId=item.id;
       const image=document.createElement('img');image.className='assistant-thumbnail';image.loading='lazy';image.alt=assetLabel(item);image.src=safeMediaURL(item.id,'thumbnail');
       image.addEventListener('error',()=>{image.alt=t('previewMissing');},{once:true});card.append(image);
@@ -2215,7 +2222,23 @@
         if(assistantStoryTarget&&!assistantFrameSearchItemCurrent(frameSearch,item))return;
         reportAssistantOutcome(assistantState.turnReceipt,'open_requested');
         void openAsset(item,{sequence:frameSearch?.items||assistantState.items,origin:'assistant',frameSearch});
-      });card.append(button);root.append(card);
+      });
+      const actions=document.createElement('div');actions.className='assistant-actions assistant-result-actions';actions.append(button);
+      if(owner==='private'&&turn.kind==='results'&&[2,3].includes(turn.version)&&
+          privateSelection?.currentResult===turn&&turn.context&&item.match_reasons?.length){
+        const ordinal=index+1;
+        const why=document.createElement('button');why.type='button';why.className='quiet assistant-result-why';
+        why.textContent=t('assistantWhyMatch');why.setAttribute('aria-label',t('assistantWhyMatchLabel').replace('{n}',String(ordinal)));
+        why.addEventListener('click',()=>{
+          const snapshot=privateAssistant?.state();
+          if(!why.isConnected||stale(epoch)||state.locked||scenePageBusy(snapshot)||
+              root.__assistantRenderedTurn!==turn||snapshot?.currentResult!==turn||
+              snapshot.account!==state.profile?.account_id||snapshot.library!==state.library)return;
+          fillAssistantSearchDraft(state.language==='zh'?`为什么是第${ordinal}项结果？`:`Why result ${ordinal}?`,'assistantFollowupDraftReady');
+        });
+        actions.append(why);
+      }
+      card.append(actions);root.append(card);
       if(turn.kind==='results'&&['image','video'].includes(item.kind)){
         const label=document.createElement('label');label.className='assistant-story-choice';
         const input=document.createElement('input');input.type='checkbox';input.className='assistant-story-pick';input.value=item.id;
@@ -2533,7 +2556,7 @@
       if(!stale(epoch))await privateAssistant.sceneCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.agentCapabilities==='function')await privateAssistant.agentCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.scenePageCapabilities==='function')await privateAssistant.scenePageCapabilities();
-      if(!stale(epoch)&&typeof privateAssistant.resultPageCapabilities==='function')await privateAssistant.resultPageCapabilities();
+      if(!stale(epoch)&&typeof privateAssistant.resultPageCapabilities==='function')await privateAssistant.resultPageCapabilities({reuse:true});
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryCapabilities==='function')await privateAssistant.savedMemoryCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryActionsCapabilities==='function')await privateAssistant.savedMemoryActionsCapabilities();
       if(!stale(epoch)&&typeof privateAssistant.savedMemoryReadingCapabilities==='function')await privateAssistant.savedMemoryReadingCapabilities();

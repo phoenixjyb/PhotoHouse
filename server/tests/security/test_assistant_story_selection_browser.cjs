@@ -22,6 +22,7 @@ const requests=[],blocked=[],errors=[],checks=[];
 const startedAt=Date.now();
 let failNextFreshCheck=null,holdFreshCheck=null,arriveFreshCheck=null,releaseFreshCheck=null,settleHeldFreshCheck=null;
 let holdStoryPreview=null,arriveStoryPreview=null,releaseStoryPreview=null,settleHeldStoryPreview=null;
+let holdResultAvailability=null;
 let failNextFrameEdit=false;
 const pass=name=>{checks.push(name);console.log('PASS '+name);};
 const responseBody=response=>JSON.parse(Buffer.from(response.body,'base64').toString());
@@ -37,6 +38,9 @@ let browser,context,page;
     const req=route.request(),url=new URL(req.url());
     if(url.origin!=='https://photohouse.test'){blocked.push(url.origin);await route.abort();return;}
     const entry={method:req.method(),path:url.pathname+url.search,body:req.postData()||''};requests.push(entry);
+    if(holdResultAvailability&&req.method()==='GET'&&url.pathname==='/assistant/workspace/v1/result-page-capabilities'){
+      const gate=holdResultAvailability;holdResultAvailability=null;gate.arrive();await gate.wait;
+    }
     const isFreshReceipt=req.method()==='GET'&&freshReadPath(url.pathname+url.search);
     if(isFreshReceipt&&failNextFreshCheck){
       const status=failNextFreshCheck;failNextFreshCheck=null;await route.fulfill({status,contentType:'application/json',body:'{"detail":"synthetic fresh authorization denied"}'});return;
@@ -108,18 +112,37 @@ let browser,context,page;
     assert.deepEqual(refined.filters.people,{ids:['301'],match:'any'});
     assert.deepEqual(refined.filters.date,{from:'2026-01-01',to:'2026-12-31'});
     assert.equal(refined.total,45);
-    await search('为什么是第一张照片？');
+    const why=page.getByRole('button',{name:'第 20 项结果的匹配说明',exact:true});
+    await why.waitFor();
+    const beforeWhy=turnPosts().length,composer=page.locator('#assistant-text');
+    await composer.fill('保留这条未发送的草稿。');
+    await why.press('Enter');
+    assert.equal(await composer.inputValue(),'保留这条未发送的草稿。');
+    await composer.fill('');
+    await page.setViewportSize({width:390,height:845});
+    await page.evaluate(()=>document.documentElement.style.fontSize='150%');
+    await why.scrollIntoViewIfNeeded();
+    assert(await why.evaluate(el=>el.getBoundingClientRect().height>=44&&el.scrollWidth<=el.clientWidth));
+    await page.screenshot({path:path.join(artifacts,'why-result-action-phone-zh-150.png')});
+    await why.press('Enter');
+    const question=await composer.inputValue();
+    assert.equal(question,'为什么是第20项结果？');
+    assert.equal(await composer.evaluate(el=>el===document.activeElement),true);
+    assert.equal(turnPosts().length,beforeWhy);
+    await page.evaluate(()=>document.documentElement.style.fontSize='');
+    await page.setViewportSize({width:1280,height:960});
+    await search(question);
     const explained=turnPosts().at(-1).response.result;
     assert.equal(explained.kind,'results');
     assert.equal(explained.effect,null);
     assert.deepEqual(explained.filters,refined.filters);
     assert.deepEqual(explained.context,refined.context);
     assert.deepEqual(explained.items,refined.items);
-    assert.match(explained.reply,/第1项的匹配说明/);
+    assert.match(explained.reply,/第20项的匹配说明/);
     assert.match(explained.reply,/人物筛选有已审核匹配记录/);
     assert.match(explained.reply,/拍摄日期筛选有匹配记录/);
     await page.waitForFunction(reply=>document.querySelector('#assistant-reply')?.textContent===reply,explained.reply);
-    pass('A bilingual Search explanation names the available evidence and leaves the result list ready for story selection');
+    pass('A result card drafts a grounded match explanation on explicit Send and preserves the existing result list');
     const firstPage=await pickIds();
     assert.equal(firstPage.length,20);
     const firstPick=firstPage.includes('101')?'101':firstPage[0];
@@ -127,6 +150,7 @@ let browser,context,page;
     let laterPick;
     for(let pageNumber=2;pageNumber<=3&&!laterPick;pageNumber++){
       const ids=await advanceResultPage(pageNumber);
+      assert.equal(await page.locator('.assistant-result-why').count(),0);
       laterPick=firstPick==='101'?ids[0]:ids.find(id=>id==='101');
     }
     assert(laterPick,'a later page provides the second pick, including the family-note photo');
@@ -142,6 +166,10 @@ let browser,context,page;
     assert.deepEqual(stored.picks.map(pick=>pick.id),joinedOrder);
     const reloadStart=requests.length;
     const turnsBeforeReload=turnPosts().length;
+    let arriveAvailability,releaseAvailability;
+    const availabilityRequested=new Promise(resolve=>{arriveAvailability=resolve;});
+    const availabilityHeld=new Promise(resolve=>{releaseAvailability=resolve;});
+    holdResultAvailability={arrive:arriveAvailability,wait:availabilityHeld};
     await page.setViewportSize({width:390,height:845});
     await page.reload();await page.locator('#grid .asset').first().waitFor();
     assert.equal(await page.evaluate(key=>sessionStorage.getItem(key)!==null,resumeKey),true,'the signed-in same-library refresh keeps the tab record');
@@ -152,16 +180,23 @@ let browser,context,page;
     const conversation=page.locator('#assistant-private-select');
     if(!await conversation.isVisible())await page.locator('#assistant-private-management-toggle').click();
     assert.deepEqual(await selectedIds(),[],'reload keeps the selection private until the conversation is opened');
-    await conversation.selectOption(threadId);
+    const latestRead=page.waitForResponse(response=>response.request().method()==='GET'&&freshReadPath(response.url()));
+    try{
+      await conversation.selectOption(threadId);
+      const [read]=await Promise.all([latestRead,availabilityRequested]);
+      assert.equal(read.status(),200);
+      assert.deepEqual(await selectedIds(),[],'picks stay hidden while the paging capability read is outstanding');
+    }finally{releaseAvailability();}
     await page.waitForFunction(order=>{
       const listed=[...document.querySelectorAll('#assistant-story-selected-list [data-asset-id]')];
       return listed.length===order.length&&listed.every((item,index)=>item.dataset.assetId===order[index]);
     },joinedOrder);
     const reopenedReads=requests.slice(reloadStart);
     assert.equal(reopenedReads.filter(item=>item.method==='GET'&&freshReadPath(item.path)).length,1);
+    assert.equal(reopenedReads.filter(item=>item.method==='GET'&&item.path.startsWith('/assistant/workspace/v1/result-page-capabilities')).length,1);
     assert.equal(reopenedReads.filter(item=>item.method==='POST'&&resultPagePath.test(new URL(item.path,'https://photohouse.test').pathname)).length,1);
     assert.equal(turnPosts().length,turnsBeforeReload,'resuming picks keeps the existing search turn');
-    pass('Reopening the same conversation after a phone-size tab refresh restores both story picks in order');
+    pass('Reopening after a phone-size tab refresh restores both picks in order even when the paging capability response is delayed');
     assert.equal(prepareRows().length,beforeJoinedStart.prepares);assert.equal(saves().length,beforeJoinedStart.saves);
     assert.equal(requests.filter(item=>item.method==='POST'&&storyPreviewPath(item.path)).length,beforeJoinedStart.outlines,
       'search, refinement, paging and selecting do not generate a story before the editor action');

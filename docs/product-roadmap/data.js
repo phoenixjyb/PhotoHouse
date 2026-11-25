@@ -662,6 +662,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Generated English, Chinese and mixed-language turns retain reviewed people while changing the month or media. The Web assistant can prepare Any date or Any person for review and Send.",
           "zh": "合成的中英文及混合语言流程可更改月份或媒体类型，同时保留已核对的人物条件。网页助手可填入「不限日期」或「不限人物」，供用户确认后发送。"
+        },
+        {
+          "en": "Why this match? prepares a question about a visible result. The reply cites the available evidence and keeps the current filters and results.",
+          "zh": "「为什么匹配？」可为当前可见结果准备提问。回复会说明已有的匹配依据，并保留现有筛选条件和结果。"
         }
       ],
       "gaps": [
@@ -699,6 +703,15 @@ window.PHOTOHOUSE_ROADMAP = {
             "zh": "Windows 真实日期搜索与两轮追问"
           },
           "at": "2026-11-25",
+          "state": "verified"
+        },
+        {
+          "kind": "local",
+          "label": {
+            "en": "Generated Web check · explain a result and continue to a story",
+            "zh": "合成网页测试 · 解释匹配结果并继续创建故事"
+          },
+          "at": "2026-11-26",
           "state": "verified"
         }
       ]

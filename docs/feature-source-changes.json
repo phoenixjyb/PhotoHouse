@@ -39216,6 +39216,59 @@
         }
       ],
       "notes": "Record verified local changes in both languages and retain dated Windows acceptance boundaries."
+    },
+    {
+      "feature": "jude-result-explanation-and-pick-reload-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "a456aa7b649d2e11bd9cc713cc348fa8b6eb8e445992259704dc2758fec004c6",
+          "sha256": "c01e4b32667c3a19e5f8a0a6bd75c476c0a8463a2c1d08f1ec1eaa62e53a6aae"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "80bb071a233ea08c546b667d71d7b752ce096260a77d2e46bfc73d0e0341863f",
+          "sha256": "7f689acfb8c5c69a765565cf7aa81155656013341a263a981c49b7c34c35d22d"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "cdddc662967a947abad0a691af959e2a91b8786b879cfb9980aeb46e98236bfc",
+          "sha256": "c9ec52e4545c6e72df121ae945c104d84687afb0e36b114da9e58588565648e0"
+        },
+        {
+          "path": "server/backend/app/access/result_explanation.py",
+          "before_sha256": "2036547d56eddf9b02c556dad246d9d6bba27a04ac46585c81e905b2ca4d990d",
+          "sha256": "e57f72b26881a10f861a9a76d8405c81030b4137770a9c9760a39d335c66f15b"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "20bfb7380bb8801868bc3331559232baa7555f497007a88fe3f97f3ed8b6562b",
+          "sha256": "cf33b152e73b2483dcef5928bfbab4e24d2cb8b347f847177b2b358c0c8fcfc5"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "c5de51ac4e3459a1cbcb9128fcdd8c1b4e65c69ba0434a92d62618ee549c488a",
+          "sha256": "0dd10c72134965b87090f32434ba12c4e391649a8456b7e723121959830b780d"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "2b3b22846658a72af316084ec252a686019bd7280d647dfbe520cd12428a2fd7",
+          "sha256": "4e72d06bba6b319f2a831afd08cd3ef3aec0a5c21c4a3098c8272febd23d0f30"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "855cb428bebfbe9176756be49e6c4ec186c6bdac2fe7d2c7db3efcefa3e8d478",
+          "sha256": "0c6f5c1f4716e5eba5fa892d563bae1c060032ef2a53ed37bb9369bc2e48bf80"
+        },
+        {
+          "path": "server/tests/security/test_result_explanation.py",
+          "before_sha256": "5327c386c332f5633c49a0e13c402cf1b51477995d65a08daf86a8fef1964349",
+          "sha256": "e3261b76e715fc31d405b5078150b77249fbc9e28d669727c39c324f4a971e0c"
+        }
+      ],
+      "notes": "Draft a grounded explanation for a current result and wait for paging readiness when reopening selected frames."
     }
   ]
 }
