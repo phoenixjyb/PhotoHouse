@@ -6,6 +6,7 @@ import uuid
 import test_memory_stories as story_fixture
 from app.access.memory_books import MemoryBooks
 from app.access.service import AccessDenied, AccessService
+from app.access.story_outline import MAX_ITEMS
 from app.access.transport import TransportError
 
 
@@ -76,6 +77,27 @@ class MemoryBookTests(unittest.TestCase):
         self.assertNotIn('private-child-source-', content)
         reopened = self.domain('get', self.owner, saved['id'])
         self.assertEqual(reopened, saved)
+
+    def test_memoir_with_full_size_story_stays_on_shelf_until_a_frame_is_withdrawn(self):
+        asset_ids = list(range(1001, 1001 + MAX_ITEMS))
+        with self.library_fixture.connection() as db:
+            db.executemany("""INSERT INTO assets(id,path,hash_sha256,status,mime,width,height)
+                VALUES(?,?,?,'active','image/jpeg',400,300)""",
+                [(asset, f'synthetic/{asset}', f'fixture-{asset}') for asset in asset_ids])
+            db.executemany('INSERT INTO access_asset_libraries VALUES (?,?)',
+                           [(asset, 'family-a') for asset in asset_ids])
+            db.commit()
+        child = self.story('Full size child story', assets=','.join(map(str, asset_ids)))
+        saved = self.save(self.owner, self.body([child]))
+        self.assertEqual(saved['stories'][0]['item_count'], MAX_ITEMS)
+        self.assertEqual(self.domain('get', self.owner, saved['id']), saved)
+        shelf = self.domain('list', self.owner, 1)
+        self.assertEqual([item['id'] for item in shelf['items']], [saved['id']])
+
+        self.library_fixture.mutate("UPDATE assets SET status='deleted' WHERE id=?", (asset_ids[-1],))
+        self.assertEqual(self.domain('list', self.owner, 1)['items'], [])
+        with self.assertRaises(AccessDenied):
+            self.domain('get', self.owner, saved['id'])
 
     def test_viewer_read_only_contributor_owns_book_and_owner_can_edit_any(self):
         child = self.story('Shared child')

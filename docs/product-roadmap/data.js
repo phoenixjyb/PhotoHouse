@@ -1033,6 +1033,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Windows Web supports up to 48 photos and videos in 12 chapters, with up to four items per chapter.",
           "zh": "Windows 网页故事最多可包含 48 项照片和视频，共 12 章，每章最多 4 项。"
+        },
+        {
+          "en": "Local checks cover reopening a 48-item Android draft, adopting reviewed wording in later chapters, and keeping memoirs with full-size stories visible on the shelf.",
+          "zh": "本地检查覆盖了重新打开含 48 项素材的 Android 草稿、采纳后续章节的已审阅文字，以及让包含完整 48 项素材故事的回忆录继续显示在书架上。"
         }
       ],
       "gaps": [

@@ -436,6 +436,7 @@ Keep original contributions separate from drafts and adopted stories. / 将原�
 - Story editing and source links are available. Selected-source drafts show the original wording and let the author keep it for one chapter while reviewing the rest. / 已有故事编辑和来源关联。使用所选资料生成的草稿可与原文对照，可保留某一章原文并继续审核其余章节。
 - Find saved stories by title across the current library, with the same theme filters and pagination. / 可在当前相册库按标题查找已保存的故事，并结合现有主题筛选和分页。
 - Windows Web supports up to 48 photos and videos in 12 chapters, with up to four items per chapter. / Windows 网页故事最多可包含 48 项照片和视频，共 12 章，每章最多 4 项。
+- Local checks cover reopening a 48-item Android draft, adopting reviewed wording in later chapters, and keeping memoirs with full-size stories visible on the shelf. / 本地检查覆盖了重新打开含 48 项素材的 Android 草稿、采纳后续章节的已审阅文字，以及让包含完整 48 项素材故事的回忆录继续显示在书架上。
 
 **Gaps / 差距**
 
