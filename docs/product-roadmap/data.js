@@ -13,8 +13,8 @@ window.PHOTOHOUSE_ROADMAP = {
       "zh": "部署与集成回顾记录"
     },
     "body": {
-      "en": "Windows delivery records cover the bilingual roadmap, fullscreen viewer and the 25 November Search fix. The 26 November local build adds Search refinements, private conversation lookup, On this day, album drafts and story review improvements. Windows rollout and household review are pending for these local changes.",
-      "zh": "双语路线图、全屏浏览和 11 月 25 日搜索修复已有 Windows 交付记录。11 月 26 日的本地版本增加了搜索细化、私密对话查找、「往年今日」、相册草稿及故事审阅改进。这些本地改动仍待 Windows 发布与家庭试用。"
+      "en": "Windows Web and API delivery includes album editing, Jude’s ordered selection recovery and stories with up to 48 items. Live Search verified date corrections in Chinese and English. The English media follow-up fix passed local checks and awaits Windows rollout.",
+      "zh": "Windows 网页和 API 已交付相册编辑、小贾按顺序恢复选择，以及最多 48 项素材的故事。中英文日期更正已在实际搜索中验证。英文媒体筛选追问修复已通过本地检查，待 Windows 发布。"
     }
   },
   "areas": [
@@ -687,6 +687,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Ask for the same month, day or date range in a different year while keeping the other search filters. An invalid date such as February 29 in a non-leap year prompts for a new range.",
           "zh": "可沿用相同月份、某一天或日期范围切换年份，并保留其余搜索条件。若遇到平年的 2 月 29 日等无效日期，会提示重新指定日期范围。"
+        },
+        {
+          "en": "The tested update recognizes English requests such as “Could you narrow it to videos?” and keeps the corrected date and other active filters.",
+          "zh": "已通过本地检查的更新可理解 “Could you narrow it to videos?” 等英文追问，并保留已更正的日期和其他生效条件。"
         }
       ],
       "gaps": [
@@ -696,12 +700,12 @@ window.PHOTOHOUSE_ROADMAP = {
         }
       ],
       "next_step": {
-        "en": "Qualify the find, clarify, narrow and open journey on approved household devices with visible filters.",
-        "zh": "在获准的家庭设备上验证查找、澄清、缩小范围和打开结果的完整流程，保持筛选条件可见。"
+        "en": "After rollout, repeat the English video follow-up on Windows and verify the displayed date and media filters. Continue checking everyday queries on household devices.",
+        "zh": "发布后在 Windows 上重试英文视频追问，核对显示的日期和媒体条件。继续在家庭设备上验证日常查询。"
       },
       "delivery_note": {
-        "en": "A live Windows search kept the date when media type changed and kept the media type when the month changed. Broader relevance and device acceptance remain open.",
-        "zh": "Windows 真实搜索在更改媒体类型时保留了日期条件，在更改月份时保留了媒体类型。更全面的相关性与设备验收仍待完成。"
+        "en": "Live Windows turns verified date corrections in both languages and a Chinese video follow-up. The English narrowing request fell back to help. The repair passed a local signed-in journey with generated records.",
+        "zh": "Windows 实际查询验证了中英文日期更正及中文视频追问。英文缩小范围的请求曾返回通用帮助，修复后已在本地使用合成数据通过登录后的完整流程测试。"
       },
       "acceptance_note": {
         "en": "Test with real user phrasing without hardcoding a demonstration.",
@@ -734,13 +738,31 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-26",
           "state": "verified"
+        },
+        {
+          "kind": "windows",
+          "label": {
+            "en": "Live bilingual date corrections and media follow-up findings",
+            "zh": "中英文实际日期更正与媒体追问记录"
+          },
+          "at": "2026-11-26",
+          "state": "partial"
+        },
+        {
+          "kind": "local",
+          "label": {
+            "en": "Authorized Search regression · English video follow-up keeps the corrected month",
+            "zh": "授权搜索回归测试 · 英文视频追问保留已更正的月份"
+          },
+          "at": "2026-11-26",
+          "state": "verified"
         }
       ]
     },
     {
       "id": "search-result-handoff",
       "area": "search",
-      "stage": "in_progress",
+      "stage": "delivered",
       "priority": "next",
       "title": {
         "en": "Result selection & resumption",
@@ -762,17 +784,17 @@ window.PHOTOHOUSE_ROADMAP = {
       ],
       "gaps": [
         {
-          "en": "Windows delivery and use on household devices remain open for this resumption path.",
-          "zh": "恢复选择功能仍待 Windows 发布与家庭设备验证。"
+          "en": "Selection recovery still needs a household phone and tablet check.",
+          "zh": "恢复选择仍待在家庭手机和平板上验证。"
         }
       ],
       "next_step": {
-        "en": "Try selecting, reloading, reopening the conversation and starting an unsaved story on the installed Web client.",
-        "zh": "在已安装网页客户端上试用选择画面、重新加载、打开原对话与创建未保存故事的完整流程。"
+        "en": "Try selecting across pages, reloading and opening a private story draft on a household phone.",
+        "zh": "在家庭手机上试用跨页选择、重新加载及打开私密故事草稿。"
       },
       "delivery_note": {
-        "en": "Generated Web journeys cover the same-tab selection recovery and the owner’s explicit album save. Windows rollout is pending.",
-        "zh": "合成网页流程覆盖了同一标签页的选择恢复及所有者主动保存相册。仍待 Windows 发布。"
+        "en": "Windows Web verified that ordered picks survive a same-tab reload after Why this match? and carry into a private story draft.",
+        "zh": "Windows 网页已验证，在使用「为什么匹配？」后重新加载同一标签页，可按原顺序恢复选择，并将画面带入私密故事草稿。"
       },
       "acceptance_note": {
         "en": "The saved selection needs the same account, library, result and current source revisions.",
@@ -793,6 +815,15 @@ window.PHOTOHOUSE_ROADMAP = {
           "label": {
             "en": "Generated Web check · select across pages and recover",
             "zh": "合成网页测试 · 跨页选择与恢复"
+          },
+          "at": "2026-11-26",
+          "state": "verified"
+        },
+        {
+          "kind": "windows",
+          "label": {
+            "en": "PR #144 · signed-in selection recovery and story handoff",
+            "zh": "PR #144 · 登录后恢复选择并带入故事"
           },
           "at": "2026-11-26",
           "state": "verified"
@@ -998,12 +1029,16 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Find saved stories by title across the current library, with the same theme filters and pagination.",
           "zh": "可在当前相册库按标题查找已保存的故事，并结合现有主题筛选和分页。"
+        },
+        {
+          "en": "Windows Web supports up to 48 photos and videos in 12 chapters, with up to four items per chapter.",
+          "zh": "Windows 网页故事最多可包含 48 项照片和视频，共 12 章，每章最多 4 项。"
         }
       ],
       "gaps": [
         {
-          "en": "Chapter review and title search need Windows rollout and family acceptance.",
-          "zh": "逐章审阅和标题查找仍待 Windows 发布与家庭试用。"
+          "en": "Chapter review and title search still need family acceptance. The expanded Android editor needs a check on an installed phone.",
+          "zh": "逐章审阅和标题查找仍待家庭试用。扩容后的 Android 编辑器仍需在已安装应用的手机上验证。"
         }
       ],
       "next_step": {
@@ -1011,8 +1046,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "试用保留一章原文、编辑另一章，并再次打开已保存故事的流程。"
       },
       "delivery_note": {
-        "en": "The underlying story editor has recorded delivery. The new chapter controls passed generated-data browser checks.",
-        "zh": "基础故事编辑器已有交付记录。新的逐章操作通过了使用合成数据的浏览器测试。"
+        "en": "PR #145 expanded the Windows Web editor and API. A Windows fixture saved and reopened 48 ordered items, and a signed-in private draft reopened in the same order.",
+        "zh": "PR #145 扩容了 Windows 网页编辑器和 API。Windows 合成数据测试保存并重新打开了 48 项有序素材；登录后重新打开私密草稿也保留了原顺序。"
       },
       "acceptance_note": {
         "en": "AI edits remain proposals; originals and ownership are preserved.",
@@ -1033,6 +1068,15 @@ window.PHOTOHOUSE_ROADMAP = {
           "label": {
             "en": "Generated API and Web checks · chapter review and saved title search",
             "zh": "合成 API 与网页测试 · 逐章审阅和已保存故事标题查找"
+          },
+          "at": "2026-11-26",
+          "state": "verified"
+        },
+        {
+          "kind": "windows",
+          "label": {
+            "en": "PR #145 · 48 ordered items across 12 chapters",
+            "zh": "PR #145 · 12 章共 48 项有序素材"
           },
           "at": "2026-11-26",
           "state": "verified"

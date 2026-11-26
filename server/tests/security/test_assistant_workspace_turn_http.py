@@ -171,6 +171,26 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
                 self.assertEqual(malformed.status_code, 200, malformed.text)
                 self.assertEqual(malformed.json()['result']['kind'], 'clarification')
 
+    def test_polite_video_refinement_keeps_the_corrected_month(self):
+        headers = self.enable_search()
+        tid = self.thread()['thread_id']
+        cases = (
+            ('Show me photos from February 2026', 'image', '2026-02-01', '2026-02-28', []),
+            ('Actually, January', 'image', '2026-01-01', '2026-01-31', ['101']),
+            ('Could you narrow it to videos?', 'video', '2026-01-01', '2026-01-31', []),
+        )
+        for revision, (words, media, start, end, ids) in enumerate(cases):
+            with self.subTest(words=words):
+                response = self.turn(tid, revision=revision, text=words, headers=headers)
+                self.assertEqual(response.status_code, 200, response.text)
+                value = response.json()
+                result = value['result']
+                self.assertEqual(value['revision'], revision + 1)
+                self.assertEqual(result['kind'], 'results', result)
+                self.assertEqual(result['filters'], {'media': [media], 'date': {'from': start, 'to': end}})
+                self.assertEqual([item['id'] for item in result['items']], ids)
+                self.assertIsNone(result['effect'])
+
     def test_bilingual_year_ranges_use_capture_dates_in_owned_recoverable_turns(self):
         self.enable_search()
         self.update("UPDATE assets SET mime='video/mp4',taken_at='2019-01-01 00:00:00.000000' WHERE id=101")
