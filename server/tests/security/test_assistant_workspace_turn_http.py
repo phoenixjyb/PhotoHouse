@@ -178,6 +178,7 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
             ('Show me photos from February 2026', 'image', '2026-02-01', '2026-02-28', []),
             ('Actually, January', 'image', '2026-01-01', '2026-01-31', ['101']),
             ('Could you narrow it to videos?', 'video', '2026-01-01', '2026-01-31', []),
+            ('Could you narrow the results to photos from January?', 'image', '2026-01-01', '2026-01-31', ['101']),
         )
         for revision, (words, media, start, end, ids) in enumerate(cases):
             with self.subTest(words=words):

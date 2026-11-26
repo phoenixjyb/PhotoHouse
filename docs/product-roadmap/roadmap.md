@@ -292,7 +292,7 @@ Refine a search across turns instead of repeatedly starting over. / 跨轮次细
 - Generated English, Chinese and mixed-language turns retain reviewed people while changing the month or media. The Web assistant can prepare Any date or Any person for review and Send. / 合成的中英文及混合语言流程可更改月份或媒体类型，同时保留已核对的人物条件。网页助手可填入「不限日期」或「不限人物」，供用户确认后发送。
 - Why this match? prepares a question about a visible result. The reply cites the available evidence and keeps the current filters and results. / 「为什么匹配？」可为当前可见结果准备提问。回复会说明已有的匹配依据，并保留现有筛选条件和结果。
 - Ask for the same month, day or date range in a different year while keeping the other search filters. An invalid date such as February 29 in a non-leap year prompts for a new range. / 可沿用相同月份、某一天或日期范围切换年份，并保留其余搜索条件。若遇到平年的 2 月 29 日等无效日期，会提示重新指定日期范围。
-- The tested update recognizes English requests such as “Could you narrow it to videos?” and keeps the corrected date and other active filters. / 已通过本地检查的更新可理解 “Could you narrow it to videos?” 等英文追问，并保留已更正的日期和其他生效条件。
+- Local tests verify English follow-ups such as “Could you narrow it to videos?” and “Could you narrow the results to videos from October?” Unmentioned filters stay in place. / 本地测试验证了「能只看视频吗？」和「能把结果缩小到十月的视频吗？」等英文追问。未提及的筛选条件会保留。
 
 **Gaps / 差距**
 

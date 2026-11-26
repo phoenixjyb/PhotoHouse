@@ -43,12 +43,15 @@ _MEDIA = (
     ('image', re.compile(r'照片|图片|相片|(?a:\b)(?:photos?|photographs?|pictures?|images?)(?a:\b)', re.I)),
 )
 _MEDIA_ONLY_EN = r'(?:videos?|movies?|photos?|photographs?|pictures?|images?)'
+_NARROW_REFINEMENT_OPEN = (
+    r'(?:(?:please|(?:can|could|would)\s+you)\s+)?'
+    r'narrow\s+(?:it|the\s+(?:search|results))\s+to\s+(?:the\s+)?'
+)
 _MEDIA_ONLY_REFINEMENT = re.compile(
     rf'^(?:'
     rf'refine(?a:\b)\s+(?:(?:my|the)(?a:\b)\s+)?last(?a:\b)\s+search(?a:\b)\s+'
     rf'to(?a:\b)\s+(?:show(?a:\b)\s+)?(?P<full>{_MEDIA_ONLY_EN})\s+only(?a:\b)|'
-    r'(?:only(?a:\b)\s+|(?:(?:please|(?:can|could|would)\s+you)\s+)?'
-    rf'narrow\s+(?:it|the\s+(?:search|results))\s+to\s+(?:the\s+)?)(?P<prefix>{_MEDIA_ONLY_EN})|'
+    rf'(?:only(?a:\b)\s+|{_NARROW_REFINEMENT_OPEN})(?P<prefix>{_MEDIA_ONLY_EN})|'
     rf'(?P<suffix>{_MEDIA_ONLY_EN})\s+only(?a:\b)|'
     rf'只看(?P<chinese>视频|影片|照片|图片|相片)'
     rf')[。.!！?？]*$', re.I)
@@ -68,7 +71,7 @@ _SEARCH_OPEN = re.compile(
     r'(?:(?:请)?(?:我想看看|我想看|我想找|想找|想看|还有没有|有没有))'
     r')', re.I)
 _REFINE_OPEN = re.compile(
-    r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
+    rf'^(?:{_NARROW_REFINEMENT_OPEN}|只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
     r'refine(?a:\b)|only(?a:\b)|filter(?a:\b)|just(?a:\b)|what about(?a:\b)|how about(?a:\b)|same but(?a:\b)|make it(?a:\b))', re.I)
 _KEEP_PEOPLE_DIRECTIVE = re.compile(
     r'(?:不要(?:改变|更改|变更)|保留)人物(?:条件|筛选)|'

@@ -373,6 +373,23 @@ class SearchRefinementTests(unittest.TestCase):
         self.assertEqual(unbound.status, 'clarification')
         self.assertEqual(unbound.reason, 'refine_without_context')
 
+    def test_polite_narrowing_accepts_supported_conditions_and_keeps_unmentioned_filters(self):
+        month = {'from': '2032-10-01', 'to': '2032-10-31'}
+        cases = (
+            ('Could you narrow it to October?', {**PREVIOUS, 'date': month}),
+            ('Please narrow the results to the videos from October?',
+             {**PREVIOUS, 'date': month, 'media': ['video']}),
+            ('Narrow the search to videos of Sample Adult',
+             {**PREVIOUS, 'media': ['video'], 'people': {'ids': ['302'], 'match': 'any'}}),
+        )
+        for words, filters in cases:
+            with self.subTest(words=words):
+                self.assertEqual(query_mode(words), 'refine')
+                result = plan(words)
+                self.assertEqual(result.status, 'ready', result)
+                self.assertEqual(result.filters, filters)
+                self.assertEqual(plan(words, previous=None).reason, 'refine_without_context')
+
     def test_media_only_refinement_stays_closed_around_negation_quotes_and_residue(self):
         for words in ('videos only without a hat', 'only videos with an unknown scene',
                       'videos only at Mars',
