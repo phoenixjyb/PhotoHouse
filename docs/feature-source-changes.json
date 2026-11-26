@@ -38824,6 +38824,1059 @@
         }
       ],
       "notes": "Place the worker identity results and provider observations within their October 22 trial dates and source pins."
+    },
+    {
+      "feature": "jude-ordered-story-selection-tab-resume-20261125",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "4533bac6fa0a1731f958dd04f27d0514080db3ae8b0f32535e3dd7accdad3fe0",
+          "sha256": "a456aa7b649d2e11bd9cc713cc348fa8b6eb8e445992259704dc2758fec004c6"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "4b3bed256bedc84264da131cc61fe869bdb2be5504a06158fa55802cd782213e",
+          "sha256": "9681b96b994b6c91188e691f027ec87590f701fba751b57d6046b309adfc5de4"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "39f9440a1648f60f1d7f76fc5035414d78f118cc4ab37e012182be652dfc8c9e",
+          "sha256": "e4e3568f2928bd9a173ef0dfeffaadd4167e911ba2ae0ee9f2a7cb68ac7e43fb"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection.cjs",
+          "before_sha256": "44febec63ca7b3bd3b165aca04cf914443864396619503062fc3523e57bb594c",
+          "sha256": "d388e19d6d9f1c48bca1c67113eaabfa4a53b0331b11e4b8d706c8d1b4183ec4"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "0559a3e8011cd259fb14168093a87158eba8089c64217ed1c3b2d75df07b42c4",
+          "sha256": "855cb428bebfbe9176756be49e6c4ec186c6bdac2fe7d2c7db3efcefa3e8d478"
+        }
+      ],
+      "notes": "Reopen ordinary Jude story picks in the same browser tab by checking the current authenticated result and selected result pages."
+    },
+    {
+      "feature": "selected-source-story-keep-chapter-original-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/SELECTED_SOURCE_STORY_UI.md",
+          "before_sha256": "3854fab5ecb6a40233d8755cee7cc94c7564b9c79e2a13241019cec040b39e94",
+          "sha256": "5c4e389d4202c433c02a798e827aa654181ba8af75a870aa65b3c0872e5cb52c"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "b3ab40f6b5169fab9388ce3dd67e4f3eda679c0bfcdcc0886f40757c73d5d994",
+          "sha256": "745651ddaf6e17580961de4caf24a2f55d0ce7cda49b5029c6576fb3b7d9f7cf"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "ae57123a60bd743ec8c84be504ceca65dca6994c5ec31d8d6ad4a6847f0ede0f",
+          "sha256": "46ae5e5d5833010db577c1e7edd07ef69d70026db6036820fb0ccee31530075f"
+        },
+        {
+          "path": "server/tests/security/story_draft_browser_bridge.py",
+          "before_sha256": "d34c297312690f3c91f55c4255e976c4907b95a72b9f9179a524c6e8adfcacbe",
+          "sha256": "b40cb8cc57e9dc9297834b7e327f9fb1140cdcef83794bf3d299cb878224b2bf"
+        },
+        {
+          "path": "server/tests/security/test_story_draft_preparation_browser.cjs",
+          "before_sha256": "48d2dda92c63c79dea3c6ee5d67c81008a6dedaff30935b99aaa07116190cb65",
+          "sha256": "8cc43aaa8a1dc15070972489941e61716b80c87ac8ebe657df686280daf2e672"
+        }
+      ],
+      "notes": "Restore original narration for one chapter while retaining other proposals and requiring review before explicit save."
+    },
+    {
+      "feature": "saved-memory-group-pages-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "server/backend/app/access/memory_group_transport.py",
+          "before_sha256": "904c06d5b0572edeb6d245f6010fba31bfa1a018023b5e13bde7db1c1bfebc8d",
+          "sha256": "621d31919cc2b0091631cc2901f87f3d15243ac7f1505971186c93fed2f1a088"
+        },
+        {
+          "path": "server/backend/app/access/memory_groups.py",
+          "before_sha256": "115087492e25c096ba2afcc029ba3de0ed4de11d1ea855d4578fa74b0a979b10",
+          "sha256": "6ca474cd9f345833fc3daffdf3c9012867486f01ed59d07218804964e41eda68"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "9681b96b994b6c91188e691f027ec87590f701fba751b57d6046b309adfc5de4",
+          "sha256": "7f422512a1189ca251213e47eccca417414f169969cd0813fcc4266a0e7601b5"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "e1d2b1daa4fe9a00a675c36a31aedac2ec111d9af5ccae1132f2e89049958411",
+          "sha256": "234065de1d4230e69408d39da6d91a7f16a58a9ccba895639b9f6ab6e1060511"
+        },
+        {
+          "path": "server/backend/app/ui/access/memory-groups.js",
+          "before_sha256": "19e051e6a9472a1448cc00d688ae4886546ff3bbfea13e3f01a24bee99033f40",
+          "sha256": "4dc45aa5f1bd7779aaf014c3528f647671a557ffb49fa20786766130c8946d11"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "46ae5e5d5833010db577c1e7edd07ef69d70026db6036820fb0ccee31530075f",
+          "sha256": "cc2211897503ae834922195a7acc46a4eda4feaffe2fa2982959332c02664dbe"
+        },
+        {
+          "path": "server/docs/security/MEMORY_GROUPS_V1.md",
+          "before_sha256": "6d7e602ad40f0468a43f0ae85d95e5fb9ab4b0d2a672a78fad1a5316b8ff80fc",
+          "sha256": "d9475314d1bfcf289f19ddf2ff346b549dc3ee69d3305ae23e0370f8a23d9a3e"
+        },
+        {
+          "path": "server/tests/security/browser_bridge.py",
+          "before_sha256": "606a95791c4de6106b6505fde4a3619340727768b206dae16aa1bce8c0a6916c",
+          "sha256": "59f9210f5d02c826e404a900068162a43dbd79e2b89e75d9ba88b1397712a711"
+        },
+        {
+          "path": "server/tests/security/test_memory_group_routes.py",
+          "before_sha256": "5062a6db887cda7dd5d8e169cb973a0a3693abfb11a0d6de2731f6c476e74116",
+          "sha256": "9d7354c50ecf62332cf266531757aa4fee244c0e5b0f8691352555c7648f68ad"
+        },
+        {
+          "path": "server/tests/security/test_memory_groups_browser.cjs",
+          "before_sha256": "1e7e91f7e311c4438584bd073926499a2412522e2c83840f647c7bb983575dc7",
+          "sha256": "9b75c2deea9828e8d9133f3da7aa30f5904d33c9e7431eabdd6ed7a7c6778098"
+        }
+      ],
+      "notes": "Browse older complete groups and keep the chosen group order in Stories."
+    },
+    {
+      "feature": "jude-pending-turn-reopen-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_TURNS_V1.md",
+          "before_sha256": "e997b8cc3550f100aea698a1f59fd63b29e7346075f98e74fd0970a8efa6d3af",
+          "sha256": "72bf7ffae8766d139efb9bf0a767bb135432e3d601a69e450afc20c589dc75ee"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "df252e6bef611adca719183dbd91dce245423bf27b2b143df83828e426fc71b4",
+          "sha256": "1daa4a22302ae36c28e6876552027b69cfd56d4aeea58d7d8478379099f27517"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "4bff1b988257ab3d5cf9cf06e06c1b4c9613503c2504fe8ba621532cc9035850",
+          "sha256": "5dd75253e83ab258283001b42bd4e397f9427180658c7f742d1f800c8d61a22f"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "7f422512a1189ca251213e47eccca417414f169969cd0813fcc4266a0e7601b5",
+          "sha256": "501170589c0580321934b12ebacf1caa50c4fee0c25f333a5f114e6b47a9fcef"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "e4e3568f2928bd9a173ef0dfeffaadd4167e911ba2ae0ee9f2a7cb68ac7e43fb",
+          "sha256": "02e23a525bdfd1697cceae7fcc3353a78f242e59af2cdbef1be4fa44a2ef4631"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "234065de1d4230e69408d39da6d91a7f16a58a9ccba895639b9f6ab6e1060511",
+          "sha256": "b77d2d341d0e64d6cbbb39e540b3e157cfc5373b3ba706e62ef79981e7877411"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "cc2211897503ae834922195a7acc46a4eda4feaffe2fa2982959332c02664dbe",
+          "sha256": "9aa410507d57e2423c0933e69f61a9e97cb9adf49005b7921edb56a7ad0e0c02"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "831d65b5016d0fe845dd0afc7be3699577a69272e317d2528d08142e1cf9efda",
+          "sha256": "c39c7da9165bb61025edee2dcb14bd8823306bf09642047274fe2c6c5ceeb927"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "5e963a26e035d93c204a4eb8a1d1034a2e2a07a37d0b0a9e93baee31a32cc13a",
+          "sha256": "65aceef4e23a4391cd0adc79c9a02566812a7071c851eed2d735be3bf0da095f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "23bd43725d4ab2727203e0365265edcd2d7e59041bb00cf5506d4d3f7df12280",
+          "sha256": "04d1c27e2b0452609ab809fbc1728f33baab884c2efc6152350a1d064420f045"
+        }
+      ],
+      "notes": "Show the exact owned pending question when reopening and recover only through its existing authenticated receipt."
+    },
+    {
+      "feature": "saved-story-refinement-shelf-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/STORY_REFINEMENT.md",
+          "before_sha256": "d6cab156f30f34d9263d8de3e613d85b4c9be1ce95f5d7b498477a4df925bee6",
+          "sha256": "6090ce25c858fd55406fbdaf8d8a68b8dff60981fa432791fc651ec1d8c73e03"
+        },
+        {
+          "path": "server/backend/app/access/memory_jobs.py",
+          "before_sha256": "713de7a45c7d6e0cf01c74c1937b8c43b055d3fdae79a5f45281313661a058ab",
+          "sha256": "9d1e7bc14165192910d36e6535c32fd8a7afe848c758224dcdbd7311f27b768d"
+        },
+        {
+          "path": "server/backend/app/access/memory_stories.py",
+          "before_sha256": "e52e484a97f194184c1465b8e7699a86487545d311035d7d472780b5b2e6305f",
+          "sha256": "1a47eae00b1ebc6fea019205463e90d8bb1f7eab33700dfd126271dd47a2ecb9"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "745651ddaf6e17580961de4caf24a2f55d0ce7cda49b5029c6576fb3b7d9f7cf",
+          "sha256": "eeeec88752f40a8ced3185d3593be86a0f1a849e909896f96e9d155e798f7074"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "9aa410507d57e2423c0933e69f61a9e97cb9adf49005b7921edb56a7ad0e0c02",
+          "sha256": "79baa11282d961ae000f8f477ef45a7fb56cbf92286a0823e1606ef0d7f11d8a"
+        },
+        {
+          "path": "server/tests/security/memory_community_browser_bridge.py",
+          "before_sha256": "57ceeea9f86d440592301291c5a0151e670ceada9a5075da79ed9d2d5c201797",
+          "sha256": "effa147d3169a4873209721d8b325fbc4775282922822edc01d11baaadd1b1f2"
+        },
+        {
+          "path": "server/tests/security/test_memory_story_auto_refinement.py",
+          "before_sha256": "6707fc0d463468d9a4a0cabf23fdbb55ecdea11f6ba24dc91965f3d7864fcd08",
+          "sha256": "6df5ebbb991fb1429afd659ef3b232f12b78ac71933a7066b67b61c44936b328"
+        },
+        {
+          "path": "server/tests/security/test_story_auto_refinement_browser.cjs",
+          "before_sha256": "fe3534a2ccadebc99cfacdce70dbeab27c7dccb90d1009083f11e868a68d974f",
+          "sha256": "4a42fb4ae9dcb95162e60ab53a1d0a91ac97aabb45834f405bfe67ecd303d2fa"
+        }
+      ],
+      "notes": "Show editors their prepared story draft, then open its fresh review in the normal story reader."
+    },
+    {
+      "feature": "jude-discard-pending-reply-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_TURNS_V1.md",
+          "before_sha256": "72bf7ffae8766d139efb9bf0a767bb135432e3d601a69e450afc20c589dc75ee",
+          "sha256": "0c96c344cea16fa2b7b634de469d727830086d9e56071ca4e6e784c4e57099b9"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "1daa4a22302ae36c28e6876552027b69cfd56d4aeea58d7d8478379099f27517",
+          "sha256": "a667a4738f054f6681e27487d47a77f0c96913c826b2569f77973ae68afb4858"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "5dd75253e83ab258283001b42bd4e397f9427180658c7f742d1f800c8d61a22f",
+          "sha256": "3c6d408c7edff35004eca054dff096104951073a9d891e3e59fde0b2879339d1"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "cb7c6d5ce4bb46369fce7812350a4844dc1d525fbe7e35b88940fc6e4e40bee1",
+          "sha256": "4c9fd20efeda739341e0d25519e1931db8f8562dfc419c5b6d340434d1e5f02c"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "501170589c0580321934b12ebacf1caa50c4fee0c25f333a5f114e6b47a9fcef",
+          "sha256": "f28409888d07aee004a903daec77e32f918197882ee02ea05cc1741843c899a8"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "02e23a525bdfd1697cceae7fcc3353a78f242e59af2cdbef1be4fa44a2ef4631",
+          "sha256": "c5de51ac4e3459a1cbcb9128fcdd8c1b4e65c69ba0434a92d62618ee549c488a"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "b77d2d341d0e64d6cbbb39e540b3e157cfc5373b3ba706e62ef79981e7877411",
+          "sha256": "692bdf0dcbafd7c2abcd9bc0d27c0bc2d7fe7885caff64192ced911d8ce10970"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "79baa11282d961ae000f8f477ef45a7fb56cbf92286a0823e1606ef0d7f11d8a",
+          "sha256": "31ad43904408baaa08c8b2d74e8d430e7bd1f6fc239d1e61592d410960043c97"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "c39c7da9165bb61025edee2dcb14bd8823306bf09642047274fe2c6c5ceeb927",
+          "sha256": "5350fc521e782ff7873193b985e8abfc83ccf3ef3aa65a1f188c70949c7cc521"
+        },
+        {
+          "path": "server/tests/security/test_assistant_agent_workspace.py",
+          "before_sha256": "68fea90f16ab301019730569ca5e7deb93a463134350d8b8eec8260794778f66",
+          "sha256": "1e16e5448358e703e426e065eeaaf154deced3e5a749baa9523c0d326a8e8b73"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "65aceef4e23a4391cd0adc79c9a02566812a7071c851eed2d735be3bf0da095f",
+          "sha256": "3df107b3b76a61da01c5ce7359923794dbbb5306b542b457563089d97b85325d"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_turn_http.py",
+          "before_sha256": "04d1c27e2b0452609ab809fbc1728f33baab884c2efc6152350a1d064420f045",
+          "sha256": "2796dc16e733123cf03e23331bf00e029f0a99bc2e316f4309de608bc082b78a"
+        }
+      ],
+      "notes": "Discard only the exact owned pending reply, preserve completed exchanges, and keep cleanup owned."
+    },
+    {
+      "feature": "jude-continue-latest-conversation-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_HISTORY_V1.md",
+          "before_sha256": "23c18490579e77e6a550bf96098e75b7cc117b32630ac6c60eb2b46834fc1d25",
+          "sha256": "661daacecc07208ceefe0b886918c46c67f5efd7b6009951c4bc86da3e1b5812"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "f28409888d07aee004a903daec77e32f918197882ee02ea05cc1741843c899a8",
+          "sha256": "20bfb7380bb8801868bc3331559232baa7555f497007a88fe3f97f3ed8b6562b"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "692bdf0dcbafd7c2abcd9bc0d27c0bc2d7fe7885caff64192ced911d8ce10970",
+          "sha256": "4d4d0a70a55ccf98562a1cdb9ee17abb329f94a38568221e8ab92f4d45607cf2"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "31ad43904408baaa08c8b2d74e8d430e7bd1f6fc239d1e61592d410960043c97",
+          "sha256": "9b8ef119ce235f5705507a93c11a650473c53c6106e4b4a15936a87644355ad3"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "5350fc521e782ff7873193b985e8abfc83ccf3ef3aa65a1f188c70949c7cc521",
+          "sha256": "442c104f8c4c7e94faea9ebf554156a98c49ed3091e605fc02093b32f40252ee"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "3df107b3b76a61da01c5ce7359923794dbbb5306b542b457563089d97b85325d",
+          "sha256": "65e739dfa9efd410f77197c31e519d09b672e63d043d879110b528ce95bc5464"
+        }
+      ],
+      "notes": "Open the most recently updated private conversation from Jude by explicit choice."
+    },
+    {
+      "feature": "saved-refinement-chapter-choices-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/STORY_REFINEMENT.md",
+          "before_sha256": "6090ce25c858fd55406fbdaf8d8a68b8dff60981fa432791fc651ec1d8c73e03",
+          "sha256": "0dae16d3695a1e8e17dc73ea26c3f7441d262bdb01cd0dc371b76501095f8750"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "eeeec88752f40a8ced3185d3593be86a0f1a849e909896f96e9d155e798f7074",
+          "sha256": "ded73c4a86c56129973afb9e4478c3ace56e0289f62b141ce8d917081840baa8"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "9b8ef119ce235f5705507a93c11a650473c53c6106e4b4a15936a87644355ad3",
+          "sha256": "2b3b22846658a72af316084ec252a686019bd7280d647dfbe520cd12428a2fd7"
+        },
+        {
+          "path": "server/tests/security/memory_community_browser_bridge.py",
+          "before_sha256": "effa147d3169a4873209721d8b325fbc4775282922822edc01d11baaadd1b1f2",
+          "sha256": "d63cb8adddfcc0c214a2cb1ddaccfd150d4cbfd15b45a445b1fccb464998ee00"
+        },
+        {
+          "path": "server/tests/security/test_story_auto_refinement_browser.cjs",
+          "before_sha256": "4a42fb4ae9dcb95162e60ab53a1d0a91ac97aabb45834f405bfe67ecd303d2fa",
+          "sha256": "27b5def828ac77998643e04d0c5c5fe3d0a9a3811ecd2222e49e9ac8d6c3d594"
+        }
+      ],
+      "notes": "Carry only the chapters selected during saved-story refinement review into the unsaved editor."
+    },
+    {
+      "feature": "overnight-roadmap-snapshot-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "dc2d49cb2b8699582b4c44199a484e07181d8dec1ab6426c93162363307a0d6e",
+          "sha256": "23afcd07eac1518484eaa12a8e007d590d75dece66ad3a3d06ca4b1e901ef781"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "859271e72990ce963068e91c355085c8625a1fa2797dced455ddaaefaa1786e8",
+          "sha256": "80bb071a233ea08c546b667d71d7b752ce096260a77d2e46bfc73d0e0341863f"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "86ab3cebbfd30f784a0a2ae71977680e4cbac2d3856291a93460c7f263628f2a",
+          "sha256": "cdddc662967a947abad0a691af959e2a91b8786b879cfb9980aeb46e98236bfc"
+        }
+      ],
+      "notes": "Record verified local changes in both languages and retain dated Windows acceptance boundaries."
+    },
+    {
+      "feature": "jude-result-explanation-and-pick-reload-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "a456aa7b649d2e11bd9cc713cc348fa8b6eb8e445992259704dc2758fec004c6",
+          "sha256": "c01e4b32667c3a19e5f8a0a6bd75c476c0a8463a2c1d08f1ec1eaa62e53a6aae"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "80bb071a233ea08c546b667d71d7b752ce096260a77d2e46bfc73d0e0341863f",
+          "sha256": "7f689acfb8c5c69a765565cf7aa81155656013341a263a981c49b7c34c35d22d"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "cdddc662967a947abad0a691af959e2a91b8786b879cfb9980aeb46e98236bfc",
+          "sha256": "c9ec52e4545c6e72df121ae945c104d84687afb0e36b114da9e58588565648e0"
+        },
+        {
+          "path": "server/backend/app/access/result_explanation.py",
+          "before_sha256": "2036547d56eddf9b02c556dad246d9d6bba27a04ac46585c81e905b2ca4d990d",
+          "sha256": "e57f72b26881a10f861a9a76d8405c81030b4137770a9c9760a39d335c66f15b"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "20bfb7380bb8801868bc3331559232baa7555f497007a88fe3f97f3ed8b6562b",
+          "sha256": "cf33b152e73b2483dcef5928bfbab4e24d2cb8b347f847177b2b358c0c8fcfc5"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "c5de51ac4e3459a1cbcb9128fcdd8c1b4e65c69ba0434a92d62618ee549c488a",
+          "sha256": "0dd10c72134965b87090f32434ba12c4e391649a8456b7e723121959830b780d"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "2b3b22846658a72af316084ec252a686019bd7280d647dfbe520cd12428a2fd7",
+          "sha256": "4e72d06bba6b319f2a831afd08cd3ef3aec0a5c21c4a3098c8272febd23d0f30"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "855cb428bebfbe9176756be49e6c4ec186c6bdac2fe7d2c7db3efcefa3e8d478",
+          "sha256": "0c6f5c1f4716e5eba5fa892d563bae1c060032ef2a53ed37bb9369bc2e48bf80"
+        },
+        {
+          "path": "server/tests/security/test_result_explanation.py",
+          "before_sha256": "5327c386c332f5633c49a0e13c402cf1b51477995d65a08daf86a8fef1964349",
+          "sha256": "e3261b76e715fc31d405b5078150b77249fbc9e28d669727c39c324f4a971e0c"
+        }
+      ],
+      "notes": "Draft a grounded explanation for a current result and wait for paging readiness when reopening selected frames."
+    },
+    {
+      "feature": "saved-story-title-search-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "23afcd07eac1518484eaa12a8e007d590d75dece66ad3a3d06ca4b1e901ef781",
+          "sha256": "c6b113b886b49e2c085d36eb53ba9f7d71cf688710446cf7b04eb2723f368625"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "7f689acfb8c5c69a765565cf7aa81155656013341a263a981c49b7c34c35d22d",
+          "sha256": "641f528faae8a82988fc018a4f15a974c0ad31000b307da97da5d8cecb086bb7"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "c9ec52e4545c6e72df121ae945c104d84687afb0e36b114da9e58588565648e0",
+          "sha256": "971111be5796b6e20f18d08130cb2603f63885f56135fc0ddffb89703c45fdfc"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "4c9fd20efeda739341e0d25519e1931db8f8562dfc419c5b6d340434d1e5f02c",
+          "sha256": "14d0edc05047e2a80c0ff8496a68f638b7d69338aa9ffaf4d9c968160e25c604"
+        },
+        {
+          "path": "server/backend/app/access/memory_stories.py",
+          "before_sha256": "1a47eae00b1ebc6fea019205463e90d8bb1f7eab33700dfd126271dd47a2ecb9",
+          "sha256": "aa85b911a4081e50b704f483324e288b46589ae6dc66c0b389d5a41066a9a319"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "4d4d0a70a55ccf98562a1cdb9ee17abb329f94a38568221e8ab92f4d45607cf2",
+          "sha256": "40fc3b3d619e666a4907b4e258a0edb2b7e9294f0adeff1e734ddce09dbca20f"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "ded73c4a86c56129973afb9e4478c3ace56e0289f62b141ce8d917081840baa8",
+          "sha256": "a1ed626165c6ce20d5df833f0e024f1519f6a3e3e9ff35356bc82e40e511caa0"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "4e72d06bba6b319f2a831afd08cd3ef3aec0a5c21c4a3098c8272febd23d0f30",
+          "sha256": "c372ca8d9ca36157ca9e1037234554e76c83d9a6a13d6608ed87337549caa70c"
+        },
+        {
+          "path": "server/tests/security/test_memory_stories.py",
+          "before_sha256": "ef077d5863ac5fbfad97ae1c135054084471fb7d129daa7b50a1312ea89f72fe",
+          "sha256": "5b91d2d8e6233e9c592ef3fef128884f0606b62723f8e4d9866af63a806e080c"
+        },
+        {
+          "path": "server/tests/security/test_memory_stories_browser.cjs",
+          "before_sha256": "46a594add3c303dd5d70083c1ecaf34b72a695cdd1a5c40cfddaf3e42dda9725",
+          "sha256": "3bab3b6eed99850b29568e71622bbc68a86bb4253dfa621806ee558dfe2955c0"
+        }
+      ],
+      "notes": "Find authorized saved stories by their titles within the current library."
+    },
+    {
+      "feature": "overnight-private-route-inventory-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "127a3df8419b532c9bd02c57714231c464994a459999313f58a6cbed0be38e97",
+          "sha256": "145f01f495f9ca98117d426ba77d347653d93015b963f75932290a781f87d867"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "703a35a669c6f7862e83870ccac0f6de45028dd7b8f6fa2c98664be5a00731bd",
+          "sha256": "d3a22e201fe00c86cdb59554b09ef7b8f62c0f34d79e1e1fa8ddf6a06343e3c5"
+        }
+      ],
+      "notes": "Record the two new private routes and retain exact closed-application checks."
+    },
+    {
+      "feature": "assistant-exact-filter-controls-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/SEARCH_TO_STORY.md",
+          "before_sha256": "c01e4b32667c3a19e5f8a0a6bd75c476c0a8463a2c1d08f1ec1eaa62e53a6aae",
+          "sha256": "76a840518b45453b5c7598116769729ad0e98c0d5b5c0cd69a234588a3eade49"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "641f528faae8a82988fc018a4f15a974c0ad31000b307da97da5d8cecb086bb7",
+          "sha256": "b93266d0ca5dc8e4ea8ee67893bec1f8d3ce08a2e884152a4cc5b1cbadc40bae"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "971111be5796b6e20f18d08130cb2603f63885f56135fc0ddffb89703c45fdfc",
+          "sha256": "986f49d8fd207475df23f44f8cb68341ebe134c0062db27a822f2bb6de73e930"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "cf33b152e73b2483dcef5928bfbab4e24d2cb8b347f847177b2b358c0c8fcfc5",
+          "sha256": "1af1ac71d36e0df8c1e337461e64e7cda5d23bc9393330f15c2e7c99f653844f"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "c372ca8d9ca36157ca9e1037234554e76c83d9a6a13d6608ed87337549caa70c",
+          "sha256": "bffd384a1f79dc921b03da60c2817c9bac93b2a9406e441d143f85bb582d1a8a"
+        },
+        {
+          "path": "server/tests/security/test_assistant_search_browser.cjs",
+          "before_sha256": "7f9a94de7b69ba1dd780dee18823c950002fc083652b71ee20fa7f6cba9b5555",
+          "sha256": "3dcfefd78701242a64d6339938f99e3132ec3c381becaf9719bc3ae5cc8d9a61"
+        }
+      ],
+      "notes": "Draft exact date ranges and remove individual active Search filters."
+    },
+    {
+      "feature": "jude-older-conversations-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_HISTORY_V1.md",
+          "before_sha256": "661daacecc07208ceefe0b886918c46c67f5efd7b6009951c4bc86da3e1b5812",
+          "sha256": "372e516c7b14ff4207b19f3254f3d8746ddb5e3f2ac1c11c29c930f3a5bcb633"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "b93266d0ca5dc8e4ea8ee67893bec1f8d3ce08a2e884152a4cc5b1cbadc40bae",
+          "sha256": "99cf899cfb3b142dd420f428d169708c5436ed2d01c4d5e2c680eb7cbd4299f8"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "986f49d8fd207475df23f44f8cb68341ebe134c0062db27a822f2bb6de73e930",
+          "sha256": "7d4efec52e8a5a95f7036363f9c7bef51ae6f560a25c5652169156dc48c939ba"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "a667a4738f054f6681e27487d47a77f0c96913c826b2569f77973ae68afb4858",
+          "sha256": "15eb3a589d4b6c32b458a3cf28ac78cbf06c04c883094f9fc0114d7f0ee704d9"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "3c6d408c7edff35004eca054dff096104951073a9d891e3e59fde0b2879339d1",
+          "sha256": "8c1a4f71c09e20bb8849bb96afd8100d863f4daaaaf8c25554ddbbfe6c691a2f"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "1af1ac71d36e0df8c1e337461e64e7cda5d23bc9393330f15c2e7c99f653844f",
+          "sha256": "78080ebac6b41619c50052b2607b8457bae18ce9f0c12c9615addefff80c8681"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "0dd10c72134965b87090f32434ba12c4e391649a8456b7e723121959830b780d",
+          "sha256": "beace72c9b4afb5483a0719bbc34820f501e15eb573e6d376b8e2f18ee5da480"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "40fc3b3d619e666a4907b4e258a0edb2b7e9294f0adeff1e734ddce09dbca20f",
+          "sha256": "b3916e06a2297c70cf9a82532fbdd1b6c508c07fa8a2eddd0ca5d536abc0d8be"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "bffd384a1f79dc921b03da60c2817c9bac93b2a9406e441d143f85bb582d1a8a",
+          "sha256": "c4481e3f098da489a483cb92921d8de019bcca5a1f09eb1d98dae7f45a861239"
+        },
+        {
+          "path": "server/tests/security/assistant_workspace_browser_bridge.py",
+          "before_sha256": "442c104f8c4c7e94faea9ebf554156a98c49ed3091e605fc02093b32f40252ee",
+          "sha256": "71320a9d99f86fbf369dd67941da3986f75f6acd1bcf1593c4c8084f1d6ab2b8"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "65e739dfa9efd410f77197c31e519d09b672e63d043d879110b528ce95bc5464",
+          "sha256": "175f092412c38b3bb050e2dad06129af5ff6895b255b775a350139d6de5763d9"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_http.py",
+          "before_sha256": "bfdc2f94e58817e83fb674d7217a54944e293f960247473df67d81cec618af08",
+          "sha256": "ef8ec8d786d68acba5ee5cacc962fa4456bba3bbcb0720a985951ad4f046cdc0"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_store.py",
+          "before_sha256": "990bd3c952f89b7333566bb3b195da04c5bde1abf8fb33bb5745bd85f75f55aa",
+          "sha256": "20d73c7f1aa5b1f6f10c50455ac629ab806a9c566e5b21d9bed1acab3970b26f"
+        }
+      ],
+      "notes": "Browse older owned conversations with scoped keyset pages and preserve narrow Search controls."
+    },
+    {
+      "feature": "jude-reply-playback-speed-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_TURNS_V1.md",
+          "before_sha256": "0c96c344cea16fa2b7b634de469d727830086d9e56071ca4e6e784c4e57099b9",
+          "sha256": "38eb5abce2a9ed2f7dc7634ccb45d4c8982220cb5fea10adbffef827380a76d2"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "99cf899cfb3b142dd420f428d169708c5436ed2d01c4d5e2c680eb7cbd4299f8",
+          "sha256": "05e73cc97bcbf773ba8b734565a114cea87db1f5b1764bd6a6a07337f48429be"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "7d4efec52e8a5a95f7036363f9c7bef51ae6f560a25c5652169156dc48c939ba",
+          "sha256": "3800ab9b25966cbdb24644501c74c6874933e510589c459f14c2ee0eb07de306"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "78080ebac6b41619c50052b2607b8457bae18ce9f0c12c9615addefff80c8681",
+          "sha256": "f9635784186957b2b02a6de8a2d3a933ecd6682116a8718e206582769b4ba9cc"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "b3916e06a2297c70cf9a82532fbdd1b6c508c07fa8a2eddd0ca5d536abc0d8be",
+          "sha256": "5ec3186c6917d7015cf71efec1a584fbf7c34bf8a9113ca5cb2d4e6de10a9cfa"
+        },
+        {
+          "path": "server/tests/security/test_assistant_voice_session_browser.cjs",
+          "before_sha256": "33d79a649f632554caf3309f212c8caced7694d84f6e213054f8eab04d9ec863",
+          "sha256": "3df17a065ec209d3265a18e97bd2818515ef756732a77ba5146868823141642a"
+        }
+      ],
+      "notes": "Apply the account reply speed preference in Jude Web playback."
+    },
+    {
+      "feature": "highlight-saved-story-refinement-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/STORY_REFINEMENT.md",
+          "before_sha256": "0dae16d3695a1e8e17dc73ea26c3f7441d262bdb01cd0dc371b76501095f8750",
+          "sha256": "b7b51051260828471465a6ed7f531a7539fe9b10ad5ece5eb84bdca865e83116"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "05e73cc97bcbf773ba8b734565a114cea87db1f5b1764bd6a6a07337f48429be",
+          "sha256": "aba701914a6460aeaab633e5f1d345ea7942c738428e4f70ecabd676f67b6241"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "3800ab9b25966cbdb24644501c74c6874933e510589c459f14c2ee0eb07de306",
+          "sha256": "ebf208328d2a778f3d0949757fe20072228a4757fa26bdd8e435186864f39973"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "a1ed626165c6ce20d5df833f0e024f1519f6a3e3e9ff35356bc82e40e511caa0",
+          "sha256": "20be687d5bb59dc60c7a6fe70c23700bb48b673ef4dfab71c005f40627e38b8c"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "c4481e3f098da489a483cb92921d8de019bcca5a1f09eb1d98dae7f45a861239",
+          "sha256": "b26b7d0a925388f179e7652943993d6b15202d829436f616b980d5afb37b31b0"
+        },
+        {
+          "path": "server/tests/security/test_story_auto_refinement_browser.cjs",
+          "before_sha256": "27b5def828ac77998643e04d0c5c5fe3d0a9a3811ecd2222e49e9ac8d6c3d594",
+          "sha256": "f8c6b88c6037d24fb1501eabb4e3dd8c57e50383e4ca9f75c62cb72f8588119b"
+        }
+      ],
+      "notes": "Highlight changed wording in the saved story draft comparison."
+    },
+    {
+      "feature": "keep-conversation-picker-stable-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PRIVATE_ASSISTANT_HISTORY_V1.md",
+          "before_sha256": "372e516c7b14ff4207b19f3254f3d8746ddb5e3f2ac1c11c29c930f3a5bcb633",
+          "sha256": "eb2ec766b1507ba05f154987c999def22d91b44a1927e743db7960c866b9fd26"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "f9635784186957b2b02a6de8a2d3a933ecd6682116a8718e206582769b4ba9cc",
+          "sha256": "c1bba5a3ca33475a5faddb227c609eb46c5ba8e152d39e706b6b87373c746989"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "175f092412c38b3bb050e2dad06129af5ff6895b255b775a350139d6de5763d9",
+          "sha256": "e38bfc9ed5badfeb2f26f160ef53750e446beac11a8d9a11bbcaaad826eea2c5"
+        }
+      ],
+      "notes": "Preserve conversation picker options while typing within the same current scope."
+    },
+    {
+      "feature": "retry-saved-story-refinement-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/STORY_REFINEMENT.md",
+          "before_sha256": "b7b51051260828471465a6ed7f531a7539fe9b10ad5ece5eb84bdca865e83116",
+          "sha256": "ed58f4c10777d438bf2b4a32a63f65ad6932e409b74db1e4bc4f1146d976071b"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "aba701914a6460aeaab633e5f1d345ea7942c738428e4f70ecabd676f67b6241",
+          "sha256": "f1954858923ae9ac30f9ba5409aafa7e641b047ac039e26784e059e53e12a1e2"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "ebf208328d2a778f3d0949757fe20072228a4757fa26bdd8e435186864f39973",
+          "sha256": "6810193f48653c8a525674dffbbbd612a22af2676d53ae7ef47c56f5f7ce4cad"
+        },
+        {
+          "path": "server/backend/app/ui/access/story-workspace.js",
+          "before_sha256": "20be687d5bb59dc60c7a6fe70c23700bb48b673ef4dfab71c005f40627e38b8c",
+          "sha256": "08b2cf948bd78ae70e40d77250e2852f7c3ebb4f3b02dff71d62c59471352fc2"
+        },
+        {
+          "path": "server/tests/security/test_story_auto_refinement_browser.cjs",
+          "before_sha256": "f8c6b88c6037d24fb1501eabb4e3dd8c57e50383e4ca9f75c62cb72f8588119b",
+          "sha256": "ece8d07030d4c95e1fc3902422e71b9c74a9227799497aeed097467d72c8480a"
+        }
+      ],
+      "notes": "Expose the existing exact-version local refinement retry in the story reader."
+    },
+    {
+      "feature": "distinguish-photo-video-actions-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "c1bba5a3ca33475a5faddb227c609eb46c5ba8e152d39e706b6b87373c746989",
+          "sha256": "b969bf6c39fa8829215ab840587f4f9ba5a4c2614096bb90e9e175e1fb83b7b8"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "0c6f5c1f4716e5eba5fa892d563bae1c060032ef2a53ed37bb9369bc2e48bf80",
+          "sha256": "91633833655e271166fc599968f6cc45f64fc58ae66885ab574f03ad92fccb83"
+        }
+      ],
+      "notes": "Use media-specific result actions and exercise the exact viewer controls."
+    },
+    {
+      "feature": "use-configured-browser-for-local-web-checks-20261126",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "server/tests/security/test_memoir_review_page_browser.cjs",
+          "before_sha256": "f95640f22e0f0448c7a3cc362e67eb421c3b1683f84fbdcf61adfa13d3ba8db5",
+          "sha256": "2170ac8e76811e23047592a067351c44e3729e4f10a4b8ceb0a2cb364247fbab"
+        },
+        {
+          "path": "server/tests/security/test_story_proposal_wording_browser.cjs",
+          "before_sha256": "74e2ba9ac3abb224738109c6ae00c0c7c3e986de41cad7080c4340abd5d0d55d",
+          "sha256": "01ea6107438800f62de52e111df12c6271433d7eff23649070c06a178911b853"
+        },
+        {
+          "path": "server/tests/security/test_story_titles_browser.cjs",
+          "before_sha256": "592b9a7ae42310a9ede6ad7a9205fa5e691bb57adb54f7953a94c4ac92e51729",
+          "sha256": "6a44b519a600e58242a939a0a68bff22284b1a4eca513b9982bf4d0a615676f5"
+        },
+        {
+          "path": "server/tests/security/test_upload_history_browser.cjs",
+          "before_sha256": "d0cfd9be855cf641102ab978b97eca68a4dff57e2bdeeeb67d7d6b39b2253e0b",
+          "sha256": "36bd07a7e9dffa52d1cf781f646a99f03c53bd73cc5e9f123f87520323764e87"
+        }
+      ],
+      "notes": "Use the configured Chromium executable in four existing Web fixtures."
+    },
+    {
+      "feature": "on-this-day-library-home",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "67596c572e671f85a86dc97a39ccafde2ffccc8e62e4b2b35efdbe1a6afa9f1a",
+          "sha256": "7fcf1dd2a852ce3b8e477b11d516c9d2aaf9e21bf8deb73247a203a5e66d64f6"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "6810193f48653c8a525674dffbbbd612a22af2676d53ae7ef47c56f5f7ce4cad",
+          "sha256": "d8da170e04663a547bc2c33cab6cf22e07c48945f383e6aa19b597bb32f899c3"
+        },
+        {
+          "path": "server/backend/app/access/library.py",
+          "before_sha256": "a44b80bbb326947fc049f38ba018507fea37450091e0d5f2fd1e0b30c8ade0b0",
+          "sha256": "e300d71e6d77c92464f24248c3dcf858b4e699ee3617c496ad0e58b55542efc7"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "b969bf6c39fa8829215ab840587f4f9ba5a4c2614096bb90e9e175e1fb83b7b8",
+          "sha256": "9a3881585d018636a863a1669336b5fb06fd9d68d5221c0b58765f6d32684022"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "5ec3186c6917d7015cf71efec1a584fbf7c34bf8a9113ca5cb2d4e6de10a9cfa",
+          "sha256": "7f9851ebda2e011de65c2ac1d5fa423c7ba81772281178278f5cd34373ca4958"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "b26b7d0a925388f179e7652943993d6b15202d829436f616b980d5afb37b31b0",
+          "sha256": "68401ab2e16644a95512c97f745aa91ddec5e9443ad1a3eaf770163d941f4460"
+        },
+        {
+          "path": "server/tests/security/test_library_reads.py",
+          "before_sha256": "02591d0c068fb20ce5ceca92900a62ec775f7c4eea079c7bf4ce0673dbc0d94f",
+          "sha256": "4b5ad6ca7bd121727b8869fc8ca959ee93a4a3fd1fb84203ecd69e15f76e2a3e"
+        },
+        {
+          "path": "server/tests/security/test_memory_stories_browser.cjs",
+          "before_sha256": "3bab3b6eed99850b29568e71622bbc68a86bb4253dfa621806ee558dfe2955c0",
+          "sha256": "0600e8c90e6f20c8ece7b30174f023244760c7085ab012751bf605dd0b5cb573"
+        }
+      ],
+      "notes": "Add a private On this day shelf and keep its protected viewer reachable at enlarged text size."
+    },
+    {
+      "feature": "search-selection-family-album",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "7fcf1dd2a852ce3b8e477b11d516c9d2aaf9e21bf8deb73247a203a5e66d64f6",
+          "sha256": "c9631c5f2a6dd68006c9dd976a664fc5fa1338bf7be419eb64d57284a05979ff"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "d8da170e04663a547bc2c33cab6cf22e07c48945f383e6aa19b597bb32f899c3",
+          "sha256": "202c7f7151d3120afa04800a2d916bf548831a5f7506b510de4fa1edef4ca60d"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "9a3881585d018636a863a1669336b5fb06fd9d68d5221c0b58765f6d32684022",
+          "sha256": "cf724ce5488f33028615e1e98e6138b998423def0aa290023c41723db494ca6d"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "7f9851ebda2e011de65c2ac1d5fa423c7ba81772281178278f5cd34373ca4958",
+          "sha256": "142481ec8d9bc285c1a19eb28c9581815988f6e846b77537262ecd47ea389717"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "68401ab2e16644a95512c97f745aa91ddec5e9443ad1a3eaf770163d941f4460",
+          "sha256": "b75ba107353a6adba66f54806cb5005eda44f6c33f838429cc6a19dc4ead314f"
+        },
+        {
+          "path": "server/tests/security/test_assistant_story_selection_browser.cjs",
+          "before_sha256": "91633833655e271166fc599968f6cc45f64fc58ae66885ab574f03ad92fccb83",
+          "sha256": "40fc807f0794cd5664ecb8dc8397ac462a7a0ae9e7222e29d6a021658876adb4"
+        }
+      ],
+      "notes": "Prepare a current private Search selection in the existing owner-only album editor and preserve explicit saving."
+    },
+    {
+      "feature": "followup-repeat-capture-dates-by-year",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "c9631c5f2a6dd68006c9dd976a664fc5fa1338bf7be419eb64d57284a05979ff",
+          "sha256": "06806ee22887197d131cfb937724c45944c972c7994dcaeb3414cd9eaef1b35d"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "202c7f7151d3120afa04800a2d916bf548831a5f7506b510de4fa1edef4ca60d",
+          "sha256": "cadf942b57b76b89fa9b3bf6d0adfc28716726adefa644dd6c7cdda5ca094902"
+        },
+        {
+          "path": "server/backend/app/access/assistant.py",
+          "before_sha256": "b3eae6e6f0e8164d1ae2546044324e4f02d55559eeefd05b254b4b41f9777ed2",
+          "sha256": "e73d665955b57a56d6cb759b38bd19713d62687ccbbb3e5b49b65cece89e2655"
+        },
+        {
+          "path": "server/backend/app/access/search_refinement.py",
+          "before_sha256": "c95b3215c3bbf7f74039a2eb17e1b77fe40ac0c86b3857de7c34b3b329861215",
+          "sha256": "0327e0bc0cfbdebf97534bfbc70d49064860a3c6c3cc6d3bf3c29c8048fba7d7"
+        },
+        {
+          "path": "server/tests/security/test_search_refinement.py",
+          "before_sha256": "51823986fedbcfcdccf207f267c3b169b675ffc5bf1acaf40c691300a0f573ab",
+          "sha256": "1eecd4889e0c7e6834d4a17763a4f493d08a2705e0e2eb6630912692dce50142"
+        }
+      ],
+      "notes": "Reuse the current Search date window in a specified year with exact calendar handling and preserved filters."
+    },
+    {
+      "feature": "find-private-jude-conversations",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "06806ee22887197d131cfb937724c45944c972c7994dcaeb3414cd9eaef1b35d",
+          "sha256": "1d21b83776646c2fb687f459ba4ba1fc9deade6cd960f333b4e9cf0b61d791e1"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "cadf942b57b76b89fa9b3bf6d0adfc28716726adefa644dd6c7cdda5ca094902",
+          "sha256": "4413f2c76f378694b0025bf6bb8922bd3b9a6f362e5172288df0ffbf2c806673"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_store.py",
+          "before_sha256": "15eb3a589d4b6c32b458a3cf28ac78cbf06c04c883094f9fc0114d7f0ee704d9",
+          "sha256": "472748ae80c9f0e1acc39f5df676347f399eafddde2be7a75b7d4c58cac613df"
+        },
+        {
+          "path": "server/backend/app/access/assistant_workspace_transport.py",
+          "before_sha256": "8c1a4f71c09e20bb8849bb96afd8100d863f4daaaaf8c25554ddbbfe6c691a2f",
+          "sha256": "a0c5d08bdde13bb82f9581d6d9964bead1aabf8ae3f1d3fbb4a12050a25851ed"
+        },
+        {
+          "path": "server/backend/app/access/boundary.py",
+          "before_sha256": "14d0edc05047e2a80c0ff8496a68f638b7d69338aa9ffaf4d9c968160e25c604",
+          "sha256": "34e7375ab2cf63ee3ed2adb9aa2b1fcf131414142813dea33fb88f92c1662d37"
+        },
+        {
+          "path": "server/backend/app/ui/access/app.js",
+          "before_sha256": "cf724ce5488f33028615e1e98e6138b998423def0aa290023c41723db494ca6d",
+          "sha256": "29dc10343ba83758f6d49eadc4c9f2275ce3a254678fedcc113f15a21305fcfd"
+        },
+        {
+          "path": "server/backend/app/ui/access/assistant-private-workspace.js",
+          "before_sha256": "beace72c9b4afb5483a0719bbc34820f501e15eb573e6d376b8e2f18ee5da480",
+          "sha256": "316bd1c8d6b7f78dbf851b0aee9464e4651c6163e507645e65665e8413feda47"
+        },
+        {
+          "path": "server/backend/app/ui/access/index.html",
+          "before_sha256": "142481ec8d9bc285c1a19eb28c9581815988f6e846b77537262ecd47ea389717",
+          "sha256": "f36f784210f272958437f012b4a4df24f2247ea2f02a1ca41a5bd4695fe92c2e"
+        },
+        {
+          "path": "server/backend/app/ui/access/styles.css",
+          "before_sha256": "b75ba107353a6adba66f54806cb5005eda44f6c33f838429cc6a19dc4ead314f",
+          "sha256": "f58228aab158b88bb60db0b2d52e8c562c42c912194c4f71496410a6ada384b4"
+        },
+        {
+          "path": "server/docs/security/route_capabilities.json",
+          "before_sha256": "145f01f495f9ca98117d426ba77d347653d93015b963f75932290a781f87d867",
+          "sha256": "d24adc78cefd5e88d425a25d92e611414c559e73a43c029b82392c71ffc63d76"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_browser.cjs",
+          "before_sha256": "e38bfc9ed5badfeb2f26f160ef53750e446beac11a8d9a11bbcaaad826eea2c5",
+          "sha256": "de4116f5da3c9321547a046f3c249be3759798533948d15a3a5ab32d16cad138"
+        },
+        {
+          "path": "server/tests/security/test_assistant_workspace_http.py",
+          "before_sha256": "ef8ec8d786d68acba5ee5cacc962fa4456bba3bbcb0720a985951ad4f046cdc0",
+          "sha256": "35e9f889e185fe0b69f96d1ff72952263e1549f0951e71d6954f9143fb882c4e"
+        },
+        {
+          "path": "server/tests/security/test_closed_application.py",
+          "before_sha256": "d3a22e201fe00c86cdb59554b09ef7b8f62c0f34d79e1e1fa8ddf6a06343e3c5",
+          "sha256": "2529c40f5caf4e188b34c0e38b2e80b988c35867bb0d9e1db08e52f503dac6ca"
+        }
+      ],
+      "notes": "Search current-library private conversation labels independently of the active thread and original assistant work."
+    },
+    {
+      "feature": "prefer-reviewed-alias-ownership",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "1d21b83776646c2fb687f459ba4ba1fc9deade6cd960f333b4e9cf0b61d791e1",
+          "sha256": "e7e9d70a0afb60c03491f89127da70d0f4e75ec6ac202149da576792c8cee9fb"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "4413f2c76f378694b0025bf6bb8922bd3b9a6f362e5172288df0ffbf2c806673",
+          "sha256": "931d5f216572c4b3ecf96a37598f335ff065f0e02a0901914d3e1d99f3977170"
+        },
+        {
+          "path": "server/backend/app/access/story_name_grounding.py",
+          "before_sha256": "e85bae4ea1d10475287f9cc7dfd326c2038794bcf7af037bd022adb78a28f01a",
+          "sha256": "16ad04cb3cbe69c8c3308c0f38d1bc68c97630e27d79f36bade9d7b362ef5f8f"
+        },
+        {
+          "path": "server/tests/security/test_story_name_grounding.py",
+          "before_sha256": "b8acf2a9c7bce91a70a6d4660009a16dcfb9ac9f653453e4c7349c005d524c68",
+          "sha256": "4eee55f5fe761ced07e1cf47f691b0afaf43e85e59a4739bed96cf4fa5ecba34"
+        }
+      ],
+      "notes": "Use exact reviewed ownership before phonetic name repair and keep conflicting name phrases for review."
+    },
+    {
+      "feature": "synchronize-bilingual-roadmap-export",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/FEATURES.md",
+          "before_sha256": "e7e9d70a0afb60c03491f89127da70d0f4e75ec6ac202149da576792c8cee9fb",
+          "sha256": "5b3db27bdac02faefee7d8eb53aad54903c018c6b97b52ed6dfbae5f10b27117"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "f1954858923ae9ac30f9ba5409aafa7e641b047ac039e26784e059e53e12a1e2",
+          "sha256": "07dde74e899ecb9c3277f8dd3b4bde66d029f8a35349b83c611c05a3f38b1372"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "931d5f216572c4b3ecf96a37598f335ff065f0e02a0901914d3e1d99f3977170",
+          "sha256": "05cc2941aed20e75e0212563b99efe64ecb68014bc0afc3e1cdd0f5f2c6d3759"
+        }
+      ],
+      "notes": "Record the overnight feature changes in the bilingual source and regenerate the packaged roadmap."
     }
   ]
 }

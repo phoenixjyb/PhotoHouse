@@ -1,5 +1,5 @@
 'use strict';
-/* Private assistant conversation client. No browser storage or implicit network work. */
+/* Private assistant conversation client. The Web UI can supply tab-local storage for story selections. */
 (function install(root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -16,6 +16,7 @@
   const MAX_MEMORY_REVISION = 9223372036854775806n;
   const MAX_MEMORY_CARDS = 12;
   const MAX_MEMORY_RESULTS = 256;
+  const MAX_STORY_FRAMES = 24;
 
   class PrivateAssistantError extends Error {
     constructor(code,status=null) { super(SAFE_CODES.has(code)||STORE_ERRORS.has(code)?code:'request_failed'); this.name='PrivateAssistantError'; this.code=SAFE_CODES.has(code)||STORE_ERRORS.has(code)?code:'request_failed';this.status=status; }
@@ -97,9 +98,9 @@
     return Object.freeze({exchange_id:row.exchange_id,revision:row.revision,created_at:row.created_at,expires_at:row.expires_at,input_text:row.input_text,reply:row.reply,cards:Object.freeze(cards),receipt_count:row.receipt_count,...(row.request_id?{request_id:row.request_id}:{})});
   }
   function validateCapabilities(v) {
-    if(!exactKeys(v,['version','available','threads','preferences','preferences_applied','server_owned_turns'],['applied_preferences','thread_labels','history_paging','reply_speech','search'])||v.version!==1||
+    if(!exactKeys(v,['version','available','threads','preferences','preferences_applied','server_owned_turns'],['applied_preferences','thread_labels','history_paging','reply_speech','search','discard_pending','thread_search'])||v.version!==1||
       ['available','threads','preferences','preferences_applied','server_owned_turns'].some(k=>typeof v[k]!=='boolean')||
-      ['thread_labels','history_paging','reply_speech'].some(k=>Object.hasOwn(v,k)&&typeof v[k]!=='boolean')||
+      ['thread_labels','history_paging','reply_speech','discard_pending','thread_search'].some(k=>Object.hasOwn(v,k)&&typeof v[k]!=='boolean')||
       (Object.hasOwn(v,'applied_preferences')&&(!Array.isArray(v.applied_preferences)||v.applied_preferences.some(x=>x!=='locale')||new Set(v.applied_preferences).size!==v.applied_preferences.length)))fail('invalid_response');
     let search=null;
     if(Object.hasOwn(v,'search')){
@@ -302,6 +303,24 @@
     if(new Set(items.map(item=>item.id)).size!==items.length)fail('invalid_response');
     return Object.freeze({...v,items:Object.freeze(items)});
   }
+  function validStoryResume(value) {
+    return exactKeys(value,['format','account','library','thread_id','request_id','revision',
+      'version','binding','fingerprint','total','picks'])&&value.format===1&&
+      safeDisplayText(value.account,128)&&safeDisplayText(value.library,128)&&
+      uuid(value.thread_id)&&uuid(value.request_id)&&safeInt(value.revision)&&
+      [1,2,3].includes(value.version)&&typeof value.binding==='string'&&/^[0-9a-f]{64}$/.test(value.binding)&&
+      typeof value.fingerprint==='string'&&/^[0-9a-f]{64}$/.test(value.fingerprint)&&
+      safeInt(value.total)&&value.total>0&&value.total<=100000&&
+      Array.isArray(value.picks)&&value.picks.length>0&&value.picks.length<=MAX_STORY_FRAMES&&
+      value.picks.every(pick=>exactKeys(pick,['id','page'])&&assetId(pick.id)&&
+        safeInt(pick.page)&&pick.page>=1&&pick.page<=Math.ceil(value.total/20))&&
+      new Set(value.picks.map(pick=>pick.id)).size===value.picks.length;
+  }
+  function sameStoryResult(source, other) {
+    return source.thread_id===other.thread_id&&source.request_id===other.request_id&&
+      source.revision===other.revision&&source.version===other.version&&source.binding===other.binding&&
+      source.fingerprint===other.fingerprint&&source.total===other.total;
+  }
   function validateAgentCapabilities(v){
     if(!exactKeys(v,['version','available','profile'])||v.version!==1||typeof v.available!=='boolean'||v.profile!=='agent_media_search_v1')fail('invalid_response');
     return Object.freeze({...v});
@@ -351,8 +370,11 @@
     if((v.status==='pending'||v.status==='completed')&&v.error!==null)fail('invalid_response');
     return Object.freeze({...v,result:v.result?validateResult(v.result,library,v.recovered,allowMemory&&mode==='POST'&&!v.recovered,allowMemoryActions&&mode==='POST'&&!v.recovered,searchVersion):null});
   }
-  function validateThreadDetail(v, library, expectedId, sceneRewordOptIn=false) {
-    if(typeof sceneRewordOptIn!=='boolean'||!exactKeys(v,['version','thread','exchanges'],['latest_request_id','has_older_exchanges',...(sceneRewordOptIn?['scene_reword']:[])])||v.version!==1||!Array.isArray(v.exchanges)||
+  function validateThreadDetail(v, library, expectedId, sceneRewordOptIn=false, pendingTurnOptIn=false) {
+    const optional=['latest_request_id','has_older_exchanges'];
+    if(sceneRewordOptIn)optional.push('scene_reword');
+    if(pendingTurnOptIn)optional.push('pending_turn');
+    if(!exactKeys(v,['version','thread','exchanges'],optional)||v.version!==1||!Array.isArray(v.exchanges)||
       v.exchanges.length>20||
       (Object.hasOwn(v,'latest_request_id')&&v.latest_request_id!==null&&!uuid(v.latest_request_id))||
       (Object.hasOwn(v,'has_older_exchanges')&&typeof v.has_older_exchanges!=='boolean'))fail('invalid_response');
@@ -363,9 +385,17 @@
       if(cue!==null&&(!exactKeys(cue,['version','request_id','revision','query'])||cue.version!==1||!uuid(cue.request_id)||!safeInt(cue.revision)||cue.revision!==thread.revision||!validSceneQuery(cue.query)))fail('invalid_response');
       sceneReword=cue===null?null:Object.freeze({...cue});
     }
+    let pendingTurn;
+    if(Object.hasOwn(v,'pending_turn')){
+      const turn=v.pending_turn;
+      if(turn!==null&&(!exactKeys(turn,['version','request_id','revision','text'])||turn.version!==1||
+        !uuid(turn.request_id)||turn.request_id===v.latest_request_id||turn.revision!==thread.revision||
+        typeof turn.text!=='string'||!turn.text||byteLength(turn.text)>1024||sceneReword))fail('invalid_response');
+      pendingTurn=turn===null?null:Object.freeze({...turn});
+    }
     const exchanges=v.exchanges.map(validateExchange);let previous=0;const ids=new Set();for(const e of exchanges){if(e.revision<=previous||ids.has(e.exchange_id))fail('invalid_response');previous=e.revision;ids.add(e.exchange_id);}
     if(v.has_older_exchanges===true&&exchanges.length===0)fail('invalid_response');
-    return Object.freeze({version:1,thread,exchanges:Object.freeze(exchanges),...(Object.hasOwn(v,'latest_request_id')?{latest_request_id:v.latest_request_id}:{}),...(Object.hasOwn(v,'has_older_exchanges')?{has_older_exchanges:v.has_older_exchanges}:{}),...(Object.hasOwn(v,'scene_reword')?{scene_reword:sceneReword}:{})});
+    return Object.freeze({version:1,thread,exchanges:Object.freeze(exchanges),...(Object.hasOwn(v,'latest_request_id')?{latest_request_id:v.latest_request_id}:{}),...(Object.hasOwn(v,'has_older_exchanges')?{has_older_exchanges:v.has_older_exchanges}:{}),...(Object.hasOwn(v,'scene_reword')?{scene_reword:sceneReword}:{}),...(Object.hasOwn(v,'pending_turn')?{pending_turn:pendingTurn}:{})});
   }
   function validateHistoryPage(v, threadId, library, snapshotRevision, beforeRevision) {
     if(!exactKeys(v,['version','thread_id','snapshot_revision','before_revision','exchanges','has_older_exchanges','next_before_revision'])||
@@ -397,12 +427,14 @@
     return new PrivateAssistantError('request_failed',Number.isInteger(status)&&status>=400?status:null);
   }
 
-  function createController({scope,request,newUUID,onChange=()=>{},hydrateResults=async result=>result}={}) {
+  function createController({scope,request,newUUID,onChange=()=>{},hydrateResults=async result=>result,storyResumeStore=null}={}) {
     if(typeof scope!=='function'||typeof request!=='function')throw new TypeError('scope and request are required');
     let closed=false,instance=1,scopeStamp='',revokedStamp=null,revision=0,activeThread=null,draft='',sceneDraft='',sceneRewordRequired=false,sceneAvailable=false,sceneProbeNonce=0,scenePageProbeNonce=0,scenePageAvailable=false,scenePageActive=false,scenePageResult=null,scenePageLoading=false,resultPageProbeNonce=0,resultPageAvailable=false,resultPageActive=false,resultPageResult=null,resultPageLoading=false,sceneRequestId=null,storyResultSource=null,storySelection=[],storySelectionNonce=0,storySelectionBusy=false,storySelectionBusyToken=0,storyPrepareNonce=0,storyDirectionInput=null,pendingTurn=null,pendingCreation=null,capabilities=null,capabilitiesProbeNonce=0,agentAvailable=false,agentProbeNonce=0,savedMemoryAvailable=false,savedMemorySpeechAvailable=false,savedMemoryReaderAvailable=false,savedMemoryFollowupAvailable=false,savedMemoryReadingAvailable=false,savedMemorySegmentReadingAvailable=false,savedMemoryActionsAvailable=false,savedMemoryProbeNonce=0,savedMemorySpeechProbeNonce=0,savedMemoryReaderProbeNonce=0,savedMemoryFollowupProbeNonce=0,savedMemoryReadingProbeNonce=0,savedMemorySegmentReadingProbeNonce=0,savedMemoryActionsProbeNonce=0,threads=[],preferences=null,currentResult=null,contextState='unavailable',historyDetail=null,historyLoading=false,historyRefreshRequired=false,historyNonce=0,controllers=new Set(),hydrationControllers=new Set(),speechControllers=new Set(),readGeneration=0,speechSource=null,savedMemoryReaderSource=null,openingMemoryCard=false,openingMemorySpeechOrdinal=null,openingMemorySpeechEntry=null,segmentMemorySpeechOrdinal=null,segmentMemorySpeechIndex=null,segmentMemorySpeechEntry=null;
     const snapshot=()=>{const s=scope()||{};return {account:s.account??null,library:s.library==null?null:String(s.library),generation:s.generation??s.membershipGeneration??s.epoch??null,locked:!!s.locked};};
+    let threadListNonce=0, threadPageStarts=[null], hasOlderThreads=false, threadQuery=null;
+    function resetThreadPages(){threadListNonce++;threadPageStarts=[null];hasOlderThreads=false;threadQuery=null;}
     const stamp=s=>JSON.stringify([s.account,s.library,s.generation,s.locked]);
-    const stateValue=()=>{const s=snapshot(),memorySpeechReady=!speechSource?.savedMemory||(savedMemoryAvailable&&savedMemorySpeechAvailable),readerReady=!!savedMemoryReaderSource&&savedMemoryReaderAvailable&&savedMemoryAvailable&&savedMemoryReaderSource.thread_id===activeThread?.thread_id&&savedMemoryReaderSource.revision===revision&&savedMemoryReaderSource.result===currentResult&&savedMemoryReaderSource.account===s.account&&savedMemoryReaderSource.library===s.library&&savedMemoryReaderSource.generation===s.generation&&!pendingTurn&&!pendingCreation&&!s.locked&&revokedStamp!==stamp(s),freshMemorySource=!!savedMemoryReaderSource&&savedMemoryReaderSource.result===currentResult&&savedMemoryReaderSource.thread_id===activeThread?.thread_id&&savedMemoryReaderSource.revision===revision&&activeThread?.revision===revision&&savedMemoryReaderSource.account===s.account&&savedMemoryReaderSource.library===s.library&&savedMemoryReaderSource.generation===s.generation&&currentResult?.kind==='memory_cards'&&currentResult.memory_cards.length>0&&!pendingTurn&&!pendingCreation&&!s.locked&&revokedStamp!==stamp(s),followupReady=freshMemorySource&&savedMemoryFollowupAvailable&&savedMemoryAvailable,savedMemoryReadingReady=freshMemorySource&&savedMemoryReadingAvailable&&savedMemoryAvailable,savedMemorySegmentReadingReady=freshMemorySource&&savedMemorySegmentReadingAvailable&&savedMemoryAvailable&&savedMemorySpeechAvailable&&capabilities?.available===true&&capabilities?.server_owned_turns===true&&capabilities?.reply_speech===true,savedMemoryActionReady=freshMemorySource&&savedMemoryActionsAvailable&&savedMemoryAvailable,speechReady=!!speechSource&&speechSource.kind!=='open'&&capabilities?.reply_speech===true&&memorySpeechReady&&speechSource.thread_id===activeThread?.thread_id&&speechSource.revision===revision&&speechSource.account===s.account&&speechSource.library===s.library&&speechSource.generation===s.generation&&!pendingTurn&&!pendingCreation&&!scenePageActive&&!scenePageLoading&&!resultPageActive&&!resultPageLoading&&!s.locked&&revokedStamp!==stamp(s),storySelectionReady=storySelectionEligible(s);return Object.freeze({closed,locked:s.locked||revokedStamp===stamp(s),account:s.account,library:s.library,capabilities,agentAvailable,savedMemoryAvailable,savedMemorySpeechAvailable,savedMemoryReaderAvailable,savedMemoryFollowupAvailable,savedMemoryReadingAvailable,savedMemorySegmentReadingAvailable,savedMemorySegmentReadingReady,savedMemoryActionsAvailable,savedMemoryActionReady,savedMemoryFollowupReady:followupReady,savedMemoryReaderReady:readerReady,savedMemoryReadingReady,openingMemoryCard,openingMemorySpeechOrdinal,segmentMemorySpeechOrdinal,segmentMemorySpeechIndex,threads:Object.freeze(threads.slice()),activeThread,draft,sceneDraft,sceneRewordRequired,sceneAvailable,sceneReady:sceneReady(),scenePageAvailable,scenePageActive,scenePageResult,scenePageLoading,resultPageAvailable,resultPageActive,resultPageResult,resultPageLoading,sceneRequestId,storySelection:Object.freeze(storySelection.map(entry=>entry.item)),storySelectionReady,storySelectionBusy,pendingTurn:pendingTurn&&Object.freeze({...pendingTurn}),pendingCreation:pendingCreation&&Object.freeze({...pendingCreation}),preferences,revision,currentResult,contextState,historyDetail,historyLoading,historyRefreshRequired,speechReady,speechReplyBytes:speechReady?speechSource.replyBytes:null,speechKind:speechReady?speechSource.kind:null});};
+    const stateValue=()=>{const s=snapshot(),memorySpeechReady=!speechSource?.savedMemory||(savedMemoryAvailable&&savedMemorySpeechAvailable),readerReady=!!savedMemoryReaderSource&&savedMemoryReaderAvailable&&savedMemoryAvailable&&savedMemoryReaderSource.thread_id===activeThread?.thread_id&&savedMemoryReaderSource.revision===revision&&savedMemoryReaderSource.result===currentResult&&savedMemoryReaderSource.account===s.account&&savedMemoryReaderSource.library===s.library&&savedMemoryReaderSource.generation===s.generation&&!pendingTurn&&!pendingCreation&&!s.locked&&revokedStamp!==stamp(s),freshMemorySource=!!savedMemoryReaderSource&&savedMemoryReaderSource.result===currentResult&&savedMemoryReaderSource.thread_id===activeThread?.thread_id&&savedMemoryReaderSource.revision===revision&&activeThread?.revision===revision&&savedMemoryReaderSource.account===s.account&&savedMemoryReaderSource.library===s.library&&savedMemoryReaderSource.generation===s.generation&&currentResult?.kind==='memory_cards'&&currentResult.memory_cards.length>0&&!pendingTurn&&!pendingCreation&&!s.locked&&revokedStamp!==stamp(s),followupReady=freshMemorySource&&savedMemoryFollowupAvailable&&savedMemoryAvailable,savedMemoryReadingReady=freshMemorySource&&savedMemoryReadingAvailable&&savedMemoryAvailable,savedMemorySegmentReadingReady=freshMemorySource&&savedMemorySegmentReadingAvailable&&savedMemoryAvailable&&savedMemorySpeechAvailable&&capabilities?.available===true&&capabilities?.server_owned_turns===true&&capabilities?.reply_speech===true,savedMemoryActionReady=freshMemorySource&&savedMemoryActionsAvailable&&savedMemoryAvailable,speechReady=!!speechSource&&speechSource.kind!=='open'&&capabilities?.reply_speech===true&&memorySpeechReady&&speechSource.thread_id===activeThread?.thread_id&&speechSource.revision===revision&&speechSource.account===s.account&&speechSource.library===s.library&&speechSource.generation===s.generation&&!pendingTurn&&!pendingCreation&&!scenePageActive&&!scenePageLoading&&!resultPageActive&&!resultPageLoading&&!s.locked&&revokedStamp!==stamp(s),storySelectionReady=storySelectionEligible(s);return Object.freeze({closed,locked:s.locked||revokedStamp===stamp(s),account:s.account,library:s.library,capabilities,agentAvailable,savedMemoryAvailable,savedMemorySpeechAvailable,savedMemoryReaderAvailable,savedMemoryFollowupAvailable,savedMemoryReadingAvailable,savedMemorySegmentReadingAvailable,savedMemorySegmentReadingReady,savedMemoryActionsAvailable,savedMemoryActionReady,savedMemoryFollowupReady:followupReady,savedMemoryReaderReady:readerReady,savedMemoryReadingReady,openingMemoryCard,openingMemorySpeechOrdinal,segmentMemorySpeechOrdinal,segmentMemorySpeechIndex,threads:Object.freeze(threads.slice()),threadPage:threadPageStarts.length,hasOlderThreads,filteringThreads:threadQuery!==null,activeThread,draft,sceneDraft,sceneRewordRequired,sceneAvailable,sceneReady:sceneReady(),scenePageAvailable,scenePageActive,scenePageResult,scenePageLoading,resultPageAvailable,resultPageActive,resultPageResult,resultPageLoading,sceneRequestId,storySelection:Object.freeze(storySelection.map(entry=>entry.item)),storySelectionReady,storySelectionBusy,pendingTurn:pendingTurn&&Object.freeze({...pendingTurn}),pendingCreation:pendingCreation&&Object.freeze({...pendingCreation}),preferences,revision,currentResult,contextState,historyDetail,historyLoading,historyRefreshRequired,speechReady,speechReplyBytes:speechReady?speechSource.replyBytes:null,speechKind:speechReady?speechSource.kind:null});};
     const sceneReady=()=>sceneAvailable&&!scenePageActive&&!scenePageLoading&&!resultPageActive&&!resultPageLoading&&!sceneRewordRequired&&capabilities?.available===true&&capabilities?.server_owned_turns===true&&activeThread?.revision===revision&&contextState==='ready'&&currentResult?.kind==='results'&&[2,3,4].includes(currentResult.version)&&!!currentResult.context&&!Object.hasOwn(currentResult.filters,'descriptive')&&(!currentResult.filters.media||canonical(currentResult.filters.media)==='["image"]')&&!pendingTurn&&!pendingCreation&&!snapshot().locked&&!closed;
     const resultContextState=value=>value?.context?'ready':'requires_search';
     const negotiatedSearchVersion=()=>capabilities?.search?.version===3?3:capabilities?.search?.version===2?2:1;
@@ -421,7 +453,29 @@
     let sceneRankingDigest=null;
     function clearScenePage(){scenePageActive=false;scenePageResult=null;scenePageLoading=false;}
     function clearResultPage(){resultPageActive=false;resultPageResult=null;resultPageLoading=false;}
-    function invalidateStorySelection({source=true}={}){storySelectionNonce++;storyPrepareNonce++;storySelectionBusyToken=storyPrepareNonce;storySelection=[];storySelectionBusy=false;if(source)storyResultSource=null;}
+    function writeStoryResume(value){try{storyResumeStore?.write(value);}catch{}}
+    function rememberStorySelection(){
+      const source=storyResultSource;
+      if(!source||source.version===4||!storySelection.length){writeStoryResume(null);return;}
+      const {account,library,thread_id,request_id,revision,version,binding,fingerprint,total}=source;
+      const record={format:1,account,library,thread_id,request_id,revision,version,binding,fingerprint,total,
+        picks:storySelection.map(entry=>({id:entry.item.id,page:entry.page}))};
+      writeStoryResume(validStoryResume(record)?record:null);
+    }
+    function readStoryResume(base,threadId){
+      let record;
+      try{record=storyResumeStore?.read();}catch{return null;}
+      if(record==null)return null;
+      if(validStoryResume(record)&&record.account===base.account&&record.library===base.library&&
+          record.thread_id===threadId)return record;
+      writeStoryResume(null);
+      return null;
+    }
+    function invalidateStorySelection({source=true}={}){
+      if(storySelection.length)writeStoryResume(null);
+      storySelectionNonce++;storyPrepareNonce++;storySelectionBusyToken=storyPrepareNonce;
+      storySelection=[];storySelectionBusy=false;if(source)storyResultSource=null;
+    }
     function invalidateSceneStorySelection(){if(storyResultSource?.version===4)invalidateStorySelection();}
     function storySelectionSourceCurrent(s=snapshot()){
       const source=storyResultSource;
@@ -458,19 +512,22 @@
     function toggleStoryItem(id){
       const t=begin();if(typeof id!=='string'||!assetId(id))fail('invalid_input');
       const selectedIndex=storySelection.findIndex(entry=>entry.item.id===id);
-      if(selectedIndex>=0){storySelection.splice(selectedIndex,1);storySelectionNonce++;publish();return Object.freeze(storySelection.map(entry=>entry.item));}
+      if(selectedIndex>=0){storySelection.splice(selectedIndex,1);storySelectionNonce++;rememberStorySelection();publish();return Object.freeze(storySelection.map(entry=>entry.item));}
       if(!storySelectionEligible(t.base))fail('conflict');
       const page=storySelectionPage(),item=page?.items.find(value=>value.id===id);
       if(!item||!['image','video'].includes(item.kind))fail('invalid_input');
       if(storySelection.some(entry=>entry.item.id===id))fail('conflict');
-      if(storySelection.length>=24)fail('invalid_input');
+      if(storySelection.length>=MAX_STORY_FRAMES)fail('invalid_input');
       const source=storyResultSource;
       if(page.ranking_sha256&&source.ranking_sha256&&page.ranking_sha256!==source.ranking_sha256)fail('conflict');
       if(page.ranking_sha256)source.ranking_sha256=page.ranking_sha256;
       storySelection.push({item,page:page.page,ranking_sha256:page.ranking_sha256,source});
-      storySelectionNonce++;publish();return Object.freeze(storySelection.map(entry=>entry.item));
+      storySelectionNonce++;rememberStorySelection();publish();return Object.freeze(storySelection.map(entry=>entry.item));
     }
-    function clearStorySelection(){invalidateStorySelection({source:false});publish();return Object.freeze([]);}
+    function clearStorySelection({keepResumeIfEmpty=false}={}){
+      if(!keepResumeIfEmpty&&!storySelection.length)writeStoryResume(null);
+      invalidateStorySelection({source:false});publish();return Object.freeze([]);
+    }
     function moveStoryItem(id,direction){
       const t=begin();
       if(typeof id!=='string'||!assetId(id)||![-1,1].includes(direction))fail('invalid_input');
@@ -480,13 +537,13 @@
       const next=index+direction;
       if(next>=0&&next<storySelection.length){
         const [entry]=storySelection.splice(index,1);storySelection.splice(next,0,entry);
-        storySelectionNonce++;publish();
+        storySelectionNonce++;rememberStorySelection();publish();
       }
       return Object.freeze(storySelection.map(entry=>entry.item));
     }
     async function prepareStorySelection(){
       const t=begin(),source=storyResultSource,selected=storySelection.slice(),selectionTicket=storySelectionNonce,readTicket=readGeneration;
-      if(!storySelectionEligible(t.base)||!source||selected.length<1||selected.length>24||new Set(selected.map(entry=>entry.item.id)).size!==selected.length)fail('invalid_input');
+      if(!storySelectionEligible(t.base)||!source||selected.length<1||selected.length>MAX_STORY_FRAMES||new Set(selected.map(entry=>entry.item.id)).size!==selected.length)fail('invalid_input');
       if(selected.some(entry=>entry.source!==source||entry.ranking_sha256&&source.ranking_sha256&&entry.ranking_sha256!==source.ranking_sha256))fail('conflict');
       const busyToken=++storyPrepareNonce;storySelectionBusyToken=busyToken;storySelectionBusy=true;publish();
       const current=()=>{assertCurrent(t.base,t.token);if(readTicket!==readGeneration||selectionTicket!==storySelectionNonce||storyResultSource!==source||!storySelectionSourceCurrent(t.base)||currentResult!==source.result||activeThread?.thread_id!==source.thread_id||revision!==source.revision||activeThread?.revision!==source.revision||storySelection.length!==selected.length||storySelection.some((entry,index)=>entry!==selected[index]))fail('scope_changed');};
@@ -539,10 +596,10 @@
       return Object.freeze({version:1,text,account:t.base.account,library:t.base.library,
         generation:t.base.generation,thread_id:source.thread_id,revision:source.revision});
     }
-    function clearScopeData(){invalidateStorySelection();sceneProbeNonce++;scenePageProbeNonce++;resultPageProbeNonce++;sceneAvailable=false;scenePageAvailable=false;resultPageAvailable=false;sceneRequestId=null;sceneRankingDigest=null;clearScenePage();clearResultPage();sceneDraft='';sceneRewordRequired=false;instance++;capabilitiesProbeNonce++;agentProbeNonce++;agentAvailable=false;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;historyNonce++;savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemoryCard=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();historyDetail=null;historyLoading=false;historyRefreshRequired=false;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';storyDirectionInput=null;clearSpeechSource();}
+    function clearScopeData(){resetThreadPages();invalidateStorySelection();sceneProbeNonce++;scenePageProbeNonce++;resultPageProbeNonce++;sceneAvailable=false;scenePageAvailable=false;resultPageAvailable=false;sceneRequestId=null;sceneRankingDigest=null;clearScenePage();clearResultPage();sceneDraft='';sceneRewordRequired=false;instance++;capabilitiesProbeNonce++;agentProbeNonce++;agentAvailable=false;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;historyNonce++;savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemoryCard=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();historyDetail=null;historyLoading=false;historyRefreshRequired=false;capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';storyDirectionInput=null;clearSpeechSource();}
     function sync(){const s=snapshot(),key=stamp(s);if(key!==scopeStamp){scopeStamp=key;revokedStamp=null;clearScopeData();publish();}return s;}
     const assertCurrent=(base,token)=>{if(closed)fail('closed');const now=snapshot();if(stamp(now)!==scopeStamp)sync();if(stamp(now)!==stamp(base)||token!==instance||base.locked||!base.account||!base.library||revokedStamp===stamp(now))fail('scope_changed');};
-    function revoke(base){revokedStamp=stamp(base);clearScopeData();publish();}
+    function revoke(base){revokedStamp=stamp(base);writeStoryResume(null);clearScopeData();publish();}
     async function call(path,method,body,base,token,extra={}) {assertCurrent(base,token);const c=new AbortController(),upstream=extra.signal,abort=()=>c.abort(),{maxJsonBytes,...requestOptions}=extra;if(upstream?.aborted)c.abort();else upstream?.addEventListener('abort',abort,{once:true});controllers.add(c);try{const raw=await request(path,{...requestOptions,method,body,signal:c.signal});assertCurrent(base,token);return safeJson(raw,maxJsonBytes??262144);}catch(e){const safe=safeFailure(e);if(safe.status===401||safe.status===403)revoke(base);throw safe;}finally{upstream?.removeEventListener('abort',abort);controllers.delete(c);}}
     // Optional feature routes on older APIs can return a boundary 403. Keep that
     // denial local until the base workspace capability route is rechecked.
@@ -553,14 +610,16 @@
     async function capabilitiesRead(){
       const t=begin();sceneProbeNonce++;sceneAvailable=false;agentProbeNonce++;agentAvailable=false;publish();
       const nonce=++capabilitiesProbeNonce,path=`${BASE}/capabilities?${new URLSearchParams({library_id:t.base.library})}`;
+      const options=version=>({extraHeaders:{'X-PhotoHouse-Pending-Turn-Version':'1','X-PhotoHouse-Thread-Search-Version':'1',
+        ...(version?{'X-PhotoHouse-Search-Version':version}:{})}});
       let raw;
-      try{raw=await call(path,'GET',undefined,t.base,t.token,{extraHeaders:{'X-PhotoHouse-Search-Version':'3'}});}
+      try{raw=await call(path,'GET',undefined,t.base,t.token,options('3'));}
       catch(error){if(error.status!==400||error.code!=='search_version_unsupported')throw error;if(nonce!==capabilitiesProbeNonce){assertCurrent(t.base,t.token);fail('conflict');}
-        try{raw=await call(path,'GET',undefined,t.base,t.token,{extraHeaders:{'X-PhotoHouse-Search-Version':'2'}});}
-        catch(olderError){if(olderError.status!==400||olderError.code!=='search_version_unsupported')throw olderError;if(nonce!==capabilitiesProbeNonce){assertCurrent(t.base,t.token);fail('conflict');}raw=await call(path,'GET',undefined,t.base,t.token);}}
+        try{raw=await call(path,'GET',undefined,t.base,t.token,options('2'));}
+        catch(olderError){if(olderError.status!==400||olderError.code!=='search_version_unsupported')throw olderError;if(nonce!==capabilitiesProbeNonce){assertCurrent(t.base,t.token);fail('conflict');}raw=await call(path,'GET',undefined,t.base,t.token,options());}}
       assertCurrent(t.base,t.token);if(nonce!==capabilitiesProbeNonce)fail('conflict');
       const v=validateCapabilities(raw);capabilities=v;
-      if(!v.available||!v.server_owned_turns){invalidateStorySelection();resultPageProbeNonce++;resultPageAvailable=false;clearResultPage();agentProbeNonce++;agentAvailable=false;savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearMemorySpeechSource();abortSpeechCalls(source=>source?.savedMemoryOpening===true);}else if(v.reply_speech!==true){savedMemorySpeechProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemorySpeechAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearMemorySpeechSource();abortSpeechCalls(source=>source?.savedMemoryOpening===true);}publish();return v;
+      if(!v.available||!v.server_owned_turns){writeStoryResume(null);invalidateStorySelection();resultPageProbeNonce++;resultPageAvailable=false;clearResultPage();agentProbeNonce++;agentAvailable=false;savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearMemorySpeechSource();abortSpeechCalls(source=>source?.savedMemoryOpening===true);}else if(v.reply_speech!==true){savedMemorySpeechProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemorySpeechAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearMemorySpeechSource();abortSpeechCalls(source=>source?.savedMemoryOpening===true);}publish();return v;
     }
     async function agentCapabilitiesRead(){
       const t=begin(),nonce=++agentProbeNonce;agentAvailable=false;publish();
@@ -589,8 +648,26 @@
         assertCurrent(t.base,t.token);if(nonce!==scenePageProbeNonce)return scenePageAvailable;scenePageAvailable=value.available;if(!value.available){scenePageResult=null;scenePageLoading=false;invalidateSceneStorySelection();}publish();return scenePageAvailable;
       }catch(error){const safe=safeFailure(error);if(safe.code==='scope_changed'||safe.code==='closed'||safe.status===401)throw safe;assertCurrent(t.base,t.token);if(nonce!==scenePageProbeNonce)return scenePageAvailable;scenePageAvailable=false;scenePageResult=null;scenePageLoading=false;invalidateSceneStorySelection();publish();return false;}
     }
-    async function resultPageCapabilitiesRead(){
-      const t=begin(),nonce=++resultPageProbeNonce;resultPageAvailable=false;publish();
+    let activeResultPageProbe=null;
+    async function resultPageCapabilitiesRead({reuse=false}={}){
+      const t=begin();
+      if(activeResultPageProbe?.token===t.token&&activeResultPageProbe.capabilities===capabilities&&
+          (activeResultPageProbe.pending||reuse))
+        return activeResultPageProbe.promise;
+      // Workspace initialization and a reopened selection can ask together.
+      const probe={token:t.token,capabilities,pending:true,promise:probeResultPageCapabilities(t)};
+      activeResultPageProbe=probe;
+      try{
+        if(await probe.promise)return true;
+        if(activeResultPageProbe===probe)activeResultPageProbe=null;
+        return false;
+      }catch(error){
+        if(activeResultPageProbe===probe)activeResultPageProbe=null;
+        throw error;
+      }finally{probe.pending=false;}
+    }
+    async function probeResultPageCapabilities(t){
+      const nonce=++resultPageProbeNonce;resultPageAvailable=false;publish();
       const disablePageMode=()=>{
         if(resultPageActive){invalidateStorySelection();clearResultPage();currentResult=null;contextState='requires_search';}
         else if(storyResultSource?.version!==4&&storySelection.some(entry=>entry.page>1)){storySelection=storySelection.filter(entry=>entry.page===1);storySelectionNonce++;}
@@ -608,22 +685,58 @@
         resultPageAvailable=false;disablePageMode();return false;
       }
     }
+    async function getResultPage(source,t,page,checkCurrent){
+      const {thread_id:threadId,request_id:requestId,revision:expectedRevision,version}=source;
+      const body={version:1,library_id:t.base.library,expected_revision:expectedRevision,page};
+      const options=version>=2?{extraHeaders:{'X-PhotoHouse-Search-Version':String(version)}}:{};
+      const raw=await call(`${threadPath(threadId)}/requests/${encodeURIComponent(requestId)}/result-pages`,
+        'POST',body,t.base,t.token,options);
+      checkCurrent();
+      const pageResult=validateResultPage(raw,t.base.library,threadId,requestId,expectedRevision,version,page);
+      if(pageResult.binding!==source.binding||pageResult.fingerprint!==source.fingerprint||pageResult.total!==source.total)fail('invalid_response');
+      return pageResult;
+    }
+    async function restoreStoryPicks(record,source,t,readTicket){
+      const pages=new Map([[1,source.result.items]]);
+      const laterPages=[...new Set(record.picks.map(pick=>pick.page))].filter(page=>page>1);
+      const selectionTicket=storySelectionNonce;
+      if(laterPages.length&&!resultPageAvailable)await resultPageCapabilitiesRead({reuse:true});
+      const capabilityNonce=resultPageProbeNonce;
+      const checkCurrent=()=>{
+        assertCurrent(t.base,t.token);
+        if(readTicket!==readGeneration||selectionTicket!==storySelectionNonce||storyResultSource!==source||
+          !storySelectionSourceCurrent(t.base)||
+          laterPages.length&&(!resultPageAvailable||resultPageProbeNonce!==capabilityNonce))fail('scope_changed');
+      };
+      if(laterPages.length&&!resultPageAvailable)return;
+      checkCurrent();
+      for(const page of laterPages){
+        const fresh=await getResultPage(source,t,page,checkCurrent);
+        pages.set(page,fresh.items);
+      }
+      const entries=record.picks.map(({id,page})=>({
+        item:pages.get(page).find(item=>item.id===id),page,ranking_sha256:null,source,
+      }));
+      if(entries.some(entry=>!entry.item||!['image','video'].includes(entry.item.kind)))fail('context_changed');
+      checkCurrent();
+      storySelection=entries;
+      storySelectionNonce++;
+    }
     async function resultPageRead(page){
       const t=begin(),source=storyResultSource,savedResult=currentResult;
       if(!resultPageAvailable||!source||!savedResult||source.version===4||![1,2,3].includes(source.version)||savedResult.version!==source.version||
           savedResult.kind!=='results'||!savedResult.context||savedResult.total<=20||!Number.isSafeInteger(page)||page<2||page>Math.ceil(savedResult.total/20)||
           source.result!==savedResult||source.thread_id!==activeThread?.thread_id||source.revision!==revision||activeThread?.revision!==revision||
           pendingTurn||pendingCreation||scenePageActive||scenePageLoading||resultPageLoading||storySelectionBusy||speechControllers.size||openingMemoryCard||openingMemorySpeechOrdinal!==null)fail('conflict');
-      const threadId=source.thread_id,requestId=source.request_id,expectedRevision=source.revision,capabilityNonce=resultPageProbeNonce,ticket=++readGeneration;
+      const threadId=source.thread_id,expectedRevision=source.revision,capabilityNonce=resultPageProbeNonce,ticket=++readGeneration;
       resultPageActive=true;resultPageLoading=true;resultPageResult=null;publish();
-      try{
-        const body={version:1,library_id:t.base.library,expected_revision:expectedRevision,page};
-        const extraHeaders=source.version>=2?{extraHeaders:{'X-PhotoHouse-Search-Version':String(source.version)}}:{};
-        const raw=await call(`${threadPath(threadId)}/requests/${encodeURIComponent(requestId)}/result-pages`,'POST',body,t.base,t.token,extraHeaders);
+      const checkCurrent=()=>{
         assertCurrent(t.base,t.token);
         if(ticket!==readGeneration||storyResultSource!==source||currentResult!==savedResult||activeThread?.thread_id!==threadId||revision!==expectedRevision||resultPageProbeNonce!==capabilityNonce||!resultPageAvailable)fail('scope_changed');
-        const checked=validateResultPage(raw,t.base.library,threadId,requestId,expectedRevision,source.version,page);
-        if(checked.binding!==source.binding||checked.fingerprint!==source.fingerprint||checked.total!==source.total)fail('invalid_response');
+      };
+      try{
+        const checked=await getResultPage(source,t,page,checkCurrent);
+        checkCurrent();
         resultPageResult=checked;resultPageLoading=false;publish();return checked;
       }catch(error){
         if(ticket===readGeneration&&storyResultSource===source&&activeThread?.thread_id===threadId&&revision===expectedRevision){resultPageLoading=false;resultPageResult=null;invalidateStorySelection({source:false});publish();}
@@ -644,7 +757,7 @@
         for(const entry of savedSelection)if(entry.page===1&&(!freshById.has(entry.item.id)||freshById.get(entry.item.id).kind!==entry.item.kind))fail('context_changed');
         currentResult=fresh.result;contextState=resultContextState(currentResult);
         const nextSource=bindStoryResult(t,source.thread_id,source.request_id,source.revision,currentResult);
-        if(nextSource){storySelection=savedSelection.map(entry=>({...entry,source:nextSource}));storySelectionNonce++;}
+        if(nextSource){storySelection=savedSelection.map(entry=>({...entry,source:nextSource}));storySelectionNonce++;rememberStorySelection();}
         clearResultPage();publish();return Object.freeze({current_result:currentResult});
       }catch(error){
         if(ticket===readGeneration&&storyResultSource===source){invalidateStorySelection();currentResult=null;contextState='requires_search';clearResultPage();publish();}
@@ -785,7 +898,38 @@
       }
       if(safe.status===401)throw safe;
       if(nonce===savedMemoryFollowupProbeNonce){savedMemoryFollowupAvailable=false;publish();}return false;}}
-    async function list(){const t=begin();const query=new URLSearchParams({library_id:t.base.library});const includeLabels=capabilities?.thread_labels===true;if(includeLabels)query.set('include_labels','true');const raw=await call(`${BASE}/threads?${query}`,'GET',undefined,t.base,t.token);if(!exactKeys(raw,['version','threads'])||raw.version!==1||!Array.isArray(raw.threads))fail('invalid_response');const values=raw.threads.map(x=>validateThread(x,t.base.library,includeLabels));threads=values;publish();return values;}
+    async function list({direction='first',query}={}){
+      const t=begin(),ticket=++threadListNonce;
+      const filter=query===undefined?threadQuery:query;
+      if((direction!=='first'&&filter!==threadQuery)||
+         (filter!==null&&(capabilities?.thread_search!==true||typeof filter!=='string'||!filter.trim()||byteLength(filter)>256)))fail('invalid_input');
+      let starts=[null];
+      if(direction==='older'){
+        if(!hasOlderThreads||!threads.length)fail('invalid_input');
+        const last=threads.at(-1),seconds=Date.parse(last.updated_at)/1000;
+        if(!safeInt(seconds))fail('invalid_response');
+        starts=[...threadPageStarts,`${seconds},${last.thread_id}`];
+      }else if(direction==='newer'){
+        if(threadPageStarts.length<2)fail('invalid_input');
+        starts=threadPageStarts.slice(0,-1);
+      }else if(direction!=='first')fail('invalid_input');
+      const before=starts.at(-1),parameters=new URLSearchParams({library_id:t.base.library});
+      const includeLabels=filter!==null||capabilities?.thread_labels===true;
+      if(includeLabels)parameters.set('include_labels','true');
+      if(before!==null)parameters.set('before',before);
+      const raw=filter===null?
+        await call(`${BASE}/threads?${parameters}`,'GET',undefined,t.base,t.token,
+          {extraHeaders:{'X-PhotoHouse-Thread-Page-Version':'1'}}):
+        await call(`${BASE}/thread-search`,'POST',{library_id:t.base.library,query:filter,...(before===null?{}:{before})},t.base,t.token);
+      if(ticket!==threadListNonce)fail('scope_changed');
+      if(!exactKeys(raw,['version','threads'],['has_more'])||raw.version!==1||
+          !Array.isArray(raw.threads)||raw.threads.length>50||
+          (Object.hasOwn(raw,'has_more')?typeof raw.has_more!=='boolean':filter!==null||starts.length>1)||
+          (raw.has_more&&raw.threads.length!==50))fail('invalid_response');
+      const values=raw.threads.map(row=>validateThread(row,t.base.library,includeLabels));
+      if(new Set(values.map(row=>row.thread_id)).size!==values.length)fail('invalid_response');
+      threads=values;threadPageStarts=starts;hasOlderThreads=raw.has_more===true;threadQuery=filter;publish();return values;
+    }
     const threadPath=id=>`${BASE}/threads/${encodeURIComponent(id)}`;
     function beginHistoryRead(id){historyNonce++;historyLoading=false;const sameThread=historyDetail?.thread.thread_id===id;historyDetail=sameThread?staleHistory(historyDetail):null;historyRefreshRequired=!!sameThread;}
     async function read(id,{hydrate=true,sceneReloadGuard=false,sceneReturn=false,preserveStorySelection=false}={}){
@@ -793,6 +937,7 @@
       const t=begin();if(pendingTurn)fail('conflict');storyDirectionInput=null;
       const resumeStory=preserveStorySelection&&hydrate&&!sceneReloadGuard&&!sceneReturn&&
         id===activeThread?.thread_id&&storyResultSource?.version!==4&&storySelection.length>0&&storySelectionEligible(t.base);
+      const storedStory=!resumeStory&&hydrate&&!sceneReloadGuard&&!sceneReturn?readStoryResume(t.base,id):null;
       const preservedStorySource=(sceneReturn||resumeStory)?storyResultSource:null;
       const preservedStorySelection=preservedStorySource?storySelection.slice():[];
       const expectedStoryNonce=storySelectionNonce+(sceneReturn?1:2);
@@ -809,16 +954,16 @@
       // currently available. Older servers ignore the unknown header and keep
       // their legacy response shape.
       const sceneProjection=true;
-      const detailHeaders={extraHeaders:{'X-PhotoHouse-Scene-Reword-Version':'1'}};
+      const detailHeaders={extraHeaders:{'X-PhotoHouse-Scene-Reword-Version':'1','X-PhotoHouse-Pending-Turn-Version':'1'}};
       const raw=await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders);
       assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');
-      let detail=validateThreadDetail(raw,t.base.library,id,sceneProjection);
+      const detail=validateThreadDetail(raw,t.base.library,id,sceneProjection,true);
       if(reloadBase&&(detail.thread.revision!==reloadBase.revision||detail.thread.thread_id!==reloadBase.threadId))fail('conflict');
       const rewordCue=Object.hasOwn(detail,'scene_reword')?detail.scene_reword:null;
       if(rewordCue&&!reloadBase){
-        const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders),t.base.library,id,sceneProjection);
+        const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders),t.base.library,id,sceneProjection,true);
         assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');
-        if(confirm.thread.revision!==detail.thread.revision||confirm.latest_request_id!==detail.latest_request_id||canonical(confirm.scene_reword??null)!==canonical(detail.scene_reword??null)){
+        if(confirm.thread.revision!==detail.thread.revision||confirm.latest_request_id!==detail.latest_request_id||confirm.pending_turn||canonical(confirm.scene_reword??null)!==canonical(detail.scene_reword??null)){
           currentResult=null;contextState='requires_search';publish();fail('conflict');
         }
       }
@@ -829,12 +974,14 @@
         sceneRewordRequired=!!rewordCue;
         if(rewordCue&&!sceneDraft)sceneDraft=rewordCue.query;
       }
-      currentResult=null;contextState=suppressOldResult?'requires_search':detail.latest_request_id?'unloaded':'requires_search';
-      if(!suppressOldResult&&detail.latest_request_id&&hydrate&&capabilities?.server_owned_turns!==false){try{
-          const sameStoryTurn=resumeStory&&detail.latest_request_id===preservedStorySource.request_id&&
-            detail.thread.revision===preservedStorySource.revision;
+      const reopenedTurn=detail.pending_turn;
+      currentResult=null;contextState=reopenedTurn?'pending':suppressOldResult?'requires_search':detail.latest_request_id?'unloaded':'requires_search';
+      if(!reopenedTurn&&!suppressOldResult&&detail.latest_request_id&&hydrate&&capabilities?.server_owned_turns!==false){try{
+          const resumeSource=resumeStory?preservedStorySource:storedStory;
+          const sameStoryTurn=resumeSource&&detail.latest_request_id===resumeSource.request_id&&
+            detail.thread.revision===resumeSource.revision;
           if(sameStoryTurn){
-            latest=await getCurrentResult(preservedStorySource,t,{readTicket:ticket});
+            latest=await getCurrentResult(resumeSource,t,{readTicket:ticket});
             checkedStoryResult=true;
           }else{
             latest=await getRequest(id,detail.latest_request_id,{_ticket:{base:t.base,token:t.token,readTicket:ticket},hydrate:false,searchVersion:readVersion});
@@ -844,32 +991,107 @@
           else if(latest.status==='pending')contextState='pending';
           else contextState='requires_search';
           if(latest.status==='pending'){const saved=detail.exchanges.find(x=>x.request_id===latest.request_id);pendingTurn={thread_id:id,request_id:latest.request_id,expected_revision:latest.revision,text:saved?.input_text||'',status:'pending',search_version:readVersion};}
-        }catch(e){const safe=safeFailure(e);if(safe.status===409||safe.status===404){latest=null;currentResult=null;contextState='requires_search';}else throw safe;}}
-      if(reloadBase){const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders),t.base.library,id,sceneProjection);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');if(confirm.thread.revision!==reloadBase.revision||confirm.latest_request_id!==detail.latest_request_id||canonical(confirm.scene_reword??null)!==canonical(detail.scene_reword??null)||activeThread?.thread_id!==reloadBase.threadId||revision!==reloadBase.revision){currentResult=null;contextState='requires_search';publish();fail('conflict');}}
+        }catch(e){const safe=safeFailure(e);if(safe.status===409||safe.status===404){
+          assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');
+          latest=null;currentResult=null;contextState='requires_search';
+        }else throw safe;}}
+      if(reloadBase&&!reopenedTurn){const confirm=validateThreadDetail(await call(`${threadPath(id)}?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token,detailHeaders),t.base.library,id,sceneProjection,true);assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');if(confirm.thread.revision!==reloadBase.revision||confirm.latest_request_id!==detail.latest_request_id||confirm.pending_turn||canonical(confirm.scene_reword??null)!==canonical(detail.scene_reword??null)||activeThread?.thread_id!==reloadBase.threadId||revision!==reloadBase.revision){currentResult=null;contextState='requires_search';publish();fail('conflict');}}
       assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');activeThread=latest?.status==='completed'?Object.freeze({...detail.thread,revision:latest.revision}):detail.thread;revision=latest?.status==='completed'?latest.revision:detail.thread.revision;if(reloadBase){currentResult=guardedResult;if(guardedResult)contextState=resultContextState(guardedResult);}
+      if(reopenedTurn){
+        // Older server rows do not record the composer mode. Show the submitted
+        // text read-only until the receipt establishes the outcome.
+        pendingTurn={thread_id:id,request_id:reopenedTurn.request_id,expected_revision:reopenedTurn.revision,
+          text:reopenedTurn.text,status:'pending',search_version:readVersion,mode:'reopened'};
+      }
       if(!reloadBase&&currentResult&&latest?.status==='completed'&&latest.revision===revision){
         const nextSource=bindStoryResult(t,id,latest.request_id,latest.revision,currentResult);
-        if((sceneReturn||checkedStoryResult)&&preservedStorySource&&nextSource&&expectedStoryNonce===storySelectionNonce&&
-            preservedStorySource.thread_id===id&&preservedStorySource.request_id===latest.request_id&&
-            preservedStorySource.revision===latest.revision&&preservedStorySource.version===nextSource.version&&
-            preservedStorySource.binding===nextSource.binding&&preservedStorySource.fingerprint===nextSource.fingerprint&&
-            preservedStorySource.total===nextSource.total){
+        const sameSelection=nextSource&&expectedStoryNonce===storySelectionNonce;
+        if(storedStory&&sameSelection&&checkedStoryResult&&sameStoryResult(storedStory,nextSource)){
+          try{await restoreStoryPicks(storedStory,nextSource,t,ticket);}
+          catch(error){
+            const safe=safeFailure(error);
+            if(['scope_changed','closed','access_denied'].includes(safe.code))throw safe;
+            assertCurrent(t.base,t.token);
+            if(ticket!==readGeneration||expectedStoryNonce!==storySelectionNonce||storyResultSource!==nextSource)fail('scope_changed');
+            if(safe.code!=='request_failed')writeStoryResume(null);
+          }
+          assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');
+        }else if((sceneReturn||checkedStoryResult)&&preservedStorySource&&sameSelection&&sameStoryResult(preservedStorySource,nextSource)){
           const firstPage=new Map(currentResult.items.map(item=>[item.id,item]));
           if(preservedStorySelection.every(entry=>entry.page>1||firstPage.get(entry.item.id)?.kind===entry.item.kind)){
             storySelection=preservedStorySelection.map(entry=>({...entry,source:nextSource,item:entry.page===1?firstPage.get(entry.item.id):entry.item}));
-            storySelectionNonce++;
+            storySelectionNonce++;rememberStorySelection();
           }
-        }
-      }else invalidateStorySelection();
+        }else if(storedStory)writeStoryResume(null);
+      }else{if(storedStory)writeStoryResume(null);invalidateStorySelection();}
       if(sceneAvailable&&activeThread.thread_id===id&&activeThread.revision===revision&&contextState==='ready'&&currentResult?.context)sceneRewordRequired=false;publish();
       const latestSummary=latest?Object.freeze({request_id:latest.request_id,status:latest.status,revision:latest.revision,error:latest.error}):null;
       return Object.freeze({...historyDetail,current_result:currentResult,context_state:contextState,...(latestSummary?{latest_request:latestSummary}:{})});}
-    async function create({retry=false}={}){const t=begin();if(pendingTurn)fail('conflict');storyDirectionInput=null;invalidateStorySelection();clearScenePage();clearResultPage();sceneRewordRequired=false;clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;let id;if(pendingCreation){if(!retry)fail('conflict');id=pendingCreation.thread_id;}else{id=typeof newUUID==='function'?newUUID():null;if(!uuid(id))fail('invalid_input');pendingCreation={thread_id:id,library_id:t.base.library,account:t.base.account};}clearHistory();publish();abortHydrations();const ticket=++readGeneration;
+    async function create({retry=false}={}){const t=begin();if(pendingTurn)fail('conflict');storyDirectionInput=null;writeStoryResume(null);invalidateStorySelection();clearScenePage();clearResultPage();sceneRewordRequired=false;clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;let id;if(pendingCreation){if(!retry)fail('conflict');id=pendingCreation.thread_id;}else{id=typeof newUUID==='function'?newUUID():null;if(!uuid(id))fail('invalid_input');pendingCreation={thread_id:id,library_id:t.base.library,account:t.base.account};}clearHistory();publish();abortHydrations();const ticket=++readGeneration;
       try{const raw=await call(`${BASE}/threads`,'POST',{library_id:t.base.library,thread_id:id},t.base,t.token);const created=validateCreation(raw,t.base.library,id);assertCurrent(t.base,t.token);pendingCreation=null;if(ticket!==readGeneration){threads=[created.thread,...threads.filter(x=>x.thread_id!==id)];publish();return created;}activeThread=created.thread;revision=created.thread.revision;currentResult=null;contextState='requires_search';publish();return created;}
       catch(e){const safe=safeFailure(e);if(safe.code==='scope_changed'||safe.code==='closed')throw safe; // retain ID and require explicit reconciliation or retry
         throw safe;}}
-    async function recover(id,rid){if(!uuid(id)||!uuid(rid))fail('invalid_input');const t=begin();clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;if(!pendingTurn||pendingTurn.thread_id!==id||pendingTurn.request_id!==rid)fail('conflict');const searchVersion=[2,3,4].includes(pendingTurn.search_version)?pendingTurn.search_version:1;const env=await getRequest(id,rid,{_ticket:t,hydrate:true,searchVersion});assertCurrent(t.base,t.token);if(env.status==='failed'&&env.error==='scene_query_unsupported'&&pendingTurn.mode==='scene'&&searchVersion===4&&env.revision!==pendingTurn.expected_revision)fail('invalid_response');if(pendingTurn?.thread_id===id&&pendingTurn.request_id===rid){if(env.status==='completed'||env.status==='failed'||env.status==='interrupted'){readGeneration++;abortHydrations();invalidateHistory();if(env.status==='completed'){activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;const sentText=pendingTurn.text,scenePending=pendingTurn.mode==='scene'||env.result.version===4;pendingTurn=null;if(scenePending){if(sceneDraft===sentText)sceneDraft='';}else if(draft===sentText)draft='';currentResult=env.result;contextState=resultContextState(env.result);sceneRequestId=env.result.version===4?rid:null;bindStoryResult(t,id,rid,env.revision,env.result);storyDirectionInput={text:sentText,account:t.base.account,library:t.base.library,generation:t.base.generation,thread_id:id,request_id:rid,revision:env.revision};}else{if(pendingTurn.mode==='scene'){if(!sceneDraft)sceneDraft=pendingTurn.text;sceneRewordRequired=env.status==='failed'&&env.error==='scene_query_unsupported'&&searchVersion===4;}else if(!draft)draft=pendingTurn.text;pendingTurn=null;currentResult=null;contextState='requires_search';sceneRequestId=null;invalidateStorySelection();}}else pendingTurn={...pendingTurn,status:'pending'};publish();}return env;}
-    function abandonPending(){begin();if(!pendingTurn)fail('invalid_input');clearSpeechSource();if(pendingTurn.mode==='scene'){if(!sceneDraft)sceneDraft=pendingTurn.text;}else if(!draft)draft=pendingTurn.text;pendingTurn=null;publish();return draft;}
+    async function recover(id,rid){
+      if(!uuid(id)||!uuid(rid))fail('invalid_input');
+      const t=begin(),submitted=pendingTurn;
+      if(!submitted||submitted.thread_id!==id||submitted.request_id!==rid)fail('conflict');
+      clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;
+      const searchVersion=[2,3,4].includes(submitted.search_version)?submitted.search_version:1;
+      const env=await getRequest(id,rid,{_ticket:t,hydrate:true,searchVersion});
+      assertCurrent(t.base,t.token);
+      if(pendingTurn!==submitted)fail('conflict');
+      const sceneRefusal=env.status==='failed'&&env.error==='scene_query_unsupported'&&searchVersion===4;
+      if(sceneRefusal&&submitted.mode&&env.revision!==submitted.expected_revision)fail('invalid_response');
+      if(env.status==='pending'){
+        pendingTurn={...submitted,status:'pending'};publish();return env;
+      }
+      readGeneration++;abortHydrations();invalidateHistory();
+      const sentText=submitted.text;
+      if(env.status==='completed'){
+        pendingTurn=null;
+        activeThread=Object.freeze({...activeThread,revision:env.revision});revision=env.revision;
+        if(submitted.mode==='scene'||env.result.version===4){
+          if(sceneDraft===sentText)sceneDraft='';
+        }else if(submitted.mode!=='reopened'&&draft===sentText)draft='';
+        currentResult=env.result;contextState=resultContextState(env.result);
+        sceneRequestId=env.result.version===4?rid:null;
+        bindStoryResult(t,id,rid,env.revision,env.result);
+        storyDirectionInput={text:sentText,account:t.base.account,library:t.base.library,
+          generation:t.base.generation,thread_id:id,request_id:rid,revision:env.revision};
+      }else retirePendingReply(submitted,sceneRefusal);
+      publish();return env;
+    }
+    function retirePendingReply(submitted,sceneRefusal=false){
+      if(submitted.mode==='scene'||(submitted.mode==='reopened'&&sceneRefusal&&validSceneQuery(submitted.text))){
+        if(!sceneDraft)sceneDraft=submitted.text;
+        sceneRewordRequired=sceneRefusal;
+      }else if(submitted.mode!=='reopened'&&!draft)draft=submitted.text;
+      pendingTurn=null;currentResult=null;contextState='requires_search';sceneRequestId=null;invalidateStorySelection();
+    }
+    async function discardPendingReply(){
+      const t=begin(),submitted=pendingTurn;
+      if(capabilities?.discard_pending!==true||submitted?.status!=='pending'||
+          activeThread?.thread_id!==submitted.thread_id)fail('conflict');
+      const {thread_id,request_id,expected_revision}=submitted;
+      const path=`${threadPath(thread_id)}/requests/${encodeURIComponent(request_id)}/discard`;
+      const value=await call(path,'POST',{library_id:t.base.library,expected_revision},t.base,t.token);
+      assertCurrent(t.base,t.token);
+      if(pendingTurn!==submitted)fail('conflict');
+      if(!exactKeys(value,['version','thread_id','request_id','revision','discarded'])||
+          value.version!==1||value.thread_id!==thread_id||value.request_id!==request_id||
+          value.revision!==expected_revision||typeof value.discarded!=='boolean')fail('invalid_response');
+      if(value.discarded){
+        clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;
+        readGeneration++;abortHydrations();invalidateHistory();retirePendingReply(submitted);publish();
+      }
+      return value.discarded;
+    }
+    function abandonPending(){
+      begin();if(!pendingTurn)fail('invalid_input');clearSpeechSource();
+      if(pendingTurn.mode==='scene'){if(!sceneDraft)sceneDraft=pendingTurn.text;}
+      else if(pendingTurn.mode!=='reopened'&&!draft)draft=pendingTurn.text;
+      pendingTurn=null;publish();return draft;
+    }
     function discardSpeechSource(){
       // This is a local revocation path (Pause/End), so it must still wipe the
       // reference after a library lock, account switch, or controller close.
@@ -930,7 +1152,7 @@
     async function getRequest(id,rid,{_ticket,hydrate=true,searchVersion=negotiatedSearchVersion()}={}){const t=_ticket||begin();const path=`${threadPath(id)}/requests/${encodeURIComponent(rid)}?${new URLSearchParams({library_id:t.base.library})}`;const options=searchVersion>=2?{extraHeaders:{'X-PhotoHouse-Search-Version':String(searchVersion)}}:{};const env=validateEnvelope(await call(path,'GET',undefined,t.base,t.token,options),id,rid,t.base.library,'GET',false,false,searchVersion);
       if(env.status==='completed'&&hydrate){const hydrated=await hydrateResult(env.result,t,{readTicket:t.readTicket,threadId:id,revision:env.revision});return Object.freeze({...env,result:hydrated});}return env;}
     async function sendScene(text=sceneDraft){
-      const t=begin();if(scenePageActive||resultPageActive||!sceneReady()||!validSceneQuery(text))fail('invalid_input');storyDirectionInput=null;invalidateStorySelection();clearResultPage();sceneRewordRequired=false;clearScenePage();sceneRankingDigest=null;
+      const t=begin();if(scenePageActive||resultPageActive||!sceneReady()||!validSceneQuery(text))fail('invalid_input');storyDirectionInput=null;writeStoryResume(null);invalidateStorySelection();clearResultPage();sceneRewordRequired=false;clearScenePage();sceneRankingDigest=null;
       const rid=typeof newUUID==='function'?newUUID():null;if(!uuid(rid))fail('invalid_input');
       clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;readGeneration++;abortHydrations();invalidateHistory();
       const scopeAtSend=currentResult.version===4?currentResult.context.scene.scope:currentResult.context;
@@ -948,7 +1170,7 @@
       // the voice End action until an explicit new turn or history/scope change.
       const source=savedMemoryReaderSource,memoryParentReady=stateValue().savedMemoryFollowupReady||stateValue().savedMemoryActionReady;
       const memoryParent=memoryParentReady&&memoryOptIn&&(savedMemoryFollowupAvailable||savedMemoryActionsAvailable)&&source&&source.result===currentResult&&source.thread_id===activeThread.thread_id&&activeThread.revision===revision&&source.revision===revision&&source.account===t.base.account&&source.library===t.base.library&&source.generation===t.base.generation&&CANONICAL_MEMORY_UUID.test(source.request_id)&&safeInt(source.revision)?{request_id:source.request_id,revision:source.revision}:null;
-      storyDirectionInput=null;invalidateStorySelection();sceneRequestId=null;sceneRankingDigest=null;clearScenePage();clearResultPage();clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;readGeneration++;abortHydrations();invalidateHistory();const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text,search_version:searchVersion,...(agentRequested?{agent:true}:{})};pendingTurn={...sent,status:'sending'};publish();
+      storyDirectionInput=null;writeStoryResume(null);invalidateStorySelection();sceneRequestId=null;sceneRankingDigest=null;clearScenePage();clearResultPage();clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;readGeneration++;abortHydrations();invalidateHistory();const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text,search_version:searchVersion,...(agentRequested?{agent:true}:{})};pendingTurn={...sent,status:'sending'};publish();
       const memoryActionsOptIn=memoryOptIn&&savedMemoryActionsAvailable===true,memoryActionsProbeNonce=savedMemoryActionsProbeNonce;
       try{const body={library_id:t.base.library,request_id:rid,expected_revision:sent.expected_revision,text};if(agentRequested)body.accepts=['agent_media_search_v1'];else if(memoryOptIn)body.accepts=memoryActionsOptIn?['saved_memory_cards_v1','saved_memory_actions_v1']:['saved_memory_cards_v1'];if(memoryParent&&memoryOptIn&&(savedMemoryFollowupAvailable||savedMemoryActionsAvailable))body.memory_parent=memoryParent;
         const extraHeaders={};if(searchVersion>=2)extraHeaders['X-PhotoHouse-Search-Version']=String(searchVersion);if(parentRequestId)extraHeaders['X-PhotoHouse-Parent-Request-Id']=parentRequestId;const turnOptions=Object.keys(extraHeaders).length?{extraHeaders}:{};
@@ -1082,12 +1304,12 @@
         assertCurrent(t.base,t.token);if(audioController.signal.aborted)fail('aborted');if(!current())fail('scope_changed');return Object.freeze({audio,segmentCount:responseCount});
       }finally{signal?.removeEventListener('abort',abort);speechControllers.delete(entry);if(segmentMemorySpeechEntry===entry){segmentMemorySpeechEntry=null;segmentMemorySpeechOrdinal=null;segmentMemorySpeechIndex=null;publish();}}
     }
-    async function deleteThread(id=activeThread?.thread_id){if(!uuid(id))fail('invalid_input');const t=begin();const item=id===activeThread?.thread_id?activeThread:threads.find(x=>x.thread_id===id);if(!item)fail('invalid_input');if(pendingTurn?.thread_id===id)fail('conflict');if(activeThread?.thread_id===id){storyDirectionInput=null;clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;}const raw=await call(threadPath(id),'DELETE',{library_id:t.base.library,expected_revision:item.revision},t.base,t.token);if(!isObject(raw)||raw.deleted!==true||raw.thread_id!==id)fail('invalid_response');readGeneration++;historyNonce++;historyLoading=false;if(activeThread?.thread_id===id){invalidateStorySelection();clearScenePage();clearResultPage();abortHydrations();clearHistory();activeThread=null;revision=0;currentResult=null;contextState='unavailable';sceneRewordRequired=false;}threads=threads.filter(x=>x.thread_id!==id);publish();return Object.freeze({thread_id:id,deleted:true});}
+    async function deleteThread(id=activeThread?.thread_id){if(!uuid(id))fail('invalid_input');const t=begin();const item=id===activeThread?.thread_id?activeThread:threads.find(x=>x.thread_id===id);if(!item)fail('invalid_input');if(pendingTurn?.thread_id===id)fail('conflict');if(activeThread?.thread_id===id){storyDirectionInput=null;clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;}const raw=await call(threadPath(id),'DELETE',{library_id:t.base.library,expected_revision:item.revision},t.base,t.token);if(!isObject(raw)||raw.deleted!==true||raw.thread_id!==id)fail('invalid_response');readGeneration++;historyNonce++;historyLoading=false;if(activeThread?.thread_id===id){writeStoryResume(null);invalidateStorySelection();clearScenePage();clearResultPage();abortHydrations();clearHistory();activeThread=null;revision=0;currentResult=null;contextState='unavailable';sceneRewordRequired=false;}threads=threads.filter(x=>x.thread_id!==id);publish();return Object.freeze({thread_id:id,deleted:true});}
     async function readPreferences(){const t=begin();preferences=validatePrefs(await call(`${BASE}/preferences?${new URLSearchParams({library_id:t.base.library})}`,'GET',undefined,t.base,t.token));publish();return preferences;}
     async function updatePreferences(changes){const t=begin();if(!isObject(changes)||!Object.keys(changes).length||Object.keys(changes).some(k=>!Object.hasOwn(PREFS,k)||!PREFS[k].includes(changes[k])))fail('invalid_input');const current=preferences||await readPreferences();assertCurrent(t.base,t.token);const body={library_id:t.base.library,expected_revision:current.revision,...changes};preferences=validatePrefs(await call(`${BASE}/preferences`,'PUT',body,t.base,t.token));publish();return preferences;}
     async function resetPreferences(){const t=begin(),current=preferences||await readPreferences();assertCurrent(t.base,t.token);preferences=validatePrefs(await call(`${BASE}/preferences/reset`,'POST',{library_id:t.base.library,expected_revision:current.revision},t.base,t.token));publish();return preferences;}
-    function close(){if(closed)return;closed=true;invalidateStorySelection();sceneProbeNonce++;scenePageProbeNonce++;resultPageProbeNonce++;sceneAvailable=false;scenePageAvailable=false;resultPageAvailable=false;agentProbeNonce++;agentAvailable=false;sceneRequestId=null;sceneRankingDigest=null;clearScenePage();clearResultPage();sceneDraft='';sceneRewordRequired=false;instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemoryCard=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearHistory();clearSpeechSource();capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';storyDirectionInput=null;publish();}
-    return Object.freeze({state,setDraft,setSceneDraft,sendScene,sceneCapabilities:sceneCapabilitiesRead,scenePageCapabilities:scenePageCapabilitiesRead,scenePage:scenePageRead,returnSceneResults,resultPageCapabilities:resultPageCapabilitiesRead,resultPage:resultPageRead,returnResults,capabilities:capabilitiesRead,agentCapabilities:agentCapabilitiesRead,savedMemoryCapabilities:savedMemoryCapabilitiesRead,savedMemoryActionsCapabilities:savedMemoryActionsCapabilitiesRead,savedMemorySpeechCapabilities:savedMemorySpeechCapabilitiesRead,savedMemoryReaderCapabilities:savedMemoryReaderCapabilitiesRead,savedMemoryFollowupCapabilities:savedMemoryFollowupCapabilitiesRead,savedMemoryReadingCapabilities:savedMemoryReadingCapabilitiesRead,savedMemorySegmentReadingCapabilities:savedMemorySegmentReadingCapabilitiesRead,toggleStoryItem,moveStoryItem,clearStorySelection,prepareStorySelection,storyDirectionCandidate,openMemoryCard,list,create,reconcileCreation,read,older,send,speakReply,speakMemoryOpening,speakMemorySegment,discardSpeechSource,recover,abandonPending,delete:deleteThread,readPreferences,updatePreferences,resetPreferences,close});
+    function close(){if(closed)return;closed=true;resetThreadPages();invalidateStorySelection();sceneProbeNonce++;scenePageProbeNonce++;resultPageProbeNonce++;sceneAvailable=false;scenePageAvailable=false;resultPageAvailable=false;agentProbeNonce++;agentAvailable=false;sceneRequestId=null;sceneRankingDigest=null;clearScenePage();clearResultPage();sceneDraft='';sceneRewordRequired=false;instance++;for(const c of controllers)c.abort();controllers.clear();abortHydrations();readGeneration++;savedMemoryProbeNonce++;savedMemorySpeechProbeNonce++;savedMemoryReaderProbeNonce++;savedMemoryFollowupProbeNonce++;savedMemoryReadingProbeNonce++;savedMemorySegmentReadingProbeNonce++;savedMemoryActionsProbeNonce++;savedMemoryAvailable=false;savedMemorySpeechAvailable=false;savedMemoryReaderAvailable=false;savedMemoryFollowupAvailable=false;savedMemoryReadingAvailable=false;savedMemorySegmentReadingAvailable=false;savedMemoryActionsAvailable=false;savedMemoryReaderSource=null;openingMemoryCard=false;openingMemorySpeechOrdinal=null;openingMemorySpeechEntry=null;resetMemorySegmentSpeech();clearHistory();clearSpeechSource();capabilities=null;threads=[];activeThread=null;draft='';pendingTurn=null;pendingCreation=null;preferences=null;revision=0;currentResult=null;contextState='unavailable';storyDirectionInput=null;publish();}
+    return Object.freeze({state,setDraft,setSceneDraft,sendScene,sceneCapabilities:sceneCapabilitiesRead,scenePageCapabilities:scenePageCapabilitiesRead,scenePage:scenePageRead,returnSceneResults,resultPageCapabilities:resultPageCapabilitiesRead,resultPage:resultPageRead,returnResults,capabilities:capabilitiesRead,agentCapabilities:agentCapabilitiesRead,savedMemoryCapabilities:savedMemoryCapabilitiesRead,savedMemoryActionsCapabilities:savedMemoryActionsCapabilitiesRead,savedMemorySpeechCapabilities:savedMemorySpeechCapabilitiesRead,savedMemoryReaderCapabilities:savedMemoryReaderCapabilitiesRead,savedMemoryFollowupCapabilities:savedMemoryFollowupCapabilitiesRead,savedMemoryReadingCapabilities:savedMemoryReadingCapabilitiesRead,savedMemorySegmentReadingCapabilities:savedMemorySegmentReadingCapabilitiesRead,toggleStoryItem,moveStoryItem,clearStorySelection,prepareStorySelection,storyDirectionCandidate,openMemoryCard,list,create,reconcileCreation,read,older,send,speakReply,speakMemoryOpening,speakMemorySegment,discardSpeechSource,recover,discardPendingReply,abandonPending,delete:deleteThread,readPreferences,updatePreferences,resetPreferences,close});
   }
   return Object.freeze({createController,PrivateAssistantError,validateThread,validateExchange,validateCapabilities,validateSavedMemoryFollowupCapabilities,validateSavedMemoryActionCapabilities,validateHistoryPage,validatePrefs,validateEnvelope,validateResult,validateSceneCapabilities,safeJson,uuid,validUtc});
 });

@@ -13,7 +13,8 @@ execFileSync(process.env.PH_BROWSER_PYTHON || 'python3', ['-c',
   __dirname, fixtures], {cwd: root, stdio: 'pipe'});
 let browser;
 (async () => {
-  browser = await chromium.launch({headless: true, args: ['--disable-background-networking', '--host-resolver-rules=MAP * ~NOTFOUND']});
+  browser = await chromium.launch({headless: true, executablePath: process.env.PH_BROWSER_EXECUTABLE,
+    args: ['--disable-background-networking', '--host-resolver-rules=MAP * ~NOTFOUND']});
   const context = await browser.newContext({viewport: {width: 1365, height: 1000}, serviceWorkers: 'block'});
   const unexpected = [], errors = [];
   await context.route('**/*', async route => {

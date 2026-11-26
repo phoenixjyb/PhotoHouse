@@ -119,6 +119,22 @@ class MemoryStoryAutoRefinementTests(unittest.TestCase):
         self.assertEqual(current['auto_refinement']['result'], proposed)
         self.assertTrue(current['auto_refinement']['needs_review'])
 
+        path = '/memory-stories?library=family-a'
+        shelf_headers = {'Authorization': 'Bearer ' + self.library.owner_token,
+                         'X-PhotoHouse-Story-Refinement-Hints': '1'}
+        self.assertNotIn('has_refinement_draft', self.f.get(path, headers=shelf_headers).json()['items'][0])
+        self.f.client.app.state.memory_auto_refinement_enabled = True
+        shelf = self.f.get(path, headers=shelf_headers)
+        self.assertEqual(shelf.status_code, 200, shelf.text)
+        self.assertEqual(shelf.headers['cache-control'], 'no-store')
+        self.assertIs(shelf.json()['items'][0]['has_refinement_draft'], True)
+        self.assertNotIn(job_id, shelf.text)
+        self.assertNotIn('Suggested wording', shelf.text)
+        self.assertNotIn('has_refinement_draft', self.f.get(path).json()['items'][0])
+        other = self.f.get(path, headers={**shelf_headers,
+                            'Authorization': 'Bearer ' + self.library.member_token})
+        self.assertNotIn('has_refinement_draft', other.json()['items'][0])
+
         member = self.call('get', self.library.member_token, saved['id'], False, True)
         self.assertNotIn('auto_refinement', member)
         with self.library.connection() as db:
@@ -134,6 +150,8 @@ class MemoryStoryAutoRefinementTests(unittest.TestCase):
         latest = self.call('get', self.library.owner_token, saved['id'], False, True)
         self.assertEqual(latest['revision'], '2')
         self.assertIsNone(latest['auto_refinement'])
+        revised_shelf = self.f.get(path, headers=shelf_headers)
+        self.assertNotIn('has_refinement_draft', revised_shelf.json()['items'][0])
 
     def test_http_refinement_requires_enabled_worker_and_current_authorized_story(self):
         saved = self.save()

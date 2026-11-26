@@ -1,6 +1,7 @@
 """In-process security checks for private assistant history/preferences."""
 from contextlib import closing, contextmanager
 import asyncio
+from datetime import datetime
 from pathlib import Path
 import sqlite3
 import sys
@@ -100,6 +101,78 @@ class AssistantWorkspaceHttpTests(unittest.TestCase):
             with self.assertRaises(TransportError) as raised:
                 asyncio.run(workspace_transport._body(stalled, {'library_id'}))
         self.assertEqual(raised.exception.status, 408)
+
+    def test_thread_paging_is_opt_in_and_remains_private(self):
+        older = self.store.create_thread('one','family-a')['thread_id']
+        self.now[0] += 1
+        newer = self.store.create_thread('one','family-a')['thread_id']
+        self.store.create_thread('other','family-a')
+        path = '/threads?library_id=family-a&limit=1'
+        headers = self.auth | {'X-PhotoHouse-Thread-Page-Version':'1'}
+        legacy = self.request('GET',path).json()
+        self.assertEqual(set(legacy), {'version','threads'})
+        page = self.request('GET',path,headers=headers)
+        self.assertEqual(page.status_code,200,page.text)
+        self.assertEqual(page.headers['cache-control'],'no-store')
+        self.assertIs(page.json()['has_more'], True)
+        anchor = page.json()['threads'][0]
+        self.assertEqual(anchor['thread_id'], newer)
+        updated_at = int(datetime.fromisoformat(anchor['updated_at']).timestamp())
+        continuation = path + f'&before={updated_at},{newer}'
+        self.assertEqual(self.request('GET',continuation).status_code,400)
+        next_page = self.request('GET',continuation,headers=headers)
+        self.assertEqual([row['thread_id'] for row in next_page.json()['threads']], [older])
+        self.assertIs(next_page.json()['has_more'], False)
+        for cursor in ('0,invalid', '1', '999999999999,'+newer):
+            self.assertEqual(self.request('GET',path+'&before='+cursor,headers=headers).status_code,400)
+        self.assertNotEqual(self.request('GET',continuation,headers={
+            'X-PhotoHouse-Thread-Page-Version':'1'}).status_code,200)
+
+    def test_thread_label_search_pages_only_owned_current_library_labels(self):
+        def thread_with_question(account, library, question):
+            ident = self.store.create_thread(account, library)['thread_id']
+            self.store.append_exchange(account, library, ident, str(uuid.uuid4()), 0,
+                                       question, 'Synthetic reply', [], [])
+            return ident
+
+        expected = []
+        for _ in range(52):
+            self.now[0] += 1
+            expected.insert(0, thread_with_question('one', 'family-a', 'Family   Trip %'))
+        thread_with_question('other', 'family-a', 'Family Trip %')
+        thread_with_question('one', 'family-b', 'Family Trip %')
+        later = thread_with_question('one', 'family-a', 'Different topic')
+        self.store.append_exchange('one', 'family-a', later, str(uuid.uuid4()), 1,
+                                   'Family Trip % in a later question', 'Synthetic reply', [], [])
+        thread_with_question('one', 'family-a', 'Family Trip pictures')
+        path = '/thread-search'
+        query = {'library_id': 'family-a', 'query': '  FAMILY TRIP % '}
+        first = self.request('POST', path, body=query)
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(first.headers['cache-control'], 'no-store')
+        self.assertEqual(set(first.json()), {'version', 'threads', 'has_more'})
+        items = first.json()['threads']
+        self.assertEqual([item['thread_id'] for item in items], expected[:50])
+        self.assertTrue(all(item['label'] == 'Family Trip %' for item in items))
+        self.assertIs(first.json()['has_more'], True)
+        anchor = items[-1]
+        before = f"{int(datetime.fromisoformat(anchor['updated_at']).timestamp())},{anchor['thread_id']}"
+        tail = self.request('POST', path, body={**query, 'before': before}).json()
+        self.assertEqual([item['thread_id'] for item in tail['threads']], expected[50:])
+        self.assertIs(tail['has_more'], False)
+        self.assertEqual(self.request('GET', path).status_code, 403)
+        self.assertEqual(self.request('POST', path, body={**query, 'library_id': 'family-b'}).status_code, 401)
+        self.assertEqual(self.request('POST', path, body=query, headers={}).status_code, 401)
+        cookie = {'Cookie': COOKIE + '=' + TOKEN, 'Origin': ORIGIN}
+        self.assertEqual(self.request('POST', path, body=query, headers=cookie).status_code, 403)
+        self.assertEqual(self.request('POST', path+'?query=family', body=query).status_code, 400)
+        for invalid in ({**query, 'query': ' '}, {**query, 'query': None}, {**query, 'query': 'a'*257},
+                        {**query, 'before': '1,invalid'}, {**query, 'account_id': 'other'}):
+            self.assertEqual(self.request('POST', path, body=invalid).status_code, 400)
+        capabilities = '/capabilities?library_id=family-a'
+        self.assertNotIn('thread_search', self.request('GET', capabilities).json())
+        supported = self.request('GET', capabilities, headers=self.auth|{'X-PhotoHouse-Thread-Search-Version': '1'})
+        self.assertIs(supported.json()['thread_search'], True)
 
     def test_owned_threads_are_account_and_library_scoped_and_redact_bindings(self):
         self.update("INSERT INTO access_memberships VALUES('one','family-b','approved','viewer',1,NULL,0,'one')")

@@ -55,6 +55,54 @@ class SearchRefinementTests(unittest.TestCase):
                 self.assertEqual(result.status, 'ready', result)
                 self.assertEqual(result.filters, expected)
 
+    def test_bilingual_year_followups_keep_the_requested_calendar_precision(self):
+        for words, start, end, desired in (
+                ('What about the same month in 2024?', '2023-02-08', '2023-02-20', ('2024-02-01', '2024-02-29')),
+                ('换到2023年同月', '2024-02-01', '2024-02-29', ('2023-02-01', '2023-02-28')),
+                ('same dates in 2031', '2032-08-24', '2032-09-02', ('2031-08-24', '2031-09-02')),
+                ('2031年同期', '2032-08-24', '2032-09-02', ('2031-08-24', '2031-09-02')),
+                ('same day in 2031', '2032-09-02', '2032-09-02', ('2031-09-02', '2031-09-02')),
+                ('2031年同一天', '2032-09-02', '2032-09-02', ('2031-09-02', '2031-09-02'))):
+            with self.subTest(words=words):
+                previous = {**PREVIOUS, 'date': {'from': start, 'to': end}}
+                self.assertEqual(query_mode(words), 'refine')
+                result = plan(words, previous=previous)
+                self.assertEqual(result.status, 'ready', result)
+                self.assertEqual(result.filters, {**previous, 'date': {'from': desired[0], 'to': desired[1]}})
+
+    def test_year_followups_fail_closed_without_exact_prior_dates(self):
+        for words, date_filter, reason in (
+                ('same month in 2031', {'from': None, 'to': '2032-09-02'}, 'date_reference_unavailable'),
+                ('2031年同期', {'from': '2031-12-28', 'to': '2032-01-04'}, 'date_reference_unavailable'),
+                ('2031年同月', {'from': '2032-08-24', 'to': '2032-09-02'}, 'month_reference_unavailable'),
+                ('same date in 2031', {'from': '2032-09-01', 'to': '2032-09-02'}, 'day_reference_unavailable'),
+                ('same dates in 2031', {'from': '2032-02-26', 'to': '2032-02-29'}, 'date_reference_invalid_day')):
+            with self.subTest(words=words):
+                previous = {**PREVIOUS, 'date': date_filter}
+                result = plan(words, previous=previous)
+                self.assertEqual((result.status, result.reason), ('clarification', reason))
+                self.assertEqual(result.filters, previous)
+        self.assertEqual(plan('same month in 2031', previous=None).reason, 'refine_without_context')
+        self.assertEqual(plan('same month in 2031', previous={'media': ['image']}).reason, 'date_reference_unavailable')
+        quoted = plan('photos containing "same month in 2031"')
+        self.assertEqual(quoted.filters, {**PREVIOUS, 'text': 'same month in 2031'})
+        words = 'same month in 2031'
+        entities = {**resolved_entities(words), 'groups': {'people': ['301'], 'locations': [], 'tags': []}, 'labels': ['same month']}
+        ambiguous = plan_query(words, now=NOW, entities=entities, previous_filters=PREVIOUS, refine=True)
+        self.assertEqual((ambiguous.status, ambiguous.reason), ('clarification', 'ambiguous_date_entity'))
+        self.assertEqual(ambiguous.filters, PREVIOUS)
+
+    def test_description_search_keeps_its_reviewed_concept_when_the_year_changes(self):
+        from app.access.search_intent import plan_query as plan_description
+
+        words = 'same month in 2031'
+        previous = {**PREVIOUS, 'descriptive': {'version': 1,
+                    'concepts': [{'surface': 'flying a kite', 'alternatives': ['flying a kite', 'kite flying']}]}}
+        result = plan_description(words, now=NOW, entities=resolved_entities(words),
+                                  previous_filters=previous, planner=None)
+        self.assertEqual(result.status, 'ready', result)
+        self.assertEqual(result.filters, {**previous, 'date': {'from': '2031-09-01', 'to': '2031-09-30'}})
+
     def test_people_answer_requires_context_and_a_valid_current_filter_shape(self):
         missing = self.people_answer('Sample Child', previous=None)
         self.assertEqual(missing.status, 'clarification')
@@ -683,6 +731,25 @@ class SearchRefinementHttpTests(unittest.TestCase):
         invalid = self.fixture.turn('only from 2032-10-01 to 2032-09-01', context=initial['context']).json()
         self.assertEqual(invalid['kind'], 'clarification', invalid)
         self.assertEqual(invalid['context'], initial['context'])
+
+    def test_year_followup_reuses_authorized_people_and_text_over_http(self):
+        initial = self.fixture.turn('find photos of 示例儿童和示例成人 in September 2031 containing "海边"').json()
+        self.assertEqual(initial['kind'], 'results', initial)
+        self.assertEqual(initial['items'], [])
+        next_year = self.fixture.turn('what about the same month in 2032?', context=initial['context']).json()
+        self.assertEqual(next_year['kind'], 'results', next_year)
+        self.assertEqual(next_year['filters'], {**initial['filters'],
+                         'date': {'from': '2032-09-01', 'to': '2032-09-30'}})
+        self.assertEqual([item['id'] for item in next_year['items']], ['103'])
+        previous_year = self.fixture.turn('2031年同期', context=next_year['context']).json()
+        self.assertEqual(previous_year['kind'], 'results', previous_year)
+        self.assertEqual(previous_year['filters'], initial['filters'])
+        self.assertEqual(previous_year['items'], [])
+        leap_day = self.fixture.turn('find photos on 2032-02-29').json()
+        refused = self.fixture.turn('same day in 2031', context=leap_day['context']).json()
+        self.assertEqual(refused['kind'], 'clarification', refused)
+        self.assertIn('does not occur', refused['reply'])
+        self.assertEqual(refused['context'], leap_day['context'])
 
     def test_explicit_date_removal_can_include_video_with_missing_capture_date(self):
         initial = self.fixture.turn('find videos in September 2032').json()

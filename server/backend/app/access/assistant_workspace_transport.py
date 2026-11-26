@@ -26,8 +26,8 @@ from .assistant_memory_followup import (AssistantMemoryFollowupTool,
                                         parse_saved_memory_action)
 from .assistant_memory_discovery import AssistantMemoryDiscovery
 
-from .assistant_workspace_store import (AssistantWorkspaceStore,
-    WorkspaceStoreConflict, WorkspaceStoreMissing, WorkspaceStoreUnavailable)
+from .assistant_workspace_store import (AssistantWorkspaceStore, MAX_THREAD_LABEL_QUERY_BYTES, MAX_THREAD_TIMESTAMP,
+    WorkspaceStoreConflict, WorkspaceStoreMissing, WorkspaceStoreUnavailable, _text as _workspace_text)
 from .assistant_speech import (AssistantSpeechUnavailable, LocalAssistantTts,
                                valid_reply_wav)
 from .assistant_reading_segments import saved_reading_segments, MAX_SEGMENTS
@@ -1129,7 +1129,7 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
     async def finish_journal(*, error=None, kind=None, total=None):
         status, http_status = ('succeeded', 200) if committed else ('failed', 503)
         if row is not None and row['status'] == 'interrupted':
-            error, http_status = 'turn_interrupted', 409
+            error, http_status = row['error_code'], 409
 
         async def read():
             return await operation.reconcile(operation.spawn_call(journal.get,
@@ -1214,7 +1214,7 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
         row = await operation.wait(completion, finalizing=True)
         committed = row['status'] == 'completed'
         if journal_started:
-            await finish_journal(error=None if committed else 'turn_interrupted',
+            await finish_journal(error=None if committed else row['error_code'],
                                  kind=summary['kind'], total=summary['total'])
         return {'row': row, 'recovered': False, 'tracking': journal is not None,
                 'receipt': ('succeeded' if committed else 'failed') if journal_started else None}
@@ -1265,7 +1265,8 @@ async def _agent_turn(operation, *, store, access, engine, token, journal, journ
                             raise JournalConflict()
                         journal_started = True
             if journal_started:
-                await finish_journal(error=None if committed else _error_code(error))
+                await finish_journal(error=None if committed else
+                                     (row and row.get('error_code')) or _error_code(error))
         except BaseException:
             # Retain an unavailable lane and the existing bounded durable lease.
             operation.owner.healthy = False
@@ -1438,7 +1439,7 @@ async def create_turn(request: Request, thread_id: str):
         if journal_started:
             await run_in_threadpool(journal.finish, ident,
                 'succeeded' if committed else 'failed', http_status=200 if committed else 409,
-                error=None if committed else 'turn_interrupted',
+                error=None if committed else row['error_code'],
                 kind=summary['kind'] if committed else None,
                 total=summary['total'] if committed else None)
         response = await _turn_envelope(request, account, library, row, recovered=False,
@@ -1467,7 +1468,7 @@ async def create_turn(request: Request, thread_id: str):
             try:
                 await asyncio.shield(run_in_threadpool(journal.finish, ident, 'failed',
                     http_status=499 if isinstance(exc, asyncio.CancelledError) else 200 if unsupported_receipt else 503,
-                    error=_error_code(exc)))
+                    error=(failed and failed.get('error_code')) or _error_code(exc)))
                 journal_failure_confirmed = True
             except Exception:
                 pass
@@ -1492,6 +1493,22 @@ async def read_turn(request: Request, thread_id: str, request_id: str):
     row = await _call(_workspace(request), 'get_turn', account, library,
                       _thread_id(thread_id), _thread_id(request_id))
     return await _turn_envelope(request, account, library, row, recovered=True)
+
+
+@router.post('/assistant/workspace/v1/threads/{thread_id}/requests/{request_id}/discard')
+async def discard_turn(request: Request, thread_id: str, request_id: str):
+    body = await _body(request, {'library_id', 'expected_revision'})
+    library = _library(body['library_id'])
+    account = await _principal(request, library)
+    selected_thread, selected_request = _thread_id(thread_id), _thread_id(request_id)
+    revision = _revision(body['expected_revision'])
+    discarded = await _call(_workspace(request), 'discard_turn', account, library,
+                            selected_thread, selected_request, revision)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'thread_id': selected_thread,
+                         'request_id': selected_request, 'revision': revision,
+                         'discarded': discarded}, headers=PRIVACY_HEADERS)
 
 
 async def reply_speech(request: Request, thread_id: str, turn_id: str):
@@ -2212,31 +2229,73 @@ async def capabilities(request: Request):
                          applied_preferences=[])
         if await _principal(request, library) != account:
             raise AccessDenied()
+    if _single(request, 'x-photohouse-pending-turn-version') == '1':
+        value['discard_pending'] = bool(healthy)
+    if _single(request, 'x-photohouse-thread-search-version') == '1':
+        value['thread_search'] = bool(healthy)
     return JSONResponse(value, headers=PRIVACY_HEADERS)
+
+
+def _thread_list_position(value):
+    if type(value) is not str:
+        raise WorkspaceInvalid()
+    seconds, separator, thread_id = value.partition(',')
+    if (not separator or not seconds.isascii() or not seconds.isdecimal()
+            or len(seconds) > 12 or int(seconds) > MAX_THREAD_TIMESTAMP):
+        raise WorkspaceInvalid()
+    return int(seconds), _thread_id(thread_id)
 
 
 @router.get('/assistant/workspace/v1/threads')
 async def list_threads(request: Request):
-    query = _query(request, {'library_id', 'limit', 'include_labels'}, {'library_id'})
+    query = _query(request, {'library_id', 'limit', 'include_labels', 'before'}, {'library_id'})
     library = _library(query['library_id'])
     account = await _principal(request, library)
+    paged = _single(request, 'x-photohouse-thread-page-version') == '1'
     limit = 50
     if 'limit' in query:
-        if not query['limit'].isascii() or not query['limit'].isdecimal() or not 1 <= int(query['limit']) <= 100:
+        raw_limit = query['limit']
+        if (not raw_limit.isascii() or not raw_limit.isdecimal()
+                or not 1 <= int(raw_limit) <= (99 if paged else 100)):
             raise WorkspaceInvalid()
-        limit = int(query['limit'])
+        limit = int(raw_limit)
     include_labels = False
     if 'include_labels' in query:
         if query['include_labels'] not in ('true', 'false'):
             raise WorkspaceInvalid()
         include_labels = query['include_labels'] == 'true'
+    before = None
+    if 'before' in query:
+        if not paged:
+            raise WorkspaceInvalid()
+        before = _thread_list_position(query['before'])
     store = _workspace(request)
-    items = await _call(store, 'list_threads', account, library, limit=limit,
-                        include_labels=include_labels)
+    items = await _call(store, 'list_threads', account, library, limit=limit + int(paged),
+                        include_labels=include_labels, before=before)
     if await _principal(request, library) != account:
         raise AccessDenied()
-    return JSONResponse({'version': 1, 'threads': [_safe_thread(row) for row in items]},
-                        headers=PRIVACY_HEADERS)
+    result = {'version': 1, 'threads': [_safe_thread(row) for row in items[:limit]]}
+    if paged:
+        result['has_more'] = len(items) > limit
+    return JSONResponse(result, headers=PRIVACY_HEADERS)
+
+
+@router.post('/assistant/workspace/v1/thread-search')
+async def search_threads(request: Request):
+    body = await _body(request, {'library_id', 'query', 'before'}, required={'library_id', 'query'})
+    library = _library(body['library_id'])
+    account = await _principal(request, library)
+    try:
+        query = _workspace_text(body['query'], MAX_THREAD_LABEL_QUERY_BYTES)
+    except ValueError:
+        raise WorkspaceInvalid() from None
+    before = _thread_list_position(body['before']) if 'before' in body else None
+    items = await _call(_workspace(request), 'list_threads', account, library, limit=51,
+                        include_labels=True, before=before, label_query=query)
+    if await _principal(request, library) != account:
+        raise AccessDenied()
+    return JSONResponse({'version': 1, 'threads': [_safe_thread(row) for row in items[:50]],
+                         'has_more': len(items) > 50}, headers=PRIVACY_HEADERS)
 
 
 @router.post('/assistant/workspace/v1/threads')
@@ -2257,16 +2316,21 @@ async def read_thread(request: Request, thread_id: str):
     library = _library(query['library_id'])
     search_version = _single(request, 'x-photohouse-search-version')
     scene_reword_version = _single(request, 'x-photohouse-scene-reword-version')
+    pending_turn_version = _single(request, 'x-photohouse-pending-turn-version')
     if (scene_reword_version is not None and
             (scene_reword_version != '1' or search_version not in (None, '4'))):
         raise WorkspaceInvalid()
     include_scene_reword = scene_reword_version == '1'
+    if pending_turn_version not in (None, '1'):
+        raise WorkspaceInvalid()
+    include_pending_turn = pending_turn_version == '1'
     account = await _principal(request, library)
     store = _workspace(request)
     selected = _thread_id(thread_id)
     result = await _call(store, 'get_thread', account, library, selected,
-                         include_scene_reword=include_scene_reword)
-    if include_scene_reword and await _principal(request, library) != account:
+                         include_scene_reword=include_scene_reword,
+                         include_pending_turn=include_pending_turn)
+    if (include_scene_reword or include_pending_turn) and await _principal(request, library) != account:
         raise AccessDenied()
     latest = result.get('latest_request_id')
     all_rows = result['exchanges']
@@ -2278,6 +2342,8 @@ async def read_thread(request: Request, thread_id: str):
                  'latest_request_id': latest}
         if include_scene_reword:
             value['scene_reword'] = result['scene_reword']
+        if include_pending_turn:
+            value['pending_turn'] = result['pending_turn']
         return value
 
     selected_rows = all_rows[-20:]

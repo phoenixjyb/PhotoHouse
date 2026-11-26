@@ -15,7 +15,8 @@ createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(l
 bridge.on('exit',code=>{if(code){readyReject(new Error(`Synthetic bridge failed (${code})`));for(const call of pending.values())call.reject(new Error('Synthetic bridge failed'));}});
 const rpc=message=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});bridge.stdin.write(JSON.stringify({...message,id})+'\n');});
 const jobId='5f79b251-a8fd-43b6-bfc2-d130b6055fb6',modelTitle='MODEL_TITLE_MUST_NOT_APPEAR',originalTitle='一起走过的日子';let saveBodies=[];
-let browser,context,page,jobPolls=0,refinementPosts=0,external=[],staleMetadata=false,noAutoJob=true,confirmAction='accept',dialogWaiter=null;
+let browser,context,page,jobPolls=0,refinementPosts=0,external=[],staleMetadata=false,noAutoJob=true,realShelfDraft=false,confirmAction='accept',dialogWaiter=null;
+let previousJobError=null, refuseNextRetry=false;
 const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.startsWith('/memory-community/v1/jobs')).length;
 (async()=>{
   await ready;
@@ -28,7 +29,14 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
     let responseBody,status,headersOut;
     if(entry.method==='POST'&&url.pathname==='/memory-stories/'+storyId+'/refinement'){
       const body=JSON.parse((request.postDataBuffer()||Buffer.alloc(0)).toString());assert.equal(body.revision,story.revision);refinementPosts++;
-      responseBody=Buffer.from(JSON.stringify({version:1,id:jobId,kind:'narrative',state:'queued',created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:null,result:null,needs_review:true,base_revision:story.revision}));status=200;headersOut={'content-type':'application/json'};
+      if(refuseNextRetry){
+        refuseNextRetry=false;status=503;
+        responseBody=Buffer.from(JSON.stringify({detail:'Synthetic local retry unavailable'}));
+      }else{
+        previousJobError=null;status=200;
+        responseBody=Buffer.from(JSON.stringify({version:1,id:jobId,kind:'narrative',state:'queued',created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:null,result:null,needs_review:true,base_revision:story.revision}));
+      }
+      headersOut={'content-type':'application/json'};
     }else if(entry.method==='GET'&&url.pathname==='/memory-community/v1/capabilities'){
       const result=await rpc({method:entry.method,path:entry.path,headers,body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});status=result.status;responseBody=Buffer.from(result.body,'base64');headersOut={...result.headers};
       const caps=JSON.parse(responseBody.toString());caps.enabled=true;caps.auto_refinement_enabled=true;responseBody=Buffer.from(JSON.stringify(caps));
@@ -40,7 +48,7 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
       if(entry.method==='PUT'&&url.pathname==='/memory-stories/'+storyId)saveBodies.push(JSON.parse((request.postDataBuffer()||Buffer.alloc(0)).toString()));
       const result=await rpc({method:entry.method,path:entry.path,headers,body:(request.postDataBuffer()||Buffer.alloc(0)).toString('base64')});status=result.status;responseBody=Buffer.from(result.body,'base64');headersOut={...result.headers};
       if(entry.method==='GET'&&url.pathname==='/memory-stories/'+storyId&&status===200){
-        story=JSON.parse(responseBody.toString());story.auto_refinement=noAutoJob?null:{version:1,id:jobId,kind:'narrative',state:'queued',created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:null,result:null,needs_review:true,base_revision:staleMetadata?'999':story.revision};
+        story=JSON.parse(responseBody.toString());if(!realShelfDraft)story.auto_refinement=noAutoJob?null:{version:1,id:jobId,kind:'narrative',state:previousJobError?'failed':'queued',created_at:1900000000,updated_at:1900000000,expires_at:1900003600,error_code:previousJobError,result:null,needs_review:true,base_revision:staleMetadata?'999':story.revision};
         responseBody=Buffer.from(JSON.stringify(story));
       }
     }
@@ -55,7 +63,28 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   await panel.getByRole('button',{name:'整理这个故事'}).click();await panel.getByText('整理任务已排队。稍后会自动检查；你也可以手动刷新。').waitFor();assert.equal(refinementPosts,1,'one explicit click queues one revision-bound refinement');assert.equal(await page.locator('#story-reader-text').textContent(),original,'queueing never edits the saved story');
   await page.locator('#story-reader-close').click();await page.waitForTimeout(3200);assert.equal(jobPolls,0,'closing the story stops queued-job polling');
   noAutoJob=false;staleMetadata=true;await page.locator('.saved-memory-cover').first().click();await page.locator('#story-reader').waitFor({state:'visible'});assert.equal(await page.locator('.story-auto-refinement').count(),0,'metadata for a different base revision is refused');await page.locator('#story-reader-close').click();staleMetadata=false;
-  await page.locator('.saved-memory-cover').first().click();await page.locator('#story-reader-title').locator('xpath=..').locator('.story-auto-refinement').waitFor();
+  const retry=panel.getByRole('button',{name:'重试本地整理',exact:true});
+  previousJobError='source_changed';
+  await page.locator('.saved-memory-cover').first().click();await panel.waitFor();
+  assert.equal(await retry.count(),0,'a changed-source failure cannot be retried');
+  await page.locator('#story-reader-close').click();
+  previousJobError='model_timeout';
+  await page.locator('.saved-memory-cover').first().click();await retry.waitFor();
+  assert.equal(await retry.isEnabled(),true,'the opened reader enables an eligible retry');
+  assert.equal(await panel.getAttribute('data-job-id'),jobId);
+  assert.equal(refinementPosts,1,'reopening a failed job does not retry automatically');
+  refuseNextRetry=true;
+  await retry.press('Enter');
+  await panel.getByText('暂时无法重试此整理建议。请稍后再试。',{exact:true}).waitFor();
+  assert.equal(refinementPosts,2);
+  assert.equal(await page.locator('#story-reader-text').textContent(),original);
+  await retry.press('Enter');
+  await panel.getByText('整理任务已排队。稍后会自动检查；你也可以手动刷新。').waitFor();
+  assert.equal(refinementPosts,3,'each explicit retry makes one request for the same story revision');
+  assert.equal(await panel.getAttribute('data-job-id'),jobId);
+  assert.equal(await retry.count(),0);
+  assert.equal(saveBodies.length,0,'retry neither edits nor saves the story');
+  console.log('PASS A failed saved-story refinement offers an explicit same-job retry and keeps the original intact');
   const deferNotice='资料暂时忙碌，稍后会继续检查本地 AI 建议。';
   await panel.getByText(deferNotice,{exact:true}).waitFor({timeout:7000});assert.equal(jobPolls,1,'deferred is shown as a temporary state and remains pollable');
   await page.waitForFunction(()=>document.querySelector('.story-auto-refinement-status')?.textContent.includes('建议已就绪'),null,{timeout:7000});
@@ -64,10 +93,16 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   const firstRow=rows.nth(0),firstOriginal=firstRow.locator('.story-auto-refinement-comparison'),firstSuggested=firstRow.locator('.story-auto-refinement-chapter');
   assert.equal(await firstOriginal.isVisible(),true);assert.equal(await firstSuggested.isVisible(),true);
   assert.match(await firstOriginal.textContent(),new RegExp(original));assert.match(await firstSuggested.textContent(),new RegExp(original),'the first chapter wording is unchanged in the suggestion');
+  assert.equal(await firstRow.locator('mark').count(),0,'unchanged chapters have no highlights');
   const secondRow=rows.nth(1),originalCard=secondRow.locator('.story-auto-refinement-comparison'),suggestedCard=secondRow.locator('.story-auto-refinement-chapter');
   assert.equal(await originalCard.isVisible(),true);assert.equal(await suggestedCard.isVisible(),true);
   assert.match(await originalCard.locator('h5').textContent(),/当前保存的原文/);assert.match(await originalCard.textContent(),/家人接着坐在湖边聊天，记录那天的心情。/);
   assert.match(await suggestedCard.locator('h5').textContent(),/整理建议/);assert.match(await suggestedCard.textContent(),/待家人核对的整理建议：湖边散步。/);
+  assert.equal(await originalCard.locator('p').textContent(),'家人接着坐在湖边聊天，记录那天的心情。');
+  assert.equal(await suggestedCard.locator('p').textContent(),'待家人核对的整理建议：湖边散步。');
+  assert((await originalCard.locator('mark').allTextContents()).join('').includes('聊天'));
+  assert((await suggestedCard.locator('mark').allTextContents()).join('').includes('整理建议'));
+  await panel.getByText('已标出两版文字之间的变化。',{exact:true}).waitFor();
   if(process.env.PH_BROWSER_ARTIFACTS){
     await fs.mkdir(process.env.PH_BROWSER_ARTIFACTS,{recursive:true});
     await panel.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'story-local-ai-review-desktop.png')});
@@ -81,12 +116,56 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
     await panel.evaluate((root,rows)=>rows.forEach(row=>{const node=root.querySelector(`[data-review-scale="${row.index}"]`);if(node){node.style.fontSize=row.font;node.style.lineHeight=row.line;delete node.dataset.reviewScale;}}),scaled);
     await page.setViewportSize({width:1280,height:900});
   }
+  await page.locator('#story-reader-close').click();
+  const preparedShelf=await rpc({command:'seed-shelf-refinement'});
+  assert.match(preparedShelf.job_id,/^[0-9a-f-]{36}$/);
+  realShelfDraft=true;
+  const readsBeforeShelf=requests.length;
+  await page.locator('#saved-memory-refresh').click();
+  const shelfReview=page.getByRole('button',{name:`核对 AI 草稿: ${originalTitle}`,exact:true});
+  await shelfReview.waitFor();
+  assert.equal(await page.locator('.saved-refinement-review').count(),1);
+  await page.setViewportSize({width:390,height:844});
+  await page.evaluate(()=>{document.documentElement.style.fontSize='150%';});
+  assert(await shelfReview.evaluate(el=>el.getBoundingClientRect().height>=44&&el.scrollWidth<=el.clientWidth));
+  if(process.env.PH_BROWSER_ARTIFACTS){
+    await shelfReview.scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'review-from-saved-stories-phone-zh-150.png')});
+  }
+  await shelfReview.press('Enter');
+  await panel.waitFor({state:'visible'});
+  assert.equal(await panel.locator('h3').evaluate(el=>el===document.activeElement),true);
+  assert.equal(await page.locator('#story-reader-text').textContent(),original);
+  assert.match(await panel.textContent(),/待家人核对的整理建议：湖边散步。/);
+  assert.match(await panel.textContent(),/合成的另一种第一章写法。/);
+  assert(requests.slice(readsBeforeShelf).every(row=>['GET','HEAD'].includes(row.method)));
+  const firstChapterChoice=panel.locator('.story-auto-refinement-section[data-chapter-id="chapter-1"] input');
+  const secondChapterChoice=panel.locator('.story-auto-refinement-section[data-chapter-id="chapter-2"] input');
+  assert.equal(await firstChapterChoice.isChecked(),true);
+  assert.equal(await secondChapterChoice.isChecked(),true);
+  await firstChapterChoice.press('Space');
+  assert.equal(await firstChapterChoice.isChecked(),false);
+  await secondChapterChoice.uncheck();
+  assert.equal(await panel.getByRole('button',{name:'审核通过，带入编辑'}).isDisabled(),true);
+  await secondChapterChoice.check();
+  if(process.env.PH_BROWSER_ARTIFACTS){
+    const firstChoiceLabel=panel.locator('.story-auto-refinement-section[data-chapter-id="chapter-1"] label');
+    await firstChoiceLabel.scrollIntoViewIfNeeded();
+    assert(await firstChoiceLabel.evaluate(el=>el.getBoundingClientRect().height>=44&&el.scrollWidth<=el.clientWidth));
+    await page.screenshot({path:path.join(process.env.PH_BROWSER_ARTIFACTS,'story-refinement-chapter-choice-phone-zh-150.png')});
+  }
+  await page.evaluate(()=>{document.documentElement.style.fontSize='';});
+  await page.setViewportSize({width:1280,height:900});
+  console.log('PASS One keyboard action opens the current prepared draft from its saved story without restarting refinement or saving');
+
   const keepWrites=requests.filter(item=>['PUT','DELETE'].includes(item.method)).length,keepGenerations=generationPosts(),keepRefinements=refinementPosts;
   await panel.getByRole('button',{name:'保留原文',exact:true}).click();
   await panel.getByText('已保留原文，AI 建议未保存。',{exact:true}).waitFor();
   assert.equal(await panel.locator('.story-auto-refinement-row').count(),0,'keeping the original hides the suggestion comparison');
   assert.equal(requests.filter(item=>['PUT','DELETE'].includes(item.method)).length,keepWrites,'keeping the original does not write');assert.equal(generationPosts(),keepGenerations,'keeping the original does not generate');assert.equal(refinementPosts,keepRefinements);
   await panel.getByRole('button',{name:'重新审核建议',exact:true}).click();await panel.locator('.story-auto-refinement-row').first().waitFor();
+  assert.equal(await firstChapterChoice.isChecked(),false);
+  assert.equal(await secondChapterChoice.isChecked(),true);
   assert.equal(generationPosts(),keepGenerations,'returning to review reuses the ready suggestion');assert.equal(refinementPosts,keepRefinements);
   if(process.env.PH_BROWSER_ARTIFACTS){
     await page.setViewportSize({width:390,height:844});
@@ -101,6 +180,8 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   }
   await page.locator('#story-reader-edit').click();const editor=page.locator('#story-chapter-editor .story-auto-refinement');await editor.waitFor();assert.match(await editor.textContent(),/原标题保留/);assert.match(await editor.textContent(),new RegExp(originalTitle));assert.equal(await editor.getByText(modelTitle,{exact:true}).count(),0,'the model title stays absent in editor review');
   await editor.getByRole('button',{name:'在阅读器中核对并带入编辑'}).click();const readerPanel=page.locator('#story-reader-title').locator('xpath=..').locator('.story-auto-refinement');await readerPanel.waitFor();
+  assert.equal(await firstChapterChoice.isChecked(),false);
+  assert.equal(await secondChapterChoice.isChecked(),true);
   assert.equal(generationPosts(),0,'display and polling never create a generation job');
   confirmAction='dismiss';const dismissed=new Promise(resolve=>{dialogWaiter=resolve;});
   await readerPanel.getByRole('button',{name:'审核通过，带入编辑'}).click();await dismissed;
@@ -149,13 +230,16 @@ const generationPosts=()=>requests.filter(item=>item.method==='POST'&&item.path.
   await saveButton.click();const deadline=Date.now()+5000;while(Date.now()<deadline&&!requests.some(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)))await new Promise(resolve=>setTimeout(resolve,25));
   const save=requests.find(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId));assert.ok(save,'the adopted wording is saved only by the explicit Save action');assert.match(save.path,/[?&]auto_refine=0(?:&|$)/,'the adoption save skips one refinement cycle');
   assert.equal(saveBodies.length,1);assert.equal(requests.filter(item=>item.method==='PUT'&&item.path.startsWith('/memory-stories/'+storyId)).length,1,'exactly one story PUT is sent by explicit Save');await page.locator('#story-workspace-status').getByText('已保存到这个相册库',{exact:false}).waitFor();assert.equal(save.status,200,'the fixture API confirms the explicit story Save');assert.equal(saveBodies[0].title,originalTitle,'the explicit adoption save keeps the saved story title');
-  const savedChapters=JSON.parse(saveBodies[0].chapters);assert.deepEqual(savedChapters.map(chapter=>chapter.id),['chapter-1','chapter-2'],'the explicit save preserves chapter IDs and order');assert.equal(savedChapters[0].narration,'家人一起沿着湖边散步，留下了这段回忆。','the explicit save preserves unchanged chapter one');assert.equal(savedChapters[1].narration,approvedText,'the explicit save persists only the reviewed second chapter edit');
+  const savedChapters=JSON.parse(saveBodies[0].chapters);assert.deepEqual(savedChapters.map(chapter=>chapter.id),['chapter-1','chapter-2'],'the explicit save preserves chapter IDs and order');assert.equal(savedChapters[0].narration,'家人一起沿着湖边散步，留下了这段回忆。','the explicit save keeps the original for the unchecked chapter');assert.equal(savedChapters[1].narration,approvedText,'the explicit save persists only the reviewed second chapter edit');
   assert.deepEqual(savedChapters.map(chapter=>chapter.asset_ids),[['101'],['102']],'the explicit save preserves chapter frame ownership and order');
   assert.equal((await page.locator('#story-approval-status').textContent()).trim(),'','approval status clears after confirmed Save');assert.equal(await page.locator('#story-approval-status').isHidden(),true,'approval status is hidden after confirmed Save');
-  noAutoJob=true;
+  noAutoJob=true;realShelfDraft=false;
   await page.locator('#story-workspace-close').click();await page.locator('#story-workspace').waitFor({state:'hidden'});
   await page.locator('.saved-memory-cover').first().click();await page.locator('#story-reader-chapters').getByRole('button').nth(1).click();await page.locator('#story-reader-text').getByText(approvedText,{exact:true}).waitFor();assert.equal(await page.locator('#story-reader-memory-title').textContent(),originalTitle,'reopening the saved story keeps its original story title');
-  assert.equal(generationPosts(),0);assert.equal(refinementPosts,1);assert.deepEqual(external,[]);assert.deepEqual(pageErrors,[]);assert.ok(jobPolls>=3,'deferred and ready refinement states were both polled');const terminalPollCount=jobPolls;await page.waitForTimeout(3200);assert.equal(jobPolls,terminalPollCount,'polling stops when the job reaches ready');
+  assert.equal(generationPosts(),0);assert.equal(refinementPosts,3);assert.deepEqual(external,[]);assert.deepEqual(pageErrors,[]);
+  assert.equal(jobPolls,2,'deferred and ready refinement states were both polled');
+  assert.equal(requests.filter(row=>row.method==='GET'&&row.path.startsWith(`/memory-community/v1/jobs/${preparedShelf.job_id}?`)).length,2,'both adoption attempts recheck the real ready shelf job');
+  const terminalPollCount=jobPolls;await page.waitForTimeout(3200);assert.equal(jobPolls,terminalPollCount,'polling stops when the job reaches ready');
   await page.locator('#story-reader-close').click();noAutoJob=false;await page.locator('#language').click();await page.waitForFunction(()=>document.documentElement.lang==='en');
   await page.locator('.saved-memory-cover').first().click();await page.waitForFunction(()=>document.querySelector('.story-auto-refinement-status')?.textContent.includes('ready'),null,{timeout:7000});
   await page.locator('#story-reader-edit').click();const englishEditor=page.locator('#story-chapter-editor .story-auto-refinement');await englishEditor.waitFor();await englishEditor.getByRole('button',{name:'Review and bring into the reader'}).click();

@@ -20,6 +20,7 @@ import uuid
 
 RETENTION_SECONDS = 30 * 86400
 MAX_THREADS = 10000
+MAX_THREAD_TIMESTAMP = 253402300799  # 9999-12-31T23:59:59Z
 MAX_EXCHANGES = 100000
 MAX_PREFERENCES = 100000
 MAX_EXCHANGES_PER_THREAD = 200
@@ -30,6 +31,7 @@ MAX_CARDS = 40
 MAX_RECEIPTS = 20
 HISTORY_PAGE_SIZE = 20
 MAX_INPUT_BYTES = 1024
+MAX_THREAD_LABEL_QUERY_BYTES = 256
 MAX_REPLY_BYTES = 8192
 MAX_SCOPE_ID_BYTES = 128
 MAX_EXPECTED_REVISION = (1 << 63) - 2
@@ -606,37 +608,56 @@ class AssistantWorkspaceStore:
             db.commit()
             return result
 
-    def list_threads(self, account_id, library_id, *, limit=50, include_labels=False):
+    def list_threads(self, account_id, library_id, *, limit=50, include_labels=False, before=None, label_query=None):
         account_id, library_id = _scope(account_id), _scope(library_id)
         if (type(limit) is not int or not 1 <= limit <= 100 or
                 type(include_labels) is not bool):
             raise ValueError('Invalid limit')
+        label_filter, label_filter_args = '', ()
+        if label_query is not None:
+            if not include_labels:
+                raise ValueError('Label search requires labeled threads')
+            label_query = ' '.join(_text(label_query, MAX_THREAD_LABEL_QUERY_BYTES).split()).casefold()
+        position_filter, position_args = '', ()
+        if before is not None:
+            if (type(before) is not tuple or len(before) != 2
+                    or type(before[0]) is not int or not 0 <= before[0] <= MAX_THREAD_TIMESTAMP):
+                raise ValueError('Invalid list position')
+            updated_at, thread_id = before
+            position_filter = 'AND t.updated_at<=? AND (t.updated_at<? OR t.thread_id>?)'
+            position_args = (updated_at, updated_at, _uuid4(thread_id, 'thread ID'))
         # Labels are an explicit presentation opt-in. Keeping the default
         # projection unchanged preserves the original strict list contract.
         now = int(self.clock())
+        first_question = '''(SELECT e.input_text FROM exchanges e WHERE e.thread_id=t.thread_id
+                AND e.account_id=t.account_id AND e.library_id=t.library_id AND e.expires_at>?
+                ORDER BY e.revision LIMIT 1)'''
+        label_projection = f', {first_question} AS first_question' if include_labels else ''
+        label_args = (now,) if include_labels else ()
         with self.connection() as db:
-            if include_labels:
-                rows = db.execute('''SELECT t.*,
-                    (SELECT count(*) FROM exchanges e WHERE e.thread_id=t.thread_id
-                        AND e.account_id=t.account_id AND e.library_id=t.library_id AND e.expires_at>?) AS exchange_count,
-                    (SELECT e.input_text FROM exchanges e WHERE e.thread_id=t.thread_id
-                        AND e.account_id=t.account_id AND e.library_id=t.library_id AND e.expires_at>?
-                        ORDER BY e.revision LIMIT 1) AS first_question
-                    FROM threads t WHERE t.account_id=? AND t.library_id=? AND t.expires_at>?
-                    ORDER BY t.updated_at DESC,t.thread_id LIMIT ?''',
-                    (now, now, account_id, library_id, now, limit)).fetchall()
-                result = []
-                for row in rows:
-                    item = self._thread(row, row['exchange_count'])
-                    item['label'] = self._display_label(row['first_question'])
-                    result.append(item)
-                return result
-            rows = db.execute('''SELECT t.*, (SELECT count(*) FROM exchanges e
-                WHERE e.thread_id=t.thread_id AND e.expires_at>?) AS exchange_count
+            if label_query is not None:
+                def matches_label(question):
+                    label = self._display_label(question) or ''
+                    return int(label_query in label.casefold())
+
+                db.create_function('matches_thread_label', 1, matches_label, deterministic=True)
+                label_filter = f'AND matches_thread_label({first_question})'
+                label_filter_args = (now,)
+            rows = db.execute(f'''SELECT t.*, (SELECT count(*) FROM exchanges e
+                WHERE e.thread_id=t.thread_id AND e.account_id=t.account_id
+                AND e.library_id=t.library_id AND e.expires_at>?) AS exchange_count
+                {label_projection}
                 FROM threads t WHERE t.account_id=? AND t.library_id=? AND t.expires_at>?
+                {position_filter} {label_filter}
                 ORDER BY t.updated_at DESC,t.thread_id LIMIT ?''',
-                              (now, account_id, library_id, now, limit)).fetchall()
-            return [self._thread(row, row['exchange_count']) for row in rows]
+                (now, *label_args, account_id, library_id, now, *position_args, *label_filter_args, limit)).fetchall()
+            results = []
+            for row in rows:
+                item = self._thread(row, row['exchange_count'])
+                if include_labels:
+                    item['label'] = self._display_label(row['first_question'])
+                results.append(item)
+            return results
 
     @staticmethod
     def _display_label(value):
@@ -648,9 +669,10 @@ class AssistantWorkspaceStore:
             return collapsed or None
         return collapsed[:63].rstrip() + '…'
 
-    def get_thread(self, account_id, library_id, thread_id, *, include_scene_reword=False):
-        if type(include_scene_reword) is not bool:
-            raise ValueError('Invalid scene reword projection')
+    def get_thread(self, account_id, library_id, thread_id, *,
+                   include_scene_reword=False, include_pending_turn=False):
+        if type(include_scene_reword) is not bool or type(include_pending_turn) is not bool:
+            raise ValueError('Invalid thread projection')
         account_id, library_id = _scope(account_id), _scope(library_id)
         thread_id = _uuid4(thread_id, 'thread ID')
         now = int(self.clock())
@@ -671,14 +693,27 @@ class AssistantWorkspaceStore:
             result = dict(version=1, thread=self._thread(row, len(exchanges)),
                           exchanges=[self._exchange(item) for item in exchanges],
                           latest_request_id=None if latest is None else latest['request_id'])
-            if include_scene_reword:
-                # Select the newest retained request before inspecting its status
-                # or expiry. A later request must suppress an older refusal cue.
+            if include_scene_reword or include_pending_turn:
+                # A later request supersedes both a refusal cue and a pending turn.
                 newest = db.execute('''SELECT request_id,status,error_code,expires_at,
                     expected_revision,revision,input_text FROM turn_requests
                     WHERE thread_id=? AND account_id=? AND library_id=?
                     ORDER BY rowid DESC LIMIT 1''',
                     (thread_id, account_id, library_id)).fetchone()
+            if include_pending_turn:
+                pending = None
+                if (newest is not None and newest['status'] == 'pending'
+                        and newest['expires_at'] > now
+                        and newest['revision'] == newest['expected_revision'] == row['revision']):
+                    try:
+                        pending = dict(version=1,
+                            request_id=_uuid4(newest['request_id'], 'request ID'),
+                            revision=_expected_revision(newest['revision']),
+                            text=_text(newest['input_text'], MAX_INPUT_BYTES))
+                    except ValueError:
+                        raise WorkspaceStoreUnavailable() from None
+                result['pending_turn'] = pending
+            if include_scene_reword:
                 cue = None
                 if (newest is not None and newest['status'] == 'failed' and
                         newest['error_code'] == 'scene_query_unsupported' and
@@ -1090,6 +1125,36 @@ class AssistantWorkspaceStore:
             db.commit()
             return result
 
+    def discard_turn(self, account_id, library_id, thread_id, request_id, expected_revision):
+        account_id, library_id = _scope(account_id), _scope(library_id)
+        thread_id, request_id = _uuid4(thread_id, 'thread ID'), _uuid4(request_id, 'request ID')
+        expected_revision = _expected_revision(expected_revision)
+        now = int(self.clock())
+        with self.connection() as db:
+            self._begin(db)
+            self._prune(db, now)
+            row = db.execute('''SELECT r.*,t.revision AS thread_revision
+                FROM turn_requests r JOIN threads t ON t.thread_id=r.thread_id
+                WHERE r.account_id=? AND r.library_id=? AND r.thread_id=?
+                AND r.request_id=? AND t.expires_at>?''',
+                             (account_id, library_id, thread_id, request_id, now)).fetchone()
+            if row is None:
+                raise WorkspaceStoreMissing()
+            if row['expected_revision'] != expected_revision:
+                raise WorkspaceStoreConflict()
+            row = self._reconcile_lease(db, row, now)
+            discarded = row['status'] == 'interrupted' and row['error_code'] == 'request_cancelled'
+            if row['status'] == 'pending':
+                if row['thread_revision'] != expected_revision:
+                    raise WorkspaceStoreConflict()
+                db.execute('''UPDATE turn_requests SET status='interrupted',lease_id=NULL,
+                    lease_expires_at=NULL,error_code='request_cancelled'
+                    WHERE request_id=? AND account_id=? AND library_id=?''',
+                           (request_id, account_id, library_id))
+                discarded = True
+            db.commit()
+            return discarded
+
     def _leased_request(self, db, account_id, library_id, thread_id, request_id,
                         lease_id, now):
         lease_id = _uuid4(lease_id, 'lease ID')
@@ -1099,6 +1164,9 @@ class AssistantWorkspaceStore:
                          (account_id, library_id, thread_id, request_id, now)).fetchone()
         if row is None:
             raise WorkspaceStoreMissing()
+        if row['status'] == 'interrupted' and row['error_code'] == 'request_cancelled':
+            # A late worker sees the terminal receipt and cannot append an exchange.
+            return None
         if row['status'] != 'pending' or row['lease_id'] != lease_id:
             raise WorkspaceStoreConflict()
         if row['lease_expires_at'] <= now:

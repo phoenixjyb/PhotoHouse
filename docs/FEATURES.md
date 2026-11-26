@@ -16,13 +16,13 @@ requires the relevant real-world use.
 
 ## Bilingual roadmap / 双语路线图
 
-The [EN/中文 dashboard](product-roadmap/index.html) has 24 reviewed feature
+The [EN/中文 dashboard](product-roadmap/index.html) has 26 reviewed feature
 records, area/stage/priority filters and a dated evidence boundary. Both
 languages cover implementation, missing work, next increments and acceptance.
 The `/roadmap/` route passed local, Windows HTTPS and browser checks; the owner
 confirmed it works. The page is a dated product record, not a live host monitor.
 
-[英／中文看板](product-roadmap/index.html)包含 24 项回顾记录，支持按区域、阶段和
+[英／中文看板](product-roadmap/index.html)包含 26 项回顾记录，支持按区域、阶段和
 优先级筛选，并明确有日期的证据边界。两种语言均覆盖实现情况、尚缺工作、下一增量与验收。
 `/roadmap/` 已通过本地、Windows HTTPS 与浏览器检查，并经用户确认；页面是有日期的产品记录，不是在线主机监控。
 
@@ -85,6 +85,27 @@ follows. Current installed-client and voice acceptance remain separate.
 
 See the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md) for generated
 checks and Windows delivery evidence.
+
+## November 26 local candidate
+
+- Open **On this day** on the Web library home to browse photos and videos
+  with the same recorded capture month and day in earlier years. The shelf
+  uses the browser's local calendar and opens items in the protected viewer.
+  Browsing stays within the selected library.
+- The Web photo viewer keeps its Close button inside the viewport at enlarged
+  text sizes. These changes await Windows rollout and household review.
+- Library owners can open the current Jude Search selection in a new album
+  draft. Review the selected photos and videos in order, add a title and
+  choose **Save album** to keep it in the current library.
+- Jude can follow up with “same month in 2024” or “2024 年同期” from an
+  existing date search. It changes only the date condition. Exact dates that
+  do not occur in the requested year prompt for a new date range.
+- **Manage conversations** can find an older private thread by the visible
+  label derived from its first question. Submitting the search keeps the
+  active conversation and its unsent message in place.
+- Story name grounding can use two exact reviewed spellings of the same
+  person to produce a single canonical name. If a spelling belongs to a
+  different reviewed person, the ambiguous phrase is kept for review.
 
 ## Earlier capability snapshot (historical)
 

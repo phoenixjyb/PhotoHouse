@@ -921,6 +921,18 @@ def _turn_impl(engine, token, library, words, previous, clock, *, language=None,
             elif plan.reason == 'ambiguous_relative_date':
                 reply = ('想查哪段更早的时间？请给出年份、月份或日期，其他筛选条件会保留。' if lang == 'zh' else
                          'Which earlier year, month, or date? Your other filters will stay in place.')
+            elif plan.reason == 'date_reference_unavailable':
+                reply = ('请先指定同一年内有起止日期的查找范围，再切换年份。' if lang == 'zh' else
+                         'Choose a capture-date range within one year before switching years.')
+            elif plan.reason == 'month_reference_unavailable':
+                reply = ('当前日期范围跨越多个月，请先选定要沿用的月份。' if lang == 'zh' else
+                         'Your current dates cover several months. Choose the month you want to reuse.')
+            elif plan.reason == 'day_reference_unavailable':
+                reply = ('当前范围包含多天。请选定一天，或指定沿用整个日期范围。' if lang == 'zh' else
+                         'Your current range contains several days. Choose one day or ask to reuse the same dates.')
+            elif plan.reason == 'date_reference_invalid_day':
+                reply = ('目标年份缺少原范围中的日期。请明确新的起止日期。' if lang == 'zh' else
+                         'One of these dates does not occur in the target year. Specify a new capture-date range.')
             elif plan.reason == 'ambiguous_people_reference':
                 reply = ('这个人物指代与当前选定的人数不一致。请提供完整姓名，或明确要沿用哪些人物。' if lang == 'zh' else
                          'That reference does not match the number of selected people. Use full names or clarify who you mean.')

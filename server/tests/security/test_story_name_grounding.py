@@ -117,6 +117,26 @@ class StoryNameGroundingTests(unittest.TestCase):
                 self.assertEqual(1, len(result['repairs']))
                 self.assertEqual('reviewed_alias', result['repairs'][0]['kind'])
 
+    def test_two_exact_names_for_one_person_merge_without_a_phonetic_table(self):
+        people = [{'name': '小陶', 'aliases': ['Mira', '小桃']}]
+        for text in ('Mira或者小陶 来了。', 'Mira 或者 小桃 来了。', 'Mira，也叫小桃 来了。'):
+            with self.subTest(text=text):
+                result = ground_text(text, people, catalog=catalog(), readings={})
+                self.assertEqual(result['text'], '小陶 来了。')
+                self.assertEqual(result['repairs'], [{'before': text.split(' 来了。')[0], 'after': '小陶',
+                                 'kind': 'reviewed_alias', 'reference': 'reviewed_person:0'}])
+                self.assertEqual(result['ambiguous'], [])
+
+    def test_another_persons_exact_alias_prevents_phonetic_merging(self):
+        people = [{'name': '小西', 'aliases': ['Mira']}, {'name': '沐月', 'aliases': ['小希']}]
+        text = 'Mira或者小希 来了。后来小希去散步。'
+        result = ground_text(text, people, catalog=catalog(), readings=READINGS)
+        self.assertEqual(result['text'], 'Mira或者小希 来了。后来沐月去散步。')
+        self.assertEqual(result['repairs'], [{'before': '小希', 'after': '沐月',
+                          'kind': 'reviewed_alias', 'reference': 'reviewed_person:1'}])
+        self.assertEqual(result['ambiguous'], [{'before': 'Mira或者小希', 'kind': 'reviewed_alias',
+                          'references': ['reviewed_person:0', 'reviewed_person:1']}])
+
     def test_reviewed_ambiguous_conjunction_and_private_overlap_do_not_use_public_guess(self):
         text = 'Mira或者小希演唱会。'
         people = [{'name': '小西', 'aliases': ['Mira']},

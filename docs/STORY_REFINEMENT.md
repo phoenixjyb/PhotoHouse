@@ -11,11 +11,23 @@ chapter prose. Other explicit proposal flows retain their own title behavior.
 Adopting an automatic refinement does not immediately queue another refinement
 of the same save.
 
+The saved-story shelf offers **Review AI draft** when there is a prepared
+proposal for the current editor and saved revision. The shelf reads only a
+small availability hint. Opening the draft rechecks library membership,
+the current story revision and source fingerprints through the normal story
+reader. The comparison highlights wording changes on both sides. For longer
+rewrites the changed passage is highlighted as a whole. Clear **Use this
+chapter’s suggestion** to keep that chapter and its saved sources. Only checked
+chapters enter the editor.
+Reviewing and editing the draft keeps the saved wording in place until an
+explicit save.
+
 Existing stories have an explicit **Refine story** action. Repeating a request
-for the same story revision recovers the same job. A changed revision or changed
-source invalidates the old proposal. The operation requires current library
-membership and permission to edit that story. There is no background scan or
-mass rewrite of previously saved stories.
+for the same story revision recovers the same job. After an eligible processing
+failure, **Retry local refinement** queues that job again for the current story
+revision. The saved wording remains available while you wait. A changed revision
+or source invalidates the old proposal. The operation requires current library
+membership and permission to edit that story.
 
 The drafting instructions preserve meaning, names, dates and the family's voice.
 They ask for clear transcription and punctuation errors to be corrected only

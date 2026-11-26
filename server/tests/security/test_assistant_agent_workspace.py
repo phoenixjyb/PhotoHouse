@@ -338,6 +338,43 @@ class AssistantAgentWorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(recovered.json()['status'], 'completed')
         self.assertEqual(len(self.runtime.calls), 1)
 
+    async def test_discarded_agent_reply_cannot_commit_and_keeps_lane_owned_until_exit(self):
+        journal = initialize_journal(Path(self.temp.name).resolve() / 'discard-journal.sqlite')
+        journal.clock = lambda: self.now[0]
+        self.app.state.assistant_journal = journal
+        entered, release = threading.Event(), threading.Event()
+        self.runtime = SyntheticRuntime(entered=entered, release=release)
+        supervisor = self.app.state.assistant_agent_supervisor
+        supervisor.runtime = self.runtime
+        rid = str(uuid.uuid4())
+        task = asyncio.create_task(self.post_turn('find photos in 2032',
+                                                  request_id=rid, agent=True))
+        try:
+            self.assertTrue(await asyncio.to_thread(entered.wait, 5))
+            operation = supervisor.active
+            self.assertIsNotNone(operation)
+            discarded = await self._client.post(
+                f'{BASE}/threads/{self.thread}/requests/{rid}/discard',
+                headers=self.auth, json={'library_id': 'family-a', 'expected_revision': 0})
+            self.assertEqual(discarded.status_code, 200, discarded.text)
+            self.assertIs(discarded.json()['discarded'], True)
+            self.assertIs(supervisor.active, operation)
+        finally:
+            release.set()
+        await asyncio.wait_for(task, 5)
+        await asyncio.wait_for(operation.task, 5)
+        self.assertIsNone(supervisor.active)
+        self.assertTrue(supervisor.healthy)
+        self.assertEqual(self.runtime.tools, [])
+        recovered = (await self.read_turn(rid)).json()
+        self.assertEqual((recovered['status'], recovered['error'], recovered['result']),
+                         ('interrupted', 'request_cancelled', None))
+        history = self.store.get_thread('one', 'family-a', self.thread)
+        self.assertEqual(history['exchanges'], [])
+        receipt = journal.get(rid, 'one', 'family-a')
+        self.assertEqual((receipt['status'], receipt['error_code']),
+                         ('failed', 'request_cancelled'))
+
     async def test_agent_ordinal_open_is_projected_as_a_read_only_choice(self):
         first = await self.post_turn('find photos in 2032')
         self.assertEqual(first.status_code, 200, first.text)

@@ -12,6 +12,7 @@ class WhyResultQueryTests(unittest.TestCase):
             'why the first result': {'ordinal': 1, 'kind': None},
             'Why second result?': {'ordinal': 2, 'kind': None},
             'please why 10 result!': {'ordinal': 10, 'kind': None},
+            'Why result 20?': {'ordinal': 20, 'kind': None},
             'why this result': {'ordinal': None, 'kind': None},
             'why this photo': {'ordinal': None, 'kind': 'image'},
             'why this video？': {'ordinal': None, 'kind': 'video'},
@@ -25,6 +26,7 @@ class WhyResultQueryTests(unittest.TestCase):
             '为什么第一项': {'ordinal': 1, 'kind': None},
             '为什么是第2项结果？': {'ordinal': 2, 'kind': None},
             '请为什么第十个结果。': {'ordinal': 10, 'kind': None},
+            '为什么是第20项结果？': {'ordinal': 20, 'kind': None},
             '为什么这张照片': {'ordinal': None, 'kind': 'image'},
             '为什么是这个视频？': {'ordinal': None, 'kind': 'video'},
             '为什么这个结果': {'ordinal': None, 'kind': None},
@@ -46,7 +48,8 @@ class WhyResultQueryTests(unittest.TestCase):
                 '为什么第一项然后打开',
                 '为什么第一项 红外套',
                 '“为什么这张照片”',
-                'why the 11 result',
+                'why the 21 result',
+                '为什么是第21项结果',
                 'why this image',
                 'why this photo please'):
             with self.subTest(words=words):

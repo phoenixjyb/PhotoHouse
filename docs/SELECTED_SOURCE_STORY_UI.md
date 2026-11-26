@@ -49,9 +49,13 @@ independently reauthorize their own capabilities and current sources.
    narration in the existing editor. Generated words are labelled as AI wording
    pending review. **View original wording** expands the chapter's pre-generation
    text beside the editable proposal. It is collapsed by default, works with the
-   keyboard, and makes no request or save. Cancel, expiry, a replacement outline
-   or changed source selection clears the comparison with the proposal. This
-   uses the existing volatile restoration snapshot, without new retention.
+   keyboard, and makes no request or save. **Keep this chapter’s original
+   wording** restores that chapter and removes its generated citations from
+   review. Other proposed chapters stay editable and need a fresh review
+   confirmation. Keeping the original in the last remaining chapter clears the
+   proposal. Cancel, expiry, a replacement outline or changed source selection
+   clears the comparison with the proposal. These actions use the existing
+   temporary copy of the original wording.
    Any edit clears the review confirmation. Changes to selected
    sources, chapter/media layout or source revision invalidate the old proposal
    rather than rebinding its words to new evidence.

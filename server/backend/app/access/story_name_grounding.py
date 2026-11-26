@@ -259,6 +259,7 @@ def ground_text(text: str, people: Any, *, catalog: Any = None,
     ambiguous: list[dict[str, Any]] = []
     candidates: list[dict[str, Any]] = []
     private_spans: list[tuple[int, int]] = []
+    unresolved_spans: list[tuple[int, int]] = []
 
     # A reviewed alias anchors the private canonical name. Latin aliases use word bounds.
     for index, person in enumerate(clean_people):
@@ -284,23 +285,27 @@ def ground_text(text: str, people: Any, *, catalog: Any = None,
                 if text[start:end].casefold() == person['name'].casefold():
                     private_spans.append((start, end))
                     continue
-                # A reviewed Latin alias followed by an equivalent Chinese canonical
-                # spelling is one anchored same-person phrase; collapse it once.
+                # Exact reviewed names and aliases take precedence over pronunciation.
                 conjunction = (re.match(
-                    rf'(?:或者|[，,]\s*也叫)\s*(?P<name>[{_HAN}]{{{len(person["name"])}}})'
+                    rf'[ \t]*(?:或者|[，,][ \t]*也叫)[ \t]*(?P<name>[{_HAN}]{{{len(person["name"])}}})'
                     rf'(?=$|[^\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]|了|呢|呀|啊|吧|'
                     rf'演唱会|演出|的歌|歌曲)',
                     text[end:]) if _HAN_ONLY.fullmatch(person['name']) else None)
                 if conjunction:
                     second = conjunction.group('name')
-                    peer_matches = [candidate for candidate in clean_people
-                                    if _same_pronunciation(second, candidate['name'], clean_readings)]
-                    canonical_matches = [candidate for candidate in clean_people
-                                         if _same_pronunciation(person['name'], candidate['name'], clean_readings)]
-                    unique_peer = len(peer_matches) == 1 and peer_matches[0]['name'] == person['name']
-                    unique_canonical = len(canonical_matches) == 1
-                    if unique_peer and unique_canonical:
-                        span_end = end + conjunction.end()
+                    exact_owners = alias_owners.get(second.casefold())
+                    if exact_owners:
+                        equivalent = exact_owners == {index}
+                        possible_owners = exact_owners
+                    else:
+                        peer_owners = {i for i, candidate in enumerate(clean_people)
+                                       if _same_pronunciation(second, candidate['name'], clean_readings)}
+                        canonical_owners = {i for i, candidate in enumerate(clean_people)
+                                            if _same_pronunciation(person['name'], candidate['name'], clean_readings)}
+                        equivalent = peer_owners == canonical_owners == {index}
+                        possible_owners = peer_owners | canonical_owners
+                    span_end = end + conjunction.end()
+                    if equivalent:
                         candidates.append({'start': start, 'end': span_end,
                                            'before': text[start:span_end],
                                            'after': person['name'], 'kind': 'reviewed_alias',
@@ -309,14 +314,13 @@ def ground_text(text: str, people: Any, *, catalog: Any = None,
                         if len(candidates) > MAX_REPAIRS:
                             raise ValueError('story name grounding repair limit exceeded')
                         continue
-                    if peer_matches or canonical_matches:
-                        span_end = end + conjunction.end()
+                    if possible_owners:
                         private_spans.append((start, span_end))
+                        unresolved_spans.append((start, span_end))
                         ambiguous.append({'before': text[start:span_end],
                                           'kind': 'reviewed_alias',
                                           'references': [f'reviewed_person:{i}'
-                                                         for i, p in enumerate(clean_people)
-                                                         if p in peer_matches or p is person]})
+                                                         for i in sorted(possible_owners | {index})]})
                         if len(ambiguous) > MAX_REPAIRS:
                             raise ValueError('story name grounding ambiguity limit exceeded')
                         continue
@@ -385,7 +389,13 @@ def ground_text(text: str, people: Any, *, catalog: Any = None,
     candidates.sort(key=lambda item: (item['start'], item['end'], item['kind']))
     accepted = []
     for candidate in candidates:
+        if any(candidate['start'] < end and start < candidate['end'] for start, end in unresolved_spans):
+            continue
         if accepted and candidate['start'] < accepted[-1]['end']:
+            prior = accepted[-1]
+            if (candidate['kind'] == prior['kind'] == 'reviewed_alias' and
+                    candidate['reference'] == prior['reference'] and candidate['end'] <= prior['end']):
+                continue
             # Do not let one grounding source silently shadow another.
             ambiguous.append({'before': candidate['before'], 'kind': candidate['kind'],
                               'references': [candidate['reference']]})

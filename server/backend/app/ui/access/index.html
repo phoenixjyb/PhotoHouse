@@ -46,12 +46,29 @@
         <div class="memory-home-copy"><p class="eyebrow" data-story-word="eyebrow">把片段，连成回忆</p><h2 data-story-word="homeTitle">值得慢慢看的时光</h2><p data-story-word="homeText"></p><div class="memory-home-actions"><button id="memory-guide" class="primary" type="button" data-story-word="guideStart" hidden>讲一个故事</button><button id="memory-create" class="primary" type="button" data-story-word="create">编排一个故事</button><button id="memory-assistant" class="quiet" type="button" data-story-word="assistant">和助手聊聊</button></div></div>
         <div class="memory-home-art"><img id="memory-home-image" alt=""><span class="memory-home-stamp">PhotoHouse · Memories</span></div>
       </section>
+      <details id="anniversary-shelf" class="anniversary-shelf">
+        <summary data-i18n="anniversaryTitle">往年今日</summary>
+        <p id="anniversary-status" class="fine" role="status"></p>
+        <ul id="anniversary-items" class="anniversary-items"></ul>
+        <div id="anniversary-pages" class="anniversary-pages" hidden>
+          <button id="anniversary-previous" class="quiet" type="button" data-i18n="previous">上一页</button>
+          <button id="anniversary-next" class="quiet" type="button" data-i18n="next">下一页</button>
+        </div>
+      </details>
       <section id="saved-memory-panel" class="saved-memory-panel" aria-labelledby="saved-memory-heading">
         <div class="saved-memory-heading"><div><p class="eyebrow" data-story-word="savedEyebrow">家人共同留下的时光</p><h3 id="saved-memory-heading" data-story-word="savedHeading">我们的故事</h3></div><button id="saved-memory-refresh" type="button" class="quiet" data-story-word="refresh">刷新</button></div>
         <nav id="saved-memory-filters" class="saved-memory-filters" aria-label="按主题浏览已保存故事"></nav>
+        <form id="saved-memory-search" class="saved-memory-search" role="search" aria-labelledby="saved-memory-search-label" hidden>
+          <label id="saved-memory-search-label" for="saved-memory-search-title" data-story-word="savedSearchLabel">按标题查找故事</label>
+          <div class="saved-memory-search-controls">
+            <input id="saved-memory-search-title" type="text" enterkeyhint="search" maxlength="160" autocomplete="off" aria-controls="saved-memory-list">
+            <button type="submit" data-story-word="savedSearchSubmit">查找</button>
+            <button id="saved-memory-search-clear" type="button" class="quiet" data-story-word="savedSearchClear" hidden>清除</button>
+          </div>
+        </form>
         <p id="saved-memory-status" role="status" aria-live="polite"></p><div id="saved-memory-list" class="saved-memory-list"></div><button id="saved-memory-more" type="button" class="quiet" hidden data-story-word="moreStories">更多故事</button>
         <details id="recent-memory-groups" class="recent-memory-groups">
-          <summary data-i18n="recentMemoryGroups">最近的回忆组</summary>
+          <summary data-i18n="recentMemoryGroups">已保存的回忆组</summary>
           <p id="recent-groups-status" class="fine" role="status"></p>
           <ul id="recent-group-list" class="recent-group-list"></ul>
           <div id="recent-groups-story" class="recent-groups-story"></div>
@@ -82,15 +99,50 @@
               <summary id="assistant-private-management-toggle" data-i18n="assistantPrivateManage">管理对话</summary>
               <div class="assistant-private-management-content">
                 <div class="assistant-private-heading"><div><h3 id="assistant-private-title" data-i18n="assistantPrivateTitle">我的私密对话</h3></div></div>
+                <form id="assistant-private-thread-search" class="assistant-private-thread-search" role="search" aria-labelledby="assistant-private-thread-query-label" hidden>
+                  <label id="assistant-private-thread-query-label" for="assistant-private-thread-query" data-i18n="assistantPrivateThreadQuery">按对话首问查找</label>
+                  <div class="assistant-private-thread-search-actions">
+                    <input id="assistant-private-thread-query" type="search" maxlength="64" enterkeyhint="search" autocomplete="off" required aria-controls="assistant-private-select">
+                    <button id="assistant-private-thread-submit" type="submit" data-i18n="search">查找</button>
+                    <button id="assistant-private-thread-clear" class="quiet" type="button" data-i18n="assistantPrivateAllThreads" hidden>全部对话</button>
+                  </div>
+                  <p id="assistant-private-thread-search-status" class="fine" role="status" hidden></p>
+                </form>
                 <div class="assistant-private-toolbar"><label for="assistant-private-select" data-i18n="assistantPrivateChoose">继续之前的对话</label><select id="assistant-private-select"><option value="">选择对话</option></select><button id="assistant-private-refresh" class="quiet" type="button" data-i18n="refresh">刷新</button></div>
-                <div class="assistant-actions"><button id="assistant-private-recover" class="quiet" type="button" hidden data-i18n="assistantPrivateRecover">恢复已发送的请求</button><button id="assistant-private-reconcile" class="quiet" type="button" hidden data-i18n="assistantPrivateReconcile">确认新对话是否已创建</button></div>
-                <button id="assistant-private-abandon" class="quiet" type="button" hidden data-i18n="assistantPrivateAbandon">结束等待，开始新对话</button>
+                <div id="assistant-private-thread-pages" class="assistant-private-thread-pages" hidden>
+                  <button id="assistant-private-newer-threads" class="quiet" type="button" data-i18n="assistantPrivateNewerThreads">较新的对话</button>
+                  <span id="assistant-private-thread-page" role="status" class="fine"></span>
+                  <button id="assistant-private-older-threads" class="quiet" type="button" data-i18n="assistantPrivateOlderThreads">较早的对话</button>
+                </div>
+                <div id="assistant-private-submitted" class="assistant-private-submitted" hidden>
+                  <strong data-i18n="assistantPrivateSubmitted">已提交的请求</strong>
+                  <p id="assistant-private-submitted-text" dir="auto"></p>
+                </div>
+                <div class="assistant-private-actions">
+                  <button id="assistant-private-recover" class="quiet" type="button" hidden data-i18n="assistantPrivateRecover">恢复已发送的请求</button>
+                  <button id="assistant-private-discard-reply" class="quiet" type="button" hidden data-i18n="assistantPrivateDiscardReply">丢弃待处理回复</button>
+                  <button id="assistant-private-abandon" class="quiet" type="button" hidden data-i18n="assistantPrivateAbandon">结束等待，开始新对话</button>
+                  <button id="assistant-private-reconcile" class="quiet" type="button" hidden data-i18n="assistantPrivateReconcile">确认新对话是否已创建</button>
+                </div>
                 <section id="assistant-private-abandon-confirm" class="assistant-private-confirm" hidden>
-                  <p data-i18n="assistantPrivateAbandonHelp">服务器可能仍会完成之前的请求。原对话不会被删除，问题会留在输入框；新对话不会自动发送它。</p>
+                  <p id="assistant-private-abandon-help" data-i18n="assistantPrivateAbandonHelp">服务器可能仍会完成之前的请求。原对话不会被删除，问题会留在输入框；新对话不会自动发送它。</p>
                   <button id="assistant-private-abandon-yes" class="quiet" type="button" data-i18n="assistantPrivateAbandonYes">我了解，开始新对话</button><button id="assistant-private-abandon-no" class="quiet" type="button" data-i18n="cancel">取消</button>
                 </section>
                 <button id="assistant-private-retry-creation" class="quiet" type="button" hidden data-i18n="assistantPrivateRetryCreation">重试创建同一个对话</button>
-                <details class="assistant-private-preferences"><summary data-i18n="assistantPrivatePreferences">我的助手偏好</summary><label for="assistant-private-locale" data-i18n="assistantPrivateLocale">回复语言</label><select id="assistant-private-locale"><option value="" data-i18n="assistantPrivateAuto">跟随请求语言</option><option value="zh">中文</option><option value="en">English</option></select><button id="assistant-private-delete" class="quiet" type="button" hidden data-i18n="assistantPrivateDelete">删除这段对话</button><button id="assistant-private-delete-confirm" class="quiet danger" type="button" hidden data-i18n="assistantPrivateDeleteConfirm">确认删除对话</button></details>
+                <details class="assistant-private-preferences">
+                  <summary data-i18n="assistantPrivatePreferences">我的助手偏好</summary>
+                  <label for="assistant-private-locale" data-i18n="assistantPrivateLocale">回复语言</label>
+                  <select id="assistant-private-locale">
+                    <option value="" data-i18n="assistantPrivateAuto">跟随请求语言</option><option value="zh">中文</option><option value="en">English</option>
+                  </select>
+                  <label for="assistant-private-voice-pace" data-i18n="assistantPrivateVoicePace">语音回复速度</label>
+                  <select id="assistant-private-voice-pace">
+                    <option value="normal" data-i18n="assistantPrivateVoiceNormal">正常</option>
+                    <option value="slow" data-i18n="assistantPrivateVoiceSlow">稍慢（0.85 倍）</option>
+                  </select>
+                  <button id="assistant-private-delete" class="quiet" type="button" hidden data-i18n="assistantPrivateDelete">删除这段对话</button>
+                  <button id="assistant-private-delete-confirm" class="quiet danger" type="button" hidden data-i18n="assistantPrivateDeleteConfirm">确认删除对话</button>
+                </details>
                 <p id="assistant-private-older" class="fine" hidden data-i18n="assistantPrivateOlder">显示最近的完整消息。</p>
                 <button id="assistant-private-load-older" class="quiet" type="button" hidden data-i18n="assistantPrivateLoadOlder">查看更早消息</button>
                 <button id="assistant-private-reload-history" class="quiet" type="button" hidden data-i18n="assistantPrivateReloadHistory">对话已有更新，重新加载记录</button>
@@ -100,6 +152,7 @@
           <section id="assistant-private-welcome" class="assistant-private-welcome" hidden>
             <h3 data-i18n="assistantConversationWelcomeTitle">和小贾开始对话</h3>
             <p data-i18n="assistantConversationWelcomeText">开始一个私密对话，然后输入问题或开启语音。语音只在本页前台运行；暂停或结束后麦克风关闭。</p>
+            <button id="assistant-private-continue-latest" class="quiet" type="button" hidden data-i18n="assistantPrivateContinueLatest">继续上次对话</button>
           </section>
           <p class="assistant-private-current-help fine" data-i18n="assistantPrivateHelp">只对你可见，保留 30 天。录音不保存在对话中。</p>
           <p id="assistant-private-status" role="status" aria-live="polite"></p>
@@ -151,7 +204,7 @@
           <div class="assistant-actions">
             <button id="assistant-send" class="primary" type="submit" data-i18n="assistantSend">查找</button>
             <button id="assistant-agent-send" class="quiet" type="button" hidden data-i18n="assistantAgentSend">AI 查找</button>
-            <button id="assistant-cancel" class="quiet" type="button" hidden data-i18n="assistantCancel">取消</button>
+            <button id="assistant-cancel" class="quiet" type="button" hidden data-i18n="assistantCancel">停止等待</button>
             <button id="assistant-clear" class="quiet" type="button" data-i18n="assistantClear">清空</button>
           </div>
         </form>
@@ -225,12 +278,13 @@
         </nav>
         <section id="assistant-story-selection" class="assistant-story-selection" hidden aria-labelledby="assistant-story-selection-title">
           <div class="assistant-story-selection-heading">
-            <h3 id="assistant-story-selection-title" data-i18n="assistantStoryTitle">挑选故事里的画面</h3>
+            <h3 id="assistant-story-selection-title" data-i18n="assistantStoryTitle">挑选照片和视频</h3>
             <span id="assistant-story-selection-count" role="status" aria-live="polite" aria-atomic="true"></span>
           </div>
           <p class="fine" data-i18n="assistantStoryHelp">按你选择的顺序编排，最多 24 张照片或视频。翻页保留选择；重新查找会清空。</p>
           <div class="assistant-actions">
             <button id="assistant-shape-story" type="button" data-i18n="assistantStoryOpen" disabled>用所选画面编排故事</button>
+            <button id="assistant-shape-album" type="button" class="quiet" data-i18n="assistantAlbumOpen" hidden disabled>用所选画面创建相册</button>
             <button id="assistant-add-keep-searching" type="button" class="quiet" data-i18n="assistantStoryAddKeepSearching" hidden disabled>添加并继续查找</button>
             <button id="assistant-story-selection-clear" type="button" class="quiet" data-i18n="assistantStoryClear" disabled>清空选择</button>
           </div>

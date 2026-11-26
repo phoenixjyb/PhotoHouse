@@ -225,13 +225,18 @@ def append_synthetic_exchange(store, account_id, thread_id, revision, question, 
     request_id = str(uuid.uuid4())
     started = store.begin_turn(account_id, 'family-a', thread_id, request_id,
                                revision, question)
+    return complete_synthetic_exchange(store, account_id, thread_id, started, reply)
+
+
+def complete_synthetic_exchange(store, account_id, thread_id, started, reply):
     summary = dict(version=1, kind='clarification', reply=reply, context=None,
                    filters=None, total=0, has_more=False, effect=None)
-    return store.complete_turn(account_id, 'family-a', thread_id, request_id,
+    return store.complete_turn(account_id, 'family-a', thread_id, started['request_id'],
                                started['lease_id'], summary)
 
 try:
     print(json.dumps({'ready': True}), flush=True)
+    held_turn = None
     for line in sys.stdin:
         message = json.loads(line)
         if message.get('command') == 'quit':
@@ -275,6 +280,20 @@ try:
             client.app.state.assistant_workspace_healthy = True
             print(json.dumps({'id': message['id'], 'ok': True}), flush=True)
             continue
+        if message.get('command') == 'seed-thread-pages':
+            store = client.app.state.assistant_workspace_store
+            for _ in range(50):
+                store.create_thread(fixture.member_id, 'family-a')
+            thread = store.create_thread(fixture.member_id, 'family-a')['thread_id']
+            append_synthetic_exchange(store, fixture.member_id, thread, 0,
+                '较早的合成对话', '已从较早的对话恢复文字。')
+            with store.connection() as db:
+                db.execute('''UPDATE threads SET updated_at=updated_at-60,created_at=created_at-60
+                    WHERE thread_id=? AND account_id=? AND library_id=?''',
+                           (thread, fixture.member_id, 'family-a'))
+                db.commit()
+            print(json.dumps({'id': message['id'], 'ok': True, 'thread_id': thread}), flush=True)
+            continue
         if message.get('command') == 'seed-private-history':
             store = client.app.state.assistant_workspace_store
             thread = store.create_thread(fixture.member_id, 'family-a')['thread_id']
@@ -297,6 +316,29 @@ try:
                 f'Synthetic concurrent reply {revision + 1}')
             print(json.dumps({'id': message['id'], 'ok': True,
                               'revision': revision + 1}), flush=True)
+            continue
+        if message.get('command') == 'hold-private-turn':
+            store = client.app.state.assistant_workspace_store
+            thread = message['thread_id']
+            revision = store.get_thread(fixture.member_id, 'family-a', thread)['thread']['revision']
+            held_turn = store.begin_turn(fixture.member_id, 'family-a', thread, str(uuid.uuid4()),
+                                         revision, '只看河边的照片，再看看有哪些是傍晚拍的。')
+            # The fixture clock is fixed. Give this conversation a distinct
+            # update time so the last-conversation path is deterministic.
+            with store.connection() as db:
+                db.execute('''UPDATE threads SET updated_at=(SELECT max(updated_at)+1 FROM threads)
+                    WHERE thread_id=? AND account_id=? AND library_id=?''',
+                           (thread, fixture.member_id, 'family-a'))
+                db.commit()
+            print(json.dumps({'id': message['id'], 'ok': True,
+                              'request_id': held_turn['request_id']}), flush=True)
+            continue
+        if message.get('command') == 'complete-held-private-turn':
+            store = client.app.state.assistant_workspace_store
+            terminal = complete_synthetic_exchange(store, fixture.member_id, held_turn['thread_id'],
+                                                   held_turn, '合成的已完成回复。')
+            held_turn = None
+            print(json.dumps({'id': message['id'], 'status': terminal['status']}), flush=True)
             continue
         client.cookies.clear()
         response = client.request(message['method'], message['path'], headers=message['headers'],

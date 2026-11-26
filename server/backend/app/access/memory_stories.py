@@ -205,31 +205,53 @@ class MemoryStories:
                        'story': ident, 'revision': str(row['revision']), 'fingerprint': fingerprint}
             return binding, story, people
 
-    def list(self, token, library, page, theme=None):
+    def list(self, token, library, page, theme=None, refinement_hints=False, title_query=None):
         with self.access._transaction():
             member = self.access._require(token, library, 'library.read')
             self._ready()
             if theme is not None and (not isinstance(theme, str) or theme not in THEMES):
                 raise TransportError(400, 'Invalid story theme')
+            if title_query is not None:
+                if (not title_query.strip() or len(title_query) > 160
+                        or any(ord(c) < 32 or ord(c) == 127 for c in title_query)):
+                    raise TransportError(400, 'Invalid story title query')
+                title_query = title_query.strip()
             # Filter unavailable parents before pagination. Neither their IDs,
             # story text, counts nor title may escape after media moves/deletion.
             rows = self.db.execute('''SELECT s.* FROM access_memory_stories s
-                WHERE library_id=? AND (? IS NULL OR json_extract(s.content,'$.theme')=?) AND NOT EXISTS (
+                WHERE library_id=? AND (? IS NULL OR json_extract(s.content,'$.theme')=?)
+                AND (? IS NULL OR instr(lower(json_extract(s.content,'$.title')),lower(?))>0)
+                AND NOT EXISTS (
                     SELECT 1 FROM json_each(s.content,'$.asset_ids') j
                     WHERE NOT EXISTS (SELECT 1 FROM assets a JOIN access_asset_libraries l ON l.asset_id=a.id
                         WHERE a.id=CAST(j.value AS INTEGER) AND l.library_id=s.library_id
                         AND (a.status IS NULL OR a.status='active')))
                 ORDER BY s.updated_at DESC,s.id DESC LIMIT ? OFFSET ?''',
-                (library, theme, theme, PAGE_SIZE+1, (page-1)*PAGE_SIZE))
+                (library, theme, theme, title_query, title_query, PAGE_SIZE+1, (page-1)*PAGE_SIZE))
             rows = [dict(zip((c[0] for c in rows.description), r)) for r in rows]
+            page_rows = rows[:PAGE_SIZE]
+            prepared = set()
+            if refinement_hints:
+                from .memory_jobs import MemoryJobs
+                editable = [(row['id'], row['revision']) for row in page_rows
+                            if self._can_edit(member, row)]
+                try:
+                    prepared = MemoryJobs(self.access).prepared_refinement_ids(member, library, editable)
+                except TransportError as error:
+                    # The shelf is useful even when the optional companion schema is absent.
+                    if error.status != 503:
+                        raise
             summaries = []
-            for row in rows[:PAGE_SIZE]:
+            for row in page_rows:
                 stored = _json(row['content'])
-                summaries.append({key: stored[key] for key in ('title', 'theme', 'language')} | {
+                summary = {key: stored[key] for key in ('title', 'theme', 'language')} | {
                     'id': row['id'], 'revision': str(row['revision']),
                     'cover_asset_id': stored['asset_ids'][0], 'item_count': len(stored['asset_ids']),
                     'chapter_count': len(stored['chapters']), 'updated_at': row['updated_at'],
-                    'can_edit': self._can_edit(member, row)})
+                    'can_edit': self._can_edit(member, row)}
+                if row['id'] in prepared:
+                    summary['has_refinement_draft'] = True
+                summaries.append(summary)
             return {'library_id': library, 'page': page, 'page_size': PAGE_SIZE,
                 'has_more': len(rows) > PAGE_SIZE, 'can_create': member['role'] in {'owner', 'contributor'},
                 'items': summaries}
@@ -455,12 +477,31 @@ def call(runtime, action, *args, story_refinement_context=None):
             story_refinement_context=story_refinement_context)), action)(*args)
 
 
+def _refinement_hints(request):
+    return (bool(getattr(request.app.state, 'memory_auto_refinement_enabled', False))
+            and request.headers.getlist('x-photohouse-story-refinement-hints') == ['1'])
+
+
 @router.get('/memory-stories')
 async def list_memories(request: Request):
     token, _ = credentials_from_request(request, allow_query=True)
     query = _query(request, {'library', 'page', 'theme'})
     result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'list', token,
-                                    query['library'], _integer(query.get('page', '1'), 100000), query.get('theme'))
+                                    query['library'], _integer(query.get('page', '1'), 100000),
+                                    query.get('theme'), _refinement_hints(request))
+    if request.headers.getlist('x-photohouse-story-shelf-version') == ['1']:
+        result['title_search'] = True
+    return JSONResponse(result)
+
+
+@router.post('/memory-stories/search')
+async def search_memories(request: Request):
+    token, _ = credentials_from_request(request, allow_query=True)
+    query = _query(request, {'library'})
+    body = await _body(request, {'title_query', 'page'}, optional_fields={'theme'}, max_body=3072)
+    result = await run_in_threadpool(call, _memory_runtime(request, allow_query=True), 'list', token,
+                                    query['library'], _integer(body['page'], 100000),
+                                    body.get('theme'), _refinement_hints(request), body['title_query'])
     return JSONResponse(result)
 
 

@@ -7,6 +7,9 @@ an Android build. GitHub Actions remain paused.
 ## Family flow
 
 1. Submit a typed or explicitly authorized voice search in the private assistant.
+   In **Search conditions**, choose an exact date range or clear an active type
+   or text filter. Review the proposed change in the composer and send it
+   to apply it to the current search.
 2. Select individual photos and videos. The count shows the 24-frame limit.
    Selections initially keep click order across pages of the same result set;
    duplicate IDs never add a frame.
@@ -21,18 +24,24 @@ an Android build. GitHub Actions remain paused.
 5. Build, edit, review, and save using the existing story editor. Selecting or
    opening frames does not build, generate, save, publish, or play a story.
 
-Before selecting frames, you can ask “Why the first photo?” or
-“为什么是第一张照片？” to review the recorded match evidence. Use the number
-shown beside the item in the current list. The explanation keeps the same
+On the first page of a private search, **Why this match?** on a result card
+prepares a question about that item. Review the question and choose **Find**.
+It keeps any existing unsent draft. You can also ask “Why result 20?” or
+“为什么是第20项结果？” about one of the visible results. Return to the first
+page before sending a numbered follow-up. The explanation keeps the same
 results and filters available for selection.
 
 A new or refined search clears the selection, including one that needs
 clarification. Switching conversations or accounts, changing libraries, losing
-access, and signing out also clear it. When you reload the history of the same
-active conversation, PhotoHouse can keep the selected frames and their order
-after the server confirms the exact current ordinary search. Choices live in
-the current page's memory and reset on a full page reload. An uncertain search
-uses the existing GET-only recovery flow.
+access, and signing out also clear it. After a refresh in the same browser tab,
+reopen the same Jude conversation to resume your ordered picks for a new story
+from an ordinary search. PhotoHouse keeps the result identifiers and page numbers
+in tab storage and reads the current result and selected pages again to verify
+each pick. Reopening waits for any outstanding paging capability check before
+restoring later-page selections. If the result expired or a picked item is no
+longer available, choose the frames again. Scene results, legacy results, and
+picks for an open editor stay in page memory. An uncertain search uses the
+existing GET-only recovery flow.
 
 ## Ordinary result pages
 

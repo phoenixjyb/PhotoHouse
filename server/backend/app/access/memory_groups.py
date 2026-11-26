@@ -208,13 +208,46 @@ class MemoryGroups:
             self._ready()
             return self._present(token, self._row(ident, library), library, member)
 
-    def list_recent(self, token, library):
+    def _page_anchor(self, token, library, page):
+        ident, separator, revision = page.partition('.')
+        if not separator or str(_integer(revision, 2**63 - 1)) != revision:
+            raise TransportError(400, 'Invalid memory group page')
+        try:
+            row = self._row(_uuid(ident), library)
+            self._assets(token, library, _stored(row)['asset_ids'])
+        except AccessDenied:
+            raise TransportError(409, 'Memory group page changed') from None
+        if str(row['revision']) != revision:
+            raise TransportError(409, 'Memory group page changed')
+        return row['updated_at'], row['id']
+
+    def list_recent(self, token, library, page=None):
         with self.access._transaction():
             self.access._require(token, library, 'library.read')
             self._ready()
-            rows = self.db.execute(f'''SELECT * FROM {TABLE} WHERE library_id=?
-                ORDER BY updated_at DESC,id DESC LIMIT ?''',
-                (library, MAX_RECENT_GROUP_CANDIDATES))
+            filters, parameters = [], [library]
+            limit = MAX_RECENT_GROUP_CANDIDATES
+            wanted = MAX_RECENT_GROUPS
+            if page is not None:
+                if page != 'first':
+                    filters.append('AND (g.updated_at,g.id) < (?,?)')
+                    parameters.extend(self._page_anchor(token, library, page))
+                # Skip withdrawn members in the query so a run of hidden groups
+                # cannot conceal older groups. Recheck every returned member.
+                filters.append(f"""AND NOT EXISTS (
+                    SELECT 1 FROM json_each(CASE WHEN json_valid(g.asset_ids_json)
+                        THEN g.asset_ids_json ELSE '[]' END) AS m
+                    WHERE m.type!='integer' OR NOT EXISTS (
+                        SELECT 1 {SOURCE} AND a.id=m.value
+                            AND substr(a.mime,1,6) IN ('image/','video/')
+                    )
+                )""")
+                parameters.append(library)
+                wanted += 1
+                limit = wanted
+            rows = self.db.execute(f'''SELECT g.* FROM {TABLE} AS g WHERE g.library_id=?
+                {' '.join(filters)} ORDER BY g.updated_at DESC,g.id DESC LIMIT ?''',
+                (*parameters, limit))
             names = tuple(column[0] for column in rows.description)
             items = []
             for values in rows:
@@ -228,9 +261,15 @@ class MemoryGroups:
                 items.append({'id': row['id'], 'revision': str(row['revision']),
                               'theme': content['theme'], 'count': len(members),
                               'cover': members[0]})
-                if len(items) == MAX_RECENT_GROUPS:
+                if len(items) == wanted:
                     break
-            return {'version': 1, 'library_id': library, 'items': items}
+            result = {'version': 1, 'library_id': library, 'items': items[:MAX_RECENT_GROUPS]}
+            if page is not None:
+                result['next_page'] = None
+                if len(items) > MAX_RECENT_GROUPS:
+                    last = items[MAX_RECENT_GROUPS - 1]
+                    result['next_page'] = f"{last['id']}.{last['revision']}"
+            return result
 
     def list_for_asset(self, token, library, asset_id):
         if type(asset_id) is not int or asset_id < 1:

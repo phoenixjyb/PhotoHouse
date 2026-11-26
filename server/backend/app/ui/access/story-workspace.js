@@ -55,12 +55,15 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.zh,{addContribution:'添加家人回忆来源',contributionSourceHelp:'这里只保存来源链接，不会复制或改写家人的原始文字或录音。保存故事前，可先查看已选来源。',candidatePanelTitle:'选择已接受的家人回忆',candidateLoading:'正在读取可用来源…',candidateEmpty:'本章没有可添加的已接受来源。',candidateFailed:'暂时无法读取可添加来源。当前草稿和已核实链接均已保留。',candidateRetry:'重试读取来源',candidateMore:'更多来源',candidateCancel:'取消选择',candidateAdded:'已添加来源链接；请保存故事以保留更改。',candidateAlreadyAdded:'本章已引用这条来源。',candidateLimit:'每章最多添加 12 条家人回忆来源。',candidateKindText:'文字回忆',candidateKindAudio:'录音回忆',candidateSubmitted:'提交于 ',candidateDate:d=>d?new Intl.DateTimeFormat('zh-CN',{dateStyle:'medium',timeStyle:'medium'}).format(d):'日期待补充'});
   Object.assign(labels.en,{addContribution:'Add family memory source',contributionSourceHelp:'This saves a source link only. It does not copy or rewrite the family member’s original words or recording. Review selected sources before saving the story.',candidatePanelTitle:'Choose an accepted family memory',candidateLoading:'Loading available sources…',candidateEmpty:'There are no accepted sources available for this chapter.',candidateFailed:'Available sources could not be loaded. Your draft and verified links are kept.',candidateRetry:'Retry loading sources',candidateMore:'More sources',candidateCancel:'Cancel selection',candidateAdded:'Source link added. Save the story to keep the change.',candidateAlreadyAdded:'This chapter already cites that source.',candidateLimit:'A chapter can link up to 12 family memories.',candidateKindText:'Written memory',candidateKindAudio:'Recorded memory',candidateSubmitted:'Submitted ',candidateDate:d=>d?new Intl.DateTimeFormat('en',{dateStyle:'medium',timeStyle:'medium'}).format(d):'Date unavailable'});
   let shelf=[], shelfPage=1, shelfLoad=0, shelfBinding=null, shelfTheme=null, canCreate=false, pendingSave=null, playTimer=null, playing=false, bookReader=null, narrationEpoch=0, narrationState=null;
+  let shelfQuery='', titleSearchAvailable=false;
+  const shelfSearchForm=$('saved-memory-search'), shelfSearchInput=$('saved-memory-search-title'), shelfSearchClear=$('saved-memory-search-clear');
   // Session-only positions contain references, never family prose or audio.
   // Clearing protected scope clears every position; nothing goes to storage.
   const bookPositions=new Map();
   const savedStoryPositions=new Map();
   let galleryItems=[], items=[], selectionPage=0, selected=new Set(), draft=null, generation=0, busy=false, chapter=0, frame=0, dirty=false, downloaded=false, readerFromShelf=false,readerMountEpoch=0;
   let appliedDraft=null;
+  let autoRefinementReview=null;
   let autoRefinementDismissed=null,autoRefinementJob=null,autoRefinementOriginal=null,autoRefinementTimer=null,autoRefinementAttempts=0,autoRefinementCapability=null,autoRefinementMayStart=false,autoRefinementQueueing=null,autoRefinementQueueError=false,skipAutoRefinementSave=null;
   // Proposal source IDs outside the per-asset evidence set and accepted
   // contribution-reference contract get a volatile review note beside this draft.
@@ -185,6 +188,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   Object.assign(labels.en,{storyDraftHeading:'Prepare a story from selected sources',storyDraftHelp:'Uses only selected frames and sources checked for each chapter. AI wording goes into chapter bodies; you keep control of the story and chapter titles. Review it before saving.',storyDraftDirection:'Writing direction (optional)',storyDraftUseDirection:'Use my latest assistant-chat message as a starting point',storyDraftDirectionKept:'Copied into writing direction; you can edit it.',storyDraftDirectionNoOverwrite:'Clear the writing direction before using your assistant-chat message. Existing text was kept.',storyDraftPrepare:'Prepare story draft',storyDraftCancel:'Cancel and clear generated wording',storyDraftRetry:'Retry the same request',storyDraftReview:'I reviewed the AI draft, chapters and citations',storyDraftAIProse:'AI-generated wording · pending review',storyDraftOriginal:'View original wording',storyDraftOriginalEmpty:'The original chapter has no wording.',storyDraftQuestions:'AI questions to help recall · review these',sourceFamilyNote:'Family note',sourceAICaption:'AI caption',sourceFamilyEditedCaption:'Family-edited caption',storyDraftNeedSources:'Opt in to source review first, then choose sources per chapter. Choices may be empty.',storyDraftWorking:'Preparing the story draft…',storyDraftReady:'The AI draft is in the chapter fields. Review the wording and citations.',storyDraftReviewRequired:'Check the review box before explicitly saving.',storyDraftExpired:'The AI draft expired and was cleared; your earlier wording was restored.',storyDraftCancelled:'The generated draft was cleared; your earlier wording was restored.',storyDraftFailed:'The draft could not be prepared. Existing chapter wording is preserved.',storyDraftConflict:'Selected sources or story revision changed. Refresh and review sources before preparing again.',storyDraftCitation:'Cited source',storyDraftExpiry:'Draft expires',storyDraftUnavailable:'Story draft preparation is unavailable.',storyDraftNoFallback:'No automatic provider switch or retry will occur.'});
   labels.zh.storyDraftWordsKept='各章保留了原有文字。';
   labels.en.storyDraftWordsKept='Your chapters kept their original wording.';
+  labels.zh.storyDraftKeepChapter='保留本章原文';
+  labels.en.storyDraftKeepChapter='Keep this chapter’s original wording';
+  labels.zh.autoRefinementIncludeChapter='采用本章建议';
+  labels.en.autoRefinementIncludeChapter='Use this chapter’s suggestion';
   function clearDraftExpiry(){if(draftPreparation.expiresTimer){clearTimeout(draftPreparation.expiresTimer);draftPreparation.expiresTimer=null;}}
   function draftProposalFingerprint(){
     if(!draftPreparation.proposal||!draft)return null;
@@ -1169,6 +1176,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(titleView)titleView.action.disabled=frozen()||sourceRefreshPending||sourceRefreshRequired||(sourceRefreshNeedsAcknowledgement&&!sourceRefreshAcknowledged)||titleComposing||titleView.busy;
     for(const el of $('story-chapter-editor').querySelectorAll('input,textarea'))el.disabled=frozen();
     for(const button of $('story-chapter-editor').querySelectorAll('.story-dictation-record'))button.disabled=frozen()||sourceRefreshPending||dictationPending();
+    for(const button of $('story-chapter-editor').querySelectorAll('.story-draft-keep-original'))button.disabled=frozen()||sourceRefreshPending;
     $('story-save-memory').hidden=!canCreate && !draft?.can_edit;
     const reviewRequired=Boolean(draftPreparation.proposal&&!pendingSave&&(draftProposalFingerprint()!==draftPreparation.reviewedFingerprint||!$('story-draft-preparation')?.querySelector('.story-draft-reviewed')?.checked));
     $('story-save-memory').disabled=busy||localBusy||Boolean(draftPreparation.pending)||localReviewRequired||sourceRefreshPending||sourceRefreshRequired||(sourceRefreshNeedsAcknowledgement&&!sourceRefreshAcknowledged)||readOnly()||!draft||reviewRequired;
@@ -1581,11 +1589,23 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         const find=button(text('findFramesForChapter'),event=>findMoreFrames(event,c),'quiet story-chapter-find-frames');
         find.dataset.chapterId=c.id;find.setAttribute('aria-haspopup','dialog');section.append(find);
       }
-      const original=draftPreparation.proposal?.original.get(c.id);
+      const proposal=draftPreparation.proposal,original=proposal?.original.get(c.id);
       if(original!==undefined){
         const origin=node('p',text('storyDraftAIProse'),'story-draft-prose-origin');origin.dataset.storyWord='storyDraftAIProse';section.append(origin);
         const comparison=node('details',undefined,'story-draft-original'),summary=node('summary',text('storyDraftOriginal'));
-        comparison.append(summary,node('p',original||text('storyDraftOriginalEmpty'),'story-draft-original-text'));section.append(comparison);
+        const keep=button(text('storyDraftKeepChapter'),()=>{
+          if(!current(renderedTicket,renderedOwner)||draft!==renderedStory||draftPreparation.proposal!==proposal||
+            !$('story-workspace').open||!keep.isConnected||frozen()||sourceRefreshPending||titleComposing||!dictationGuard())return;
+          c.narration=original;
+          proposal.original.delete(c.id);
+          dirty=true;downloaded=false;
+          invalidateTitles();
+          draftPreparation.reviewedFingerprint=null;
+          if(!proposal.original.size)clearDraftProposal('storyDraftWordsKept',false,false);
+          renderEditor(true);
+          Array.from(root.querySelectorAll('.story-chapter-card')).find(card=>card.dataset.chapterId===c.id)?.querySelector('textarea')?.focus();
+        },'quiet story-draft-keep-original');
+        comparison.append(summary,node('p',original||text('storyDraftOriginalEmpty'),'story-draft-original-text'),keep);section.append(comparison);
       }
       const bodyLabel=node('label',text('narration')),body=node('textarea');body.value=c.narration;body.maxLength=6000;body.rows=5;
       if(guideCurrent())body.placeholder=text('guideNarrativePlaceholder');
@@ -1657,7 +1677,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       if(draftPreparation.proposal.questions.length){const questions=node('section',undefined,'story-draft-questions');questions.append(node('h4',text('storyDraftQuestions')));for(const question of draftPreparation.proposal.questions)questions.append(node('p',question));panel.append(questions);}
       const expiry=node('p',`${text('storyDraftExpiry')}: ${new Date(draftPreparation.proposal.expires_at).toLocaleString(scope().language==='en'?'en':'zh-CN')}`,'fine');panel.append(expiry);
       const citations=node('div',undefined,'story-draft-citations');citations.className='story-draft-citations';
-      for(const proposed of draftPreparation.proposal.chapters){const chapterRecord=story.chapters.find(c=>c.id===proposed.id);if(!chapterRecord)continue;const group=node('details',undefined,'story-draft-citation-group');group.append(node('summary',`${text('storyDraftCitation')} · ${chapterRecord.title}`));
+      for(const proposed of draftPreparation.proposal.chapters){
+        if(!draftPreparation.proposal.original.has(proposed.id))continue;
+        const chapterRecord=story.chapters.find(c=>c.id===proposed.id);if(!chapterRecord)continue;const group=node('details',undefined,'story-draft-citation-group');group.append(node('summary',`${text('storyDraftCitation')} · ${chapterRecord.title}`));
         for(const cite of proposed.citations){const item=story.items.find(i=>cite.selected_asset_ids.includes(i.id));const evidence=item?.evidence.find(e=>e.id===cite.source_id);if(!evidence)continue;
           const article=node('article',undefined,'story-draft-citation');article.append(node('strong',`${text(cite.source_kind==='family_note'?'sourceFamilyNote':cite.source_kind==='ai_caption'?'sourceAICaption':'sourceFamilyEditedCaption')} · ${item.id}`));
           if(cite.byline&&cite.byline!==evidence.byline)article.append(node('p',`${text('sourceByline')}: ${cite.byline}`));article.append(node('p',evidence.text));appendEvidenceAttribution(article,evidence,item.id);group.append(article);
@@ -1935,7 +1957,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if($('story-reader').open){stopNarration();$('story-reader').close();}
     if(bookReader?.open){stopNarration();bookReader.close();}
     if(draftPreparation.pending){draftPreparation.pending.cancelled=true;void sendPrepareCancel(draftPreparation.pending.owner,draftPreparation.pending.body.request_id);}draftPreparation.pending=null;draftPreparation.capability=null;draftPreparation.capabilityEpoch++;clearDraftProposal(null,false,false);draftDirectionCandidate=null;
-    cloudReview=null;endGuide();clearRelated();generation++;busy=false;pendingSave=null;activeLocalRevision=null;localReviewRequired=false;localReviewVisible=false;localStatus='';stopPlaying();stopAutoRefinementPolling();autoRefinementDismissed=null;autoRefinementJob=null;autoRefinementOriginal=null;autoRefinementCapability=null;autoRefinementMayStart=false;autoRefinementQueueing=null;autoRefinementQueueError=false;skipAutoRefinementSave=null;
+    cloudReview=null;endGuide();clearRelated();generation++;busy=false;pendingSave=null;activeLocalRevision=null;localReviewRequired=false;localReviewVisible=false;localStatus='';stopPlaying();stopAutoRefinementPolling();autoRefinementDismissed=null;autoRefinementReview=null;autoRefinementJob=null;autoRefinementOriginal=null;autoRefinementCapability=null;autoRefinementMayStart=false;autoRefinementQueueing=null;autoRefinementQueueError=false;skipAutoRefinementSave=null;
     if(guided)guide={owner:{...scope()},ticket:generation,step:'frames'};
     invalidateTitles();titleView=null;titleComposing=false;
     items=nextItems||galleryItems.slice();
@@ -1962,6 +1984,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if($('story-reader').open)$('story-reader-close').textContent=text(readerFromShelf?'backStories':'close');
     updateReaderFrameLabels();
     renderShelfFilters();
+    if(shelfQuery&&shelfReady&&!shelf.length)$('saved-memory-status').textContent=text('savedSearchEmpty');
     $('story-workspace-title').placeholder=text('titlePlaceholder');
     const selectedTheme=$('story-workspace-theme').value;
     $('story-workspace-theme').replaceChildren();for(const theme of themes){const opt=node('option',text(theme));opt.value=theme;$('story-workspace-theme').append(opt);}
@@ -1972,6 +1995,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   function clear({cancelCommunityJobs=true}={}) {
     draftDirectionCandidate=null;
+    shelfQuery='';titleSearchAvailable=false;
+    if(shelfSearchInput)shelfSearchInput.value='';
+    syncShelfSearch();
     endGuide();shelfReady=false;localEpoch++;localRecord=null;activeLocalRevision=null;localBusy=false;localError=false;localStatus='';localReviewRequired=false;localReviewVisible=false;outlineScaffolding.clear();authoredNarrations=new WeakSet();
     cancelDictation();
     clearRelated();
@@ -1981,7 +2007,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     community?.clear({cancelJobs:cancelCommunityJobs});if(bookReader){resetReaderFontScale(bookReader,bookReader.querySelector('.reader-font-presets'));bookReader.__photoHouseOpenBookStory=null;bookReader.close();bookReader.remove();bookReader=null;}
     $('story-reader-community').replaceChildren();$('memory-books').hidden=true;
     if(draftPreparation.pending){draftPreparation.pending.cancelled=true;void sendPrepareCancel(draftPreparation.pending.owner,draftPreparation.pending.body.request_id);}draftPreparation.pending=null;draftPreparation.capability=null;draftPreparation.capabilityEpoch++;clearDraftProposal(null,false,false);
-    cloudReview=null;generation++;sourceCapabilityEpoch++;sourceCapabilities=null;sourceReviewOptedIn=false;sourceProfileLoaded=false;resetSourceRefresh();busy=false;pendingSave=null;readerFromShelf=false;refsLoadEpoch++;contributionRefs=null;stopPlaying();stopAutoRefinementPolling();autoRefinementDismissed=null;autoRefinementJob=null;autoRefinementOriginal=null;autoRefinementCapability=null;autoRefinementMayStart=false;autoRefinementQueueing=null;autoRefinementQueueError=false;skipAutoRefinementSave=null;shelfLoad++;shelf=[];shelfPage=1;shelfTheme=null;shelfBinding=null;canCreate=false;$('saved-memory-list').replaceChildren();$('saved-memory-status').textContent='';$('saved-memory-more').hidden=true;renderShelfFilters();galleryItems=[];items=[];selectionPage=0;selected.clear();draft=null;proposalReferenceWarnings=new Map();dirty=false;downloaded=false;
+    cloudReview=null;generation++;sourceCapabilityEpoch++;sourceCapabilities=null;sourceReviewOptedIn=false;sourceProfileLoaded=false;resetSourceRefresh();busy=false;pendingSave=null;readerFromShelf=false;refsLoadEpoch++;contributionRefs=null;stopPlaying();stopAutoRefinementPolling();autoRefinementDismissed=null;autoRefinementReview=null;autoRefinementJob=null;autoRefinementOriginal=null;autoRefinementCapability=null;autoRefinementMayStart=false;autoRefinementQueueing=null;autoRefinementQueueError=false;skipAutoRefinementSave=null;shelfLoad++;shelf=[];shelfPage=1;shelfTheme=null;shelfBinding=null;canCreate=false;$('saved-memory-list').replaceChildren();$('saved-memory-status').textContent='';$('saved-memory-more').hidden=true;renderShelfFilters();galleryItems=[];items=[];selectionPage=0;selected.clear();draft=null;proposalReferenceWarnings=new Map();dirty=false;downloaded=false;
     for(const id of ['story-workspace','story-reader'])if($(id).open)$(id).close();
     for(const id of ['story-selection','story-chapter-editor','story-reader-stage','story-reader-frames','story-reader-chapters'])$(id).replaceChildren();
     $('story-reader-frame-status')?.remove();
@@ -1992,6 +2018,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   const uuidOK = id => typeof id==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
   const autoJobKeys='base_revision,created_at,error_code,expires_at,id,kind,needs_review,result,state,updated_at,version';
+  // The existing saved-story refinement endpoint retries these terminal codes.
+  const retryableRefinementErrors=new Set(['local_processing_failed','model_timeout','model_input_refused',
+    'model_output_refused','model_worker_failed','model_interrupted']);
+  const canRetryAutoRefinement=job=>job?.state==='failed'&&retryableRefinementErrors.has(job.error_code);
   function validAutoRefinement(value,story){
     if(value===null)return null;
     if(!value||Object.keys(value).sort().join(',')!==autoJobKeys||value.version!==1||!uuidOK(value.id)||value.kind!=='narrative'||value.needs_review!==true||value.base_revision!==story?.revision||
@@ -2009,16 +2039,16 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function autoRefinementActive(){return Boolean(draft?.saved&&!scope().locked&&scope().account&&scope().library&&draft.library_id===scope().library&&autoRefinementJob?.base_revision===draft.revision&&autoRefinementJob.id&&(($('story-reader').open)||$('story-workspace').open));}
   function stopAutoRefinementPolling(){if(autoRefinementTimer){clearTimeout(autoRefinementTimer);autoRefinementTimer=null;}}
   function scheduleAutoRefinementPoll(){
-    stopAutoRefinementPolling();if(!autoRefinementActive()||document.hidden||autoRefinementAttempts>=60||!['queued','running','deferred'].includes(autoRefinementJob.state))return;
+    stopAutoRefinementPolling();if(autoRefinementQueueing||!autoRefinementActive()||document.hidden||autoRefinementAttempts>=60||!['queued','running','deferred'].includes(autoRefinementJob.state))return;
     autoRefinementTimer=setTimeout(()=>{autoRefinementTimer=null;void refreshAutoRefinement(false);},3000);
   }
   async function refreshAutoRefinement(manual=true){
-    if(!autoRefinementActive()||document.hidden||!savedRequest)return;
-    stopAutoRefinementPolling();const owner={...scope()},story=draft,ticket=generation,jobId=autoRefinementJob.id;
+    if(autoRefinementQueueing||!autoRefinementActive()||document.hidden||!savedRequest)return;
+    stopAutoRefinementPolling();const owner={...scope()},story=draft,ticket=generation,job=autoRefinementJob,jobId=job.id;
     if(manual)autoRefinementAttempts=0;else autoRefinementAttempts++;
     try{
       const result=await savedRequest('/memory-community/v1/jobs/'+jobId);
-      if(!current(ticket,owner)||draft!==story||!autoRefinementActive()||jobId!==autoRefinementJob.id)return;
+      if(autoRefinementQueueing||!current(ticket,owner)||draft!==story||!autoRefinementActive()||autoRefinementJob!==job)return;
       const validated=validAutoRefinement(result,story);
       if(!validated||validated.id!==jobId){autoRefinementJob={...autoRefinementJob,state:'failed',result:null};}
       else autoRefinementJob=validated;
@@ -2051,8 +2081,23 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const panel=node('section',undefined,'story-auto-refinement');panel.dataset.jobId=job.id;panel.append(node('h3',text('autoRefinement')));
     panel.append(node('p',text('autoRefinementHelp'),'fine'));
     const status=job.state==='queued'?text('autoRefinementQueued'):job.state==='running'?text('autoRefinementWorking'):job.state==='deferred'?text('autoRefinementDeferred'):job.state==='ready'?text('autoRefinementReady'):text('autoRefinementFailed');
-    const statusNode=node('p',status,'story-auto-refinement-status');statusNode.setAttribute('role','status');panel.append(statusNode);
-    const refresh=button(text('autoRefinementRefresh'),()=>void refreshAutoRefinement(true),'quiet');panel.append(refresh);
+    const restarting=autoRefinementQueueing===autoRefinementIdentity(draft);
+    const statusNode=node('p',restarting?text('autoRefinementStartWorking'):status,'story-auto-refinement-status');
+    statusNode.setAttribute('role','status');panel.append(statusNode);
+    const refresh=button(text('autoRefinementRefresh'),()=>void refreshAutoRefinement(true),'quiet');
+    refresh.disabled=restarting;panel.append(refresh);
+    if(mode==='reader'&&draft.can_edit&&!scope().locked&&canRetryAutoRefinement(job)){
+      const story=draft,owner={...scope()},ticket=generation;
+      const retry=button(text('autoRefinementRetry'),()=>{
+        if(panel.isConnected)void startAutoRefinement(story,owner,ticket,job);
+      },'primary');
+      retry.disabled=restarting;
+      panel.append(retry);
+      if(autoRefinementQueueError){
+        const notice=node('p',text('autoRefinementRetryFailed'),'fine');
+        notice.setAttribute('role','status');panel.append(notice);
+      }
+    }
     if(job.state==='ready'&&job.result){
       const identity=JSON.stringify([autoRefinementIdentity(draft),job.id]);
       const story=draft,owner={...scope()},ticket=generation;
@@ -2061,21 +2106,118 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         statusNode.textContent=text('autoRefinementKept');panel.append(button(text('autoRefinementReopen'),()=>{if(reviewCurrent()){autoRefinementDismissed=null;renderAutoRefinementPanels();}},'quiet'));
         host.append(panel);return;
       }
+      let review=null,adopt=null;
+      if(mode==='reader'&&draft.can_edit&&!scope().locked){
+        if(autoRefinementReview?.identity!==identity){
+          autoRefinementReview={identity,chapters:new Set(job.result.chapters.map(chapter=>chapter.id)),version:0};
+        }
+        review=autoRefinementReview;
+        adopt=button(text('autoRefinementAdopt'),()=>{
+          const proposal=autoRefinementProposal(),version=review.version;
+          const current=()=>reviewCurrent()&&autoRefinementReview===review&&review.version===version;
+          if(proposal&&current()&&review.chapters.size){
+            void acceptProposal(proposal,{chapters:new Set(review.chapters),current});
+          }
+        },'primary');
+        adopt.disabled=review.chapters.size===0;
+      }
       panel.append(node('p',`${text('autoRefinementTitleKept')}: ${draft.title}`,'story-auto-refinement-title'));
+      let wordingChanged=false;
+      const wordingNote=node('p',text('autoRefinementWordingChanges'),'fine');
+      panel.append(wordingNote);
       for(const [index,chapter] of job.result.chapters.entries()){
         const chapterReview=node('section',undefined,'story-auto-refinement-section');chapterReview.append(node('h4',draft.chapters[index].title));
+        chapterReview.dataset.chapterId=chapter.id;
         const row=node('div',undefined,'story-auto-refinement-row');
-        const compare=node('article',undefined,'story-auto-refinement-comparison');compare.append(node('h5',text('autoRefinementOriginal')),node('p',autoRefinementOriginal?.chapters[index]?.narration??draft.chapters[index].narration));
-        const suggested=node('article',undefined,'story-auto-refinement-chapter');suggested.append(node('h5',text('autoRefinementSuggestion')),node('p',chapter.narration));
-        row.append(compare,suggested);chapterReview.append(row);panel.append(chapterReview);
+        const original=autoRefinementOriginal?.chapters[index]?.narration??draft.chapters[index].narration;
+        wordingChanged ||= original!==chapter.narration;
+        const [originalText,suggestedText]=compareRefinementWording(original,chapter.narration,draft.language);
+        const compare=node('article',undefined,'story-auto-refinement-comparison');compare.append(node('h5',text('autoRefinementOriginal')),originalText);
+        const suggested=node('article',undefined,'story-auto-refinement-chapter');suggested.append(node('h5',text('autoRefinementSuggestion')),suggestedText);
+        row.append(compare,suggested);chapterReview.append(row);
+        if(review){
+          const label=node('label',undefined,'story-auto-refinement-use');
+          const use=node('input');use.type='checkbox';use.checked=review.chapters.has(chapter.id);
+          use.setAttribute('aria-label',`${text('autoRefinementIncludeChapter')}: ${draft.chapters[index].title}`);
+          use.addEventListener('change',()=>{
+            if(!reviewCurrent()||autoRefinementReview!==review){use.checked=review.chapters.has(chapter.id);return;}
+            if(use.checked)review.chapters.add(chapter.id);
+            else review.chapters.delete(chapter.id);
+            review.version++;adopt.disabled=review.chapters.size===0;
+          });
+          label.append(use,node('span',text('autoRefinementIncludeChapter')));chapterReview.append(label);
+        }
+        panel.append(chapterReview);
       }
+      wordingNote.hidden=!wordingChanged;
       if(job.result.questions.length){const questions=node('section',undefined,'story-auto-refinement-questions');questions.append(node('h4',text('autoRefinementQuestions')));const list=node('ul');job.result.questions.forEach(question=>list.append(node('li',question)));questions.append(list);panel.append(questions);}
       panel.append(node('p',text('autoRefinementSaveHelp'),'fine'));
-      if(mode==='reader'&&draft.can_edit&&!scope().locked){const proposal=autoRefinementProposal();panel.append(button(text('autoRefinementAdopt'),()=>{if(proposal&&panel.isConnected)void acceptProposal(proposal);},'primary'));}
+      if(adopt)panel.append(adopt);
       else if(mode==='editor'&&draft.can_edit&&!scope().locked)panel.append(button(text('autoRefinementReview'),()=>{if(panel.isConnected&&draft?.revision===job.base_revision)read();}));
       panel.append(button(text('autoRefinementKeep'),()=>{if(reviewCurrent()){autoRefinementDismissed=identity;renderAutoRefinementPanels();}},'quiet'));
     }
     host.append(panel);
+  }
+  labels.zh.autoRefinementWordingChanges='已标出两版文字之间的变化。';
+  labels.en.autoRefinementWordingChanges='Wording changes are highlighted.';
+  Object.assign(labels.zh,{autoRefinementRetry:'重试本地整理',autoRefinementRetryFailed:'暂时无法重试此整理建议。请稍后再试。'});
+  Object.assign(labels.en,{autoRefinementRetry:'Retry local refinement',autoRefinementRetryFailed:'This refinement could not restart. Try again later.'});
+  function compareRefinementWording(original,suggestion,language){
+    if(original===suggestion)return [node('p',original),node('p',suggestion)];
+    const segmenter=typeof Intl.Segmenter==='function'
+      ?new Intl.Segmenter(language==='zh'?'zh':'en',{granularity:'word'}):null;
+    const split=value=>segmenter?Array.from(segmenter.segment(value),item=>item.segment):Array.from(value);
+    const before=split(original),after=split(suggestion);
+    const beforeShared=new Uint8Array(before.length),afterShared=new Uint8Array(after.length);
+    let start=0,beforeEnd=before.length,afterEnd=after.length;
+    while(start<beforeEnd&&start<afterEnd&&before[start]===after[start]){
+      beforeShared[start]=1;
+      afterShared[start]=1;
+      start++;
+    }
+    while(beforeEnd>start&&afterEnd>start&&before[beforeEnd-1]===after[afterEnd-1]){
+      beforeEnd--;
+      afterEnd--;
+      beforeShared[beforeEnd]=1;
+      afterShared[afterEnd]=1;
+    }
+    // Match shared words inside the changed region. Large rewrites keep the
+    // common edges and highlight the whole middle to bound browser work.
+    const rows=beforeEnd-start+1,columns=afterEnd-start+1;
+    if(rows>1&&columns>1&&rows*columns<=100000){
+      const remaining=new Uint16Array(rows*columns);
+      for(let i=rows-2;i>=0;i--){
+        for(let j=columns-2;j>=0;j--){
+          const index=i*columns+j;
+          remaining[index]=before[start+i]===after[start+j]
+            ?1+remaining[index+columns+1]
+            :Math.max(remaining[index+columns],remaining[index+1]);
+        }
+      }
+      let i=0,j=0;
+      while(i<rows-1&&j<columns-1){
+        const index=i*columns+j;
+        if(before[start+i]===after[start+j]){
+          beforeShared[start+i]=1;
+          afterShared[start+j]=1;
+          i++;
+          j++;
+        }else if(remaining[index+columns]>=remaining[index+1])i++;
+        else j++;
+      }
+    }
+    function paragraph(tokens,shared){
+      const result=node('p');
+      for(let start=0;start<tokens.length;){
+        let end=start+1;
+        while(end<tokens.length&&shared[start]===shared[end])end++;
+        const wording=tokens.slice(start,end).join('');
+        result.append(shared[start]?document.createTextNode(wording):node('mark',wording));
+        start=end;
+      }
+      return result;
+    }
+    return [paragraph(before,beforeShared),paragraph(after,afterShared)];
   }
   let cloudReview=null;
   const cloudLabels={zh:{title:'可选云端校对',help:'本地整理照常工作。云端默认关闭；先查看将发送的完整请求，再决定是否发送。只有故事作者可以使用。',preview:'预览发送内容',loading:'正在准备本地预览…',disabled:'云端未启用或未配置。当前只可预览，不会发送。',privacy:'只发送下方请求中的文字，不发送照片、录音或对话。已审核姓名已替换为占位符；仍可能含有其他私人信息，请逐项检查。',consent:'我已检查完整请求，同意将这些文字发送到上述云端服务。',send:'确认发送这份请求',sending:'正在等待云端校对；不会自动重试…',cancel:'关闭预览',failed:'未能完成；原故事保持不变。请重新预览后再决定。',body:'完整请求 JSON（按此内容发送）',result:'云端建议 · 尚未保存',adopt:'将建议带入编辑',review:'打开阅读器核对',expiry:'此预览 10 分钟内有效，只可发送一次。',original:'当前保存的原文'},en:{title:'Optional cloud proofreading',help:'Local editing remains available. Cloud is off by default: preview the complete request before deciding to send. Only the story author can use it.',preview:'Preview outgoing request',loading:'Preparing a local preview…',disabled:'Cloud is disabled or unconfigured. Preview only; nothing will be sent.',privacy:'Only the text in the request below is sent, without photos, audio or conversation history. Reviewed names are placeholders; other private information may remain. Check the entire request.',consent:'I reviewed the complete request and consent to sending this text to the cloud service above.',send:'Confirm and send this request',sending:'Waiting for cloud proofreading; no automatic retry…',cancel:'Close preview',failed:'Not completed. The original story is unchanged. Prepare a new preview before deciding again.',body:'Complete request JSON (sent exactly as shown)',result:'Cloud suggestion · unsaved',adopt:'Bring suggestion into editor',review:'Open reader to review',expiry:'This preview expires after 10 minutes and can be sent only once.',original:'Currently saved wording'}};
@@ -2168,7 +2310,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   function autoRefinementIdentity(story,owner=scope()){return JSON.stringify([owner.account,owner.library,story?.id,story?.revision]);}
   function setAutoRefinementFromStory(story){
-    autoRefinementDismissed=null;
+    autoRefinementDismissed=null;autoRefinementReview=null;
     autoRefinementJob=validAutoRefinement(story?.auto_refinement,story);
     autoRefinementMayStart=Boolean(story?.saved===true&&story?.can_edit===true&&Object.hasOwn(story,'auto_refinement')&&story.auto_refinement===null);
     autoRefinementOriginal=story?.saved?{title:story.title,chapters:story.chapters.map(({id,title,narration})=>({id,title,narration}))}:null;
@@ -2189,17 +2331,23 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       renderAutoRefinementPanels();
     }catch(error){if(current(ticket,owner)&&draft===story&&error?.status===401)onError(error);}
   }
-  async function startAutoRefinement(story,owner,ticket){
+  async function startAutoRefinement(story,owner,ticket,failedJob=null){
     const identity=autoRefinementIdentity(story,owner);
-    if(!autoRefinementMayStart||autoRefinementCapability?.identity!==identity||!autoRefinementCapability.enabled||
-       !story?.saved||!story.can_edit||scope().locked||dirty||pendingSave||busy||autoRefinementQueueing||
+    const canStart=failedJob
+      ?failedJob===autoRefinementJob&&canRetryAutoRefinement(failedJob)&&$('story-reader').open
+      :autoRefinementMayStart&&autoRefinementCapability?.identity===identity&&autoRefinementCapability.enabled;
+    if(!canStart||!story?.saved||!story.can_edit||scope().locked||dirty||pendingSave||busy||autoRefinementQueueing||
        !current(ticket,owner)||draft!==story||!$('story-reader').open&&!$('story-workspace').open||!savedRequest)return;
     autoRefinementQueueing=identity;autoRefinementQueueError=false;renderAutoRefinementPanels();
     try{
       const result=await savedRequest(`/memory-stories/${story.id}/refinement`,{method:'POST',body:{revision:story.revision}});
       if(!current(ticket,owner)||draft!==story||scope().locked||identity!==autoRefinementIdentity(draft,scope()))return;
       const validated=validAutoRefinement(result,story);
-      if(!validated){autoRefinementQueueError=true;return;}
+      if(!validated||(failedJob&&(validated.id!==failedJob.id||
+          !['queued','running','deferred','ready'].includes(validated.state)))){
+        autoRefinementQueueError=true;
+        return;
+      }
       autoRefinementJob=validated;autoRefinementMayStart=false;autoRefinementOriginal={title:story.title,chapters:story.chapters.map(({id,title,narration})=>({id,title,narration}))};autoRefinementAttempts=0;
     }catch(error){
       if(current(ticket,owner)&&draft===story){autoRefinementQueueError=true;if(error?.status===401||error?.status===403)onError(error);}
@@ -2212,30 +2360,76 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const label=node('p',text('savedThemeFilter'),'saved-memory-filters-label');root.setAttribute('aria-label',text('savedThemeFilter'));root.append(label);
     const options=[null,...themes];for(const theme of options){const b=button(theme===null?text('savedThemeAll'):text(theme),()=>selectShelfTheme(theme),'saved-memory-filter');b.setAttribute('aria-pressed',String(shelfTheme===theme));b.dataset.theme=theme||'all';root.append(b);}
   }
+  function syncShelfSearch() {
+    if(!shelfSearchForm)return;
+    shelfSearchForm.hidden=!titleSearchAvailable;
+    shelfSearchClear.hidden=!shelfQuery&&!shelfSearchInput.value;
+  }
+  function setShelfFilters(theme,query) {
+    if(theme===shelfTheme&&query===shelfQuery)return;
+    shelfTheme=theme;
+    shelfQuery=query;
+    shelfPage=1;
+    shelf=[];
+    $('saved-memory-list').replaceChildren();
+    $('saved-memory-more').hidden=true;
+    renderShelfFilters();
+    syncShelfSearch();
+    void loadShelf();
+  }
   function selectShelfTheme(theme) {
-    if(theme!==null&&!themes.includes(theme))return;
-    if(theme===shelfTheme)return;
-    shelfTheme=theme;shelfPage=1;shelf=[];$('saved-memory-list').replaceChildren();$('saved-memory-more').hidden=true;$('saved-memory-status').textContent=text('savedLoading');renderShelfFilters();void loadShelf();
+    if(theme===null||themes.includes(theme))setShelfFilters(theme,shelfQuery);
   }
   function renderShelf() {
     const root=$('saved-memory-list');root.replaceChildren();
+    if(!shelf.length&&shelfQuery)return;
     if(!shelf.length&&!shelfTheme&&guideEntryReady()){const empty=node('section',undefined,'story-first-guide-empty');empty.append(node('h4',text('guideEmptyTitle')),node('p',text('guideEmptyHelp')),button(text('guideStart'),startGuide,'primary'));root.append(empty);return;}
     if(!shelf.length&&shelfTheme){const empty=node('div',undefined,'saved-memory-empty');empty.append(node('p',text('savedThemeEmpty')));const actions=node('div',undefined,'saved-memory-empty-actions');actions.append(button(text('savedThemeViewAll'),()=>selectShelfTheme(null),'quiet'),button(text('savedThemeCreate'),()=>open(null,shelfTheme),'quiet'));empty.append(actions);root.append(empty);return;}
-    for(const story of shelf){const card=node('article',undefined,'saved-memory-card');const cover=button('',()=>{void reopen(story.id);},'saved-memory-cover');cover.setAttribute('aria-label',`${text('readStory')}: ${story.title}`);const img=node('img');img.src=mediaURL(story.cover_asset_id,'thumbnail');img.alt='';img.loading='lazy';cover.append(img,node('span',text(story.theme),'saved-memory-theme'));card.append(cover);const copy=node('div',undefined,'saved-memory-copy');copy.append(node('h4',story.title),node('p',`${story.item_count} ${text('savedMeta')} · ${story.chapter_count} ${text('chaptersMeta')}`,'fine'),button(text('readStory'),()=>{void reopen(story.id);}));card.append(copy);root.append(card);}
+    for(const story of shelf){
+      const card=node('article',undefined,'saved-memory-card');
+      const cover=button('',()=>void reopen(story.id),'saved-memory-cover');
+      cover.setAttribute('aria-label',`${text('readStory')}: ${story.title}`);
+      const img=node('img');img.src=mediaURL(story.cover_asset_id,'thumbnail');img.alt='';img.loading='lazy';
+      cover.append(img,node('span',text(story.theme),'saved-memory-theme'));
+      const copy=node('div',undefined,'saved-memory-copy');
+      copy.append(node('h4',story.title),node('p',`${story.item_count} ${text('savedMeta')} · ${story.chapter_count} ${text('chaptersMeta')}`,'fine'));
+      const actions=node('div',undefined,'saved-memory-actions');
+      actions.append(button(text('readStory'),()=>void reopen(story.id)));
+      if(story.has_refinement_draft===true&&story.can_edit===true){
+        const review=button(text('reviewSavedRefinement'),()=>void reopen(story.id,{reviewRefinement:true}),'quiet saved-refinement-review');
+        review.setAttribute('aria-label',`${text('reviewSavedRefinement')}: ${story.title}`);
+        actions.append(review);
+      }
+      copy.append(actions);card.append(cover,copy);root.append(card);
+    }
   }
   async function loadShelf(append=false) {
     if(!savedRequest||scope().locked||!scope().account||!scope().library)return;
-    const owner={...scope()},filter=shelfTheme,ticket=++shelfLoad,target=append?shelfPage+1:1;
+    const owner={...scope()},filter=shelfTheme,query=shelfQuery,ticket=++shelfLoad,target=append?shelfPage+1:1;
+    const latest=()=>{
+      const selectedScope=scope();
+      return ticket===shelfLoad&&!selectedScope.locked&&owner.account===selectedScope.account&&owner.library===selectedScope.library;
+    };
     shelfReady=false;$('saved-memory-list').querySelector('.story-first-guide-empty')?.remove();syncGuide();
     $('saved-memory-status').textContent=text('savedLoading');$('saved-memory-refresh').disabled=true;$('saved-memory-more').disabled=true;
-    try{const result=await savedRequest(`/memory-stories?page=${target}${filter?`&theme=${encodeURIComponent(filter)}`:''}`);if(ticket!==shelfLoad||filter!==shelfTheme||scope().locked||owner.account!==scope().account||owner.library!==scope().library)return;
+    const extraHeaders={'X-PhotoHouse-Story-Refinement-Hints':'1','X-PhotoHouse-Story-Shelf-Version':'1'};
+    try{
+      const result=query
+        ?await savedRequest('/memory-stories/search',{method:'POST',body:{title_query:query,page:String(target),...(filter?{theme:filter}:{})},extraHeaders})
+        :await savedRequest(`/memory-stories?page=${target}${filter?`&theme=${encodeURIComponent(filter)}`:''}`,{extraHeaders});
+      if(!latest())return;
       if(result.library_id!==owner.library||result.page!==target||result.page_size!==8||typeof result.has_more!=='boolean'||typeof result.can_create!=='boolean'||!Array.isArray(result.items)||result.items.length>8||result.items.some(s=>!uuidOK(s.id)||!validText(s.title,160)||!idOK(s.cover_asset_id)||!themes.includes(s.theme)||(filter!==null&&s.theme!==filter)||!Number.isInteger(s.item_count)||s.item_count<1||s.item_count>24||!Number.isInteger(s.chapter_count)||s.chapter_count<1||s.chapter_count>6))throw new Error('Invalid saved stories');
-      shelf=append?[...shelf,...result.items]:result.items;shelfPage=target;canCreate=result.can_create;shelfBinding=JSON.stringify([owner.account,owner.library]);shelfReady=true;renderShelf();void refreshLocalDraft();$('saved-memory-more').hidden=!result.has_more;$('saved-memory-status').textContent=shelf.length?'':text('savedEmpty');setSelectionCount();
-      if(!append&&community)void community.books($('memory-books'));
-    }catch(error){if(ticket===shelfLoad&&filter===shelfTheme&&owner.account===scope().account&&owner.library===scope().library){$('saved-memory-status').textContent=text('savedUnavailable');onError(error);}}
-    finally{if(ticket===shelfLoad&&filter===shelfTheme&&owner.account===scope().account&&owner.library===scope().library){$('saved-memory-refresh').disabled=false;$('saved-memory-more').disabled=false;}}
+      if(!query){titleSearchAvailable=result.title_search===true;syncShelfSearch();}
+      shelf=append?[...shelf,...result.items]:result.items;shelfPage=target;canCreate=result.can_create;shelfBinding=JSON.stringify([owner.account,owner.library]);shelfReady=true;renderShelf();void refreshLocalDraft();$('saved-memory-more').hidden=!result.has_more;$('saved-memory-status').textContent=shelf.length?'':text(query?'savedSearchEmpty':'savedEmpty');setSelectionCount();
+      if(!append&&!query&&community)void community.books($('memory-books'));
+    }catch(error){if(latest()){$('saved-memory-status').textContent=text('savedUnavailable');onError(error);}}
+    finally{if(latest()){$('saved-memory-refresh').disabled=false;$('saved-memory-more').disabled=false;}}
   }
-  async function reopen(id) {
+  Object.assign(labels.zh,{savedSearchLabel:'按标题查找故事',savedSearchSubmit:'查找',savedSearchClear:'清除',savedSearchEmpty:'没有标题符合条件的故事。'});
+  Object.assign(labels.en,{savedSearchLabel:'Find stories by title',savedSearchSubmit:'Search',savedSearchClear:'Clear',savedSearchEmpty:'No saved story titles match.'});
+  labels.zh.reviewSavedRefinement='核对 AI 草稿';
+  labels.en.reviewSavedRefinement='Review AI draft';
+  async function reopen(id,{reviewRefinement=false}={}) {
     if(!uuidOK(id)||scope().locked||busy||draftPreparation.pending||!canDiscard())return;
     if($('story-reader').open&&!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'}))return;
     if(bookReader?.open&&!confirmReaderLeave(bookReader.querySelector('.memory-book-companion'),bookReader.__photoHouseBookTarget))return;
@@ -2247,6 +2441,15 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const expected=result.items?.map(i=>i.id);if(!Array.isArray(expected)||!validDraft(result,expected,owner,profile)||result.saved!==true)throw new Error('Invalid saved story');
       if(readerMountEpoch!==expectedReaderEpoch||$('story-reader').open||bookReader?.open)return;
       if(!mountSavedStory(result,priorRefs,owner,ticket,profile))return;
+      if(reviewRefinement){
+        const panel=$('story-reader').querySelector('.story-auto-refinement');
+        const heading=panel?.querySelector('h3');
+        if(heading){heading.tabIndex=-1;heading.focus();}
+        if(autoRefinementJob?.state!=='ready'){
+          shelf=shelf.map(story=>story.id===id?{...story,has_refinement_draft:false}:story);
+          renderShelf();
+        }
+      }
     }catch(error){if(current(ticket,owner)){$('saved-memory-status').textContent=text('savedUnavailable');onError(error);}}
     finally{if(current(ticket,owner)){busy=false;setSelectionCount();}}
   }
@@ -2418,13 +2621,15 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     target.scrollIntoView({block:'start',inline:'nearest'});
     editor.style.scrollPaddingTop=scrollPadding;
   }
-  async function acceptProposal(proposal){
+  async function acceptProposal(proposal,review=null){
     if(!draft?.saved||!draft.can_edit||busy||pendingSave||scope().locked||
-       proposal.story_id!==draft.id||proposal.revision!==draft.revision||!uuidOK(proposal.job_id)||!canDiscard())return;
+       proposal.story_id!==draft.id||proposal.revision!==draft.revision||!uuidOK(proposal.job_id)||
+       (review&&(proposal.auto_refinement!==true||!review.current()))||!canDiscard())return;
     const owner={...scope()},ticket=generation;
     try{
       const job=await savedRequest('/memory-community/v1/jobs/'+proposal.job_id);
-      if(!current(ticket,owner)||!$('story-reader').open||job.state!=='ready'||job.base_revision!==draft.revision)return;
+      if(!current(ticket,owner)||!$('story-reader').open||job.state!=='ready'||job.base_revision!==draft.revision||
+          (review&&!review.current()))return;
       const result=job.kind==='chat'?job.result?.proposal:job.result;
       if(!result||result.version!==1||result.needs_review!==true||!Array.isArray(result.chapters)||result.chapters.length!==draft.chapters.length)return;
       const candidate=structuredClone(draft),warnings=new Map(),knownRefs=refsFor(draft),proposedGroups=knownRefs?.available?new Map([...knownRefs.groups].map(([id,refs])=>[id,[...refs]])):null;
@@ -2433,6 +2638,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         const before=candidate.chapters[index],refs=proposal.source_refs?.[index];
         if(section.id!==before.id||refs?.chapter_id!==section.id||JSON.stringify(refs.source_ids)!==JSON.stringify(section.source_ids)||
           proposal.chapters[index]?.narration!==section.narration||new TextEncoder().encode(section.narration).length>6000)return;
+        if(review&&!review.chapters.has(section.id))continue;
         before.narration=section.narration;
         const known=new Set(candidate.items.filter(i=>before.asset_ids.includes(i.id)).flatMap(i=>i.evidence.map(e=>e.id)));
         const unpersisted=section.source_ids.filter(id=>!known.has(id)),remaining=[];
@@ -2462,7 +2668,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const prompt=warnings.size?proposalSourceWarningPrompt(warnings.size,unpersistedReferenceCount,contributionReferences):
         (owner.language==='en'?'Bring this AI draft into the editor for your review? It will be saved only when you choose Save.':'将这份 AI 建议带入编辑，供你核对？只有再次点击“保存到相册库”才会保存。');
       if(!window.confirm(prompt))return;
-      if(!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'})||!current(ticket,owner)||draft.id!==proposal.story_id||draft.revision!==proposal.revision||!$('story-reader').open)return;
+      if(!confirmReaderLeave($('story-reader-community'),{...draft,type:'story'})||!current(ticket,owner)||draft.id!==proposal.story_id||draft.revision!==proposal.revision||!$('story-reader').open||(review&&!review.current()))return;
       if(proposal.auto_refinement===true)skipAutoRefinementSave={storyId:candidate.id,baseRevision:candidate.revision};
       proposalReferenceWarnings=warnings;
       if(proposedGroups){refsLoadEpoch++;contributionRefs={...knownRefs,groups:proposedGroups};}
@@ -2718,6 +2924,24 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function stopPlaying(){if(playTimer)clearInterval(playTimer);playTimer=null;playing=false;$('story-reader').dataset.playing='false';$('story-reader-play').textContent=text('playStory');$('story-reader-play').setAttribute('aria-pressed','false');}
   function togglePlaying(){if(playing){stopPlaying();return;}if(!draft||scope().locked)return;stopNarration();playing=true;$('story-reader').dataset.playing='true';$('story-reader-play').textContent=text('pauseStory');$('story-reader-play').setAttribute('aria-pressed','true');playTimer=setInterval(()=>{if(scope().locked||document.hidden||!$('story-reader').open){stopPlaying();return;}const c=draft.chapters[chapter];if(frame<c.asset_ids.length-1)frame++;else if(chapter<draft.chapters.length-1){chapter++;frame=0;}else{stopPlaying();return;}renderReader();},7000);}
   $('saved-memory-refresh').addEventListener('click',()=>{void loadShelf();});$('saved-memory-more').addEventListener('click',()=>{void loadShelf(true);});
+  shelfSearchForm?.addEventListener('submit',event=>{
+    event.preventDefault();
+    if(!titleSearchAvailable)return;
+    shelfSearchInput.value=shelfSearchInput.value.trim();
+    if(shelfSearchInput.value===shelfQuery){
+      syncShelfSearch();
+      if(shelfQuery)void loadShelf();
+      return;
+    }
+    setShelfFilters(shelfTheme,shelfSearchInput.value);
+  });
+  shelfSearchInput?.addEventListener('input',syncShelfSearch);
+  shelfSearchClear?.addEventListener('click',()=>{
+    shelfSearchInput.value='';
+    setShelfFilters(shelfTheme,'');
+    syncShelfSearch();
+    shelfSearchInput.focus();
+  });
   $('story-save-memory').addEventListener('click',()=>{void saveMemory();});$('story-reload-memory').addEventListener('click',()=>{if(draft?.id)void reopen(draft.id);});
   $('story-reader-play').addEventListener('click',togglePlaying);$('story-reader').addEventListener('close',()=>{stopAutoRefinementPolling();resetReaderFontScale($('story-reader'),$('story-reader-font-presets'));stopPlaying();stopNarration();community?.detach($('story-reader-community'));if(readerFromShelf&&!$('story-workspace').open){contributionRefs=null;refsLoadEpoch++;}});$('story-reader').addEventListener('cancel',event=>{if(!confirmReaderLeave($('story-reader-community'),draft&&{...draft,type:'story'})){event.preventDefault();return;}stopNarration();});document.addEventListener('visibilitychange',()=>{if(document.hidden){cloudReview=null;renderCloudPanels();stopAutoRefinementPolling();cancelDictation();stopPlaying();stopNarration();}});window.addEventListener('pagehide',()=>{cloudReview=null;renderCloudPanels();stopAutoRefinementPolling();cancelDictation();stopNarration();});window.addEventListener('photohouse-memory-audio-start',stopNarration);document.getElementById('view-play')?.addEventListener('click',stopNarration);
   const storyReaderFontControls=$('story-reader-font-presets');

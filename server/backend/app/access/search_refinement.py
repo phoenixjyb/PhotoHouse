@@ -3,12 +3,13 @@
 Removal phrases are syntax only outside quotes. They never mean excluding a
 person or deleting data, and never reset another constraint implicitly.
 """
+from datetime import date
 import re
 
 from . import discovery as d
 from .assistant_query_plan import (QueryPlan, plan_query as _plan_query,
                                    query_mode as _query_mode, _SEARCH_OPEN, _MEDIA)
-from .assistant_query_plan import _CONTENT_INTRO, _QUOTE, _consumed_label, _remove_occurrences
+from .assistant_query_plan import _CONTENT_INTRO, _QUOTE, _consumed_label, _date_range, _month_bounds, _remove_occurrences
 
 
 _SLOTS = {
@@ -52,6 +53,10 @@ _RELATIVE_EARLIER = re.compile(
     r'^(?:再早一点|再早点|更早一点|再早一点\s*please|'
     r'(?:a\s+bit|a\s+little)\s+earlier(?:\s+please)?|'
     r'earlier(?:\s+please)?|earlier一点)[\s,，。.!！?？]*$', re.I)
+_DATE_YEAR_REFERENCE = re.compile(
+    r'(?:(?:(?:what|how)\s+about\s+)?(?:the\s+)?same\s+(?P<en>month|dates?|day)\s+in\s+(?P<en_year>(?:19|20)[0-9]{2})'
+    r'|(?:换到\s*)?(?P<zh_year>(?:19|20)[0-9]{2})\s*年\s*(?P<zh>同月|同期|同一天|同一日期范围))'
+    r'[\s,，。.!！?？]*$', re.I)
 _NAMED_PARENT_COMPANION = re.compile(
     r'(?P<anchor>.+?)\s*(?P<join>(?:(?a:\b)(?:with|and)(?a:\b)|和|跟|与))\s*'
     r'(?P<pronoun>(?:(?a:\b)(?:her|his)(?a:\b)|她|他))\s*(?:的\s*)?'
@@ -137,6 +142,43 @@ def _plan_correction(words, parts, *, now, entities, previous_filters, refine):
     if old is not None and replacements[0][slot] != previous_filters[slot]:
         return clarify('correction_mismatch')
     return QueryPlan(1, 'ready', {**previous_filters, **update})
+
+
+def _plan_date_year_reference(words, match, *, now, entities, previous_filters, refine):
+    original = _plan_query(words, now=now, entities=entities,
+                           previous_filters=previous_filters, refine=refine)
+    if original.status != 'ready' and original.reason not in {'unsupported_condition', 'missing_conditions'}:
+        return original
+    if not refine or previous_filters is None:
+        return QueryPlan(1, 'clarification', {}, 'refine_without_context')
+
+    def clarify(reason):
+        return QueryPlan(1, 'clarification', dict(previous_filters), reason)
+
+    surface = match.group(0)
+    if _consumed_label(surface, ' ' * len(surface), entities.get('labels', [])):
+        return clarify('ambiguous_date_entity')
+    if 'date' not in entities['enabled']:
+        return clarify('date_unavailable')
+    prior = previous_filters.get('date')
+    if not prior or not prior['from'] or not prior['to']:
+        return clarify('date_reference_unavailable')
+    start, end = date.fromisoformat(prior['from']), date.fromisoformat(prior['to'])
+    if start.year != end.year:
+        return clarify('date_reference_unavailable')
+    year = int(match.group('en_year') or match.group('zh_year'))
+    if match.group('en') == 'month' or match.group('zh') == '同月':
+        if start.month != end.month:
+            return clarify('month_reference_unavailable')
+        start, end = _month_bounds(year, start.month)
+    else:
+        if (match.group('en') in {'date', 'day'} or match.group('zh') == '同一天') and start != end:
+            return clarify('day_reference_unavailable')
+        try:
+            start, end = start.replace(year=year), end.replace(year=year)
+        except ValueError:
+            return clarify('date_reference_invalid_day')
+    return QueryPlan(1, 'ready', {**previous_filters, 'date': _date_range(start, end)})
 
 
 def _operations(words):
@@ -273,7 +315,8 @@ def plan_location_answer(words, *, now, entities, previous_filters):
 def query_mode(words):
     if type(words) is not str:
         return _query_mode(words)
-    if _RELATIVE_EARLIER.fullmatch(d.fold(words.strip())):
+    surface = d.fold(words.strip())
+    if _RELATIVE_EARLIER.fullmatch(surface) or _DATE_YEAR_REFERENCE.fullmatch(surface):
         return 'refine'
     if _correction_parts(words) is not None:
         return 'refine'
@@ -328,7 +371,11 @@ def plan_query(words, *, now, entities, previous_filters, refine):
     if type(words) is not str or len(words) > 1024:
         return _plan_query(words, now=now, entities=entities,
                            previous_filters=previous_filters, refine=refine)
-    if _RELATIVE_EARLIER.fullmatch(d.fold(words.strip())):
+    surface = d.fold(words.strip())
+    if match := _DATE_YEAR_REFERENCE.fullmatch(surface):
+        return _plan_date_year_reference(words, match, now=now, entities=entities,
+                                         previous_filters=previous_filters, refine=refine)
+    if _RELATIVE_EARLIER.fullmatch(surface):
         original = _plan_query(words, now=now, entities=entities,
                                previous_filters=previous_filters, refine=refine)
         if (refine and previous_filters is not None and

@@ -8,7 +8,7 @@ The bilingual snapshot separates recorded delivery, source-ready work, gaps and 
 双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows route: `/roadmap/` (deployment is tracked separately).
 
 
-Reviewed **2026-11-25** against current source and recorded Windows results.
+Reviewed **2026-11-26** against local source and dated Windows results.
 Use [Project Status](PROJECT_STATUS.md) and the dated
 [release record](RELEASE_2026-10-29.md) for delivery evidence. Older entries
 retain the date and scope of their original evidence.
@@ -21,19 +21,26 @@ retain the date and scope of their original evidence.
   layouts. Explicit language changes can resume freshly authorized idle private
   conversation text and an unsent draft without replay. This is generated browser evidence, not a new Windows release
   ([design review](WEB_DESIGN_REVIEW_2026-11-24.md)).
-- **Story review:** selected-source proposals now offer an explicit original-wording
-  disclosure beside the editable chapter text, using the existing volatile snapshot.
-  From selected assistant results, the author can also explicitly copy the latest
-  user message as optional writing direction. The focused local generated journey
-  passed 18 checkpoints; save remains explicit
-  ([editor contract](SELECTED_SOURCE_STORY_UI.md)).
-- **Source:** ordinary result paging and selected-frame handoff are integrated.
-  The latest generated-browser increment can keep the selected frames when
-  reloading the active conversation on the same page after exact current-result
-  validation. The selection clears on a full reload or scope change
-  ([details](SEARCH_TO_STORY.md)).
+- **Story review:** selected-source drafts let the author keep original wording
+  for one chapter while continuing to review the others. Saved Stories offers
+  direct access to a prepared refinement, with a choice of chapters to bring
+  into the editor. Both paths require an explicit save. Generated API and
+  browser checks covered these actions.
+  [Selected-source editing](SELECTED_SOURCE_STORY_UI.md) ·
+  [Saved-story refinement](STORY_REFINEMENT.md).
+- **Find a saved story:** search by part of its title across the current
+  library's readable stories, with the existing theme filter and pagination.
+  The title goes in the private request body when you submit the search.
+- **Search to story:** ordinary result paging and selected-frame handoff are
+  integrated. After a reload in the same tab, reopening the conversation
+  can restore the selection after fresh checks of the exact result and selected
+  pages. [Search-to-story contract](SEARCH_TO_STORY.md).
 - **Conversation and tools:** account/library-scoped assistant threads, bounded
-  history and request recovery are implemented. The PH-A1 v1 media-search tool
+  history and request recovery are implemented. The Web workspace can open the
+  latest conversation in one step, show a pending request, and recover or discard
+  the reply. The generated browser and API cases preserve completed exchanges
+  when a discard races with completion. [Turn contract](PRIVATE_ASSISTANT_TURNS_V1.md).
+  The PH-A1 v1 media-search tool
   profile is a versioned regression fixture, not a permanent three-tool product
   limit. Future profiles can add reviewed, task-specific domain operations;
   none grants generic shell, file, browser, network, deployment or coding-agent
@@ -67,6 +74,10 @@ retain the date and scope of their original evidence.
   zero updates. A complete refresh on this build remains open. A scheduled
   Family intake run succeeded after an earlier HTTP 503 with the same task
   definition.
+- **Saved memory groups:** Stories can load older groups while retaining choices
+  across pages. The generated browser used groups from two pages to create an
+  ordered, unsaved story. The optional workflow still needs Windows release
+  and family acceptance. [Memory groups](../server/docs/security/MEMORY_GROUPS_V1.md).
 
 Installed Android and TV clients still need separate acceptance. GitHub
 Actions remains cost-paused.
@@ -100,42 +111,27 @@ invent a global pass threshold before measuring representative cases.
 
 ### 2. Resume safely and make cancellation understandable
 
-Normal conversation reopening can recover the latest valid result. Complete the
-remaining pending and uncertain-turn experience without reviving stale cards or
-hidden context: revalidate account, library, source revisions and authorization,
-and ask for a fresh search when the old scope cannot be restored. Define an
-explicit cancel action and its visible outcome for an in-flight assistant turn.
-Navigation, closing a view and a lost connection must not silently mean either
-“cancelled” or “completed”; preserve the existing owner through reconciliation.
+The generated Web journeys cover reopening a server-received request,
+explicit recovery, and discard. A discarded reply cannot enter the conversation.
+The existing worker lifecycle still owns its resources until cleanup completes.
 
-**Deliver:** generated browser/API journeys for reopen, pending and uncertain
-requests, stale or revoked scope, explicit cancel, disconnect/navigation, and a
-late response. Show the submitted request, its current receipt state and the
-next available action without duplicating a turn or restoring unauthorized
-cards. Keep search, story and speech cancellation semantics distinct where
-their owners differ.
+**Deliver:** after Windows rollout, try an interrupted conversation on the
+installed Web client. Confirm which question is shown, whether the receipt
+accurately reports its outcome and whether the user can continue earlier work.
+Exercise the exact scope changes and result-source rechecks on that build.
 
 ### 3. Complete the reviewable story path
 
-Keep selected-result handoff, selected-source drafting and saved-story
-refinement as distinct steps. The local source carries selected frames across
-result pages and opens the existing editor after a fresh current-result check,
-but selections are page-only and do not return when a conversation is reopened.
-Add safe resumption bound to the same current result and scope, clearing choices
-after a refined search or changed thread, account, library or source revision.
-The selected-source editor now has an explicit original-wording disclosure and
-editable direction handoff; next, keep source attribution, uncertain wording
-and current revisions clear in review. The author must explicitly adopt or
-reject a proposal; saving, publishing, sharing or changing access never follows
-from generation alone.
+The local build carries selected frames across result pages and can recover
+them after reloading the same tab and reopening the conversation. Chapter
+choices in the two review workflows let the author keep original text or use
+suggestions while retaining explicit control over the save.
 
-**Deliver:** first test selection resumption and stale source/revision refusal
-with generated data. Reconcile the saved-story refinement's last recorded
-transport and native-quality gates against the intended runtime, then prepare
-one requested story proposal for family review. Record the original and
-proposal separately, note names, facts and style the reviewer accepts or
-corrects, and preserve explicit adoption. Do not turn one story's feedback into
-a claim of general quality or a background rewrite of other stories.
+**Deliver:** try the selected-frame and chapter review journeys on the installed
+Web client. Prepare one requested story for family review using the qualified
+runtime. Record which names, facts and wording the reviewer accepts or revises,
+along with the original and the exact proposal. Track further quality work
+against representative reviewed stories.
 
 ### 4. Check usefulness with the household before widening scope
 

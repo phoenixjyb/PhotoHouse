@@ -271,6 +271,30 @@ class AssistantWorkspaceStoreTests(unittest.TestCase):
         self.assertEqual(label, ('<b> ' + '界' * 59) + '…')
         self.assertEqual(len(label), 64)
 
+    def test_conversation_pages_use_update_time_and_tie_breaker_with_owner_scope(self):
+        original_time = self.now[0]
+        old = self.store.create_thread('member-a', 'family-a')['thread_id']
+        self.now[0] += 4
+        tie = sorted(self.store.create_thread('member-a', 'family-a')['thread_id']
+                     for _ in range(3))
+        self.store.create_thread('member-b', 'family-a')
+        self.store.create_thread('member-a', 'family-b')
+        self.now[0] += 4
+        new = self.store.create_thread('member-a', 'family-a')['thread_id']
+        first = self.store.list_threads('member-a', 'family-a', limit=2)
+        self.assertEqual([t['thread_id'] for t in first], [new, tie[0]])
+        second = self.store.list_threads('member-a', 'family-a', limit=2,
+                                      before=(original_time+4, tie[0]), include_labels=True)
+        self.assertEqual([t['thread_id'] for t in second], tie[1:])
+        self.assertTrue(all('label' in row for row in second))
+        third = self.store.list_threads('member-a', 'family-a', limit=2,
+                                     before=(original_time+4, tie[-1]))
+        self.assertEqual([t['thread_id'] for t in third], [old])
+        # Continued lists exclude expired conversations.
+        self.now[0] = original_time + RETENTION_SECONDS + 1
+        self.assertEqual(self.store.list_threads('member-a', 'family-a',
+            before=(original_time+4, tie[-1])), [])
+
     def test_history_pages_are_owned_revision_checked_and_strictly_older(self):
         thread = self.store.create_thread('member-a', 'family-a')['thread_id']
         for revision in range(22):
