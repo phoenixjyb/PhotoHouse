@@ -17,6 +17,7 @@
   const MAX_MEMORY_CARDS = 12;
   const MAX_MEMORY_RESULTS = 256;
   const MAX_STORY_FRAMES = 24;
+  const NUMBERED_MATCH_QUESTION = /^(?:why result (?:[1-9]|1[0-9]|20)\?|为什么是第(?:[1-9]|1[0-9]|20)项结果[？?])$/i;
 
   class PrivateAssistantError extends Error {
     constructor(code,status=null) { super(SAFE_CODES.has(code)||STORE_ERRORS.has(code)?code:'request_failed'); this.name='PrivateAssistantError'; this.code=SAFE_CODES.has(code)||STORE_ERRORS.has(code)?code:'request_failed';this.status=status; }
@@ -499,6 +500,13 @@
         sceneQuery:result.version===4?result.context.scene.query:null,
         sceneScope:result.version===4?canonical(result.context.scene.scope):null,ranking_sha256:null};
       return storyResultSource;
+    }
+    function rebindStoryPicks(picks,source){
+      const firstPage=new Map(source.result.items.map(item=>[item.id,item]));
+      if(picks.some(entry=>entry.page===1&&firstPage.get(entry.item.id)?.kind!==entry.item.kind))return;
+      storySelection=picks.map(entry=>({...entry,source,item:entry.page===1?firstPage.get(entry.item.id):entry.item}));
+      storySelectionNonce++;
+      rememberStorySelection();
     }
     function storySelectionPage(){
       if(scenePageActive){
@@ -1017,11 +1025,7 @@
           }
           assertCurrent(t.base,t.token);if(ticket!==readGeneration)fail('scope_changed');
         }else if((sceneReturn||checkedStoryResult)&&preservedStorySource&&sameSelection&&sameStoryResult(preservedStorySource,nextSource)){
-          const firstPage=new Map(currentResult.items.map(item=>[item.id,item]));
-          if(preservedStorySelection.every(entry=>entry.page>1||firstPage.get(entry.item.id)?.kind===entry.item.kind)){
-            storySelection=preservedStorySelection.map(entry=>({...entry,source:nextSource,item:entry.page===1?firstPage.get(entry.item.id):entry.item}));
-            storySelectionNonce++;rememberStorySelection();
-          }
+          rebindStoryPicks(preservedStorySelection,nextSource);
         }else if(storedStory)writeStoryResume(null);
       }else{if(storedStory)writeStoryResume(null);invalidateStorySelection();}
       if(sceneAvailable&&activeThread.thread_id===id&&activeThread.revision===revision&&contextState==='ready'&&currentResult?.context)sceneRewordRequired=false;publish();
@@ -1170,14 +1174,49 @@
       // the voice End action until an explicit new turn or history/scope change.
       const source=savedMemoryReaderSource,memoryParentReady=stateValue().savedMemoryFollowupReady||stateValue().savedMemoryActionReady;
       const memoryParent=memoryParentReady&&memoryOptIn&&(savedMemoryFollowupAvailable||savedMemoryActionsAvailable)&&source&&source.result===currentResult&&source.thread_id===activeThread.thread_id&&activeThread.revision===revision&&source.revision===revision&&source.account===t.base.account&&source.library===t.base.library&&source.generation===t.base.generation&&CANONICAL_MEMORY_UUID.test(source.request_id)&&safeInt(source.revision)?{request_id:source.request_id,revision:source.revision}:null;
-      storyDirectionInput=null;writeStoryResume(null);invalidateStorySelection();sceneRequestId=null;sceneRankingDigest=null;clearScenePage();clearResultPage();clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;readGeneration++;abortHydrations();invalidateHistory();const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text,search_version:searchVersion,...(agentRequested?{agent:true}:{})};pendingTurn={...sent,status:'sending'};publish();
+      // Preserve picks for the numbered questions drafted by the match button
+      // only if the completed turn confirms the same authorized result.
+      const beforeExplanation=!agentRequested&&[2,3].includes(searchVersion)&&currentResult?.version===searchVersion&&
+        NUMBERED_MATCH_QUESTION.test(text.trim())&&storySelection.length>0&&storySelectionEligible(t.base)
+        ?{result:currentResult,picks:storySelection.slice(),direction:storyDirectionCandidate()?.text??null}:null;
+      storyDirectionInput=null;writeStoryResume(null);invalidateStorySelection();sceneRequestId=null;sceneRankingDigest=null;clearScenePage();clearResultPage();clearSpeechSource();savedMemoryReaderSource=null;openingMemoryCard=false;readGeneration++;abortHydrations();invalidateHistory();
+      const selectionNonceAtSend=storySelectionNonce;
+      const sent={thread_id:activeThread.thread_id,request_id:rid,expected_revision:revision,text,search_version:searchVersion,...(agentRequested?{agent:true}:{})};
+      pendingTurn={...sent,status:'sending'};publish();
       const memoryActionsOptIn=memoryOptIn&&savedMemoryActionsAvailable===true,memoryActionsProbeNonce=savedMemoryActionsProbeNonce;
       try{const body={library_id:t.base.library,request_id:rid,expected_revision:sent.expected_revision,text};if(agentRequested)body.accepts=['agent_media_search_v1'];else if(memoryOptIn)body.accepts=memoryActionsOptIn?['saved_memory_cards_v1','saved_memory_actions_v1']:['saved_memory_cards_v1'];if(memoryParent&&memoryOptIn&&(savedMemoryFollowupAvailable||savedMemoryActionsAvailable))body.memory_parent=memoryParent;
         const extraHeaders={};if(searchVersion>=2)extraHeaders['X-PhotoHouse-Search-Version']=String(searchVersion);if(parentRequestId)extraHeaders['X-PhotoHouse-Parent-Request-Id']=parentRequestId;const turnOptions=Object.keys(extraHeaders).length?{extraHeaders}:{};
         const v=validateEnvelope(await call(`${threadPath(sent.thread_id)}/turns`,'POST',body,t.base,t.token,turnOptions),sent.thread_id,rid,t.base.library,'POST',memoryOptIn,memoryActionsOptIn,searchVersion);
         if(memoryOptIn&&v.status==='completed'&&!v.recovered&&Object.hasOwn(v.result,'memory_cards')&&memoryProbeNonce!==savedMemoryProbeNonce){pendingTurn={...sent,status:'uncertain'};publish();fail('context_changed');}
         if(memoryActionsOptIn&&v.status==='completed'&&!v.recovered&&Object.hasOwn(v.result,'memory_action')&&memoryActionsProbeNonce!==savedMemoryActionsProbeNonce){pendingTurn={...sent,status:'uncertain'};publish();fail('context_changed');}
-        if(v.status==='completed'){const memoryResult=Object.hasOwn(v.result,'memory_cards');const result=memoryResult?v.result:await hydrateResult(v.result,t,{threadId:sent.thread_id,revision:v.revision});assertCurrent(t.base,t.token);activeThread=Object.freeze({...activeThread,revision:v.revision});revision=v.revision;pendingTurn=null;currentResult=result;contextState=memoryResult?'requires_search':resultContextState(result);bindStoryResult(t,sent.thread_id,rid,v.revision,result);storyDirectionInput={text,account:t.base.account,library:t.base.library,generation:t.base.generation,thread_id:sent.thread_id,request_id:rid,revision:v.revision};if(draft===text)draft='';if(!v.recovered&&memoryResult)savedMemoryReaderSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,result};if(!v.recovered&&memoryResult&&memorySpeechAllowedAtSend&&memorySpeechProbeNonce===savedMemorySpeechProbeNonce&&savedMemoryAvailable&&savedMemorySpeechAvailable&&capabilities?.reply_speech===true)speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind,savedMemory:true,search_version:1};else if(!v.recovered&&!memoryResult)speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind,search_version:result.version>=2?result.version:1};publish();return Object.freeze({...v,result});}
+        if(v.status==='completed'){
+          const memoryResult=Object.hasOwn(v.result,'memory_cards');
+          const result=memoryResult?v.result:await hydrateResult(v.result,t,{threadId:sent.thread_id,revision:v.revision});
+          assertCurrent(t.base,t.token);
+          const keepPicks=beforeExplanation&&!v.recovered&&pendingTurn?.request_id===rid&&
+            activeThread?.thread_id===sent.thread_id&&revision===sent.expected_revision&&v.revision===revision+1&&
+            selectionNonceAtSend===storySelectionNonce&&result.kind==='results'&&
+            result.version===beforeExplanation.result.version&&
+            canonical(result.context)===canonical(beforeExplanation.result.context)&&
+            canonical(result.items)===canonical(beforeExplanation.result.items)&&
+            (resultPageAvailable||beforeExplanation.picks.every(entry=>entry.page===1));
+          activeThread=Object.freeze({...activeThread,revision:v.revision});
+          revision=v.revision;pendingTurn=null;currentResult=result;
+          contextState=memoryResult?'requires_search':resultContextState(result);
+          const nextSource=bindStoryResult(t,sent.thread_id,rid,v.revision,result);
+          let direction=text;
+          if(keepPicks&&storySelectionSourceCurrent(t.base)){
+            rebindStoryPicks(beforeExplanation.picks,nextSource);
+            direction=beforeExplanation.direction;
+          }
+          storyDirectionInput=direction===null?null:{text:direction,account:t.base.account,library:t.base.library,
+            generation:t.base.generation,thread_id:sent.thread_id,request_id:rid,revision:v.revision};
+          if(draft===text)draft='';
+          if(!v.recovered&&memoryResult)savedMemoryReaderSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,result};
+          if(!v.recovered&&memoryResult&&memorySpeechAllowedAtSend&&memorySpeechProbeNonce===savedMemorySpeechProbeNonce&&savedMemoryAvailable&&savedMemorySpeechAvailable&&capabilities?.reply_speech===true)speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind,savedMemory:true,search_version:1};
+          else if(!v.recovered&&!memoryResult)speechSource={thread_id:sent.thread_id,request_id:rid,revision:v.revision,account:t.base.account,library:t.base.library,generation:t.base.generation,replyBytes:byteLength(result.reply),kind:result.kind,search_version:result.version>=2?result.version:1};
+          publish();return Object.freeze({...v,result});
+        }
         if(v.status==='failed'||v.status==='interrupted'){if(!draft)draft=text;pendingTurn=null;contextState='requires_search';invalidateStorySelection();publish();return v;}
         pendingTurn={...sent,status:'uncertain'};publish();return v;
       }catch(e){const safe=safeFailure(e);if(safe.code==='scope_changed'||safe.code==='closed'||safe.status===401||safe.status===403)throw safe;if(safe.status===409){pendingTurn={...sent,status:'uncertain'};currentResult=null;contextState='requires_search';invalidateStorySelection();invalidateHistory();publish();throw safe;}pendingTurn={...sent,status:'uncertain'};invalidateStorySelection();publish();throw safe;}}

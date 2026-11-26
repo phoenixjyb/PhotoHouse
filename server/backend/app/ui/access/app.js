@@ -2356,7 +2356,7 @@
     const privateScope=privateAssistant?.state(),privateRoute=!!(privateScope?.activeThread||privateScope?.capabilities?.server_owned_turns);
     if(privateRoute&&privateScope?.capabilities?.server_owned_turns!==true){$('assistant-status').textContent=t('assistantPrivateSearchOffline');retainVoiceRequestForReview(text,voiceToken,'assistantPrivateSearchOffline');return;}
     if(agent&&(!privateRoute||privateScope?.agentAvailable!==true)){$('assistant-status').textContent=t('assistantPrivateSearchOffline');retainVoiceRequestForReview(text,voiceToken,'assistantPrivateSearchOffline');return;}
-    clearAssistantStorySelection();
+    clearAssistantStorySelection({preservePrivate:privateRoute});
     const send=$('assistant-send'),composer=$('assistant-text');
     if(event?.submitter===send&&document.activeElement===send)composer.focus({preventScroll:true});
     if(privateRoute){
