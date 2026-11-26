@@ -4,6 +4,7 @@ import unittest
 
 from app.access.memory_narrative import (
     STORY_REFINEMENT_PROFILE, _validate_bundle, _generation_payload,
+    grounded_editorial_bundle, validate_grounded_narrative,
     _REFINEMENT_V10_SAFETY_PROMPT_ZH, _REFINEMENT_V10_INSTRUCTION_ZH,
     _public_name_repair_payload, apply_public_name_repair_plan,
     validate_public_name_repair_plan,
@@ -18,6 +19,37 @@ def editorial_bundle():
         'people': [{'name': '测试规范名', 'aliases': ['甲别名', '乙别名']}]})
     value['chapters'][0]['narration'] = '我们在花园，在一个花园里，甲别名或者乙别名都很开心。'
     return value
+
+
+class LinkedNameGroundingTests(unittest.TestCase):
+    def test_linked_transcript_grounds_proposal_even_when_the_concert_cue_moves(self):
+        original = editorial_bundle()
+        original['story_refinement']['people'] = []
+        original['chapters'][0]['narration'] = '那天我们坐在后排。'
+        original['sources'][0].update(kind='transcript', text='我们听了人贤祈演唱会。')
+        original['chapters'].append({
+            'id': 'chapter-2', 'title': '后来', 'narration': '亲友提到另一位同名的人。',
+            'asset_ids': ['asset-2'], 'evidence_ids': ['ev-2'],
+        })
+        original['sources'].append({
+            'id': 'ev-2', 'kind': 'family', 'text': '人贤祈是邻居的名字。',
+            'asset_id': 'asset-2', 'author': 'Fixture author',
+        })
+        before = deepcopy(original)
+        grounded = grounded_editorial_bundle(original)
+        self.assertEqual(grounded['sources'][0]['text'], '我们听了任贤齐演唱会。')
+        proposal = validate_grounded_narrative({
+            'repairs': [], 'title': '现场的一天',
+            'paragraphs': ['我们坐在后排，听人贤祈唱歌。', '亲友提到邻居人贤祈。'],
+            'questions': [],
+        }, original, grounded)
+        self.assertEqual(proposal['title'], '现场的一天')
+        self.assertEqual([chapter['narration'] for chapter in proposal['chapters']],
+                         ['我们坐在后排，听任贤齐唱歌。', '亲友提到邻居人贤祈。'])
+        self.assertEqual([chapter['source_ids'] for chapter in proposal['chapters']],
+                         [['ev-1'], ['ev-2']])
+        self.assertIs(proposal['needs_review'], True)
+        self.assertEqual(original, before)
 
 
 class EditorialProfileTests(unittest.TestCase):
