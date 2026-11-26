@@ -29,7 +29,9 @@ prepares a question about that item. Review the question and choose **Find**.
 It keeps any existing unsent draft. You can also ask “Why result 20?” or
 “为什么是第20项结果？” about one of the visible results. Return to the first
 page before sending a numbered follow-up. The explanation keeps the same
-results and filters available for selection.
+results and filters available for selection. When the reply confirms the same
+authorized result, the question prepared by **Why this match?** also keeps
+your selections in order, including picks from other pages.
 
 A new or refined search clears the selection, including one that needs
 clarification. Switching conversations or accounts, changing libraries, losing

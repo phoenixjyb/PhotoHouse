@@ -28,7 +28,7 @@ function envelope(requestId,revision,turn=result()){
 function caps(){return {version:1,available:true,threads:true,preferences:true,preferences_applied:true,
   server_owned_turns:true,search:{version:3,date_basis:'capture',perspective:null}};}
 function error(status,code){return Object.assign(new Error(code),{status,code});}
-function makeController({holdResult=false,denyResult=false,latestMismatch=false,denyCurrent=false,denyBaseCapabilities=false,resultPageCapabilityAvailable=true,sceneSetup=false,storyResumeStore=null}={}){
+function makeController({holdResult=false,denyResult=false,latestMismatch=false,denyCurrent=false,denyBaseCapabilities=false,resultPageCapabilityAvailable=true,sceneSetup=false,storyResumeStore=null,changeTurn=(value)=>value}={}){
   const scope={account:'synthetic-account',library,generation:1,locked:false},calls=[];
   let counter=0,latestRequestId=null,latestRevision=0,holdResolve=null,held=null,capabilityCalls=0,pageCapabilityDenied=false,pageCapabilityAvailable=resultPageCapabilityAvailable;
   let currentConflict=false,resultPageError=null;
@@ -42,7 +42,8 @@ function makeController({holdResult=false,denyResult=false,latestMismatch=false,
     if(path===`/assistant/workspace/v1/threads`&&options.method==='POST')return {version:1,thread:thread(0)};
     if(path===`/assistant/workspace/v1/threads/${threadId}/turns`){
       latestRequestId=options.body.request_id;latestRevision=options.body.expected_revision+1;
-      return envelope(latestRequestId,latestRevision,options.body.accepts?.includes('scene_search_v1')?sceneResult():sceneSetup?imageResult():result());
+      const turn=options.body.accepts?.includes('scene_search_v1')?sceneResult():sceneSetup?imageResult():result();
+      return envelope(latestRequestId,latestRevision,changeTurn(turn,options.body.text));
     }
     if(path.endsWith('/scene-pages')){
       const page=options.body.page,offset=(page-1)*20,items=media.slice(offset,offset+20).map(item=>({...item,kind:'image',semantic_score:0.75}));
@@ -107,6 +108,36 @@ function makeController({holdResult=false,denyResult=false,latestMismatch=false,
     controller.toggleStoryItem('101');await controller.send('Refined search');
     assert.deepEqual(controller.state().storySelection,[],'a new/refined turn invalidates the prior selection');
     assert.equal(controller.state().storySelectionReady,true);
+    controller.close();
+  }
+  for(const {question,changed=false,cleared=false} of [
+    {question:'Why result 1?'},
+    {question:'为什么是第1项结果？'},
+    {question:'Why result 1?',changed:true},
+    {question:'Why result 1?',cleared:true},
+  ]){
+    const original='Find the family photos';
+    const {controller,calls}=makeController({changeTurn:(turn,text)=>{
+      if(changed&&text===question)turn.context.fingerprint='c'.repeat(64);
+      return turn;
+    }});
+    await controller.capabilities();await controller.create();await controller.send(original);
+    controller.toggleStoryItem('102');controller.toggleStoryItem('101');
+    const before=calls.length;
+    const pending=controller.send(question);
+    if(cleared)controller.clearStorySelection();
+    const reply=await pending;
+    const kept=!changed&&!cleared;
+    assert.deepEqual(controller.state().storySelection.map(item=>item.id),kept?['102','101']:[],
+      'a numbered explanation keeps picks only for the same authorized result without an intervening clear');
+    assert.equal(calls.length,before+1,'answering the question needs only its own turn request');
+    if(kept){
+      assert.equal(controller.storyDirectionCandidate().text,original);
+      const prepared=await controller.prepareStorySelection();
+      assert.deepEqual(prepared.map(item=>item.id),['102','101']);
+      assert(calls.at(-1).path.includes(`/requests/${reply.request_id}/current-result?`),
+        'handoff freshly checks the result bound to the explanation receipt');
+    }
     controller.close();
   }
   {
