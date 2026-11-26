@@ -878,6 +878,27 @@ let browser,context,page;
   finally{page.off('dialog',discardGeneratedDraft);}
   await page.locator('#phone').fill('+12025550100');await page.locator('#password').fill('Synthetic family passphrase!');
   await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();
+  // Leave the album list on page two in the disposable library before creating from Search.
+  const seeded=await page.evaluate(async()=>{
+    const session=await fetch('/auth/session');
+    const {csrf_token}=await session.json();
+    const library=document.querySelector('#library-select').value;
+    const statuses=[];
+    for(let number=1;number<=11;number++){
+      const response=await fetch('/admin/albums?'+new URLSearchParams({library}),{
+        method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf_token},
+        body:JSON.stringify({title:`Synthetic older album ${number}`,title_zh:'',description:'',
+          theme:'custom',asset_ids:'',cover_asset_id:'',mutation_id:crypto.randomUUID()}),
+      });
+      statuses.push(response.status);
+    }
+    return statuses;
+  });
+  assert.deepEqual(seeded,Array(11).fill(200));
+  const albumsPanel=page.locator('#albums-panel');
+  if(!await albumsPanel.evaluate(node=>node.open))await albumsPanel.locator('summary').first().click();
+  await page.locator('#album-next').click();
+  await page.locator('#album-list').getByRole('heading',{name:'Synthetic older album 1',exact:true}).waitFor();
   await page.locator('#memory-assistant-link').click();await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
   await page.locator('#assistant-private-new').click();await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
   await search('找示例儿童');
@@ -910,10 +931,40 @@ let browser,context,page;
   assert(await page.locator('#album-editor').evaluate(el=>el.scrollWidth<=el.clientWidth),'album draft fits at 390px and 150%');
   await page.locator('#album-editor').screenshot({path:path.join(artifacts,'search-album-draft-mobile-150-zh.png')});
   await page.locator('.album-picker > summary').click();await page.locator('#album-choices button').first().waitFor();
+  const extra=page.locator('#album-choices button[aria-disabled="false"]').first();
+  const extraId=await extra.getAttribute('data-asset-id');
+  const extraChoice=page.locator(`#album-choices button[data-asset-id="${extraId}"]`);
+  const albumRow=id=>page.locator(`#album-selected .album-selection[data-asset-id="${id}"]`);
+  const albumOrder=()=>page.locator('#album-selected .album-selection').evaluateAll(rows=>rows.map(row=>row.dataset.assetId));
+  await extraChoice.press('Enter');
+  assert.deepEqual(await albumOrder(),[...albumIds,extraId]);
+  assert.equal(await extraChoice.getAttribute('aria-disabled'),'true');
+  assert.match(await extraChoice.locator('.album-choice-position').textContent(),/第 3 项/);
+  await extraChoice.press('Enter');
+  assert.deepEqual(await albumOrder(),[...albumIds,extraId],'a selected picker item cannot be added twice');
+  const earlier=albumRow(extraId).locator('[data-action="moveUp"]');
+  await earlier.press('Enter');
+  assert.deepEqual(await albumOrder(),[albumIds[0],extraId,albumIds[1]]);
+  assert.equal(await earlier.evaluate(node=>document.activeElement===node),true);
+  await earlier.press('Enter');
+  assert.equal(await albumRow(extraId).evaluate(node=>document.activeElement===node),true);
+  assert.match(await extraChoice.locator('.album-choice-position').textContent(),/第 1 项/);
+  await page.setViewportSize({width:1280,height:900});
+  await page.evaluate(()=>{document.documentElement.style.zoom='';});
+  await page.locator('#album-editor').screenshot({path:path.join(artifacts,'search-album-picker-desktop-zh.png')});
+  await albumRow(extraId).locator('[data-action="remove"]').press('Enter');
+  assert.equal(await albumRow(albumIds[0]).evaluate(node=>document.activeElement===node),true);
+  assert.equal(await extraChoice.getAttribute('aria-disabled'),'false');
+  assert.equal(await extraChoice.locator('.album-choice-position').isHidden(),true);
+  assert.deepEqual(await albumOrder(),albumIds);
+  assert.equal(albumWrites().length,beforeAlbums,'ordering and marking choices never save by themselves');
   await page.locator('.album-picker > summary').click();
   await page.locator('#album-title').fill('合成：从搜索创建的相册');
   await page.locator('#album-save').click();await page.locator('#album-editor').waitFor({state:'hidden'});
-  await page.locator('#album-list').getByText('合成：从搜索创建的相册',{exact:true}).waitFor();
+  const savedHeading=page.locator('#album-list').getByRole('heading',{name:'合成：从搜索创建的相册',exact:true});
+  await savedHeading.waitFor();
+  assert.equal(await page.locator('#album-previous').isDisabled(),true);
+  assert.equal(await savedHeading.evaluate(node=>document.activeElement===node),true);
   assert.equal(albumWrites().length,beforeAlbums+1);
   const savedAlbum=albumWrites().at(-1);
   assert.equal(savedAlbum.status,200);
