@@ -25,7 +25,7 @@ independently reauthorize their own capabilities and current sources.
 
 ## Family workflow
 
-1. Open the existing story editor, choose up to 24 photos/videos and arrange
+1. Open the existing story editor, choose up to 48 photos/videos and arrange
    their chapters. The initial version prepares new, unsaved stories. When the
    editor opens from selected private-assistant results, the author may
    explicitly copy the latest user message as a starting point for writing

@@ -25,9 +25,9 @@ internal data class StoryChapterFrameAppendPlan(
 
 /** Pure layout builder. Callers must supply fresh preview assets and an authorized profile. */
 internal object StoryChapterFrameSearch {
-    const val MAX_ASSETS = 24
-    const val MAX_CHAPTERS = 6
-    const val MAX_ASSETS_PER_CHAPTER = 4
+    const val MAX_ASSETS = StoryLimits.MAX_FRAMES
+    const val MAX_CHAPTERS = StoryLimits.MAX_CHAPTERS
+    const val MAX_ASSETS_PER_CHAPTER = StoryLimits.MAX_FRAMES_PER_CHAPTER
 
     fun remaining(assetCount: Int): Int = (MAX_ASSETS - assetCount).coerceAtLeast(0)
 

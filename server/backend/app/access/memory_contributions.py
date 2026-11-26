@@ -9,6 +9,7 @@ import uuid
 import io
 import wave
 
+from .story_outline import MAX_CHAPTERS
 from .assistant_speech import valid_wav
 from .library import _integer
 from .memory_stories import MemoryStories
@@ -75,7 +76,7 @@ def _body(body, audio):
         if not chapter_id.startswith('chapter-') or not chapter_id[8:].isascii() or not chapter_id[8:].isdecimal():
             raise TransportError(400, 'Invalid chapter identifier')
         index = int(chapter_id[8:])
-        if not 1 <= index <= 6 or chapter_id != f'chapter-{index}':
+        if not 1 <= index <= MAX_CHAPTERS or chapter_id != f'chapter-{index}':
             raise TransportError(400, 'Invalid chapter identifier')
     revision = body['revision']
     if not revision or not revision.isascii() or not revision.isdecimal() or revision.startswith('0'):

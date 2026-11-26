@@ -299,7 +299,7 @@ chapter media, or set revisions, expiry or review state. This keeps the current
 validator useful while making the returned citation record server-derived.
 
 Use these compatible limits, with PH-A4's story-specific bounds where they
-are narrower: one to six chapters; no more than 24 selected media items; one
+are narrower: one to twelve chapters; no more than 48 selected media items; one
 to four media items per chapter; no more than twelve selected source IDs per
 chapter and 96 source records in the validated bundle; source text at most
 8,192 UTF-8 bytes and author/byline at most 256 bytes; title at most 160

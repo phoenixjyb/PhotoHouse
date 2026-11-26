@@ -16,6 +16,8 @@ from typing import Any
 
 import httpx
 
+from .story_outline import (MAX_CHAPTER_ITEMS, MAX_CHAPTERS as MAX_DRAFT_CHAPTERS,
+                            MAX_ITEMS as MAX_DRAFT_MEDIA)
 from .annotation_local import local_url
 
 
@@ -29,8 +31,6 @@ STORY_REFINEMENT_PROFILE = 'asr_editorial_v12_grounded'
 MAX_EDITOR_REPAIRS = 8
 MAX_EDITOR_REPAIR_CHARS = 64
 MAX_EDITOR_REPAIR_BYTES = 192
-MAX_DRAFT_CHAPTERS = 6
-MAX_DRAFT_MEDIA = 24
 MAX_DRAFT_SOURCE_TEXT_BYTES = 48 * 1024
 _DRAFT_SOURCE_KINDS = {
     'family_note': 'family',
@@ -209,7 +209,7 @@ def _validate_bundle(bundle: Any, *, allow_draft: bool = False) -> dict:
         if draft and len(chapter['title']) > 160:
             raise ValueError('draft chapter title exceeds the character limit')
         _text(chapter['narration'], 6000, 'chapter narration')
-        media = _string_list(chapter['asset_ids'], 4 if draft else MAX_SOURCES,
+        media = _string_list(chapter['asset_ids'], MAX_CHAPTER_ITEMS if draft else MAX_SOURCES,
                              128, 'asset_ids', ids=True)
         if draft:
             if not media or draft_media.intersection(media):

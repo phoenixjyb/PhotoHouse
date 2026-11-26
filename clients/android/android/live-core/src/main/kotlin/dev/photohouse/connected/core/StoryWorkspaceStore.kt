@@ -972,7 +972,7 @@ class StoryWorkspaceStore(
             story.selectionRevision.matches(Regex("[0-9a-fA-F]{64}")) &&
             story.sourcePolicy in setOf(null, ProtectedStoryWorkspaceWire.CHAPTER_SOURCES_V1) &&
             story.items.isNotEmpty() && story.items.size <= MAX_ASSETS && story.items.map { it.asset.id }.distinct().size == story.items.size &&
-            story.chapters.isNotEmpty() && story.chapters.size <= 6 &&
+            story.chapters.isNotEmpty() && story.chapters.size <= MAX_CHAPTERS &&
             ids == (1..ids.size).map { "chapter-$it" } && story.chapters.flatMap { it.assetIds } == story.items.map { it.asset.id } &&
             references.id == story.id && references.libraryId == story.libraryId && references.revision == story.revision &&
             references.chapters.map { it.chapterId } == ids && references.chapters.all { it.contributionIds.size <= 12 &&
@@ -1801,9 +1801,9 @@ class StoryWorkspaceStore(
     companion object {
         private val ALBUM_THEMES = setOf("birthday", "trip", "growing_up", "grandparents", "year_in_review", "seasonal", "custom")
         private val NEXT_DICTATION_SCOPE = AtomicLong(0)
-        private const val MAX_ASSETS = 24
-        private const val MAX_CHAPTERS = 6
-        private const val MAX_ASSETS_PER_CHAPTER = 4
+        private const val MAX_ASSETS = StoryLimits.MAX_FRAMES
+        private const val MAX_CHAPTERS = StoryLimits.MAX_CHAPTERS
+        private const val MAX_ASSETS_PER_CHAPTER = StoryLimits.MAX_FRAMES_PER_CHAPTER
         private const val MAX_EVIDENCE_PER_CHAPTER = 12
     }
 

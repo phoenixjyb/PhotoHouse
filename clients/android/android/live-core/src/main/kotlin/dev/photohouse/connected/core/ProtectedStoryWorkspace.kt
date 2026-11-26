@@ -40,9 +40,9 @@ internal object ProtectedStoryWorkspaceWire {
     const val MAX_PREVIEW_REQUEST_BYTES = 4096
     const val MAX_TITLE_REQUEST_BYTES = 64 * 1024
     private const val MAX_RESPONSE_BYTES = 256 * 1024
-    private const val MAX_ASSETS = 24
-    private const val MAX_CHAPTERS = 6
-    private const val MAX_ASSETS_PER_CHAPTER = 4
+    private const val MAX_ASSETS = StoryLimits.MAX_FRAMES
+    private const val MAX_CHAPTERS = StoryLimits.MAX_CHAPTERS
+    private const val MAX_ASSETS_PER_CHAPTER = StoryLimits.MAX_FRAMES_PER_CHAPTER
     private const val MAX_EVIDENCE_PER_ASSET = 12
     private const val MAX_EVIDENCE_PER_CHAPTER = 12
     private const val MAX_TITLE_SOURCE_IDS = 79

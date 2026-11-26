@@ -16,7 +16,9 @@ THEMES = {
 _ID = re.compile(r'\A[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z', re.ASCII)
 _ITEM_KEYS = {'id', 'kind', 'taken_at', 'date_hint', 'evidence'}
 _EVIDENCE_KEYS = {'id', 'source', 'text'}
-_CHAPTER_LIMIT = 4
+MAX_CHAPTERS = 12
+MAX_CHAPTER_ITEMS = 4
+MAX_ITEMS = MAX_CHAPTERS * MAX_CHAPTER_ITEMS
 
 
 def _text(value, *, limit, field, allow_empty=True):
@@ -61,8 +63,8 @@ def _date_hint(value, depth=0):
 
 
 def _validate_items(items):
-    if not isinstance(items, list) or len(items) > 24:
-        raise ValueError('items must be a list of at most 24 entries')
+    if not isinstance(items, list) or len(items) > MAX_ITEMS:
+        raise ValueError(f'items must be a list of at most {MAX_ITEMS} entries')
     seen_asset_ids = set()
     seen_evidence = {}
     cleaned = []
@@ -154,7 +156,7 @@ def build_outline(items, *, theme, language, title=''):
             'What meaning, feeling, or detail would the family like to remember?',
         ]
 
-    groups = [cleaned[i:i + _CHAPTER_LIMIT] for i in range(0, len(cleaned), _CHAPTER_LIMIT)]
+    groups = [cleaned[i:i + MAX_CHAPTER_ITEMS] for i in range(0, len(cleaned), MAX_CHAPTER_ITEMS)]
     chapters = []
     for index, group in enumerate(groups):
         role = _role(index, len(groups))

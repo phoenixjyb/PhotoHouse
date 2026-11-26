@@ -407,20 +407,22 @@ try:
                 fixture.mutate("UPDATE assets SET taken_at='2025-06-01T23:30:00+08:00' WHERE id=101")
                 fixture.mutate("UPDATE assets SET taken_at=NULL,path='private-synthetic/微信图片_20250601.jpg' WHERE id=102")
                 fixture.mutate("UPDATE assets SET mime='video/mp4',duration_sec=12 WHERE id=1129")
-            elif scenario=='many-assets':
+            elif scenario in {'many-assets', 'expanded-story-assets'}:
                 # Grows family-a past one gallery page at page_size 24. taken_at keeps
                 # 102/101 ahead of the new rows, so page 1 order is unchanged.
                 (derived/'thumbnails/256').mkdir(parents=True,exist_ok=True)
+                asset_ids = range(1101, 1154 if scenario == 'expanded-story-assets' else 1130)
                 with fixture.connection() as db:
-                    for asset_id in range(1101,1130):
+                    for asset_id in asset_ids:
+                        mime = 'video/mp4' if scenario == 'expanded-story-assets' and asset_id % 7 == 0 else 'image/jpeg'
                         db.execute('''INSERT INTO assets(id,path,hash_sha256,status,mime,width,height,
                             taken_at,gps_lat,gps_lon,caption_error_last) VALUES (?,?,?,?,?,640,480,?,1,2,?)''',
                             (asset_id,f'private-synthetic/{asset_id}.jpg',f'private-hash-{asset_id}',
-                             'active','image/jpeg','2025-06-01','private-provider-error'))
+                             'active',mime,'2025-06-01','private-provider-error'))
                         db.execute('INSERT INTO access_asset_libraries VALUES (?,?)',(asset_id,'family-a'))
                     db.commit()
                 source=derived/'thumbnails/256/101.jpg'
-                for asset_id in range(1101,1130):
+                for asset_id in asset_ids:
                     Image.open(source).save(derived/f'thumbnails/256/{asset_id}.jpg')
             elif scenario=='thumbnail-head-503':
                 head_503=True

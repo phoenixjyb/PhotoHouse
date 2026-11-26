@@ -232,7 +232,7 @@ class StoryChapterDictationStore(
         const val MAX_ACCOUNT_ID = 256
         const val MAX_CHAPTER_ASSETS = 4
         val SELECTION_REVISION = Regex("[0-9a-f]{64}")
-        val CHAPTER_ID = Regex("chapter-[1-6]")
+        val CHAPTER_ID = StoryLimits.chapterId
         val ASSET_ID = Regex("[1-9][0-9]{0,18}")
     }
 }

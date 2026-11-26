@@ -1,4 +1,9 @@
 'use strict';
+const STORY_CHAPTER_LIMIT = 12;
+const STORY_FRAMES_PER_CHAPTER = 4;
+const STORY_FRAME_LIMIT = STORY_CHAPTER_LIMIT * STORY_FRAMES_PER_CHAPTER;
+const JUDE_FRAME_BATCH_LIMIT = 24;
+const supportsFamilyMemoryLinks = chapterId => /^chapter-[1-6]$/.test(chapterId);
 /* Library-private editorial workspace; publication uses protected APIs only. */
 window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError, openAssistant, openFrameSearch, openRelatedAsset, savedRequest, draftRequest, community, titleRequest, relatedRequest, sourceAccessCheck, capture, voiceCapabilities, transcribe, canCapture=()=>true, reserveCapture=()=>null, claimCapture=()=>false, releaseCapture=()=>{}, stopAudioForCapture=()=>{}}) => {
   const $ = id => document.getElementById(id);
@@ -6,35 +11,35 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   const labels = {
     zh: {everyday:'日常里的光',trip:'一起去远方',growing_up:'慢慢长大',birthday:'生日时光',grandparents:'与祖辈在一起',year_in_review:'这一年',
       navStories:'回忆',navMedia:'照片与视频',navAlbums:'相册',navAssistant:'助手',eyebrow:'把片段，连成回忆',homeTitle:'值得慢慢看的时光',homeText:'挑选一些画面，添上家人的话，让回忆有自己的起承转合。',
-      create:'编排一个故事',assistant:'和助手聊聊',select:'选择画面',selected:'已选择',selectionHelp:'最多 24 项；满额后先取消一项，再换选其他画面。设为开头的画面也会作为故事封面。',
+      create:'编排一个故事',assistant:'和助手聊聊',select:'选择画面',selected:'已选择',selectionHelp:`最多 ${STORY_FRAME_LIMIT} 项，可编为 ${STORY_CHAPTER_LIMIT} 章。最后一章满后，加入新画面会新开一章。开头画面也是故事封面。`,
       title:'故事标题',titlePlaceholder:'为这段回忆起个名字',theme:'故事主题',outline:'整理章节',working:'正在整理画面与参考资料…',readerFrameGroup:'本章画面',readerPhoto:'照片',readerVideo:'视频',readerFrameLabel:(kind,position,total)=>`${kind} ${position} / ${total}`,readerFrameStatus:(kind,position,total)=>`当前画面：${kind} ${position} / ${total}`,readerFontGroup:'阅读字号',readerFontSmaller:'较小',readerFontDefault:'标准',readerFontLarger:'较大',
       draft:'故事草稿',draftHelp:'这是可编辑的章节提纲，尚未保存。参考资料不会自动变成事实；请补充自己的回忆。刷新、切换相册库或退出后草稿会清除。',
       chapters:'章节',chapterTitle:'章节标题',narration:'这一章的故事',references:'参考这章的资料',family:'家人写下的话',ai:'AI 观察 · 待核实',
       readerSources:'查看本章素材来源',sourceDisclaimer:'以下是本章引用的参考资料，不代表已核实事实。',sourceFamily:'家人提供的文字',sourceAI:'AI 观察 · 需核对',sourceByline:'原记录署名',sharedMemoryFromPhoto:'来源素材',chooseSources:'选择各章来源',sourceChoiceHelp:'启用后，每章只会引用本章勾选的画面文字或 AI 观察；请逐章检查，也可以全部不选。不会删改章节正文或单独链接的家人回忆。',sourceCount:n=>`已选择 ${n} / 最多 12 项`,sourceLimit:'每章最多引用 12 项资料。',sourceRefreshRequired:'参考资料已变化。请刷新并重新核对各章来源后再保存。',sourceRefreshAction:'刷新参考资料',sourceRefreshBusy:'正在刷新参考资料…',sourceRefreshFailed:'参考资料刷新失败。草稿仍保留，请重试。',sourceRefreshAcknowledge:'我已重新核对每一章的参考资料',sourceRefreshReady:'参考资料已更新。请逐章核对后勾选确认，再明确保存。',
-      splitChapterAfter:n=>`在第 ${n} 个画面后分章`,mergeChapterNext:'与下一章合并',chapterStructureHelp:'只调整这个未保存草稿的分组。每个故事最多 6 章，每章最多 4 个画面；改动后请检查标题、正文和来源，再另行保存。',chapterSplitLimit:'最多 6 章。当前分组未更改。',chapterMergeLimit:'合并后每章最多 4 个画面。当前分组未更改。',chapterJoinTextLimit:'合并后的标题或正文超过长度限制。当前分组未更改。',chapterJoinSourceLimit:'合并后每章最多保留 12 项来源。当前分组未更改。',
+      splitChapterAfter:n=>`在第 ${n} 个画面后分章`,mergeChapterNext:'与下一章合并',chapterStructureHelp:`只调整这个未保存草稿的分组。每个故事最多 ${STORY_CHAPTER_LIMIT} 章，每章最多 4 个画面；改动后请检查标题、正文和来源，再另行保存。`,chapterSplitLimit:`最多 ${STORY_CHAPTER_LIMIT} 章。当前分组未更改。`,chapterMergeLimit:'合并后每章最多 4 个画面。当前分组未更改。',chapterJoinTextLimit:'合并后的标题或正文超过长度限制。当前分组未更改。',chapterJoinSourceLimit:'合并后每章最多保留 12 项来源。当前分组未更改。',
       savedContributionRefs:'本章的家人回忆来源',sourceContribution:'家人回忆来源',editorRefLabel:'家人回忆来源',viewRef:'查看家人回忆',hideRef:'收起家人回忆',removeSavedRef:'移除此来源',refsUnavailable:'来源链接暂时无法核实。当前使用兼容保存；服务器支持时会沿用未变更章节中仍有效的链接。',refsRefreshUnavailable:'来源链接刷新失败；仍显示上次核实的链接。请重新打开已保存故事后再核对。',
       refText:'家人提供的文字',refTranscript:'AI 转写 · ',refPending:'转写尚未就绪。',refMissing:'目前没有可用的原始文字。',refUnavailable:'来源详情暂不可用，请稍后重试。',refLoading:'正在读取已保存的来源链接…',
       bookRefsLoading:'正在核实本章已保存的家人回忆来源…',bookRefsUnavailable:'本章来源链接暂不可用；故事正文仍可阅读。',bookRefsRetry:'重试核实来源',bookRefsAvailable:n=>`本章已核实 ${n} 条家人回忆来源链接；引用资料仍需核对。`,bookRefsAvailableNone:'本章没有已保存的家人回忆来源链接；如需依赖画面资料，请先核对素材来源。',
       unknown:'拍摄时间待补充',filename:'文件名日期 · 非拍摄证明',received:'收到日期 · 非拍摄证明',capture:'记录的拍摄日期',
       read:'沉浸预览',savedDraftingHandoff:'打开已保存故事并查看整理建议',export:'下载故事草稿',exported:'已下载草稿；这不会保存到相册库或发布到电视。',empty:'请先选择至少一个画面。',
       error:'暂时无法整理故事，请重试。',close:'返回',previous:'上一章',next:'下一章',video:'播放此视频',photo:'照片',choiceVideo:'视频',choiceFrame:'画面',
-      onlyFirst:'默认选中前 24 个画面。取消一项后，可以换选这个相册里的其他画面。',selectionTotal:n=>`共 ${n} 个可选画面`,framesPrevious:'上一组画面',framesNext:'下一组画面',framesPage:(first,last,total)=>`画面 ${first}–${last} / ${total}`,clearFrames:'清空选择',startWithFrame:'设为开头',selectFirst:'选择前 24 个画面',selectionLimit:'每个故事最多 24 个画面；请先取消一项，再选择其他画面。',moveEarlier:'向前移动',moveLater:'向后移动',chooseTheme:'从一个主题开始',ready:'章节提纲已准备好，可以编辑、预览或下载。',questionTitle:'让故事更像你们',
+      onlyFirst:`默认选中前 ${STORY_FRAME_LIMIT} 个画面。取消一项后，可以换选这个相册里的其他画面。`,selectionTotal:n=>`共 ${n} 个可选画面`,framesPrevious:'上一组画面',framesNext:'下一组画面',framesPage:(first,last,total)=>`画面 ${first}–${last} / ${total}`,clearFrames:'清空选择',startWithFrame:'设为开头',selectFirst:`选择前 ${STORY_FRAME_LIMIT} 个画面`,selectionLimit:`每个故事最多 ${STORY_FRAME_LIMIT} 个画面。请先取消一项，再选择其他画面。`,moveEarlier:'向前移动',moveLater:'向后移动',chooseTheme:'从一个主题开始',ready:'章节提纲已准备好，可以编辑、预览或下载。',questionTitle:'让故事更像你们',
       previewMissing:'这个画面的预览暂不可用',retryPreview:'重试预览',previewChecking:'正在检查画面预览…',previewReady:'画面预览已载入。',selectionEmpty:'这页还没有可用的照片或视频。',leave:'草稿尚未下载，确定清除草稿并离开？'},
     en: {everyday:'Everyday light',trip:'Somewhere together',growing_up:'Growing up',birthday:'Birthday moments',grandparents:'With grandparents',year_in_review:'A year together',
       navStories:'Memories',navMedia:'Photos & videos',navAlbums:'Albums',navAssistant:'Assistant',eyebrow:'MOMENTS, CONNECTED',homeTitle:'Memories worth slowing down for.',homeText:'Choose a few frames, add your family’s words, and give a memory a beginning, a middle and an ending.',
-      create:'Shape a story',assistant:'Talk to the assistant',select:'Choose the frames',selected:'selected',selectionHelp:'Choose up to 24. Uncheck one to choose another when full. The opening frame also becomes the story cover.',
+      create:'Shape a story',assistant:'Talk to the assistant',select:'Choose the frames',selected:'selected',selectionHelp:`Choose up to ${STORY_FRAME_LIMIT} frames across ${STORY_CHAPTER_LIMIT} chapters. Adding frames to a full last chapter starts a new chapter. The opening frame is the story cover.`,
       title:'Story title',titlePlaceholder:'Give this memory a name',theme:'Story theme',outline:'Arrange chapters',working:'Gathering frames and references…',readerFrameGroup:'Frames in this chapter',readerPhoto:'Photo',readerVideo:'Video',readerFrameLabel:(kind,position,total)=>`${kind} ${position} of ${total}`,readerFrameStatus:(kind,position,total)=>`Current frame: ${kind} ${position} of ${total}`,readerFontGroup:'Reading size',readerFontSmaller:'Smaller',readerFontDefault:'Default',readerFontLarger:'Larger',
       draft:'Story draft',draftHelp:'This is an editable outline, not a saved story. References are not automatically facts. Add what you remember. Refreshing, switching libraries or signing out clears this draft.',
       chapters:'Chapters',chapterTitle:'Chapter title',narration:'The story in this chapter',references:'References for this chapter',family:'Family words',ai:'AI observation · verify',
       readerSources:'View sources for this chapter',sourceDisclaimer:'These are references cited for this chapter; they are not verified facts.',sourceFamily:'Family-provided wording',sourceAI:'AI observation · verify',sourceByline:'Original byline',sharedMemoryFromPhoto:'Source item',chooseSources:'Choose sources for each chapter',sourceChoiceHelp:'After opting in, each chapter uses only its checked frame wording or AI observations. Review every chapter; you can leave all unchecked. This does not change chapter text or separately linked family memories.',sourceCount:n=>`Selected ${n} / up to 12`,sourceLimit:'A chapter can cite up to 12 references.',sourceRefreshRequired:'References changed. Refresh and review each chapter’s sources before saving.',sourceRefreshAction:'Refresh references',sourceRefreshBusy:'Refreshing references…',sourceRefreshFailed:'Could not refresh references. Your draft is kept; try again.',sourceRefreshAcknowledge:'I reviewed the updated references for every chapter',sourceRefreshReady:'References are updated. Review each chapter, check to confirm, then save explicitly.',
-      splitChapterAfter:n=>`Split after frame ${n}`,mergeChapterNext:'Merge with next chapter',chapterStructureHelp:'These controls change grouping in this unsaved draft only. A story can have up to 6 chapters, with up to 4 frames each. Review titles, wording and sources before saving separately.',chapterSplitLimit:'A story can have up to 6 chapters. No change was made.',chapterMergeLimit:'A chapter can have up to 4 frames after merging. No change was made.',chapterJoinTextLimit:'The merged title or wording exceeds its limit. No change was made.',chapterJoinSourceLimit:'A chapter can keep up to 12 sources after merging. No change was made.',
+      splitChapterAfter:n=>`Split after frame ${n}`,mergeChapterNext:'Merge with next chapter',chapterStructureHelp:`These controls change grouping in this unsaved draft only. A story can have up to ${STORY_CHAPTER_LIMIT} chapters, with up to 4 frames each. Review titles, wording and sources before saving separately.`,chapterSplitLimit:`A story can have up to ${STORY_CHAPTER_LIMIT} chapters. No change was made.`,chapterMergeLimit:'A chapter can have up to 4 frames after merging. No change was made.',chapterJoinTextLimit:'The merged title or wording exceeds its limit. No change was made.',chapterJoinSourceLimit:'A chapter can keep up to 12 sources after merging. No change was made.',
       savedContributionRefs:'Family memory sources for this chapter',sourceContribution:'Family memory source',editorRefLabel:'Family memory source',viewRef:'View family memory',hideRef:'Hide family memory',removeSavedRef:'Remove this source',refsUnavailable:'Source links could not be verified. Saving uses the compatible story request; a supporting server may carry forward valid links for unchanged chapters.',refsRefreshUnavailable:'The source-link refresh failed. Previously verified links remain visible; reopen the saved story to check them again.',
       refText:'Family-provided wording',refTranscript:'AI transcript · ',refPending:'The transcript is not ready yet.',refMissing:'No original wording is available.',refUnavailable:'Source details are unavailable. Try again later.',refLoading:'Loading saved source links…',
       bookRefsLoading:'Checking this chapter’s saved family-memory links…',bookRefsUnavailable:'Chapter source links are unavailable. You can still read the story.',bookRefsRetry:'Retry source check',bookRefsAvailable:n=>`${n} saved family-memory source link${n===1?'':'s'} checked for this chapter. The cited material still needs review.`,bookRefsAvailableNone:'No saved family-memory source links were found for this chapter. Review any frame references before relying on them.',
       unknown:'Capture date to add',filename:'Filename date · not proof of capture',received:'Received date · not proof of capture',capture:'Recorded capture date',
       read:'Immersive preview',savedDraftingHandoff:'Open the saved story and check drafting suggestions',export:'Download story draft',exported:'Draft downloaded; it was not saved to the library or published to TV.',empty:'Choose at least one frame first.',
       error:'The story could not be arranged. Please try again.',close:'Back',previous:'Previous chapter',next:'Next chapter',video:'Play this video',photo:'Photo',choiceVideo:'Video',choiceFrame:'Moment',
-      onlyFirst:'The first 24 frames are selected. Uncheck one to choose another frame from this album.',selectionTotal:n=>`${n} available frames`,framesPrevious:'Previous frames',framesNext:'Next frames',framesPage:(first,last,total)=>`Frames ${first}–${last} / ${total}`,clearFrames:'Clear selection',startWithFrame:'Start here',selectFirst:'Select the first 24 frames',selectionLimit:'A story can contain up to 24 frames. Uncheck one before selecting another.',moveEarlier:'Move earlier',moveLater:'Move later',chooseTheme:'Start with a theme',ready:'Your outline is ready to edit, preview or download.',questionTitle:'Make the story yours',
+      onlyFirst:`The first ${STORY_FRAME_LIMIT} frames are selected. Uncheck one to choose another frame from this album.`,selectionTotal:n=>`${n} available frames`,framesPrevious:'Previous frames',framesNext:'Next frames',framesPage:(first,last,total)=>`Frames ${first}–${last} / ${total}`,clearFrames:'Clear selection',startWithFrame:'Start here',selectFirst:`Select the first ${STORY_FRAME_LIMIT} frames`,selectionLimit:`A story can contain up to ${STORY_FRAME_LIMIT} frames. Uncheck one before selecting another.`,moveEarlier:'Move earlier',moveLater:'Move later',chooseTheme:'Start with a theme',ready:'Your outline is ready to edit, preview or download.',questionTitle:'Make the story yours',
       previewMissing:'This frame’s preview is unavailable',retryPreview:'Retry preview',previewChecking:'Checking the frame preview…',previewReady:'Frame preview loaded.',selectionEmpty:'There are no available photos or videos on this page.',leave:'This draft has not been downloaded. Clear it and leave?'}
   };
   Object.assign(labels.zh,{savedEyebrow:'家人共同留下的时光',savedHeading:'我们的故事',refresh:'刷新',moreStories:'更多故事',savedEmpty:'还没有保存的故事。选几个画面，写下你们的回忆。',savedThemeFilter:'按主题浏览已保存故事',savedThemeAll:'全部主题',savedThemeEmpty:'这个主题下还没有保存的故事。',savedThemeViewAll:'查看全部故事',savedThemeCreate:'编排一个故事',savedLoading:'正在打开故事…',savedUnavailable:'已保存故事暂不可用，请稍后重试。',saveMemory:'保存到相册库',savingMemory:'正在保存…',savedMemory:'已保存到这个相册库，可以随时回来继续。',saveFailed:'保存结果尚未确认。请重试相同保存；也可先下载保留草稿。',saveConflict:'故事或参考资料已有变化。你的文字已保留，请下载草稿或重新打开已保存版本。',reloadMemory:'重新打开已保存版本',playStory:'慢慢播放',pauseStory:'暂停播放',contribute:'补充这张照片的回忆',related:'和助手找更多片段',savedDraft:'已保存故事 · 待核实',privateHelp:'与这个相册库的家人分享，不会自动发布到电视。',savedHelp:'已保存到这个相册库。修改章节后请再次保存；家人的话和 AI 观察仍作为独立参考。',readOnly:'你可以阅读这个故事。只有作者或相册库主人可以修改。',savedMeta:'个画面',chaptersMeta:'章',retrySave:'重试相同保存',needsTitle:'请先为这段回忆起一个标题。',textTooLong:'这一章的文字超过 6000 字节，请缩短后再保存；原稿未改动。',readStory:'阅读故事',backStories:'返回故事列表',editStory:'编辑故事'});
@@ -383,9 +388,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       value.version!==1||value.library_id!==owner.library||!validText(value.title,160)||
       !themes.includes(value.theme)||!['zh','en'].includes(value.language)||typeof value.guided!=='boolean'||
       !/^[0-9a-f]{64}$/.test(value.selection_revision)||![null,SOURCE_POLICY].includes(value.source_policy)||
-      !Array.isArray(value.asset_ids)||!value.asset_ids.length||value.asset_ids.length>24||
+      !Array.isArray(value.asset_ids)||!value.asset_ids.length||value.asset_ids.length>STORY_FRAME_LIMIT||
       !value.asset_ids.every(idOK)||new Set(value.asset_ids).size!==value.asset_ids.length||
-      !Array.isArray(value.chapters)||!value.chapters.length||value.chapters.length>6)return false;
+      !Array.isArray(value.chapters)||!value.chapters.length||value.chapters.length>STORY_CHAPTER_LIMIT)return false;
     for(const [index,section] of value.chapters.entries()){
       if(!section||Object.keys(section).sort().join(',')!=='asset_ids,evidence_ids,id,narration,title'||
         section.id!=='chapter-'+(index+1)||!validText(section.title,160)||!validText(section.narration,6000)||
@@ -788,7 +793,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   function validRelated(value,seeds,owner,before,media){
     if(!value||Object.keys(value).sort().join(',')!=='has_more,items,library_id,needs_review,next_before_id,recorded_days,seed_asset_ids,version'||value.version!==1||value.library_id!==owner.library||value.needs_review!==true||typeof value.has_more!=='boolean'||
-      JSON.stringify(value.seed_asset_ids)!==JSON.stringify(seeds)||!Array.isArray(value.recorded_days)||value.recorded_days.length>24||
+      JSON.stringify(value.seed_asset_ids)!==JSON.stringify(seeds)||!Array.isArray(value.recorded_days)||value.recorded_days.length>STORY_FRAME_LIMIT||
       !value.recorded_days.every(day=>typeof day==='string'&&day.length===10&&relatedRecordedDay(day)===day)||
       JSON.stringify(value.recorded_days)!==JSON.stringify([...new Set(value.recorded_days)].sort())||
       !Array.isArray(value.items)||value.items.length>20||new Set(value.items.map(item=>item?.id)).size!==value.items.length||
@@ -961,12 +966,12 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function chapterFrameSlots(story,section){
     // Existing source links need to be included explicitly when saving a changed chapter.
     if(story.saved&&!refsFor(story)?.available)return 0;
-    return 4-section.asset_ids.length;
+    return STORY_FRAMES_PER_CHAPTER-section.asset_ids.length;
   }
   function frameSearchLimit(section=null){
-    const remaining=24-selected.size;
+    const remaining=STORY_FRAME_LIMIT-selected.size;
     if(section)return draft?.chapters.includes(section)?Math.min(remaining,chapterFrameSlots(draft,section)):0;
-    return draft?Math.min(remaining,chapterFrameSlots(draft,draft.chapters.at(-1))+(6-draft.chapters.length)*4):remaining;
+    return draft?Math.min(remaining,chapterFrameSlots(draft,draft.chapters.at(-1))+(STORY_CHAPTER_LIMIT-draft.chapters.length)*STORY_FRAMES_PER_CHAPTER):remaining;
   }
   const frameSearchBlocked=()=>frozen()||sourceRefreshPending||sourceRefreshRequired||Boolean(dictation)||titleComposing||
     Boolean(draftPreparation.proposal)||Boolean(draft?.saved&&!refsFor(draft));
@@ -984,7 +989,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const limit=frameSearchLimit();
     const pending=frameSearchBlocked()||Boolean(relatedView?.adding);
     trigger.disabled=!openFrameSearch||pending||limit<=0;
-    $('story-find-more-limit').hidden=limit>0||selected.size>=24;
+    $('story-find-more-limit').hidden=limit>0||selected.size>=STORY_FRAME_LIMIT;
     for(const button of $('story-chapter-editor').querySelectorAll('.story-chapter-find-frames,.story-chapter-remove-frame')){
       const section=draft?.chapters.find(value=>value.id===button.dataset.chapterId);
       const removing=button.classList.contains('story-chapter-remove-frame');
@@ -1058,7 +1063,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   function frameAppendTarget({related=null,section=null}={}){
     const owner={...scope()},ticket=generation,story=draft,pool=items,selection=selected;
     const orderedIds=()=>items.filter(item=>selected.has(item.id)).map(item=>item.id);
-    const assetIds=Object.freeze(orderedIds()),key=assetIds.join(','),limit=frameSearchLimit(section);
+    const assetIds=Object.freeze(orderedIds()),key=assetIds.join(',');
+    const limit=Math.min(JUDE_FRAME_BATCH_LIMIT,frameSearchLimit(section));
     const anchor=section?.asset_ids.at(-1),insertAt=section?assetIds.indexOf(anchor)+1:assetIds.length;
     const isCurrent=()=>current(ticket,owner)&&$('story-workspace').open&&draft===story&&items===pool&&selected===selection&&
       !frameSearchBlocked()&&(!section||story.chapters.includes(section)&&section.asset_ids.at(-1)===anchor)&&orderedIds().join(',')===key;
@@ -1083,10 +1089,10 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         const chapters=[...story.chapters],destination=section||chapters.at(-1),destinationIndex=chapters.indexOf(destination);
         const intoChapter=addedIds.slice(0,chapterFrameSlots(story,destination));
         if(intoChapter.length)chapters[destinationIndex]={...destination,asset_ids:[...destination.asset_ids,...intoChapter]};
-        for(let offset=intoChapter.length;offset<addedIds.length;offset+=4){
+        for(let offset=intoChapter.length;offset<addedIds.length;offset+=STORY_FRAMES_PER_CHAPTER){
           const number=chapters.length+1;
           chapters.push({id:`chapter-${number}`,title:labels[story.language].frameSearchChapter(number),narration:'',
-            asset_ids:addedIds.slice(offset,offset+4),evidence_ids:[]});
+            asset_ids:addedIds.slice(offset,offset+STORY_FRAMES_PER_CHAPTER),evidence_ids:[]});
         }
         nextDraft={...story,title:$('story-workspace-title').value,items:fresh.items,chapters,selection_revision:fresh.selection_revision};
         if(!validDraft(nextDraft,expected,owner,sourceProfileLoaded))return false;
@@ -1168,7 +1174,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   function setSelectionCount() {
     syncStoryPreviewLabel();
-    $('story-selection-count').textContent=`${selected.size} / 24 · ${text('selected')} · ${text('selectionTotal')(items.length)}`;
+    $('story-selection-count').textContent=`${selected.size} / ${STORY_FRAME_LIMIT} · ${text('selected')} · ${text('selectionTotal')(items.length)}`;
     syncChapterStructureAvailability();
     syncLocalControls();
     $('story-build').disabled=frozen()||sourceRefreshPending||!selected.size;
@@ -1187,7 +1193,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(approvalStatus.textContent!==approvalText)approvalStatus.textContent=approvalText;
     $('story-export').disabled=Boolean(draftPreparation.pending||draftPreparation.proposal);
     $('story-reload-memory').hidden=!draft?.id;
-    for(const check of $('story-selection').querySelectorAll('input'))check.disabled=frozen()||sourceRefreshPending||(!check.checked&&selected.size>=24);
+    for(const check of $('story-selection').querySelectorAll('input'))check.disabled=frozen()||sourceRefreshPending||(!check.checked&&selected.size>=STORY_FRAME_LIMIT);
     for(const b of $('story-selection').querySelectorAll('button')){
       const {orderId,orderStep,startId,edge}=b.dataset;
       if(draft&&(orderId||startId)){
@@ -1200,7 +1206,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     }
     $('story-selection-clear').disabled=frozen()||sourceRefreshPending||!selected.size;
     $('story-selection-first').disabled=frozen()||sourceRefreshPending||!items.length;
-    $('story-selection-first').hidden=items.length<=24;
+    $('story-selection-first').hidden=items.length<=STORY_FRAME_LIMIT;
     syncFrameSearch();
     $('story-selection-pages').hidden=items.length<=8;
     $('story-selection-previous').disabled=frozen()||sourceRefreshPending||selectionPage===0;
@@ -1230,7 +1236,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const check=node('input');check.type='checkbox';check.value=item.id;check.checked=selected.has(item.id);
       check.setAttribute('aria-label',`${text(item.kindKnown===false?'choiceFrame':item.kind==='video'?'choiceVideo':'photo')} ${item.id}`);
       const img=frameThumbnail(item.id,'',loaded);
-      check.addEventListener('change',()=>{if(!choiceCurrent())return;if(frozen()||sourceRefreshPending||!canDiscard()){check.checked=selected.has(item.id);return;}if(check.checked&&!selected.has(item.id)&&selected.size>=24){check.checked=false;message('selectionLimit');setSelectionCount();return;}void cancelStoryPreparation();clearDraftProposal(null,true,false);clearRelated();if(check.checked)selected.add(item.id);else selected.delete(item.id);invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;$('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');setSelectionCount();});
+      check.addEventListener('change',()=>{if(!choiceCurrent())return;if(frozen()||sourceRefreshPending||!canDiscard()){check.checked=selected.has(item.id);return;}if(check.checked&&!selected.has(item.id)&&selected.size>=STORY_FRAME_LIMIT){check.checked=false;message('selectionLimit');setSelectionCount();return;}void cancelStoryPreparation();clearDraftProposal(null,true,false);clearRelated();if(check.checked)selected.add(item.id);else selected.delete(item.id);invalidateTitles();titleView=null;draft=null;contributionRefs=null;refsLoadEpoch++;dirty=false;downloaded=false;$('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message('');setSelectionCount();});
       label.append(check,img,node('span',`${item.kind==='video'?'▶ ':''}${item.id}`));
       const order=node('div',undefined,'story-frame-order');
       for(const [direction,word,symbol] of [[-1,'moveEarlier','←'],[1,'moveLater','→']]){
@@ -1264,8 +1270,8 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(value?.saved && (!uuidOK(value.id)||!/^[1-9][0-9]{0,18}$/.test(value.revision)||typeof value.can_edit!=='boolean'))return false;
     if(!value || value.version!==1 || value.library_id!==owner.library || ![true,false].includes(value.saved) || value.state!=='draft' ||
        value.generator!==(value.saved?'family_edited_outline':'evidence_outline') || value.needs_review!==true || !validText(value.title,160) ||
-       !Array.isArray(value.items) || value.items.length<1 || value.items.length>24 || new Set(value.items.map(i=>i.id)).size!==value.items.length || JSON.stringify(value.items.map(i=>i.id))!==JSON.stringify(expected) ||
-       !Array.isArray(value.chapters) || !value.chapters.length || value.chapters.length>6 || !themes.includes(value.theme) || !['zh','en'].includes(value.language) || !/^[0-9a-f]{64}$/.test(value.selection_revision) ||
+       !Array.isArray(value.items) || value.items.length<1 || value.items.length>STORY_FRAME_LIMIT || new Set(value.items.map(i=>i.id)).size!==value.items.length || JSON.stringify(value.items.map(i=>i.id))!==JSON.stringify(expected) ||
+       !Array.isArray(value.chapters) || !value.chapters.length || value.chapters.length>STORY_CHAPTER_LIMIT || !themes.includes(value.theme) || !['zh','en'].includes(value.language) || !/^[0-9a-f]{64}$/.test(value.selection_revision) ||
        !Array.isArray(value.questions) || value.questions.length>3 || !value.questions.every(q=>validText(q,1000)))return false;
     const evidenceById=new Map();
     for(const item of value.items) {
@@ -1297,7 +1303,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const owner={...scope()};if(owner.locked||!owner.account||!owner.library||!value||value.version!==1||kind==='memoir'&&value.type!=='memoir'||!uuidOK(value.id)||!/^[1-9][0-9]{0,18}$/.test(value.revision))return false;
     if(kind==='story'){const expected=value.items?.map(item=>item?.id);return value.saved===true&&Array.isArray(expected)&&validDraft(value,expected,owner);}
     if(kind!=='memoir'||Object.keys(value).sort().join(',')!=='can_edit,id,introduction,language,revision,stories,title,type,version'||typeof value.can_edit!=='boolean'||!validText(value.title,160)||!validText(value.introduction,6000)||!['zh','en'].includes(value.language)||!Array.isArray(value.stories)||value.stories.length<1||value.stories.length>24)return false;
-    const seen=new Set();return value.stories.every(story=>story&&Object.keys(story).sort().join(',')==='cover_asset_id,id,item_count,revision,title'&&uuidOK(story.id)&&!seen.has(story.id)&&seen.add(story.id)&&/^[1-9][0-9]{0,18}$/.test(story.revision)&&validText(story.title,160)&&Number.isInteger(story.item_count)&&story.item_count>=1&&story.item_count<=24&&idOK(story.cover_asset_id));
+    const seen=new Set();return value.stories.every(story=>story&&Object.keys(story).sort().join(',')==='cover_asset_id,id,item_count,revision,title'&&uuidOK(story.id)&&!seen.has(story.id)&&seen.add(story.id)&&/^[1-9][0-9]{0,18}$/.test(story.revision)&&validText(story.title,160)&&Number.isInteger(story.item_count)&&story.item_count>=1&&story.item_count<=STORY_FRAME_LIMIT&&idOK(story.cover_asset_id));
   }
   function mountSavedStory(result,priorRefs,owner,ticket,profile=false){
     if(draftPreparation.pending)return false;
@@ -1365,7 +1371,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     finally{view.loading=false;if(candidateChooserCurrent(view)){view.more.disabled=!view.hasMore;view.cancel.disabled=false;}}
   }
   function openContributionChooser(card,story,chapterId,owner,ticket,refs,trigger){
-    if(frozen()||!$('story-workspace').open||!current(ticket,owner)||draft!==story||!story.saved||story.can_edit!==true||refs!==refsFor(story)||!refs?.available||refs.refreshUnavailable||!dictationGuard())return;
+    if(!supportsFamilyMemoryLinks(chapterId)||frozen()||!$('story-workspace').open||!current(ticket,owner)||draft!==story||!story.saved||story.can_edit!==true||refs!==refsFor(story)||!refs?.available||refs.refreshUnavailable||!dictationGuard())return;
     if(contributionCandidateViews.has(card)){const prior=contributionCandidateViews.get(card);if(prior.active){closeContributionChooser(prior);return;}}
     const panel=node('section',undefined,'story-contribution-candidate-chooser'),heading=node('h4',text('candidatePanelTitle')),help=node('p',text('contributionSourceHelp'),'fine'),status=node('p'),list=node('div'),footer=node('div'),cancel=button(text('candidateCancel'),()=>closeContributionChooser(view),'quiet'),more=button(text('candidateMore'),()=>void loadContributionCandidates(view,view.page+1),'quiet'),retry=button(text('candidateRetry'),()=>void loadContributionCandidates(view,view.failedPage||Math.max(1,view.page||1)),'quiet');
     status.setAttribute('role','status');status.setAttribute('aria-live','polite');list.className='story-contribution-candidate-list';footer.style.display='flex';footer.style.flexWrap='wrap';footer.style.gap='.5rem';footer.style.marginTop='.5rem';
@@ -1399,14 +1405,14 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       if(values?.length){card.append(node('strong',text('savedContributionRefs')));for(const [index,ref] of values.entries()){const uuid=ref.slice('contribution-'.length),row=node('div',undefined,'story-contribution-reference'),label=node('span',`${text('editorRefLabel')} ${index+1}`),status=node('p','','story-contribution-source-status'),body=node('div',undefined,'story-contribution-source-detail');row.dataset.contributionId=uuid;status.setAttribute('role','status');body.hidden=true;const action=button(text('viewRef'),()=>void loadContributionDetail(row,story,story.chapters.find(section=>section.id===id),uuid,action,status,body,'editor'),'quiet');const remove=button(text('removeSavedRef'),()=>{const currentRefs=refsFor(story);if(frozen()||!dictationGuard()||!currentRefs?.available||draft!==story||currentRefs.revision!==story.revision||!row.isConnected)return;refsLoadEpoch++;currentRefs.groups.set(id,(currentRefs.groups.get(id)||[]).filter(value=>value!==ref));dirty=true;downloaded=false;updateContributionRefViews(story);},'quiet');row.style.display='flex';row.style.flexWrap='wrap';row.style.alignItems='center';row.style.gap='.5rem';row.style.minWidth='0';label.style.overflowWrap='anywhere';for(const control of [action,remove]){control.disabled=frozen()||!dictationGuard();control.style.whiteSpace='normal';control.style.maxWidth='100%';control.style.minHeight='44px';}row.append(label,action,remove,status,body);card.append(row);}}
       else if(!refs&&story.saved){const note=node('p',text('refLoading'),'story-contribution-refs-status fine');note.setAttribute('role','status');card.append(note);}
       if(refs?.refreshUnavailable||refs&&!refs.available){const note=node('p',text(refs.refreshUnavailable?'refsRefreshUnavailable':'refsUnavailable'),'story-contribution-refs-status fine');note.setAttribute('role','status');card.append(note);}
-      if(refs?.available&&!refs.refreshUnavailable&&story.saved&&story.can_edit===true){const add=button(text('addContribution'),()=>openContributionChooser(card,story,id,{...scope()},generation,refs,add),'quiet');add.className='quiet story-contribution-add';add.setAttribute('aria-expanded','false');add.setAttribute('aria-controls',`contribution-candidates-${id}`);add.disabled=frozen()||!dictationGuard()||scope().locked;add.style.whiteSpace='normal';add.style.maxWidth='100%';add.style.minHeight='44px';card.append(add);}
+      if(refs?.available&&!refs.refreshUnavailable&&story.saved&&story.can_edit===true&&supportsFamilyMemoryLinks(id)){const add=button(text('addContribution'),()=>openContributionChooser(card,story,id,{...scope()},generation,refs,add),'quiet');add.className='quiet story-contribution-add';add.setAttribute('aria-expanded','false');add.setAttribute('aria-controls',`contribution-candidates-${id}`);add.disabled=frozen()||!dictationGuard()||scope().locked;add.style.whiteSpace='normal';add.style.maxWidth='100%';add.style.minHeight='44px';card.append(add);}
     }
     if(updateReader&&$('story-reader').open&&draft===story){
       const prose=$('story-reader-title').parentElement;prose.querySelectorAll(':scope > .story-reader-sources').forEach(source=>source.remove());appendChapterSources(prose,story,story.chapters[chapter]);
     }
   }
   async function build() {
-    if(frozen()||sourceRefreshPending||!selected.size||selected.size>24||scope().locked||!canDiscard())return;
+    if(frozen()||sourceRefreshPending||!selected.size||selected.size>STORY_FRAME_LIMIT||scope().locked||!canDiscard())return;
     clearDraftProposal(null,true,false);
     clearRelated();const owner={...scope()},ticket=++generation,expected=items.filter(i=>selected.has(i.id)).map(i=>i.id);
     if(guide)guide.ticket=ticket;
@@ -1459,7 +1465,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   }
   function canSplitChapter(story,index,boundary){
     const chapter=story.chapters[index];
-    return Boolean(chapter&&story.chapters.length<6&&Number.isInteger(boundary)&&boundary>0&&boundary<chapter.asset_ids.length);
+    return Boolean(chapter&&story.chapters.length<STORY_CHAPTER_LIMIT&&Number.isInteger(boundary)&&boundary>0&&boundary<chapter.asset_ids.length);
   }
   const evidenceForAssets=(sourceItems,assetIds)=>new Set(sourceItems.filter(item=>assetIds.includes(item.id)).flatMap(item=>item.evidence.map(evidence=>evidence.id)));
   function mergeChapterCandidate(story,index){
@@ -1497,7 +1503,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     ];
     const chapters=[...story.chapters.slice(0,index),...split,...story.chapters.slice(index+1)]
       .map((value,position)=>({...value,id:`chapter-${position+1}`}));
-    if(chapters.length>6||chapters.some(value=>!value.asset_ids.length||value.asset_ids.length>4||value.evidence_ids.length>12))return;
+    if(chapters.length>STORY_CHAPTER_LIMIT||chapters.some(value=>!value.asset_ids.length||value.asset_ids.length>4||value.evidence_ids.length>12))return;
     story.chapters=chapters;dirty=true;downloaded=false;invalidateDraftReview();invalidateSourceReviewAcknowledgement();invalidateTitles();renderEditor();
     $('story-chapter-editor').querySelector('.story-chapter-merge')?.focus();
   }
@@ -1507,7 +1513,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     const merged=mergeChapterCandidate(story,index);if(!merged)return;
     const chapters=[...story.chapters.slice(0,index),merged,...story.chapters.slice(index+2)]
       .map((value,position)=>({...value,id:`chapter-${position+1}`}));
-    if(chapters.length<1||chapters.length>6)return;
+    if(chapters.length<1||chapters.length>STORY_CHAPTER_LIMIT)return;
     story.chapters=chapters;dirty=true;downloaded=false;invalidateDraftReview();invalidateSourceReviewAcknowledgement();invalidateTitles();renderEditor();
     $('story-chapter-editor').querySelector('.story-chapter-split')?.focus();
   }
@@ -1942,7 +1948,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     if(localBusy)return;
     if(localRecord?.payload.pending&&!pendingSave){void resumeLocalDraft();return;}
     if(pendingSave){message('saveFailed');if(!$('story-workspace').open)$('story-workspace').showModal();return;}
-    // Keep every album choice, while the story API still receives at most 24.
+    // Keep every album choice and preselect up to the story limit.
     let nextItems=null;
     if(ids!==null){
       if(!Array.isArray(ids)||!ids.length||ids.length>60){message('selectionEmpty');return;}
@@ -1962,9 +1968,9 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     invalidateTitles();titleView=null;titleComposing=false;
     items=nextItems||galleryItems.slice();
     selectionPage=0;
-    draft=null;proposalReferenceWarnings=new Map();contributionRefs=null;refsLoadEpoch++;sourceCapabilities=null;sourceCapabilityEpoch++;sourceReviewOptedIn=false;sourceProfileLoaded=false;resetSourceRefresh();dirty=false;downloaded=false;selected=new Set(guided?[]:items.slice(0,24).map(i=>i.id));
+    draft=null;proposalReferenceWarnings=new Map();contributionRefs=null;refsLoadEpoch++;sourceCapabilities=null;sourceCapabilityEpoch++;sourceReviewOptedIn=false;sourceProfileLoaded=false;resetSourceRefresh();dirty=false;downloaded=false;selected=new Set(guided?[]:items.slice(0,STORY_FRAME_LIMIT).map(i=>i.id));
     $('story-workspace-theme').value=themes.includes(theme)?theme:'everyday';$('story-workspace-title').value='';
-    $('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message(ids&&ids.length>24?'onlyFirst':'');renderSelection();
+    $('story-chapter-editor').replaceChildren();$('story-draft-actions').hidden=true;message(ids&&ids.length>STORY_FRAME_LIMIT?'onlyFirst':'');renderSelection();
     document.querySelector('[data-story-word=draftHelp]').textContent=text('draftHelp');$('story-workspace').showModal();
     draftDirectionCandidate=acceptedDirection;
     loadSourceCapabilities({...scope()},generation);if(guided)focusGuide();
@@ -2418,7 +2424,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
         ?await savedRequest('/memory-stories/search',{method:'POST',body:{title_query:query,page:String(target),...(filter?{theme:filter}:{})},extraHeaders})
         :await savedRequest(`/memory-stories?page=${target}${filter?`&theme=${encodeURIComponent(filter)}`:''}`,{extraHeaders});
       if(!latest())return;
-      if(result.library_id!==owner.library||result.page!==target||result.page_size!==8||typeof result.has_more!=='boolean'||typeof result.can_create!=='boolean'||!Array.isArray(result.items)||result.items.length>8||result.items.some(s=>!uuidOK(s.id)||!validText(s.title,160)||!idOK(s.cover_asset_id)||!themes.includes(s.theme)||(filter!==null&&s.theme!==filter)||!Number.isInteger(s.item_count)||s.item_count<1||s.item_count>24||!Number.isInteger(s.chapter_count)||s.chapter_count<1||s.chapter_count>6))throw new Error('Invalid saved stories');
+      if(result.library_id!==owner.library||result.page!==target||result.page_size!==8||typeof result.has_more!=='boolean'||typeof result.can_create!=='boolean'||!Array.isArray(result.items)||result.items.length>8||result.items.some(s=>!uuidOK(s.id)||!validText(s.title,160)||!idOK(s.cover_asset_id)||!themes.includes(s.theme)||(filter!==null&&s.theme!==filter)||!Number.isInteger(s.item_count)||s.item_count<1||s.item_count>STORY_FRAME_LIMIT||!Number.isInteger(s.chapter_count)||s.chapter_count<1||s.chapter_count>STORY_CHAPTER_LIMIT))throw new Error('Invalid saved stories');
       if(!query){titleSearchAvailable=result.title_search===true;syncShelfSearch();}
       shelf=append?[...shelf,...result.items]:result.items;shelfPage=target;canCreate=result.can_create;shelfBinding=JSON.stringify([owner.account,owner.library]);shelfReady=true;renderShelf();void refreshLocalDraft();$('saved-memory-more').hidden=!result.has_more;$('saved-memory-status').textContent=shelf.length?'':text(query?'savedSearchEmpty':'savedEmpty');setSelectionCount();
       if(!append&&!query&&community)void community.books($('memory-books'));
@@ -2463,7 +2469,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
     return mountSavedStory(value,priorRefs,owner,ticket);
   }
   function manualChapterLayoutMatches(chapters,freshItems){
-    if(!Array.isArray(chapters)||!chapters.length||chapters.length>6||!Array.isArray(freshItems))return false;
+    if(!Array.isArray(chapters)||!chapters.length||chapters.length>STORY_CHAPTER_LIMIT||!Array.isArray(freshItems))return false;
     const ordered=freshItems.map(item=>item.id);let offset=0;
     for(const chapter of chapters){
       if(!Array.isArray(chapter.asset_ids)||!chapter.asset_ids.length||chapter.asset_ids.length>4||
@@ -2729,7 +2735,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
       const children=editorialChildren(),childMap=new Map(children.map(child=>[child.story_id,child.revision]));
       if(!value||Object.keys(value).sort().join(',')!=='children,id,introduction_source_refs,revision,state,transitions,version'||value.version!==1||value.id!==book.id||value.revision!==book.revision||!['empty','current','source_changed'].includes(value.state)||!Array.isArray(value.children)||!Array.isArray(value.introduction_source_refs)||!Array.isArray(value.transitions)||children.length>24||value.children.length!==children.length||value.children.some((child,index)=>!child||Object.keys(child).sort().join(',')!=='revision,story_id'||child.story_id!==children[index].story_id||child.revision!==children[index].revision))return false;
       if(value.state!=='current')return !value.transitions.length&&!value.introduction_source_refs.length;
-      const validRefs=(refs,allowed)=>Array.isArray(refs)&&refs.length<=12&&new Set(refs.map(ref=>JSON.stringify([ref?.story_id,ref?.story_revision,ref?.chapter_id,ref?.contribution_id]))).size===refs.length&&refs.every(ref=>ref&&Object.keys(ref).sort().join(',')==='chapter_id,contribution_id,story_id,story_revision'&&allowed.has(ref.story_id)&&ref.story_revision===childMap.get(ref.story_id)&&/^chapter-[1-6]$/.test(ref.chapter_id)&&uuidOK(ref.contribution_id));
+      const validRefs=(refs,allowed)=>Array.isArray(refs)&&refs.length<=12&&new Set(refs.map(ref=>JSON.stringify([ref?.story_id,ref?.story_revision,ref?.chapter_id,ref?.contribution_id]))).size===refs.length&&refs.every(ref=>ref&&Object.keys(ref).sort().join(',')==='chapter_id,contribution_id,story_id,story_revision'&&allowed.has(ref.story_id)&&ref.story_revision===childMap.get(ref.story_id)&&/^chapter-(?:[1-9]|1[0-2])$/.test(ref.chapter_id)&&uuidOK(ref.contribution_id));
       if(!validRefs(value.introduction_source_refs,new Set(childMap.keys()))||value.transitions.length!==Math.max(0,children.length-1))return false;
       let total=value.introduction_source_refs.length;
       return value.transitions.every((item,index)=>{
@@ -2955,7 +2961,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   $('story-selection-previous').addEventListener('click',()=>{if(!frozen()&&!sourceRefreshPending&&selectionPage>0){selectionPage--;renderSelection();}});
   $('story-selection-next').addEventListener('click',()=>{if(!frozen()&&!sourceRefreshPending&&(selectionPage+1)*8<items.length){selectionPage++;renderSelection();}});
   $('story-selection-clear').addEventListener('click',()=>replaceSelection([]));
-  $('story-selection-first').addEventListener('click',()=>replaceSelection(items.slice(0,24).map(item=>item.id)));
+  $('story-selection-first').addEventListener('click',()=>replaceSelection(items.slice(0,STORY_FRAME_LIMIT).map(item=>item.id)));
   $('story-workspace-form').addEventListener('submit',event=>{event.preventDefault();if(guide)void advanceGuide();else void build();});
   $('story-workspace-title').addEventListener('input',()=>{invalidateDraftReview();invalidateTitles();if(draft){draft.title=$('story-workspace-title').value;dirty=true;downloaded=false;syncLocalControls();}});
   $('story-workspace').addEventListener('compositionstart',()=>{titleComposing=true;invalidateTitles();setSelectionCount();});
@@ -2995,7 +3001,7 @@ window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError
   $('memory-create').addEventListener('click',()=>open());$('memory-assistant').addEventListener('click',openAssistant);
   translate();
   return {clear,open,translate,reopen,openBook,openBookStory,acceptProposal,validateAssistantSavedMemory,acceptAssistantSavedMemory,canLeave(){if(!canDiscardDraft())return false;cancelDictation();return true;},mountReplySpeech,
-    setItems(value){if(dictation){dictation.status.textContent=text('dictationNeedResolve');return;}if(shelfBinding!==JSON.stringify([scope().account,scope().library]))void loadShelf();galleryItems=value.filter(i=>idOK(i.id)&&['image','video'].includes(i.kind)).slice(0,24);const first=galleryItems[0];$('memory-home').hidden=!first;for(const b of $('memory-themes').querySelectorAll('button'))b.disabled=!first;if(first){const image=$('memory-home-image');image.onerror=()=>{image.onerror=null;image.src=mediaURL(first.id,'thumbnail');};image.src=mediaURL(first.id,first.kind==='video'?'thumbnail': 'preview');image.alt='';}},
+    setItems(value){if(dictation){dictation.status.textContent=text('dictationNeedResolve');return;}if(shelfBinding!==JSON.stringify([scope().account,scope().library]))void loadShelf();galleryItems=value.filter(i=>idOK(i.id)&&['image','video'].includes(i.kind)).slice(0,STORY_FRAME_LIMIT);const first=galleryItems[0];$('memory-home').hidden=!first;for(const b of $('memory-themes').querySelectorAll('button'))b.disabled=!first;if(first){const image=$('memory-home-image');image.onerror=()=>{image.onerror=null;image.src=mediaURL(first.id,'thumbnail');};image.src=mediaURL(first.id,first.kind==='video'?'thumbnail': 'preview');image.alt='';}},
     fromResults(value,directionCandidate){return open(value,'everyday',false,directionCandidate);},
     fromMemoryGroup(assets,theme){return open(assets,theme);}};
 };

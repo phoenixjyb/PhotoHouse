@@ -211,7 +211,7 @@ internal object ProtectedMemoryCommunityWire {
         val sha = str(r["sha256"], 64).also { check(it.matches(Regex("[0-9a-f]{64}"))) }
         val duration = if (r["duration_ms"] == JsonNull) null else long(r["duration_ms"], 1, 30000)
         val chapter = nullableString(r["chapter_id"], 32)
-        if (chapter != null) check(chapter.matches(Regex("chapter-[1-6]")))
+        if (chapter != null) check(chapter.matches(StoryLimits.chapterId))
         val baseRevision = decimal(r["base_story_revision"], positive = true)
         val state = str(r["state"], 16).also { check(it in states) }
         val created = long(r["created_at"], 0, 253402300799)
@@ -236,7 +236,7 @@ internal object ProtectedMemoryCommunityWire {
     fun contributionCandidates(
         bytes: ByteArray, storyId: String, libraryId: String, revision: Long, chapterId: String, page: Int,
     ): MemoryContributionCandidatePage = guarded {
-        check(revision > 0 && chapterId.matches(Regex("chapter-[1-6]")) && page in 1..100000)
+        check(revision > 0 && chapterId.matches(StoryLimits.chapterId) && page in 1..100000)
         val r = root(bytes)
         obj(r, "version", "story_id", "library_id", "revision", "chapter_id", "page", "page_size", "has_more", "items")
         check(int(r["version"], 1, 1) == 1 && uuid(str(r["story_id"], 36)) == storyId)
@@ -286,7 +286,7 @@ internal object ProtectedMemoryCommunityWire {
         require(request.kind == "text" && request.revision > 0 && request.language in languages)
         require(request.text.isNotBlank() && strictUtf8(request.text).size <= 8192 && safeText(request.text, allowNewline = true))
         require(strictUtf8(request.byline).size <= 256 && safeText(request.byline, allowNewline = true))
-        request.chapterId?.let { require(it.matches(Regex("chapter-[1-6]"))) }
+        request.chapterId?.let { require(it.matches(StoryLimits.chapterId)) }
         requireCanonicalUuid(request.mutationId)
         return buildJsonObject {
             put("kind", "text"); put("text", request.text); put("language", request.language)
@@ -300,7 +300,7 @@ internal object ProtectedMemoryCommunityWire {
         require(capabilities.enabled && capabilities.contributionsEnabled && capabilities.maxAudioSeconds in 1..30)
         require(request.kind == "audio" && request.text.isEmpty() && request.revision > 0 && request.language in languages)
         require(strictUtf8(request.byline).size <= 256 && safeText(request.byline, allowNewline = true))
-        request.chapterId?.let { require(it.matches(Regex("chapter-[1-6]"))) }
+        request.chapterId?.let { require(it.matches(StoryLimits.chapterId)) }
         requireCanonicalUuid(request.mutationId)
         val json = buildJsonObject {
             put("kind", "audio"); put("text", ""); put("language", request.language)
@@ -365,7 +365,7 @@ internal object ProtectedMemoryCommunityWire {
         val stories = arr(r["stories"], 24).map { sv ->
             val s = obj(sv, "id", "title", "revision", "item_count", "cover_asset_id")
             MemoryBookStorySummary(uuid(str(s["id"], 36)), str(s["title"], 512),
-                decimal(s["revision"], true), int(s["item_count"], 1, 24),
+                decimal(s["revision"], true), int(s["item_count"], 1, StoryLimits.MAX_FRAMES),
                 str(s["cover_asset_id"], 19).also { check(PhoneDiscoveryWire.validId(it)) })
         }
         check(stories.isNotEmpty() && stories.map { it.id }.distinct().size == stories.size)

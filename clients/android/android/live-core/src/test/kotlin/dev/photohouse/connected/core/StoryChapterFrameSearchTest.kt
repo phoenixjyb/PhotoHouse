@@ -23,9 +23,9 @@ class StoryChapterFrameSearchTest {
     }
 
     @Test fun remainingIsBoundedByBothChapterAndStoryLimits() {
-        assertEquals(1, StoryChapterFrameSearch.remaining(assetCount = 23, chapterAssetCount = 2))
+        assertEquals(1, StoryChapterFrameSearch.remaining(assetCount = 47, chapterAssetCount = 2))
         assertEquals(1, StoryChapterFrameSearch.remaining(assetCount = 10, chapterAssetCount = 3))
-        assertEquals(0, StoryChapterFrameSearch.remaining(assetCount = 24, chapterAssetCount = 1))
+        assertEquals(0, StoryChapterFrameSearch.remaining(assetCount = 48, chapterAssetCount = 1))
         assertEquals(0, StoryChapterFrameSearch.remaining(assetCount = 10, chapterAssetCount = 4))
     }
 

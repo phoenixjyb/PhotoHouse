@@ -1,5 +1,6 @@
 package dev.photohouse.connected
 
+import dev.photohouse.connected.core.StoryLimits
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -269,9 +270,9 @@ private fun SelectionScreen(
                 .testTag("local-story-draft-delete-unreadable")) { Text(t("Delete unreadable draft", "删除无法读取的草稿")) }
         }
         if (editorState.guideStep != null) StoryGuideProgress(StoryGuideStep.FRAMES, zh)
-        Text(t("Choose 1–24 photos or videos in story order.", "按故事顺序选择 1–24 个照片或视频。"),
+        Text(t("Choose 1–${StoryLimits.MAX_FRAMES} photos or videos in story order.", "按故事顺序选择 1–${StoryLimits.MAX_FRAMES} 个照片或视频。"),
             style = MaterialTheme.typography.bodyMedium)
-        Text(t("${selected.size} of 24 selected", "已选择 ${selected.size} / 24"),
+        Text(t("${selected.size} of ${StoryLimits.MAX_FRAMES} selected", "已选择 ${selected.size} / ${StoryLimits.MAX_FRAMES}"),
             style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("grouped-story-selection-count"))
         if (editorState.guideStep != null && editorState.draft != null) {
             Text(t("Your draft and words are kept. Continue with these moments, or explicitly replace the draft to change them.",
@@ -296,7 +297,7 @@ private fun SelectionScreen(
             ) { Text(t("Retry page", "重试此页")) }
         }
         if (limitReached) Text(
-            t("You can select up to 24 moments. Remove one before adding another.", "最多可选择 24 个瞬间。请先移除一个，再添加其他内容。"),
+            t("You can select up to ${StoryLimits.MAX_FRAMES} moments. Remove one before adding another.", "最多可选择 ${StoryLimits.MAX_FRAMES} 个瞬间。请先移除一个，再添加其他内容。"),
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.testTag("grouped-story-selection-limit"),
         )
@@ -344,8 +345,8 @@ private fun SelectionScreen(
                             Text(if (editorState.relatedCandidates.isEmpty()) t("Find same-day moments", "查找同一天的瞬间") else t("Refresh suggestions", "刷新建议"))
                         }
                         if (editorState.relatedBusy || creation.relatedPreviewBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        if (selected.size >= 24) Text(t("You have reached the 24 moment limit. Remove one before adding another.",
-                            "已达到 24 个瞬间上限。请先移除一个，再加入其他内容。"), color = MaterialTheme.colorScheme.error)
+                        if (selected.size >= StoryLimits.MAX_FRAMES) Text(t("You have reached the ${StoryLimits.MAX_FRAMES} moment limit. Remove one before adding another.",
+                            "已达到 ${StoryLimits.MAX_FRAMES} 个瞬间上限。请先移除一个，再加入其他内容。"), color = MaterialTheme.colorScheme.error)
                         if (editorState.relatedFailure) {
                             Text(t("Suggestions are unavailable. Your selection is unchanged.", "暂时无法获取建议，所选内容保持不变。"),
                                 color = MaterialTheme.colorScheme.error)
@@ -368,7 +369,7 @@ private fun SelectionScreen(
                                             live.relatedCandidates.any { it.asset.id == candidate.asset.id } && candidate.asset.id !in live.selectedAssetIds) {
                                             if (editor.selectAsset(candidate.asset.id)) limitReached = false else limitReached = true
                                         }
-                                    }, enabled = canAct && candidate.asset.id !in selected && selected.size < 24,
+                                    }, enabled = canAct && candidate.asset.id !in selected && selected.size < StoryLimits.MAX_FRAMES,
                                         modifier = Modifier.fillMaxWidth().testTag("grouped-story-related-add-${candidate.asset.id}")) {
                                         Text(t("Add to story", "加入故事"))
                                     }
@@ -406,7 +407,7 @@ private fun SelectionScreen(
                             if (asset.id in currentlySelected) {
                                 limitReached = false
                                 editor.selectAsset(asset.id, false)
-                            } else if (currentlySelected.size < 24) {
+                            } else if (currentlySelected.size < StoryLimits.MAX_FRAMES) {
                                 limitReached = false
                                 editor.selectAsset(asset.id, true)
                             } else limitReached = true

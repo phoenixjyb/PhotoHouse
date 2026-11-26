@@ -148,5 +148,5 @@ object SavedStoryReaderPositions {
         UUID.fromString(value).toString() == value
     }.getOrDefault(false)
 
-    private val CHAPTER_IDS = (1..6).map { "chapter-$it" }.toSet()
+    private val CHAPTER_IDS = (1..StoryLimits.MAX_CHAPTERS).map { "chapter-$it" }.toSet()
 }

@@ -13,6 +13,7 @@ import json
 import re
 import uuid
 
+from .story_outline import MAX_CHAPTER_ITEMS, MAX_CHAPTERS, MAX_ITEMS
 from .memory_narrative import (
     _canonical_uuid, _id, _object, _revision_string, _string_list, _text,
     _validate_bundle,
@@ -57,7 +58,7 @@ def validate_request(request):
             _revision_string(target['base_revision'], 'base revision')
         selection = _object(request['selection'], _SELECTION_KEYS, 'selection')
         assets = selection['asset_ids']
-        if (type(assets) is not list or not 1 <= len(assets) <= 24 or
+        if (type(assets) is not list or not 1 <= len(assets) <= MAX_ITEMS or
                 any(type(asset) is not str for asset in assets)):
             raise ValueError('Invalid selected media')
         _text(request['title'], 512, 'title')
@@ -72,7 +73,7 @@ def validate_request(request):
         if type(selection['source_policy']) is not str or selection['source_policy'] != SOURCE_POLICY:
             raise ValueError('Invalid source policy')
         chapters = selection['chapters']
-        if type(chapters) is not list or not 1 <= len(chapters) <= 6:
+        if type(chapters) is not list or not 1 <= len(chapters) <= MAX_CHAPTERS:
             raise ValueError('Invalid chapters')
         flattened = []
         for index, chapter in enumerate(chapters):
@@ -82,7 +83,7 @@ def validate_request(request):
             _text(chapter['title'], 512, 'chapter title', nonblank=True)
             if len(chapter['title']) > 160 or any(ord(char) < 32 for char in chapter['title']):
                 raise ValueError('Invalid chapter title')
-            media = _string_list(chapter['asset_ids'], 4, 128, 'chapter assets', ids=True)
+            media = _string_list(chapter['asset_ids'], MAX_CHAPTER_ITEMS, 128, 'chapter assets', ids=True)
             if not media:
                 raise ValueError('Empty chapter media')
             flattened.extend(media)

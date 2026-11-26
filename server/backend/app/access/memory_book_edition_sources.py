@@ -4,6 +4,7 @@ import re
 import unicodedata
 import uuid
 
+from .story_outline import MAX_CHAPTERS
 from .assistant_speech import MAX_WAV_BYTES, valid_wav
 from .memory_book_edition_schema import EDITION_TABLE
 from .service import AccessDenied
@@ -62,8 +63,8 @@ def _prefix(source_id):
         return 'asset_note', source_id[len('family-'):]
     if source_id.startswith('editorial-book-'):
         return 'book_introduction', source_id[len('editorial-book-'):]
-    match = re.fullmatch(r'editorial-([0-9a-f-]{36})-(chapter-[1-6])', source_id, re.ASCII)
-    if match:
+    match = re.fullmatch(r'editorial-([0-9a-f-]{36})-(chapter-([1-9][0-9]?))', source_id, re.ASCII)
+    if match and int(match.group(3)) <= MAX_CHAPTERS:
         return 'story_chapter', (match.group(1), match.group(2))
     return None, None
 

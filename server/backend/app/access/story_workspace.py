@@ -14,12 +14,11 @@ from starlette.concurrency import run_in_threadpool
 
 from .library import LibraryRoute, HINT_FIELDS, SOURCE, _asset, _integer, _query
 from .service import AccessDenied, AccessService
-from .story_outline import build_outline
+from .story_outline import MAX_CHAPTER_ITEMS, MAX_CHAPTERS, MAX_ITEMS, build_outline
 from .transport import TransportError, _body, _memory_runtime, credentials_from_request
 
 router = APIRouter(route_class=LibraryRoute)
 FIELDS = {'asset_ids', 'theme', 'language', 'title'}
-MAX_ITEMS = 24
 MAX_RESPONSE = 256 * 1024
 RELATED_PAGE_SIZE = 20
 RELATED_SCAN_SIZE = 80
@@ -37,7 +36,7 @@ def _text(value, limit=1800):
 def _selection(body):
     raw = body['asset_ids'].split(',')
     if not 1 <= len(raw) <= MAX_ITEMS or len(set(raw)) != len(raw):
-        raise TransportError(400, 'Select between one and 24 distinct items')
+        raise TransportError(400, f'Select between one and {MAX_ITEMS} distinct items')
     ids = [_integer(value, 2**63-1) for value in raw]
     # Canonical IDs also prevent aliases such as 101 and 0101 from duplicating media.
     if any(str(ident) != value for ident, value in zip(ids, raw)):
@@ -72,7 +71,7 @@ def _recorded_capture_day(value):
 def _related_selection(body):
     raw = body['asset_ids'].split(',')
     if not 1 <= len(raw) <= MAX_ITEMS or len(set(raw)) != len(raw):
-        raise TransportError(400, 'Select between one and 24 distinct items')
+        raise TransportError(400, f'Select between one and {MAX_ITEMS} distinct items')
     ids = [_integer(value, 2**63 - 1) for value in raw]
     if any(str(ident) != value for ident, value in zip(ids, raw)):
         raise TransportError(400, 'Invalid selection')
@@ -303,7 +302,7 @@ def title_suggestions(runtime, token, library, body, adapter, lock, source_revie
     try:
         from .memory_narrative import _strict_loads, LocalMemoryNarrativeError
         chapters = _strict_loads(body['chapters'].encode('utf-8'))
-        if type(chapters) is not list or not 1 <= len(chapters) <= 6:
+        if type(chapters) is not list or not 1 <= len(chapters) <= MAX_CHAPTERS:
             raise ValueError()
         explicit_layout = source_review and any(type(chapter) is dict and 'asset_ids' in chapter for chapter in chapters)
         if not explicit_layout and len(chapters) != len(snapshot['chapters']):
@@ -311,7 +310,7 @@ def title_suggestions(runtime, token, library, body, adapter, lock, source_revie
         if explicit_layout:
             layout = []
             for chapter in chapters:
-                if type(chapter) is not dict or type(chapter.get('asset_ids')) is not list or not 1 <= len(chapter['asset_ids']) <= 4:
+                if type(chapter) is not dict or type(chapter.get('asset_ids')) is not list or not 1 <= len(chapter['asset_ids']) <= MAX_CHAPTER_ITEMS:
                     raise ValueError()
                 layout.extend(chapter['asset_ids'])
             # A title request may preserve manually arranged chapters, but cannot

@@ -1,6 +1,6 @@
 # Grouped story creation
 
-The phone flow lets an authorized family select 1–24 photos or videos from one
+The phone flow lets an authorized family select 1–48 photos or videos from one
 library, group them into editable chapters, review the sources, and explicitly
 save one story. Only the protected server capability grants access to creation;
 a displayed role label cannot override a denial. The server rechecks membership,

@@ -961,7 +961,7 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
     ): SavedMemoryStoryContributionReferences {
         require(protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library) && revision > 0)
         val canonicalId = storyId.also { require(runCatching { java.util.UUID.fromString(it).toString() == it }.getOrDefault(false)) }
-        require(chapterIds.size in 1..6 && chapterIds.withIndex().all { (index, id) -> id == "chapter-${index + 1}" })
+        require(chapterIds.size in 1..StoryLimits.MAX_CHAPTERS && chapterIds.withIndex().all { (index, id) -> id == "chapter-${index + 1}" })
         val target = origin.url.newBuilder().addPathSegments("memory-stories").addPathSegment(canonicalId)
             .addPathSegment("contribution-refs").addQueryParameter("library", library)
             .addQueryParameter("revision", revision.toString()).build()
@@ -998,7 +998,7 @@ class HttpsPhotoHouseApi internal constructor(private val origin: TrustedOrigin,
         token: Bearer, library: String, storyId: String, revision: Long, chapterId: String, page: Int,
     ): MemoryContributionCandidatePage {
         require(protectedNativeV2Enabled && PhoneDiscoveryWire.validLibrary(library) && revision > 0 &&
-            chapterId.matches(Regex("chapter-[1-6]")) && page in 1..100000)
+            chapterId.matches(StoryLimits.chapterId) && page in 1..100000)
         val canonicalId = storyId.also { require(runCatching { java.util.UUID.fromString(it).toString() == it }.getOrDefault(false)) }
         val target = origin.url.newBuilder().addPathSegments("memory-community/v1/stories")
             .addPathSegment(canonicalId).addPathSegment("contribution-candidates")

@@ -1422,7 +1422,7 @@ class ConnectedStore(
                     return@launch
                 }
                 var unsupported = 0
-                for (assetId in fresh.assetIds.take(24)) {
+                for (assetId in fresh.assetIds.take(StoryLimits.MAX_FRAMES)) {
                     if (!valid()) return@launch
                     val detail = api.detail(credential, library, assetId)
                     if (!valid()) return@launch
@@ -1648,7 +1648,7 @@ class ConnectedStore(
         val creation = state.value.groupedStoryCreation ?: return false
         val draft = editor.state.value.draft ?: return false
         if (!allowed() || creation.editor !== editor || editor.state.value.guideStep != StoryGuideStep.REVIEW ||
-            draft.items.size !in 1..24 || creation.reviewPreviewsBusy) return false
+            draft.items.size !in 1..StoryLimits.MAX_FRAMES || creation.reviewPreviewsBusy) return false
         val credential = token ?: return false
         val library = state.value.library ?: return false
         if (draft.libraryId != library) return false
@@ -2833,7 +2833,7 @@ class ConnectedStore(
                         identity?.account_id != account || state.value.library != reading.library ||
                         state.value.memoryBooks?.selectedBook?.let { it.id == book.id && it.revision == book.revision } != true) return@launch
                     if (refs.id != child.id || refs.libraryId != reading.library || refs.revision != child.revision ||
-                        refs.chapters.size !in 1..6 || refs.chapters.map { it.chapterId } != (1..refs.chapters.size).map { "chapter-$it" })
+                        refs.chapters.size !in 1..StoryLimits.MAX_CHAPTERS || refs.chapters.map { it.chapterId } != (1..refs.chapters.size).map { "chapter-$it" })
                         throw ApiFailure(FailureKind.INVALID_RESPONSE)
                     refs.chapters.forEach { group ->
                         if (group.contributionIds.size > 12 || group.contributionIds.distinct().size != group.contributionIds.size) throw ApiFailure(FailureKind.INVALID_RESPONSE)

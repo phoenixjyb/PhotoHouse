@@ -114,7 +114,7 @@ internal object ProtectedMemoryStoriesWire {
         val selectionRevision = field(root, "selection_revision", 64); check(selectionRevision.matches(Regex("[0-9a-fA-F]{64}")))
         val title = field(root, "title", 160); val theme = field(root, "theme", 32).also(::theme)
         val language = field(root, "language", 2); check(language in setOf("zh", "en"))
-        val items = array(root, "items", 24).map { parseItem(obj(it), library) }
+        val items = array(root, "items", StoryLimits.MAX_FRAMES).map { parseItem(obj(it), library) }
         check(items.isNotEmpty() && items.map { it.asset.id }.distinct().size == items.size)
         val canonicalEvidence = mutableMapOf<String, MemoryStoryEvidence>()
         items.forEach { item ->
@@ -125,7 +125,7 @@ internal object ProtectedMemoryStoriesWire {
                     evidence.originAssetId != null && evidence.byline != null)
             }
         }
-        val chapters = array(root, "chapters", 6).mapIndexed { index, value -> parseChapter(obj(value), index + 1) }
+        val chapters = array(root, "chapters", StoryLimits.MAX_CHAPTERS).mapIndexed { index, value -> parseChapter(obj(value), index + 1) }
         check(chapters.isNotEmpty() && chapters.map { it.id }.distinct().size == chapters.size)
         val ordered = chapters.flatMap { it.assetIds }
         check(ordered == items.map { it.asset.id })
@@ -142,7 +142,7 @@ internal object ProtectedMemoryStoriesWire {
     fun decode(bytes: ByteArray, library: String, expectedAssetIds: List<String>,
                sourceReview: Boolean = false): SavedMemoryStory = guarded {
         check(bytes.size <= 256 * 1024)
-        check(expectedAssetIds.size in 1..24 && expectedAssetIds.distinct().size == expectedAssetIds.size)
+        check(expectedAssetIds.size in 1..StoryLimits.MAX_FRAMES && expectedAssetIds.distinct().size == expectedAssetIds.size)
         expectedAssetIds.forEach { id ->
             check(id.matches(Regex("[1-9][0-9]{0,18}")) && id.toLongOrNull()?.toString() == id)
         }
@@ -161,7 +161,7 @@ internal object ProtectedMemoryStoriesWire {
         bytes: ByteArray, library: String, expectedId: String, expectedRevision: Long,
         expectedChapterIds: List<String>,
     ): SavedMemoryStoryContributionReferences = guarded {
-        check(expectedChapterIds.size in 1..6 && expectedChapterIds.distinct().size == expectedChapterIds.size &&
+        check(expectedChapterIds.size in 1..StoryLimits.MAX_CHAPTERS && expectedChapterIds.distinct().size == expectedChapterIds.size &&
             expectedChapterIds.withIndex().all { (index, id) -> id == "chapter-${index + 1}" })
         val root = obj(DiscoveryJson.parse(bytes, 16 * 1024, 64))
         exact(root, "version", "id", "library_id", "revision", "chapters")
@@ -170,7 +170,7 @@ internal object ProtectedMemoryStoriesWire {
         val actualLibrary = field(root, "library_id", 256)
         val revision = decimalString(root["revision"], positive = true)
         check(id == expectedId && actualLibrary == library && revision == expectedRevision)
-        val groups = array(root, "chapters", 6).map { raw ->
+        val groups = array(root, "chapters", StoryLimits.MAX_CHAPTERS).map { raw ->
             val group = obj(raw)
             exact(group, "id", "contribution_ids")
             val chapterId = field(group, "id", 10)
@@ -211,8 +211,8 @@ internal object ProtectedMemoryStoriesWire {
         val language = field(o, "language", 2); check(language in setOf("zh", "en"))
         val revision = decimalString(o["revision"], positive = true)
         val cover = field(o, "cover_asset_id", 19); assetId(cover)
-        val itemCount = integer(o["item_count"], 24); check(itemCount in 1..24)
-        val chapterCount = integer(o["chapter_count"], 6); check(chapterCount in 1..6)
+        val itemCount = integer(o["item_count"], StoryLimits.MAX_FRAMES); check(itemCount in 1..StoryLimits.MAX_FRAMES)
+        val chapterCount = integer(o["chapter_count"], StoryLimits.MAX_CHAPTERS); check(chapterCount in 1..StoryLimits.MAX_CHAPTERS)
         val updated = long(o["updated_at"]); check(updated >= 0)
         return SavedMemoryStorySummary(id, title, theme, language, revision, cover, itemCount, chapterCount, updated, bool(o, "can_edit"))
     }

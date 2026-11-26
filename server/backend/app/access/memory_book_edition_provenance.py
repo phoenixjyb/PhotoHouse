@@ -12,6 +12,7 @@ import json
 import re
 import uuid
 
+from .story_outline import MAX_CHAPTERS as MAX_STORY_CHAPTERS
 from .memory_book_edition_contract import EditionChildRevision
 from .memory_narrative import _validate_bundle
 from .transport import TransportError
@@ -109,7 +110,7 @@ def build_edition_provenance(bundle, children, *, contribution_owners, family_no
                 chapters_by_source[source_id].append(chapter['id'])
         if chapter_children != child_ids:
             raise ValueError()
-        if any(sum(owner == child for owner in chapter_owner.values()) > 6 for child in child_ids):
+        if any(sum(owner == child for owner in chapter_owner.values()) > MAX_STORY_CHAPTERS for child in child_ids):
             raise ValueError()
         if clean['version'] == 2:
             expected = [{'story_id': child.id, 'revision': child.revision} for child in children]

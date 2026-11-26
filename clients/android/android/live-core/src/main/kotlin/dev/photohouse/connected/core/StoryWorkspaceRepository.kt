@@ -191,7 +191,7 @@ class StoryWorkspaceRepository(
             story.revision >= Long.MAX_VALUE ||
             story.id != runCatching { java.util.UUID.fromString(story.id).toString() }.getOrNull() ||
             references.id != story.id || references.libraryId != story.libraryId || references.revision != story.revision ||
-            referenceChapters.map { it.chapterId } != expectedChapterIds || expectedChapterIds.size !in 1..6 ||
+            referenceChapters.map { it.chapterId } != expectedChapterIds || expectedChapterIds.size !in 1..StoryLimits.MAX_CHAPTERS ||
             expectedChapterIds.withIndex().any { (index, id) -> id != "chapter-${index + 1}" } ||
             referenceChapters.any { group -> group.contributionIds.size > 12 ||
                 group.contributionIds.distinct().size != group.contributionIds.size ||

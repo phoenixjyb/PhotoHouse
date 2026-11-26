@@ -7,7 +7,7 @@ It reuses the existing protected outline, dictation and save contracts.
 
 ## Three steps
 
-1. **Choose moments.** Explicitly select 1–24 photos or videos, including from
+1. **Choose moments.** Explicitly select 1–48 photos or videos, including from
    albums or reviewed date suggestions. Next prepares an outline; it does not
    save a story. Guided chapter wording starts blank rather than retaining the
    outline's instructional scaffold.
