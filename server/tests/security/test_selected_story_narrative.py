@@ -193,15 +193,15 @@ class SelectedStoryNarrativeValidationTests(unittest.TestCase):
         candidate['chapters'] = []
         mutations.append(('zero chapters', candidate))
         candidate = v3_bundle()
-        for index in range(7):
+        for index in range(13):
             candidate['chapters'].append({'id': f'extra-{index}', 'title': 'x',
                 'narration': '', 'asset_ids': [f'extra-asset-{index}'], 'evidence_ids': []})
         candidate['chapters'] = candidate['chapters'][2:]
         candidate['sources'] = []
-        mutations.append(('seven chapters', candidate))
+        mutations.append(('thirteen chapters', candidate))
         candidate = v3_bundle()
-        candidate['chapters'][0]['asset_ids'] = [f'a{i}' for i in range(25)]
-        mutations.append(('more than 24 selected assets', candidate))
+        candidate['chapters'][0]['asset_ids'] = [f'a{i}' for i in range(49)]
+        mutations.append(('more than 48 selected assets', candidate))
         candidate = v3_bundle()
         candidate['chapters'][0]['asset_ids'] = ['same', 'same']
         mutations.append(('duplicate asset in chapter', candidate))
@@ -215,7 +215,7 @@ class SelectedStoryNarrativeValidationTests(unittest.TestCase):
         max_assets['chapters'] = [
             {'id': f'ch-{index}', 'title': 'Moment', 'narration': '',
              'asset_ids': [f'a-{index}-{asset}' for asset in range(4)], 'evidence_ids': []}
-            for index in range(6)
+            for index in range(12)
         ]
         max_assets['sources'] = []
         candidate = v3_bundle()
@@ -227,7 +227,7 @@ class SelectedStoryNarrativeValidationTests(unittest.TestCase):
         for reason, candidate in mutations:
             with self.subTest(reason=reason), self.assertRaises(ValueError):
                 _validate_bundle(candidate, allow_draft=True)
-        self.assertEqual(24, len({asset for chapter in max_assets['chapters']
+        self.assertEqual(48, len({asset for chapter in max_assets['chapters']
                                   for asset in chapter['asset_ids']}))
         self.assertEqual(max_assets, _validate_bundle(max_assets, allow_draft=True))
 

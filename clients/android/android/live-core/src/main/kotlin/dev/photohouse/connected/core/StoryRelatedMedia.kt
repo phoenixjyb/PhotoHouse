@@ -29,7 +29,7 @@ internal object StoryRelatedMediaWireLimit {
 internal object StoryRelatedMediaWire {
     private const val MAX_REQUEST_BYTES = 4096
     private const val MAX_RESPONSE_BYTES = 256 * 1024
-    private const val MAX_SEEDS = 24
+    private const val MAX_SEEDS = StoryLimits.MAX_FRAMES
     private const val MAX_ITEMS = 20
 
     private fun bad(): Nothing = throw ApiFailure(FailureKind.INVALID_RESPONSE)

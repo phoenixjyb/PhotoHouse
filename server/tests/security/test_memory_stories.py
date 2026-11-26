@@ -57,6 +57,44 @@ class MemoryStoryTests(unittest.TestCase):
         self.assertEqual(self.save(edit, ident).json()['revision'], '2')
         self.assertEqual(self.save({**edit,'title':'复用标识'}, ident).status_code, 409)
 
+    def test_full_story_keeps_mixed_media_order_across_save_and_reopen(self):
+        asset_ids = list(range(1001, 1049))
+        order = asset_ids[1::2] + asset_ids[::2][::-1]
+        with self.f.connection() as db:
+            db.executemany("""INSERT INTO assets(id,path,hash_sha256,status,mime,width,height)
+                VALUES(?,?,?,'active',?,400,300)""",
+                [(ident, f'synthetic/{ident}', f'fixture-{ident}',
+                  'video/mp4' if ident % 7 == 0 else 'image/jpeg') for ident in asset_ids])
+            db.executemany('INSERT INTO access_asset_libraries VALUES (?,?)',
+                           [(ident, 'family-a') for ident in asset_ids])
+            db.commit()
+        selection = {'asset_ids': ','.join(map(str, order)), 'theme': 'everyday',
+                     'language': 'en', 'title': 'Synthetic family story'}
+        preview = self.client.post('/story-workspace/preview?library=family-a',
+                                   headers=self.headers, json=selection)
+        self.assertEqual(preview.status_code, 200, preview.text)
+        draft = preview.json()
+        expected = list(map(str, order))
+        expected_chapters = [expected[start:start + 4] for start in range(0, 48, 4)]
+        self.assertEqual([chapter['asset_ids'] for chapter in draft['chapters']], expected_chapters)
+        self.assertEqual({item['kind'] for item in draft['items']}, {'image', 'video'})
+
+        saved = self.save({**selection, 'chapters': json.dumps(draft['chapters']),
+                           'selection_revision': draft['selection_revision'], 'revision': '0',
+                           'mutation_id': str(uuid.uuid4())})
+        self.assertEqual(saved.status_code, 200, saved.text)
+        story_id = saved.json()['id']
+        reopened = self.get(f'/memory-stories/{story_id}?library=family-a')
+        self.assertEqual(reopened.status_code, 200, reopened.text)
+        result = reopened.json()
+        self.assertEqual([item['id'] for item in result['items']], expected)
+        self.assertEqual([chapter['id'] for chapter in result['chapters']],
+                         [f'chapter-{ordinal}' for ordinal in range(1, 13)])
+        self.assertEqual([chapter['asset_ids'] for chapter in result['chapters']], expected_chapters)
+
+        self.f.mutate("UPDATE assets SET status='deleted' WHERE id=?", (order[-1],))
+        self.assertEqual(self.get(f'/memory-stories/{story_id}?library=family-a').status_code, 401)
+
     def test_viewer_can_read_but_not_create_or_edit(self):
         saved = self.save().json()
         member = {'Authorization':'Bearer '+self.f.member_token}

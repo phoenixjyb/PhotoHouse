@@ -13,7 +13,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupedStoryAlbumSelectionTest {
-    private fun album(theme: String = "custom", ids: List<String> = (1..30).map(Int::toString), revision: String = "a".repeat(64)) =
+    private fun album(theme: String = "custom", ids: List<String> = (1..54).map(Int::toString), revision: String = "a".repeat(64)) =
         ProtectedLibraryAlbum("7", "Family day", "家庭日", "", theme, ids, ids.firstOrNull().orEmpty(), revision, false)
 
     private class FakeApi : PhotoHouseApi, StoryWorkspaceApi {
@@ -120,7 +120,7 @@ class GroupedStoryAlbumSelectionTest {
         assertEquals(0, api.saves)
     }
 
-    @Test fun successSeedsOrderedFirst24MapsCustomWithoutPreviewOrSave() = runTest {
+    @Test fun successSeedsOrderedFirst48MapsCustomWithoutPreviewOrSave() = runTest {
         val api = FakeApi()
         val (store, editor) = signedIn(api)
         assertTrue(editor.selectAsset("90"))
@@ -131,13 +131,13 @@ class GroupedStoryAlbumSelectionTest {
         assertTrue(store.selectGroupedStoryAlbum(album, mutableSnapshot, confirmedReplace = true))
         mutableSnapshot.clear()
         runCurrent()
-        assertEquals((1..24).map(Int::toString), editor.state.value.selectedAssetIds)
+        assertEquals((1..48).map(Int::toString), editor.state.value.selectedAssetIds)
         assertEquals("everyday", editor.state.value.theme)
         assertSame(album, store.state.value.groupedStoryCreation!!.selectedAlbum)
         assertEquals(1, store.state.value.groupedStoryCreation!!.albumPage)
         assertEquals((1..8).map(Int::toString), store.state.value.groupedStoryCreation!!.albumAssets.map { it.id })
         assertEquals(8, store.state.value.groupedStoryCreation!!.albumPreviews.size)
-        assertEquals(32, api.detailReads) // first 24 validated, then current 8-item browsing page
+        assertEquals(56, api.detailReads) // first 48 validated, then current 8-item browsing page
         assertEquals(10, api.thumbnails) // original gallery page, album page, then return to library
         assertEquals(0, api.previews)
         assertEquals(0, api.saves)
@@ -145,7 +145,7 @@ class GroupedStoryAlbumSelectionTest {
         assertTrue(store.returnToGroupedStoryLibrary())
         runCurrent()
         assertNull(store.state.value.groupedStoryCreation!!.selectedAlbum)
-        assertEquals((1..24).map(Int::toString), editor.state.value.selectedAssetIds)
+        assertEquals((1..48).map(Int::toString), editor.state.value.selectedAssetIds)
     }
 
     @Test fun seasonalAlbumMapsToSupportedEverydayTheme() = runTest {
@@ -157,7 +157,7 @@ class GroupedStoryAlbumSelectionTest {
         assertTrue(store.selectGroupedStoryAlbum(album, emptyList(), confirmedReplace = false))
         runCurrent()
         assertEquals("everyday", editor.state.value.theme)
-        assertEquals((1..24).map(Int::toString), editor.state.value.selectedAssetIds)
+        assertEquals((1..48).map(Int::toString), editor.state.value.selectedAssetIds)
         assertEquals(0, api.previews)
         assertEquals(0, api.saves)
     }
@@ -183,7 +183,7 @@ class GroupedStoryAlbumSelectionTest {
 
     @Test fun chooserHandoffLeavesBusyOwnedByBlockedAlbumPageUntilItFinishes() = runTest {
         val api = FakeApi().apply {
-            pauseDetailCall = 25
+            pauseDetailCall = 49
             detailGate = CompletableDeferred()
         }
         val (store, editor) = signedIn(api)
@@ -198,7 +198,7 @@ class GroupedStoryAlbumSelectionTest {
         api.detailGate!!.complete(Unit)
         runCurrent()
         assertFalse(store.state.value.groupedStoryCreation!!.albumBusy)
-        assertEquals((1..24).map(Int::toString), editor.state.value.selectedAssetIds)
+        assertEquals((1..48).map(Int::toString), editor.state.value.selectedAssetIds)
     }
 
     @Test fun current403ClosesAlbumEditorAndClearsPrivateSelection() = runTest {
@@ -254,7 +254,7 @@ class GroupedStoryAlbumSelectionTest {
         assertSame(album, live.selectedAlbum)
         assertFalse(live.albumBusy)
         assertTrue(live.albumPreviews.isEmpty())
-        assertEquals((1..24).map(Int::toString), editor.state.value.selectedAssetIds)
+        assertEquals((1..48).map(Int::toString), editor.state.value.selectedAssetIds)
     }
 
     @Test fun lateThumbnailAfterAlbumDismissalIsWiped() = runTest {

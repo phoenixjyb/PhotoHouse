@@ -17,7 +17,7 @@ from .library import LibraryRoute, _integer, _query
 from .service import AccessService, AccessDenied
 from .stories import _uuid
 from .story_workspace import collect_items, _selection, selection_revision, MAX_RESPONSE
-from .story_outline import THEMES, build_outline
+from .story_outline import MAX_CHAPTER_ITEMS, MAX_CHAPTERS, THEMES, build_outline
 from .transport import TransportError, _body, _memory_runtime, credentials_from_request
 from .memory_source_refs import (current_groups, parse_groups, replace_groups,
     available as source_refs_available, validate_groups)
@@ -78,7 +78,7 @@ def content(body):
         raise TransportError(400, 'Invalid selection revision')
     try:
         chapters = _json(body['chapters'])
-        if not isinstance(chapters, list) or not 1 <= len(chapters) <= 6:
+        if not isinstance(chapters, list) or not 1 <= len(chapters) <= MAX_CHAPTERS:
             raise ValueError()
         flattened = []
         for index, chapter in enumerate(chapters):
@@ -95,7 +95,7 @@ def content(body):
                 raise ValueError()
             selected = chapter['asset_ids']
             refs = chapter['evidence_ids']
-            if not isinstance(selected, list) or not 1 <= len(selected) <= 4:
+            if not isinstance(selected, list) or not 1 <= len(selected) <= MAX_CHAPTER_ITEMS:
                 raise ValueError()
             if any(not isinstance(value, str) for value in selected):
                 raise ValueError()

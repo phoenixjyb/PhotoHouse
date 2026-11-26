@@ -529,12 +529,12 @@ class StoryWorkspaceStoreTest {
         assertNull(persistence.corruptFingerprint)
     }
 
-    @Test fun selectionCapRejectsTheTwentyFifthWithoutDroppingEarlierChoices() = runTest {
+    @Test fun selectionCapRejectsTheFortyNinthWithoutDroppingEarlierChoices() = runTest {
         var current = binding()
         val store = StoryWorkspaceStore(StoryWorkspaceRepository(Fake(), { current }), this, { current })
-        (1..24).forEach { assertTrue(store.selectAsset(it.toString())) }
-        assertFalse(store.selectAsset("25"))
-        assertEquals((1..24).map(Int::toString), store.state.value.selectedAssetIds)
+        (1..48).forEach { assertTrue(store.selectAsset(it.toString())) }
+        assertFalse(store.selectAsset("49"))
+        assertEquals((1..48).map(Int::toString), store.state.value.selectedAssetIds)
     }
 
     @Test fun optInEvidenceChoicesClearReviewAndFreezeProfileOnUncertainRetry() = runTest {

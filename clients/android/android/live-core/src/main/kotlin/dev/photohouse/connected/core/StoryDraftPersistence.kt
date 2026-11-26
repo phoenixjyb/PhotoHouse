@@ -85,8 +85,8 @@ object StoryDraftRecordCodec {
     const val VERSION = 1
     const val MAX_RECORD_BYTES = 128 * 1024
     const val MAX_SLOTS = 20
-    private const val MAX_CHAPTERS = 6
-    private const val MAX_ASSETS = 24
+    private const val MAX_CHAPTERS = StoryLimits.MAX_CHAPTERS
+    private const val MAX_ASSETS = StoryLimits.MAX_FRAMES
     private const val MAX_SOURCES_PER_CHAPTER = 12
     private const val MAX_BODY_BYTES = 64 * 1024
 

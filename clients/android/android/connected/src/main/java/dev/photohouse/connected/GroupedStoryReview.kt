@@ -1,5 +1,6 @@
 package dev.photohouse.connected
 
+import dev.photohouse.connected.core.StoryLimits
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -192,7 +193,7 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                 OutlinedButton(
                     onClick = { finishTyping(); store.openChapterFrameSearch(chapter.id) },
                     enabled = editable && !state.composing && !state.invalidInput && !dictationUnfinished && dictationStore == null &&
-                        chapter.assetIds.size < 4 && state.selectedAssetIds.size < 24,
+                        chapter.assetIds.size < 4 && state.selectedAssetIds.size < StoryLimits.MAX_FRAMES,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("grouped-story-find-chapter-frames"),
                 ) { Text(t("Find frames for this chapter", "查找本篇画面")) }
             }
@@ -214,7 +215,7 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                         Text(t("Split or combine neighboring moments to match your activity. Their order stays the same; review the words and sources afterward.",
                             "按活动拆分或合并相邻瞬间。素材顺序不变；整理后请重新核对文字与来源。"), style = MaterialTheme.typography.bodySmall)
                         val canArrange = editable && !state.composing && !state.invalidInput && dictationStore == null && !dictationUnfinished
-                        if (chapter.assetIds.size > 1 && state.editableChapters.size < 6) {
+                        if (chapter.assetIds.size > 1 && state.editableChapters.size < StoryLimits.MAX_CHAPTERS) {
                             (1 until chapter.assetIds.size).forEach { firstPartCount ->
                                 OutlinedButton(onClick = {
                                     finishTyping()
@@ -224,7 +225,7 @@ internal fun GroupedStoryReview(store: StoryWorkspaceStore, zh: Boolean, onClose
                                     Text(t("Split after moment $firstPartCount", "从第 $firstPartCount 个瞬间后拆分"))
                                 }
                             }
-                        } else Text(if (state.editableChapters.size >= 6) t("This outline already has six chapters.", "这份提纲已包含六篇。")
+                        } else Text(if (state.editableChapters.size >= StoryLimits.MAX_CHAPTERS) t("This outline already has ${StoryLimits.MAX_CHAPTERS} chapters.", "这份提纲已包含 ${StoryLimits.MAX_CHAPTERS} 篇。")
                             else t("One moment stays in one chapter.", "单个瞬间保留为一篇。"), style = MaterialTheme.typography.bodySmall)
                         val nextChapter = state.editableChapters.getOrNull(index + 1)
                         if (nextChapter != null) {

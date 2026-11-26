@@ -85,7 +85,7 @@ internal object MemoryBookEditorialWire {
             val chapters = root.array("chapters").map { (it as? JsonObject ?: invalid()).also { obj ->
                 if (obj.keys != setOf("id", "contribution_ids")) invalid()
             }.string("id") }
-            if (chapters.size !in 1..6 || chapters != (1..chapters.size).map { "chapter-$it" }) invalid()
+            if (chapters.size !in 1..StoryLimits.MAX_CHAPTERS || chapters != (1..chapters.size).map { "chapter-$it" }) invalid()
             return ProtectedMemoryStoriesWire.contributionReferences(bytes, library, storyId, revision, chapters)
         } catch (e: ApiFailure) { throw e }
         catch (_: Exception) { invalid() }

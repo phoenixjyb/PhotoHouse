@@ -195,9 +195,16 @@ class MemoryContributionRefTests(unittest.TestCase):
         ):
             body = self.story_body | {'revision':'1','mutation_id':str(uuid.uuid4()),'contribution_refs':raw}
             self.assertEqual(self.save(body,self.story,opt_in=True).status_code,422)
+        chapter_ids = [f'chapter-{i}' for i in range(1, 13)]
+        empty_groups = [{'chapter_id': chapter, 'contribution_ids': []} for chapter in chapter_ids]
+        self.assertEqual(parse_groups(json.dumps(empty_groups), chapter_ids),
+                         [(chapter, []) for chapter in chapter_ids])
         with self.assertRaises(TransportError):
-            parse_groups(json.dumps([{'chapter_id':f'chapter-{i}','contribution_ids':[]}
-                                     for i in range(1,8)]),[f'chapter-{i}' for i in range(1,8)])
+            parse_groups(json.dumps(empty_groups + [{'chapter_id': 'chapter-13', 'contribution_ids': []}]),
+                         chapter_ids + ['chapter-13'])
+        with self.assertRaises(TransportError):
+            parse_groups(json.dumps([{'chapter_id': 'chapter-12', 'contribution_ids': [str(uuid.uuid4())]}]),
+                         chapter_ids)
         with self.assertRaises(TransportError):
             parse_groups(json.dumps([{'chapter_id':'chapter-1','contribution_ids':[
                 str(uuid.uuid4()) for _ in range(13)]}]),['chapter-1'])

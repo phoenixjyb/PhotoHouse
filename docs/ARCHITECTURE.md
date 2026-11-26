@@ -580,9 +580,12 @@ photos and videos sharing a selected item's recorded capture calendar day.
 It reads catalog metadata after membership checks; it does not load images,
 compare embeddings, run a model or create a story.
 
-Web and phone selections use the same ordered limit of 24 items. Each candidate
-requires the user's choice before the ordinary story preview reloads current
-evidence. The phone keeps candidate pages and preview bytes bounded, and clears
+Web and phone story editors accept up to 48 ordered items in 12 chapters,
+with up to four frames per chapter. Adding selected frames fills the last chapter
+then starts another. A Jude search selection can supply up to 24 frames per add.
+Saved family-memory links are supported in the first six chapters by the existing
+reference table. Each candidate requires the user's choice before the story
+preview reloads current evidence. The phone keeps candidate pages and preview bytes bounded, and clears
 them when selection or access changes. Filename dates and receipt dates remain
 separate hints and cannot establish that two items depict the same activity.
 Activity grouping and coherent prose generation remain subsequent, separately

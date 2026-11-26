@@ -6,6 +6,7 @@ const {createInterface}=require('node:readline');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||process.env.PLAYWRIGHT_MODULE_PATH||'playwright-core');
 const root=path.resolve(__dirname,'../..');
+const expandedStoryCheck=process.env.PH_EXPANDED_STORY_CHECK==='1';
 const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-story-draft-resume-'));
 fs.mkdirSync(artifacts,{recursive:true});console.log('ARTIFACTS_DIR '+artifacts);
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'browser_bridge.py')],{cwd:root,stdio:['pipe','pipe','pipe']});
@@ -29,19 +30,20 @@ const testRun=(async()=>{
   await ready;
   browser=await chromium.launch({headless:true,...(process.env.PH_BROWSER_EXECUTABLE?{executablePath:process.env.PH_BROWSER_EXECUTABLE}:{}),args:['--disable-background-networking','--disable-component-update','--no-first-run','--host-resolver-rules=MAP * ~NOTFOUND']});
   context=await browser.newContext({viewport:{width:1200,height:900},serviceWorkers:'block',acceptDownloads:true});
-  await context.addInitScript(()=>{
+  await context.addInitScript(expandedStoryCheck=>{
     let Constructor;
     Object.defineProperty(window,'PhotoHouseStoryWorkspace',{configurable:true,get:()=>Constructor,set:value=>{
       Constructor=config=>{
         let forcedAccount=null,forcedLanguage=null;const originalScope=config.scope;
-        const instance=value({...config,scope:()=>({...originalScope(),...(forcedAccount?{account:forcedAccount}:{}),...(forcedLanguage?{language:forcedLanguage}:{})})});
+        const instance=value({...config,scope:()=>({...originalScope(),...(forcedAccount?{account:forcedAccount}:{}),...(forcedLanguage?{language:forcedLanguage}:{})}),
+          ...(expandedStoryCheck?{openFrameSearch:target=>{window.__storyCapacityFrameTarget=target;}}:{})});
         window.__storyWorkspaceTest=instance;window.__storyWorkspaceTestScope=config.scope;
         window.__setStoryWorkspaceTestAccount=account=>{forcedAccount=account;};
         window.__setStoryWorkspaceTestLanguage=language=>{forcedLanguage=language;instance.translate();};
         return instance;
       };
     }});
-  });
+  },expandedStoryCheck);
   await context.route('**/*',async route=>{
     const req=route.request(),url=new URL(req.url());
     if(url.origin!=='https://photohouse.test'){external.push(url.origin);await route.abort();return;}
@@ -76,6 +78,42 @@ const testRun=(async()=>{
   await login();
   page.on('dialog',dialog=>void dialog.accept());
   await page.locator('#memory-guide').waitFor({state:'visible'});
+  if (expandedStoryCheck) {
+    assert.equal((await rpc({command:'mutate',scenario:'expanded-story-assets'})).ok,true);
+    const expected = Array.from({length:48}, (_,index)=>String(1148-index));
+    const expectedChapters = Array.from({length:12}, (_,index)=>expected.slice(index*4,index*4+4));
+    await page.evaluate(ids=>window.__storyWorkspaceTest.fromResults(ids),expected.slice(0,24));
+    await page.locator('#story-build').click();
+    const cards=page.locator('#story-chapter-editor .story-chapter-card');
+    const readChapters=()=>cards.evaluateAll(nodes=>nodes.map(card=>
+      Array.from(card.querySelectorAll('.story-chapter-frame img'),image=>image.alt)));
+    await cards.nth(5).waitFor();
+    assert.deepEqual(await readChapters(),expectedChapters.slice(0,6));
+    await page.locator('#story-find-more-frames').click();
+    const appended=await page.evaluate(ids=>{
+      const target=window.__storyCapacityFrameTarget;
+      if (!target || target.limit!==24) return false;
+      // Synthetic photos and videos use the same handoff as revalidated Jude results.
+      return target.append(ids.map(id=>({id,kind:Number(id)%7===0?'video':'image'})),()=>true);
+    },expected.slice(24));
+    assert.ok(appended);
+    await cards.nth(11).waitFor();
+    assert.deepEqual(await readChapters(),expectedChapters);
+    assert.match(await page.locator('#story-selection-count').textContent(),/48 \/ 48/);
+    await page.locator('#story-local-save').click();
+    await page.waitForFunction(()=>/草稿已保存|draft saved/i.test(document.querySelector('#story-local-editor-status').textContent));
+    await page.reload();
+    await page.locator('#story-local-resume').click();
+    await cards.nth(11).waitFor();
+    assert.deepEqual(await readChapters(),expectedChapters);
+    const preview = requests.filter(item=>item.method==='POST'&&item.path.startsWith('/story-workspace/preview')).at(-1);
+    assert.deepEqual(JSON.parse(preview.body).asset_ids.split(','),expected);
+    assert.equal(saveBodies.length,0);
+    assert.deepEqual(external,[]);
+    assert.deepEqual(errors,[]);
+    pass('48 photos and videos keep their order across 12 chapters after reopening a private draft');
+    return;
+  }
   const body=page.locator('#story-chapter-editor .story-chapter-card textarea[maxlength="6000"]').first();
   const authored='河边的那天下午，Jane 讲了一个故事。<b>这是原话</b>\n还记得风的声音。';
   const title='河边的那天下午，Jane 讲了一个故事。';
@@ -207,6 +245,16 @@ const testRun=(async()=>{
   }
   assert.deepEqual(external,[]);assert.deepEqual(errors,[]);
   pass('Chinese and English device-draft controls fit a narrow screen');
-})().finally(async()=>{try{await context?.close();await browser?.close();}finally{bridge.stdin.end();bridge.kill();}});
+})().finally(async()=>{
+  try { await context?.close(); await browser?.close(); }
+  finally {
+    if (bridge.exitCode===null && bridge.signalCode===null) {
+      const exited=new Promise(resolve=>bridge.once('exit',resolve));
+      bridge.stdin.end();
+      const deadline=setTimeout(()=>bridge.kill(),7000);
+      try { await exited; } finally { clearTimeout(deadline); }
+    }
+  }
+});
 const watchdog=setTimeout(()=>{console.error('FAIL story draft journey timed out');bridge.kill();process.exit(1);},150000);
 testRun.then(()=>{clearTimeout(watchdog);},error=>{clearTimeout(watchdog);console.error(error);process.exitCode=1;});

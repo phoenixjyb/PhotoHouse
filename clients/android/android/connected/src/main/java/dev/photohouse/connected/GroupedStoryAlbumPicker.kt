@@ -1,5 +1,6 @@
 package dev.photohouse.connected
 
+import dev.photohouse.connected.core.StoryLimits
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,9 +47,9 @@ internal fun GroupedStoryAlbumPicker(
                 Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(if (zh && selectedAlbum.titleZh.isNotBlank()) selectedAlbum.titleZh else selectedAlbum.title,
                         style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("grouped-story-album-current"))
-                    if (selectedAlbum.assetIds.size > 24) Text(
-                        t("${selectedAlbum.assetIds.size} moments · first 24 selected to start",
-                            "${selectedAlbum.assetIds.size} 个瞬间 · 初始选前 24 个"),
+                    if (selectedAlbum.assetIds.size > StoryLimits.MAX_FRAMES) Text(
+                        t("${selectedAlbum.assetIds.size} moments · first ${StoryLimits.MAX_FRAMES} selected to start",
+                            "${selectedAlbum.assetIds.size} 个瞬间 · 初始选前 ${StoryLimits.MAX_FRAMES} 个"),
                         modifier = Modifier.testTag("grouped-story-album-overflow"))
                     TextButton(onClick = { helpExpanded = !helpExpanded },
                         modifier = Modifier.testTag("grouped-story-album-help")) {
@@ -56,8 +57,8 @@ internal fun GroupedStoryAlbumPicker(
                             if (helpExpanded) "收起选择说明" else "选择说明"))
                     }
                     if (helpExpanded) Text(
-                        t("Album order is your starting point. Review the moments before creating an outline. Every album page remains available; remove a selected moment to add another when you reach 24. Returning to the library keeps your selection.",
-                            "先按相册顺序准备瞬间，请在创建提纲前核对。相册各页仍可查看；达到 24 个时，可移除一个再加入其他瞬间。返回资料库会保留现有选择。"),
+                        t("Album order is your starting point. Review the moments before creating an outline. Every album page remains available; remove a selected moment to add another when you reach ${StoryLimits.MAX_FRAMES}. Returning to the library keeps your selection.",
+                            "先按相册顺序准备瞬间，请在创建提纲前核对。相册各页仍可查看；达到 ${StoryLimits.MAX_FRAMES} 个时，可移除一个再加入其他瞬间。返回资料库会保留现有选择。"),
                         modifier = Modifier.testTag("grouped-story-album-help-text"))
                     if (selectedAlbum.needsReview) Text(
                         t("Some album media are no longer available. Only currently authorized moments are shown; review this selection.",

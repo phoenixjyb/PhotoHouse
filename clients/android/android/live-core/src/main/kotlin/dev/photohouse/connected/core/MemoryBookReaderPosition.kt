@@ -31,7 +31,7 @@ object MemoryBookReaderPositions {
     const val MAX_POSITIONS = 12
     const val MAX_RECORD_BYTES = 16 * 1024
     private const val VERSION = 1
-    private val chapterIds = (1..6).map { "chapter-$it" }.toSet()
+    private val chapterIds = (1..StoryLimits.MAX_CHAPTERS).map { "chapter-$it" }.toSet()
 
     fun validated(accountId: String, positions: List<MemoryBookReaderPosition>): List<MemoryBookReaderPosition> {
         require(validAccount(accountId))

@@ -116,7 +116,7 @@ internal object MemoryBookPlanWire {
             val needsReview = boolean(root["needs_review"])
             check(!generated && !queued && needsReview)
             val storyCount = integer(root["story_count"], 1, MAX_STORIES)
-            val chapterCount = integer(root["chapter_count"], 1, MAX_STORIES * 6)
+            val chapterCount = integer(root["chapter_count"], 1, MAX_STORIES * StoryLimits.MAX_CHAPTERS)
             val itemCount = integer(root["item_count"], 0, MAX_COUNT)
             val distinctItemCount = integer(root["distinct_item_count"], 0, itemCount)
 
@@ -147,7 +147,7 @@ internal object MemoryBookPlanWire {
                 val title = title(section["title"])
                 val sectionItems = integer(section["item_count"], 0, MAX_COUNT)
                 val sectionCanEdit = boolean(section["can_edit"])
-                val chapterJson = array(section["chapters"], 6)
+                val chapterJson = array(section["chapters"], StoryLimits.MAX_CHAPTERS)
                 check(chapterJson.isNotEmpty())
                 val chapters = chapterJson.mapIndexed { chapterIndex, chapterValue ->
                     val chapter = obj(chapterValue, "id", "title", "item_count")

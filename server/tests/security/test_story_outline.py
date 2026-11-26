@@ -84,7 +84,7 @@ class StoryOutlineTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_outline([], theme='everyday', language='fr')
         with self.assertRaises(ValueError):
-            build_outline([item(str(i)) for i in range(25)], theme='everyday', language='en')
+            build_outline([item(str(i)) for i in range(49)], theme='everyday', language='en')
 
     def test_shared_identity_is_consistent_and_deduplicated_per_chapter(self):
         source = {'id': 'family-shared', 'source': 'family', 'text': 'Original memory'}

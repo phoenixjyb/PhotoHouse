@@ -100,7 +100,7 @@ object MemoryBookEditionSourceWire {
             }
             MemoryBookEditionSourceOrigin.STORY_CHAPTER -> {
                 check(id.startsWith("editorial-")); val suffix = id.removePrefix("editorial-")
-                check(suffix.length == 46 && suffix.substring(36).matches(Regex("-chapter-[1-6]")))
+                check(suffix.length in 46..47 && suffix[36] == '-' && StoryLimits.chapterId.matches(suffix.substring(37)))
                 uuid(suffix.take(36)); check(asset == null && kind == "editorial")
             }
         }

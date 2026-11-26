@@ -9,8 +9,8 @@ narration, microphone capture, story saving or a model request.
 Each chapter shows protected preview thumbnails with visible frame numbers and
 a video marker. Controls have at least 44 px targets, localized position labels,
 selected semantics and a live current-frame notice. A failed thumbnail leaves
-its frame selectable. The existing outline groups up to 24 selected media into
-chapters of at most four frames; this change preserves that contract.
+its frame selectable. An outline can contain up to 48 selected photos or videos in 12 chapters, with
+up to four frames per chapter.
 
 Clicking or using arrow keys reveals the selected control inside the horizontal
 strip. It does not scroll the page or reader dialog. Language changes preserve

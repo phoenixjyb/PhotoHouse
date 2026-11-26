@@ -9,11 +9,13 @@ import json
 import sqlite3
 import uuid
 
+from .story_outline import MAX_CHAPTERS as MAX_GROUPS
 from .transport import TransportError
 
 TABLE = 'access_memory_contribution_refs'
-MAX_GROUPS = 6
 MAX_PER_CHAPTER = 12
+# The installed reference table only stores links for the first six chapters.
+LINKABLE_CHAPTERS = frozenset(f'chapter-{number}' for number in range(1, 7))
 MAX_JSON_BYTES = 32768
 
 
@@ -96,6 +98,8 @@ def parse_groups(raw, chapter_ids):
             clean = [_canonical(ref) for ref in refs]
             if len(set(clean)) != len(clean):
                 raise ValueError()
+            if clean and chapter not in LINKABLE_CHAPTERS:
+                raise TransportError(422, 'Family memory links are available in chapters 1 through 6')
             seen_chapters.add(chapter)
             normalized.append((chapter, clean))
         return normalized

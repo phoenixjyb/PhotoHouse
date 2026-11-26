@@ -164,7 +164,7 @@ class StoryRelatedMediaTests(unittest.TestCase):
         self.assertEqual(self.request(headers=headers).status_code, 200)
         self.assertEqual(self.request(raw='{"asset_ids":"101","before_id":"","x":"y"}').status_code, 400)
         self.assertEqual(self.request(raw='{"asset_ids":"101","asset_ids":"102","before_id":""}').status_code, 400)
-        for asset_ids, before_id in (('101,101',''), ('101,0101',''), (','.join(map(str, range(1,26))), ''),
+        for asset_ids, before_id in (('101,101',''), ('101,0101',''), (','.join(map(str, range(1,50))), ''),
                                      ('101','01'), ('101','9223372036854775808')):
             with self.subTest(asset_ids=asset_ids[:24], before_id=before_id):
                 self.assertEqual(self.request(asset_ids=asset_ids, before_id=before_id).status_code, 400)

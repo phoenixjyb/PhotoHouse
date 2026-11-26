@@ -71,7 +71,7 @@ class StoryWorkspaceTests(unittest.TestCase):
 
     def test_validation_bounds_and_literal_text(self):
         for changes in ({'asset_ids': ''}, {'asset_ids': '101,101'}, {'asset_ids': '101,0101'},
-                        {'asset_ids': ','.join(str(i) for i in range(1, 26))},
+                        {'asset_ids': ','.join(str(i) for i in range(1, 50))},
                         {'theme': 'unknown'}, {'language': 'mixed'}, {'title': 'x'*161}):
             self.assertEqual(self.preview(**changes).status_code, 400)
         r = self.preview(title='<img src=x onerror=alert(1)>')

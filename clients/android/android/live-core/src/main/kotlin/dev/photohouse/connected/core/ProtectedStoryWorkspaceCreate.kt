@@ -85,9 +85,9 @@ class ProtectedStoryWorkspaceCreate private constructor(
 
 /** Builds a create mutation from the current server draft and user-authored text edits. */
 internal object ProtectedStoryWorkspaceCreateWire {
-    private const val MAX_ASSETS = 24
-    private const val MAX_CHAPTERS = 6
-    private const val MAX_ASSETS_PER_CHAPTER = 4
+    private const val MAX_ASSETS = StoryLimits.MAX_FRAMES
+    private const val MAX_CHAPTERS = StoryLimits.MAX_CHAPTERS
+    private const val MAX_ASSETS_PER_CHAPTER = StoryLimits.MAX_FRAMES_PER_CHAPTER
     private const val MAX_EVIDENCE_PER_CHAPTER = 12
 
     fun encode(

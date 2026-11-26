@@ -1,4 +1,6 @@
 'use strict';
+const STORY_MAX_CHAPTERS = 12;
+const STORY_MAX_FRAMES = 48;
 /* Protected, ephemeral family contributions and review-only memory assistance. */
 let memoryCommunityInstanceSequence=0;
 window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=()=>{},
@@ -245,12 +247,12 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   const report=(error,owner,ticket)=>{if(error?.name==='AbortError')return;if(current(ticket,owner)){showStatus(error?.status===409?t('conflict'):error?.status===422?t('tooLarge'):t('error'),'error');notifyError(error);}};
   const reportBook=(error,owner,ticket)=>{if(error?.name==='AbortError')return;if(bookCurrent(ticket,owner)){showStatus(error?.status===409?t('conflict'):error?.status===422?t('tooLarge'):t('error'),'error');notifyError(error);}};
   const appendStatus=(root,text)=>{const node=el('p',text,'memory-community-status');node.setAttribute('role','status');root.append(node);return node;};
-  const validStoryTarget=value=>value&&value.type==='story'&&uuidOK(value.id)&&/^[1-9][0-9]*$/.test(String(value.revision))&&typeof value.title==='string'&&Array.isArray(value.chapters)&&value.chapters.length>=1&&value.chapters.length<=6&&['zh','en'].includes(value.language)&&/^[0-9a-f]{64}$/.test(value.selection_revision||'')&&value.chapters.every(chapter=>chapter&&/^chapter-[1-6]$/.test(chapter.id)&&typeof chapter.title==='string'&&Array.isArray(chapter.asset_ids)&&chapter.asset_ids.length>=1&&chapter.asset_ids.length<=4&&chapter.asset_ids.every(idOK)&&Array.isArray(chapter.evidence_ids)&&chapter.evidence_ids.length<=12&&chapter.evidence_ids.every(id=>typeof id==='string'));
+  const validStoryTarget=value=>value&&value.type==='story'&&uuidOK(value.id)&&/^[1-9][0-9]*$/.test(String(value.revision))&&typeof value.title==='string'&&Array.isArray(value.chapters)&&value.chapters.length>=1&&value.chapters.length<=STORY_MAX_CHAPTERS&&['zh','en'].includes(value.language)&&/^[0-9a-f]{64}$/.test(value.selection_revision||'')&&value.chapters.every(chapter=>chapter&&/^chapter-(?:[1-9]|1[0-2])$/.test(chapter.id)&&typeof chapter.title==='string'&&Array.isArray(chapter.asset_ids)&&chapter.asset_ids.length>=1&&chapter.asset_ids.length<=4&&chapter.asset_ids.every(idOK)&&Array.isArray(chapter.evidence_ids)&&chapter.evidence_ids.length<=12&&chapter.evidence_ids.every(id=>typeof id==='string'));
   const validBookTarget=value=>value&&value.type==='memoir'&&uuidOK(value.id)&&/^[1-9][0-9]*$/.test(String(value.revision))&&typeof value.title==='string'&&Array.isArray(value.stories);
   const canEdit=()=>Boolean(target?.can_edit);
   const targetType=()=>target?.type==='memoir'?'book':'story';
   const pathStory=()=>`${API}/stories/${target.id}/contributions`;
-  const chapterOptions=()=>target?.type==='story'?target.chapters.filter(ch=>/^chapter-[1-6]$/.test(ch.id)):[];
+  const chapterOptions=()=>target?.type==='story'?target.chapters.filter(ch=>/^chapter-(?:[1-9]|1[0-2])$/.test(ch.id)):[];
   function targetLabel(){return target?.title||t('untitled');}
   async function resolveVoiceCapabilities(ticket,owner){
     if(voiceCapabilitiesOwner!==owner){voiceCapabilitiesOwner=owner;voiceCapabilitiesValue=null;voiceCapabilitiesPending=null;}
@@ -494,7 +496,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       const section=value.sections[index];
       const currentStory=stories[index];
       if(!section||section.position!==index+1||!uuidOK(section.id)||section.id!==currentStory?.id||seen.has(section.id)||String(section.revision)!==String(currentStory?.revision)||!/^([1-9][0-9]*)$/.test(String(section.revision))||!safePlanTitle(section.title)||
-        !planCount(section.item_count)||section.item_count>24||typeof section.can_edit!=='boolean'||!validPlanCapacity(section)||!Array.isArray(section.chapters)||section.chapters.length<1||section.chapters.length>6)return false;
+        !planCount(section.item_count)||section.item_count>STORY_MAX_FRAMES||typeof section.can_edit!=='boolean'||!validPlanCapacity(section)||!Array.isArray(section.chapters)||section.chapters.length<1||section.chapters.length>STORY_MAX_CHAPTERS)return false;
       seen.add(section.id);items+=section.item_count;chapters+=section.chapters.length;
       for(let chapterIndex=0;chapterIndex<section.chapters.length;chapterIndex++){const chapter=section.chapters[chapterIndex];if(!chapter||chapter.id!==`chapter-${chapterIndex+1}`||!safePlanTitle(chapter.title)||!planCount(chapter.item_count)||chapter.item_count>4)return false;}
     }
@@ -1260,7 +1262,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   function renderQuestions(root,questions){if(!Array.isArray(questions)||!questions.length)return;root.append(el('h4',t('questions')));const list=el('ul');for(const item of questions)list.append(el('li',item));root.append(list);}
   function proposalChapterTitle(id,index){
     if(target?.type==='story'){const chapter=target.chapters?.find(item=>item.id===id);return chapter?.title||`${t('chapterNumber')} ${index+1}`;}
-    const match=typeof id==='string'&&id.match(/^([0-9a-f-]{36})-chapter-([1-6])$/);const story=match&&target?.stories?.find(item=>item.id===match[1]);
+    const match=typeof id==='string'&&id.match(/^([0-9a-f-]{36})-chapter-((?:[1-9]|1[0-2]))$/);const story=match&&target?.stories?.find(item=>item.id===match[1]);
     return story?`${story.title} · ${t('chapterNumber')} ${match[2]}`:`${t('chapterNumber')} ${index+1}`;
   }
   function proposalSource(id,index){
@@ -1341,7 +1343,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
       let context;try{context=reader.__photoHouseReadingContext();}catch(_){context=null;}
       if(!authorized())return;
       const child=editorTarget.stories.find(item=>item.id===context?.story_id&&String(item.revision)===context?.story_revision);
-      if(!context||Object.keys(context).sort().join(',')!=='book_id,book_revision,chapter_id,chapter_title,story_id,story_revision,story_title'||context.book_id!==editorTarget.id||context.book_revision!==String(editorTarget.revision)||!child||!/^chapter-[1-6]$/.test(context.chapter_id)||!safeText(context.story_title,512)||!safeText(context.chapter_title,512)){status.textContent=t('readingChapterUnavailable');return;}
+      if(!context||Object.keys(context).sort().join(',')!=='book_id,book_revision,chapter_id,chapter_title,story_id,story_revision,story_title'||context.book_id!==editorTarget.id||context.book_revision!==String(editorTarget.revision)||!child||!/^chapter-(?:[1-9]|1[0-2])$/.test(context.chapter_id)||!safeText(context.story_title,512)||!safeText(context.chapter_title,512)){status.textContent=t('readingChapterUnavailable');return;}
       const number=context.chapter_id.slice(8),question=lang()==='en'?`I am reading "${context.story_title}", chapter ${number}: "${context.chapter_title}". What do the existing sources tell us about this chapter, and what is one useful question to ask the family? Keep uncertainties and do not invent experiences.`:`我正在读《${context.story_title}》的第 ${number} 章《${context.chapter_title}》。请先说明已有来源讲了什么，再提出一个值得问问家人的问题。保留不确定之处，不要补造经历。`;
       if(!safeText(question,4096)){status.textContent=t('readingChapterUnavailable');return;}
       chatTextDraft=question;conversationDrafts.set(conversation.id,question);input.value=question;form.querySelector('.memory-chat-starters')?.remove();
@@ -1542,7 +1544,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     const ids=new Set();let total=new TextEncoder().encode(value.title).length;
     for(let index=0;index<value.chapters.length;index++){
       const chapter=value.chapters[index],original=expected?.chapters[index];
-      if(!exactKeys(chapter,['id','narration','source_ids'])||!/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-chapter-[1-6]$/.test(chapter.id||'')||ids.has(chapter.id)||!boundedText(chapter.narration,6000)||!Array.isArray(chapter.source_ids)||chapter.source_ids.length>96||new Set(chapter.source_ids).size!==chapter.source_ids.length||chapter.source_ids.some(id=>typeof id!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(id)))return false;
+      if(!exactKeys(chapter,['id','narration','source_ids'])||!/^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})-chapter-(?:[1-9]|1[0-2])$/.test(chapter.id||'')||ids.has(chapter.id)||!boundedText(chapter.narration,6000)||!Array.isArray(chapter.source_ids)||chapter.source_ids.length>96||new Set(chapter.source_ids).size!==chapter.source_ids.length||chapter.source_ids.some(id=>typeof id!=='string'||!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(id)))return false;
       if(original&&(chapter.id!==original.id||JSON.stringify(chapter.source_ids)!==JSON.stringify(original.source_ids)))return false;
       if(chapter.narration.trim()&&chapter.source_ids.length===0)return false;
       ids.add(chapter.id);total+=new TextEncoder().encode(chapter.narration).length;
@@ -1554,7 +1556,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(!Array.isArray(children)||children.length<1||children.length>24||!children.every(child=>uuidOK(child?.id)&&editionRevisionOK(String(child.revision)))||new Set(children.map(child=>child.id)).size!==children.length)return false;
     const ordered=children.map(child=>child.id);let childIndex=0,chapterIndex=1,seen=new Set();
     for(const chapter of manuscript.chapters){
-      const match=/^([0-9a-f-]{36})-chapter-([1-6])$/.exec(chapter.id||'');if(!match)return false;
+      const match=/^([0-9a-f-]{36})-chapter-((?:[1-9]|1[0-2]))$/.exec(chapter.id||'');if(!match)return false;
       if(match[1]!==ordered[childIndex]){
         if(chapterIndex===1)return false;
         seen.add(ordered[childIndex]);childIndex++;chapterIndex=1;
@@ -1575,7 +1577,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   function editionSourceIdentityOK(origin,sourceId,assetId,storyId,bookId=target?.id){
     const contribution=/^contribution-([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/.exec(sourceId||'');
     const caption=/^caption-([1-9][0-9]{0,18})$/.exec(sourceId||'');const note=/^family-([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/.exec(sourceId||'');
-    const intro=`editorial-book-${bookId}`;const chapter=/^editorial-([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})-chapter-([1-6])$/.exec(sourceId||'');
+    const intro=`editorial-book-${bookId}`;const chapter=/^editorial-([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})-chapter-((?:[1-9]|1[0-2]))$/.exec(sourceId||'');
     if(origin==='contribution_text'||origin==='contribution_audio')return Boolean(contribution);
     if(origin==='caption')return Boolean(caption&&idOK(caption[1]));
     if(origin==='asset_note')return Boolean(note&&uuidOK(note[1]));
@@ -1930,7 +1932,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     if(value.introduction_source_refs.length>12)return false;
     if(value.state==='empty')return value.transitions.length===0&&value.introduction_source_refs.length===0;
     if(value.transitions.length!==Math.max(0,children.length-1))return false;
-    const validRef=ref=>ref&&Object.keys(ref).sort().join(',')==='chapter_id,contribution_id,story_id,story_revision'&&uuidOK(ref.story_id)&&uuidOK(ref.contribution_id)&&typeof ref.story_revision==='string'&&/^[1-9][0-9]*$/.test(ref.story_revision)&&typeof ref.chapter_id==='string'&&/^chapter-[1-6]$/.test(ref.chapter_id);
+    const validRef=ref=>ref&&Object.keys(ref).sort().join(',')==='chapter_id,contribution_id,story_id,story_revision'&&uuidOK(ref.story_id)&&uuidOK(ref.contribution_id)&&typeof ref.story_revision==='string'&&/^[1-9][0-9]*$/.test(ref.story_revision)&&typeof ref.chapter_id==='string'&&/^chapter-(?:[1-9]|1[0-2])$/.test(ref.chapter_id);
     if(value.introduction_source_refs.some(ref=>!validRef(ref)))return false;
     return value.transitions.every((item,index)=>item&&Object.keys(item).sort().join(',')==='left_story_id,right_story_id,source_refs,text'&&item.left_story_id===children[index].story_id&&item.right_story_id===children[index+1].story_id&&boundedText(item.text,6000)&&Array.isArray(item.source_refs)&&item.source_refs.length<=12&&item.source_refs.every(validRef));
   }
@@ -1945,7 +1947,7 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
     for(const item of book.stories){
       const refs=await bookApi(`/memory-stories/${item.id}/contribution-refs?revision=${encodeURIComponent(item.revision)}`);if(!editorialCurrent(ticket,owner,book,editor,sequence))return null;
       if(refs?.version!==1||refs.id!==item.id||String(refs.revision)!==String(item.revision)||!Array.isArray(refs.chapters))throw new Error('Invalid editorial source metadata');
-      for(const group of refs.chapters){if(!/^chapter-[1-6]$/.test(group?.id)||!Array.isArray(group.contribution_ids)||group.contribution_ids.length>12)throw new Error('Invalid editorial source metadata');
+      for(const group of refs.chapters){if(!/^chapter-(?:[1-9]|1[0-2])$/.test(group?.id)||!Array.isArray(group.contribution_ids)||group.contribution_ids.length>12)throw new Error('Invalid editorial source metadata');
         group.contribution_ids.forEach((id,index)=>{if(!uuidOK(id))throw new Error('Invalid editorial source metadata');options.push({story_id:item.id,story_revision:String(item.revision),chapter_id:group.id,contribution_id:id,storyTitle:item.title,ordinal:index+1,label:`${item.title} · ${t('editorialChapter')(Number(group.id.slice(8)))} · ${t('editorialRecall')(index+1)}`});});
       }
     }
