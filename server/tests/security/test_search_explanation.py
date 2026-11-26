@@ -122,6 +122,20 @@ def test_empty_result_guidance_uses_date_policy_before_text_and_keeps_other_filt
     assert filters == before
 
 
+def test_empty_result_guidance_names_the_selected_media_without_echoing_private_filters():
+    for media, english_kind, chinese_kind in (
+            ('image', 'photos', '照片'), ('video', 'videos', '视频')):
+        filters = {'media': [media], 'date': {'from': '2026-09-01', 'to': '2026-09-30'},
+                   'text': 'private phrase', 'people': {'ids': ['private-id'], 'match': 'any'}}
+        english = no_results_guidance(filters, 'en')
+        chinese = no_results_guidance(filters, 'zh')
+        assert english.startswith(f'No matching {english_kind} with a recorded capture date')
+        assert chinese.startswith(f'没有找到符合条件且已记录拍摄日期的{chinese_kind}。')
+        assert '"any date"' in english and '不限日期' in chinese
+        assert all(private not in english + chinese for private in ('private-id', 'private phrase'))
+        assert filters['media'] == [media]
+
+
 def test_empty_result_guidance_text_and_generic_branches_are_bounded_bilingual_and_non_speculative():
     filters = {'text': 'private phrase', 'people': {'ids': ['private-person'], 'match': 'any'}}
     before = copy.deepcopy(filters)

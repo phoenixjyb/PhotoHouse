@@ -192,6 +192,9 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
                 self.assertEqual(result['filters'], {'media': [media], 'date': {'from': start, 'to': end}})
                 self.assertEqual([item['id'] for item in result['items']], ids)
                 self.assertIsNone(result['effect'])
+                if media == 'video':
+                    self.assertTrue(result['reply'].startswith(
+                        'No matching videos with a recorded capture date'), result['reply'])
 
     def test_bilingual_year_ranges_use_capture_dates_in_owned_recoverable_turns(self):
         self.enable_search()

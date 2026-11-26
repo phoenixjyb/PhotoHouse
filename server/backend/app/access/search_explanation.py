@@ -258,29 +258,36 @@ def no_results_guidance(filters, language) -> str:
     """Give bounded, non-speculative guidance for the current empty search."""
     filters = filters if type(filters) is dict else {}
     zh = language == 'zh'
+    media = filters.get('media')
+    if media == ['video']:
+        english_kind, chinese_kind = 'videos', '视频'
+    elif media == ['image']:
+        english_kind, chinese_kind = 'photos', '照片'
+    else:
+        english_kind, chinese_kind = 'photos or videos', '照片或视频'
     if 'date' in filters:
         if zh:
-            result = ('没有找到符合条件且已记录拍摄日期的照片或视频。日期搜索会排除未记录拍摄日期的项目。'
+            result = (f'没有找到符合条件且已记录拍摄日期的{chinese_kind}。日期搜索会排除未记录拍摄日期的项目。'
                       '说“不限日期”可仅移除日期筛选并保留其他条件。')
         else:
-            result = ('No matching photos or videos with a recorded capture date were found. '
+            result = (f'No matching {english_kind} with a recorded capture date were found. '
                       'Items without a capture date are excluded from date searches. '
                       'Say "any date" to remove only the date filter and keep the other conditions.')
     elif 'text' in filters:
         if zh:
-            result = ('没有找到符合条件的照片或视频。'
+            result = (f'没有找到符合条件的{chinese_kind}。'
                       '说“不限内容”可仅移除内容筛选并保留其他条件。')
         else:
-            result = ('No matching photos or videos were found. '
+            result = (f'No matching {english_kind} were found. '
                       'Say "any text" to remove only the text filter and keep the other conditions.')
     elif 'descriptive' in filters:
         result = ('没有找到符合全部描述线索的说明或回忆。可以补充线索，或说“不限描述”仅移除描述条件。'
                   if zh else 'No captions or notes matched all descriptive clues. Add another clue, '
                   'or say "any description" to remove only the descriptive conditions.')
     elif zh:
-        result = '没有找到符合条件的照片或视频。可以问“现在筛选了哪些条件”查看当前筛选条件。'
+        result = f'没有找到符合条件的{chinese_kind}。可以问“现在筛选了哪些条件”查看当前筛选条件。'
     else:
-        result = 'No matching photos or videos were found. Ask "what filters are active" to review the current filters.'
+        result = f'No matching {english_kind} were found. Ask "what filters are active" to review the current filters.'
     scope = people_scope_notice(filters, language)
     if scope:
         result += ' ' + scope
@@ -294,5 +301,5 @@ def no_results_guidance(filters, language) -> str:
     # if future wording changes exceed the transport limit.
     if len(result.encode('utf-8')) <= _MAX_BYTES:
         return result
-    return ('没有找到符合条件的照片或视频。' if zh else
-            'No matching photos or videos were found.') + (' ' + scope if scope else '')
+    return (f'没有找到符合条件的{chinese_kind}。' if zh else
+            f'No matching {english_kind} were found.') + (' ' + scope if scope else '')
