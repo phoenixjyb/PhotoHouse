@@ -691,6 +691,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Local tests verify English follow-ups such as “Could you narrow it to videos?” and “Could you narrow the results to videos from October?” Unmentioned filters stay in place.",
           "zh": "本地测试验证了「能只看视频吗？」和「能把结果缩小到十月的视频吗？」等英文追问。未提及的筛选条件会保留。"
+        },
+        {
+          "en": "Local tests verify specific-day follow-ups in Chinese and English. A date such as “February 29” inherits the active year when it is clear. If the current date range spans years, Jude asks for clarification.",
+          "zh": "本地测试验证了中英文的指定日期追问。当前年份明确时，「二月二十九日」等表达会沿用该年份；当前日期范围跨年时，小贾会请用户明确年份。"
         }
       ],
       "gaps": [

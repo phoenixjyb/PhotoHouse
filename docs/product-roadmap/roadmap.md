@@ -293,6 +293,7 @@ Refine a search across turns instead of repeatedly starting over. / 跨轮次细
 - Why this match? prepares a question about a visible result. The reply cites the available evidence and keeps the current filters and results. / 「为什么匹配？」可为当前可见结果准备提问。回复会说明已有的匹配依据，并保留现有筛选条件和结果。
 - Ask for the same month, day or date range in a different year while keeping the other search filters. An invalid date such as February 29 in a non-leap year prompts for a new range. / 可沿用相同月份、某一天或日期范围切换年份，并保留其余搜索条件。若遇到平年的 2 月 29 日等无效日期，会提示重新指定日期范围。
 - Local tests verify English follow-ups such as “Could you narrow it to videos?” and “Could you narrow the results to videos from October?” Unmentioned filters stay in place. / 本地测试验证了「能只看视频吗？」和「能把结果缩小到十月的视频吗？」等英文追问。未提及的筛选条件会保留。
+- Local tests verify specific-day follow-ups in Chinese and English. A date such as “February 29” inherits the active year when it is clear. If the current date range spans years, Jude asks for clarification. / 本地测试验证了中英文的指定日期追问。当前年份明确时，「二月二十九日」等表达会沿用该年份；当前日期范围跨年时，小贾会请用户明确年份。
 
 **Gaps / 差距**
 

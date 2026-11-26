@@ -70,6 +70,41 @@ class SearchRefinementTests(unittest.TestCase):
                 self.assertEqual(result.status, 'ready', result)
                 self.assertEqual(result.filters, {**previous, 'date': {'from': desired[0], 'to': desired[1]}})
 
+    def test_yearless_day_refinements_and_corrections_keep_the_active_year(self):
+        from datetime import datetime, timezone
+
+        now = datetime(2033, 10, 1, tzinfo=timezone.utc)
+        previous = {**PREVIOUS, 'date': {'from': '2032-02-01', 'to': '2032-02-29'}}
+        for words in ('Only February 29', 'Actually, February 29', 'Could you narrow it to 29 February?',
+                      '只看2月29日', '换成二月二十九号', '我说的是二月二十九日', '我说的是去年二月二十九日'):
+            with self.subTest(words=words):
+                result = plan_query(words, now=now, entities=resolved_entities(words),
+                                    previous_filters=previous, refine=True)
+                self.assertEqual(result.status, 'ready', result)
+                self.assertEqual(result.filters, {
+                    **previous, 'date': {'from': '2032-02-29', 'to': '2032-02-29'}})
+
+        for words, date_filter, reason in (
+                ('Actually, February 29', {'from': '2031-02-01', 'to': '2031-02-28'}, 'invalid_date'),
+                ('只看二月三十日', previous['date'], 'invalid_date'),
+                ('只看今年二月二十九日', previous['date'], 'invalid_date'),
+                ('Only February 28', {'from': '2032-12-20', 'to': '2033-02-28'}, 'conflicting_dates'),
+                ('只看2月28号', {'from': None, 'to': '2032-02-29'}, 'conflicting_dates')):
+            with self.subTest(words=words, previous=date_filter):
+                ambiguous = {**previous, 'date': date_filter}
+                result = plan_query(words, now=now, entities=resolved_entities(words),
+                                    previous_filters=ambiguous, refine=True)
+                self.assertEqual((result.status, result.reason), ('clarification', reason))
+                self.assertEqual(result.filters, ambiguous)
+
+        for explicit in ('Actually, February 28, 2031', '我说的是2031年二月二十八号'):
+            with self.subTest(explicit=explicit):
+                result = plan_query(explicit, now=now, entities=resolved_entities(explicit),
+                                    previous_filters=previous, refine=True)
+                self.assertEqual(result.status, 'ready', result)
+                self.assertEqual(result.filters, {
+                    **previous, 'date': {'from': '2031-02-28', 'to': '2031-02-28'}})
+
     def test_year_followups_fail_closed_without_exact_prior_dates(self):
         for words, date_filter, reason in (
                 ('same month in 2031', {'from': None, 'to': '2032-09-02'}, 'date_reference_unavailable'),
