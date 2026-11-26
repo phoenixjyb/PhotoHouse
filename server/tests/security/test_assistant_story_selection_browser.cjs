@@ -878,6 +878,27 @@ let browser,context,page;
   finally{page.off('dialog',discardGeneratedDraft);}
   await page.locator('#phone').fill('+12025550100');await page.locator('#password').fill('Synthetic family passphrase!');
   await page.locator('#auth-submit').click();await page.locator('#grid .asset').first().waitFor();
+  // Leave the album list on page two in the disposable library before creating from Search.
+  const seeded=await page.evaluate(async()=>{
+    const session=await fetch('/auth/session');
+    const {csrf_token}=await session.json();
+    const library=document.querySelector('#library-select').value;
+    const statuses=[];
+    for(let number=1;number<=11;number++){
+      const response=await fetch('/admin/albums?'+new URLSearchParams({library}),{
+        method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf_token},
+        body:JSON.stringify({title:`Synthetic older album ${number}`,title_zh:'',description:'',
+          theme:'custom',asset_ids:'',cover_asset_id:'',mutation_id:crypto.randomUUID()}),
+      });
+      statuses.push(response.status);
+    }
+    return statuses;
+  });
+  assert.deepEqual(seeded,Array(11).fill(200));
+  const albumsPanel=page.locator('#albums-panel');
+  if(!await albumsPanel.evaluate(node=>node.open))await albumsPanel.locator('summary').first().click();
+  await page.locator('#album-next').click();
+  await page.locator('#album-list').getByRole('heading',{name:'Synthetic older album 1',exact:true}).waitFor();
   await page.locator('#memory-assistant-link').click();await page.locator('#assistant-workspace-dialog').waitFor({state:'visible'});
   await page.locator('#assistant-private-new').click();await page.waitForFunction(()=>!document.querySelector('#assistant-private-new').disabled);
   await search('找示例儿童');
@@ -940,7 +961,10 @@ let browser,context,page;
   await page.locator('.album-picker > summary').click();
   await page.locator('#album-title').fill('合成：从搜索创建的相册');
   await page.locator('#album-save').click();await page.locator('#album-editor').waitFor({state:'hidden'});
-  await page.locator('#album-list').getByText('合成：从搜索创建的相册',{exact:true}).waitFor();
+  const savedHeading=page.locator('#album-list').getByRole('heading',{name:'合成：从搜索创建的相册',exact:true});
+  await savedHeading.waitFor();
+  assert.equal(await page.locator('#album-previous').isDisabled(),true);
+  assert.equal(await savedHeading.evaluate(node=>document.activeElement===node),true);
   assert.equal(albumWrites().length,beforeAlbums+1);
   const savedAlbum=albumWrites().at(-1);
   assert.equal(savedAlbum.status,200);

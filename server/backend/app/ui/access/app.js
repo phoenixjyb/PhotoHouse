@@ -4538,7 +4538,7 @@
       }
     }catch(error){if(current()){$('album-archived-status').textContent=t(errorStatus(error));await failure(error,epoch);}}
   }
-  async function loadAlbums(){
+  async function loadAlbums(focusId=null){
     if(state.locked||!state.library)return;
     const epoch=state.generation,load=++albumState.load;
     $('album-list').replaceChildren();$('album-status').textContent=t('loading');
@@ -4547,9 +4547,11 @@
       if(stale(epoch)||load!==albumState.load)return;albumState.total=result.total;
       $('album-status').textContent=result.total?'':t('noAlbums');$('album-create').hidden=!result.can_manage;
       $('album-archived-panel').hidden=!result.can_manage;
+      let savedTitle=null;
       for(const album of result.items){
         const card=document.createElement('article');card.className='album-card';card.dataset.albumId=album.id;
         const title=document.createElement('h3');title.textContent=state.language==='zh'&&album.title_zh?album.title_zh:album.title;
+        if(album.id===focusId){title.tabIndex=-1;savedTitle=title;}
         const description=document.createElement('p');description.textContent=album.description;card.append(title,description);
         if(album.needs_review){const note=document.createElement('p');note.textContent=t('albumNeedsReview');card.append(note);}
         const photos=document.createElement('div');photos.className='album-strip';
@@ -4574,6 +4576,7 @@
       }
       $('album-pages').hidden=!result.total;$('album-previous').disabled=albumState.page===1;$('album-next').disabled=albumState.page*10>=result.total;
       $('album-page-label').textContent=`${t('page')} ${albumState.page} ${t('of')} ${Math.max(1,Math.ceil(result.total/10))}`;
+      return savedTitle;
     }catch(error){if(!stale(epoch)&&load===albumState.load){$('album-status').textContent=t(errorStatus(error));await failure(error,epoch);}}
   }
   function editAlbum(album=null,restored=null,selectedIds=[]){
@@ -4669,7 +4672,17 @@
     form.addEventListener('submit',async event=>{event.preventDefault();if(!current()||state.busy)return;state.busy=true;save.disabled=true;
       const body={title:draft.title,title_zh:draft.title_zh,description:draft.description,theme:draft.theme,asset_ids:draft.ids.join(','),cover_asset_id:draft.cover_asset_id,...(draft.id?{revision:draft.revision}:{mutation_id:draft.mutation_id})};
       draft.locked=true;lock();save.disabled=true;
-      try{await request(libraryPath(draft.id?`/admin/albums/${draft.id}`:'/admin/albums'),{method:draft.id?'PUT':'POST',body,epoch});if(current()){albumState.draft=null;dialog.close();dialog.replaceChildren();await loadAlbums();$('album-status').textContent=t('albumSaved');}}
+      try{
+        const saved=await request(libraryPath(draft.id?`/admin/albums/${draft.id}`:'/admin/albums'),{method:draft.id?'PUT':'POST',body,epoch});
+        if(!current())return;
+        albumState.draft=null;dialog.close();dialog.replaceChildren();
+        if(!draft.id)albumState.page=1;
+        const previousFocus=document.activeElement;
+        const heading=await loadAlbums(saved?.id);
+        if(stale(epoch)||state.library!==draft.library)return;
+        $('album-status').textContent=t('albumSaved');
+        if(heading?.isConnected&&document.activeElement===previousFocus)heading.focus();
+      }
       catch(error){if(current()){draft.locked=![400,413,422].includes(error.status);lock();if(error.status===409){notice.textContent=t('albumChanged');save.disabled=true;}else notice.textContent=t(draft.locked?'albumUncertain':errorStatus(error));if(error.status===401||error.status===403)await failure(error,epoch);}}
       finally{state.busy=false;}
     });
