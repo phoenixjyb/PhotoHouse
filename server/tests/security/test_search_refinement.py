@@ -343,6 +343,9 @@ class SearchRefinementTests(unittest.TestCase):
             'Refine last search to videos only': {**PREVIOUS, 'media': ['video']},
             'Refine the last search to show videos only': {**PREVIOUS, 'media': ['video']},
             'Refine my last search to show videos only': {**PREVIOUS, 'media': ['video']},
+            'Could you narrow it to videos?': {**PREVIOUS, 'media': ['video']},
+            'Please narrow the results to the videos': {**PREVIOUS, 'media': ['video']},
+            'Narrow the search to photos': PREVIOUS,
             'only photos': PREVIOUS,
             'photos only': PREVIOUS,
             '只看视频': {**PREVIOUS, 'media': ['video']},
@@ -366,23 +369,30 @@ class SearchRefinementTests(unittest.TestCase):
         self.assertEqual(october.status, 'ready', october)
         self.assertEqual(october.filters, {
             **video_only.filters, 'date': {'from': '2025-10-01', 'to': '2025-10-31'}})
+        unbound = plan('Could you narrow it to videos?', previous=None)
+        self.assertEqual(unbound.status, 'clarification')
+        self.assertEqual(unbound.reason, 'refine_without_context')
 
     def test_media_only_refinement_stays_closed_around_negation_quotes_and_residue(self):
         for words in ('videos only without a hat', 'only videos with an unknown scene',
                       'videos only at Mars',
                       'Refine the last search to videos only without a hat',
                       'Refine the last search to videos only at Mars',
-                      'Refine my last search to videos only and no people'):
+                      'Refine my last search to videos only and no people',
+                      'Could you narrow it to videos without a hat?',
+                      'Could you narrow it to videos and delete the photos?'):
             with self.subTest(words=words):
                 result = plan(words)
                 self.assertEqual(result.status, 'clarification', result)
                 self.assertEqual(result.filters, PREVIOUS)
 
-        words = 'containing "videos only"'
-        self.assertIsNone(query_mode(words))
-        result = plan(words)
-        self.assertEqual(result.status, 'ready', result)
-        self.assertEqual(result.filters, {**PREVIOUS, 'text': 'videos only'})
+        for literal in ('videos only', 'Could you narrow it to videos?'):
+            with self.subTest(literal=literal):
+                words = f'containing "{literal}"'
+                self.assertIsNone(query_mode(words))
+                result = plan(words)
+                self.assertEqual(result.status, 'ready', result)
+                self.assertEqual(result.filters, {**PREVIOUS, 'text': literal})
 
     def test_conflicting_replacement_unknown_conditions_and_negation_clarify(self):
         for words in ('any date, only September 2032', 'only September 2032, any date',
