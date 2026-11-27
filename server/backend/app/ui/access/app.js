@@ -625,6 +625,9 @@
     document.documentElement.lang = state.language === 'zh' ? 'zh-CN' : 'en';
     document.querySelectorAll('[data-i18n]').forEach(node => {node.textContent=t(node.dataset.i18n);});
     $('assistant-text').placeholder=t('assistantComposerPlaceholder');
+    $('assistant-strip-back').setAttribute('aria-label',t('assistantStripBack'));
+    $('assistant-strip-forward').setAttribute('aria-label',t('assistantStripForward'));
+    if($('assistant-results').classList.contains('assistant-results--strip'))$('assistant-results').setAttribute('aria-label',t('assistantStripLabel'));
     try{syncPrivateManagement(privateAssistant?.state());}catch{syncPrivateManagement(null);}
     $('language').textContent = state.language === 'en' ? '中文' : 'English';
     $('auth-submit').textContent=t(state.busy?'working':state.mode==='login'?'signIn':'join');
@@ -1607,30 +1610,51 @@
     const button=$('assistant-turn-trail-latest');
     if(button)button.hidden=!assistantState.turnTrailHasNewer||assistantState.turnTrail.length===0;
   }
-  function placeAssistantResults(snapshot=privateAssistant?.state()){
-    const block=$('assistant-result-block'),root=$('assistant-results'),home=$('assistant-result-home');
+  const assistantStripWords={
+    en:{assistantStripLabel:'Search thumbnails',assistantStripBack:'Scroll to earlier thumbnails',assistantStripForward:'Scroll to more thumbnails'},
+    zh:{assistantStripLabel:'搜索结果缩略图',assistantStripBack:'向前浏览缩略图',assistantStripForward:'向后浏览缩略图'}
+  };
+  for(const [language,entries] of Object.entries(assistantStripWords))Object.assign(words[language],entries);
+  function scrollAssistantStrip(direction){
+    const strip=$('assistant-results');
+    const behavior=window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth';
+    strip.scrollBy({left:direction*Math.max(1,Math.floor(strip.clientWidth*.8)),behavior});
+  }
+  function placeAssistantResults(snapshot=privateAssistant?.state(),{revealThumbnails=false}={}){
+    const block=$('assistant-result-block'),root=$('assistant-results'),home=$('assistant-result-home'),controls=$('assistant-strip-controls');
     const latest=assistantState.turnTrail.at(-1),result=snapshot?.currentResult,rendered=root.__assistantRenderedTurn;
     const currentCards=rendered===result||(rendered?.result_page===true&&rendered.items===snapshot?.resultPageResult?.items);
     const privateReply=root.__assistantRenderedOwner==='private'&&currentCards&&
       latest?.threadId&&latest.threadId===snapshot?.activeThread?.thread_id&&
       latest.revision===snapshot.revision&&latest.revision===snapshot.activeThread.revision;
-    const voiceReply=root.__assistantRenderedOwner==='legacy'&&Number.isSafeInteger(root.__assistantRenderedTrailId)&&
+    const legacyReply=root.__assistantRenderedOwner==='legacy'&&Number.isSafeInteger(root.__assistantRenderedTrailId)&&
       latest?.id===root.__assistantRenderedTrailId;
     let target=home;
     // Keep one live result set, bound to the private revision or completed
-    // voice exchange that produced it.
+    // legacy exchange that produced it.
     if($('assistant-workspace-dialog').open&&!snapshot?.locked&&assistantBindingCurrent(assistantState.binding)&&
       rendered?.kind==='results'&&rendered.version!==4&&root.childElementCount&&
-      root.__assistantRenderedEpoch===state.generation&&(privateReply||voiceReply)){
+      root.__assistantRenderedEpoch===state.generation&&(privateReply||legacyReply)){
       const list=$('assistant-turn-trail-list');
       target=Array.from(list.children).find(entry=>entry.dataset.assistantTurnId===String(latest.id))||home;
     }
     if(block.parentElement!==target){
       const focused=block.contains(document.activeElement)?document.activeElement:null;
-      if(target===home)block.append(root);
-      else block.prepend(root);
+      const scrollLeft=root.scrollLeft;
+      if(target===home)block.append(root,controls);
+      else block.prepend(root,controls);
       target.append(block);
+      root.scrollLeft=scrollLeft;
       focused?.focus({preventScroll:true});
+    }
+    if(revealThumbnails&&target!==home&&!assistantState.turnTrailHasNewer){
+      const thumbnail=root.querySelector('.assistant-thumbnail-open');
+      if(thumbnail){
+        const scroller=assistantTrailScroller($('assistant-turn-trail-list'));
+        const bounds=scroller.getBoundingClientRect(),image=thumbnail.getBoundingClientRect();
+        const offset=Math.min(image.top-bounds.top-8,image.bottom-bounds.bottom+8);
+        if(offset>0)scroller.scrollTop+=offset;
+      }
     }
   }
   function privateAssistantTrail(detail){
@@ -1663,9 +1687,10 @@
     }
     const block=$('assistant-result-block');
     const focused=block.contains(document.activeElement)?document.activeElement:null;
+    const strip=$('assistant-results'),scrollLeft=strip.scrollLeft;
     if(list.contains(block)){
       $('assistant-result-home').append(block);
-      block.append($('assistant-results'));
+      block.append(strip,$('assistant-strip-controls'));
     }
     list.replaceChildren();
     for(const exchange of assistantState.turnTrail){
@@ -1687,6 +1712,7 @@
     const hasTurns=assistantState.turnTrail.length>0||assistantState.voicePendingText!==null;
     section.hidden=!hasTurns;
     placeAssistantResults();
+    strip.scrollLeft=scrollLeft;
     focused?.focus({preventScroll:true});
     if(!hasTurns){assistantState.turnTrailHasNewer=false;list.scrollTop=0;}
     else if(followLatest)revealAssistantTrailTail(list);
@@ -2265,6 +2291,11 @@
     const hasSearchResults=turn.kind==='results'||turn.kind==='open';
     const items=hasSearchResults?turn.items:[];
     const root=$('assistant-results');root.replaceChildren();root.__assistantRenderedTurn=turn;root.__assistantRenderedEpoch=epoch;root.__assistantRenderedOwner=owner;root.__assistantRenderedTrailId=trailId;assistantState.items=items;
+    const useStrip=turn.kind==='results'&&turn.version!==4&&items.length>0;
+    root.classList.toggle('assistant-results--strip',useStrip);
+    root.removeAttribute('tabindex');root.removeAttribute('role');root.removeAttribute('aria-label');
+    if(useStrip){root.tabIndex=0;root.setAttribute('role','region');root.setAttribute('aria-label',t('assistantStripLabel'));}
+    root.scrollLeft=0;
     const privateSelection=privateAssistant?.state();
     if(!privateSelection?.activeThread&&!privateSelection?.capabilities?.server_owned_turns){
       if(assistantStoryLegacy?.turn!==turn){assistantStorySerial++;assistantStoryLegacy=turn.kind==='results'?{turn,binding:{account:state.profile?.account_id,library:state.library,generation:epoch},selected:new Map()}:null;}
@@ -2333,21 +2364,32 @@
     for(const [index,item] of items.entries()) {
       const card=document.createElement('article');card.className='assistant-result';card.dataset.assetId=item.id;
       const image=document.createElement('img');image.className='assistant-thumbnail';image.loading='lazy';image.alt=assetLabel(item);image.src=safeMediaURL(item.id,'thumbnail');
-      image.addEventListener('error',()=>{image.alt=t('previewMissing');},{once:true});card.append(image);
-      const title=document.createElement('p');title.textContent=assetLabel(item);card.append(title);
+      image.addEventListener('error',()=>{image.alt=t('previewMissing');},{once:true});
+      const title=document.createElement('p');title.textContent=assetLabel(item);
+      if(!useStrip)card.append(image,title);
       if(turn.version===4){const rank=document.createElement('p');rank.className='assistant-scene-rank';rank.textContent=t('assistantSceneRank').replace('{rank}',String((turn.scene_rank_start||1)+turn.items.indexOf(item)));card.append(rank);}
       if(item.match&&typeof item.match.excerpt==='string'){const excerpt=document.createElement('p');excerpt.className='fine';excerpt.textContent=item.match.excerpt.slice(0,1200);card.append(excerpt);}
       if(Array.isArray(item.match_reasons)&&item.match_reasons.length){const reasons=document.createElement('ul');reasons.className='assistant-match-reasons';for(const reason of item.match_reasons){const label=assistantMatchReason(reason,turn);if(label){const entry=document.createElement('li');entry.textContent=label;reasons.append(entry);}}if(reasons.childElementCount)card.append(reasons);}
       const button=document.createElement('button');button.type='button';button.className='quiet';
-      button.textContent=t(item.kind==='video'?'assistantOpenVideo':'assistantOpen');
+      const openLabel=t(item.kind==='video'?'assistantOpenVideo':'assistantOpen');
+      if(useStrip){
+        button.classList.add('assistant-thumbnail-open');
+        button.setAttribute('aria-label',openLabel);
+        const ordinal=document.createElement('span');ordinal.className='assistant-thumbnail-number';
+        ordinal.textContent=String((turn.result_page?((privateSelection?.resultPageResult?.page??1)-1)*20:0)+index+1);
+        ordinal.id='assistant-thumbnail-number-'+index;button.setAttribute('aria-describedby',ordinal.id);
+        const badge=document.createElement('span');badge.className='assistant-thumbnail-kind';badge.textContent=t(item.kind==='video'?'assistantOpenVideo':'assistantOpen');
+        badge.setAttribute('aria-hidden','true');
+        button.append(image,ordinal,badge);card.prepend(button,title);
+      }else button.textContent=openLabel;
       button.addEventListener('click',()=>{
-        if(stale(epoch)||state.locked||state.library!==assistantState.binding?.library)return;
+        if(!button.isConnected||root.__assistantRenderedTurn!==turn||stale(epoch)||state.locked||state.library!==assistantState.binding?.library)return;
         const frameSearch=assistantStoryTarget?assistantFrameSearchContext(turn,epoch,assistantState.items,button):null;
         if(assistantStoryTarget&&!assistantFrameSearchItemCurrent(frameSearch,item))return;
         reportAssistantOutcome(assistantState.turnReceipt,'open_requested');
         void openAsset(item,{sequence:frameSearch?.items||assistantState.items,origin:'assistant',frameSearch});
       });
-      const actions=document.createElement('div');actions.className='assistant-actions assistant-result-actions';actions.append(button);
+      const actions=document.createElement('div');actions.className='assistant-actions assistant-result-actions';if(!useStrip)actions.append(button);
       if(owner==='private'&&turn.kind==='results'&&[2,3].includes(turn.version)&&
           privateSelection?.currentResult===turn&&turn.context&&item.match_reasons?.length){
         const ordinal=index+1;
@@ -2362,7 +2404,7 @@
         });
         actions.append(why);
       }
-      card.append(actions);root.append(card);
+      if(actions.childElementCount)card.append(actions);root.append(card);
       if(turn.kind==='results'&&['image','video'].includes(item.kind)){
         const label=document.createElement('label');label.className='assistant-story-choice';
         const input=document.createElement('input');input.type='checkbox';input.className='assistant-story-pick';input.value=item.id;
@@ -2372,7 +2414,7 @@
       }
     }
     renderAssistantStoryControls(privateAssistant?.state());
-    placeAssistantResults(privateSelection);
+    placeAssistantResults(privateSelection,{revealThumbnails:useStrip&&!turn.result_page});
     if(turn.effect?.type==='open_asset') {
       const item=turn.items.find(candidate=>candidate.id===turn.effect.asset_id);
       if(item&&turn.kind==='open'&&!stale(epoch)&&!state.locked){if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();reportAssistantOutcome(assistantState.turnReceipt,'open_requested');void openAsset(item,{sequence:turn.items,origin:'assistant'});}
@@ -2444,7 +2486,7 @@
       if(receipt.tracking==='enabled'&&receipt.status==='succeeded')assistantState.turnRequestId=requestId;
       assistantState.transcriptRequestId=null;
       showAssistantReceipt(receipt,receipt.status?assistantReceiptLabel(receipt.status):'assistantReceiptSucceeded');
-      reportAssistantOutcome(receipt,'displayed');renderAssistantTurn(turn,epoch,'legacy',Number.isSafeInteger(voiceToken)?trailId:null);clearAssistantRecoveryPointer(requestId);$('assistant-status').textContent='';
+      reportAssistantOutcome(receipt,'displayed');renderAssistantTurn(turn,epoch,'legacy',trailId);clearAssistantRecoveryPointer(requestId);$('assistant-status').textContent='';
       if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding)){
         if(turn.kind==='results'&&turn.items.length>0&&turn.context&&assistantState.speech){assistantState.voiceSession.phase='speaking';syncAssistantControls();}
         else pauseAssistantVoice('assistantVoiceReview');
@@ -5851,6 +5893,15 @@
     const view=assistantStoryView();if(view.blocked)return;
     if(view.privateRoute)privateAssistant.clearStorySelection();else assistantStoryLegacy?.selected.clear();
     assistantStorySerial++;assistantStoryNotice='';renderAssistantStoryControls();
+  });
+  $('assistant-strip-back').addEventListener('click',()=>scrollAssistantStrip(-1));
+  $('assistant-strip-forward').addEventListener('click',()=>scrollAssistantStrip(1));
+  $('assistant-results').addEventListener('keydown',event=>{
+    const strip=event.currentTarget;
+    if(event.target!==strip||!strip.classList.contains('assistant-results--strip'))return;
+    if(event.key==='ArrowLeft'||event.key==='ArrowRight'){
+      event.preventDefault();scrollAssistantStrip(event.key==='ArrowLeft'?-1:1);
+    }
   });
   $('assistant-result-page-next').addEventListener('click',()=>void privateAssistantAction(async()=>{
     const snapshot=privateAssistant?.state(),next=(snapshot?.resultPageResult?.page||1)+1;

@@ -15,8 +15,6 @@ completed. Physical microphone/speaker testing was deferred by the user.
 
 GitHub Actions remains cost-paused. Use local checks and [the CI policy](CI.md);
 this documentation task authorizes no push, deployment, migration or task change.
-For a UI-only release, bind the selected API commit **and** its complete manifest
-in all startup/refresh controls; preserve the separate grouping-worker identity.
 Keep rollback available until actual API, Search, grouping and refresh checks pass.
 
 ## Release sequence
@@ -42,6 +40,51 @@ Keep rollback available until actual API, Search, grouping and refresh checks pa
 7. **Restore and observe.** Restore writer definitions and running states. Retain
    old immutable releases and failed records. Confirm the family/device experience
    separately before treating delivery as product acceptance.
+
+## Shorter Windows cutovers
+
+The November 27 Jude rollout took 35 minutes 35 seconds. Roughly 23 minutes
+elapsed between the successful new-API check and the scheduled grouping run.
+The launcher also recorded 134.6 seconds for its startup playback check and
+the controller spent three minutes verifying cleanup. The records did not
+measure the stop-to-ready outage separately. The old launcher bound static UI
+files at API startup, so even a compatible UI package followed the API switch
+and grouping sequence.
+
+### Static UI releases
+
+The optional live UI selector separates compatible Web assets from the API
+process. Install it once in the protected API launcher by calling
+`bind_live_access_ui_overlays(ui_module, release_root, expected_api_commit=...)`
+before the listener starts. Use a private, direct Windows release directory on
+D: that only the deployment identity can write and that the API identity can
+read. Initialize the selector with the current qualified UI first. Keep the
+existing API manifest and grouping-worker identity in the startup controls.
+This path still needs qualification on Windows before enabling it there.
+
+1. Build the candidate with `server/scripts/build_access_ui_overlay.py` from
+   its full commit. Stage the verified package in a new subdirectory named by
+   its manifest SHA-256, then check the changed behavior before selection.
+2. Run `server/scripts/select_access_ui_overlay.py` with the release root,
+   exact running API commit, candidate UI commit, candidate manifest SHA-256,
+   and current manifest SHA-256. It refuses changes to application code outside
+   the approved asset set, staged bytes that differ from Git, and concurrent
+   or stale selections. Initialization uses `--expect-current none`.
+3. Check HTTPS, the uncached shell, the referenced hashed assets, and the
+   changed signed-in behavior. The API process keeps serving and retains the
+   preceding asset version for clients using the old shell. Roll back by
+   selecting the prior verified manifest, using the failed selection's digest
+   as the expected current value. Retain the prior package for this rollback.
+
+### API and worker releases
+
+Prepare and validate artifacts while the incumbent serves. Record the times
+for stopping the old API, binding the new listener, passing HTTPS and the
+changed-feature check, observing scheduled jobs, and closing the deployment
+process. Report when the API is serving and when scheduled jobs are verified as
+separate milestones. If grouping's binding changes, retain its protected
+transition, natural-run verification and rollback. A schema/data change
+continues to require its matching writer fence and backup.
 
 ## Data and recovery inventory
 

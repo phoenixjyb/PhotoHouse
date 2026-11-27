@@ -756,6 +756,22 @@ let browser,context,page;
 
   await search('找示例儿童的照片');
   const firstPhotoPage=await pickIds();
+  const strip=page.locator('#assistant-results.assistant-results--strip');
+  await page.setViewportSize({width:390,height:845});
+  await strip.scrollIntoViewIfNeeded();
+  assert.equal(await strip.evaluate(node=>node.scrollWidth>node.clientWidth),true,'dated results overflow within the strip');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'the strip does not widen the phone layout');
+  assert.equal(await strip.locator('.assistant-thumbnail-number').first().textContent(),'1');
+  await strip.focus();await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(()=>document.querySelector('#assistant-results').scrollLeft>0);
+  await page.locator('#assistant-strip-back').click();
+  await page.waitForFunction(()=>document.querySelector('#assistant-results').scrollLeft===0);
+  await strip.scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'jude-thumbnail-strip-phone.png'),fullPage:false});
+  await page.setViewportSize({width:1280,height:900});
+  await strip.scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(artifacts,'jude-thumbnail-strip-desktop.png'),fullPage:false});
+
   await page.locator('#assistant-result-page-next').click();
   await page.waitForFunction(expected=>{const card=document.querySelector('.assistant-result');return card&&card.dataset.assetId!==expected;},firstPhotoPage[0]);
   const laterPhoto=(await pickIds())[0],laterPick=page.locator(`.assistant-story-pick[value="${laterPhoto}"]`);
