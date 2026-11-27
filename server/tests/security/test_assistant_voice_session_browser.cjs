@@ -62,10 +62,17 @@ let browser,context,page;
       const body=JSON.parse(entry.body),requestId=entry.headers['x-photohouse-request-id'],mode=privateReplyMode;
       const kind=mode==='unsupported'?'unsupported':mode==='clarification'?'clarification':'results';
       const reply=mode==='over-limit'?'家'.repeat(201):mode==='clarification'?'Private clarification reply':mode==='zero-results'?'Private zero-result reply':mode==='unsupported'?'Private unsupported reply':mode==='recovered'?'Private recovered reply':'Private results reply';
-      const result={version:1,kind,reply,context:null,filters:null,items:[],total:0,has_more:false,effect:null};
+      const assetId=body.library_id==='family-b'?'201':'101';
+      const context=mode==='results'?{library_id:body.library_id,binding:'e'.repeat(64),fingerprint:'f'.repeat(64),filters:{},visible_ids:[assetId],total:1}:null;
+      const items=context?[{id:assetId,kind:'image',width:640,height:480,duration_sec:null,taken_at:null,
+        thumbnail_url:`/assets/${assetId}/thumbnail?${new URLSearchParams({library:body.library_id})}`}]:[];
+      const result={version:1,kind,reply,context,filters:context?.filters??null,items,total:items.length,has_more:false,effect:null};
       const envelope={version:1,thread_id:url.pathname.split('/')[5],request_id:requestId,status:'completed',revision:body.expected_revision+1,recovered:mode==='recovered',error:null,result};
       privateTurnVersions.push({version:result.version,searchHeader:entry.headers['x-photohouse-search-version']||null});
       try{await route.fulfill({status:200,contentType:'application/json',headers:{'cache-control':'no-store',...tracking(requestId)},body:JSON.stringify(envelope)});}catch(error){if(!/closed|handled|cancel|abort|Invalid InterceptionId/i.test(error.message))throw error;}return;
+    }
+    if(entry.method==='GET'&&url.pathname==='/assets/201/thumbnail'&&url.searchParams.get('library')==='family-b'){
+      await route.fulfill({status:200,contentType:'image/jpeg',path:path.join(__dirname,'fixtures/home-8x8.jpg')});return;
     }
     if(entry.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[^/]+\/requests\/[^/]+\/speech$/.test(url.pathname)){
       privateSpeechRequests.push(entry);
@@ -211,6 +218,11 @@ let browser,context,page;
   const privateTurnCountBeforeFreshVoice=requests.filter(entry=>entry.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[^/]+\/turns$/.test(entry.path)).length;
   playbackTrackingEnabled=true;const privateVoiceBase=await calls();await page.locator('#assistant-voice-start').click();await waitFor(expected=>window.__phGetUserMediaCalls===expected,'private voice starts explicitly',privateVoiceBase+1);await makeUtterance();
   await page.waitForFunction(()=>document.querySelector('#assistant-reply').textContent==='Private results reply');
+  const voiceExchange=page.locator('#assistant-turn-trail-list > li').last();
+  assert.equal(await voiceExchange.locator('.assistant-turn-trail-text').last().textContent(),'Private results reply');
+  assert.equal(await voiceExchange.locator('#assistant-results > .assistant-result').count(),1,'the voice reply owns the live result card in the conversation');
+  assert.equal(await voiceExchange.locator('#assistant-result-block').evaluate(block=>block.firstElementChild.id),'assistant-results','the matched photo comes before its selection controls');
+  assert.equal(await page.locator('#assistant-result-home #assistant-results').count(),0,'the result set is moved without duplication');
   assert.equal(requests.filter(entry=>entry.method==='POST'&&entry.path==='/assistant/workspace/v1/threads').length,privateThreadCreateCount+1,'the first private voice request creates exactly one conversation');
   const freshPrivateTurn=requests.filter(entry=>entry.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[^/]+\/turns$/.test(entry.path)).at(-1);
   assert.equal(requests.filter(entry=>entry.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[^/]+\/turns$/.test(entry.path)).length,privateTurnCountBeforeFreshVoice+1,'foreground ASR produces one protected private search without an active thread');
@@ -272,6 +284,7 @@ let browser,context,page;
   privateReplyMode='clarification';await makeUtterance();await page.waitForFunction(()=>document.querySelector('#assistant-reply').textContent==='Private clarification reply');await waitForNode(()=>privateSpeechRequests.length===2,'clarification reply speech request');await page.waitForFunction(()=>document.querySelector('#assistant-voice-session-status').textContent==='正在播报私密回复…');
   assert.equal(await timing.isHidden(),true,'a later in-progress turn clears the prior loop timing');assert.equal(await timing.locator('dd').count(),0);
   assert.equal(await page.locator('#assistant-results > .assistant-result').count(),0,'context-free clarification exposes no result cards');assert.equal(await calls(),privateVoiceBase+3,'clarification waits for actual playback completion');
+  assert.equal(await page.locator('#assistant-turn-trail-list #assistant-result-block').count(),0,'a clarification does not inherit the previous reply’s result set');
   const clarificationSpeech=privateSpeechRequests.at(-1);await page.locator('#assistant-voice-pause').click();await page.waitForFunction(()=>document.querySelector('#assistant-voice-timing').hidden);await waitForNode(()=>playbackRequests.some(entry=>entry.path.endsWith(`/${clarificationSpeech.headers['x-photohouse-request-id']}/playback`)),'pause reports cancellation for the current playback');assert.equal(JSON.parse(playbackRequests.at(-1).body).outcome,'cancelled');await page.evaluate(()=>window.__phVoicePlayers.at(-1).dispatchEvent(new Event('ended')));assert.equal(await calls(),privateVoiceBase+3,'late ended after pause cannot restart capture');assert.equal(await timing.locator('dd').count(),0,'cancelled playback cannot publish timing');await page.locator('#assistant-voice-resume').click();await waitFor(expected=>window.__phGetUserMediaCalls===expected,'resume after cancelled playback',privateVoiceBase+4);
   privateReplyMode='zero-results';await makeUtterance();await page.waitForFunction(()=>document.querySelector('#assistant-reply').textContent==='Private zero-result reply');await waitForNode(()=>privateSpeechRequests.length===3,'zero-result reply speech request');await page.waitForFunction(()=>document.querySelector('#assistant-voice-session-status').textContent==='正在播报私密回复…');
   assert.equal(await timing.isHidden(),true,'playback preparation never republishes an earlier loop timing');assert.equal(await page.locator('#assistant-voice-timing-values dd').count(),0);
