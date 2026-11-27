@@ -99,6 +99,31 @@ class StoryProposalAdoptionTest {
         assertNull(storyProposalAdoptionDraft(story(), references(), job(), listOf("chapter-1"), adoptTitle = false)?.title)
     }
 
+    @Test fun adoptsSelectedProposalsBeyondChapterSixInSavedOrder() {
+        val items = (101 until 101 + StoryLimits.MAX_FRAMES).map { id ->
+            MemoryStoryAsset(Asset(id.toString(), "image", 1, 1, null, null, "/$id"), emptyList())
+        }
+        val chapters = items.chunked(StoryLimits.MAX_FRAMES_PER_CHAPTER).mapIndexed { index, frames ->
+            val ordinal = index + 1
+            SavedMemoryStoryChapter("chapter-$ordinal", "Chapter $ordinal", "Original $ordinal",
+                frames.map { it.asset.id }, listOf("evidence-$ordinal"))
+        }
+        val saved = story().copy(items = items, chapters = chapters)
+        val refs = references(saved).copy(chapters = chapters.map {
+            SavedMemoryChapterContributionReferences(it.id, emptyList())
+        })
+        val result = JsonObject(narrative() + ("chapters" to JsonArray(chapters.map {
+            chapter(it.id, "Reviewed ${it.id}", it.evidenceIds)
+        })))
+        val selected = listOf(chapters.last().id, chapters[6].id)
+        val draft = storyProposalAdoptionDraft(saved, refs, job(result = result), selected, adoptTitle = false)
+        assertNotNull(draft)
+        assertEquals(selected.reversed(), draft!!.chapters.map { it.id })
+        assertEquals("Reviewed ${chapters.last().id}", draft.chapters.last().narration)
+        assertEquals(chapters.last().evidenceIds, draft.chapters.last().sourceIds)
+        assertNull(draft.title)
+    }
+
     @Test fun acceptsNarrativeAndChatProposalJobsOnly() {
         val current = story()
         val refs = references(current)

@@ -485,8 +485,8 @@ window.PhotoHouseMemoryCommunity = ({scope, request, onError=()=>{}, onProposal=
   function validBookPlan(value,bookId,revision,stories,editorialContext=false){
     if(!value||value.version!==1||value.target_type!=='book'||value.target_id!==bookId||String(value.revision)!==String(revision)||
       typeof value.can_edit!=='boolean'||value.kind!=='saved_structure_plan'||value.generated!==false||value.queued!==false||value.needs_review!==true||
-      !Number.isSafeInteger(value.story_count)||value.story_count<1||value.story_count>24||!Number.isSafeInteger(value.chapter_count)||value.chapter_count<1||value.chapter_count>144||
-      !Number.isSafeInteger(value.item_count)||value.item_count<1||value.item_count>576||!value.limits||value.limits.chapters!==24||value.limits.sources!==96||value.limits.context_bytes!==65536||
+      !Number.isSafeInteger(value.story_count)||value.story_count<1||value.story_count>24||!Number.isSafeInteger(value.chapter_count)||value.chapter_count<1||value.chapter_count>value.story_count*STORY_MAX_CHAPTERS||
+      !Number.isSafeInteger(value.item_count)||value.item_count<1||value.item_count>value.story_count*STORY_MAX_FRAMES||!value.limits||value.limits.chapters!==24||value.limits.sources!==96||value.limits.context_bytes!==65536||
       !validPlanCapacity(value.whole)||!Array.isArray(value.sections)||value.sections.length!==value.story_count||!Array.isArray(stories)||stories.length!==value.story_count)return false;
     if(editorialContext&&(value.context_profile!==EDITORIAL_CONTEXT_PROFILE||
       value.whole.state==='within_limits'&&(!Number.isSafeInteger(value.whole.context_bytes)||value.whole.context_bytes<1||value.whole.context_bytes>65536)||

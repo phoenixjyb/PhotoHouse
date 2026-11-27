@@ -3,7 +3,10 @@ const STORY_CHAPTER_LIMIT = 12;
 const STORY_FRAMES_PER_CHAPTER = 4;
 const STORY_FRAME_LIMIT = STORY_CHAPTER_LIMIT * STORY_FRAMES_PER_CHAPTER;
 const JUDE_FRAME_BATCH_LIMIT = 24;
-const supportsFamilyMemoryLinks = chapterId => /^chapter-[1-6]$/.test(chapterId);
+const supportsFamilyMemoryLinks = chapterId => {
+  const match = /^chapter-([1-9]\d*)$/.exec(chapterId);
+  return match !== null && Number(match[1]) <= STORY_CHAPTER_LIMIT;
+};
 /* Library-private editorial workspace; publication uses protected APIs only. */
 window.PhotoHouseStoryWorkspace = ({scope, request, mediaURL, openAsset, onError, openAssistant, openFrameSearch, openRelatedAsset, savedRequest, draftRequest, community, titleRequest, relatedRequest, sourceAccessCheck, capture, voiceCapabilities, transcribe, canCapture=()=>true, reserveCapture=()=>null, claimCapture=()=>false, releaseCapture=()=>{}, stopAudioForCapture=()=>{}}) => {
   const $ = id => document.getElementById(id);

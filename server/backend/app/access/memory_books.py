@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from .library import _integer
 from .memory_stories import MemoryStories
 from .service import AccessDenied
+from .story_outline import MAX_ITEMS
 from .stories import _uuid
 from .transport import TransportError
 
@@ -140,7 +141,7 @@ class MemoryBooks:
                 SELECT s.id,s.library_id FROM access_memory_stories s
                 WHERE json_valid(s.content)
                   AND json_type(s.content,'$.asset_ids')='array'
-                  AND json_array_length(s.content,'$.asset_ids') BETWEEN 1 AND 24
+                  AND json_array_length(s.content,'$.asset_ids') BETWEEN 1 AND ?
                   AND NOT EXISTS (
                     SELECT 1 FROM json_each(
                         CASE WHEN json_valid(s.content) THEN s.content ELSE '{"asset_ids":[]}' END,
@@ -156,7 +157,7 @@ class MemoryBooks:
             WHERE b.library_id=?
               AND json_valid(b.content)
               AND json_type(b.content,'$.story_ids')='array'
-              AND json_array_length(b.content,'$.story_ids') BETWEEN 1 AND 24
+              AND json_array_length(b.content,'$.story_ids') BETWEEN 1 AND ?
               AND NOT EXISTS (
                 SELECT 1 FROM json_each(
                     CASE WHEN json_valid(b.content) THEN b.content ELSE '{"story_ids":[]}' END,
@@ -165,7 +166,7 @@ class MemoryBooks:
                   ON s.id=ref.value AND s.library_id=b.library_id
                 WHERE s.id IS NULL)
             ORDER BY b.updated_at DESC,b.id DESC LIMIT ? OFFSET ?''',
-            (library, PAGE_SIZE + 1, (page - 1) * PAGE_SIZE))
+            (MAX_ITEMS, library, MAX_STORIES, PAGE_SIZE + 1, (page - 1) * PAGE_SIZE))
 
     def list(self, token, library, page):
         if type(page) is not int or not 1 <= page <= 100000:

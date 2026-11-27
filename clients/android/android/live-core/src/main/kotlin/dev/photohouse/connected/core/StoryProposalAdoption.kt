@@ -41,7 +41,7 @@ fun storyProposalAdoptionDraft(
     require(story.selectionRevision.matches(Regex("[0-9a-fA-F]{64}")))
 
     val chapterIds = story.chapters.map { it.id }
-    require(chapterIds.isNotEmpty() && chapterIds.size <= MAX_CHAPTERS)
+    require(chapterIds.isNotEmpty() && chapterIds.size <= StoryLimits.MAX_CHAPTERS)
     require(chapterIds.distinct().size == chapterIds.size)
     require(chapterIds.withIndex().all { (index, id) -> id == "chapter-${index + 1}" })
     require(references.id == story.id && references.libraryId == story.libraryId && references.revision == story.revision)
@@ -119,7 +119,7 @@ private fun decodeNarrative(value: JsonObject): DecodedNarrative {
     require(boolean(value["needs_review"]))
     val title = string(value["title"], 512)
     val rawChapters = value["chapters"] as? JsonArray ?: throw IllegalArgumentException()
-    require(rawChapters.isNotEmpty() && rawChapters.size <= MAX_CHAPTERS)
+    require(rawChapters.isNotEmpty() && rawChapters.size <= StoryLimits.MAX_CHAPTERS)
     val chapters = rawChapters.map { element ->
         val chapter = element as? JsonObject ?: throw IllegalArgumentException()
         require(chapter.keys == CHAPTER_KEYS)
@@ -169,7 +169,6 @@ private fun canonicalUuid(value: String): Boolean = runCatching { UUID.fromStrin
 private fun <T> immutable(values: Collection<T>): List<T> =
     Collections.unmodifiableList(ArrayList(values))
 
-private const val MAX_CHAPTERS = 6
 private const val MAX_CONTRIBUTIONS_PER_CHAPTER = 12
 private const val MAX_SOURCES = 96
 private const val MAX_TITLE_CODE_POINTS = 160

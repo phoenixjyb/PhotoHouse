@@ -34,6 +34,12 @@ _MONTHS = {
 _MONTH_PATTERN = '|'.join(sorted(_MONTHS, key=len, reverse=True))
 _ZH_MONTHS = {'一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6,
               '七': 7, '八': 8, '九': 9, '十': 10, '十一': 11, '十二': 12}
+_ZH_DIGITS = '〇一二三四五六七八九'
+_ZH_EXACT_DAY = (
+    r'(?:(?:(?P<year>(?:19|20)\d{2})年|(?P<relative_year>去年|今年))\s*)?'
+    r'(?P<month>\d{1,2}|十一|十二|十|[一二三四五六七八九])月(?:份)?\s*'
+    r'(?P<day>\d{1,2}|[二三]?十[一二三四五六七八九]?|[一二三四五六七八九])[日号號]'
+)
 # Scope English word boundaries to ASCII: Python's Unicode word boundary
 # treats Han and Latin letters as one word ("videos的", "找September").
 # Only boundary assertions use ASCII mode; the surrounding query, labels and
@@ -43,12 +49,15 @@ _MEDIA = (
     ('image', re.compile(r'照片|图片|相片|(?a:\b)(?:photos?|photographs?|pictures?|images?)(?a:\b)', re.I)),
 )
 _MEDIA_ONLY_EN = r'(?:videos?|movies?|photos?|photographs?|pictures?|images?)'
+_NARROW_REFINEMENT_OPEN = (
+    r'(?:(?:please|(?:can|could|would)\s+you)\s+)?'
+    r'narrow\s+(?:it|the\s+(?:search|results))\s+to\s+(?:the\s+)?'
+)
 _MEDIA_ONLY_REFINEMENT = re.compile(
     rf'^(?:'
     rf'refine(?a:\b)\s+(?:(?:my|the)(?a:\b)\s+)?last(?a:\b)\s+search(?a:\b)\s+'
     rf'to(?a:\b)\s+(?:show(?a:\b)\s+)?(?P<full>{_MEDIA_ONLY_EN})\s+only(?a:\b)|'
-    r'(?:only(?a:\b)\s+|(?:(?:please|(?:can|could|would)\s+you)\s+)?'
-    rf'narrow\s+(?:it|the\s+(?:search|results))\s+to\s+(?:the\s+)?)(?P<prefix>{_MEDIA_ONLY_EN})|'
+    rf'(?:only(?a:\b)\s+|{_NARROW_REFINEMENT_OPEN})(?P<prefix>{_MEDIA_ONLY_EN})|'
     rf'(?P<suffix>{_MEDIA_ONLY_EN})\s+only(?a:\b)|'
     rf'只看(?P<chinese>视频|影片|照片|图片|相片)'
     rf')[。.!！?？]*$', re.I)
@@ -68,7 +77,7 @@ _SEARCH_OPEN = re.compile(
     r'(?:(?:请)?(?:我想看看|我想看|我想找|想找|想看|还有没有|有没有))'
     r')', re.I)
 _REFINE_OPEN = re.compile(
-    r'^(?:只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
+    rf'^(?:{_NARROW_REFINEMENT_OPEN}|只看|只要|筛选|再找|再看看|再看|缩小|换成|改成|那么|那|'
     r'refine(?a:\b)|only(?a:\b)|filter(?a:\b)|just(?a:\b)|what about(?a:\b)|how about(?a:\b)|same but(?a:\b)|make it(?a:\b))', re.I)
 _KEEP_PEOPLE_DIRECTIVE = re.compile(
     r'(?:不要(?:改变|更改|变更)|保留)人物(?:条件|筛选)|'
@@ -101,6 +110,7 @@ _DATE_ONLY_SHAPE = re.compile(
     rf'|(?:19|20)\d{{2}}年(?:十一|十二|十|[一二三四五六七八九])月(?:份)?'
     rf'|(?:去年|今年)(?:(?:1[0-2]|0?[1-9]|十一|十二|十|[一二三四五六七八九])月(?:份)?|(?:{_MONTH_PATTERN}))'
     rf'|(?:\d{{1,2}}|十一|十二|十|[一二三四五六七八九])月(?:份)?'
+    rf'|{_ZH_EXACT_DAY}'
     rf'|(?:{_MONTH_PATTERN})(?:\s+\d{{1,2}}(?:st|nd|rd|th)?(?:[,]?\s+(?:19|20)\d{{2}})?|\s+(?:19|20)\d{{2}})?'
     rf'|\d{{1,2}}(?:st|nd|rd|th)?\s+(?:{_MONTH_PATTERN})(?:[,]?\s+(?:19|20)\d{{2}})?)$', re.I)
 _BARE_MEDIA = re.compile(r'^(?:照片|图片|相片|视频|影片|photos?|photographs?|pictures?|images?|videos?|movies?)(?:呢)?$', re.I)
@@ -184,10 +194,19 @@ def _date_range(start, end):
     return {'from': start.isoformat(), 'to': end.isoformat()}
 
 
+def _chinese_day(value):
+    if value.isdecimal():
+        return int(value)
+    tens, ten, ones = value.partition('十')
+    if ten:
+        return 10 * _ZH_DIGITS.index(tens or '一') + _ZH_DIGITS.index(ones or '〇')
+    return _ZH_DIGITS.index(value)
+
+
 def _extract_dates(text, today, *, month_year=None):
     """Return (ranges, residue, error); every date-like span is consumed whole."""
-    # Only bare month slots inherit context; explicit/relative dates keep their
-    # own calendar meaning. Zero marks a prior range spanning multiple years.
+    # Yearless months and days inherit context. Explicit/relative dates keep
+    # their calendar meaning. Zero marks an active date without one clear year.
     month_year = today.year if month_year is None else month_year
     spans = []
     candidates = []
@@ -259,6 +278,24 @@ def _extract_dates(text, today, *, month_year=None):
         connector = r'(?a:\b)to(?a:\b)' if re.match(r'(?a:\b)from(?a:\b)', match.group(), re.I) else r'(?a:\b)and(?a:\b)' if re.match(r'(?a:\b)between(?a:\b)', match.group(), re.I) else r'到|至'
         if re.search(connector, tail, re.I) and re.search(r'(?:19|20)\d{2}|(?a:\b)(?:' + _MONTH_PATTERN + r')(?a:\b)|\d{1,2}月', tail, re.I):
             return [], text, 'invalid_date'
+
+    for match in re.finditer(rf'(?<!\d){_ZH_EXACT_DAY}', text):
+        if overlaps(match):
+            continue
+        year = month_year
+        if explicit_year := match.group('year'):
+            year = int(explicit_year)
+        elif relative_year := match.group('relative_year'):
+            year = today.year - (relative_year == '去年')
+        if not year:
+            return [], text, 'conflicting_dates'
+        raw_month = match.group('month')
+        month = int(raw_month) if raw_month.isdecimal() else _ZH_MONTHS[raw_month]
+        try:
+            day = date(year, month, _chinese_day(match.group('day')))
+        except (ValueError, OverflowError):
+            return [], text, 'invalid_date'
+        add(match, day, day)
 
     # ISO and Chinese numeric year/month/day forms. A date-shaped but invalid
     # calendar value is an error, never a partially consumed year/month.
@@ -332,8 +369,10 @@ def _extract_dates(text, today, *, month_year=None):
             continue
         month = _MONTHS[(match.group('month1') or match.group('month2')).casefold()]
         raw_day = match.group('day1') or match.group('day2')
+        if not month_year:
+            return [], text, 'conflicting_dates'
         try:
-            day = date(today.year, month, int(raw_day))
+            day = date(month_year, month, int(raw_day))
         except (ValueError, OverflowError):
             return [], text, 'invalid_date'
         add(match, day, day)
@@ -590,7 +629,8 @@ def _valid_previous(filters):
 
 
 def plan_query(words, *, now: datetime, entities: dict,
-               previous_filters: dict | None, refine: bool) -> QueryPlan:
+               previous_filters: dict | None, refine: bool,
+               date_reference: dict | None = None) -> QueryPlan:
     """Build a ready plan or a closed clarification from one v2 user query."""
     if type(words) is not str or not words.strip() or not isinstance(now, datetime) or type(refine) is not bool:
         return _clarify('invalid_query')
@@ -606,6 +646,9 @@ def plan_query(words, *, now: datetime, entities: dict,
     if refine and previous_filters is None:
         return _clarify('refine_without_context')
     if previous_filters is not None and not _valid_previous(previous_filters):
+        return _clarify('invalid_previous_filters')
+
+    if date_reference is not None and not _valid_previous({'date': date_reference}):
         return _clarify('invalid_previous_filters')
 
     query = words.strip()
@@ -677,8 +720,8 @@ def plan_query(words, *, now: datetime, entities: dict,
     today = now.date()
     date_surface = outside
     month_year = None
-    if refine and previous_filters and previous_filters.get('date'):
-        previous_date = previous_filters['date']
+    previous_date = date_reference or (previous_filters.get('date') if refine and previous_filters else None)
+    if previous_date is not None:
         start_year = date.fromisoformat(previous_date['from']).year if previous_date['from'] else None
         end_year = date.fromisoformat(previous_date['to']).year if previous_date['to'] else None
         month_year = start_year if start_year is not None and start_year == end_year else 0

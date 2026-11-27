@@ -81,6 +81,20 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
     }
     if(sourceSaveRetryTest&&req.method()==='GET'&&url.pathname==='/memory-stories/00000000-0000-4000-8000-000000000099/contribution-refs'&&url.searchParams.get('library')==='family-a'&&url.searchParams.get('revision')==='1'&&sourceSavedFixture){const receipt={version:1,id:sourceSavedFixture.id,library_id:'family-a',revision:'1',chapters:sourceSavedFixture.chapters.map(chapter=>({id:chapter.id,contribution_ids:[]}))};await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(receipt)});return;}
     if(dictationSaveRetryTest&&req.method()==='GET'&&url.pathname==='/memory-stories/00000000-0000-4000-8000-000000000098/contribution-refs'&&url.searchParams.get('library')==='family-a'&&url.searchParams.get('revision')==='1'&&dictationSavedFixture){const receipt={version:1,id:dictationSavedFixture.id,library_id:'family-a',revision:'1',chapters:dictationSavedFixture.chapters.map(chapter=>({id:chapter.id,contribution_ids:[]}))};await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(receipt)});return;}
+    if(dictationSaveRetryTest&&req.method()==='GET'&&dictationSavedFixture&&
+        url.pathname===`/memory-community/v1/stories/${dictationSavedFixture.id}/contribution-candidates`){
+      assert.equal(url.searchParams.get('chapter_id'),'chapter-12');
+      assert.equal(url.searchParams.get('revision'),dictationSavedFixture.revision);
+      const candidate={
+        version:1,story_id:dictationSavedFixture.id,library_id:'family-a',
+        revision:dictationSavedFixture.revision,chapter_id:'chapter-12',page:1,page_size:16,
+        has_more:false,items:[{id:'00000000-0000-4000-8000-000000000701',kind:'text',
+          byline:'Generated family note',language:'en',chapter_id:'chapter-12',
+          created_at:1900000000,duration_ms:null}],
+      };
+      await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(candidate)});
+      return;
+    }
     if(sourceSaveRetryTest&&req.method()==='GET'&&url.pathname==='/memory-stories/00000000-0000-4000-8000-000000000099'&&url.searchParams.get('source_review')==='1'&&sourceSavedFixture){await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(sourceSavedFixture)});return;}
     if(titleHold&&req.method()==='POST'&&url.pathname==='/story-workspace/title-suggestions'){
       const gate=titleHold;titleHold=null;titleSelectionBody=req.postData();arrivedTitleHold();await gate;const body=JSON.parse(req.postData()),chapters=JSON.parse(body.chapters),source=chapters[0].evidence_ids[0];
@@ -475,10 +489,19 @@ const pass=name=>{checks.push(name);console.log('PASS '+name);};
     dictationSaveRetryTest=true;const title=page.locator('#story-workspace-title');await title.fill('Dictation retry story');await page.locator('#story-save-memory').click();await page.waitForFunction(()=>/not confirmed|尚未确认/.test(document.querySelector('#story-workspace-status')?.textContent||''));
     assert.equal(await page.locator('.story-dictation-record').first().isDisabled(),true,'an uncertain save freezes recording');const capsBefore=requests.filter(item=>item.path.startsWith('/assistant/v1/capabilities')).length;await page.locator('.story-dictation-record').first().evaluate(button=>button.click());assert.equal(requests.filter(item=>item.path.startsWith('/assistant/v1/capabilities')).length,capsBefore,'frozen retry starts no capability or microphone work');
     await page.locator('#story-save-memory').click();await page.waitForFunction(()=>/Saved in this library|保存到这个相册库/.test(document.querySelector('#story-workspace-status')?.textContent||''));
-    assert.equal(dictationSaveAttempts,2,'the exact pending save can be retried');dictationSaveRetryTest=false;pass('An uncertain save disables dictation until the identical story save is retried');
+    assert.equal(dictationSaveAttempts,2,'the exact pending save can be retried');
+    const lateChapter=page.locator('.story-chapter-card[data-chapter-id="chapter-12"]');
+    await lateChapter.locator('.story-contribution-add').click({timeout:5000});
+    const chooser=lateChapter.locator('.story-contribution-candidate-chooser');
+    await chooser.getByRole('button',{name:/Generated family note/}).waitFor({timeout:5000});
+    await chooser.getByRole('button',{name:/Cancel selection|取消选择/}).click();
+    assert.equal(dictationSaveAttempts,2,'reading chapter-twelve candidates sends no save');
+    pass('The final chapter of a full-size saved story can browse authorized family-memory sources');
+    dictationSaveRetryTest=false;pass('An uncertain save disables dictation until the identical story save is retried');
   }
   await page.locator('#story-selection-next').click();assert.equal(await page.locator('#story-selection input').count(),8);
   await page.locator('#story-workspace-close').click();
+
   await page.evaluate(()=>window.__storyWorkspaceTest.open(['101','102'],'trip'));
   assert.equal(await page.locator('#story-selection input[value="102"]').getAttribute('aria-label'),'视频 102','ID-only choices reuse known gallery metadata without claiming an immediate playback action');
   await page.locator('#story-workspace-close').click();await page.locator('#logout').click();await page.locator('#auth').waitFor({state:'visible'});

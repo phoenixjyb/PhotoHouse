@@ -1,10 +1,10 @@
 /* Public product records only. No runtime polling or household data. */
 window.PHOTOHOUSE_ROADMAP = {
   "schema_version": 1,
-  "updated_at": "2026-11-26",
+  "updated_at": "2026-11-27",
   "snapshot_label": {
-    "en": "26 November 2026 · reviewed snapshot",
-    "zh": "2026 年 11 月 26 日 · 回顾快照"
+    "en": "27 November 2026 · reviewed snapshot",
+    "zh": "2026 年 11 月 27 日 · 回顾快照"
   },
   "runtime_notice": {
     "severity": "info",
@@ -13,8 +13,8 @@ window.PHOTOHOUSE_ROADMAP = {
       "zh": "部署与集成回顾记录"
     },
     "body": {
-      "en": "Windows Web and API delivery includes album editing, Jude’s ordered selection recovery and stories with up to 48 items. Live Search verified date corrections in Chinese and English. The English media follow-up fix passed local checks and awaits Windows rollout.",
-      "zh": "Windows 网页和 API 已交付相册编辑、小贾按顺序恢复选择，以及最多 48 项素材的故事。中英文日期更正已在实际搜索中验证。英文媒体筛选追问修复已通过本地检查，待 Windows 发布。"
+      "en": "Windows Web and API delivery includes album editing, Jude’s ordered selection recovery and stories with up to 48 items. Live Windows Search verified date corrections in both languages and an English video-only follow-up that kept the corrected month.",
+      "zh": "Windows 网页和 API 已交付相册编辑、小贾按顺序恢复选择，以及最多 48 项素材的故事。Windows 实际搜索已验证中英文日期更正，英文「只看视频」追问也保留了更正后的月份。"
     }
   },
   "areas": [
@@ -689,8 +689,12 @@ window.PHOTOHOUSE_ROADMAP = {
           "zh": "可沿用相同月份、某一天或日期范围切换年份，并保留其余搜索条件。若遇到平年的 2 月 29 日等无效日期，会提示重新指定日期范围。"
         },
         {
-          "en": "The tested update recognizes English requests such as “Could you narrow it to videos?” and keeps the corrected date and other active filters.",
-          "zh": "已通过本地检查的更新可理解 “Could you narrow it to videos?” 等英文追问，并保留已更正的日期和其他生效条件。"
+          "en": "Local tests verify English follow-ups such as “Could you narrow it to videos?” and “Could you narrow the results to videos from October?” Unmentioned filters stay in place.",
+          "zh": "本地测试验证了「能只看视频吗？」和「能把结果缩小到十月的视频吗？」等英文追问。未提及的筛选条件会保留。"
+        },
+        {
+          "en": "Local tests verify specific-day follow-ups in Chinese and English. A date such as “February 29” inherits the active year when it is clear. If the current date range spans years, Jude asks for clarification.",
+          "zh": "本地测试验证了中英文的指定日期追问。当前年份明确时，「二月二十九日」等表达会沿用该年份；当前日期范围跨年时，小贾会请用户明确年份。"
         }
       ],
       "gaps": [
@@ -700,12 +704,12 @@ window.PHOTOHOUSE_ROADMAP = {
         }
       ],
       "next_step": {
-        "en": "After rollout, repeat the English video follow-up on Windows and verify the displayed date and media filters. Continue checking everyday queries on household devices.",
-        "zh": "发布后在 Windows 上重试英文视频追问，核对显示的日期和媒体条件。继续在家庭设备上验证日常查询。"
+        "en": "Try multi-filter follow-ups and exact dates on household devices. Confirm the displayed conditions as well as the results.",
+        "zh": "在家庭设备上试用含多个条件的追问和指定日期，并同时核对显示的条件与搜索结果。"
       },
       "delivery_note": {
-        "en": "Live Windows turns verified date corrections in both languages and a Chinese video follow-up. The English narrowing request fell back to help. The repair passed a local signed-in journey with generated records.",
-        "zh": "Windows 实际查询验证了中英文日期更正及中文视频追问。英文缩小范围的请求曾返回通用帮助，修复后已在本地使用合成数据通过登录后的完整流程测试。"
+        "en": "PR #146 is live on Windows. A signed-in session corrected the month and then switched to videos while keeping the corrected date. Combined-filter and exact-day follow-ups have local test evidence and await delivery.",
+        "zh": "PR #146 已上线 Windows。登录后的实际测试更正了月份，随后切换到视频，并保留更正后的日期。多条件与指定日期追问已通过本地测试，仍待交付。"
       },
       "acceptance_note": {
         "en": "Test with real user phrasing without hardcoding a demonstration.",
@@ -755,6 +759,15 @@ window.PHOTOHOUSE_ROADMAP = {
             "zh": "授权搜索回归测试 · 英文视频追问保留已更正的月份"
           },
           "at": "2026-11-26",
+          "state": "verified"
+        },
+        {
+          "kind": "windows",
+          "label": {
+            "en": "PR #146 · signed-in date correction and English video follow-up",
+            "zh": "PR #146 · 登录后验证日期更正与英文视频追问"
+          },
+          "at": "2026-11-27",
           "state": "verified"
         }
       ]
@@ -1033,6 +1046,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Windows Web supports up to 48 photos and videos in 12 chapters, with up to four items per chapter.",
           "zh": "Windows 网页故事最多可包含 48 项照片和视频，共 12 章，每章最多 4 项。"
+        },
+        {
+          "en": "Local checks cover reopening a 48-item Android draft, adopting reviewed wording in later chapters, and keeping memoirs with full-size stories visible on the shelf.",
+          "zh": "本地检查覆盖了重新打开含 48 项素材的 Android 草稿、采纳后续章节的已审阅文字，以及让包含完整 48 项素材故事的回忆录继续显示在书架上。"
         }
       ],
       "gaps": [
@@ -1166,6 +1183,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Two exact spellings reviewed for the same person can resolve to one canonical name. A known alias belonging to a different person keeps the ambiguous phrase available for review.",
           "zh": "同一人的两种已审阅写法可统一为一个规范名。若别名属于另一位已登记人物，会保留原有歧义片段供审阅。"
+        },
+        {
+          "en": "Local checks show that a linked transcript can carry a verified spelling into the reviewed chapter after the editor changes the sentence. The original transcript stays intact.",
+          "zh": "本地检查表明，即使润色改写了句式，已关联转写中有依据的姓名写法仍可带入该章的待审阅草稿，原始转写保持完整。"
         }
       ],
       "gaps": [

@@ -178,6 +178,8 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
             ('Show me photos from February 2026', 'image', '2026-02-01', '2026-02-28', []),
             ('Actually, January', 'image', '2026-01-01', '2026-01-31', ['101']),
             ('Could you narrow it to videos?', 'video', '2026-01-01', '2026-01-31', []),
+            ('Could you narrow the results to photos from January?', 'image', '2026-01-01', '2026-01-31', ['101']),
+            ('只看一月二日', 'image', '2026-01-02', '2026-01-02', ['101']),
         )
         for revision, (words, media, start, end, ids) in enumerate(cases):
             with self.subTest(words=words):
@@ -190,6 +192,9 @@ class AssistantWorkspaceTurnHttpTests(unittest.TestCase):
                 self.assertEqual(result['filters'], {'media': [media], 'date': {'from': start, 'to': end}})
                 self.assertEqual([item['id'] for item in result['items']], ids)
                 self.assertIsNone(result['effect'])
+                if media == 'video':
+                    self.assertTrue(result['reply'].startswith(
+                        'No matching videos with a recorded capture date'), result['reply'])
 
     def test_bilingual_year_ranges_use_capture_dates_in_owned_recoverable_turns(self):
         self.enable_search()

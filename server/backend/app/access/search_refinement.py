@@ -117,21 +117,16 @@ def _plan_correction(words, parts, *, now, entities, previous_filters, refine):
         operations = _operations(condition)
         if operations[2] or operations[3]:
             return clarify('unsupported_correction')
-        planned = _plan_query(condition, now=now, entities=entities,
-                              previous_filters={}, refine=True)
+        # Keep the result empty until the replacement supplies a slot of its own.
+        # Use the active date only to interpret a yearless month or day.
+        planned = _plan_query(condition, now=now, entities=entities, previous_filters={},
+                              refine=True, date_reference=previous_date)
         if planned.status != 'ready':
             return clarify(planned.reason)
         # This is a single media/date replacement, not an exclusion, person
         # change, removal, scene rewrite or a multi-slot conversation reset.
         if len(planned.filters) != 1 or not set(planned.filters) <= {'media', 'date'}:
             return clarify('unsupported_correction')
-        if 'date' in planned.filters and previous_date is not None:
-            # The empty context proves the date was supplied. Reuse the active
-            # date to give bare months the same year as ordinary refinements.
-            planned = _plan_query(condition, now=now, entities=entities,
-                                  previous_filters={'date': previous_date}, refine=True)
-            if planned.status != 'ready':
-                return clarify(planned.reason)
         replacements.append(planned.filters)
     update = replacements[-1]
     slot = next(iter(update))

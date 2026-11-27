@@ -675,11 +675,19 @@ def validate_grounded_narrative(result: Any, original: Any, grounded: Any) -> di
     proposal = validate_generated_narrative(result, grounded)
     people = original['story_refinement']['people']
 
-    def grounded_wording(wording, source):
-        # Preserve a source-grounded spelling even when prose moves the name
-        # away from its original concert cue. The model supplies no authority.
-        repairs = ground_text(source, people)['repairs']
-        mapping = {repair['before']: repair['after'] for repair in repairs}
+    source_by_id = {source['id']: source for source in original['sources']}
+
+    def grounded_wording(wording, texts):
+        # Keep the spelling when editing moves a name away from its concert cue.
+        spellings = {}
+        ambiguous = set()
+        for text in dict.fromkeys(texts):
+            grounding = ground_text(text, people)
+            ambiguous.update(entry['before'] for entry in grounding['ambiguous'])
+            for repair in grounding['repairs']:
+                spellings.setdefault(repair['before'], set()).add(repair['after'])
+        mapping = {before: next(iter(canonical)) for before, canonical in spellings.items()
+                   if before not in ambiguous and len(canonical) == 1}
         if mapping:
             patterns = [((r'(?<![A-Za-z0-9_])' + re.escape(before) + r'(?![A-Za-z0-9_])')
                          if before.isascii() else re.escape(before))
@@ -687,11 +695,13 @@ def validate_grounded_narrative(result: Any, original: Any, grounded: Any) -> di
             wording = re.sub('|'.join(patterns), lambda match: mapping[match.group()], wording)
         return ground_text(wording, people)['text']
 
-    proposal['chapters'] = [{**chapter,
-        'narration': grounded_wording(chapter['narration'], source['narration'])}
-        for chapter, source in zip(proposal['chapters'], original['chapters'])]
+    for chapter, source in zip(proposal['chapters'], original['chapters']):
+        linked_transcripts = [item['text'] for _, item in _editorial_chapter_sources(source, source_by_id)
+                              if item['kind'] == 'transcript']
+        chapter['narration'] = grounded_wording(
+            chapter['narration'], [source['narration'], *linked_transcripts])
     proposal['title'] = grounded_wording(proposal['title'],
-        '\n'.join(chapter['narration'] for chapter in original['chapters']))
+        ['\n'.join(chapter['narration'] for chapter in original['chapters'])])
     return validate_narrative(proposal, original)
 
 

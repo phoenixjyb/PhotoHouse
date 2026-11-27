@@ -80,5 +80,50 @@ let browser,context,page,failCommittedSave=true,acceptDialogs=true,malformCapsOn
   await page.evaluate(async()=>{window.__community.clear();await window.__community.attach(document.querySelector('#community'),window.__target);});await page.getByRole('tab',{name:'Draft suggestions',exact:true}).click();await page.locator('.memory-community-form button[type=submit]').click();await page.locator('.memory-edition-open').waitFor();
   holdProposal=true;proposalReady=new Promise(resolve=>proposalArrived=resolve);proposalRelease=new Promise(resolve=>releaseProposal=resolve);await page.locator('.memory-edition-open').click();await proposalReady;
   const before=calls.filter(call=>call.method==='POST'&&call.path.includes('/editions?')).length;await page.evaluate(()=>{window.__scope.account='synthetic-other';window.__community.clear();});releaseProposal();holdProposal=false;await page.waitForLoadState('networkidle');assert.equal(await page.locator('.memory-edition-review').count(),0,'account change clears reviewed manuscript');assert.equal(calls.filter(call=>call.method==='POST'&&call.path.includes('/editions?')).length,before,'scope clearing never saves');
+  // A saved memoir can combine full-size stories even when it requires
+  // several model passes. The plan must still display all saved chapters.
+  await page.evaluate(async()=>{
+    const bookId='99999999-9999-4999-8999-999999999999';
+    const host=document.createElement('div');
+    host.id='expanded-memoir';document.querySelector('main').append(host);
+    const sectionCapacity={state:'within_limits',can_draft:true,source_count:0,source_kinds:{}};
+    const sections=Array.from({length:13},(_,index)=>({
+      id:`${String(index+1).padStart(8,'0')}-1111-4111-8111-111111111111`,
+      position:index+1,revision:'1',title:`Story ${index+1}`,item_count:48,can_edit:true,
+      chapters:Array.from({length:12},(_,chapter)=>({
+        id:`chapter-${chapter+1}`,title:`Chapter ${chapter+1}`,item_count:4,
+      })),...sectionCapacity,
+    }));
+    const ui=window.PhotoHouseMemoryCommunity({
+      scope:{account:'expanded-fixture',library:'family-fixture',language:'en',locked:false},
+      request:async(path,options={})=>{
+        if(options.method&&options.method!=='GET')throw new Error('Memoir plan must remain read-only');
+        if(path==='/memory-community/v1/capabilities'){
+          return {version:1,enabled:true,contributions_enabled:false,generation_enabled:false};
+        }
+        if(path.endsWith('/edition-capabilities'))return {version:1,enabled:false,can_save:false};
+        if(path.startsWith(`/memory-community/v1/books/${bookId}/plan?`)){
+          return {
+            version:1,target_type:'book',target_id:bookId,revision:'1',can_edit:true,
+            kind:'saved_structure_plan',generated:false,queued:false,needs_review:true,
+            story_count:13,chapter_count:156,item_count:624,distinct_item_count:48,
+            limits:{chapters:24,sources:96,context_bytes:65536},
+            whole:{state:'smaller_scope_required',can_draft:false,source_count:null,source_kinds:null},
+            sections,
+          };
+        }
+        throw new Error('Unexpected request for generated expanded memoir');
+      },
+    });
+    await ui.attach(host,{type:'memoir',id:bookId,revision:'1',title:'Expanded memoir',
+      language:'en',can_edit:true,stories:sections.map(({id,revision})=>({id,revision}))});
+  });
+  const expanded=page.locator('#expanded-memoir');
+  await expanded.locator('.memory-book-plan-toggle').click();
+  await expanded.locator('.memory-book-plan-totals, .memory-book-plan-error').first().waitFor();
+  assert.equal(await expanded.locator('.memory-book-plan-error').count(),0,'valid expanded memoir plan is accepted');
+  assert.equal(await expanded.locator('.memory-book-plan-totals').textContent(),'13 stories · 156 chapters · 624 media entries');
+  assert.equal(await expanded.locator('.memory-book-plan-story').count(),13);
+  assert.equal(await expanded.locator('.memory-book-plan-large-help').count(),1);
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);console.log(JSON.stringify({status:'passed',save_requests:saves.length,identical_retry:true,browser_errors:errors.length,external_requests:external.length,artifacts}));
 })().catch(error=>{console.error(error.stack);process.exitCode=1;}).finally(async()=>{if(page&&process.exitCode)await page.screenshot({path:path.join(artifacts,'failure.png'),fullPage:true}).catch(()=>{});if(context)await context.close();if(browser)await browser.close();if(!bridge.killed){bridge.stdin.end(JSON.stringify({command:'quit'})+'\n');bridge.kill();}});
