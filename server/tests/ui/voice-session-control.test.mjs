@@ -23,3 +23,19 @@ test('recognizes only complete Web reading-continuation commands', () => {
   for (const value of ['继续朗读', '继续读', '读下一段', 'continue reading', 'read the next part', 'read the next segment', ' CONTINUE READING。 ']) assert.equal(classify(value), 'continue_reading', value);
   for (const value of ['继续', '不要继续朗读', '继续朗读另一章', 'continue reading about Jane', 'please continue reading', '“继续朗读”', 'read the next part of another story']) assert.equal(classify(value), null, value);
 });
+
+test('paged results recognize complete bilingual numbered commands', () => {
+  const number = root.PhotoHouseVoiceResultNumber;
+  for (const [input, expected] of [
+    ['打开第21项', 21], ['打开第二十一项。', 21], [' 打开第２３个结果 ', 23],
+    ['打开第一百零二项', 102], ['打开第一千零一十项', 1010], ['Open item 21.', 21],
+    ['open item twenty-one', 21], ['open result number eighty six', 86],
+    ['open the 21st result', 21], ['open the 112th result', 112],
+  ]) assert.equal(number(input), expected, input);
+  for (const input of [
+    '打开第一百二项', '打开第一百零二十项', '打开第零项', '不要打开第21项',
+    '打开第21项，然后找视频', '打开编号21', '“打开第21项”', 'open item 0',
+    'open item 021', 'open item 21 or 22', 'do not open item 21', 'open the 21th result',
+    'open item twenty thirteen', 'open item\n21', null,
+  ]) assert.equal(number(input), null, input);
+});
