@@ -41,7 +41,7 @@
   let localeAssistantResume=null,localeAssistantResumeOwner=null,assistantTextEditRevision=0;
   let assistantStoryLegacy=null,assistantStoryHandoff=null,assistantStoryTarget=null,assistantStorySerial=0,assistantStoryNotice='';
   const assistantAsrErrorStatuses=Object.freeze({speech_no_input:422,speech_busy:503,speech_timeout:504,speech_invalid_response:502,speech_unavailable:503});
-  const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,voicePendingText:null,voicePendingStatusKey:'assistantVoiceWorking',controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechPlaybackReceipt:null,manualPlayback:null,voicePlayback:null,activePlayback:null,memoryOpeningPlayback:null,memorySegmentPlayback:null,voiceReading:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null,voiceSession:{generation:0,phase:'idle',binding:null,reason:null}};
+  const assistantState={context:null,binding:null,busy:false,items:[],turnTrail:[],turnTrailSerial:0,turnTrailHasNewer:false,voicePendingText:null,voicePendingStatusKey:'assistantVoiceWorking',controller:null,transcriptionController:null,transcriptionAttempt:null,speechController:null,speechPlaybackReceipt:null,manualPlayback:null,voicePlayback:null,activePlayback:null,memoryOpeningPlayback:null,memorySegmentPlayback:null,voiceReading:null,speech:false,transcribe:false,capture:null,captureAttempt:null,captureStarting:false,releaseRequested:false,cancelRequested:false,pressPointerId:null,ignoreMicClick:false,transcribing:false,transcriptRequestId:null,pendingTranscriptRequestId:null,transcriptReviewBinding:null,transcriptReviewPending:false,transcriptLanguage:null,turnRequestId:null,turnReceipt:null,receipt:null,pendingTurn:null,turnAttempt:null,voiceSession:{generation:0,phase:'idle',binding:null,reason:null,resultPage:null}};
   let assistantFocusRevision=0;
   const assistantVoiceTiming=typeof window.PhotoHouseVoiceTurnTiming==='function'?window.PhotoHouseVoiceTurnTiming():null;
   let assistantVoiceTimingPhase=null,assistantVoiceTimingOperation=0,assistantVoiceTimingGeneration=-1,assistantVoiceTimingRendered=null;
@@ -925,15 +925,21 @@
     const privatePending=privateSnapshot?.pendingTurn||privateSnapshot?.pendingCreation;
     const privateUnavailable=!!privateSnapshot?.activeThread&&privateSnapshot?.capabilities?.server_owned_turns!==true;
     const restorePending=assistantRestoreGate!==null||assistantNeedsRestore;
-    const blocked=restorePending||!!assistantStoryHandoff||privateSnapshot?.storySelectionBusy===true||privateUnavailable||privateSnapshot?.scenePageActive===true||privateSnapshot?.scenePageLoading===true||privateSnapshot?.resultPageActive===true||privateSnapshot?.resultPageLoading===true||privateAssistantBusy||!!privatePending||assistantState.busy||!!assistantState.pendingTurn||!!recoveryPending||state.locked||assistantState.captureStarting||!!assistantState.capture||assistantState.transcribing||assistantState.transcriptReviewPending;
+    const blocked=restorePending||!!assistantStoryHandoff||privateSnapshot?.storySelectionBusy===true||privateUnavailable||privateSnapshot?.scenePageActive===true||privateSnapshot?.scenePageLoading===true||privateSnapshot?.resultPageLoading===true||privateAssistantBusy||!!privatePending||assistantState.busy||!!assistantState.pendingTurn||!!recoveryPending||state.locked||assistantState.captureStarting||!!assistantState.capture||assistantState.transcribing||assistantState.transcriptReviewPending;
+    const paged=privateSnapshot?.resultPageActive===true;
+    const voicePage=paged?assistantVoiceResultPage(privateSnapshot):null;
+    const blockedForVoice=blocked||(paged&&!voicePage)||(sessionOwnsVoice&&session.resultPage!==voicePage);
+    $('assistant-prompts').hidden=paged;
     $('assistant-text').disabled=sessionOwnsVoice;
-    $('assistant-send').disabled=blocked||sessionOwnsVoice||!$('assistant-text').value.trim();
-    if($('assistant-agent-send')){$('assistant-agent-send').hidden=privateSnapshot?.agentAvailable!==true;$('assistant-agent-send').disabled=blocked||sessionOwnsVoice||!$('assistant-text').value.trim();}
-    $('assistant-mic').disabled=blocked||restorePending||sessionOwnsVoice;
+    $('assistant-send').disabled=blocked||paged||sessionOwnsVoice||!$('assistant-text').value.trim();
+    if($('assistant-agent-send')){$('assistant-agent-send').hidden=privateSnapshot?.agentAvailable!==true;$('assistant-agent-send').disabled=blocked||paged||sessionOwnsVoice||!$('assistant-text').value.trim();}
+    $('assistant-mic').disabled=blocked||paged||sessionOwnsVoice;
     $('assistant-voice-session').hidden=!assistantState.transcribe;
     $('assistant-workspace-footer').hidden=$('assistant-workspace-dialog').open&&(sessionOwnsVoice||$('assistant-form').hidden||$('assistant-scene').open&&!$('assistant-scene').hidden);
     $('assistant-voice-start').hidden=session.phase!=='idle';$('assistant-voice-pause').hidden=!active;$('assistant-voice-resume').hidden=!paused;$('assistant-voice-end').hidden=!(active||paused);
-    $('assistant-voice-start').disabled=restorePending||blocked||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||state.locked;$('assistant-voice-pause').disabled=state.locked;$('assistant-voice-resume').disabled=restorePending||blocked||!assistantState.transcribe||!assistantState.speech||document.hidden||!assistantVoiceBindingCurrent()||sessionCaptureBusy()||!!assistantState.pendingTurn||assistantRecoveryPending();$('assistant-voice-end').disabled=false;
+    $('assistant-voice-start').disabled=blockedForVoice||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||state.locked;$('assistant-voice-pause').disabled=state.locked;$('assistant-voice-resume').disabled=blockedForVoice||!assistantState.transcribe||!assistantState.speech||document.hidden||!assistantVoiceBindingCurrent()||sessionCaptureBusy()||!!assistantState.pendingTurn||assistantRecoveryPending();$('assistant-voice-end').disabled=false;
+    if(voicePage)$('assistant-voice-start').setAttribute('aria-description',t('assistantVoicePageHelp'));
+    else $('assistant-voice-start').removeAttribute('aria-description');
     $('assistant-mic').hidden=active||paused;
     $('assistant-play').disabled=sessionOwnsVoice;
     const managementBlocked=!!assistantStoryHandoff||privateSnapshot?.storySelectionBusy===true||privateAssistantBusy||!!privatePending||sessionOwnsVoice||state.locked||privateSnapshot?.locked===true;
@@ -950,6 +956,10 @@
     $('assistant-voice-title').textContent=t(restorePending?'assistantPresenceChecking':presenceTitle[presence]||'assistantPresenceIdle');
     $('assistant-voice-mic-state').textContent=t(microphoneReady?'assistantMicOn':'assistantMicOff');
     $('assistant-voice-session-status').textContent=t(restorePending?'assistantVoiceChecking':session.phase==='idle'&&presence==='listening'?'assistantRecording':voiceStatus[presence]||'assistantVoiceReady');
+    if(voicePage&&(presence==='listening'||presence==='idle')){
+      const number=(voicePage.page-1)*voicePage.page_size+1;
+      $('assistant-voice-session-status').textContent=t('assistantVoicePagePrompt').replace('{number}',String(number));
+    }
     const reading=assistantState.voiceReading;
     if(reading&&presence==='listening')$('assistant-voice-session-status').textContent=t('assistantVoiceReadingListening');
     if(reading&&['preparing','speaking'].includes(presence))$('assistant-voice-session-status').textContent=t(presence==='speaking'?'assistantPlayingMemorySegment':'assistantPreparingVoiceMemorySegment').replace('{segment}',String(reading.operation.segment+1)).replace('{count}',String(reading.operation.segmentCount));
@@ -986,23 +996,48 @@
     privateAssistant?.discardSpeechSource?.();
     $('assistant-mic').setAttribute('aria-pressed','false');$('assistant-stop').hidden=true;$('assistant-recording-cancel').hidden=true;syncAssistantControls();
   }
-  function endAssistantVoice(){const session=assistantState.voiceSession;if(session.phase==='idle')return;pauseAssistantVoice('assistantVoiceScope');session.generation++;session.phase='idle';session.binding=null;session.reason=null;syncAssistantControls();}
+  function endAssistantVoice(){const session=assistantState.voiceSession;if(session.phase==='idle')return;pauseAssistantVoice('assistantVoiceScope');session.generation++;session.phase='idle';session.binding=null;session.reason=null;session.resultPage=null;syncAssistantControls();}
   function stopMemoryOpeningBeforeCapture(){if(assistantState.memoryOpeningPlayback||assistantState.memorySegmentPlayback)stopAssistantSpeech();}
   function assistantVoiceStartBinding(){
     if(assistantRestoreGate||assistantState.voiceSession.phase!=='idle'||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy()||assistantState.pendingTurn||privateAssistantBusy||privateAssistant?.state().scenePageActive||privateAssistant?.state().scenePageLoading||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantRecoveryPending()||assistantState.transcriptReviewPending||state.locked)return null;
     return assistantVoiceBinding();
   }
-  function beginAssistantVoice(binding,readingOperation=null){
+  Object.assign(words.en,{
+    assistantVoicePageHelp:'Start the microphone to open a numbered result on this page.',
+    assistantVoicePagePrompt:'Say “open item {number}” to open a thumbnail. End voice and return to the first results to ask a new question.',
+    assistantVoicePageInvalid:'Voice paused. Resume and say a number shown on this page, or end voice to keep searching.',
+    assistantVoicePageChanged:'Voice paused because the results changed. End and restart voice on the current page.'
+  });
+  Object.assign(words.zh,{
+    assistantVoicePageHelp:'开启麦克风，用当前页缩略图上的编号打开画面。',
+    assistantVoicePagePrompt:'可以说“打开第{number}项”查看缩略图。要继续提问，请结束语音并返回首批结果。',
+    assistantVoicePageInvalid:'语音已暂停。请继续语音并说当前页的编号，或结束语音后继续查找。',
+    assistantVoicePageChanged:'结果已更改，语音已暂停。请结束语音，再在当前页重新开始。'
+  });
+  function assistantVoiceResultPage(snapshot=privateAssistant?.state()){
+    const page=snapshot?.resultPageResult,root=$('assistant-results'),rendered=root.__assistantRenderedTurn;
+    if(!snapshot?.resultPageActive||!snapshot.resultPageAvailable||snapshot.resultPageLoading||
+       snapshot.scenePageActive||snapshot.scenePageLoading||snapshot.pendingTurn||snapshot.pendingCreation||
+       snapshot.locked||!snapshot.activeThread||snapshot.activeThread.revision!==snapshot.revision||
+       !page?.items.length||assistantStoryTarget||!assistantBindingCurrent(assistantState.binding)||
+       root.__assistantRenderedOwner!=='private'||root.__assistantRenderedEpoch!==state.generation||
+       !rendered?.result_page||rendered.items!==page.items)return null;
+    return page;
+  }
+  function beginAssistantVoice(binding,readingOperation=null,resultPage=null){
     const session=assistantState.voiceSession;
-    session.generation++;session.phase='listening';session.binding=binding;session.reason=null;
+    session.generation++;session.phase='listening';session.binding=binding;session.reason=null;session.resultPage=resultPage;
     assistantState.voiceReading=readingOperation?{token:session.generation,binding:{...binding},turn:readingOperation.turn,
       card:readingOperation.card,ordinal:readingOperation.ordinal,threadId:readingOperation.threadId,
       revision:readingOperation.revision,operation:readingOperation}:null;
     syncMemorySegmentControls();syncAssistantControls();void captureAssistantVoice(session.generation,binding);
   }
   function startAssistantVoice(){
-    const binding=assistantVoiceStartBinding();if(!binding)return;
-    stopMemoryOpeningBeforeCapture();beginAssistantVoice(binding);
+    const binding=assistantVoiceStartBinding();if(!binding||$('assistant-voice-start').disabled)return;
+    const snapshot=privateAssistant?.state();
+    const resultPage=assistantVoiceResultPage(snapshot);
+    if(snapshot?.resultPageActive&&!resultPage)return;
+    stopMemoryOpeningBeforeCapture();beginAssistantVoice(binding,null,resultPage);
   }
   function memorySegmentSourceCurrent(operation,snapshot=privateAssistant?.state()){
     const binding=operation?.binding;
@@ -1044,7 +1079,7 @@
     button.textContent=t('assistantMemoryVoiceContinue');button.setAttribute('aria-description',t('assistantMemoryVoiceOptInHelp'));button.hidden=true;button.disabled=true;
     return button;
   }
-  function resumeAssistantVoice(){const session=assistantState.voiceSession;if(assistantRestoreGate||session.phase!=='paused'||!assistantState.transcribe||!assistantState.speech||!assistantVoiceBindingCurrent()||state.locked||document.hidden||sessionCaptureBusy()||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantState.pendingTurn||assistantRecoveryPending())return;stopMemoryOpeningBeforeCapture();session.generation++;session.phase='listening';session.reason=null;syncAssistantControls();void captureAssistantVoice(session.generation,session.binding);}
+  function resumeAssistantVoice(){const session=assistantState.voiceSession;if(assistantRestoreGate||session.phase!=='paused'||$('assistant-voice-resume').disabled||!assistantState.transcribe||!assistantState.speech||!assistantVoiceBindingCurrent()||state.locked||document.hidden||sessionCaptureBusy()||privateAssistantBusy||privateAssistant?.state().pendingTurn||privateAssistant?.state().pendingCreation||assistantState.pendingTurn||assistantRecoveryPending())return;stopMemoryOpeningBeforeCapture();session.generation++;session.phase='listening';session.reason=null;syncAssistantControls();void captureAssistantVoice(session.generation,session.binding);}
   async function captureAssistantVoice(token,binding){
     if(assistantRestoreGate||!currentAssistantVoice(token,binding)||!assistantState.transcribe||!assistantState.speech||document.hidden||sessionCaptureBusy())return;
     const attempt={binding,completed:false,controller:new AbortController(),voiceToken:token};assistantState.captureAttempt=attempt;assistantState.captureStarting=true;syncAssistantControls();
@@ -1297,6 +1332,24 @@
           if(control==='pause')pauseAssistantVoice('assistantVoiceSpokenPause');else endAssistantVoice();
           $('assistant-status').textContent=t(control==='pause'?'assistantVoiceSpokenPause':'assistantVoiceSpokenEnd');
           return;
+        }
+        const resultPage=assistantState.voiceSession.resultPage;
+        if(resultPage){
+          assistantState.transcriptRequestId=null;assistantState.pendingTranscriptRequestId=null;
+          assistantState.transcribing=false;assistantState.transcriptionAttempt=null;
+          if(assistantVoiceResultPage()!==resultPage){
+            pauseAssistantVoice('assistantVoicePageChanged');return;
+          }
+          const number=window.PhotoHouseVoiceResultNumber?.(text);
+          const index=number==null?-1:number-((resultPage.page-1)*resultPage.page_size+1);
+          const item=resultPage.items[index],card=$('assistant-results').children[index];
+          const button=card?.querySelector('.assistant-thumbnail-open');
+          if(!item||!button||card.dataset.assetId!==item.id||button.disabled){
+            pauseAssistantVoice('assistantVoicePageInvalid');return;
+          }
+          // Use the identical protected open path as a tap on this thumbnail.
+          // The viewer will reauthorize the asset before displaying it.
+          endAssistantVoice();button.click();return;
         }
         if(control==='continue_reading'){
           assistantState.transcriptRequestId=null;assistantState.pendingTranscriptRequestId=null;
@@ -2552,6 +2605,9 @@
     renderAssistantResultPages(snapshot);
     renderAssistantStoryControls(snapshot);
     placeAssistantResults(snapshot);
+    const voice=assistantState.voiceSession;
+    if(voice.resultPage&&voice.phase!=='paused'&&voice.phase!=='idle'&&assistantVoiceResultPage(snapshot)!==voice.resultPage)
+      pauseAssistantVoice('assistantVoicePageChanged');
     if(!$('assistant-private'))return;
     const searchPerspective=$('assistant-search-perspective'),perspective=snapshot.capabilities?.search?.perspective;
     if(searchPerspective){searchPerspective.hidden=![2,3].includes(snapshot.capabilities?.search?.version);searchPerspective.textContent=searchPerspective.hidden?'':perspective?.label?t('assistantSearchPerspective').replace('{label}',perspective.label):t('assistantSearchPerspectiveDefault');}

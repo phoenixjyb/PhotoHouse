@@ -9,7 +9,7 @@ const root=path.resolve(__dirname,'../..');
 const artifacts=process.env.PH_BROWSER_ARTIFACTS||fs.mkdtempSync(path.join(os.tmpdir(),'photohouse-assistant-voice-'));
 fs.mkdirSync(artifacts,{recursive:true,mode:0o700});fs.chmodSync(artifacts,0o700);console.log('ARTIFACTS_DIR '+artifacts);
 const bridge=spawn(process.env.PH_BROWSER_PYTHON||path.join(root,'.venv/bin/python'),[path.join(__dirname,'assistant_pending_recovery_browser_bridge.py'),'--private-workspace'],{cwd:root,stdio:['pipe','pipe','pipe']});
-let latestLegacyResult=null;
+let latestLegacyResult=null,pagedFixture=null;
 let serial=0,readyResolve,readyReject,nextTurn=0,turnMode=null,privateReplyMode='results',privateSpeechGate=null,playbackTrackingEnabled=false,asrErrorCode=null,loggedPhone=null,restoreSessionGate=null,nextAsrGate=null,nextAsrText=null;const pendingRpc=new Map(),requests=[],transcriptionRequests=[],privateSpeechRequests=[],playbackRequests=[],privateTurnVersions=[],errors=[],origins=[],gates=new Set(),receiptReplies=new Map();
 const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});bridge.stderr.on('data',chunk=>process.stderr.write(chunk));
 createInterface({input:bridge.stdout}).on('line',line=>{const value=JSON.parse(line);if(value.ready){readyResolve();return;}const call=pendingRpc.get(value.id);if(call){pendingRpc.delete(value.id);call.resolve(value);}});
@@ -58,16 +58,35 @@ let browser,context,page;
     if(entry.method==='POST'&&url.pathname==='/assistant/v1/speech'){
       const headers={'cache-control':'no-store',...tracking(entry.headers['x-photohouse-request-id']),...(playbackTrackingEnabled?{'X-PhotoHouse-Playback-Tracking':'enabled'}:{})};await route.fulfill({status:200,contentType:'audio/wav',headers,body:Buffer.from(audioWav())});return;
     }
+    if(entry.method==='GET'&&url.pathname==='/assistant/workspace/v1/result-page-capabilities'){
+      await route.fulfill({status:200,json:{version:1,available:true,page_size:20}});return;
+    }
+    if(entry.method==='POST'&&url.pathname.endsWith('/result-pages')&&pagedFixture){
+      const {thread_id,request_id,revision,library_id,binding,fingerprint,item}=pagedFixture;
+      const fields=url.pathname.split('/'),body=JSON.parse(entry.body);
+      assert.equal(fields[5],thread_id);
+      assert.equal(fields[7],request_id);
+      assert.deepEqual(body,{version:1,library_id,expected_revision:revision,page:2});
+      await route.fulfill({status:200,json:{version:1,thread_id,request_id,revision,library_id,
+        search_version:1,binding,fingerprint,page:2,page_size:20,total:21,has_more:false,items:[item]}});
+      return;
+    }
     if(entry.method==='POST'&&/^\/assistant\/workspace\/v1\/threads\/[^/]+\/turns$/.test(url.pathname)){
       const body=JSON.parse(entry.body),requestId=entry.headers['x-photohouse-request-id'],mode=privateReplyMode;
       const kind=mode==='unsupported'?'unsupported':mode==='clarification'?'clarification':'results';
       const reply=mode==='over-limit'?'家'.repeat(201):mode==='clarification'?'Private clarification reply':mode==='zero-results'?'Private zero-result reply':mode==='unsupported'?'Private unsupported reply':mode==='recovered'?'Private recovered reply':'Private results reply';
       const assetId=body.library_id==='family-b'?'201':'101';
-      const context=['results','clarification','unsupported'].includes(mode)?{library_id:body.library_id,binding:'e'.repeat(64),fingerprint:'f'.repeat(64),filters:{},visible_ids:[assetId],total:1}:null;
-      const items=context?[{id:assetId,kind:'image',width:640,height:480,duration_sec:null,taken_at:null,
-        thumbnail_url:`/assets/${assetId}/thumbnail?${new URLSearchParams({library:body.library_id})}`}]:[];
-      const result={version:1,kind,reply,context,filters:context?.filters??null,items,total:items.length,has_more:false,effect:null};
+      const paged=mode==='paged-results';
+      const visibleIds=paged?Array.from({length:20},(_,index)=>String(10000+index)):[assetId];
+      const total=paged?21:1;
+      const context=['results','clarification','unsupported','paged-results'].includes(mode)?{library_id:body.library_id,binding:'e'.repeat(64),fingerprint:'f'.repeat(64),filters:{},visible_ids:visibleIds,total}:null;
+      const photo=id=>({id,kind:'image',width:640,height:480,duration_sec:null,taken_at:null,
+        thumbnail_url:`/assets/${id}/thumbnail?${new URLSearchParams({library:body.library_id})}`});
+      const items=context?visibleIds.map(photo):[];
+      const result={version:1,kind,reply,context,filters:context?.filters??null,items,total:context?total:0,has_more:paged,effect:null};
       const envelope={version:1,thread_id:url.pathname.split('/')[5],request_id:requestId,status:'completed',revision:body.expected_revision+1,recovered:mode==='recovered',error:null,result};
+      if(paged)pagedFixture={thread_id:envelope.thread_id,request_id:requestId,revision:envelope.revision,
+        library_id:body.library_id,binding:context.binding,fingerprint:context.fingerprint,item:photo(assetId)};
       privateTurnVersions.push({version:result.version,searchHeader:entry.headers['x-photohouse-search-version']||null});
       try{await route.fulfill({status:200,contentType:'application/json',headers:{'cache-control':'no-store',...tracking(requestId)},body:JSON.stringify(envelope)});}catch(error){if(!/closed|handled|cancel|abort|Invalid InterceptionId/i.test(error.message))throw error;}return;
     }
@@ -386,6 +405,49 @@ let browser,context,page;
   assert.equal(turnCount(),beforeControls.turns+1,'manual control words do not auto-submit');
   assert.equal(await page.locator('#assistant-voice-start').isVisible(),true);
   await page.locator('#assistant-discard-transcript').click();
+  privateReplyMode='paged-results';
+  await page.locator('#assistant-text').fill('Find the paged photo fixture');
+  await page.locator('#assistant-send').click();
+  await waitFor(()=>!document.querySelector('#assistant-result-page-next').disabled,'result pagination is available');
+  await page.locator('#assistant-result-page-next').click();
+  await waitFor(()=>document.querySelector('.assistant-thumbnail-number')?.textContent==='21','page two shows its global item number');
+  const detailsForPagedItem=()=>requests.filter(entry=>entry.path.startsWith('/assets/detail/'+pagedFixture.item.id+'?')).length;
+  const pageBase={turns:turnCount(),speech:privateSpeechRequests.length,details:detailsForPagedItem()};
+  await page.locator('#assistant-voice-start').click();
+  await waitFor(()=>document.querySelector('#assistant-voice-session').dataset.phase==='listening','page two voice starts explicitly');
+  assert.match(await page.locator('#assistant-voice-session-status').textContent(),/open item 21/);
+  assert.equal(await page.locator('#assistant-prompts').isHidden(),true,'generic first-page prompts are hidden on later pages');
+  for(const width of [390,1280]){
+    await page.setViewportSize({width,height:844});
+    const help=page.locator('#assistant-voice-session-status');
+    await help.scrollIntoViewIfNeeded();
+    const box=await help.boundingBox();
+    assert(box&&box.x>=0&&box.x+box.width<=width+1,'numbered voice guidance fits the viewport');
+    await page.screenshot({path:path.join(artifacts,`assistant-paged-voice-${width}.png`),fullPage:false});
+  }
+  assert.equal(await page.locator('#assistant-result-page-previous').isDisabled(),true);
+  controlText='Open item 1';
+  await makeUtterance();
+  await waitFor(()=>document.querySelector('#assistant-voice-session').dataset.phase==='paused','a number from a different page pauses');
+  assert.equal(detailsForPagedItem(),pageBase.details);
+  assert.equal(await page.locator('#viewer').isHidden(),true);
+  const delayedOpen=gate();
+  controlText='Open item 21';controlGate=delayedOpen;
+  await page.locator('#assistant-voice-resume').click();await makeUtterance();await delayedOpen.arrived;
+  await page.locator('#assistant-voice-pause').click();
+  delayedOpen.release();await delayedOpen.finished;
+  assert.equal(await page.locator('#viewer').isHidden(),true,'delayed recognition cannot open media after Pause');
+  await page.locator('#assistant-voice-resume').click();
+  controlText='打开第二十一项。';
+  const authorizedDetail=page.waitForResponse(response=>new URL(response.url()).pathname==='/assets/detail/'+pagedFixture.item.id);
+  await makeUtterance();
+  assert.equal((await authorizedDetail).status(),200,'voice selection uses the protected asset detail route');
+  await page.locator('#viewer[open]').waitFor();
+  assert.equal(turnCount(),pageBase.turns,'paged navigation does not submit an assistant turn');
+  assert.equal(privateSpeechRequests.length,pageBase.speech,'paged navigation does not synthesize a reply');
+  assert.equal(detailsForPagedItem(),pageBase.details+1,'only the current valid number opened a result');
+  assert.equal(await page.locator('#assistant-voice-session').getAttribute('data-phase'),'idle');
+  console.log('PASS numbered voice opens the authorized page-two photo, rejects wrong-page numbers and ignores paused recognition');
   console.log('PASS receipt readback review and explicit single-send recovery; first private voice ASR creates and searches a fresh protected conversation');
   console.log('PASS spoken Pause/End, explicit resume, stale ASR fence, negation, manual dictation, no control turn/TTS/recapture, preserved draft');
   assert.deepEqual(origins,[],'no external origins were contacted');assert.deepEqual(errors,[],'browser session has no uncaught errors');

@@ -628,8 +628,8 @@ window.PHOTOHOUSE_ROADMAP = {
       },
       "implementation": [
         {
-          "en": "Request receipts, Search dispatch and visible result cards are implemented.",
-          "zh": "已实现请求回执、搜索执行与可见结果卡片。"
+          "en": "Search replies show a scrollable strip of up to 20 thumbnails per page. Tap a thumbnail to open it. Chinese and English voice commands can refer to the result numbers shown on the current page.",
+          "zh": "搜索回复下方显示可横向滚动的缩略图，每页最多 20 张。点击缩略图即可打开，也可以用中英文语音指令按当前页显示的编号打开结果。"
         }
       ],
       "gaps": [
@@ -639,16 +639,16 @@ window.PHOTOHOUSE_ROADMAP = {
         }
       ],
       "next_step": {
-        "en": "Make visible evidence and the next useful action central to each answer.",
-        "zh": "让每次回答围绕可见依据与下一步有用操作。"
+        "en": "Try opening a result on a later page by voice, then narrow the same search by date and media type.",
+        "zh": "试用语音打开后续页面的一项结果，再按日期和媒体类型缩小同一次搜索的范围。"
       },
       "delivery_note": {
-        "en": "Windows speech-to-Search returned 20 authorized cards in the October 29 exercise.",
-        "zh": "10 月 29 日 Windows 语音到搜索流程返回了 20 张授权结果卡片。"
+        "en": "A signed-in Windows September search returned 186 results with 20 thumbnails on the first page. Local browser tests cover opening a numbered result on subsequent pages.",
+        "zh": "登录后在 Windows 搜索九月份的内容，共找到 186 项，第一页显示 20 张缩略图。本地浏览器测试覆盖了按编号打开后续页面的结果。"
       },
       "acceptance_note": {
-        "en": "That task does not prove a general autonomous agent.",
-        "zh": "该任务结果不代表已具备通用自主智能体能力。"
+        "en": "Later-page voice selection still needs a live microphone check on a household device.",
+        "zh": "后续页面的语音点选仍需在家庭设备上使用麦克风实测。"
       },
       "evidence": [
         {
