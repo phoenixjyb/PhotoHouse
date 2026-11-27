@@ -95,6 +95,23 @@ class AssistantIntentSearchTests(unittest.TestCase):
                 self.assertIn('interpretation', body)
                 self.assertEqual(calls, ['entities', 'search'])
 
+    def test_spoken_year_clears_old_month_and_video_followup_keeps_new_year(self):
+        previous = self.intent('find photos in September 2032').json()
+        self.assertGreater(len(previous['items']), 0)
+
+        response = self.intent('你好,帮我查一下2024年的一张照片', previous['context'])
+        self.assertEqual(response.status_code, 200, response.text)
+        current = response.json()
+        date = {'from': '2024-01-01', 'to': '2024-12-31'}
+        self.assertEqual(current['kind'], 'results')
+        self.assertEqual(current['filters'], {'media': ['image'], 'date': date})
+        self.assertEqual(current['items'], [])
+
+        videos = self.intent('只看视频', current['context']).json()
+        self.assertEqual(videos['kind'], 'results')
+        self.assertEqual(videos['filters'], {'media': ['video'], 'date': date})
+        self.assertEqual(self.planner.calls, [])
+
     def test_ready_and_clarifying_plans_revalidate_after_planning_before_return(self):
         original_plan = search_intent.plan_query
         original_call = SearchRuntime.call

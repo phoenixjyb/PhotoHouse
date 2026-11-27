@@ -48,6 +48,10 @@ _MEDIA = (
     ('video', re.compile(r'影片|视频|(?a:\b)(?:videos?|movies?)(?a:\b)', re.I)),
     ('image', re.compile(r'照片|图片|相片|(?a:\b)(?:photos?|photographs?|pictures?|images?)(?a:\b)', re.I)),
 )
+_ZH_SEARCH_GREETING = r'(?:(?:你好|您好)[\s,，。!！]+)?'
+# A spoken indefinite article immediately before a photo noun.
+_ZH_SINGLE_PHOTO_ARTICLE = re.compile(
+    r'(?<![0-9零〇一二三四五六七八九十百千万两])(?:一|1)\s*张\s*(?=照片|图片|相片)')
 _MEDIA_ONLY_EN = r'(?:videos?|movies?|photos?|photographs?|pictures?|images?)'
 _NARROW_REFINEMENT_OPEN = (
     r'(?:(?:please|(?:can|could|would)\s+you)\s+)?'
@@ -69,7 +73,7 @@ _SEARCH_OPEN = re.compile(
     r'(?:(?:please\s+)?(?:i(?:\s+am|[\x27’]m)\s+looking\s+for|'
     r'i\s+would\s+like\s+to\s+see|do\s+we\s+have|can\s+you\s+pull\s+up|'
     r'look\s+for)(?a:\b))|'
-    r'(?:(?:(?:请|麻烦)(?:你)?\s*)?'
+    rf'(?:{_ZH_SEARCH_GREETING}(?:(?:请|麻烦)(?:你)?\s*)?'
     r'(?:(?:帮我|替我|我想|帮忙|帮我忙|能不能|可以)(?:你)?\s*)?'
     r'(?:(?:找一找|搜一搜|查找|搜索|找|查|搜|看看|看)|给我(?:看看|看)|显示)(?:一下)?|'
     r'(?:(?:please|can you|could you|would you)\s+)?(?:find|search|show)(?a:\b)'
@@ -742,6 +746,10 @@ def plan_query(words, *, now: datetime, entities: dict,
     if requires_semantic_clarification(_remove_occurrences(outside, labels)):
         return _clarify('unsupported_negation', previous_filters if refine else None)
 
+    without_article = _ZH_SINGLE_PHOTO_ARTICLE.sub(lambda match: ' ' * len(match.group(0)), outside)
+    if _consumed_label(outside, without_article, labels):
+        return _clarify('ambiguous_media_entity', previous_filters if refine else None)
+    outside = without_article
     media_hits = []
     for kind, pattern in _MEDIA:
         if pattern.search(outside):

@@ -139,6 +139,26 @@ class AssistantHttpTests(unittest.TestCase):
         opened = self.turn('打开第一个', dated['context']).json()
         self.assertEqual(opened['effect'], {'type': 'open_asset', 'asset_id': '101'})
 
+    def test_spoken_year_and_single_photo_start_a_new_search(self):
+        initial = self.turn('找2026年1月的照片').json()
+        self.assertEqual([item['id'] for item in initial['items']], ['101'])
+
+        response = self.turn('你好,帮我查一下2024年的一张照片', initial['context'])
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()
+        self.assertEqual(result['kind'], 'results')
+        self.assertEqual(result['filters'], {'media': ['image'], 'date': {
+            'from': '2024-01-01', 'to': '2024-12-31'}})
+        self.assertEqual(result['items'], [])
+
+        matching = self.turn('您好，帮我查一下2026年的一张照片', result['context']).json()
+        self.assertEqual(matching['kind'], 'results')
+        self.assertEqual([item['id'] for item in matching['items']], ['101'])
+
+        unsupported = self.turn('你好，帮我删除2026年的一张照片', matching['context']).json()
+        self.assertEqual(unsupported['kind'], 'unsupported')
+        self.assertIsNone(unsupported['effect'])
+
     def test_english_conversation_and_missing_context_are_explicit(self):
         first = self.turn('find photos').json()
         video = self.turn('what about videos?', first['context']).json()

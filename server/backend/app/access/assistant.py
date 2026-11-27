@@ -24,6 +24,7 @@ from .discovery_transport import DiscoveryRuntime
 from .service import AccessDenied, AccessService
 from .assistant_journal import (Journal, JournalUnavailable, JournalConflict,
                                 JournalMissing, request_id)
+from .assistant_query_plan import _ZH_SEARCH_GREETING, _ZH_SINGLE_PHOTO_ARTICLE
 from .assistant_speech import (LocalAssistantAsr, LocalAssistantTts, valid_wav,
                                MAX_WAV_BYTES, MAX_AUDIO_SECONDS, AssistantSpeechUnavailable,
                                AssistantAsrFailure)
@@ -40,7 +41,7 @@ CHINESE_MONTHS = dict(ORDINALS, 十一=11, 十二=12)
 # Recognized command openings only. Unmatched details still require clarification;
 # a conversational prefix never supplies a person, place or unrestricted action.
 SEARCH_PREFIX = (
-    r'^(?:(?:(?:请|麻烦)(?:你)?\s*)?'
+    rf'^(?:{_ZH_SEARCH_GREETING}(?:(?:请|麻烦)(?:你)?\s*)?'
     r'(?:(?:帮我|替我|我想)(?:找一找|搜一搜|查找|搜索|找|查|搜|看看|看)|'
     r'给我(?:看看|看)|找一找|搜一搜|查找|搜索|显示|看看|找|查|搜)(?:一下)?|'
     r'(?:(?:please|can you|could you)\s+)?(?:find|search|show)\b'
@@ -534,6 +535,7 @@ def _unmatched(words, labels):
     remaining = re.sub(r'(?<!\d)20\d{2}(?:年(?:(?:1[0-2]|0?[1-9])(?:月(?:份)?)?(?!\d))?|[/.\-](?:1[0-2]|0?[1-9])月?(?!\d))', ' ', remaining)
     remaining = re.sub(r'\b(?:last year|this year)\b|去年|今年|(?<!\d)(?:1[0-2]|0?[1-9])月(?:份)?|(?:十一|十二|十|[一二三四五六七八九])月(?:份)?', ' ', remaining)
     remaining = re.sub(SEARCH_PREFIX + '|' + REFINE_PREFIX, ' ', remaining)
+    remaining = _ZH_SINGLE_PHOTO_ARTICLE.sub(' ', remaining)
     remaining = re.sub(r'视频|影片|照片|图片|相片|\b(?:videos?|movies?|photos?|pictures?|images?)\b', ' ', remaining)
     remaining = re.sub(r'\b(?:the|from|by|in|of|at|and|me|some)\b|[的、，。！？:：,.!?\s]+', '', remaining)
     # A trailing question particle is allowed only when every substantive detail
