@@ -12,8 +12,9 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from access_ui_overlay import (ASSETS, MANIFEST_NAME, OverlayVerificationError,
-                               bind_access_ui_overlay)
+                               bind_access_ui_overlay, bind_live_access_ui_overlays)
 import build_access_ui_overlay as builder
+from select_access_ui_overlay import select_overlay
 
 SYNTHETIC_FILES = {
     'backend/app/ui/access/assistant-private-workspace.js': b'window.syntheticAssistant = true;\n',
@@ -157,7 +158,7 @@ class OverlayBindTests(unittest.TestCase):
         from app.routers import ui
         self.ui = ui
         self.before = {name: getattr(ui, name) for name in
-                       ('UI_DIR', 'INDEX_FILE', 'APP_FILE', 'STYLE_FILE', 'ICON_FILE')}
+                       ('UI_DIR', 'INDEX_FILE', 'APP_FILE', 'STYLE_FILE', 'ICON_FILE', 'LIVE_UI_RELEASES')}
 
     def tearDown(self):
         for name, value in self.before.items():
@@ -178,6 +179,86 @@ class OverlayBindTests(unittest.TestCase):
     def assert_globals_unchanged(self):
         for name, value in self.before.items():
             self.assertEqual(getattr(self.ui, name), value)
+
+    def test_live_selection_switches_same_api_and_serves_previous_version(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        repo = self.root.parent / 'repo'
+        api = synthetic_git_repository(repo)
+        releases = self.root.parent / 'releases'
+        releases.mkdir()
+        original_root = builder.ROOT
+        builder.ROOT = repo
+        asset = 'backend/app/ui/access/app.js'
+        html = 'backend/app/ui/access/index.html'
+        try:
+            def stage(commit):
+                manifest = builder.manifest_bytes(commit, builder.source_files(commit))
+                digest = hashlib.sha256(manifest).hexdigest()
+                files, _ = materialize(releases / digest, commit)
+                return digest, files
+
+            def change_files(files):
+                for name, payload in files.items():
+                    target = repo / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(payload)
+                builder.git('add', '--', *files)
+                builder.git('-c', 'user.name=Overlay Test', '-c', 'user.email=overlay-test@example.invalid',
+                            '-c', 'commit.gpgsign=false', 'commit', '-qm', 'fixture update')
+                return builder.git('rev-parse', 'HEAD').decode().strip()
+
+            def select(source, digest, previous):
+                return select_overlay(releases, api_commit=api, source_commit=source,
+                                      manifest_sha256=digest, expected_current=previous)
+
+            first_digest, first = stage(api)
+            select(api, first_digest, 'none')
+            bind_live_access_ui_overlays(self.ui, releases, expected_api_commit=api)
+            next_commit = change_files({
+                asset: b'window.newUI = true;\n',
+                html: b'<!doctype html><title>Next</title><script src="/ui/app.js"></script>',
+            })
+            next_digest, second = stage(next_commit)
+            incompatible = change_files({'backend/app/server.py': b'# incompatible deployment\n'})
+            incompatible_digest, _ = stage(incompatible)
+            first_version = hashlib.sha256(first[asset]).hexdigest()
+            second_version = hashlib.sha256(second[asset]).hexdigest()
+            app = FastAPI()
+            app.include_router(self.ui.router)
+            old_handler = self.ui.LIVE_UI_RELEASES
+            with TestClient(app) as client:
+                self.assertEqual(client.get('/ui/app.js').content, first[asset])
+                with self.assertRaisesRegex(ValueError, 'different API build'):
+                    select(incompatible, incompatible_digest, first_digest)
+                with self.assertRaisesRegex(ValueError, 'before activation'):
+                    select(next_commit, next_digest, 'none')
+                self.assertEqual(client.get('/ui/app.js').content, first[asset])
+                self.assertEqual(select(next_commit, next_digest, first_digest)
+                                 ['previous_manifest_sha256'], first_digest)
+                shell = client.get('/ui')
+                self.assertIn(f'/ui/app.js?v={second_version}', shell.text)
+                self.assertIn('no-store', shell.headers['cache-control'])
+                self.assertIn("script-src 'self'", shell.headers['content-security-policy'])
+                self.assertEqual(client.get(f'/ui/app.js?v={first_version}').content, first[asset])
+                current_asset = client.get(f'/ui/app.js?v={second_version}')
+                self.assertEqual(current_asset.content, second[asset])
+                self.assertIn('immutable', current_asset.headers['cache-control'])
+                self.assertEqual(client.get('/ui/app.js?v=' + 'a' * 64).status_code, 404)
+                self.assertIs(self.ui.LIVE_UI_RELEASES, old_handler)
+                select(api, first_digest, next_digest)
+                self.assertEqual(client.get('/ui/app.js').content, first[asset])
+
+                # A hostile or accidentally malformed selection cannot evict an
+                # already verified release. The fixture stays entirely local.
+                (releases / 'current.json').write_text(json.dumps({
+                    'api_commit': '0' * 40, 'source_commit': next_commit,
+                    'manifest_sha256': next_digest,
+                }))
+                self.assertEqual(client.get('/ui/app.js').content, first[asset])
+        finally:
+            builder.ROOT = original_root
 
     def test_validates_then_binds_only_static_globals_and_preserves_icon_route(self):
         verified = self.bind()
@@ -245,19 +326,34 @@ class OverlayBindTests(unittest.TestCase):
         (self.root / MANIFEST_NAME).write_bytes(raw)
         self.bind(digest=hashlib.sha256(raw).hexdigest())
         parser = ScriptSources()
-        parser.feed(files['backend/app/ui/access/index.html'].decode('utf-8'))
-        self.assertIn('/ui/memory-groups.js', parser.sources)
         app = FastAPI()
         app.include_router(self.ui.router)
         with TestClient(app, base_url='https://photohouse.test') as client:
-            for route in parser.sources:
+            parser.feed(client.get('/ui').text)
+            self.assertIn('/ui/memory-groups.js', {path.partition('?')[0] for path in parser.sources})
+            self.assertNotIn('/ui/oral-history.js', {path.partition('?')[0] for path in parser.sources})
+            for source in parser.sources:
+                route = source.partition('?')[0]
                 with self.subTest(route=route):
                     self.assertTrue(route.startswith('/ui/'))
                     asset = 'backend/app/ui/access/' + route.removeprefix('/ui/')
                     self.assertIn(asset, set(files))
-                    response = client.get(route)
+                    response = client.get(source)
                     self.assertEqual(response.status_code, 200)
                     self.assertEqual(response.content, files[asset])
+
+    def test_optional_oral_history_stays_with_its_api_build(self):
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        self.bind()
+        app = FastAPI()
+        app.include_router(self.ui.router)
+        app.include_router(self.ui.oral_history_ui_router)
+        with TestClient(app) as client:
+            response = client.get('/ui/oral-history.js')
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.content, (self.ui.BUNDLED_UI_DIR / 'oral-history.js').read_bytes())
 
     def test_shell_versions_allowlisted_refs_and_static_assets_negotiate_gzip(self):
         from fastapi import FastAPI

@@ -10,13 +10,15 @@ from fastapi.responses import FileResponse, RedirectResponse, Response
 router = APIRouter()
 oral_history_ui_router = APIRouter()
 
-UI_DIR = Path(__file__).resolve().parents[1] / "ui" / "access"
+BUNDLED_UI_DIR = Path(__file__).resolve().parents[1] / "ui" / "access"
+UI_DIR = BUNDLED_UI_DIR
 INDEX_FILE = UI_DIR / "index.html"
 _ORAL_HISTORY_PANEL = '<details id="oral-history-panel" class="access-panel" hidden>'
 _ORAL_HISTORY_SCRIPT = '    <script data-module="oral-history" src="/ui/oral-history.js"></script>\n'
 APP_FILE = UI_DIR / "app.js"
 STYLE_FILE = UI_DIR / "styles.css"
 ICON_FILE = UI_DIR.parent / "photohouse-icon.svg"
+LIVE_UI_RELEASES = None
 NO_CACHE_HEADERS = {
     "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
     "Pragma": "no-cache",
@@ -101,15 +103,26 @@ def _static_response(request: Request, data: bytes, media_type: str, headers: di
 
 def _asset_response(request: Request, name: str, version: str | None) -> Response:
     path, media_type = _asset_path(name), ASSET_MEDIA_TYPES[name]
-    if version is None:
-        if not path.is_file():
-            raise HTTPException(status_code=500, detail=f"UI asset missing: {path.name}", headers=NO_CACHE_HEADERS)
-        return FileResponse(path, media_type=media_type, headers=NO_CACHE_HEADERS)
-    if not re.fullmatch(r"[0-9a-f]{64}", version):
+    releases = LIVE_UI_RELEASES() if LIVE_UI_RELEASES is not None else ()
+    if version is not None and not re.fullmatch(r"[0-9a-f]{64}", version):
         raise HTTPException(status_code=404, detail="UI asset version not found", headers=NO_CACHE_HEADERS)
-    data, digest = _read_asset(path)
-    if version != digest:
-        raise HTTPException(status_code=404, detail="UI asset version not found", headers=NO_CACHE_HEADERS)
+    if releases and name in releases[0]:
+        if version is None:
+            return _static_response(request, releases[0][name][0], media_type, NO_CACHE_HEADERS)
+        for release in releases:
+            data, digest = release[name]
+            if version == digest:
+                break
+        else:
+            raise HTTPException(status_code=404, detail="UI asset version not found", headers=NO_CACHE_HEADERS)
+    else:
+        if version is None:
+            if not path.is_file():
+                raise HTTPException(status_code=500, detail=f"UI asset missing: {path.name}", headers=NO_CACHE_HEADERS)
+            return FileResponse(path, media_type=media_type, headers=NO_CACHE_HEADERS)
+        data, digest = _read_asset(path)
+        if version != digest:
+            raise HTTPException(status_code=404, detail="UI asset version not found", headers=NO_CACHE_HEADERS)
     request.scope[VERSIONED_UI_ASSET] = True
     return _static_response(request, data, media_type, VERSIONED_HEADERS)
 
@@ -119,6 +132,8 @@ def _asset_path(name: str) -> Path:
         return APP_FILE
     if name == "styles.css":
         return STYLE_FILE
+    if name == "oral-history.js":
+        return BUNDLED_UI_DIR / name
     if name == "photohouse-icon.svg":
         return ICON_FILE
     return UI_DIR / name
@@ -145,7 +160,10 @@ def _versioned_shell(html: str, versions: tuple[tuple[str, str], ...]) -> bytes:
 
 @router.get("/ui")
 def ui_home(request: Request):
-    html = _read_asset(INDEX_FILE)[0].decode("utf-8")
+    releases = LIVE_UI_RELEASES() if LIVE_UI_RELEASES is not None else ()
+    assets = releases[0] if releases else {}
+    index = assets["index.html"] if assets else _read_asset(INDEX_FILE)
+    html = index[0].decode("utf-8")
     if getattr(request.app.state, 'oral_history_intake_enabled', False):
         flags = ''.join(
             f' data-{name}="enabled"'
@@ -159,7 +177,10 @@ def ui_home(request: Request):
                             _ORAL_HISTORY_PANEL.removesuffix(" hidden>") + flags + ">", 1)
     else:
         html = html.replace(_ORAL_HISTORY_SCRIPT, "", 1)
-    versions = tuple((name, _read_asset(_asset_path(name))[1]) for name in _referenced_assets(html))
+    versions = tuple(
+        (name, assets[name][1] if name in assets else _read_asset(_asset_path(name))[1])
+        for name in _referenced_assets(html)
+    )
     return _static_response(request, _versioned_shell(html, versions), "text/html", NO_CACHE_HEADERS)
 
 
