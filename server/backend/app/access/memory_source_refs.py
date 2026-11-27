@@ -14,8 +14,9 @@ from .transport import TransportError
 
 TABLE = 'access_memory_contribution_refs'
 MAX_PER_CHAPTER = 12
-# The installed reference table only stores links for the first six chapters.
-LINKABLE_CHAPTERS = frozenset(f'chapter-{number}' for number in range(1, 7))
+LEGACY_LINKABLE_CHAPTERS = frozenset(f'chapter-{number}' for number in range(1, 7))
+LINKABLE_CHAPTERS = frozenset(f'chapter-{number}' for number in range(1, MAX_GROUPS + 1))
+EXPANDED_CHAPTER_CONSTRAINT = 'memory_contribution_refs_chapters_v2'
 MAX_JSON_BYTES = 32768
 
 
@@ -57,6 +58,15 @@ def available(db):
             and table_exists(db))
 
 
+def linkable_chapters(db):
+    """Use extended links only after the explicit reference-table migration."""
+    row = db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+                     (TABLE,)).fetchone()
+    if row and f'CONSTRAINT {EXPANDED_CHAPTER_CONSTRAINT} CHECK' in row[0]:
+        return LINKABLE_CHAPTERS
+    return LEGACY_LINKABLE_CHAPTERS
+
+
 def _canonical(value):
     try:
         if type(value) is not str or str(uuid.UUID(value)) != value:
@@ -84,7 +94,7 @@ def parse_groups(raw, chapter_ids):
                             parse_constant=lambda _value: (_ for _ in ()).throw(ValueError()))
         if type(groups) is not list or len(groups) > MAX_GROUPS:
             raise ValueError()
-        allowed = set(chapter_ids)
+        allowed = LINKABLE_CHAPTERS.intersection(chapter_ids)
         seen_chapters, normalized = set(), []
         for group in groups:
             if type(group) is not dict or set(group) != {'chapter_id', 'contribution_ids'}:
@@ -98,8 +108,6 @@ def parse_groups(raw, chapter_ids):
             clean = [_canonical(ref) for ref in refs]
             if len(set(clean)) != len(clean):
                 raise ValueError()
-            if clean and chapter not in LINKABLE_CHAPTERS:
-                raise TransportError(422, 'Family memory links are available in chapters 1 through 6')
             seen_chapters.add(chapter)
             normalized.append((chapter, clean))
         return normalized
@@ -119,7 +127,10 @@ def eligible(db, contribution_id, story_id, library, chapter_id):
 
 
 def validate_groups(db, groups, story_id, library):
+    allowed = linkable_chapters(db)
     for chapter, refs in groups:
+        if refs and chapter not in allowed:
+            raise TransportError(422, 'Family memory links are available in chapters 1 through 6')
         for ident in refs:
             if not eligible(db, ident, story_id, library, chapter):
                 raise TransportError(422, 'Invalid contribution reference')

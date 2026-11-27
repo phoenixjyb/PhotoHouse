@@ -200,12 +200,13 @@ class MemoryContributions:
 
     def candidates(self, token, library, story_id, revision, chapter_id, page):
         """Metadata-only choices for an explicit, current saved-chapter edit."""
+        from .memory_source_refs import LINKABLE_CHAPTERS, available, linkable_chapters
+
         if (type(revision) is not int or not 1 <= revision <= 2**63 - 1
                 or type(page) is not int or not 1 <= page <= 100000
                 or type(chapter_id) is not str
-                or chapter_id not in {f'chapter-{index}' for index in range(1, 7)}):
+                or chapter_id not in LINKABLE_CHAPTERS):
             raise TransportError(400, 'Invalid contribution candidate request')
-        from .memory_source_refs import available
         with self.access._transaction():
             member, story, detail = self._parent(token, library, story_id)
             if not self._can_review(member, story):
@@ -216,6 +217,8 @@ class MemoryContributions:
                 raise TransportError(409, 'Story changed; reload before choosing sources')
             if chapter_id not in {chapter['id'] for chapter in detail['chapters']}:
                 raise TransportError(422, 'Chapter is no longer available')
+            if chapter_id not in linkable_chapters(self.db):
+                raise TransportError(422, 'Family memory links are available in chapters 1 through 6')
             # Filter before pagination. Never read original words/audio or a
             # derivation merely to populate the source chooser.
             cursor = self.db.execute('''SELECT id,kind,byline,language,chapter_id,
