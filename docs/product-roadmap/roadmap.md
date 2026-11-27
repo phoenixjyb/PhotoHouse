@@ -263,17 +263,17 @@ A private assistant translates a request into a bounded, authorized action. / �
 
 **Implemented / 已实现**
 
-- Request receipts, Search dispatch and visible result cards are implemented. / 已实现请求回执、搜索执行与可见结果卡片。
+- Search replies show a scrollable strip of up to 20 thumbnails per page. Tap a thumbnail to open it. Chinese and English voice commands can refer to the result numbers shown on the current page. / 搜索回复下方显示可横向滚动的缩略图，每页最多 20 张。点击缩略图即可打开，也可以用中英文语音指令按当前页显示的编号打开结果。
 
 **Gaps / 差距**
 
 - Unsupported requests must be explained without silently dropping constraints. / 不支持的请求必须明确解释，不能悄悄丢弃条件。
 
-**Next / 下一步:** Make visible evidence and the next useful action central to each answer. / 让每次回答围绕可见依据与下一步有用操作。
+**Next / 下一步:** Try opening a result on a later page by voice, then narrow the same search by date and media type. / 试用语音打开后续页面的一项结果，再按日期和媒体类型缩小同一次搜索的范围。
 
-**Delivery / 交付背景:** Windows speech-to-Search returned 20 authorized cards in the October 29 exercise. / 10 月 29 日 Windows 语音到搜索流程返回了 20 张授权结果卡片。
+**Delivery / 交付背景:** A signed-in Windows September search returned 186 results with 20 thumbnails on the first page. Local browser tests cover opening a numbered result on subsequent pages. / 登录后在 Windows 搜索九月份的内容，共找到 186 项，第一页显示 20 张缩略图。本地浏览器测试覆盖了按编号打开后续页面的结果。
 
-**Acceptance / 验收背景:** That task does not prove a general autonomous agent. / 该任务结果不代表已具备通用自主智能体能力。
+**Acceptance / 验收背景:** Later-page voice selection still needs a live microphone check on a household device. / 后续页面的语音点选仍需在家庭设备上使用麦克风实测。
 
 **Evidence record / 证据记录**
 
