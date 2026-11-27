@@ -1607,6 +1607,33 @@
     const button=$('assistant-turn-trail-latest');
     if(button)button.hidden=!assistantState.turnTrailHasNewer||assistantState.turnTrail.length===0;
   }
+  function placeAssistantResults(snapshot=privateAssistant?.state()){
+    const block=$('assistant-result-block'),root=$('assistant-results'),home=$('assistant-result-home');
+    const latest=assistantState.turnTrail.at(-1),result=snapshot?.currentResult,rendered=root.__assistantRenderedTurn;
+    const currentCards=rendered===result||(rendered?.result_page===true&&rendered.items===snapshot?.resultPageResult?.items);
+    let target=home;
+    // Keep one live result set. Server-owned thread and revision bind it to the
+    // reply; prior exchanges and pending speech never get copies of its cards.
+    if($('assistant-workspace-dialog').open&&!snapshot?.locked&&assistantBindingCurrent(assistantState.binding)&&
+      result?.kind==='results'&&result.version!==4&&currentCards&&root.childElementCount&&
+      root.__assistantRenderedOwner==='private'&&root.__assistantRenderedEpoch===state.generation&&
+      latest?.threadId&&latest.threadId===snapshot.activeThread?.thread_id&&
+      latest.revision===snapshot.revision&&latest.revision===snapshot.activeThread.revision){
+      const list=$('assistant-turn-trail-list');
+      target=Array.from(list.children).find(entry=>entry.dataset.assistantTurnId===String(latest.id))||home;
+    }
+    if(block.parentElement!==target){
+      const focused=block.contains(document.activeElement)?document.activeElement:null;
+      if(target===home)block.append(root);
+      else block.prepend(root);
+      target.append(block);
+      focused?.focus({preventScroll:true});
+    }
+  }
+  function privateAssistantTrail(detail){
+    return detail.exchanges.map(exchange=>({id:exchange.exchange_id,question:exchange.input_text,reply:exchange.reply,
+      threadId:detail.thread.thread_id,revision:exchange.revision}));
+  }
   function renderAssistantTrail({followLatest=false,position=null}={}){
     const section=$('assistant-turn-trail'),list=$('assistant-turn-trail-list');
     if(!section||!list)return;
@@ -1618,6 +1645,7 @@
       list.addEventListener('scroll',observe,{passive:true});
       $('assistant-workspace-content').addEventListener('scroll',observe,{passive:true});
       list.addEventListener('keydown',event=>{
+        if(event.target!==list)return;
         const scroller=assistantTrailScroller(list),step=Math.max(48,Math.floor(scroller.clientHeight*.8));
         if(event.key==='Home'){scroller.scrollTop=0;event.preventDefault();}
         else if(event.key==='End'){scroller.scrollTop=scroller.scrollHeight;event.preventDefault();}
@@ -1629,6 +1657,12 @@
     if(jump&&jump.dataset.bound!=='true'){
       jump.dataset.bound='true';
       jump.addEventListener('click',()=>{revealAssistantTrailTail(list,{explicit:true});assistantState.turnTrailHasNewer=false;updateAssistantTrailLatest();list.focus({preventScroll:true});});
+    }
+    const block=$('assistant-result-block');
+    const focused=block.contains(document.activeElement)?document.activeElement:null;
+    if(list.contains(block)){
+      $('assistant-result-home').append(block);
+      block.append($('assistant-results'));
     }
     list.replaceChildren();
     for(const exchange of assistantState.turnTrail){
@@ -1649,15 +1683,18 @@
     }
     const hasTurns=assistantState.turnTrail.length>0||assistantState.voicePendingText!==null;
     section.hidden=!hasTurns;
+    placeAssistantResults();
+    focused?.focus({preventScroll:true});
     if(!hasTurns){assistantState.turnTrailHasNewer=false;list.scrollTop=0;}
     else if(followLatest)revealAssistantTrailTail(list);
     else restoreAssistantTrailPosition(list,previousPosition);
     updateAssistantTrailLatest();
   }
-  function rememberAssistantTurn(question,turn){
+  function rememberAssistantTurn(question,turn,envelope=null){
     const list=$('assistant-turn-trail-list'),followLatest=assistantState.turnTrail.length===0||assistantTrailAtTail(list),position=captureAssistantTrailPosition(list);
     assistantState.voicePendingText=null;assistantState.voicePendingStatusKey='assistantVoiceWorking';
-    assistantState.turnTrail.push({id:++assistantState.turnTrailSerial,question,reply:turn.reply});
+    assistantState.turnTrail.push({id:++assistantState.turnTrailSerial,question,reply:turn.reply,
+      threadId:envelope?.thread_id,revision:envelope?.revision});
     if(assistantState.turnTrail.length>8)assistantState.turnTrail.shift();
     assistantState.turnTrailHasNewer=!followLatest;
     renderAssistantTrail({followLatest,position});
@@ -2328,6 +2365,7 @@
       }
     }
     renderAssistantStoryControls(privateAssistant?.state());
+    placeAssistantResults(privateSelection);
     if(turn.effect?.type==='open_asset') {
       const item=turn.items.find(candidate=>candidate.id===turn.effect.asset_id);
       if(item&&turn.kind==='open'&&!stale(epoch)&&!state.locked){if(assistantState.voiceSession.phase!=='idle')endAssistantVoice();reportAssistantOutcome(assistantState.turnReceipt,'open_requested');void openAsset(item,{sequence:turn.items,origin:'assistant'});}
@@ -2464,6 +2502,7 @@
     renderAssistantSceneControls(snapshot);
     renderAssistantResultPages(snapshot);
     renderAssistantStoryControls(snapshot);
+    placeAssistantResults(snapshot);
     if(!$('assistant-private'))return;
     const searchPerspective=$('assistant-search-perspective'),perspective=snapshot.capabilities?.search?.perspective;
     if(searchPerspective){searchPerspective.hidden=![2,3].includes(snapshot.capabilities?.search?.version);searchPerspective.textContent=searchPerspective.hidden?'':perspective?.label?t('assistantSearchPerspective').replace('{label}',perspective.label):t('assistantSearchPerspectiveDefault');}
@@ -2666,7 +2705,7 @@
         discardLocaleAssistantResume(intent,{clearDraft:true});return false;
       }
       assistantState.binding=Object.freeze({account:intent.account,library:intent.library,generation:epoch});
-      assistantState.context=null;assistantState.items=[];assistantState.turnTrail=detail.exchanges.map(exchange=>({id:exchange.exchange_id,question:exchange.input_text,reply:exchange.reply}));
+      assistantState.context=null;assistantState.items=[];assistantState.turnTrail=privateAssistantTrail(detail);
       assistantState.turnTrailHasNewer=false;$('assistant-results').replaceChildren();$('assistant-reply').textContent='';clearAssistantSearchSummary();renderAssistantTrail();
       if(assistantTextEditRevision===intent.editRevision){
         privateAssistant.setDraft(intent.draft);$('assistant-text').value=intent.draft;
@@ -2766,7 +2805,7 @@
     assistantState.binding=binding;assistantState.context=envelope.result.kind==='memory_cards'?null:envelope.result.context;
     assistantState.pendingTurn=null;assistantState.turnAttempt=null;assistantState.busy=false;
     if(envelope.recovered){assistantState.turnRequestId=null;assistantState.turnReceipt=null;}
-    if(!historical)rememberAssistantTurn(question,envelope.result);
+    if(!historical)rememberAssistantTurn(question,envelope.result,envelope);
     renderAssistantTurn(envelope.result,state.generation,'private');
     $('assistant-status').textContent='';$('assistant-private-status').textContent=t('assistantPrivateReady');
     $('assistant-receipt').hidden=true;
@@ -2781,7 +2820,7 @@
       const detail=await privateAssistant.read(id,options);
       stopAssistantSpeech();assistantState.context=null;assistantState.items=[];
       assistantState.voicePendingText=null;assistantState.voicePendingStatusKey='assistantVoiceWorking';
-      assistantState.turnTrail=detail.exchanges.map(exchange=>({id:exchange.exchange_id,question:exchange.input_text,reply:exchange.reply}));
+      assistantState.turnTrail=privateAssistantTrail(detail);
       renderAssistantTrail();$('assistant-results').replaceChildren();$('assistant-reply').textContent='';clearAssistantSearchSummary();
       $('assistant-private-older').hidden=!detail.has_older_exchanges||privateAssistant.state().capabilities?.history_paging===true;
       $('assistant-text').value=privateAssistant.state().draft;
@@ -5407,7 +5446,7 @@
     panel.open=true;$('assistant-workspace-content').append(panel);
     $('assistant-workspace-voice').append($('assistant-voice-session'));
     $('assistant-workspace-footer').append($('assistant-form'));
-    dialog.showModal();syncAssistantControls();
+    dialog.showModal();placeAssistantResults();syncAssistantControls();
     if(setHash)history.replaceState(history.state,'','#assistant-panel');
     focusAssistantWorkspace();
     if(assistantRestoreGate||assistantNeedsRestore)assistantPendingFocus={element:document.activeElement,revision:assistantFocusRevision};
@@ -5426,6 +5465,7 @@
     if(formPlaceholder?.parentNode)formPlaceholder.before(form);
     if(placeholder?.parentNode)placeholder.before(panel);
     dialog.close();
+    placeAssistantResults();
     const focus=assistantWorkspaceReturnFocus,scroll=assistantWorkspaceReturnScroll,url=assistantWorkspaceReturnUrl,historyState=assistantWorkspaceReturnHistory;
     assistantWorkspaceReturnFocus=null;assistantWorkspaceReturnScroll=null;assistantWorkspaceReturnUrl=null;assistantWorkspaceReturnHistory=null;
     if(url&&location.href!==url)history.replaceState(historyState,'',url);
@@ -5889,7 +5929,7 @@
   $('assistant-private-load-older').addEventListener('click',()=>void privateAssistantAction(async()=>{
     const position=captureAssistantTrailPosition($('assistant-turn-trail-list'));
     const detail=await privateAssistant.older();
-    assistantState.turnTrail=detail.exchanges.map(exchange=>({id:exchange.exchange_id,question:exchange.input_text,reply:exchange.reply}));
+    assistantState.turnTrail=privateAssistantTrail(detail);
     renderAssistantTrail({position});
   }));
   $('assistant-private-reload-history').addEventListener('click',()=>void readPrivateAssistant(

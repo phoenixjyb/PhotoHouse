@@ -1208,6 +1208,9 @@ dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
 .assistant-workspace-voice #assistant-voice-session-status{flex:1 1 100%;margin:0;max-inline-size:none;max-width:none;color:#4d6254;font-size:.8125rem;line-height:1.5;text-align:start}
 .assistant-workspace-voice .assistant-voice-session>button,.assistant-workspace-voice .assistant-voice-session>button#assistant-voice-start{grid-column:auto;justify-self:auto;inline-size:auto;min-inline-size:48px;min-block-size:48px;width:auto;min-width:48px;padding:.6rem .85rem;border-radius:10px;font-size:.8125rem}
 .assistant-workspace-voice #assistant-voice-pause,.assistant-workspace-voice #assistant-voice-resume,.assistant-workspace-voice #assistant-voice-end{justify-self:auto;color:var(--jude-ink)}
+.assistant-workspace-voice #assistant-voice-end{border-color:#8e3f3c;background:#963b37;color:#fff}
+.assistant-workspace-voice #assistant-voice-end:hover{background:#7a2d2a}
+.assistant-workspace-voice .assistant-voice-session[data-phase=speaking] .assistant-voice-orb{border-color:#d7bc94;background:#f6ead7;color:#754e2d}
 .assistant-workspace-voice .assistant-voice-session>details{grid-column:auto;justify-self:auto;font-size:.8125rem;color:var(--jude-muted)}
 .assistant-workspace-voice .assistant-voice-session>details>summary{display:flex;align-items:center;min-block-size:44px}
 .assistant-workspace-dialog #assistant-voice-timing dd{font-size:.8125rem}
@@ -1245,6 +1248,7 @@ dialog::backdrop{overflow:hidden;overscroll-behavior:contain}
 .assistant-workspace-dialog .assistant-turn-trail-text{max-inline-size:min(90%,68ch);max-width:min(90%,68ch);margin:0;color:var(--jude-ink);font-size:1rem;line-height:1.75;overflow-wrap:break-word}
 .assistant-workspace-dialog .assistant-turn-trail-text:nth-child(2){align-self:flex-end;max-inline-size:86%;max-width:86%;padding:.7rem 1rem;border-radius:18px 18px 5px 18px;background:#edf4ef;color:#294333}
 .assistant-workspace-dialog .assistant-turn-trail-role:nth-child(3){margin-block-start:.5rem;color:#345440}
+.assistant-workspace-dialog .assistant-turn-trail-entry>.assistant-result-block{min-inline-size:0;margin-block:.35rem .6rem;padding-block-start:.65rem;border-block-start:1px solid var(--jude-line)}
 .assistant-workspace-dialog .assistant-turn-trail-pending{color:#665126;font-size:.9375rem;font-style:normal}
 .assistant-workspace-dialog:has(#assistant-turn-trail:not([hidden])) #assistant-reply{position:absolute;inline-size:1px;block-size:1px;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .assistant-workspace-dialog .assistant-receipt{gap:.5rem;margin:.75rem 0;padding:.6rem .8rem;border:1px solid #e2e9e5;border-radius:12px;background:#f7faf8;color:var(--jude-muted);font-size:.8125rem}

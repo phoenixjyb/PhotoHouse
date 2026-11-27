@@ -4,6 +4,7 @@ import unittest
 import uuid
 
 import test_memory_transport as fixture
+from scripts.apply_story_chapter_source_schema import apply
 
 
 class ContributionCandidateTests(unittest.TestCase):
@@ -96,6 +97,66 @@ class ContributionCandidateTests(unittest.TestCase):
         self.assertEqual((len(second['items']),second['has_more']), (1,False))
         self.assertEqual({row['id'] for row in first['items']+second['items']}, accepted)
         self.assertEqual(first['items'], self.choices().json()['items'])
+
+    def test_chapter_twelve_chooser_and_save_on_migrated_database(self):
+        ids = range(1001, 1049)
+        with self.f.connection() as db:
+            db.executemany("""INSERT INTO assets(id,path,hash_sha256,status,mime,width,height)
+                VALUES(?,?,?,'active','image/jpeg',400,300)""",
+                [(ident, f'synthetic/{ident}', f'fixture-{ident}') for ident in ids])
+            db.executemany('INSERT INTO access_asset_libraries VALUES (?,?)',
+                           [(ident, 'family-a') for ident in ids])
+            db.commit()
+        selection = {'asset_ids': ','.join(map(str, ids)), 'title': 'Twelve chapters',
+                     'theme': 'everyday', 'language': 'en'}
+        preview = self.client.post('/story-workspace/preview?library=family-a',
+                                   headers=self.headers, json=selection)
+        self.assertEqual(preview.status_code, 200, preview.text)
+        draft = preview.json()
+        self.assertEqual(len(draft['chapters']), 12)
+        saved = self.client.post('/memory-stories?library=family-a', headers=self.headers,
+            json=selection | {'chapters': json.dumps(draft['chapters']),
+                              'selection_revision': draft['selection_revision'],
+                              'revision': '0', 'mutation_id': str(uuid.uuid4())})
+        self.assertEqual(saved.status_code, 200, saved.text)
+        self.story = saved.json()['id']
+        first = self.contribute()
+        late = self.contribute(chapter='chapter-12')
+        self.contribute(chapter='chapter-12', state='pending')
+        self.contribute(chapter='chapter-12', consent='0')
+        path = f'/memory-stories/{self.story}?library=family-a&contribution_refs=1'
+        earlier = self.client.put(path, headers=self.headers, json=self.edit_body([first]))
+        self.assertEqual(earlier.status_code, 200, earlier.text)
+        self.assertEqual(self.choices(revision='2', chapter='chapter-12').status_code, 422)
+        late_body = self.edit_body([first])
+        groups = json.loads(late_body['contribution_refs'])
+        groups.append({'chapter_id': 'chapter-12', 'contribution_ids': [late]})
+        late_body['contribution_refs'] = json.dumps(groups)
+        self.assertEqual(self.client.put(path, headers=self.headers, json=late_body).status_code, 422)
+
+        database = self.f.path.resolve()
+        self.assertFalse(apply(database)['expanded'])
+        self.assertEqual(apply(database, execute=True)['references_preserved'], 1)
+        self.assertFalse(apply(database, execute=True)['applied'])
+        candidate = self.choices(revision='2', chapter='chapter-12')
+        self.assertEqual(candidate.status_code, 200, candidate.text)
+        self.assertEqual([item['id'] for item in candidate.json()['items']], [late])
+        self.assertEqual(self.choices(revision='2', chapter='chapter-13').status_code, 400)
+        self.assertIn(self.choices(token=self.f.other_token, revision='2',
+                                  chapter='chapter-12').status_code, (401, 403))
+
+        result = self.client.put(path, headers=self.headers, json=late_body)
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(self.choices(revision='2', chapter='chapter-12').status_code, 409)
+        refs = self.client.get(f'/memory-stories/{self.story}/contribution-refs?library=family-a&revision=3',
+                               headers=self.headers)
+        self.assertEqual(refs.status_code, 200, refs.text)
+        self.assertEqual({row['id']: row['contribution_ids'] for row in refs.json()['chapters']
+                          if row['contribution_ids']}, {'chapter-1': [first], 'chapter-12': [late]})
+        with self.f.connection() as db:
+            self.assertEqual(db.execute('PRAGMA foreign_key_check').fetchall(), [])
+            self.assertEqual(db.execute('SELECT version_num FROM alembic_version').fetchone()[0],
+                             'f2a8c5d1e640')
 
     def test_current_membership_full_parent_and_editor_permission_are_required(self):
         self.contribute()
