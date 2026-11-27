@@ -1611,14 +1611,17 @@
     const block=$('assistant-result-block'),root=$('assistant-results'),home=$('assistant-result-home');
     const latest=assistantState.turnTrail.at(-1),result=snapshot?.currentResult,rendered=root.__assistantRenderedTurn;
     const currentCards=rendered===result||(rendered?.result_page===true&&rendered.items===snapshot?.resultPageResult?.items);
+    const privateReply=root.__assistantRenderedOwner==='private'&&currentCards&&
+      latest?.threadId&&latest.threadId===snapshot?.activeThread?.thread_id&&
+      latest.revision===snapshot.revision&&latest.revision===snapshot.activeThread.revision;
+    const voiceReply=root.__assistantRenderedOwner==='legacy'&&Number.isSafeInteger(root.__assistantRenderedTrailId)&&
+      latest?.id===root.__assistantRenderedTrailId;
     let target=home;
-    // Keep one live result set. Server-owned thread and revision bind it to the
-    // reply; prior exchanges and pending speech never get copies of its cards.
+    // Keep one live result set, bound to the private revision or completed
+    // voice exchange that produced it.
     if($('assistant-workspace-dialog').open&&!snapshot?.locked&&assistantBindingCurrent(assistantState.binding)&&
-      result?.kind==='results'&&result.version!==4&&currentCards&&root.childElementCount&&
-      root.__assistantRenderedOwner==='private'&&root.__assistantRenderedEpoch===state.generation&&
-      latest?.threadId&&latest.threadId===snapshot.activeThread?.thread_id&&
-      latest.revision===snapshot.revision&&latest.revision===snapshot.activeThread.revision){
+      rendered?.kind==='results'&&rendered.version!==4&&root.childElementCount&&
+      root.__assistantRenderedEpoch===state.generation&&(privateReply||voiceReply)){
       const list=$('assistant-turn-trail-list');
       target=Array.from(list.children).find(entry=>entry.dataset.assistantTurnId===String(latest.id))||home;
     }
@@ -1692,12 +1695,14 @@
   }
   function rememberAssistantTurn(question,turn,envelope=null){
     const list=$('assistant-turn-trail-list'),followLatest=assistantState.turnTrail.length===0||assistantTrailAtTail(list),position=captureAssistantTrailPosition(list);
+    const id=++assistantState.turnTrailSerial;
     assistantState.voicePendingText=null;assistantState.voicePendingStatusKey='assistantVoiceWorking';
-    assistantState.turnTrail.push({id:++assistantState.turnTrailSerial,question,reply:turn.reply,
+    assistantState.turnTrail.push({id,question,reply:turn.reply,
       threadId:envelope?.thread_id,revision:envelope?.revision});
     if(assistantState.turnTrail.length>8)assistantState.turnTrail.shift();
     assistantState.turnTrailHasNewer=!followLatest;
     renderAssistantTrail({followLatest,position});
+    return id;
   }
   function makeAssistantMemoryFollowup(text,label,turn,epoch,currentPrivate){
     const followupThreadId=currentPrivate?.activeThread?.thread_id,followupRevision=currentPrivate?.revision,
@@ -2253,17 +2258,19 @@
     }
     focus.focus();
   }
-  function renderAssistantTurn(turn,epoch,owner='legacy') {
+  function renderAssistantTurn(turn,epoch,owner='legacy',trailId=null) {
     if(!turn.result_page)privateResultRenderedPage=null;
     if(!turn.scene_page)privateSceneRenderedPage=null;
     stopAssistantSpeech();
-    const root=$('assistant-results');root.replaceChildren();root.__assistantRenderedTurn=turn;root.__assistantRenderedEpoch=epoch;root.__assistantRenderedOwner=owner;assistantState.items=turn.items;
+    const hasSearchResults=turn.kind==='results'||turn.kind==='open';
+    const items=hasSearchResults?turn.items:[];
+    const root=$('assistant-results');root.replaceChildren();root.__assistantRenderedTurn=turn;root.__assistantRenderedEpoch=epoch;root.__assistantRenderedOwner=owner;root.__assistantRenderedTrailId=trailId;assistantState.items=items;
     const privateSelection=privateAssistant?.state();
     if(!privateSelection?.activeThread&&!privateSelection?.capabilities?.server_owned_turns){
       if(assistantStoryLegacy?.turn!==turn){assistantStorySerial++;assistantStoryLegacy=turn.kind==='results'?{turn,binding:{account:state.profile?.account_id,library:state.library,generation:epoch},selected:new Map()}:null;}
     }
     const summary=$('assistant-search-summary'),summaryItems=$('assistant-search-summary-items');
-    if(summary&&summaryItems){summaryItems.replaceChildren();for(const line of assistantSearchLines(turn)){const item=document.createElement('li');item.textContent=line;summaryItems.append(item);}summary.hidden=summaryItems.childElementCount===0;}
+    if(summary&&summaryItems){summaryItems.replaceChildren();for(const line of hasSearchResults?assistantSearchLines(turn):[]){const item=document.createElement('li');item.textContent=line;summaryItems.append(item);}summary.hidden=summaryItems.childElementCount===0;}
     renderAssistantRefinements(turn,epoch);
     renderAssistantSceneRanking(turn);
     $('assistant-reply').textContent=turn.reply;
@@ -2323,7 +2330,7 @@
         root.append(card);
       }
     }
-    for(const [index,item] of turn.items.entries()) {
+    for(const [index,item] of items.entries()) {
       const card=document.createElement('article');card.className='assistant-result';card.dataset.assetId=item.id;
       const image=document.createElement('img');image.className='assistant-thumbnail';image.loading='lazy';image.alt=assetLabel(item);image.src=safeMediaURL(item.id,'thumbnail');
       image.addEventListener('error',()=>{image.alt=t('previewMissing');},{once:true});card.append(image);
@@ -2433,11 +2440,11 @@
       if(assistantState.turnAttempt!==attempt||!currentAssistantPending(pending))return;
       if(!validAssistantTurn(turn))throw new Error('Invalid assistant response');
       assistantState.pendingTurn=null;assistantState.context=turn.context;assistantState.binding=binding;
-      rememberAssistantTurn(pending.text,turn);
+      const trailId=rememberAssistantTurn(pending.text,turn);
       if(receipt.tracking==='enabled'&&receipt.status==='succeeded')assistantState.turnRequestId=requestId;
       assistantState.transcriptRequestId=null;
       showAssistantReceipt(receipt,receipt.status?assistantReceiptLabel(receipt.status):'assistantReceiptSucceeded');
-      reportAssistantOutcome(receipt,'displayed');renderAssistantTurn(turn,epoch);clearAssistantRecoveryPointer(requestId);$('assistant-status').textContent='';
+      reportAssistantOutcome(receipt,'displayed');renderAssistantTurn(turn,epoch,'legacy',Number.isSafeInteger(voiceToken)?trailId:null);clearAssistantRecoveryPointer(requestId);$('assistant-status').textContent='';
       if(Number.isSafeInteger(voiceToken)&&currentAssistantVoice(voiceToken,binding)){
         if(turn.kind==='results'&&turn.items.length>0&&turn.context&&assistantState.speech){assistantState.voiceSession.phase='speaking';syncAssistantControls();}
         else pauseAssistantVoice('assistantVoiceReview');
