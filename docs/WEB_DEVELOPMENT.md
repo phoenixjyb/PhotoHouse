@@ -152,7 +152,10 @@ Python 3.12 and Playwright Core 1.55.0. Its private
 [npm lock](../server/tests/security/browser-tooling/package-lock.json) fix the
 dependency version and registry integrity. CI runs `npm ci --ignore-scripts`
 and provisions the matching Chromium headless shell and Linux dependencies
-only on the ephemeral hosted runner. The local wrapper still installs nothing.
+only on the ephemeral hosted runner. On the native Windows workstation,
+`py -3.12 tools\windows_work.py dependencies web` prepares the locked Node
+dependency with a reusable cache under the PhotoHouse work root. Pass the
+installed Playwright Core module and existing Chromium to the Web check.
 The seventeen-suite profile includes the existing upload/note-save and full
 story-workspace regressions, plus the WAV encoder contract. Earlier fourteen-
 suite local passes and these separate focused results remain separate evidence.

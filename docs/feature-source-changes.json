@@ -39877,6 +39877,49 @@
         }
       ],
       "notes": "Record the overnight feature changes in the bilingual source and regenerate the packaged roadmap."
+    },
+    {
+      "feature": "windows-development-dependency-storage",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "97ff833cd86461b0f92b669d465369855b60e1ad199f56955b94db6973476e9a",
+          "sha256": "b97b41f394614f13f36a37d60c6ef281d9db259c9341d288de6cc57e4374105d"
+        },
+        {
+          "path": "docs/DEVELOPMENT.md",
+          "before_sha256": "2688073c374c7b386d4401ca662eafa76c0820f20abbc6dba71a8801b08ea1a3",
+          "sha256": "80faea6976a26362442696dbbab3da3be6cb8d1eea37c01c9a48ed5069ef145e"
+        },
+        {
+          "path": "docs/STORAGE_POLICY.md",
+          "before_sha256": "141a3718c7b83f840f591d304454da9ccfa9c1abda7e440ef58330827391775c",
+          "sha256": "43613de44d3fa732723ea7143392941d5d01e590f8fadf08046e87cfbce9be28"
+        },
+        {
+          "path": "docs/WEB_DEVELOPMENT.md",
+          "before_sha256": "61a0b09da0d718a29d4d5f5036c6511378d84933360bac32af615adae0b036d9",
+          "sha256": "9b2d86ff84112d35974d7099fedf400483aa7384ef66fe8381505a8ef4d7b562"
+        },
+        {
+          "path": "tools/check_windows_storage.py",
+          "before_sha256": "cc069e8d07f6c1ace2e781befcd1dd31cdc05d7384c5f4c554566e34fded0c4b",
+          "sha256": "55f6807d0fa433b9c385fedbf2d800c13a9b81fc3ec9cb23cd0f7b173b40e8e0"
+        },
+        {
+          "path": "tools/tests/test_windows_work_dependencies.py",
+          "before_sha256": null,
+          "sha256": "ae175639888015472288c80b6405d0ded42b09dcda179943168acca50029a07d"
+        },
+        {
+          "path": "tools/windows_work.py",
+          "before_sha256": "3b4378b1877ece3f9f03d7a2171b55c042f070207bce9df874563ec23cfc0c5c",
+          "sha256": "498ee812669c7b91871219672afaac9226f4736cc4341051187f4d2f1f4778bd"
+        }
+      ],
+      "notes": "Install locked Windows development dependencies with reusable data-volume caches and scope npm cache writes during generated checks."
     }
   ]
 }

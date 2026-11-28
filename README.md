@@ -126,7 +126,22 @@ rollout 在产生效果前被拦截。Search 与照片分组仍走现有路径�
 
 ## 开始开发
 
-推荐 Python 3.12。从仓库根目录运行：
+推荐 Python 3.12。从仓库根目录运行。
+
+**Windows PowerShell**：将开发仓库放在 D:，使用 Python 3.12.4 或更高的 3.12 版本。
+
+```powershell
+py -3.12 tools\windows_work.py dependencies python
+.\.venv\Scripts\python.exe tools\doctor.py
+.\.venv\Scripts\python.exe tools\check.py api
+```
+
+需要运行浏览器检查时，先安装 Node.js，再用
+`py -3.12 tools\windows_work.py dependencies web` 安装锁定的 Web 工具。
+两个安装命令默认将缓存与安装临时文件放在 `D:\PhotoHouseWork` 下。
+其他本地数据盘的配置见[存储策略](docs/STORAGE_POLICY.md)。
+
+**macOS 和 Linux**：
 
 ```sh
 python3.12 -m venv .venv
@@ -137,8 +152,8 @@ python3.12 -m venv .venv
 
 CPU API 检查使用生成的数据，不需要 GPU、模型权重或家庭服务器。
 `tools/check.py memory`、`windows-cpu`、`android`、`web` 是明确的检查 profile。
-Windows 使用 `.venv\Scripts\python.exe`；安装与命令详情见
-[开发指南](docs/DEVELOPMENT.md#cpu-quick-start)和[环境自检](docs/DEVELOPMENT_ENVIRONMENT.md)。
+安装与命令详情见[开发指南](docs/DEVELOPMENT.md#cpu-quick-start)
+和[环境自检](docs/DEVELOPMENT_ENVIRONMENT.md)。
 工具检查环境不会安装依赖或启动服务，检测通过也不等于测试通过。
 
 Android 使用 JDK 17、SDK platform 34 和项目指定 build tools：

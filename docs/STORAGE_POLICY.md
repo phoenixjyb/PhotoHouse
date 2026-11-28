@@ -106,8 +106,24 @@ default is `D:\PhotoHouseWork\android-gradle` under the existing work-root
 policy. Each run gives Gradle a separate temporary directory in that cache.
 The usual Gradle dependency and wrapper settings still apply. The check does
 not copy an old cache or redirect the Android SDK, JDK or system settings.
-Other package managers, tool installations and POSIX agent scratch remain
-separate.
+
+Native Windows dependency setup uses the same work root. Run these commands
+from a checkout on a fixed data volume:
+
+```powershell
+py -3.12 tools\windows_work.py dependencies python
+py -3.12 tools\windows_work.py dependencies web
+```
+
+The Python command uses the hash-locked development requirements and the
+checkout's `.venv`. The Web command installs the locked browser tooling via
+`npm ci` with lifecycle scripts disabled. They reuse private
+`package-cache\pip` and `package-cache\npm` directories and give each
+installation a separate temporary directory. Installation and cache space
+are checked together under the existing volume lock. Generated Web checks
+also put npm's cache under the admitted run directory.
+
+Tool installations and POSIX agent scratch remain separate.
 
 Historical qualification packets and C:-bound private SYSTEM task launchers are
 immutable and have not been relabeled or executed. Their successor plan generator
