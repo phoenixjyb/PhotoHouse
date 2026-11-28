@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import ExitStack
 import hashlib
 import json
 import os
 from pathlib import Path
 import runpy
+import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'server' / 'backend'))
@@ -94,6 +97,69 @@ def report():
             'archival_enabled': False, 'scope': 'policy receipts; not a current disk inventory'}
 
 
+def setup_dependencies(profile):
+    if os.name != 'nt':
+        raise storage.StorageRefused('native_windows_required')
+    python_profile = profile == 'python'
+    if sys.version_info[:3] < (3, 12, 4):
+        raise storage.StorageRefused('python_3_12_4_or_newer_required')
+    if python_profile and sys.version_info[:2] != (3, 12):
+        raise storage.StorageRefused('development_dependencies_require_python_3_12')
+
+    project = ROOT if python_profile else ROOT / 'server/tests/security/browser-tooling'
+    install_root = storage.direct(project / ('.venv' if python_profile else 'node_modules'))
+    lock = storage.direct(project / ('config/requirements-dev.lock' if python_profile else 'package-lock.json'))
+    if not lock.is_file():
+        raise storage.StorageRefused('dependency_lock_unavailable')
+    storage.volume(install_root)
+
+    work_root = storage.work_root()
+    cache = work_root / 'package-cache' / ('pip' if python_profile else 'npm')
+    # Reserve space for both installation and cached/downloaded working files.
+    budget = 1024**3 if python_profile else 128 * 1024**2
+    components = [(install_root, 'dependency installation', budget),
+                  (cache, 'package cache and temporary files', budget)]
+    volumes = storage.check_space(components)
+    with ExitStack() as stack:
+        for identity in sorted(volumes):
+            stack.enter_context(storage._volume_lock(volumes[identity][0]))
+        storage.check_space(components)
+        storage.direct(install_root)
+        if python_profile:
+            python = storage.direct(install_root / 'Scripts/python.exe')
+            create_venv = not install_root.exists()
+            if not create_venv and (
+                not python.is_file() or not storage.direct(install_root / 'pyvenv.cfg').is_file()
+            ):
+                raise storage.StorageRefused('development_venv_incomplete')
+
+        cache_parent = storage._private_child(work_root, 'package-cache')
+        cache = storage._private_child(cache_parent, cache.name)
+        with tempfile.TemporaryDirectory(prefix='install-', dir=cache) as name:
+            temporary = storage.direct(Path(name))
+            require_private_directory(temporary)
+            # The checked-in locks select the packages. Package-manager
+            # settings in the shell must not redirect installation or caches.
+            env = {key: value for key, value in os.environ.items()
+                   if not key.upper().startswith(('PIP_', 'NPM_CONFIG_'))}
+            env.update({key: str(temporary) for key in ('TEMP', 'TMP', 'TMPDIR')})
+            if python_profile:
+                env.update(PIP_CONFIG_FILE=os.devnull, PIP_CACHE_DIR=str(cache))
+                if create_venv:
+                    subprocess.run([sys.executable, '-I', '-m', 'venv', str(install_root)],
+                                   cwd=project, env=env, check=True)
+                storage.direct(python)
+                command = [str(python), '-I', '-m', 'pip', '--require-virtualenv',
+                           'install', '--require-hashes', '-r', str(lock)]
+            else:
+                npm_logs = storage.direct(cache / '_logs')
+                env.update(NPM_CONFIG_CACHE=str(cache), NPM_CONFIG_LOGS_DIR=str(npm_logs),
+                           NPM_CONFIG_PREFIX=str(project))
+                command = ['cmd.exe', '/d', '/c', 'npm.cmd', 'ci', '--ignore-scripts',
+                           '--no-audit', '--no-fund', '--global=false']
+            subprocess.run(command, cwd=project, env=env, check=True)
+
+
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] in PRODUCERS:
@@ -107,6 +173,10 @@ def main(argv=None):
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('install', help='install a private source/hash-bound PowerShell launcher on D:')
     commands.add_parser('report', help='report lifecycle receipts; never archive or delete')
+    dependencies = commands.add_parser(
+        'dependencies', help='install locked development dependencies with managed caches',
+    )
+    dependencies.add_argument('profile', choices=('python', 'web'))
     plan = commands.add_parser('plan', help='read-only volume/peak-space preflight')
     plan.add_argument('--output', type=Path, required=True)
     plan.add_argument('--component', action='append', required=True, metavar='PURPOSE=BYTES')
@@ -116,6 +186,9 @@ def main(argv=None):
             result = install()
         elif args.command == 'report':
             result = report()
+        elif args.command == 'dependencies':
+            setup_dependencies(args.profile)
+            return 0
         else:
             output = storage.target(args.output)
             components = []
@@ -127,8 +200,13 @@ def main(argv=None):
                       'reserve_bytes': storage.RESERVE, 'allocated_bytes': 0}
         print(json.dumps(result, sort_keys=True))
         return 0
-    except (OSError, ValueError, KeyError):
-        print(json.dumps({'status': 'refused', 'allocated_payload_bytes': 0}))
+    except subprocess.CalledProcessError as error:
+        return error.returncode
+    except (OSError, ValueError, KeyError) as error:
+        result = {'status': 'refused', 'allocated_payload_bytes': 0}
+        if args.command == 'dependencies' and isinstance(error, storage.StorageRefused):
+            result = {'status': 'refused', 'reason': str(error)}
+        print(json.dumps(result))
         return 2
 
 

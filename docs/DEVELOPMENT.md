@@ -855,11 +855,12 @@ To run only that disposable demo:
 .venv/bin/python examples/generated-demo/check_demo.py
 ```
 
-On Windows PowerShell, use the Python 3.12 launcher and Windows venv path:
+From a Windows checkout on a local data volume, use Python 3.12.4 or newer
+within the 3.12 series. The setup command creates the development venv if
+needed and directs pip's cache and temporary files to the PhotoHouse work root.
 
 ```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --require-hashes -r config/requirements-dev.lock
+py -3.12 tools\windows_work.py dependencies python
 .\.venv\Scripts\python.exe tools\check.py api
 ```
 

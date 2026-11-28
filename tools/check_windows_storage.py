@@ -253,7 +253,7 @@ def _environment(base, root):
         env[key] = str(root)
     for key, leaf in {
         "APPDATA": "roaming", "LOCALAPPDATA": "local", "XDG_CACHE_HOME": "xdg",
-        "PIP_CACHE_DIR": "pip", "UV_CACHE_DIR": "uv", "HF_HOME": "hf",
+        "PIP_CACHE_DIR": "pip", "UV_CACHE_DIR": "uv", "NPM_CONFIG_CACHE": "npm", "HF_HOME": "hf",
         "TORCH_HOME": "torch", "MPLCONFIGDIR": "mpl", "NUMBA_CACHE_DIR": "numba",
     }.items():
         env[key] = str(root / leaf)
