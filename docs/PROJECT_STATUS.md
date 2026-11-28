@@ -1,10 +1,33 @@
 # Current project status
 
-> **25 November 2026 update:** The bilingual roadmap and fullscreen Web viewer
-> are live on Windows. The integration also includes the qualified Rust
-> components and the conversational Search, authored chapter, and Jude recovery
-> fixes described below. See the [audit reconciliation](AUDIT_RECONCILIATION_2026-11-24.md)
-> for source progress, installed-runtime evidence and open device checks.
+## November 28 source and Windows delivery
+
+| Layer | Recorded revision |
+| --- | --- |
+| GitHub main at review | `c8e4e43`, with Windows dependency setup and refusal diagnostics |
+| Windows protected API | `87018dd` |
+| Windows Web overlay | `505d052`, including Jude’s paged thumbnail and voice controls |
+| Installed bilingual roadmap | `6cc6846` in the last serving record |
+
+Family automatic importing now checks every three minutes. The scheduled
+verification passed without rate limiting, and its separate replay check kept
+one entry for the test photo. A new one-minute CPU task produced both prepared
+JPEGs for a newly imported test photo on its natural schedule. The latest
+thumbnail deployment preserved the grouping and intake task definitions.
+
+The Windows Jude Rust text scorer passed 25 generated-data parity tests. Full
+requests had mixed latency and Jude stays on Python. In an isolated Windows
+six-photo gallery, prepared thumbnails reduced the median first-thumbnail
+request from about 774 ms to 23 ms. Signed-in Edge page loading and household
+microphone behavior still need device measurements.
+
+The Web release also includes album editing, ordered Search-to-story handoff
+and up to 48 sources across 12 chapters. A household Chapter 12 chooser check,
+local story quality review and installed phone/TV acceptance remain open.
+See the [updated bilingual roadmap](product-roadmap/index.html) and [audit
+reconciliation](AUDIT_RECONCILIATION_2026-11-24.md). GitHub Actions stays paused.
+The main branch source ledger needs reconciliation for earlier application and
+client changes before a full source-integrity check can pass.
 
 ## November 25 merged source
 

@@ -1,10 +1,10 @@
 /* Public product records only. No runtime polling or household data. */
 window.PHOTOHOUSE_ROADMAP = {
   "schema_version": 1,
-  "updated_at": "2026-11-27",
+  "updated_at": "2026-11-28",
   "snapshot_label": {
-    "en": "27 November 2026 · reviewed snapshot",
-    "zh": "2026 年 11 月 27 日 · 回顾快照"
+    "en": "28 November 2026 · reviewed snapshot",
+    "zh": "2026 年 11 月 28 日 · 回顾快照"
   },
   "runtime_notice": {
     "severity": "info",
@@ -13,8 +13,8 @@ window.PHOTOHOUSE_ROADMAP = {
       "zh": "部署与集成回顾记录"
     },
     "body": {
-      "en": "Windows Web and API delivery includes album editing, Jude’s ordered selection recovery and stories with up to 48 items. Live Windows Search verified date corrections in both languages and an English video-only follow-up that kept the corrected month.",
-      "zh": "Windows 网页和 API 已交付相册编辑、小贾按顺序恢复选择，以及最多 48 项素材的故事。Windows 实际搜索已验证中英文日期更正，英文「只看视频」追问也保留了更正后的月份。"
+      "en": "Family import and automatic photo thumbnails are running on Windows. A scheduled test imported one labelled photo and prepared both JPEG previews. The current Web release includes Jude’s paged Search thumbnails, album editing and 48-item stories. Signed-in gallery speed and later-page microphone actions still need a device check.",
+      "zh": "Windows 上的家庭导入和照片缩略图预生成均已运行。计划任务测试导入了一张带标记的照片，并生成两种 JPEG 预览。当前网页版支持小贾分页搜索缩略图、相册编辑和最多 48 项素材的故事。已登录相册的加载速度与用麦克风打开后续页结果仍需真机验证。"
     }
   },
   "areas": [
@@ -86,31 +86,31 @@ window.PHOTOHOUSE_ROADMAP = {
     {
       "id": "now",
       "title": {
-        "en": "Make Search refinement conversational",
-        "zh": "让搜索条件能够自然逐轮细化"
+        "en": "Verify everyday gallery and Jude use",
+        "zh": "验证相册和小贾的日常使用"
       },
       "why": {
-        "en": "Understand dates, retain the active filters across follow-up questions, and show what is actually being searched.",
-        "zh": "理解日期表达，保留追问中的现有筛选条件，并清楚展示实际查找范围。"
+        "en": "New imports now get prepared thumbnails. Check real gallery loading and verify that Jude keeps filters and attaches thumbnails to the matching reply.",
+        "zh": "新导入的照片已能预生成缩略图。测量实际相册加载，并验证小贾保留筛选条件、将缩略图显示在对应回复下方。"
       },
       "done_when": {
-        "en": "A family member can find photos, narrow by person/date/place, change a condition and open a result without starting over.",
-        "zh": "家人能够查找照片，按人物／日期／地点逐步缩小范围，修改条件并打开结果，无需反复从头描述。"
+        "en": "A signed-in browser records repeatable gallery timings, keeps the selected date on a video-only follow-up and opens the requested later-page result by microphone.",
+        "zh": "在已登录浏览器记录可重复的相册加载耗时，验证「只看视频」保留日期，并用麦克风打开后续页指定结果。"
       }
     },
     {
       "id": "next",
       "title": {
-        "en": "Make Jude useful across conversations",
-        "zh": "让小贾在多轮对话中真正好用"
+        "en": "Finish the household Search-to-story journey",
+        "zh": "完成家庭搜索到故事的使用流程"
       },
       "why": {
-        "en": "Find photos, refine conditions and explain results without losing scope or pretending an action succeeded.",
-        "zh": "查找照片、逐轮细化条件、解释结果，同时保留范围约束，不把失败说成成功。"
+        "en": "Users can select results and create multi-chapter drafts. Real-browser review of the last chapter and broader family Search relevance are still open.",
+        "zh": "用户已可选择搜索结果并创建多章节草稿。最后一章的真实浏览器复查和家庭搜索相关性评估尚未完成。"
       },
       "done_when": {
-        "en": "A household can continue a search, inspect the applied conditions, reopen a result and cancel uncertain work clearly.",
-        "zh": "家人可以继续查找、查看已生效条件、重新打开结果，并清楚地取消状态不明的请求。"
+        "en": "A family member can refine Search, select sources across pages, add them to Chapter 12 and reopen a private draft with the same order.",
+        "zh": "家人能够逐轮细化搜索、跨页选择素材、加入第 12 章，并重新打开私有草稿确认顺序一致。"
       }
     },
     {
@@ -280,6 +280,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Photo/video pilot, gallery readback and duplicate-free retry preceded recurrence.",
           "zh": "先完成照片／视频试点、相册回读与无重复重试，再启用定时导入。"
+        },
+        {
+          "en": "The Family importer checks every three minutes. A separate CPU task checks every minute and prepares up to one authorized JPEG or PNG per run.",
+          "zh": "家庭导入每三分钟检查一次。独立 CPU 任务每分钟检查，每次最多为一张已授权的 JPEG 或 PNG 照片生成预览。"
         }
       ],
       "gaps": [
@@ -293,12 +297,12 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "展示近期导入结果与可操作的拒绝原因，不重复复制媒体。"
       },
       "delivery_note": {
-        "en": "Automatic importing was completed in the November Family intake rollout and confirmed by the owner.",
-        "zh": "11 月家庭导入部署已完成，所有者确认自动导入可用。"
+        "en": "The Windows cadence change resolved login rate limiting. The separate thumbnail task prepared the gallery and larger previews for a newly imported synthetic photo.",
+        "zh": "Windows 调整导入间隔后解决了登录限流。独立缩略图任务为新导入的合成测试照片生成了相册缩略图和较大预览。"
       },
       "acceptance_note": {
-        "en": "One scheduled run returned HTTP 503. A later run succeeded with the same task definition.",
-        "zh": "一次定时运行返回 HTTP 503，之后在定时任务定义未修改的情况下成功运行。"
+        "en": "The scheduled test imported one Family asset and produced two valid JPEGs. A separate retry check confirmed duplicate prevention. Signed-in Edge page timing is still open.",
+        "zh": "计划任务测试导入了一项家庭素材并生成两种有效 JPEG。独立重试验证确认未产生重复项。已登录 Edge 的页面加载耗时仍待测量。"
       },
       "evidence": [
         {
@@ -318,6 +322,13 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-25",
           "state": "verified"
+        },
+        {
+          "at": "2026-11-28",
+          "label": {
+            "en": "Windows scheduled intake and automatic photo thumbnail verified",
+            "zh": "Windows 计划导入与自动照片缩略图验证通过"
+          }
         }
       ]
     },
@@ -395,17 +406,25 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Open “On this day” to see photos and videos with the same recorded capture date in earlier years. The enlarged viewer keeps its Close button reachable.",
           "zh": "网页首页可按需打开「往年今日」，浏览往年这一天拍摄的照片和视频。放大后的浏览窗口仍可关闭。"
+        },
+        {
+          "en": "New Family JPEG and PNG imports have a scheduled photo thumbnail path.",
+          "zh": "新导入家庭库的 JPEG 和 PNG 照片通过计划任务生成缩略图。"
         }
       ],
       "gaps": [
         {
           "en": "Installed phone/TV versions and real device playback need their own acceptance.",
           "zh": "已安装手机／电视版本及真实设备播放仍需单独验收。"
+        },
+        {
+          "en": "Measure first visible thumbnail and gallery readiness on signed-in Edge and verify fullscreen and playback on household devices.",
+          "zh": "在已登录 Edge 测量首张可见缩略图与相册就绪耗时，并在家庭设备上验证全屏和播放。"
         }
       ],
       "next_step": {
-        "en": "Keep navigation, loading and playback errors consistent across screens.",
-        "zh": "统一不同屏幕上的导航、加载与播放错误体验。"
+        "en": "Record cold and warm gallery loads over the same connection, then check touch navigation and prepared video on a phone or tablet.",
+        "zh": "在相同网络条件下记录相册冷启动和热加载，并在手机或平板上检查触控导航及已准备视频。"
       },
       "delivery_note": {
         "en": "Fullscreen browsing is live on Windows. The newer loading, enlarged viewer and On this day changes have local evidence and await release.",
@@ -424,6 +443,13 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-10-29",
           "state": "verified"
+        },
+        {
+          "at": "2026-11-28",
+          "label": {
+            "en": "Isolated Windows gallery fixture verified identical thumbnails with pre-generation",
+            "zh": "Windows 隔离相册样例验证预生成前后的缩略图一致"
+          }
         }
       ]
     },
@@ -617,7 +643,7 @@ window.PHOTOHOUSE_ROADMAP = {
       "id": "assistant-search",
       "area": "assistant",
       "stage": "delivered",
-      "priority": "next",
+      "priority": "now",
       "title": {
         "en": "Jude: find & explain",
         "zh": "小贾：查找与解释"
@@ -639,12 +665,12 @@ window.PHOTOHOUSE_ROADMAP = {
         }
       ],
       "next_step": {
-        "en": "Try opening a result on a later page by voice, then narrow the same search by date and media type.",
-        "zh": "试用语音打开后续页面的一项结果，再按日期和媒体类型缩小同一次搜索的范围。"
+        "en": "Run a real microphone follow-up, then open a later-page item by number and confirm that its preview belongs to the matching reply.",
+        "zh": "用真实麦克风进行追问，再用编号打开后续页的一项，确认预览对应正确的回复。"
       },
       "delivery_note": {
-        "en": "A signed-in Windows September search returned 186 results with 20 thumbnails on the first page. Local browser tests cover opening a numbered result on subsequent pages.",
-        "zh": "登录后在 Windows 搜索九月份的内容，共找到 186 项，第一页显示 20 张缩略图。本地浏览器测试覆盖了按编号打开后续页面的结果。"
+        "en": "The paged thumbnail controls are served on Windows. A signed-in September search returned 186 results, with 20 thumbnails on the first page. Generated browser tests cover numbered opens on later pages.",
+        "zh": "Windows 已提供分页缩略图控件。一次已登录的九月搜索返回 186 项，第一页显示 20 个缩略图。生成数据的浏览器测试覆盖用编号打开后续页结果。"
       },
       "acceptance_note": {
         "en": "Later-page voice selection still needs a live microphone check on a household device.",
@@ -659,6 +685,13 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-10-29",
           "state": "verified"
+        },
+        {
+          "at": "2026-11-28",
+          "label": {
+            "en": "Windows Web overlay serves paged Jude results",
+            "zh": "Windows 网页覆盖更新已提供小贾分页结果"
+          }
         }
       ]
     },
@@ -922,12 +955,12 @@ window.PHOTOHOUSE_ROADMAP = {
         }
       ],
       "next_step": {
-        "en": "Review actual groups and address concrete deferred or incomplete refresh cases within the existing resource budgets.",
-        "zh": "检查实际分组，并在现有资源预算内解决具体的暂缓或未完成刷新情形。"
+        "en": "Review a real stack and verify the next applicable full refresh after an authorized change to the selected library.",
+        "zh": "查看实际照片组，并在授权变更所选图库后验证下一次适用的完整刷新。"
       },
       "delivery_note": {
-        "en": "Existing groups were visible after the 25 November Search rollout. The scheduled worker returned REFRESH_DEFERRED with zero updates. A completed sweep on that build remains open.",
-        "zh": "11 月 25 日搜索发布后，已有分组仍可查看。定时任务返回 REFRESH_DEFERRED，未更新分组。此版本的完整扫描仍待完成。"
+        "en": "The current Windows binding returned REFRESH_READY with zero updates. The later thumbnail installation read back the same grouping task definition. A changed-library full sweep remains open.",
+        "zh": "当前 Windows 绑定返回 REFRESH_READY 且更新数为零。随后安装缩略图任务时，读回的分组任务定义保持一致。图库变化后完成全量刷新仍待验证。"
       },
       "acceptance_note": {
         "en": "Task binding, completed cache refresh and household grouping quality are separate outcomes.",
@@ -951,6 +984,13 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-25",
           "state": "partial"
+        },
+        {
+          "at": "2026-11-28",
+          "label": {
+            "en": "Current grouping task preserved during Family thumbnail installation",
+            "zh": "安装家庭缩略图任务时保留当前分组任务"
+          }
         }
       ]
     },
@@ -1054,13 +1094,13 @@ window.PHOTOHOUSE_ROADMAP = {
       ],
       "gaps": [
         {
-          "en": "Chapter review and title search still need family acceptance. The expanded Android editor needs a check on an installed phone.",
-          "zh": "逐章审阅和标题查找仍待家庭试用。扩容后的 Android 编辑器仍需在已安装应用的手机上验证。"
+          "en": "The signed-in Chapter 12 chooser, chapter review and title search still need a household check. The expanded Android editor needs a check on an installed phone.",
+          "zh": "第 12 章已登录素材选择器、章节审核和标题搜索仍需家庭使用验证。扩展后的 Android 编辑器需要在已安装的手机上验证。"
         }
       ],
       "next_step": {
-        "en": "Try keeping one original chapter, editing a second one and reopening the saved result.",
-        "zh": "试用保留一章原文、编辑另一章，并再次打开已保存故事的流程。"
+        "en": "Add and reorder sources in Chapter 12, then save and reopen a private draft to verify the same order.",
+        "zh": "在第 12 章加入素材并调整顺序，然后保存和重新打开私有草稿，确认顺序一致。"
       },
       "delivery_note": {
         "en": "PR #145 expanded the Windows Web editor and API. A Windows fixture saved and reopened 48 ordered items, and a signed-in private draft reopened in the same order.",
@@ -1425,8 +1465,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "10 月 29 日 Windows 流程在 28.688 秒内完成，并返回 20 张结果卡片。"
       },
       "acceptance_note": {
-        "en": "The owner deferred physical browser testing; do not count it as passed.",
-        "zh": "所有者延后了浏览器物理测试，不能计为通过。"
+        "en": "Physical microphone and speaker acceptance for the current call view, filter follow-ups and later-page voice actions remains open.",
+        "zh": "当前语音通话界面、条件追问和后续页语音操作的真机麦克风与扬声器验收尚未完成。"
       },
       "evidence": [
         {
@@ -1519,6 +1559,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "The new UI passed responsive/large-text checks, actual Windows SYSTEM startup, trusted HTTPS checks and the repaired grouping binding.",
           "zh": "新版界面已通过响应式／大字检查、实际 Windows SYSTEM 启动、可信 HTTPS 检查及修复后的分组版本绑定。"
+        },
+        {
+          "en": "The reviewed UI-only deployment path updates eligible static files without restarting the API.",
+          "zh": "经过验证的网页独立部署流程可更新符合条件的静态文件，无需重启 API。"
         }
       ],
       "gaps": [
@@ -1528,8 +1572,8 @@ window.PHOTOHOUSE_ROADMAP = {
         }
       ],
       "next_step": {
-        "en": "Collect concrete phone/desktop feedback and improve the affected user journeys.",
-        "zh": "收集手机／桌面端的具体反馈，改进对应使用流程。"
+        "en": "Measure time to first gallery thumbnails and collect concrete desktop and phone feedback on Jude’s call view.",
+        "zh": "测量首批相册缩略图显示耗时，并收集桌面和手机使用小贾通话界面的具体反馈。"
       },
       "delivery_note": {
         "en": "The reviewed UI component is served on Windows; the failed attempt and later recovery remain separate records.",
@@ -1548,6 +1592,13 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-24",
           "state": "verified"
+        },
+        {
+          "at": "2026-11-28",
+          "label": {
+            "en": "Verified Windows UI-only delivery and overlay readback",
+            "zh": "Windows 网页独立部署及覆盖文件读回验证"
+          }
         }
       ]
     },
@@ -1568,17 +1619,21 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Qualified vector/visual and photo-stack components have Windows delivery records.",
           "zh": "已验证的向量／视觉与照片分组组件已有 Windows 交付记录。"
+        },
+        {
+          "en": "The Windows Rust text scorer passed 25 generated-data parity tests. Full Jude requests showed mixed latency, so Jude stays on Python.",
+          "zh": "Windows Rust 文本评分器通过 25 项生成数据一致性测试。小贾端到端请求耗时有快有慢，因此继续使用 Python。"
         }
       ],
       "gaps": [
         {
-          "en": "Component speedup is not whole-request or whole-library speedup.",
-          "zh": "组件提速不等于完整请求或全库提速。"
+          "en": "End-to-end gains must be repeatable on representative workloads before another production switch.",
+          "zh": "下一次生产切换前，必须在有代表性的工作负载中重复验证端到端收益。"
         }
       ],
       "next_step": {
-        "en": "Profile the next real bottleneck; avoid rebuilding components that already passed.",
-        "zh": "分析下一个真实瓶颈，避免重建已通过的组件。"
+        "en": "Measure the signed-in gallery and representative searches before choosing the next CPU bottleneck to optimize.",
+        "zh": "先测量已登录相册与有代表性的搜索，再选择下一个需要优化的 CPU 瓶颈。"
       },
       "delivery_note": {
         "en": "November 21 rollout accepted Rust components; the application remains Python with Rust kernels.",
@@ -1597,6 +1652,13 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-21",
           "state": "verified"
+        },
+        {
+          "at": "2026-11-28",
+          "label": {
+            "en": "Windows Jude Rust parity and end-to-end latency fixture",
+            "zh": "Windows 小贾 Rust 一致性与端到端耗时样例"
+          }
         }
       ]
     },
@@ -1670,6 +1732,10 @@ window.PHOTOHOUSE_ROADMAP = {
         {
           "en": "Native Windows Android checks now select a reusable Gradle cache and temporary files on a fixed data volume. Local tests cover the storage selection.",
           "zh": "Windows 本机 Android 检查会在本地固定数据盘复用 Gradle 缓存并放置临时文件。存储位置的选择已通过本地测试。"
+        },
+        {
+          "en": "The merged Windows dependency launcher keeps locked Python and Web install caches and temporary files on the configured data drive. A disposable Windows checkout verified that system-profile caches stayed unchanged.",
+          "zh": "已合并的 Windows 依赖工具将锁定的 Python 和网页安装缓存及临时文件放在指定数据盘。Windows 一次性检出验证了系统用户缓存保持不变。"
         }
       ],
       "gaps": [
@@ -1683,8 +1749,8 @@ window.PHOTOHOUSE_ROADMAP = {
         "zh": "为各受支持平台用合成数据演练文档中的恢复流程。"
       },
       "delivery_note": {
-        "en": "Current evidence is a local package and synthetic restore drill.",
-        "zh": "当前证据来自本地打包与合成数据恢复演练。"
+        "en": "Source includes the D-drive development workflow and refusal diagnostics. Portable installer and production recovery journeys have their own qualification.",
+        "zh": "源码已包含 D 盘开发流程和拒绝原因诊断。便携安装与生产恢复流程需要各自验收。"
       },
       "acceptance_note": {
         "en": "Record runtime, storage, rollback and restored permissions for each platform.",
@@ -1699,6 +1765,13 @@ window.PHOTOHOUSE_ROADMAP = {
           },
           "at": "2026-11-25",
           "state": "verified"
+        },
+        {
+          "at": "2026-11-28",
+          "label": {
+            "en": "Native Windows locked dependency install and data-drive isolation",
+            "zh": "Windows 原生锁定依赖安装与数据盘隔离验证"
+          }
         }
       ]
     }

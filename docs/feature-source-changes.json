@@ -39948,6 +39948,53 @@
         }
       ],
       "notes": "Report bounded Windows dependency setup refusal stages and document the shared work root permissions."
+    },
+    {
+      "feature": "reconcile-november-27-bilingual-roadmap-source",
+      "source_commit": "505d052c4d7373ff33b3a58f2dbb29687583aebc",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "07dde74e899ecb9c3277f8dd3b4bde66d029f8a35349b83c611c05a3f38b1372",
+          "sha256": "763ecdc08431dbd4536e00bf9075ca8bcd4ecfbfdb695d6ca04f73ff9e6a39f9"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "05cc2941aed20e75e0212563b99efe64ecb68014bc0afc3e1cdd0f5f2c6d3759",
+          "sha256": "9a3a43792e90d2895d9a79f7e04fbd5603fd270c03cb871a8683ba0fb2693194"
+        }
+      ],
+      "notes": "Record the exact bilingual roadmap source and export already present from the November 27 merge."
+    },
+    {
+      "feature": "november-28-bilingual-roadmap-and-delivery-status",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "docs/PROJECT_STATUS.md",
+          "before_sha256": "71c77f754c05da4d3a6343ee89f23effaae4bab9e80901a2fb2923b118c4b80e",
+          "sha256": "dfe4b939887357b635f381c1b4e2b3d1b4ed98d90fd6baaf667b5dc591656a4c"
+        },
+        {
+          "path": "docs/ROADMAP.md",
+          "before_sha256": "c6b113b886b49e2c085d36eb53ba9f7d71cf688710446cf7b04eb2723f368625",
+          "sha256": "ba6e20f9c279f4b66b3b58558251a4747af028dba97eaae2b88c7f90fde63db8"
+        },
+        {
+          "path": "docs/product-roadmap/data.js",
+          "before_sha256": "763ecdc08431dbd4536e00bf9075ca8bcd4ecfbfdb695d6ca04f73ff9e6a39f9",
+          "sha256": "228d62b1bd239f0f28b80e00e5e5e54f8526f50fb84232d92a925a3835ddf0ff"
+        },
+        {
+          "path": "docs/product-roadmap/roadmap.md",
+          "before_sha256": "9a3a43792e90d2895d9a79f7e04fbd5603fd270c03cb871a8683ba0fb2693194",
+          "sha256": "11f0e4b329a8c2c5e95c7e301c065e10491bbe9cb45f3c87b2ef2cf1afa0a9a9"
+        }
+      ],
+      "notes": "Update the bilingual roadmap with Windows photo thumbnails, current delivery and remaining household checks."
     }
   ]
 }
