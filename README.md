@@ -139,7 +139,8 @@ py -3.12 tools\windows_work.py dependencies python
 需要运行浏览器检查时，先安装 Node.js，再用
 `py -3.12 tools\windows_work.py dependencies web` 安装锁定的 Web 工具。
 两个安装命令默认将缓存与安装临时文件放在 `D:\PhotoHouseWork` 下。
-其他本地数据盘的配置见[存储策略](docs/STORAGE_POLICY.md)。
+如果工作目录仅对管理员开放，请使用管理员 PowerShell。
+其他本地数据盘及权限说明见[存储策略](docs/STORAGE_POLICY.md)。
 
 **macOS 和 Linux**：
 

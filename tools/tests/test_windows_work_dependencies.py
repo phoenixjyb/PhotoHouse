@@ -1,4 +1,7 @@
-from contextlib import nullcontext
+from contextlib import nullcontext, redirect_stdout
+import errno
+from io import StringIO
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -105,6 +108,30 @@ class WindowsDependencyStorageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'system_volume_refused'):
             windows_work.setup_dependencies('web')
         self.assertFalse((self.work / 'package-cache').exists())
+        self.run.assert_not_called()
+
+    def test_reports_inaccessible_work_root_without_printing_the_path(self):
+        error = PermissionError(errno.EACCES, 'Access denied', 'D:/private')
+        error.winerror = 5
+        output = StringIO()
+        with patch.object(windows_work.storage, 'work_root', side_effect=error), redirect_stdout(output):
+            self.assertEqual(windows_work.main(['dependencies', 'python']), 2)
+
+        self.assertEqual(json.loads(output.getvalue()), {
+            'status': 'refused', 'stage': 'work_root', 'reason': 'access_denied',
+            'errno': errno.EACCES, 'winerror': 5,
+        })
+        self.run.assert_not_called()
+
+    def test_reports_shared_lock_policy_refusal_at_volume_admission(self):
+        self.lock.side_effect = ValueError('Private recovery storage unavailable')
+        output = StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(windows_work.main(['dependencies', 'web']), 2)
+
+        self.assertEqual(json.loads(output.getvalue()), {
+            'status': 'refused', 'stage': 'volume_admission', 'reason': 'private_storage_unavailable',
+        })
         self.run.assert_not_called()
 
     def test_generated_checks_override_inherited_npm_cache(self):

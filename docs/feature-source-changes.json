@@ -39920,6 +39920,34 @@
         }
       ],
       "notes": "Install locked Windows development dependencies with reusable data-volume caches and scope npm cache writes during generated checks."
+    },
+    {
+      "feature": "windows-development-dependency-refusal-diagnostics",
+      "schema_changed": false,
+      "production_activation": false,
+      "files": [
+        {
+          "path": "README.md",
+          "before_sha256": "b97b41f394614f13f36a37d60c6ef281d9db259c9341d288de6cc57e4374105d",
+          "sha256": "7f1f9c52d3971480316f3a6d203862ba10fe854cac69070fddccfa268bddb275"
+        },
+        {
+          "path": "docs/STORAGE_POLICY.md",
+          "before_sha256": "43613de44d3fa732723ea7143392941d5d01e590f8fadf08046e87cfbce9be28",
+          "sha256": "6bc34a2bc0cc3418aed4583d2b87c8a158b9508adae8108f88b085d8882c2fce"
+        },
+        {
+          "path": "tools/tests/test_windows_work_dependencies.py",
+          "before_sha256": "ae175639888015472288c80b6405d0ded42b09dcda179943168acca50029a07d",
+          "sha256": "bceca44ac499e5aebfadde90bca90a302bf485af8fa80789f62169e2ac551fbb"
+        },
+        {
+          "path": "tools/windows_work.py",
+          "before_sha256": "498ee812669c7b91871219672afaac9226f4736cc4341051187f4d2f1f4778bd",
+          "sha256": "5dc45409153d0ae5816a137fc95933f3b30ade20ca5f91560da9653f796441e9"
+        }
+      ],
+      "notes": "Report bounded Windows dependency setup refusal stages and document the shared work root permissions."
     }
   ]
 }
