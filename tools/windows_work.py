@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import argparse
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
+import errno
 import hashlib
 import json
 import os
@@ -97,6 +98,40 @@ def report():
             'archival_enabled': False, 'scope': 'policy receipts; not a current disk inventory'}
 
 
+
+class DependencySetupRefused(storage.StorageRefused):
+    def __init__(self, stage, error):
+        if isinstance(error, storage.StorageRefused):
+            reason = str(error)
+        elif isinstance(error, PermissionError):
+            reason = 'access_denied'
+        elif isinstance(error, FileNotFoundError):
+            reason = 'file_not_found'
+        elif isinstance(error, OSError):
+            reason = 'insufficient_space' if error.errno == errno.ENOSPC else 'io_error'
+        elif str(error) == 'Private recovery storage unavailable':
+            reason = 'private_storage_unavailable'
+        else:
+            reason = 'invalid_setup_value'
+        super().__init__(reason)
+        self.detail = {'status': 'refused', 'stage': stage, 'reason': reason}
+        if isinstance(error, OSError):
+            for key in ('errno', 'winerror'):
+                value = getattr(error, key, None)
+                if type(value) is int:
+                    self.detail[key] = value
+
+
+@contextmanager
+def _dependency_stage(stage):
+    try:
+        yield
+    except DependencySetupRefused:
+        raise
+    except (OSError, ValueError, KeyError) as error:
+        raise DependencySetupRefused(stage, error) from None
+
+
 def setup_dependencies(profile):
     if os.name != 'nt':
         raise storage.StorageRefused('native_windows_required')
@@ -113,17 +148,20 @@ def setup_dependencies(profile):
         raise storage.StorageRefused('dependency_lock_unavailable')
     storage.volume(install_root)
 
-    work_root = storage.work_root()
+    with _dependency_stage('work_root'):
+        work_root = storage.work_root()
     cache = work_root / 'package-cache' / ('pip' if python_profile else 'npm')
     # Reserve space for both installation and cached/downloaded working files.
     budget = 1024**3 if python_profile else 128 * 1024**2
     components = [(install_root, 'dependency installation', budget),
                   (cache, 'package cache and temporary files', budget)]
-    volumes = storage.check_space(components)
+    with _dependency_stage('storage_budget'):
+        volumes = storage.check_space(components)
     with ExitStack() as stack:
-        for identity in sorted(volumes):
-            stack.enter_context(storage._volume_lock(volumes[identity][0]))
-        storage.check_space(components)
+        with _dependency_stage('volume_admission'):
+            for identity in sorted(volumes):
+                stack.enter_context(storage._volume_lock(volumes[identity][0]))
+            storage.check_space(components)
         storage.direct(install_root)
         if python_profile:
             python = storage.direct(install_root / 'Scripts/python.exe')
@@ -133,11 +171,14 @@ def setup_dependencies(profile):
             ):
                 raise storage.StorageRefused('development_venv_incomplete')
 
-        cache_parent = storage._private_child(work_root, 'package-cache')
-        cache = storage._private_child(cache_parent, cache.name)
-        with tempfile.TemporaryDirectory(prefix='install-', dir=cache) as name:
-            temporary = storage.direct(Path(name))
-            require_private_directory(temporary)
+        with _dependency_stage('package_cache'):
+            cache_parent = storage._private_child(work_root, 'package-cache')
+            cache = storage._private_child(cache_parent, cache.name)
+        with ExitStack() as temporary_stack:
+            with _dependency_stage('install_temp'):
+                name = temporary_stack.enter_context(tempfile.TemporaryDirectory(prefix='install-', dir=cache))
+                temporary = storage.direct(Path(name))
+                require_private_directory(temporary)
             # The checked-in locks select the packages. Package-manager
             # settings in the shell must not redirect installation or caches.
             env = {key: value for key, value in os.environ.items()
@@ -146,8 +187,9 @@ def setup_dependencies(profile):
             if python_profile:
                 env.update(PIP_CONFIG_FILE=os.devnull, PIP_CACHE_DIR=str(cache))
                 if create_venv:
-                    subprocess.run([sys.executable, '-I', '-m', 'venv', str(install_root)],
-                                   cwd=project, env=env, check=True)
+                    with _dependency_stage('virtualenv'):
+                        subprocess.run([sys.executable, '-I', '-m', 'venv', str(install_root)],
+                                       cwd=project, env=env, check=True)
                 storage.direct(python)
                 command = [str(python), '-I', '-m', 'pip', '--require-virtualenv',
                            'install', '--require-hashes', '-r', str(lock)]
@@ -157,7 +199,8 @@ def setup_dependencies(profile):
                            NPM_CONFIG_PREFIX=str(project))
                 command = ['cmd.exe', '/d', '/c', 'npm.cmd', 'ci', '--ignore-scripts',
                            '--no-audit', '--no-fund', '--global=false']
-            subprocess.run(command, cwd=project, env=env, check=True)
+            with _dependency_stage('package_manager'):
+                subprocess.run(command, cwd=project, env=env, check=True)
 
 
 def main(argv=None):
@@ -203,10 +246,11 @@ def main(argv=None):
     except subprocess.CalledProcessError as error:
         return error.returncode
     except (OSError, ValueError, KeyError) as error:
-        result = {'status': 'refused', 'allocated_payload_bytes': 0}
-        if args.command == 'dependencies' and isinstance(error, storage.StorageRefused):
-            result = {'status': 'refused', 'reason': str(error)}
-        print(json.dumps(result))
+        if args.command == 'dependencies':
+            refusal = error if isinstance(error, DependencySetupRefused) else DependencySetupRefused('setup', error)
+            print(json.dumps(refusal.detail))
+        else:
+            print(json.dumps({'status': 'refused', 'allocated_payload_bytes': 0}))
         return 2
 
 

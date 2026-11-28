@@ -123,6 +123,12 @@ installation a separate temporary directory. Installation and cache space
 are checked together under the existing volume lock. Generated Web checks
 also put npm's cache under the admitted run directory.
 
+Use an elevated PowerShell if the existing work root and shared admission lock
+are managed by Administrators. For a refusal during setup, the launcher reports
+the failing stage and reason. `access_denied` or `private_storage_unavailable`
+at `work_root` or `volume_admission` indicates a permissions or private-storage
+check to resolve before installing. Keep the existing shared lock and its ACL.
+
 Tool installations and POSIX agent scratch remain separate.
 
 Historical qualification packets and C:-bound private SYSTEM task launchers are
