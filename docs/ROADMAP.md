@@ -1,19 +1,54 @@
 # Product roadmap
 
-## Interactive product view / 交互式产品视图
+[Interactive roadmap / 交互式路线图](product-roadmap/index.html) ·
+[Bilingual download / 双语下载](product-roadmap/roadmap.md) ·
+[Maintenance / 维护](product-roadmap/README.md)
 
-[English / 中文 dashboard](product-roadmap/index.html) · [Maintenance / 维护](product-roadmap/README.md).
+Reviewed **2026-11-28**. The bilingual roadmap tracks implementation, dated
+Windows delivery and household acceptance separately. The production page is
+served under `/roadmap/`. See [Project Status](PROJECT_STATUS.md) for each
+installed revision and the most recent Windows results.
 
-The bilingual snapshot separates recorded delivery, source-ready work, gaps and next steps.
-双语快照分别展示已交付记录、源码就绪工作、差距与下一步。Windows route: `/roadmap/` (deployment is tracked separately).
+双语路线图分别记录源码、带日期的 Windows 交付和家庭验收。生产页面位于 `/roadmap/`。
+请查阅[项目状态](PROJECT_STATUS.md)了解各层部署版本和最近的 Windows 验证结果。
 
+## Current priorities
 
-Reviewed **2026-11-26** against local source and dated Windows results.
-Use [Project Status](PROJECT_STATUS.md) and the dated
-[release record](RELEASE_2026-10-29.md) for delivery evidence. Older entries
-retain the date and scope of their original evidence.
+1. **Everyday gallery and Jude use.** Time a signed-in Windows Edge gallery
+   load. Verify the physical microphone workflow with a date search, a
+   video-only follow-up and a numbered result on a later page.
+2. **Search to story.** Use the Chapter 12 chooser in a signed-in browser,
+   preserve cross-page source order and verify private save and reopen.
+3. **Household relevance and grouping.** Review real bilingual queries,
+   report actual semantic coverage and verify a complete grouping refresh
+   after an applicable library change.
+4. **Local stories and device acceptance.** Review grounded name corrections
+   and prose against original material. Exercise approved Web, phone and TV
+   journeys separately. Keep optional cloud proofreading off by default and
+   show the proposed payload before any opt-in request.
 
-## Current capability and evidence
+## Operating decisions
+
+- Family automatic importing runs every three minutes. A separate Windows CPU
+  worker now prepares JPEG or PNG thumbnails for new Family imports.
+- Jude remains on Python after mixed end-to-end Rust results. Keep existing
+  qualified Rust kernels and profile the next real bottleneck before a switch.
+- Eligible static Web updates use the verified restart-free delivery path.
+  Use local checks while GitHub Actions is cost-paused. Keep new Windows bulk
+  scratch and caches on the admitted data drive. [Storage policy](STORAGE_POLICY.md)
+
+## Historical implementation and delivery notes
+
+The earlier chronological notes below retain their revision and acceptance
+context. Their old “next”, “pending” and “live” claims do not override the
+active priorities above or current Project Status.
+
+<details>
+<summary>Expand earlier roadmap and release notes</summary>
+
+### November 26 source and product snapshot
+
+#### Capability and evidence
 
 - **Web design:** the November 24 local redesign consolidates the assistant
   surface, gives the conversation its actual scroll owner, and checks native
@@ -86,9 +121,9 @@ Search relevance on real household material, story quality, and in-home
 interaction need family review. Generated fixtures establish software behavior,
 not those product outcomes.
 
-## Active priorities
+#### Active priorities
 
-### 1. Make an assistant conversation useful from question to follow-up
+##### 1. Make an assistant conversation useful from question to follow-up
 
 Search, supported refinements, clarification and bounded conversation history
 already exist. The next gap is a family-reviewed conversation that explains
@@ -109,7 +144,7 @@ user corrections and unsupported-claim refusals with relevant source references.
 Generated fixtures remain software evidence, not full-library relevance; do not
 invent a global pass threshold before measuring representative cases.
 
-### 2. Resume safely and make cancellation understandable
+##### 2. Resume safely and make cancellation understandable
 
 The generated Web journeys cover reopening a server-received request,
 explicit recovery, and discard. A discarded reply cannot enter the conversation.
@@ -120,7 +155,7 @@ installed Web client. Confirm which question is shown, whether the receipt
 accurately reports its outcome and whether the user can continue earlier work.
 Exercise the exact scope changes and result-source rechecks on that build.
 
-### 3. Complete the reviewable story path
+##### 3. Complete the reviewable story path
 
 The local build carries selected frames across result pages and can recover
 them after reloading the same tab and reopening the conversation. Chapter
@@ -133,7 +168,7 @@ runtime. Record which names, facts and wording the reviewer accepts or revises,
 along with the original and the exact proposal. Track further quality work
 against representative reviewed stories.
 
-### 4. Check usefulness with the household before widening scope
+##### 4. Check usefulness with the household before widening scope
 
 After the software paths above are reviewable, invite a bounded family trial of
 those same tasks on the intended client and library. Capture the user's task
@@ -150,37 +185,6 @@ that work when a concrete import, grouping or device journey needs it. Investiga
 caption work only from a current, attributable failure; historical counts are
 not a current backlog.
 
-## Product and operating guardrails
-
-- The physical microphone/speaker trial remains deferred by the user. If
-  resumed, use the existing visible Start/Pause/End consent and record
-  scenario-specific recognition, reply, playback and interruption observations.
-  Do not introduce background capture. Natural speech/cloud options remain
-  separate opt-in previews; cloud proofreading stays off until each request is
-  shown and explicitly approved ([story grounding and cloud proofreading](STORY_GROUNDING_AND_CLOUD_PROOFREADING.md)).
-- Keep Rust an optional, isolated fast path for a measured hot operation. Python
-  remains the authority for product policy and unsupported-input behavior;
-  require exact parity on qualified cases and do not use component benchmark
-  ratios as household latency claims ([literal-search Rust boundary](LITERAL_SEARCH_RUST.md)).
-- Put new Windows bulk scratch and generated work on the admitted D: work
-  volume. Reuse shared caches only after checking their source/version and
-  retention; keep cache copies bounded, avoid indefinite duplicate backup sets,
-  and preserve known-good rollback and failed/uncertain evidence under the
-  [storage policy](STORAGE_POLICY.md).
-- GitHub Actions remains cost-paused. Use focused local checks for source work;
-  do not enable, trigger or rerun GitHub workflows.
-- Keep public examples free of household endpoints, credentials, private
-  configuration and runtime paths. Source changes, host operations and
-  family/device acceptance remain separate decisions and evidence.
-
-## Historical implementation and delivery notes
-
-The earlier chronological notes below retain their revision and acceptance
-context. Their old “next”, “pending” and “live” claims do not override the
-active priorities above or current Project Status.
-
-<details>
-<summary>Expand earlier roadmap and release notes</summary>
 
 ### Superseded maintained priorities through October 25
 
